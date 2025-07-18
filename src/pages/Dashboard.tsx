@@ -207,13 +207,22 @@ const Dashboard = () => {
 
                 <div className="flex gap-2 mt-4">
                   <Button
+                    onClick={() => navigate("/analysis")}
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 flex-1"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    Analysis
+                  </Button>
+                  <Button
                     variant={watchlist.includes(player.id) ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleWatchlist(player.id)}
-                    className="gap-1 w-full"
+                    className="gap-1 flex-1"
                   >
                     <Star className={`h-4 w-4 ${watchlist.includes(player.id) ? "fill-current" : ""}`} />
-                    {watchlist.includes(player.id) ? "Remove" : t("dashboard.add_to_watchlist")}
+                    {watchlist.includes(player.id) ? "Remove" : "Watchlist"}
                   </Button>
                 </div>
               </CardContent>
