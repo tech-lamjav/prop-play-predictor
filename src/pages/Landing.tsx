@@ -86,19 +86,19 @@ const Landing = () => {
             <div className="grid md:grid-cols-2 gap-8 mt-12">
               <Card className="bg-destructive/5 border-destructive/20 p-6">
                 <CardContent className="space-y-4">
-                  <div className="text-destructive font-semibold text-lg">😤 Situação Atual</div>
+                  <div className="text-destructive font-semibold text-lg">Sem a Smart Betting</div>
                   <ul className="space-y-3 text-left text-muted-foreground">
                     <li>• Horas coletando stats manualmente</li>
                     <li>• Incerteza sobre quais dados analisar</li>
                     <li>• Dependência de dicas de terceiros</li>
-                    <li>• Win rate estagnado em ~45%</li>
+                    <li>• Win rate estagnada</li>
                   </ul>
                 </CardContent>
               </Card>
 
               <Card className="bg-success/5 border-success/20 p-6">
                 <CardContent className="space-y-4">
-                  <div className="text-success font-semibold text-lg">✅ Com Smart Betting</div>
+                  <div className="text-success font-semibold text-lg">Com Smart Betting</div>
                   <ul className="space-y-3 text-left text-muted-foreground">
                     <li>• Análises prontas em segundos</li>
                     <li>• Dados relevantes pré-selecionados</li>
@@ -217,7 +217,7 @@ const Landing = () => {
               <Card className="bg-accent/5 border-accent/20 p-8">
                 <CardContent className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-accent/20 rounded-full flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center bg-green-800">
                       <TrendingUp className="h-8 w-8 text-accent" />
                     </div>
                     <div>
@@ -378,9 +378,7 @@ const Landing = () => {
                 <Timer className="h-5 w-5" />
                 Começar Teste Grátis Agora
               </Button>
-              <p className="text-sm text-muted-foreground">
-                🚀 Configuração em menos de 2 minutos
-              </p>
+              <p className="text-sm text-muted-foreground">Configuração em menos de 2 minutos</p>
             </div>
           </div>
         </section>
