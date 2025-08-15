@@ -276,7 +276,7 @@ const Landing = () => {
             <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-primary opacity-5" />
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-gradient-primary text-white">🔥 Teste Grátis</Badge>
+                
               </div>
               
               <CardHeader className="text-center pt-8">
