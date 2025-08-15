@@ -35,7 +35,7 @@ const Landing = () => {
       <div className="container mx-auto">
         {/* Hero Section */}
         <section className="relative py-20 px-6 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-accent/10 rounded-3xl" />
+          
           <div className="relative text-center">
             <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
               <Zap className="h-3 w-3 mr-1" />
@@ -131,10 +131,7 @@ const Landing = () => {
                 <CardTitle className="text-center text-foreground">Dados em Tempo Real</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  Análise automática das odds disponíveis nas principais casas de apostas, 
-                  atualizada em tempo real durante os jogos.
-                </p>
+                <p className="text-muted-foreground">Análise automática das odds disponíveis nas principais casas de apostas, em tempo de real de acorodo com o Injury Report</p>
               </CardContent>
             </Card>
 
@@ -146,10 +143,7 @@ const Landing = () => {
                 <CardTitle className="text-center text-foreground">IA Especializada</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  Modelo proprietário focado exclusivamente em prop bets da NBA, 
-                  não em apostas de resultado final.
-                </p>
+                <p className="text-muted-foreground">Modelo proprietário focado em avaliar oportunidades baseado em informações e não opniões</p>
               </CardContent>
             </Card>
 
@@ -189,7 +183,7 @@ const Landing = () => {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground">Apostador Ocupado</h3>
-                      <p className="text-muted-foreground">Como João, 28 anos, analista</p>
+                      
                     </div>
                   </div>
                   
@@ -228,7 +222,7 @@ const Landing = () => {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground">Aspirante a Profissional</h3>
-                      <p className="text-muted-foreground">Como Carlos, 22 anos, buscando consistência</p>
+                      
                     </div>
                   </div>
                   
