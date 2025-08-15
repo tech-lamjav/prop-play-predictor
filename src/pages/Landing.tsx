@@ -380,7 +380,7 @@ const Landing = () => {
               Junte-se aos apostadores que já economizam horas por dia e tomam decisões baseadas em dados confiáveis.
             </p>
             <div className="space-y-4">
-              <Button size="lg" onClick={() => navigate("/auth")} className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6">
+              <Button size="lg" onClick={() => navigate("/auth")} className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500">
                 <Timer className="h-5 w-5" />
                 Começar Teste Grátis Agora
               </Button>
