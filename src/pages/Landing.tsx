@@ -64,7 +64,7 @@ const Landing = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-              <Button size="lg" onClick={() => navigate("/auth")} className="w-full bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6">
+              <Button size="lg" onClick={() => navigate("/auth")} className="w-full bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500">
                 <Timer className="h-5 w-5" />
                 Começar Teste Grátis
               </Button>
