@@ -5,13 +5,12 @@ import { BarChart3, TrendingUp, Clock, Shield, Target, Database, Zap, CheckCircl
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageToggle } from "@/components/LanguageToggle";
-
 const Landing = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
-
-  return (
-    <div className="min-h-screen bg-background">
+  const {
+    t
+  } = useTranslation();
+  return <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto flex items-center justify-between p-6">
@@ -44,7 +43,7 @@ const Landing = () => {
             </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 max-w-5xl mx-auto leading-tight">
-              Pare de <span className="text-transparent bg-gradient-primary bg-clip-text">Apostar no Escuro</span>
+              Pare de <span className="bg-gradient-primary bg-clip-text text-green-600">Apostar no Escuro</span>
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -319,11 +318,7 @@ const Landing = () => {
                   </div>
                 </div>
 
-                <Button 
-                  size="lg" 
-                  className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6" 
-                  onClick={() => navigate("/auth")}
-                >
+                <Button size="lg" className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6" onClick={() => navigate("/auth")}>
                   <Timer className="h-5 w-5 mr-2" />
                   Começar Teste Grátis de 7 Dias
                 </Button>
@@ -396,8 +391,6 @@ const Landing = () => {
           </div>
         </section>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
