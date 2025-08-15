@@ -43,7 +43,7 @@ const Landing = () => {
             </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 max-w-5xl mx-auto leading-tight">
-              Pare de <span className="bg-gradient-primary bg-clip-text text-green-600">Apostar no Escuro</span>
+              Pare de <span className="bg-gradient-primary bg-clip-text text-green-600">apostar no escuro</span>
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
