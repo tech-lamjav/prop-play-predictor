@@ -19,7 +19,7 @@ const Landing = () => {
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Smart Betting</span>
+            <span className="text-2xl font-bold text-foreground">Smart Betting</span>
           </div>
           <div className="flex items-center gap-4">
             <LanguageToggle />
@@ -44,7 +44,7 @@ const Landing = () => {
             </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 max-w-5xl mx-auto leading-tight">
-              Pare de <span className="bg-gradient-primary bg-clip-text text-transparent">Apostar no Escuro</span>
+              Pare de <span className="text-transparent bg-gradient-primary bg-clip-text">Apostar no Escuro</span>
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
