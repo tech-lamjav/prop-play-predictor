@@ -7,39 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Star, BarChart3, LogOut, User as UserIcon } from "lucide-react";
+import { Search, Filter, Star, BarChart3, LogOut, User as UserIcon, RefreshCw, TrendingUp, AlertTriangle } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
-
-// Mock data for demonstration
-const mockPlayers = [
-  {
-    id: "1",
-    name: "LeBron James",
-    team: "Lakers",
-    position: "SF",
-    sport: "NBA",
-    stats: { points: 25.2, rebounds: 7.1, assists: 7.9 },
-    nextGame: { opponent: "Warriors", date: "Jan 20", time: "8:00 PM" }
-  },
-  {
-    id: "2", 
-    name: "Stephen Curry",
-    team: "Warriors",
-    position: "PG",
-    sport: "NBA",
-    stats: { points: 29.5, rebounds: 4.5, assists: 6.2 },
-    nextGame: { opponent: "Lakers", date: "Jan 20", time: "8:00 PM" }
-  },
-  {
-    id: "3",
-    name: "Giannis Antetokounmpo",
-    team: "Bucks", 
-    position: "PF",
-    sport: "NBA",
-    stats: { points: 31.1, rebounds: 11.2, assists: 5.7 },
-    nextGame: { opponent: "Celtics", date: "Jan 21", time: "7:30 PM" }
-  }
-];
+import { usePlayers, useGames, usePropBets, useInjuryReports, useDataSync } from "@/hooks/use-sports-data";
+import type { PlayerFilters, GameFilters, PropFilters } from "@/types/sports";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -49,6 +20,18 @@ const Dashboard = () => {
   const [selectedSport, setSelectedSport] = useState("all");
   const [selectedPosition, setSelectedPosition] = useState("all");
   const [watchlist, setWatchlist] = useState<string[]>([]);
+
+  // Data hooks
+  const { data: playersData, isLoading: playersLoading, error: playersError } = usePlayers({
+    search: searchTerm || undefined,
+    sport: selectedSport === "all" ? undefined : selectedSport as any,
+    position: selectedPosition === "all" ? undefined : selectedPosition,
+  });
+
+  const { data: gamesData, isLoading: gamesLoading } = useGames();
+  const { data: propsData, isLoading: propsLoading } = usePropBets();
+  const { data: injuriesData, isLoading: injuriesLoading } = useInjuryReports();
+  const { syncData, isSyncing, lastSync } = useDataSync();
 
   useEffect(() => {
     const getUser = async () => {
@@ -84,14 +67,9 @@ const Dashboard = () => {
     );
   };
 
-  const filteredPlayers = mockPlayers.filter(player => {
-    const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         player.team.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSport = selectedSport === "all" || player.sport.toLowerCase() === selectedSport;
-    const matchesPosition = selectedPosition === "all" || player.position.toLowerCase() === selectedPosition;
-    
-    return matchesSearch && matchesSport && matchesPosition;
-  });
+  const handleRefresh = () => {
+    syncData();
+  };
 
   if (!user) {
     return (
@@ -104,6 +82,11 @@ const Dashboard = () => {
     );
   }
 
+  const players = playersData?.data?.data || [];
+  const games = gamesData?.data?.data || [];
+  const props = propsData?.data?.data || [];
+  const injuries = injuriesData?.data || [];
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -112,8 +95,23 @@ const Dashboard = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t("dashboard.title")}</h1>
             <p className="text-muted-foreground mt-2">Analyze player performance and betting lines</p>
+            {lastSync && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Last updated: {lastSync.toLocaleTimeString()}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh}
+              disabled={isSyncing}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Refresh'}
+            </Button>
             <LanguageToggle />
             <Button variant="ghost" size="sm" className="gap-2">
               <UserIcon className="h-4 w-4" />
@@ -124,6 +122,57 @@ const Dashboard = () => {
               {t("logout")}
             </Button>
           </div>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Players</p>
+                  <p className="text-2xl font-bold">{players.length}</p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Games</p>
+                  <p className="text-2xl font-bold">{games.filter(g => g.status === 'live' || g.status === 'scheduled').length}</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Props</p>
+                  <p className="text-2xl font-bold">{props.filter(p => p.isActive).length}</p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Injuries</p>
+                  <p className="text-2xl font-bold">{injuries.length}</p>
+                </div>
+                <AlertTriangle className="h-8 w-8 text-yellow-500" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Search and Filters */}
@@ -149,9 +198,9 @@ const Dashboard = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sports</SelectItem>
-                <SelectItem value="nba">NBA</SelectItem>
-                <SelectItem value="nfl">NFL</SelectItem>
-                <SelectItem value="mlb">MLB</SelectItem>
+                <SelectItem value="NBA">NBA</SelectItem>
+                <SelectItem value="NFL">NFL</SelectItem>
+                <SelectItem value="MLB">MLB</SelectItem>
               </SelectContent>
             </Select>
 
@@ -161,74 +210,118 @@ const Dashboard = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Positions</SelectItem>
-                <SelectItem value="pg">Point Guard</SelectItem>
-                <SelectItem value="sg">Shooting Guard</SelectItem>
-                <SelectItem value="sf">Small Forward</SelectItem>
-                <SelectItem value="pf">Power Forward</SelectItem>
-                <SelectItem value="c">Center</SelectItem>
+                <SelectItem value="PG">Point Guard</SelectItem>
+                <SelectItem value="SG">Shooting Guard</SelectItem>
+                <SelectItem value="SF">Small Forward</SelectItem>
+                <SelectItem value="PF">Power Forward</SelectItem>
+                <SelectItem value="C">Center</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* Players Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPlayers.map((player) => (
-            <Card key={player.id} className="bg-card border-border hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-lg font-bold text-primary">{player.name.split(' ').map(n => n[0]).join('')}</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{player.name}</h3>
-                      <p className="text-sm text-muted-foreground">{player.team} • {player.position}</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline">{player.sport}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="font-semibold text-foreground">{player.stats.points}</div>
-                    <div className="text-muted-foreground">{t("dashboard.points")}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-foreground">{player.stats.rebounds}</div>
-                    <div className="text-muted-foreground">{t("dashboard.rebounds")}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-foreground">{player.stats.assists}</div>
-                    <div className="text-muted-foreground">{t("dashboard.assists")}</div>
-                  </div>
-                </div>
+        {/* Loading State */}
+        {playersLoading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading players...</p>
+          </div>
+        )}
 
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    onClick={() => navigate("/analysis")}
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 flex-1"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    Analysis
-                  </Button>
-                  <Button
-                    variant={watchlist.includes(player.id) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleWatchlist(player.id)}
-                    className="gap-1 flex-1"
-                  >
-                    <Star className={`h-4 w-4 ${watchlist.includes(player.id) ? "fill-current" : ""}`} />
-                    {watchlist.includes(player.id) ? "Remove" : "Watchlist"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Error State */}
+        {playersError && (
+          <Card className="bg-destructive/10 border-destructive/20">
+            <CardContent className="p-6 text-center">
+              <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-destructive mb-2">Error Loading Data</h3>
+              <p className="text-muted-foreground mb-4">
+                {playersError.message || 'Failed to load player data. Please try refreshing.'}
+              </p>
+              <Button onClick={handleRefresh} variant="outline">
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Players Grid */}
+        {!playersLoading && !playersError && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {players.map((player) => (
+              <Card key={player.id} className="bg-card border-border hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-lg font-bold text-primary">
+                          {player.name.split(' ').map(n => n[0]).join('')}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-foreground">{player.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {player.team} • {player.position}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline">{player.sport}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Check if player has injury */}
+                  {injuries.find(i => i.playerId === player.id) && (
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-yellow-600">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="text-sm font-medium">Injury Alert</span>
+                      </div>
+                      <p className="text-xs text-yellow-600 mt-1">
+                        {injuries.find(i => i.playerId === player.id)?.injury}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      onClick={() => navigate("/analysis")}
+                      variant="outline"
+                      size="sm"
+                      className="gap-1 flex-1"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Analysis
+                    </Button>
+                    <Button
+                      variant={watchlist.includes(player.id) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleWatchlist(player.id)}
+                      className="gap-1 flex-1"
+                    >
+                      <Star className={`h-4 w-4 ${watchlist.includes(player.id) ? "fill-current" : ""}`} />
+                      {watchlist.includes(player.id) ? "Remove" : "Watchlist"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!playersLoading && !playersError && players.length === 0 && (
+          <Card className="bg-muted/30 border-border">
+            <CardContent className="p-12 text-center">
+              <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No Players Found</h3>
+              <p className="text-muted-foreground mb-4">
+                Try adjusting your search terms or filters to find players.
+              </p>
+              <Button onClick={() => { setSearchTerm(''); setSelectedSport('all'); setSelectedPosition('all'); }}>
+                Clear Filters
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

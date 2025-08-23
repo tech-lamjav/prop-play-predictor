@@ -13,11 +13,16 @@ import {
   TrendingUp, 
   Target,
   AlertCircle,
-  Calendar
+  Calendar,
+  Activity,
+  Shield,
+  Zap
 } from "lucide-react";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { InjuryInsightsDashboard } from "@/components/injury-insights/InjuryInsightsDashboard";
+import type { InjuryInsight } from "@/types/sports";
 
-// Mock data for the analysis page
+// Mock data for the analysis page (keeping existing mock data for now)
 const mockMetrics = {
   winRate: { value: 68.5, change: 2.3, period: "from last week" },
   roi: { value: 12.7, change: 1.5, period: "from last week" },
@@ -89,6 +94,19 @@ const Analysis = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("insights");
 
+  // Handle injury insight actions
+  const handleAnalyzeInjury = (insight: InjuryInsight) => {
+    console.log('Analyzing injury insight:', insight);
+    // Navigate to detailed analysis or open modal
+    // You can implement this based on your needs
+  };
+
+  const handleAddToWatchlist = (insight: InjuryInsight) => {
+    console.log('Adding to watchlist:', insight);
+    // Add to user's watchlist
+    // You can implement this based on your needs
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
@@ -154,11 +172,25 @@ const Analysis = () => {
               value="insights" 
               className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
             >
+              <Zap className="h-4 w-4 mr-2" />
               Insights
             </TabsTrigger>
-            <TabsTrigger value="trends" className="text-slate-400">Trends</TabsTrigger>
-            <TabsTrigger value="models" className="text-slate-400">Models</TabsTrigger>
-            <TabsTrigger value="history" className="text-slate-400">History</TabsTrigger>
+            <TabsTrigger value="injury-insights" className="text-slate-400">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Injury Insights
+            </TabsTrigger>
+            <TabsTrigger value="trends" className="text-slate-400">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Trends
+            </TabsTrigger>
+            <TabsTrigger value="models" className="text-slate-400">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Models
+            </TabsTrigger>
+            <TabsTrigger value="history" className="text-slate-400">
+              <Calendar className="h-4 w-4 mr-2" />
+              History
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="insights" className="space-y-8">
@@ -346,6 +378,56 @@ const Analysis = () => {
                 </Card>
               </div>
             </div>
+          </TabsContent>
+
+          {/* New Injury Insights Tab */}
+          <TabsContent value="injury-insights" className="space-y-8">
+            <div className="bg-slate-800 rounded-lg p-6">
+              <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+                Injury Insights Dashboard
+              </h2>
+              <p className="text-slate-300 mb-6">
+                Real-time analysis of player injuries and their impact on prop betting opportunities. 
+                Data sourced from BigQuery analytics.
+              </p>
+              
+              <InjuryInsightsDashboard
+                onAnalyze={handleAnalyzeInjury}
+                onAddToWatchlist={handleAddToWatchlist}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Other tabs remain the same for now */}
+          <TabsContent value="trends" className="space-y-8">
+            <Card className="bg-slate-800 border-slate-700">
+              <CardContent className="p-12 text-center">
+                <TrendingUp className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-white mb-2">Trends Analysis</h3>
+                <p className="text-slate-400">Trend analysis and pattern recognition coming soon.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="models" className="space-y-8">
+            <Card className="bg-slate-800 border-slate-700">
+              <CardContent className="p-12 text-center">
+                <BarChart3 className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-white mb-2">Model Performance</h3>
+                <p className="text-slate-400">Model performance metrics and validation coming soon.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-8">
+            <Card className="bg-slate-800 border-slate-700">
+              <CardContent className="p-12 text-center">
+                <Calendar className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-white mb-2">Historical Data</h3>
+                <p className="text-slate-400">Historical performance data and analysis coming soon.</p>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

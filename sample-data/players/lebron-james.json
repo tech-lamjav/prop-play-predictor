@@ -1,0 +1,56 @@
+{
+  "id": "lebron-james",
+  "name": "LeBron James",
+  "team": "Los Angeles Lakers",
+  "position": "SF",
+  "sport": "NBA",
+  "jerseyNumber": 23,
+  "height": "6'9\"",
+  "weight": 250,
+  "experience": 21,
+  "college": "St. Vincent-St. Mary HS (OH)",
+  "imageUrl": "https://example.com/lebron-james.jpg",
+  "stats": {
+    "season": "2024-25",
+    "gamesPlayed": 45,
+    "averageMinutes": 35.2,
+    "averagePoints": 25.4,
+    "averageRebounds": 7.2,
+    "averageAssists": 8.1,
+    "averageSteals": 1.2,
+    "averageBlocks": 0.6,
+    "averageTurnovers": 3.1,
+    "averageFouls": 1.8,
+    "fieldGoalPercentage": 52.3,
+    "threePointPercentage": 41.2,
+    "freeThrowPercentage": 75.6,
+    "plusMinus": 5.2
+  },
+  "recentGames": [
+    {
+      "date": "2024-01-15",
+      "opponent": "Golden State Warriors",
+      "points": 28,
+      "rebounds": 8,
+      "assists": 9,
+      "minutes": 36
+    },
+    {
+      "date": "2024-01-13",
+      "opponent": "Phoenix Suns",
+      "points": 22,
+      "rebounds": 6,
+      "assists": 7,
+      "minutes": 34
+    }
+  ],
+  "nextGame": {
+    "date": "2024-01-17",
+    "opponent": "Sacramento Kings",
+    "time": "7:30 PM",
+    "venue": "Crypto.com Arena"
+  }
+}
+
+
+
