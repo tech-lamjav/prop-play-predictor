@@ -80,7 +80,7 @@ const Landing = () => {
 
           {/* Mock Dashboard Interface */}
           <div className="max-w-7xl mx-auto">
-            <div className="bg-slate-800 rounded-2xl p-6 shadow-2xl overflow-hidden">
+            <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl overflow-hidden">
               {/* Dashboard Header */}
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
                 <div className="flex items-center space-x-4">
@@ -100,66 +100,66 @@ const Landing = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+              <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4">
                 {/* Player Profile Card */}
-                <div className="lg:col-span-1">
+                <div className="md:col-span-2 lg:col-span-1">
                   <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
                       <div className="text-center">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                          <span className="text-white font-bold text-xs">LD</span>
+                        <div className="w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 lg:mb-2">
+                          <span className="text-white font-bold text-sm lg:text-xs">LD</span>
                         </div>
-                        <h4 className="text-sm font-bold text-white mb-1">Luka Dončić</h4>
-                        <p className="text-slate-300 text-xs mb-1">Dallas Mavericks • PG/SG</p>
-                        <Badge className="bg-green-600 text-white text-xs px-2 py-1">Ativo</Badge>
+                        <h4 className="text-base lg:text-sm font-bold text-white mb-2 lg:mb-1">Luka Dončić</h4>
+                        <p className="text-slate-300 text-sm lg:text-xs mb-2 lg:mb-1">Dallas Mavericks • PG/SG</p>
+                        <Badge className="bg-green-600 text-white text-sm lg:text-xs px-3 lg:px-2 py-1">Ativo</Badge>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
                 {/* PPG Card */}
-                <div className="lg:col-span-1">
+                <div>
                   <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
                       <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <TrendingUp className="w-4 h-4 text-blue-400 mr-1" />
-                          <p className="text-slate-300 text-xs font-medium">Pontos</p>
+                        <div className="flex items-center justify-center mb-2 lg:mb-1">
+                          <TrendingUp className="w-5 h-5 lg:w-4 lg:h-4 text-blue-400 mr-2 lg:mr-1" />
+                          <p className="text-slate-300 text-sm lg:text-xs font-medium">Pontos</p>
                         </div>
-                        <p className="text-white font-bold text-3xl mb-1">28.4</p>
-                        <p className="text-blue-400 text-xs">+1.2 vs média</p>
+                        <p className="text-white font-bold text-4xl lg:text-3xl mb-2 lg:mb-1">28.4</p>
+                        <p className="text-blue-400 text-sm lg:text-xs">+1.2 vs média</p>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
                 {/* Assists Card */}
-                <div className="lg:col-span-1">
+                <div>
                   <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
                       <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
-                          <p className="text-slate-300 text-xs font-medium">Assistências</p>
+                        <div className="flex items-center justify-center mb-2 lg:mb-1">
+                          <TrendingUp className="w-5 h-5 lg:w-4 lg:h-4 text-green-400 mr-2 lg:mr-1" />
+                          <p className="text-slate-300 text-sm lg:text-xs font-medium">Assistências</p>
                         </div>
-                        <p className="text-white font-bold text-3xl mb-1">8.7</p>
-                        <p className="text-green-400 text-xs">+0.3 vs média</p>
+                        <p className="text-white font-bold text-4xl lg:text-3xl mb-2 lg:mb-1">8.7</p>
+                        <p className="text-green-400 text-sm lg:text-xs">+0.3 vs média</p>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
                 {/* Rebounds Card */}
-                <div className="lg:col-span-1">
+                <div>
                   <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
                       <div className="text-center">
-                        <div className="flex items-center justify-center mb-1">
-                          <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
-                          <p className="text-slate-300 text-xs font-medium">Rebotes</p>
+                        <div className="flex items-center justify-center mb-2 lg:mb-1">
+                          <TrendingUp className="w-5 h-5 lg:w-4 lg:h-4 text-green-400 mr-2 lg:mr-1" />
+                          <p className="text-slate-300 text-sm lg:text-xs font-medium">Rebotes</p>
                         </div>
-                        <p className="text-white font-bold text-3xl mb-1">8.1</p>
-                        <p className="text-green-400 text-xs">+0.5 vs média</p>
+                        <p className="text-white font-bold text-4xl lg:text-3xl mb-2 lg:mb-1">8.1</p>
+                        <p className="text-green-400 text-sm lg:text-xs">+0.5 vs média</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -167,7 +167,7 @@ const Landing = () => {
               </div>
 
               {/* Performance Chart Preview */}
-              <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="mt-8 space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
                 <div className="lg:col-span-2">
                   <Card className="bg-slate-700 border-slate-600">
                     <CardHeader>
@@ -175,63 +175,98 @@ const Landing = () => {
                       <p className="text-slate-300 text-sm">Pontos reais vs linha oferecida pelo bookmaker</p>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-48 sm:h-64 bg-slate-800 rounded-lg p-2 sm:p-4 relative overflow-x-auto">
-                        {/* Y-Axis Labels */}
-                        <div className="absolute left-1 sm:left-2 top-2 sm:top-4 bottom-8 sm:bottom-4 flex flex-col justify-between text-xs text-slate-400">
-                          <span>35</span>
-                          <span>30</span>
-                          <span>25</span>
-                          <span>20</span>
-                          <span>15</span>
-                          <span>10</span>
-                        </div>
-                        
-                        {/* Chart Area */}
-                        <div className="ml-6 sm:ml-8 h-full flex items-end space-x-0.5 sm:space-x-1 relative min-w-max">
-                          {/* Reference Line */}
-                          <div className="absolute inset-x-0 top-1/2 h-0.5 bg-white opacity-60 border-dashed"></div>
-                          <div className="absolute top-1/2 right-2 text-white text-xs bg-slate-700 px-1 sm:px-2 py-1 rounded">
-                            Linha: 22.5
+                      {/* Mobile: Simple Stats View, Desktop: Chart */}
+                      <div className="block sm:hidden">
+                        {/* Mobile: Key Stats Summary */}
+                        <div className="bg-slate-800 rounded-lg p-4">
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-green-400">10</div>
+                              <div className="text-xs text-slate-300">Acima da Linha</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-red-400">5</div>
+                              <div className="text-xs text-slate-300">Abaixo da Linha</div>
+                            </div>
                           </div>
                           
-                          {/* Mock Chart Bars - 15 games with more realistic data */}
-                          {[18, 17, 26, 29, 10, 19, 25, 32, 30, 18, 24, 27, 31, 16, 28].map((height, index) => {
-                            const barHeight = Math.max((height / 35) * 160, 12); // Adjusted for mobile
-                            return (
-                              <div key={index} className="flex flex-col items-center" style={{ minWidth: '20px' }}>
-                                <div
-                                  className={`w-3 sm:w-4 rounded-t transition-all duration-300 hover:opacity-80 ${
-                                    height > 22.5 ? 'bg-green-500' : 'bg-red-500'
-                                  }`}
-                                  style={{ 
-                                    height: `${barHeight}px`,
-                                    minHeight: '12px'
-                                  }}
-                                  title={`Jogo ${index + 1}: ${height} pontos`}
-                                />
-                                <div className="text-xs text-slate-400 mt-1 text-center">
-                                  {index + 1}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        
-                        {/* X-Axis Label */}
-                        <div className="text-center text-xs text-slate-400 mt-1 sm:mt-2">
-                          Jogos (Últimos 15)
+                          <div className="border-t border-slate-700 pt-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-slate-300 text-sm">Linha de Aposta:</span>
+                              <span className="text-white font-bold">22.5 pontos</span>
+                            </div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-slate-300 text-sm">Média Últimos 15:</span>
+                              <span className="text-white font-bold">23.2 pontos</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-300 text-sm">Taxa de Acerto:</span>
+                              <span className="text-green-400 font-bold">67%</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      
-                      {/* Chart Legend */}
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 mt-4 text-xs sm:text-sm">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded"></div>
-                          <span className="text-slate-300">Acima da Linha (10 jogos)</span>
+
+                      {/* Desktop: Full Chart */}
+                      <div className="hidden sm:block">
+                        <div className="h-64 bg-slate-800 rounded-lg p-4 relative">
+                          {/* Y-Axis Labels */}
+                          <div className="absolute left-2 top-4 bottom-4 flex flex-col justify-between text-xs text-slate-400">
+                            <span>35</span>
+                            <span>30</span>
+                            <span>25</span>
+                            <span>20</span>
+                            <span>15</span>
+                            <span>10</span>
+                          </div>
+                          
+                          {/* Chart Area */}
+                          <div className="ml-8 h-full flex items-end space-x-1 relative">
+                            {/* Reference Line */}
+                            <div className="absolute inset-x-0 top-1/2 h-0.5 bg-white opacity-60 border-dashed"></div>
+                            <div className="absolute top-1/2 right-2 text-white text-xs bg-slate-700 px-2 py-1 rounded">
+                              Linha: 22.5
+                            </div>
+                            
+                            {/* Chart Bars */}
+                            {[18, 17, 26, 29, 10, 19, 25, 32, 30, 18, 24, 27, 31, 16, 28].map((height, index) => {
+                              const barHeight = Math.max((height / 35) * 200, 16);
+                              return (
+                                <div key={index} className="flex flex-col items-center flex-1">
+                                  <div
+                                    className={`w-4 rounded-t transition-all duration-300 hover:opacity-80 ${
+                                      height > 22.5 ? 'bg-green-500' : 'bg-red-500'
+                                    }`}
+                                    style={{ 
+                                      height: `${barHeight}px`,
+                                      minHeight: '16px'
+                                    }}
+                                    title={`Jogo ${index + 1}: ${height} pontos`}
+                                  />
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    {index + 1}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* X-Axis Label */}
+                          <div className="text-center text-xs text-slate-400 mt-2">
+                            Jogos (Últimos 15)
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
-                          <span className="text-slate-300">Abaixo da Linha (5 jogos)</span>
+                        
+                        {/* Chart Legend */}
+                        <div className="flex items-center justify-center gap-6 mt-4 text-sm">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 bg-green-500 rounded"></div>
+                            <span className="text-slate-300">Acima da Linha (10 jogos)</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 bg-red-500 rounded"></div>
+                            <span className="text-slate-300">Abaixo da Linha (5 jogos)</span>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
