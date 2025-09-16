@@ -11,28 +11,29 @@ const Landing = () => {
     t
   } = useTranslation();
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto flex items-center justify-between p-6">
+        <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-foreground">Smart Betting</span>
+            <span className="text-lg sm:text-2xl font-bold text-foreground">Smart Betting</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <LanguageToggle />
-            <Button onClick={() => navigate("/waitlist")} className="bg-gradient-primary hover:opacity-90">
-              Entrar na lista de espera
+            <Button onClick={() => navigate("/waitlist")} className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2">
+              <span className="hidden sm:inline">Entrar na lista de espera</span>
+              <span className="sm:hidden">Lista de espera</span>
             </Button>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto">
+      <div className="container mx-auto px-4 sm:px-6">
         {/* Hero Section */}
-        <section className="relative py-20 px-6 overflow-hidden">
+        <section className="relative py-20 overflow-hidden">
           
           <div className="relative text-center">
             
