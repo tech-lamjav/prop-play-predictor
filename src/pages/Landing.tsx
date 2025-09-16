@@ -63,10 +63,6 @@ const Landing = () => {
                 Entrar na lista de espera
               </Button>
             </div>
-            
-            <p className="text-sm text-muted-foreground mt-4">
-              7 dias grátis • Cancele quando quiser
-            </p>
           </div>
         </section>
 
