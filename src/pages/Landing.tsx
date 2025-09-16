@@ -25,8 +25,8 @@ const Landing = () => {
             <Button variant="ghost" onClick={() => navigate("/auth")}>
               Entrar
             </Button>
-            <Button onClick={() => navigate("/auth")} className="bg-gradient-primary hover:opacity-90">
-              Começar Grátis
+            <Button onClick={() => navigate("/waitlist")} className="bg-gradient-primary hover:opacity-90">
+              Entrar na lista de espera
             </Button>
           </div>
         </div>
@@ -37,10 +37,6 @@ const Landing = () => {
         <section className="relative py-20 px-6 overflow-hidden">
           
           <div className="relative text-center">
-            <Badge variant="secondary" className="mb-6 bg-primary/10 text-primary border-primary/20">
-              <Zap className="h-3 w-3 mr-1" />
-              Teste Grátis • Sem Cartão de Crédito
-            </Badge>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 max-w-5xl mx-auto leading-tight">
               Pare de <span className="bg-gradient-primary bg-clip-text text-green-600">apostar no escuro</span>
@@ -64,9 +60,9 @@ const Landing = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-              <Button size="lg" onClick={() => navigate("/auth")} className="w-full bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500">
+              <Button size="lg" onClick={() => navigate("/waitlist")} className="w-full bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500">
                 <Timer className="h-5 w-5" />
-                Começar Teste Grátis
+                Entrar na lista de espera
               </Button>
             </div>
             
@@ -107,6 +103,300 @@ const Landing = () => {
                   </ul>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* Dashboard Preview Section */}
+        <section className="py-20 px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+              Veja como funciona na prática
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Dashboard completo com dados reais da NBA para suas análises de prop bets
+            </p>
+          </div>
+
+          {/* Mock Dashboard Interface */}
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-slate-800 rounded-2xl p-6 shadow-2xl overflow-hidden">
+              {/* Dashboard Header */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
+                <div className="flex items-center space-x-4">
+                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <Target className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Smart Betting Dashboard</h3>
+                    <p className="text-slate-400 text-sm">Análise em tempo real</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge className="bg-green-600 text-white">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Conectado
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+                {/* Player Profile Card */}
+                <div className="lg:col-span-1">
+                  <Card className="bg-slate-700 border-slate-600 h-full">
+                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                      <div className="text-center">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                          <span className="text-white font-bold text-xs">LD</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-white mb-1">Luka Dončić</h4>
+                        <p className="text-slate-300 text-xs mb-1">Dallas Mavericks • PG/SG</p>
+                        <Badge className="bg-green-600 text-white text-xs px-2 py-1">Ativo</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* PPG Card */}
+                <div className="lg:col-span-1">
+                  <Card className="bg-slate-700 border-slate-600 h-full">
+                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                      <div className="text-center">
+                        <div className="flex items-center justify-center mb-1">
+                          <TrendingUp className="w-4 h-4 text-blue-400 mr-1" />
+                          <p className="text-slate-300 text-xs font-medium">Pontos</p>
+                        </div>
+                        <p className="text-white font-bold text-3xl mb-1">28.4</p>
+                        <p className="text-blue-400 text-xs">+1.2 vs média</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Assists Card */}
+                <div className="lg:col-span-1">
+                  <Card className="bg-slate-700 border-slate-600 h-full">
+                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                      <div className="text-center">
+                        <div className="flex items-center justify-center mb-1">
+                          <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
+                          <p className="text-slate-300 text-xs font-medium">Assistências</p>
+                        </div>
+                        <p className="text-white font-bold text-3xl mb-1">8.7</p>
+                        <p className="text-green-400 text-xs">+0.3 vs média</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Rebounds Card */}
+                <div className="lg:col-span-1">
+                  <Card className="bg-slate-700 border-slate-600 h-full">
+                    <CardContent className="p-3 h-full flex flex-col justify-center">
+                      <div className="text-center">
+                        <div className="flex items-center justify-center mb-1">
+                          <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
+                          <p className="text-slate-300 text-xs font-medium">Rebotes</p>
+                        </div>
+                        <p className="text-white font-bold text-3xl mb-1">8.1</p>
+                        <p className="text-green-400 text-xs">+0.5 vs média</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Performance Chart Preview */}
+              <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <Card className="bg-slate-700 border-slate-600">
+                    <CardHeader>
+                      <CardTitle className="text-white">Performance vs Linha de Aposta - Últimos 15 Jogos</CardTitle>
+                      <p className="text-slate-300 text-sm">Pontos reais vs linha oferecida pelo bookmaker</p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64 bg-slate-800 rounded-lg p-4 relative">
+                        {/* Y-Axis Labels */}
+                        <div className="absolute left-2 top-4 bottom-4 flex flex-col justify-between text-xs text-slate-400">
+                          <span>35</span>
+                          <span>30</span>
+                          <span>25</span>
+                          <span>20</span>
+                          <span>15</span>
+                          <span>10</span>
+                        </div>
+                        
+                        {/* Chart Area */}
+                        <div className="ml-8 h-full flex items-end space-x-1 relative">
+                          {/* Reference Line */}
+                          <div className="absolute inset-x-0 top-1/2 h-0.5 bg-white opacity-60 border-dashed"></div>
+                          <div className="absolute top-1/2 right-2 text-white text-xs bg-slate-700 px-2 py-1 rounded">
+                            Linha: 22.5
+                          </div>
+                          
+                          {/* Mock Chart Bars - 15 games with more realistic data */}
+                          {[18, 17, 26, 29, 10, 19, 25, 32, 30, 18, 24, 27, 31, 16, 28].map((height, index) => {
+                            const barHeight = Math.max((height / 35) * 200, 16); // Increased base height
+                            return (
+                              <div key={index} className="flex flex-col items-center flex-1">
+                                <div
+                                  className={`w-4 rounded-t transition-all duration-300 hover:opacity-80 ${
+                                    height > 22.5 ? 'bg-green-500' : 'bg-red-500'
+                                  }`}
+                                  style={{ 
+                                    height: `${barHeight}px`,
+                                    minHeight: '16px'
+                                  }}
+                                  title={`Jogo ${index + 1}: ${height} pontos`}
+                                />
+                                <div className="text-xs text-slate-400 mt-1 transform -rotate-45 origin-left whitespace-nowrap">
+                                  {index + 1}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* X-Axis Label */}
+                        <div className="text-center text-xs text-slate-400 mt-2">
+                          Jogos (Últimos 15)
+                        </div>
+                      </div>
+                      
+                      {/* Chart Legend */}
+                      <div className="flex items-center justify-center space-x-6 mt-4 text-sm">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 bg-green-500 rounded"></div>
+                          <span className="text-slate-300">Acima da Linha (10 jogos)</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-4 h-4 bg-red-500 rounded"></div>
+                          <span className="text-slate-300">Abaixo da Linha (5 jogos)</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Injury Report - Vertical Orientation */}
+                <div>
+                  <Card className="bg-gradient-to-b from-red-900/20 to-orange-900/20 border-red-500/30">
+                    <CardHeader>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+                          <Shield className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-white text-lg">Injury Report</CardTitle>
+                          <p className="text-slate-300 text-xs">Nosso diferencial competitivo</p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Player Status */}
+                        <div>
+                          <h4 className="text-white font-semibold text-sm mb-3">Status do Jogador</h4>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between p-2 bg-slate-800 rounded-lg">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="text-white font-medium text-sm">Luka Dončić</span>
+                              </div>
+                              <Badge className="bg-green-600 text-white text-xs">Ativo</Badge>
+                            </div>
+                            <div className="flex items-center justify-between p-2 bg-slate-800 rounded-lg">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                <span className="text-white font-medium text-sm">Kyrie Irving</span>
+                              </div>
+                              <Badge className="bg-yellow-600 text-white text-xs">Questionable</Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Opponent Impact */}
+                        <div>
+                          <h4 className="text-white font-semibold text-sm mb-3">Impacto no Oponente</h4>
+                          <div className="space-y-2">
+                            <div className="p-2 bg-slate-800 rounded-lg">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-white font-medium text-sm">Miami Heat</span>
+                                <Badge className="bg-red-600 text-white text-xs">Alto Impacto</Badge>
+                              </div>
+                              <p className="text-slate-300 text-xs">
+                                Jimmy Butler lesionado - Defesa vulnerável
+                              </p>
+                            </div>
+                            <div className="p-2 bg-slate-800 rounded-lg">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-white font-medium text-sm">Bam Adebayo</span>
+                                <Badge className="bg-yellow-600 text-white text-xs">Médio Impacto</Badge>
+                              </div>
+                              <p className="text-slate-300 text-xs">
+                                Probable - Pode afetar rebotes
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+
+              {/* Bottom Features Row */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-slate-700 border-slate-600">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <Brain className="w-8 h-8 text-blue-400" />
+                      <div>
+                        <h4 className="text-white font-semibold">IA Avançada</h4>
+                        <p className="text-slate-300 text-sm">Análise preditiva</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-slate-700 border-slate-600">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <Database className="w-8 h-8 text-green-400" />
+                      <div>
+                        <h4 className="text-white font-semibold">Dados Históricos</h4>
+                        <p className="text-slate-300 text-sm">5+ anos de dados</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-slate-700 border-slate-600">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <Zap className="w-8 h-8 text-yellow-400" />
+                      <div>
+                        <h4 className="text-white font-semibold">Tempo Real</h4>
+                        <p className="text-slate-300 text-sm">Updates instantâneos</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* Call to Action Below Dashboard */}
+            <div className="text-center mt-12">
+              <Button 
+                size="lg" 
+                onClick={() => navigate("/waitlist")} 
+                className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500"
+              >
+                <PlayCircle className="h-5 w-5" />
+                Ver Dashboard Completo
+              </Button>
+              <p className="text-sm text-muted-foreground mt-4">
+                Acesso completo a todas as funcionalidades
+              </p>
             </div>
           </div>
         </section>
@@ -255,80 +545,6 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Pricing Section */}
-        <section className="py-20 px-6 bg-muted/30">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Comece grátis, pague apenas se funcionar
-            </h2>
-            <p className="text-xl text-muted-foreground">
-              Teste por 7 dias sem compromisso
-            </p>
-          </div>
-
-          <div className="max-w-md mx-auto">
-            <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-primary opacity-5" />
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                
-              </div>
-              
-              <CardHeader className="text-center pt-8">
-                <div className="space-y-2">
-                  <div className="text-5xl font-bold text-foreground">R$ 0</div>
-                  <div className="text-muted-foreground">primeiros 7 dias</div>
-                  <div className="text-sm text-muted-foreground">depois R$ 97/mês</div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-success" />
-                    <span className="text-foreground">Análises ilimitadas de prop bets</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-success" />
-                    <span className="text-foreground">Comparação de odds em tempo real</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-success" />
-                    <span className="text-foreground">Histórico transparente do modelo</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-success" />
-                    <span className="text-foreground">Interface otimizada para decisões rápidas</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-success" />
-                    <span className="text-foreground">Suporte via WhatsApp</span>
-                  </div>
-                </div>
-
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                  <div className="text-sm font-semibold text-foreground">🛡️ Garantia de transparência:</div>
-                  <div className="text-sm text-muted-foreground">
-                    Não prometemos ganhos. Somos uma ferramenta de análise de dados e comparação de odds.
-                  </div>
-                </div>
-
-                <Button size="lg" className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6" onClick={() => navigate("/auth")}>
-                  <Timer className="h-5 w-5 mr-2" />
-                  Começar Teste Grátis de 7 Dias
-                </Button>
-                
-                <div className="text-center space-y-1">
-                  <p className="text-sm text-muted-foreground">
-                    ✅ Sem cartão de crédito • ✅ Cancele quando quiser
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Após o período de teste: R$ 97/mês, cancele a qualquer momento
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
 
         {/* Trust & Risk Mitigation */}
         <section className="py-16 px-6">
@@ -374,9 +590,9 @@ const Landing = () => {
               Junte-se aos apostadores que já economizam horas por dia e tomam decisões baseadas em dados confiáveis.
             </p>
             <div className="space-y-4">
-              <Button size="lg" onClick={() => navigate("/auth")} className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500">
+              <Button size="lg" onClick={() => navigate("/waitlist")} className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500">
                 <Timer className="h-5 w-5" />
-                Começar Teste Grátis Agora
+                Entrar na lista de espera
               </Button>
               <p className="text-sm text-muted-foreground">Configuração em menos de 2 minutos</p>
             </div>
