@@ -41,7 +41,7 @@ const Landing = () => {
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-              Análises de dados em tempo real para suas prop bets na NBA. 
+              Análise de dados para suas apostas na NBA. 
               <span className="text-foreground font-semibold"> Baseado em evidências, não em palpites.</span>
             </p>
 
