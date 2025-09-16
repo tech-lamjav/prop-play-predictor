@@ -89,7 +89,7 @@ const Landing = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">Smart Betting Dashboard</h3>
-                    <p className="text-slate-400 text-sm">Análise em tempo real</p>
+                    <p className="text-slate-400 text-sm">Análise de dados</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -175,9 +175,9 @@ const Landing = () => {
                       <p className="text-slate-300 text-sm">Pontos reais vs linha oferecida pelo bookmaker</p>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-64 bg-slate-800 rounded-lg p-4 relative">
+                      <div className="h-48 sm:h-64 bg-slate-800 rounded-lg p-2 sm:p-4 relative overflow-x-auto">
                         {/* Y-Axis Labels */}
-                        <div className="absolute left-2 top-4 bottom-4 flex flex-col justify-between text-xs text-slate-400">
+                        <div className="absolute left-1 sm:left-2 top-2 sm:top-4 bottom-8 sm:bottom-4 flex flex-col justify-between text-xs text-slate-400">
                           <span>35</span>
                           <span>30</span>
                           <span>25</span>
@@ -187,29 +187,29 @@ const Landing = () => {
                         </div>
                         
                         {/* Chart Area */}
-                        <div className="ml-8 h-full flex items-end space-x-1 relative">
+                        <div className="ml-6 sm:ml-8 h-full flex items-end space-x-0.5 sm:space-x-1 relative min-w-max">
                           {/* Reference Line */}
                           <div className="absolute inset-x-0 top-1/2 h-0.5 bg-white opacity-60 border-dashed"></div>
-                          <div className="absolute top-1/2 right-2 text-white text-xs bg-slate-700 px-2 py-1 rounded">
+                          <div className="absolute top-1/2 right-2 text-white text-xs bg-slate-700 px-1 sm:px-2 py-1 rounded">
                             Linha: 22.5
                           </div>
                           
                           {/* Mock Chart Bars - 15 games with more realistic data */}
                           {[18, 17, 26, 29, 10, 19, 25, 32, 30, 18, 24, 27, 31, 16, 28].map((height, index) => {
-                            const barHeight = Math.max((height / 35) * 200, 16); // Increased base height
+                            const barHeight = Math.max((height / 35) * 160, 12); // Adjusted for mobile
                             return (
-                              <div key={index} className="flex flex-col items-center flex-1">
+                              <div key={index} className="flex flex-col items-center" style={{ minWidth: '20px' }}>
                                 <div
-                                  className={`w-4 rounded-t transition-all duration-300 hover:opacity-80 ${
+                                  className={`w-3 sm:w-4 rounded-t transition-all duration-300 hover:opacity-80 ${
                                     height > 22.5 ? 'bg-green-500' : 'bg-red-500'
                                   }`}
                                   style={{ 
                                     height: `${barHeight}px`,
-                                    minHeight: '16px'
+                                    minHeight: '12px'
                                   }}
                                   title={`Jogo ${index + 1}: ${height} pontos`}
                                 />
-                                <div className="text-xs text-slate-400 mt-1 transform -rotate-45 origin-left whitespace-nowrap">
+                                <div className="text-xs text-slate-400 mt-1 text-center">
                                   {index + 1}
                                 </div>
                               </div>
@@ -218,19 +218,19 @@ const Landing = () => {
                         </div>
                         
                         {/* X-Axis Label */}
-                        <div className="text-center text-xs text-slate-400 mt-2">
+                        <div className="text-center text-xs text-slate-400 mt-1 sm:mt-2">
                           Jogos (Últimos 15)
                         </div>
                       </div>
                       
                       {/* Chart Legend */}
-                      <div className="flex items-center justify-center space-x-6 mt-4 text-sm">
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 mt-4 text-xs sm:text-sm">
                         <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 bg-green-500 rounded"></div>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded"></div>
                           <span className="text-slate-300">Acima da Linha (10 jogos)</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 bg-red-500 rounded"></div>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
                           <span className="text-slate-300">Abaixo da Linha (5 jogos)</span>
                         </div>
                       </div>
@@ -335,8 +335,8 @@ const Landing = () => {
                     <div className="flex items-center space-x-3">
                       <Zap className="w-8 h-8 text-yellow-400" />
                       <div>
-                        <h4 className="text-white font-semibold">Tempo Real</h4>
-                        <p className="text-slate-300 text-sm">Updates instantâneos</p>
+                        <h4 className="text-white font-semibold">Dados Atualizados</h4>
+                        <p className="text-slate-300 text-sm">Informações sempre relevantes</p>
                       </div>
                     </div>
                   </CardContent>
@@ -376,7 +376,7 @@ const Landing = () => {
                     <li>• Horas coletando stats manualmente</li>
                     <li>• Incerteza sobre quais dados analisar</li>
                     <li>• Dependência de dicas de terceiros</li>
-                    <li>• Win rate estagnada</li>
+                    <li>• Taxa de acerto estagnada</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -388,7 +388,7 @@ const Landing = () => {
                     <li>• Análises prontas em segundos</li>
                     <li>• Dados relevantes pré-selecionados</li>
                     <li>• Decisões baseadas em evidências</li>
-                    <li>• Potencial para melhorar seu win rate</li>
+                    <li>• Potencial para melhorar sua taxa de acerto</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -413,10 +413,10 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
                   <Database className="h-8 w-8 text-white" />
                 </div>
-                <CardTitle className="text-center text-foreground">Dados em Tempo Real</CardTitle>
+                <CardTitle className="text-center text-foreground">Dados Relevantes</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
-                <p className="text-muted-foreground">Análise automática das odds disponíveis nas principais casas de apostas, em tempo de real de acorodo com o Injury Report</p>
+                <p className="text-muted-foreground">Análise automática das odds disponíveis nas principais casas de apostas, de acordo com o Injury Report</p>
               </CardContent>
             </Card>
 
@@ -654,7 +654,7 @@ const Landing = () => {
                     <h4 className="font-semibold text-foreground">✅ O que fazemos:</h4>
                     <ul className="space-y-2 text-muted-foreground">
                       <li>• Fornecemos análise de dados objetiva</li>
-                      <li>• Comparamos odds em tempo real</li>
+                      <li>• Comparamos odds disponíveis</li>
                       <li>• Mostramos histórico completo do modelo</li>
                       <li>• Educamos sobre análise de prop bets</li>
                     </ul>
