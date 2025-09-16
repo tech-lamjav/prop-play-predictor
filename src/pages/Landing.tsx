@@ -10,7 +10,8 @@ const Landing = () => {
   const {
     t
   } = useTranslation();
-  return <div className="min-h-screen bg-background">
+  return (
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto flex items-center justify-between p-6">
@@ -22,9 +23,6 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-4">
             <LanguageToggle />
-            <Button variant="ghost" onClick={() => navigate("/auth")}>
-              Entrar
-            </Button>
             <Button onClick={() => navigate("/waitlist")} className="bg-gradient-primary hover:opacity-90">
               Entrar na lista de espera
             </Button>
@@ -72,40 +70,6 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Problem Statement */}
-        <section className="py-16 px-6">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8">
-              Você está perdendo tempo e dinheiro por falta de dados confiáveis
-            </h2>
-            
-            <div className="grid md:grid-cols-2 gap-8 mt-12">
-              <Card className="bg-destructive/5 border-destructive/20 p-6">
-                <CardContent className="space-y-4">
-                  <div className="text-destructive font-semibold text-lg">Sem a Smart Betting</div>
-                  <ul className="space-y-3 text-left text-muted-foreground">
-                    <li>• Horas coletando stats manualmente</li>
-                    <li>• Incerteza sobre quais dados analisar</li>
-                    <li>• Dependência de dicas de terceiros</li>
-                    <li>• Win rate estagnada</li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-success/5 border-success/20 p-6">
-                <CardContent className="space-y-4">
-                  <div className="text-success font-semibold text-lg">Com Smart Betting</div>
-                  <ul className="space-y-3 text-left text-muted-foreground">
-                    <li>• Análises prontas em segundos</li>
-                    <li>• Dados relevantes pré-selecionados</li>
-                    <li>• Decisões baseadas em evidências</li>
-                    <li>• Potencial para melhorar seu win rate</li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
 
         {/* Dashboard Preview Section */}
         <section className="py-20 px-6">
@@ -389,14 +353,49 @@ const Landing = () => {
               <Button 
                 size="lg" 
                 onClick={() => navigate("/waitlist")} 
-                className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500"
+                className="bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500"
               >
                 <PlayCircle className="h-5 w-5" />
-                Ver Dashboard Completo
+                Entrar na lista de espera
               </Button>
               <p className="text-sm text-muted-foreground mt-4">
                 Acesso completo a todas as funcionalidades
               </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Problem Statement */}
+        <section className="py-16 px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8">
+              Você está perdendo tempo e dinheiro por falta de dados confiáveis
+            </h2>
+            
+            <div className="grid md:grid-cols-2 gap-8 mt-12">
+              <Card className="bg-destructive/5 border-destructive/20 p-6">
+                <CardContent className="space-y-4">
+                  <div className="text-destructive font-semibold text-lg">Sem a Smart Betting</div>
+                  <ul className="space-y-3 text-left text-muted-foreground">
+                    <li>• Horas coletando stats manualmente</li>
+                    <li>• Incerteza sobre quais dados analisar</li>
+                    <li>• Dependência de dicas de terceiros</li>
+                    <li>• Win rate estagnada</li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-success/5 border-success/20 p-6">
+                <CardContent className="space-y-4">
+                  <div className="text-success font-semibold text-lg">Com Smart Betting</div>
+                  <ul className="space-y-3 text-left text-muted-foreground">
+                    <li>• Análises prontas em segundos</li>
+                    <li>• Dados relevantes pré-selecionados</li>
+                    <li>• Decisões baseadas em evidências</li>
+                    <li>• Potencial para melhorar seu win rate</li>
+                  </ul>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
@@ -458,89 +457,179 @@ const Landing = () => {
         <section className="py-20 px-6">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                Perfeito para o seu perfil de apostador
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
+                <Target className="h-4 w-4" />
+                Feito para você
+              </div>
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
+                Perfeito para o seu <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">perfil de apostador</span>
               </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Não importa se você tem 10 minutos ou 10 horas por dia - nossa plataforma se adapta ao seu ritmo
+              </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-12">
-              {/* João Profile */}
-              <Card className="bg-primary/5 border-primary/20 p-8">
-                <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Busy Bettor Profile */}
+              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
+                <CardContent className="relative p-8 space-y-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center">
-                      <Clock className="h-8 w-8 text-primary" />
+                    <div className="relative">
+                      <div className="w-20 h-20 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        <Clock className="h-10 w-10 text-white" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent rounded-full flex items-center justify-center">
+                        <Zap className="text-white text-xs font-bold h-4 w-4" />
+                      </div>
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-foreground">Apostador Ocupado</h3>
-                      
+                      <h3 className="text-2xl font-bold text-foreground">Apostador Ocupado</h3>
+                      <p className="text-primary font-medium">Eficiência em primeiro lugar</p>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="font-semibold text-foreground">Economize 2-3 horas/dia</p>
-                        <p className="text-sm text-muted-foreground">Análises prontas em 30 segundos</p>
+                        <p className="font-bold text-foreground text-lg">Economize 2-3 horas/dia</p>
+                        <p className="text-muted-foreground">Análises prontas em 30 segundos</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="flex -space-x-1">
+                            <div className="w-3 h-3 bg-success rounded-full"></div>
+                            <div className="w-3 h-3 bg-success/80 rounded-full"></div>
+                            <div className="w-3 h-3 bg-success/60 rounded-full"></div>
+                          </div>
+                          <span className="text-xs text-success font-medium">Tempo poupado: 21h/semana</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                    
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                        <Zap className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="font-semibold text-foreground">Interface simples</p>
-                        <p className="text-sm text-muted-foreground">Decisões rápidas sem complicação</p>
+                        <p className="font-bold text-foreground text-lg">Interface simples</p>
+                        <p className="text-muted-foreground">Decisões rápidas sem complicação</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                    
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
+                        <Shield className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="font-semibold text-foreground">Dados confiáveis</p>
-                        <p className="text-sm text-muted-foreground">Sem mais dúvidas sobre qual análise fazer</p>
+                        <p className="font-bold text-foreground text-lg">Dados confiáveis</p>
+                        <p className="text-muted-foreground">Sem mais dúvidas sobre qual análise fazer</p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Timer className="h-5 w-5 text-primary" />
+                      <span className="font-semibold text-foreground">Perfeito para você se:</span>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Tem pouco tempo para análises</li>
+                      <li>• Quer resultados rápidos e precisos</li>
+                      <li>• Prefere simplicidade à complexidade</li>
+                    </ul>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Carlos Profile */}
-              <Card className="bg-accent/5 border-accent/20 p-8">
-                <CardContent className="space-y-6">
+              {/* Professional Aspirant Profile */}
+              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
+                <CardContent className="relative p-8 space-y-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center bg-green-800">
-                      <TrendingUp className="h-8 w-8 text-accent" />
+                    <div className="relative">
+                      <div className="w-20 h-20 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        <TrendingUp className="h-10 w-10 text-white" />
+                      </div>
+                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-success rounded-full flex items-center justify-center">
+                        <Target className="text-white text-xs font-bold h-4 w-4" />
+                      </div>
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-foreground">Aspirante a Profissional</h3>
-                      
+                      <h3 className="text-2xl font-bold text-foreground">Aspirante a Profissional</h3>
+                      <p className="text-success font-medium">Crescimento e volume</p>
                     </div>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                        <Database className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="font-semibold text-foreground">Volume de análises</p>
-                        <p className="text-sm text-muted-foreground">Múltiplas oportunidades por dia</p>
+                        <p className="font-bold text-foreground text-lg">Volume de análises</p>
+                        <p className="text-muted-foreground">Múltiplas oportunidades por dia</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <div className="w-2 h-4 bg-success rounded-full"></div>
+                            <div className="w-2 h-6 bg-success/80 rounded-full"></div>
+                            <div className="w-2 h-5 bg-success/60 rounded-full"></div>
+                            <div className="w-2 h-7 bg-success/40 rounded-full"></div>
+                          </div>
+                          <span className="text-xs text-success font-medium">15+ análises/dia</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                    
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
+                        <Target className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="font-semibold text-foreground">Independência</p>
-                        <p className="text-sm text-muted-foreground">Pare de depender de tipsters</p>
+                        <p className="font-bold text-foreground text-lg">Independência</p>
+                        <p className="text-muted-foreground">Pare de depender de tipsters</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                    
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                        <Brain className="h-5 w-5 text-white" />
+                      </div>
                       <div>
-                        <p className="font-semibold text-foreground">Edge competitivo</p>
-                        <p className="text-sm text-muted-foreground">Dados que outros não têm acesso</p>
+                        <p className="font-bold text-foreground text-lg">Edge competitivo</p>
+                        <p className="text-muted-foreground">Dados que outros não têm acesso</p>
                       </div>
                     </div>
                   </div>
+
+                  <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-5 w-5 text-success" />
+                      <span className="font-semibold text-foreground">Perfeito para você se:</span>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Quer escalar suas operações</li>
+                      <li>• Busca independência de terceiros</li>
+                      <li>• Tem tempo para múltiplas análises</li>
+                    </ul>
+                  </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Bottom CTA */}
+            <div className="text-center mt-16">
+              <Button 
+                size="lg" 
+                onClick={() => navigate("/waitlist")} 
+                className="bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500 px-8 shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Timer className="h-5 w-5" />
+                Entrar na lista de espera
+              </Button>
             </div>
           </div>
         </section>
@@ -594,11 +683,12 @@ const Landing = () => {
                 <Timer className="h-5 w-5" />
                 Entrar na lista de espera
               </Button>
-              <p className="text-sm text-muted-foreground">Configuração em menos de 2 minutos</p>
             </div>
           </div>
         </section>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default Landing;
