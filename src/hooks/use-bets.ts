@@ -38,6 +38,31 @@ export function useBets(userId: string) {
 
   const supabase = useMemo(() => createClient(), []);
 
+  const calculateStats = useCallback((betsData: Bet[]) => {
+    const totalBets = betsData.length;
+    const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
+    
+    const wonBets = betsData.filter(bet => bet.status === 'won');
+    const lostBets = betsData.filter(bet => bet.status === 'lost');
+    const pendingBets = betsData.filter(bet => bet.status === 'pending');
+    
+    const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
+    const totalLost = lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
+    
+    const winRate = totalBets > 0 ? (wonBets.length / (wonBets.length + lostBets.length)) * 100 : 0;
+    const profit = totalReturn - totalLost;
+    const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
+
+    setStats({
+      totalBets,
+      totalStaked,
+      totalReturn,
+      winRate,
+      profit,
+      roi
+    });
+  }, []);
+
   const fetchBets = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -67,38 +92,17 @@ export function useBets(userId: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, supabase]);
+  }, [userId, supabase, calculateStats]);
 
   useEffect(() => {
-    if (userId) {
+    if (userId && userId.trim() !== '') {
       fetchBets();
+    } else {
+      setBets([]);
+      setStats(null);
+      setIsLoading(false);
     }
   }, [userId, fetchBets]);
-
-  const calculateStats = useCallback((betsData: Bet[]) => {
-    const totalBets = betsData.length;
-    const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
-    
-    const wonBets = betsData.filter(bet => bet.status === 'won');
-    const lostBets = betsData.filter(bet => bet.status === 'lost');
-    const pendingBets = betsData.filter(bet => bet.status === 'pending');
-    
-    const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
-    const totalLost = lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
-    
-    const winRate = totalBets > 0 ? (wonBets.length / (wonBets.length + lostBets.length)) * 100 : 0;
-    const profit = totalReturn - totalLost;
-    const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
-
-    setStats({
-      totalBets,
-      totalStaked,
-      totalReturn,
-      winRate,
-      profit,
-      roi
-    });
-  }, []);
 
   const addBet = async (betData: Partial<Bet>) => {
     try {

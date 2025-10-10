@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '../integrations/supabase/client';
 
 interface WhatsAppSyncState {
@@ -20,7 +20,7 @@ export function useWhatsAppSync(userId: string) {
 
   const supabase = createClient();
 
-  const checkWhatsAppSync = async () => {
+  const checkWhatsAppSync = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
@@ -53,13 +53,15 @@ export function useWhatsAppSync(userId: string) {
         isLoading: false
       }));
     }
-  };
+  }, [userId, supabase]);
 
   useEffect(() => {
-    if (userId) {
+    if (userId && userId.trim() !== '') {
       checkWhatsAppSync();
+    } else {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [userId]);
+  }, [userId, checkWhatsAppSync]);
 
   const updateWhatsAppNumber = async (whatsappNumber: string) => {
     try {
