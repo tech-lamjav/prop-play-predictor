@@ -29,7 +29,7 @@ import {
 } from '../components/ui/dialog';
 
 export default function BettingDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { 
     bets, 
     stats, 
@@ -175,6 +175,14 @@ export default function BettingDashboard() {
   const getTabCount = (tab: string) => {
     return getBetsByTab(tab).length;
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
