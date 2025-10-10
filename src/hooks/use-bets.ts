@@ -38,16 +38,17 @@ export function useBets(userId: string) {
 
   const supabase = useMemo(() => createClient(), []);
 
-  useEffect(() => {
-    if (userId) {
-      fetchBets();
-    }
-  }, [userId, fetchBets]);
-
   const fetchBets = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
+
+      if (!userId) {
+        setBets([]);
+        setStats(null);
+        setIsLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('bets')
@@ -67,6 +68,12 @@ export function useBets(userId: string) {
       setIsLoading(false);
     }
   }, [userId, supabase]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchBets();
+    }
+  }, [userId, fetchBets]);
 
   const calculateStats = useCallback((betsData: Bet[]) => {
     const totalBets = betsData.length;

@@ -20,13 +20,14 @@ export function useWhatsAppSync(userId: string) {
 
   const supabase = createClient();
 
-  useEffect(() => {
-    checkWhatsAppSync();
-  }, [userId]);
-
   const checkWhatsAppSync = async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+      if (!userId) {
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
 
       const { data, error } = await supabase
         .from('users')
@@ -53,6 +54,12 @@ export function useWhatsAppSync(userId: string) {
       }));
     }
   };
+
+  useEffect(() => {
+    if (userId) {
+      checkWhatsAppSync();
+    }
+  }, [userId]);
 
   const updateWhatsAppNumber = async (whatsappNumber: string) => {
     try {
