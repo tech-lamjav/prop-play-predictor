@@ -53,7 +53,7 @@ const Auth = () => {
         if (!userData?.whatsapp_synced) {
           navigate("/onboarding");
         } else {
-          navigate("/betting");
+          navigate("/bets");
         }
       }
     } catch (error) {

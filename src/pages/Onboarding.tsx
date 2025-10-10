@@ -79,7 +79,7 @@ export default function Onboarding() {
           });
           
           if (userData.whatsapp_synced) {
-            navigate('/betting');
+            navigate('/bets');
           }
         }
       } else {
@@ -169,7 +169,7 @@ export default function Onboarding() {
   };
 
   const handleComplete = () => {
-    navigate('/betting');
+    navigate('/bets');
   };
 
   const renderStep1 = () => (
