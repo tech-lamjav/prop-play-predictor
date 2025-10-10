@@ -7,7 +7,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
-import BettingDashboard from "./pages/BettingDashboard";
+import Bets from "./pages/Bets";
 import PlayerSelection from "./pages/PlayerSelection";
 import Analysis from "./pages/Analysis";
 import Waitlist from "./pages/Waitlist";
@@ -44,9 +44,9 @@ const App = () => (
               <Dashboard />
             </ProtectedRoute>
           } />
-          <Route path="/betting" element={
+          <Route path="/bets" element={
             <ProtectedRoute>
-              <BettingDashboard />
+              <Bets />
             </ProtectedRoute>
           } />
           <Route path="/analysis" element={
