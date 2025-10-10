@@ -65,17 +65,38 @@ serve(async (req) => {
     const payload = await req.json()
     console.log('Received payload:', JSON.stringify(payload, null, 2))
 
-    // Extract conversation_id from Chatroot payload
+    // Extract conversation_id from Chatwoot payload
     const conversationId = payload.conversation?.id?.toString() || payload.conversation_id
     const phoneNumber = payload.sender?.phone_number
     const content = payload.content
     const contentType = payload.content_type || 'text'
+    const attachments = payload.attachments || []
+    
+    // Check if message has attachments (images/audio)
+    const hasImageAttachment = attachments.some(att => att.file_type === 'image')
+    const hasAudioAttachment = attachments.some(att => att.file_type === 'audio')
+    
+    // Determine actual content type and content
+    let actualContent = content
+    let actualContentType = contentType
+    let mediaUrl = null
+    
+    if (hasImageAttachment && !content) {
+      actualContentType = 'image'
+      mediaUrl = attachments.find(att => att.file_type === 'image')?.data_url
+    } else if (hasAudioAttachment && !content) {
+      actualContentType = 'audio'
+      mediaUrl = attachments.find(att => att.file_type === 'audio')?.data_url
+    }
 
     console.log('Extracted data:', {
       conversationId,
       phoneNumber,
-      content,
-      contentType
+      content: actualContent,
+      contentType: actualContentType,
+      hasImageAttachment,
+      hasAudioAttachment,
+      mediaUrl
     })
 
     // Validate required fields
@@ -151,18 +172,31 @@ serve(async (req) => {
 
     // Handle different message types
     let processedContent = ''
-    let messageType = contentType
+    let messageType = actualContentType
 
-    if (contentType === 'audio' && payload.media_url) {
+    if (actualContentType === 'audio' && mediaUrl) {
       // Transcribe audio using OpenAI Whisper
-      processedContent = await transcribeAudio(payload.media_url)
+      processedContent = await transcribeAudio(mediaUrl)
       messageType = 'text' // Treat as text after transcription
-    } else if (contentType === 'image' && payload.media_url) {
+    } else if (actualContentType === 'image' && mediaUrl) {
       // Process image using OpenAI Vision
-      processedContent = await processImage(payload.media_url)
+      processedContent = await processImage(mediaUrl)
       messageType = 'text' // Treat as text after processing
-    } else if (contentType === 'text' && content) {
-      processedContent = content
+    } else if (actualContentType === 'text' && actualContent) {
+      processedContent = actualContent
+    } else {
+      // If no content and no media, skip processing
+      console.log('No content or media to process')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'No content or media to process'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      )
     }
 
     // Add message to queue for processing
@@ -172,7 +206,7 @@ serve(async (req) => {
         user_id: user.id,
         message_type: messageType,
         content: processedContent,
-        media_url: payload.media_url,
+        media_url: mediaUrl,
         status: 'pending'
       })
       .select()
@@ -261,13 +295,13 @@ async function processImage(imageUrl: string): Promise<string> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4-vision-preview',
+        model: 'gpt-4o',
         messages: [{
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Analise esta imagem de aposta e extraia as informações em português. Retorne apenas o texto da aposta, sem explicações adicionais.'
+              text: 'Analise esta imagem de aposta esportiva e extraia TODAS as informações possíveis em português. Identifique: times/atletas, tipo de aposta, odds, valor apostado, esporte, liga/campeonato. Retorne apenas o texto estruturado da aposta, sem explicações adicionais.'
             },
             {
               type: 'image_url',
@@ -307,22 +341,29 @@ async function processMessage(supabase: any, messageId: string, content: string,
     // Use OpenAI to extract betting information
     const bettingInfo = await extractBettingInfo(content)
     
-    if (bettingInfo) {
-      // Save bet to database
+    if (bettingInfo && bettingInfo.matches && bettingInfo.matches.length > 0) {
+      // Calculate total odds for multiple bets
+      const totalOdds = bettingInfo.matches.reduce((acc, match) => acc * (match.odds || 1), 1)
+      
+      // Save main bet to database
       const { data: bet, error: betError } = await supabase
         .from('bets')
         .insert({
           user_id: userId,
           bet_type: bettingInfo.bet_type,
           sport: bettingInfo.sport,
-          league: bettingInfo.league,
-          match_description: bettingInfo.matches[0]?.description,
-          bet_description: bettingInfo.matches[0]?.bet_description,
-          odds: bettingInfo.matches[0]?.odds,
+          league: bettingInfo.league || null,
+          match_description: bettingInfo.matches.length === 1 
+            ? bettingInfo.matches[0]?.description 
+            : `${bettingInfo.matches.length} jogos múltiplos`,
+          bet_description: bettingInfo.matches.length === 1 
+            ? bettingInfo.matches[0]?.bet_description 
+            : `Aposta múltipla com ${bettingInfo.matches.length} seleções`,
+          odds: bettingInfo.bet_type === 'multiple' ? totalOdds : bettingInfo.matches[0]?.odds,
           stake_amount: bettingInfo.stake_amount,
-          potential_return: bettingInfo.stake_amount * bettingInfo.matches[0]?.odds,
-          bet_date: bettingInfo.bet_date,
-          match_date: bettingInfo.matches[0]?.match_date,
+          potential_return: bettingInfo.stake_amount * (bettingInfo.bet_type === 'multiple' ? totalOdds : bettingInfo.matches[0]?.odds),
+          bet_date: bettingInfo.bet_date || new Date().toISOString(),
+          match_date: bettingInfo.matches[0]?.match_date || null,
           raw_input: content,
           processed_data: bettingInfo
         })
@@ -335,6 +376,29 @@ async function processMessage(supabase: any, messageId: string, content: string,
       }
 
       console.log('Bet saved successfully:', bet.id)
+
+      // Save individual bet legs for multiple bets
+      if (bettingInfo.bet_type === 'multiple' && bettingInfo.matches.length > 1) {
+        for (let i = 0; i < bettingInfo.matches.length; i++) {
+          const match = bettingInfo.matches[i]
+          const { error: legError } = await supabase
+            .from('bet_legs')
+            .insert({
+              bet_id: bet.id,
+              leg_number: i + 1,
+              sport: bettingInfo.sport,
+              match_description: match.description,
+              bet_description: match.bet_description,
+              odds: match.odds,
+              status: 'pending'
+            })
+
+          if (legError) {
+            console.error('Error saving bet leg:', legError)
+            // Don't throw here, just log the error
+          }
+        }
+      }
 
       // Update message status to completed
       await supabase
@@ -354,9 +418,14 @@ async function processMessage(supabase: any, messageId: string, content: string,
         .from('message_queue')
         .update({ 
           status: 'failed',
-          error_message: 'Could not extract betting information'
+          error_message: 'Could not extract betting information from message'
         })
         .eq('id', messageId)
+
+      console.log('Could not extract betting information from message:', content)
+      
+      // Send helpful message to user
+      await sendHelpMessage(supabase, userId)
     }
 
   } catch (error) {
@@ -379,28 +448,51 @@ async function extractBettingInfo(content: string): Promise<ProcessedBet | null>
     console.log('Extracting betting info from:', content)
     
     const prompt = `
-Analise a seguinte mensagem de aposta e extraia as informações em formato JSON:
+Analise a seguinte mensagem de aposta e extraia TODAS as informações possíveis em formato JSON.
 
-"${content}"
+MENSAGEM: "${content}"
 
-Retorne APENAS um JSON válido com a seguinte estrutura:
+INSTRUÇÕES IMPORTANTES:
+1. Identifique se é uma aposta simples, múltipla ou sistema
+2. Extraia TODOS os jogos/eventos mencionados
+3. Para cada jogo, identifique: times/atletas, tipo de aposta, odds
+4. Identifique o valor apostado (stake)
+5. Identifique datas quando mencionadas
+6. Seja flexível com formatos de odds (1.85, 2/1, +150, etc.)
+7. Seja flexível com valores (R$ 100, 100 reais, $50, etc.)
+
+FORMATO DE RESPOSTA (JSON APENAS):
 {
   "bet_type": "single|multiple|system",
-  "sport": "string (ex: futebol, basquete, tênis)",
-  "league": "string (opcional, ex: Premier League, NBA)",
+  "sport": "string (futebol, basquete, tênis, futebol americano, etc.)",
+  "league": "string (Premier League, NBA, Champions League, etc.) ou null",
   "matches": [
     {
       "description": "string (ex: Manchester United vs Liverpool)",
-      "bet_description": "string (ex: Over 2.5 gols)",
-      "odds": number (ex: 1.85),
-      "match_date": "string ISO (opcional)"
+      "bet_description": "string (ex: Over 2.5 gols, Vitória do Manchester, etc.)",
+      "odds": number (converta para decimal: 1.85, 2.50, etc.),
+      "match_date": "string ISO (2024-01-15T20:00:00Z) ou null"
     }
   ],
-  "stake_amount": number (valor apostado),
-  "bet_date": "string ISO (data da aposta)"
+  "stake_amount": number (valor apostado em decimal),
+  "bet_date": "string ISO (data da aposta, use hoje se não especificada)"
 }
 
-Se não conseguir extrair informações de aposta, retorne null.
+EXEMPLOS DE CONVERSÃO DE ODDS:
+- 1.85 → 1.85
+- 2/1 → 3.00
+- +150 → 2.50
+- 3.5 → 3.50
+
+EXEMPLOS DE CONVERSÃO DE VALORES:
+- "R$ 100" → 100
+- "100 reais" → 100
+- "$50" → 50
+- "50 dólares" → 50
+
+Se NÃO for uma aposta ou não conseguir extrair informações suficientes, retorne null.
+
+IMPORTANTE: Retorne APENAS o JSON válido, sem texto adicional, explicações ou formatação markdown.
 `
 
     const response = await fetch(`${OPENAI_API_URL}/chat/completions`, {
@@ -410,7 +502,7 @@ Se não conseguir extrair informações de aposta, retorne null.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 1000,
         temperature: 0.1
@@ -425,14 +517,38 @@ Se não conseguir extrair informações de aposta, retorne null.
     const result = await response.json()
     const extractedText = result.choices[0].message.content.trim()
     
+    console.log('Raw OpenAI response:', extractedText)
+    
     // Try to parse the JSON response
     if (extractedText === 'null' || extractedText === 'null.') {
       return null
     }
 
-    const bettingInfo = JSON.parse(extractedText)
-    console.log('Betting info extracted:', bettingInfo)
-    return bettingInfo
+    // Try to extract JSON from the response if it's not pure JSON
+    let jsonText = extractedText
+    if (extractedText.includes('{') && extractedText.includes('}')) {
+      const jsonStart = extractedText.indexOf('{')
+      const jsonEnd = extractedText.lastIndexOf('}') + 1
+      jsonText = extractedText.substring(jsonStart, jsonEnd)
+    }
+
+    console.log('Extracted JSON text:', jsonText)
+
+    try {
+      const bettingInfo = JSON.parse(jsonText)
+      console.log('Betting info extracted successfully:', {
+        bet_type: bettingInfo.bet_type,
+        sport: bettingInfo.sport,
+        matches_count: bettingInfo.matches?.length || 0,
+        stake_amount: bettingInfo.stake_amount,
+        total_odds: bettingInfo.matches?.reduce((acc, match) => acc * (match.odds || 1), 1) || 0
+      })
+      return bettingInfo
+    } catch (parseError) {
+      console.error('Error parsing JSON from OpenAI response:', parseError)
+      console.error('Failed to parse text:', jsonText)
+      return null
+    }
 
   } catch (error) {
     console.error('Error extracting betting info:', error)
@@ -457,21 +573,100 @@ async function sendConfirmationMessage(supabase: any, userId: string, betId: str
       return
     }
 
-    // In a real implementation, you would send this via Chatroot API
-    // For now, we'll just log it
-    console.log(`Confirmation message for ${user.name}: Aposta registrada com sucesso! ID: ${betId}`)
+    // Get bet details for confirmation message
+    const { data: betDetails } = await supabase
+      .from('bets')
+      .select('bet_type, sport, match_description, bet_description, odds, stake_amount, potential_return')
+      .eq('id', betId)
+      .single()
+
+    if (betDetails) {
+      const confirmationMessage = `✅ Aposta registrada com sucesso!
+
+📊 Detalhes:
+• Tipo: ${betDetails.bet_type === 'single' ? 'Simples' : betDetails.bet_type === 'multiple' ? 'Múltipla' : 'Sistema'}
+• Esporte: ${betDetails.sport}
+• Jogo: ${betDetails.match_description}
+• Aposta: ${betDetails.bet_description}
+• Odds: ${betDetails.odds}
+• Valor: R$ ${betDetails.stake_amount}
+• Retorno potencial: R$ ${betDetails.potential_return}
+
+ID: ${betId}`
+
+      console.log(`Confirmation message for ${user.name}:`, confirmationMessage)
+      
+      // TODO: Implement actual message sending via Chatwoot API
+      // const chatwootResponse = await fetch('https://api.chatwoot.com/v1/accounts/{account_id}/conversations/{conversation_id}/messages', {
+      //   method: 'POST',
+      //   headers: { 
+      //     'Authorization': `Bearer ${CHATWOOT_API_KEY}`,
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify({
+      //     message_type: 'outgoing',
+      //     content: confirmationMessage
+      //   })
+      // })
+    }
+
+  } catch (error) {
+    console.error('Error sending confirmation message:', error)
+  }
+}
+
+// Send help message to user when bet extraction fails
+async function sendHelpMessage(supabase: any, userId: string) {
+  try {
+    console.log('Sending help message for user:', userId)
     
-    // TODO: Implement actual message sending via Chatroot API
-    // const chatrootResponse = await fetch('https://api.chatroot.com/send-message', {
+    // Get user's conversation_id
+    const { data: user } = await supabase
+      .from('users')
+      .select('conversation_id, name')
+      .eq('id', userId)
+      .single()
+
+    if (!user?.conversation_id) {
+      console.log('No conversation_id found for user:', userId)
+      return
+    }
+
+    const helpMessage = `❓ Não consegui identificar uma aposta na sua mensagem.
+
+📝 Para registrar uma aposta, envie uma mensagem no formato:
+
+**Aposta Simples:**
+"Manchester United vs Liverpool - Over 2.5 gols - Odds 1.85 - R$ 100"
+
+**Aposta Múltipla:**
+"Manchester vs Liverpool - Over 2.5 gols - 1.85
+Barcelona vs Real Madrid - Vitória do Barcelona - 2.10
+R$ 50"
+
+**Você também pode enviar:**
+• Fotos de apostas
+• Mensagens de voz
+• Screenshots de sites de apostas
+
+💡 Dica: Seja específico com times, odds e valores!`
+
+    console.log(`Help message for ${user.name}:`, helpMessage)
+    
+    // TODO: Implement actual message sending via Chatwoot API
+    // const chatwootResponse = await fetch('https://api.chatwoot.com/v1/accounts/{account_id}/conversations/{conversation_id}/messages', {
     //   method: 'POST',
-    //   headers: { 'Authorization': `Bearer ${CHATROOT_API_KEY}` },
+    //   headers: { 
+    //     'Authorization': `Bearer ${CHATWOOT_API_KEY}`,
+    //     'Content-Type': 'application/json'
+    //   },
     //   body: JSON.stringify({
-    //     conversation_id: user.conversation_id,
-    //     message: `Aposta registrada com sucesso! ID: ${betId}`
+    //     message_type: 'outgoing',
+    //     content: helpMessage
     //   })
     // })
 
   } catch (error) {
-    console.error('Error sending confirmation message:', error)
+    console.error('Error sending help message:', error)
   }
 }
