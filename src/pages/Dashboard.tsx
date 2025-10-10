@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +28,14 @@ import {
   Star,
   Zap,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  RefreshCw,
+  Loader2,
+  ArrowLeft
 } from "lucide-react";
+import { usePlayerStats, useTeamData } from "@/hooks/use-player-stats";
+import { InjuryInsightsDashboard } from "@/components/injury-insights/InjuryInsightsDashboard";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data for the dashboard
 const mockPlayerData = {
@@ -121,9 +128,83 @@ const mockStatsData = {
 };
 
 export default function Dashboard() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const playerId = searchParams.get('playerId');
+
   // State for selected statistics
   const [selectedStats, setSelectedStats] = useState<string[]>(["pts"]);
   const [showAnalysis, setShowAnalysis] = useState(false);
+
+  // Redirect to player selection if no player ID
+  useEffect(() => {
+    if (!playerId) {
+      navigate('/players');
+    }
+  }, [playerId, navigate]);
+
+  // Data hooks
+  const {
+    playerAnalysis,
+    recentGames,
+    bettingLines,
+    isLoading,
+    isAnalyzing,
+    error,
+    fetchPlayerAnalysis,
+    refresh
+  } = usePlayerStats({
+    playerId: playerId || '',
+    autoFetch: !!playerId,
+    refreshInterval: 300000 // 5 minutes
+  });
+
+  // Get player data from BigQuery
+  const [playerData, setPlayerData] = useState<any>(null);
+  const [playerLoading, setPlayerLoading] = useState(false);
+  const [playerError, setPlayerError] = useState<string | null>(null);
+
+  // Fetch player data when playerId changes
+  useEffect(() => {
+    const fetchPlayerData = async () => {
+      if (!playerId) return;
+      
+      setPlayerLoading(true);
+      setPlayerError(null);
+      
+      try {
+        const { data, error } = await supabase.rpc('get_player_by_id', {
+          player_id: parseInt(playerId)
+        });
+
+        if (error) {
+          console.error('Error fetching player data:', error);
+          setPlayerError(error.message);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          setPlayerData(data[0]);
+        } else {
+          setPlayerError('Player not found');
+        }
+      } catch (err) {
+        console.error('Error fetching player data:', err);
+        setPlayerError('Failed to fetch player data');
+      } finally {
+        setPlayerLoading(false);
+      }
+    };
+
+    fetchPlayerData();
+  }, [playerId]);
+
+  const {
+    lineup: teamLineup,
+    upcomingGames,
+    isLoading: isTeamLoading,
+    error: teamError
+  } = useTeamData(playerAnalysis?.team || "DAL");
 
   // Toggle stat selection
   const toggleStat = (statId: string) => {
@@ -152,17 +233,57 @@ export default function Dashboard() {
     }
   };
 
-  // Get mock data for selected stats
+  // Get real data for selected stats
   const getSelectedStatsData = () => {
+    if (!playerAnalysis) return [];
+    
     return selectedStats.map(statId => {
       const stat = availableStats.find(s => s.id === statId);
-      const data = mockStatsData[statId as keyof typeof mockStatsData];
+      const currentSeason = playerAnalysis.currentSeason;
+      const recentTrends = playerAnalysis.recentTrends;
+      
+      // Map stat IDs to actual data properties
+      const statMapping: Record<string, keyof typeof currentSeason> = {
+        'pts': 'points',
+        'ast': 'assists',
+        'reb': 'rebounds',
+        'pra': 'points' // This would need to be calculated as points + assists + rebounds
+      };
+      
+      const statKey = statMapping[statId] || 'points';
+      const currentValue = currentSeason[statKey] || 0;
+      
       return {
         stat: stat?.name || statId.toUpperCase(),
         fullName: stat?.fullName || "",
-        data: data || { "2024": 0, "2025": 0, "L5": 0, "L10": 0, "L15": 0, "L30": 0, "1Q": 0, "2Q": 0, "3Q": 0, "4Q": 0 }
+        data: {
+          "2024": currentValue,
+          "2025": currentValue,
+          "L5": recentTrends.last5[statKey] || 0,
+          "L10": recentTrends.last10[statKey] || 0,
+          "L15": recentTrends.last15[statKey] || 0,
+          "L30": recentTrends.last30[statKey] || 0,
+          "1Q": 0, // These would need to be calculated from quarter data
+          "2Q": 0,
+          "3Q": 0,
+          "4Q": 0
+        }
       };
     });
+  };
+
+  // Format recent games for chart
+  const formatRecentGamesForChart = () => {
+    if (!recentGames || recentGames.length === 0) return mockRecentGames;
+    
+    return recentGames.slice(0, 10).map((game, index) => ({
+      game: `G${index + 1}`,
+      points: game.points,
+      date: game.gameDate,
+      result: game.points > (bettingLines.find(bl => bl.statType === 'points')?.line || 25) ? "W" : "L",
+      bettingLine: bettingLines.find(bl => bl.statType === 'points')?.line || 25,
+      overLine: game.points > (bettingLines.find(bl => bl.statType === 'points')?.line || 25)
+    }));
   };
 
   return (
@@ -176,14 +297,37 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="text-xl font-bold">Prop Play Predictor</h1>
-              <p className="text-slate-400 text-sm">Análise Inteligente de Prop Bets</p>
+              <p className="text-slate-400 text-sm">
+                {playerData ? `${playerData.name} - ${playerData.team_name}` : 'Análise Inteligente de Prop Bets'}
+              </p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <Badge variant="secondary" className="bg-green-600 text-white">
-              <CheckCircle className="w-3 h-3 mr-1" />
-              Conectado
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate('/players')}
+              className="text-slate-300 border-slate-600 hover:bg-slate-700"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Players
+            </Button>
+            <Badge variant="secondary" className={`text-white ${
+              error ? 'bg-red-600' : isLoading || isAnalyzing ? 'bg-yellow-600' : 'bg-green-600'
+            }`}>
+              {error ? (
+                <AlertTriangle className="w-3 h-3 mr-1" />
+              ) : isLoading || isAnalyzing ? (
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              ) : (
+                <CheckCircle className="w-3 h-3 mr-1" />
+              )}
+              {error ? 'Erro' : isLoading || isAnalyzing ? 'Carregando' : 'Conectado'}
             </Badge>
+            <Button variant="outline" size="sm" onClick={refresh} disabled={isLoading || isAnalyzing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading || isAnalyzing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
             <Button variant="outline" size="sm">
               <Calendar className="w-4 h-4 mr-2" />
               Hoje
@@ -199,7 +343,7 @@ export default function Dashboard() {
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-4 text-white flex items-center">
               <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-              {mockPlayerData.team}
+              {playerData?.team_name || 'Loading...'}
             </h3>
             <div className="space-y-2">
               {mockPlayerTeamLineup.map((player, index) => (
@@ -285,47 +429,113 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <Card className="bg-slate-800 border-slate-700 lg:col-span-2">
               <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <img 
-                    src={mockPlayerData.image} 
-                    alt={mockPlayerData.name}
-                    className="w-20 h-20 rounded-full border-2 border-blue-500"
-                  />
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-white">{mockPlayerData.name}</h2>
-                    <p className="text-slate-300">{mockPlayerData.team} • {mockPlayerData.position}</p>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <Badge variant="secondary" className="bg-green-600 text-white">
-                        {mockPlayerData.status}
-                      </Badge>
-                      <span className="text-slate-400 text-sm">Último jogo: {mockPlayerData.lastGame}</span>
+                {playerLoading ? (
+                  <div className="flex items-center justify-center space-x-4 py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                    <span className="text-slate-300">Carregando dados do jogador...</span>
+                  </div>
+                ) : playerError ? (
+                  <div className="flex items-center justify-center space-x-4 py-8">
+                    <AlertTriangle className="w-8 h-8 text-red-400" />
+                    <div>
+                      <p className="text-red-400 font-semibold">Erro ao carregar dados</p>
+                      <p className="text-slate-400 text-sm">{playerError}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-blue-400">{mockPlayerData.stats.points}</div>
-                    <div className="text-slate-400">PPG</div>
+                ) : playerData ? (
+                  <div className="flex items-center space-x-4">
+                    <img 
+                      src={`https://via.placeholder.com/80x80/1e40af/ffffff?text=${playerData.name.charAt(0)}`} 
+                      alt={playerData.name}
+                      className="w-20 h-20 rounded-full border-2 border-blue-500"
+                    />
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-white">{playerData.name}</h2>
+                      <p className="text-slate-300">{playerData.team_name} • {playerData.position}</p>
+                      <div className="flex items-center space-x-4 mt-2">
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-white ${
+                            playerData.current_status === 'Active' ? 'bg-green-600' :
+                            playerData.current_status === 'Questionable' ? 'bg-yellow-600' :
+                            playerData.current_status === 'Out' ? 'bg-red-600' : 'bg-gray-600'
+                          }`}
+                        >
+                          {playerData.current_status || 'Unknown'}
+                        </Badge>
+                        <span className="text-slate-400 text-sm">
+                          Jogos: {playerData.games_played} | Min: {playerData.minutes?.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-blue-400">
+                        #{playerData.team_rating_rank}
+                      </div>
+                      <div className="text-slate-400">Team Rank</div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center justify-center space-x-4 py-8">
+                    <AlertTriangle className="w-8 h-8 text-yellow-400" />
+                    <span className="text-slate-300">Nenhum jogador selecionado</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-slate-800 border-slate-700">
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Estatísticas Rápidas</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-slate-300">Assistências:</span>
-                    <span className="text-white font-semibold">{mockPlayerData.stats.assists}</span>
+                {playerData ? (
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Jogos Jogados:</span>
+                      <span className="text-white font-semibold">
+                        {playerData.games_played}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Minutos por Jogo:</span>
+                      <span className="text-white font-semibold">
+                        {playerData.minutes?.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Posição:</span>
+                      <span className="text-white font-semibold">
+                        {playerData.position}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Status:</span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${
+                          playerData.current_status === 'Active' ? 'bg-green-600' :
+                          playerData.current_status === 'Questionable' ? 'bg-yellow-600' :
+                          playerData.current_status === 'Out' ? 'bg-red-600' : 'bg-gray-600'
+                        }`}
+                      >
+                        {playerData.current_status || 'Unknown'}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-slate-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-slate-300">Team Rating:</span>
+                        <span className="text-white font-semibold">#{playerData.team_rating_rank}</span>
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        Ranking do time na liga
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-300">Rebotes:</span>
-                    <span className="text-white font-semibold">{mockPlayerData.stats.rebounds}</span>
+                ) : (
+                  <div className="text-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin text-slate-400 mx-auto mb-2" />
+                    <p className="text-slate-400 text-sm">Carregando estatísticas...</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-300">Eficiência:</span>
-                    <span className="text-white font-semibold">{mockPlayerData.stats.efficiency}</span>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -500,7 +710,7 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={mockRecentGames}>
+                      <BarChart data={formatRecentGamesForChart()}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
                         <XAxis dataKey="game" stroke="#94a3b8" />
                         <YAxis stroke="#94a3b8" domain={[0, 35]} />
@@ -517,20 +727,22 @@ export default function Dashboard() {
                           labelFormatter={(label) => `Jogo ${label}`}
                         />
                         {/* Reference line for betting line */}
-                        <ReferenceLine 
-                          y={22.5} 
-                          stroke="#ffffff" 
-                          strokeDasharray="5 5" 
-                          strokeWidth={2}
-                          label={{ 
-                            value: "Linha: 22.5", 
-                            position: "insideTopRight",
-                            fill: "#ffffff",
-                            fontSize: 12
-                          }}
-                        />
+                        {bettingLines.length > 0 && (
+                          <ReferenceLine 
+                            y={bettingLines.find(bl => bl.statType === 'points')?.line || 25} 
+                            stroke="#ffffff" 
+                            strokeDasharray="5 5" 
+                            strokeWidth={2}
+                            label={{ 
+                              value: `Linha: ${bettingLines.find(bl => bl.statType === 'points')?.line || 25}`, 
+                              position: "insideTopRight",
+                              fill: "#ffffff",
+                              fontSize: 12
+                            }}
+                          />
+                        )}
                         <Bar dataKey="points">
-                          {mockRecentGames.map((entry, index) => (
+                          {formatRecentGamesForChart().map((entry, index) => (
                             <Cell 
                               key={`cell-${index}`}
                               fill={entry.overLine ? "#10b981" : "#ef4444"}
@@ -624,28 +836,17 @@ export default function Dashboard() {
           {/* Injury + Impact */}
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">INJURY + IMPACTO</h3>
-            <div className="space-y-3">
-              {mockInjuryInsights.map((injury, index) => (
-                <div key={index} className="bg-slate-700 rounded-lg p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-white font-semibold">{injury.player}</span>
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${
-                        injury.impact === "High" ? "bg-red-600" : "bg-yellow-600"
-                      }`}
-                    >
-                      {injury.impact}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-slate-300 mb-1">{injury.team}</div>
-                  <div className="text-sm text-slate-400">{injury.injury}</div>
-                  <div className="flex items-center mt-2">
-                    <AlertTriangle className="w-4 h-4 text-yellow-400 mr-1" />
-                    <span className="text-xs text-yellow-400">{injury.status}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="max-h-96 overflow-y-auto">
+              <InjuryInsightsDashboard 
+                onAnalyze={(insight) => {
+                  console.log('Analyzing injury insight:', insight);
+                  // Handle injury analysis
+                }}
+                onAddToWatchlist={(insight) => {
+                  console.log('Adding to watchlist:', insight);
+                  // Handle adding to watchlist
+                }}
+              />
             </div>
           </div>
         </aside>

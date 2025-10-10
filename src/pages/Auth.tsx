@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,9 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState("");
+  
+  const supabase = createClient();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +43,18 @@ const Auth = () => {
           title: "Success",
           description: "Welcome back!",
         });
-        navigate("/dashboard");
+        // Check if user needs onboarding
+        const { data: userData } = await supabase
+          .from('users')
+          .select('whatsapp_synced')
+          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .single();
+        
+        if (!userData?.whatsapp_synced) {
+          navigate("/onboarding");
+        } else {
+          navigate("/betting");
+        }
       }
     } catch (error) {
       toast({
@@ -80,10 +94,29 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
+        // Create user record in our users table
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: userError } = await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email!,
+              name: name
+            });
+          
+          if (userError) {
+            console.error('Error creating user record:', userError);
+          }
+        }
+        
         toast({
           title: "Success",
           description: "Account created! Please check your email to verify your account.",
         });
+        
+        // Redirect to onboarding after successful signup
+        navigate("/onboarding");
       }
     } catch (error) {
       toast({
@@ -155,6 +188,16 @@ const Auth = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Nome Completo</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">{t("auth.email")}</Label>
                     <Input

@@ -38,6 +38,201 @@ export type Database = {
         }
         Relationships: []
       }
+      users: {
+        Row: {
+          id: string
+          email: string
+          whatsapp_number: string | null
+          conversation_id: string | null
+          name: string | null
+          whatsapp_synced: boolean
+          whatsapp_sync_token: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          whatsapp_number?: string | null
+          conversation_id?: string | null
+          name?: string | null
+          whatsapp_synced?: boolean
+          whatsapp_sync_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          whatsapp_number?: string | null
+          conversation_id?: string | null
+          name?: string | null
+          whatsapp_synced?: boolean
+          whatsapp_sync_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bets: {
+        Row: {
+          id: string
+          user_id: string
+          bet_type: string
+          sport: string
+          league: string | null
+          match_description: string | null
+          bet_description: string
+          odds: number
+          stake_amount: number
+          potential_return: number
+          status: string
+          bet_date: string
+          match_date: string | null
+          created_at: string
+          updated_at: string
+          raw_input: string | null
+          processed_data: any | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          bet_type: string
+          sport: string
+          league?: string | null
+          match_description?: string | null
+          bet_description: string
+          odds: number
+          stake_amount: number
+          potential_return: number
+          status?: string
+          bet_date: string
+          match_date?: string | null
+          created_at?: string
+          updated_at?: string
+          raw_input?: string | null
+          processed_data?: any | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          bet_type?: string
+          sport?: string
+          league?: string | null
+          match_description?: string | null
+          bet_description?: string
+          odds?: number
+          stake_amount?: number
+          potential_return?: number
+          status?: string
+          bet_date?: string
+          match_date?: string | null
+          created_at?: string
+          updated_at?: string
+          raw_input?: string | null
+          processed_data?: any | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      bet_legs: {
+        Row: {
+          id: string
+          bet_id: string
+          leg_number: number
+          sport: string
+          match_description: string
+          bet_description: string
+          odds: number
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          bet_id: string
+          leg_number: number
+          sport: string
+          match_description: string
+          bet_description: string
+          odds: number
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          bet_id?: string
+          leg_number?: number
+          sport?: string
+          match_description?: string
+          bet_description?: string
+          odds?: number
+          status?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bet_legs_bet_id_fkey"
+            columns: ["bet_id"]
+            isOneToOne: false
+            referencedRelation: "bets"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      message_queue: {
+        Row: {
+          id: string
+          user_id: string
+          message_type: string
+          content: string | null
+          media_url: string | null
+          status: string
+          processing_attempts: number
+          error_message: string | null
+          created_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          message_type: string
+          content?: string | null
+          media_url?: string | null
+          status?: string
+          processing_attempts?: number
+          error_message?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          message_type?: string
+          content?: string | null
+          media_url?: string | null
+          status?: string
+          processing_attempts?: number
+          error_message?: string | null
+          created_at?: string
+          processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_queue_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -23,9 +23,18 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <LanguageToggle />
-            <Button onClick={() => navigate("/waitlist")} className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2">
-              <span className="hidden sm:inline">Entrar na lista de espera</span>
-              <span className="sm:hidden">Lista de espera</span>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/auth")} 
+              className="text-sm sm:text-base px-3 sm:px-4 py-2"
+            >
+              Entrar
+            </Button>
+            <Button 
+              onClick={() => navigate("/auth")} 
+              className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
+            >
+              Começar Grátis
             </Button>
           </div>
         </div>
