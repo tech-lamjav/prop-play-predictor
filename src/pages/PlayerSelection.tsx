@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -131,18 +132,20 @@ export default function PlayerSelection() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <AuthenticatedLayout>
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-slate-300">Loading players...</p>
         </div>
-      </div>
+      </AuthenticatedLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <AuthenticatedLayout>
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-xl mb-4">⚠️</div>
           <h2 className="text-xl font-semibold text-white mb-2">Error Loading Players</h2>
@@ -151,12 +154,13 @@ export default function PlayerSelection() {
             Try Again
           </Button>
         </div>
-      </div>
+      </AuthenticatedLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <AuthenticatedLayout>
+      <div className="min-h-screen bg-slate-900">
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700 p-4">
         <div className="flex items-center justify-between">
@@ -286,6 +290,6 @@ export default function PlayerSelection() {
           Showing {filteredPlayers.length} of {players.length} players
         </div>
       </div>
-    </div>
+    </AuthenticatedLayout>
   );
 }

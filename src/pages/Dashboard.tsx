@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import AuthenticatedLayout from "../components/AuthenticatedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -287,7 +288,8 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <AuthenticatedLayout>
+      <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700 p-4">
         <div className="flex items-center justify-between">
@@ -851,6 +853,6 @@ export default function Dashboard() {
           </div>
         </aside>
       </div>
-    </div>
+    </AuthenticatedLayout>
   );
 }

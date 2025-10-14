@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
+import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -13,8 +14,19 @@ import {
   Clock,
   Target,
   DollarSign,
-  Calendar
+  Calendar,
+  X
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 interface Bet {
   id: string;
@@ -27,13 +39,17 @@ interface Bet {
   odds: number;
   stake_amount: number;
   potential_return: number;
-  status: 'pending' | 'won' | 'lost' | 'void';
+  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout';
   bet_date: string;
   match_date?: string;
   created_at: string;
   updated_at: string;
   raw_input?: string;
   processed_data?: any;
+  cashout_amount?: number;
+  cashout_date?: string;
+  cashout_odds?: number;
+  is_cashout?: boolean;
 }
 
 export default function Bets() {
@@ -47,6 +63,17 @@ export default function Bets() {
     totalReturn: 0,
     winRate: 0,
     profit: 0
+  });
+  const [cashoutModal, setCashoutModal] = useState<{
+    isOpen: boolean;
+    bet: Bet | null;
+    cashoutAmount: string;
+    cashoutOdds: string;
+  }>({
+    isOpen: false,
+    bet: null,
+    cashoutAmount: '',
+    cashoutOdds: ''
   });
 
   const supabase = createClient();
@@ -83,17 +110,20 @@ export default function Bets() {
     
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
+    const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
+    const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
     const totalLost = lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
     
-    const winRate = totalBets > 0 ? (wonBets.length / (wonBets.length + lostBets.length)) * 100 : 0;
-    const profit = totalReturn - totalLost;
+    const totalEarnings = totalReturn + totalCashout;
+    const winRate = totalBets > 0 ? ((wonBets.length + cashoutBets.length) / (wonBets.length + lostBets.length + cashoutBets.length)) * 100 : 0;
+    const profit = totalEarnings - totalStaked;
 
     setStats({
       totalBets,
       totalStaked,
-      totalReturn,
+      totalReturn: totalEarnings,
       winRate,
       profit
     });
@@ -137,6 +167,50 @@ export default function Bets() {
     }
   };
 
+  const processCashout = async () => {
+    if (!cashoutModal.bet || !cashoutModal.cashoutAmount || !cashoutModal.cashoutOdds) return;
+    
+    try {
+      const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
+      const cashoutOdds = parseFloat(cashoutModal.cashoutOdds);
+      
+      if (isNaN(cashoutAmount) || isNaN(cashoutOdds)) {
+        setError('Valores inválidos para cashout');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('bets')
+        .update({
+          status: 'cashout',
+          cashout_amount: cashoutAmount,
+          cashout_odds: cashoutOdds,
+          cashout_date: new Date().toISOString(),
+          is_cashout: true
+        })
+        .eq('id', cashoutModal.bet.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Close modal and refresh bets
+      setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' });
+      await fetchBets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao processar cashout');
+    }
+  };
+
+  const openCashoutModal = (bet: Bet) => {
+    setCashoutModal({
+      isOpen: true,
+      bet,
+      cashoutAmount: bet.cashout_amount?.toString() || '',
+      cashoutOdds: bet.cashout_odds?.toString() || ''
+    });
+  };
+
   useEffect(() => {
     if (user?.id) {
       fetchBets();
@@ -148,7 +222,8 @@ export default function Bets() {
       pending: { color: 'bg-yellow-500', text: 'Pendente', icon: Clock },
       won: { color: 'bg-green-500', text: 'Ganhou', icon: TrendingUp },
       lost: { color: 'bg-red-500', text: 'Perdeu', icon: TrendingDown },
-      void: { color: 'bg-gray-500', text: 'Anulada', icon: Clock }
+      void: { color: 'bg-gray-500', text: 'Anulada', icon: Clock },
+      cashout: { color: 'bg-blue-500', text: 'Cashout', icon: DollarSign }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
@@ -201,7 +276,7 @@ export default function Bets() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <AuthenticatedLayout>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -369,6 +444,26 @@ export default function Bets() {
                         <span className="text-sm">{bet.league}</span>
                       </div>
                     )}
+                    {bet.is_cashout && bet.cashout_amount && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Valor Cashout:</span>
+                          <span className="font-semibold text-blue-600">
+                            {formatCurrency(bet.cashout_amount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Odds Cashout:</span>
+                          <span className="text-sm">{bet.cashout_odds}</span>
+                        </div>
+                        {bet.cashout_date && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Data Cashout:</span>
+                            <span className="text-sm">{formatDate(bet.cashout_date)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
@@ -393,7 +488,27 @@ export default function Bets() {
                           <TrendingDown className="w-3 h-3 mr-1" />
                           Perdeu
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openCashoutModal(bet)}
+                          className="flex-1"
+                        >
+                          <DollarSign className="w-3 h-3 mr-1" />
+                          Cashout
+                        </Button>
                       </>
+                    )}
+                    {bet.status === 'cashout' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openCashoutModal(bet)}
+                        className="flex-1"
+                      >
+                        <DollarSign className="w-3 h-3 mr-1" />
+                        Editar Cashout
+                      </Button>
                     )}
                     <Button
                       size="sm"
@@ -408,7 +523,114 @@ export default function Bets() {
             ))}
           </div>
         )}
+
+        {/* Cashout Modal */}
+        <Dialog open={cashoutModal.isOpen} onOpenChange={(open) => 
+          setCashoutModal(prev => ({ ...prev, isOpen: open }))
+        }>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                {cashoutModal.bet?.is_cashout ? 'Editar Cashout' : 'Fazer Cashout'}
+              </DialogTitle>
+              <DialogDescription>
+                {cashoutModal.bet?.is_cashout 
+                  ? 'Edite os valores do cashout desta aposta.'
+                  : 'Digite o valor e odds do cashout para esta aposta.'
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            {cashoutModal.bet && (
+              <div className="space-y-4">
+                {/* Bet Info */}
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="font-medium">{cashoutModal.bet.bet_description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {cashoutModal.bet.match_description}
+                  </p>
+                  <div className="flex justify-between text-sm mt-2">
+                    <span>Valor apostado: {formatCurrency(cashoutModal.bet.stake_amount)}</span>
+                    <span>Odds originais: {cashoutModal.bet.odds}</span>
+                  </div>
+                </div>
+
+                {/* Cashout Amount */}
+                <div className="space-y-2">
+                  <Label htmlFor="cashoutAmount">Valor do Cashout (R$)</Label>
+                  <Input
+                    id="cashoutAmount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={cashoutModal.cashoutAmount}
+                    onChange={(e) => setCashoutModal(prev => ({ 
+                      ...prev, 
+                      cashoutAmount: e.target.value 
+                    }))}
+                  />
+                </div>
+
+                {/* Cashout Odds */}
+                <div className="space-y-2">
+                  <Label htmlFor="cashoutOdds">Odds no momento do Cashout</Label>
+                  <Input
+                    id="cashoutOdds"
+                    type="number"
+                    step="0.01"
+                    placeholder="1.00"
+                    value={cashoutModal.cashoutOdds}
+                    onChange={(e) => setCashoutModal(prev => ({ 
+                      ...prev, 
+                      cashoutOdds: e.target.value 
+                    }))}
+                  />
+                </div>
+
+                {/* Profit/Loss Preview */}
+                {cashoutModal.cashoutAmount && cashoutModal.cashoutOdds && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <div className="flex justify-between text-sm">
+                      <span>Valor apostado:</span>
+                      <span>{formatCurrency(cashoutModal.bet.stake_amount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Valor cashout:</span>
+                      <span className="font-medium">{formatCurrency(parseFloat(cashoutModal.cashoutAmount) || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-medium border-t pt-2 mt-2">
+                      <span>Lucro/Prejuízo:</span>
+                      <span className={parseFloat(cashoutModal.cashoutAmount) - cashoutModal.bet.stake_amount >= 0 ? 'text-green-600' : 'text-red-600'}>
+                        {formatCurrency((parseFloat(cashoutModal.cashoutAmount) || 0) - cashoutModal.bet.stake_amount)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    onClick={() => setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' })}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={processCashout}
+                    disabled={!cashoutModal.cashoutAmount || !cashoutModal.cashoutOdds}
+                    className="flex-1"
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    {cashoutModal.bet?.is_cashout ? 'Atualizar' : 'Fazer Cashout'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
-    </div>
+    </AuthenticatedLayout>
   );
 }
