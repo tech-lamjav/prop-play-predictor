@@ -8,7 +8,7 @@ const testMessages = [
     message_type: "text",
     content: "Oi, gostaria de sincronizar minha conta Smart In Bet",
     sender: {
-      phone_number: "5511999999999",
+      phone_number: "5511952132563",
       name: "João"
     }
   },
