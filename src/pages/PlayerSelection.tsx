@@ -134,9 +134,10 @@ export default function PlayerSelection() {
     return (
       <AuthenticatedLayout>
         <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-300">Loading players...</p>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-slate-300">Loading players...</p>
+          </div>
         </div>
       </AuthenticatedLayout>
     );
@@ -146,13 +147,14 @@ export default function PlayerSelection() {
     return (
       <AuthenticatedLayout>
         <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-white mb-2">Error Loading Players</h2>
-          <p className="text-slate-300 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
+          <div className="text-center">
+            <div className="text-red-500 text-xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold text-white mb-2">Error Loading Players</h2>
+            <p className="text-slate-300 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </div>
         </div>
       </AuthenticatedLayout>
     );
@@ -161,20 +163,20 @@ export default function PlayerSelection() {
   return (
     <AuthenticatedLayout>
       <div className="min-h-screen bg-slate-900">
-      {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Target className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">Prop Play Predictor</h1>
-              <p className="text-slate-400 text-sm">NBA Player Analytics</p>
+        {/* Header */}
+        <header className="bg-slate-800 border-b border-slate-700 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">Prop Play Predictor</h1>
+                <p className="text-slate-400 text-sm">NBA Player Analytics</p>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       <div className="container mx-auto px-4 py-8">
         {/* Page Title */}

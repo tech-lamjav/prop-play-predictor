@@ -6,9 +6,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
-import Dashboard from "./pages/Dashboard";
+import DashboardTest from "./pages/DashboardTest";
 import Bets from "./pages/Bets";
-import PlayerSelection from "./pages/PlayerSelection";
+import PlayerSelectionTest from "./pages/PlayerSelectionTest";
 import Analysis from "./pages/Analysis";
 import Waitlist from "./pages/Waitlist";
 import NotFound from "./pages/NotFound";
@@ -36,12 +36,12 @@ const App = () => (
           } />
           <Route path="/players" element={
             <ProtectedRoute>
-              <PlayerSelection />
+              <PlayerSelectionTest />
             </ProtectedRoute>
           } />
           <Route path="/dashboard" element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardTest />
             </ProtectedRoute>
           } />
           <Route path="/bets" element={

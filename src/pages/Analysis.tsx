@@ -111,48 +111,49 @@ const Analysis = () => {
   return (
     <AuthenticatedLayout>
       <div className="min-h-screen bg-slate-900 text-white">
-      {/* Header */}
-      <div className="border-b border-slate-800 bg-slate-900/95 backdrop-blur supports-[backdrop-filter]:bg-slate-900/60">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo and Navigation */}
-            <div className="flex items-center space-x-8">
-              <div className="text-green-400 text-xl font-bold">SMART BETTING</div>
-              <nav className="flex space-x-6">
-                <Button 
-                  variant="ghost" 
-                  className="text-slate-300 hover:text-white"
-                  onClick={() => navigate("/dashboard")}
-                >
-                  Dashboard
-                </Button>
-                <Button variant="ghost" className="text-slate-300 hover:text-white">
-                  Players
-                </Button>
-                <Button variant="ghost" className="text-slate-300 hover:text-white">
-                  Games
-                </Button>
-                <Button variant="ghost" className="text-green-400 hover:text-green-300">
-                  Analysis
-                </Button>
-              </nav>
-            </div>
-
-            {/* Search and Actions */}
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                <Input
-                  placeholder="Search players..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 w-64"
-                />
+        {/* Header */}
+        <div className="border-b border-slate-800 bg-slate-900/95 backdrop-blur supports-[backdrop-filter]:bg-slate-900/60">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              {/* Logo and Navigation */}
+              <div className="flex items-center space-x-8">
+                <div className="text-green-400 text-xl font-bold">SMART BETTING</div>
+                <nav className="flex space-x-6">
+                  <Button 
+                    variant="ghost" 
+                    className="text-slate-300 hover:text-white"
+                    onClick={() => navigate("/dashboard")}
+                  >
+                    Dashboard
+                  </Button>
+                  <Button variant="ghost" className="text-slate-300 hover:text-white">
+                    Players
+                  </Button>
+                  <Button variant="ghost" className="text-slate-300 hover:text-white">
+                    Games
+                  </Button>
+                  <Button variant="ghost" className="text-green-400 hover:text-green-300">
+                    Analysis
+                  </Button>
+                </nav>
               </div>
-              <LanguageToggle />
-              <Button className="bg-green-600 hover:bg-green-700">
-                Sign in
-              </Button>
+
+              {/* Search and Actions */}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search players..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 w-64"
+                  />
+                </div>
+                <LanguageToggle />
+                <Button className="bg-green-600 hover:bg-green-700">
+                  Sign in
+                </Button>
+              </div>
             </div>
           </div>
         </div>
