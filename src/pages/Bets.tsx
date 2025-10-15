@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
@@ -15,7 +15,9 @@ import {
   Target,
   DollarSign,
   Calendar,
-  X
+  X,
+  Filter,
+  List
 } from 'lucide-react';
 import {
   Dialog,
@@ -25,6 +27,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
@@ -74,6 +83,14 @@ export default function Bets() {
     bet: null,
     cashoutAmount: '',
     cashoutOdds: ''
+  });
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    status: 'all',
+    sport: 'all',
+    league: 'all',
+    searchQuery: ''
   });
 
   const supabase = createClient();
@@ -216,6 +233,60 @@ export default function Bets() {
       fetchBets();
     }
   }, [user?.id]);
+
+  // Get unique sports and leagues from bets
+  const uniqueSports = useMemo(() => {
+    const sports = Array.from(new Set(bets.map(bet => bet.sport).filter(Boolean)));
+    return sports.sort();
+  }, [bets]);
+
+  const uniqueLeagues = useMemo(() => {
+    const leagues = Array.from(new Set(bets.map(bet => bet.league).filter(Boolean)));
+    return leagues.sort();
+  }, [bets]);
+
+  // Filter bets based on filters
+  const filteredBets = useMemo(() => {
+    return bets.filter(bet => {
+      // Status filter
+      if (filters.status !== 'all' && bet.status !== filters.status) {
+        return false;
+      }
+
+      // Sport filter
+      if (filters.sport !== 'all' && bet.sport !== filters.sport) {
+        return false;
+      }
+
+      // League filter
+      if (filters.league !== 'all' && bet.league !== filters.league) {
+        return false;
+      }
+
+      // Search query filter
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
+        const matchDescription = bet.bet_description?.toLowerCase().includes(query);
+        const matchMatch = bet.match_description?.toLowerCase().includes(query);
+        const matchLeague = bet.league?.toLowerCase().includes(query);
+        
+        if (!matchDescription && !matchMatch && !matchLeague) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [bets, filters]);
+
+  const resetFilters = () => {
+    setFilters({
+      status: 'all',
+      sport: 'all',
+      league: 'all',
+      searchQuery: ''
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -368,16 +439,113 @@ export default function Bets() {
           </Alert>
         )}
 
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter className="w-5 h-5 text-blue-600" />
+                <CardTitle className="text-lg">Filtros</CardTitle>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={resetFilters}
+              >
+                <X className="w-4 h-4 mr-1" />
+                Limpar Filtros
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select 
+                  value={filters.status} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="won">Ganhou</SelectItem>
+                    <SelectItem value="lost">Perdeu</SelectItem>
+                    <SelectItem value="cashout">Cashout</SelectItem>
+                    <SelectItem value="void">Anulada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sport Filter */}
+              <div className="space-y-2">
+                <Label>Esporte</Label>
+                <Select 
+                  value={filters.sport} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, sport: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os esportes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {uniqueSports.map((sport) => (
+                      <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* League Filter */}
+              <div className="space-y-2">
+                <Label>Liga</Label>
+                <Select 
+                  value={filters.league} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, league: value }))}
+                  disabled={uniqueLeagues.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as ligas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {uniqueLeagues.map((league) => (
+                      <SelectItem key={league} value={league}>{league}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Search Filter */}
+              <div className="space-y-2">
+                <Label>Buscar</Label>
+                <Input
+                  placeholder="Buscar apostas..."
+                  value={filters.searchQuery}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+                />
+              </div>
+            </div>
+            
+            {/* Results count */}
+            <div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+              <List className="w-4 h-4" />
+              Mostrando {filteredBets.length} de {bets.length} apostas
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Bets List */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
               <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                     <div className="h-3 bg-gray-200 rounded w-full"></div>
                     <div className="h-3 bg-gray-200 rounded w-2/3"></div>
                   </div>
@@ -397,127 +565,162 @@ export default function Bets() {
               </p>
             </CardContent>
           </Card>
+        ) : filteredBets.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Filter className="w-12 h-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Nenhuma aposta corresponde aos filtros
+              </h3>
+              <p className="text-gray-500 text-center mb-6">
+                Tente ajustar os filtros para ver mais resultados.
+              </p>
+              <Button onClick={resetFilters} variant="outline">
+                Limpar Filtros
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bets.map((bet) => (
-              <Card key={bet.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {bet.sport}
-                      </span>
-                    </div>
-                    {getStatusBadge(bet.status)}
-                  </div>
-                  <CardTitle className="text-lg">{bet.bet_description}</CardTitle>
-                  {bet.match_description && (
-                    <p className="text-sm text-muted-foreground">
-                      {bet.match_description}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Valor:</span>
-                      <span className="font-semibold">{formatCurrency(bet.stake_amount)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Odds:</span>
-                      <span className="font-semibold">{bet.odds}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Retorno Potencial:</span>
-                      <span className="font-semibold text-green-600">
-                        {formatCurrency(bet.potential_return)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Data:</span>
-                      <span className="text-sm">{formatDate(bet.bet_date)}</span>
-                    </div>
-                    {bet.league && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Liga:</span>
-                        <span className="text-sm">{bet.league}</span>
-                      </div>
-                    )}
-                    {bet.is_cashout && bet.cashout_amount && (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Valor Cashout:</span>
-                          <span className="font-semibold text-blue-600">
-                            {formatCurrency(bet.cashout_amount)}
-                          </span>
+          <div className="space-y-3">
+            {filteredBets.map((bet) => (
+              <Card key={bet.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* Left side - Bet info */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-2 min-w-[100px]">
+                          {getStatusBadge(bet.status)}
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Odds Cashout:</span>
-                          <span className="text-sm">{bet.cashout_odds}</span>
-                        </div>
-                        {bet.cashout_date && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Data Cashout:</span>
-                            <span className="text-sm">{formatDate(bet.cashout_date)}</span>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Target className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {bet.sport}
+                            </span>
+                            {bet.league && (
+                              <>
+                                <span className="text-muted-foreground">•</span>
+                                <span className="text-sm text-muted-foreground">{bet.league}</span>
+                              </>
+                            )}
                           </div>
-                        )}
-                      </>
-                    )}
-                  </div>
+                          
+                          <h3 className="font-semibold text-base">{bet.bet_description}</h3>
+                          
+                          {bet.match_description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {bet.match_description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 mt-4">
-                    {bet.status === 'pending' && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateBetStatus(bet.id, 'won')}
-                          className="flex-1"
-                        >
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          Ganhou
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateBetStatus(bet.id, 'lost')}
-                          className="flex-1"
-                        >
-                          <TrendingDown className="w-3 h-3 mr-1" />
-                          Perdeu
-                        </Button>
+                    {/* Middle - Bet values */}
+                    <div className="flex flex-wrap gap-4 md:gap-6">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Valor</p>
+                        <p className="font-semibold">{formatCurrency(bet.stake_amount)}</p>
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Odds</p>
+                        <p className="font-semibold">{bet.odds}</p>
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {bet.is_cashout ? 'Cashout' : 'Retorno'}
+                        </p>
+                        <p className="font-semibold text-green-600">
+                          {bet.is_cashout && bet.cashout_amount 
+                            ? formatCurrency(bet.cashout_amount)
+                            : formatCurrency(bet.potential_return)
+                          }
+                        </p>
+                      </div>
+
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Data</p>
+                        <p className="text-sm">{new Date(bet.bet_date).toLocaleDateString('pt-BR')}</p>
+                      </div>
+                    </div>
+
+                    {/* Right - Action buttons */}
+                    <div className="flex gap-2 flex-wrap md:flex-nowrap">
+                      {bet.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateBetStatus(bet.id, 'won')}
+                            className="flex-1 md:flex-none"
+                          >
+                            <TrendingUp className="w-3 h-3 md:mr-1" />
+                            <span className="hidden md:inline">Ganhou</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateBetStatus(bet.id, 'lost')}
+                            className="flex-1 md:flex-none"
+                          >
+                            <TrendingDown className="w-3 h-3 md:mr-1" />
+                            <span className="hidden md:inline">Perdeu</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openCashoutModal(bet)}
+                            className="flex-1 md:flex-none"
+                          >
+                            <DollarSign className="w-3 h-3 md:mr-1" />
+                            <span className="hidden md:inline">Cashout</span>
+                          </Button>
+                        </>
+                      )}
+                      {bet.status === 'cashout' && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => openCashoutModal(bet)}
-                          className="flex-1"
                         >
                           <DollarSign className="w-3 h-3 mr-1" />
-                          Cashout
+                          Editar
                         </Button>
-                      </>
-                    )}
-                    {bet.status === 'cashout' && (
+                      )}
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => openCashoutModal(bet)}
-                        className="flex-1"
+                        variant="destructive"
+                        onClick={() => deleteBet(bet.id)}
                       >
-                        <DollarSign className="w-3 h-3 mr-1" />
-                        Editar Cashout
+                        <X className="w-3 h-3" />
                       </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => deleteBet(bet.id)}
-                    >
-                      Excluir
-                    </Button>
+                    </div>
                   </div>
+
+                  {/* Cashout info if applicable */}
+                  {bet.is_cashout && bet.cashout_amount && (
+                    <div className="mt-3 pt-3 border-t flex gap-4 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <DollarSign className="w-3 h-3" />
+                        <span>Cashout: {formatCurrency(bet.cashout_amount)}</span>
+                      </div>
+                      {bet.cashout_odds && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <span>Odds: {bet.cashout_odds}</span>
+                        </div>
+                      )}
+                      {bet.cashout_date && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>{new Date(bet.cashout_date).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
