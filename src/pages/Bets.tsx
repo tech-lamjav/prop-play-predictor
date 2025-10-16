@@ -17,7 +17,9 @@ import {
   Calendar,
   X,
   Filter,
-  List
+  List,
+  Edit,
+  Save
 } from 'lucide-react';
 import {
   Dialog,
@@ -85,12 +87,42 @@ export default function Bets() {
     cashoutOdds: ''
   });
   
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    bet: Bet | null;
+    formData: {
+      bet_description: string;
+      match_description: string;
+      sport: string;
+      league: string;
+      odds: string;
+      stake_amount: string;
+      bet_date: string;
+      match_date: string;
+    };
+  }>({
+    isOpen: false,
+    bet: null,
+    formData: {
+      bet_description: '',
+      match_description: '',
+      sport: '',
+      league: '',
+      odds: '',
+      stake_amount: '',
+      bet_date: '',
+      match_date: ''
+    }
+  });
+  
   // Filter states
   const [filters, setFilters] = useState({
     status: 'all',
     sport: 'all',
     league: 'all',
-    searchQuery: ''
+    searchQuery: '',
+    dateFrom: '',
+    dateTo: ''
   });
 
   const supabase = createClient();
@@ -228,6 +260,80 @@ export default function Bets() {
     });
   };
 
+  const openEditModal = (bet: Bet) => {
+    setEditModal({
+      isOpen: true,
+      bet,
+      formData: {
+        bet_description: bet.bet_description || '',
+        match_description: bet.match_description || '',
+        sport: bet.sport || '',
+        league: bet.league || '',
+        odds: bet.odds?.toString() || '',
+        stake_amount: bet.stake_amount?.toString() || '',
+        bet_date: bet.bet_date ? new Date(bet.bet_date).toISOString().split('T')[0] : '',
+        match_date: bet.match_date ? new Date(bet.match_date).toISOString().split('T')[0] : ''
+      }
+    });
+  };
+
+  const updateBetData = async () => {
+    if (!editModal.bet) return;
+
+    try {
+      const odds = parseFloat(editModal.formData.odds);
+      const stakeAmount = parseFloat(editModal.formData.stake_amount);
+
+      if (isNaN(odds) || isNaN(stakeAmount)) {
+        setError('Odds e valor da aposta devem ser números válidos');
+        return;
+      }
+
+      const potentialReturn = stakeAmount * odds;
+
+      const updateData: any = {
+        bet_description: editModal.formData.bet_description,
+        match_description: editModal.formData.match_description || null,
+        sport: editModal.formData.sport,
+        league: editModal.formData.league || null,
+        odds: odds,
+        stake_amount: stakeAmount,
+        potential_return: potentialReturn,
+        bet_date: editModal.formData.bet_date || new Date().toISOString(),
+        match_date: editModal.formData.match_date || null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('bets')
+        .update(updateData)
+        .eq('id', editModal.bet.id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Close modal and refresh
+      setEditModal({
+        isOpen: false,
+        bet: null,
+        formData: {
+          bet_description: '',
+          match_description: '',
+          sport: '',
+          league: '',
+          odds: '',
+          stake_amount: '',
+          bet_date: '',
+          match_date: ''
+        }
+      });
+      await fetchBets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar aposta');
+    }
+  };
+
   useEffect(() => {
     if (user?.id) {
       fetchBets();
@@ -263,6 +369,26 @@ export default function Bets() {
         return false;
       }
 
+      // Date from filter
+      if (filters.dateFrom) {
+        const betDate = new Date(bet.bet_date);
+        const filterDate = new Date(filters.dateFrom);
+        if (betDate < filterDate) {
+          return false;
+        }
+      }
+
+      // Date to filter
+      if (filters.dateTo) {
+        const betDate = new Date(bet.bet_date);
+        const filterDate = new Date(filters.dateTo);
+        // Set to end of day for inclusive comparison
+        filterDate.setHours(23, 59, 59, 999);
+        if (betDate > filterDate) {
+          return false;
+        }
+      }
+
       // Search query filter
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
@@ -284,7 +410,9 @@ export default function Bets() {
       status: 'all',
       sport: 'all',
       league: 'all',
-      searchQuery: ''
+      searchQuery: '',
+      dateFrom: '',
+      dateTo: ''
     });
   };
 
@@ -458,7 +586,7 @@ export default function Bets() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {/* Status Filter */}
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -517,6 +645,26 @@ export default function Bets() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Date From Filter */}
+              <div className="space-y-2">
+                <Label>Data De</Label>
+                <Input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                />
+              </div>
+
+              {/* Date To Filter */}
+              <div className="space-y-2">
+                <Label>Data Até</Label>
+                <Input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                />
               </div>
 
               {/* Search Filter */}
@@ -688,9 +836,16 @@ export default function Bets() {
                           onClick={() => openCashoutModal(bet)}
                         >
                           <DollarSign className="w-3 h-3 mr-1" />
-                          Editar
+                          Editar Cashout
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditModal(bet)}
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
                       <Button
                         size="sm"
                         variant="destructive"
@@ -827,6 +982,198 @@ export default function Bets() {
                   >
                     <DollarSign className="w-4 h-4 mr-2" />
                     {cashoutModal.bet?.is_cashout ? 'Atualizar' : 'Fazer Cashout'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Bet Modal */}
+        <Dialog open={editModal.isOpen} onOpenChange={(open) => 
+          setEditModal(prev => ({ ...prev, isOpen: open }))
+        }>
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="w-5 h-5" />
+                Editar Aposta
+              </DialogTitle>
+              <DialogDescription>
+                Edite os detalhes da aposta abaixo.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {editModal.bet && (
+              <div className="space-y-4">
+                {/* Bet Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="betDescription">Descrição da Aposta *</Label>
+                  <Input
+                    id="betDescription"
+                    placeholder="Ex: Lakers vence"
+                    value={editModal.formData.bet_description}
+                    onChange={(e) => setEditModal(prev => ({ 
+                      ...prev, 
+                      formData: { ...prev.formData, bet_description: e.target.value }
+                    }))}
+                  />
+                </div>
+
+                {/* Match Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="matchDescription">Descrição do Jogo</Label>
+                  <Input
+                    id="matchDescription"
+                    placeholder="Ex: Lakers vs Warriors"
+                    value={editModal.formData.match_description}
+                    onChange={(e) => setEditModal(prev => ({ 
+                      ...prev, 
+                      formData: { ...prev.formData, match_description: e.target.value }
+                    }))}
+                  />
+                </div>
+
+                {/* Sport and League Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="sport">Esporte *</Label>
+                    <Input
+                      id="sport"
+                      placeholder="Ex: Basquete"
+                      value={editModal.formData.sport}
+                      onChange={(e) => setEditModal(prev => ({ 
+                        ...prev, 
+                        formData: { ...prev.formData, sport: e.target.value }
+                      }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="league">Liga</Label>
+                    <Input
+                      id="league"
+                      placeholder="Ex: NBA"
+                      value={editModal.formData.league}
+                      onChange={(e) => setEditModal(prev => ({ 
+                        ...prev, 
+                        formData: { ...prev.formData, league: e.target.value }
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Odds and Stake Amount Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="odds">Odds *</Label>
+                    <Input
+                      id="odds"
+                      type="number"
+                      step="0.01"
+                      placeholder="1.50"
+                      value={editModal.formData.odds}
+                      onChange={(e) => setEditModal(prev => ({ 
+                        ...prev, 
+                        formData: { ...prev.formData, odds: e.target.value }
+                      }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stakeAmount">Valor (R$) *</Label>
+                    <Input
+                      id="stakeAmount"
+                      type="number"
+                      step="0.01"
+                      placeholder="100.00"
+                      value={editModal.formData.stake_amount}
+                      onChange={(e) => setEditModal(prev => ({ 
+                        ...prev, 
+                        formData: { ...prev.formData, stake_amount: e.target.value }
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Dates Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="betDate">Data da Aposta</Label>
+                    <Input
+                      id="betDate"
+                      type="date"
+                      value={editModal.formData.bet_date}
+                      onChange={(e) => setEditModal(prev => ({ 
+                        ...prev, 
+                        formData: { ...prev.formData, bet_date: e.target.value }
+                      }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="matchDate">Data do Jogo</Label>
+                    <Input
+                      id="matchDate"
+                      type="date"
+                      value={editModal.formData.match_date}
+                      onChange={(e) => setEditModal(prev => ({ 
+                        ...prev, 
+                        formData: { ...prev.formData, match_date: e.target.value }
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Potential Return Preview */}
+                {editModal.formData.odds && editModal.formData.stake_amount && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <div className="flex justify-between text-sm">
+                      <span>Valor apostado:</span>
+                      <span>{formatCurrency(parseFloat(editModal.formData.stake_amount) || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Odds:</span>
+                      <span className="font-medium">{editModal.formData.odds}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-medium border-t pt-2 mt-2">
+                      <span>Retorno Potencial:</span>
+                      <span className="text-green-600">
+                        {formatCurrency((parseFloat(editModal.formData.stake_amount) || 0) * (parseFloat(editModal.formData.odds) || 0))}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    onClick={() => setEditModal({
+                      isOpen: false,
+                      bet: null,
+                      formData: {
+                        bet_description: '',
+                        match_description: '',
+                        sport: '',
+                        league: '',
+                        odds: '',
+                        stake_amount: '',
+                        bet_date: '',
+                        match_date: ''
+                      }
+                    })}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={updateBetData}
+                    disabled={!editModal.formData.bet_description || !editModal.formData.sport || !editModal.formData.odds || !editModal.formData.stake_amount}
+                    className="flex-1"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Salvar Alterações
                   </Button>
                 </div>
               </div>
