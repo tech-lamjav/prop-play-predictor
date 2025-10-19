@@ -912,10 +912,10 @@ export default function Bets() {
                 <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
                 {cashoutModal.bet?.is_cashout ? 'Editar Cashout' : 'Fazer Cashout'}
               </DialogTitle>
-              <DialogDescription className="text-sm">
+              <DialogDescription className="text-sm text-gray-400">
                 {cashoutModal.bet?.is_cashout 
-                  ? 'Edite os valores do cashout desta aposta.'
-                  : 'Digite o valor e odds do cashout para esta aposta.'
+                  ? 'Edite o valor do cashout desta aposta.'
+                  : 'Digite o valor do cashout para esta aposta.'
                 }
               </DialogDescription>
             </DialogHeader>
@@ -923,12 +923,12 @@ export default function Bets() {
             {cashoutModal.bet && (
               <div className="space-y-4">
                 {/* Bet Info */}
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="font-medium text-gray-900 dark:text-gray-100 text-base">{cashoutModal.bet.bet_description}</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                  <p className="font-medium text-white text-base">{cashoutModal.bet.bet_description}</p>
+                  <p className="text-sm text-gray-300">
                     {cashoutModal.bet.match_description}
                   </p>
-                  <div className="flex justify-between text-sm mt-2 text-gray-700 dark:text-gray-300">
+                  <div className="flex justify-between text-sm mt-2 text-gray-300">
                     <span>Valor apostado: {formatCurrency(cashoutModal.bet.stake_amount)}</span>
                     <span>Odds originais: {cashoutModal.bet.odds}</span>
                   </div>
@@ -936,7 +936,7 @@ export default function Bets() {
 
                 {/* Cashout Amount */}
                 <div className="space-y-2">
-                  <Label htmlFor="cashoutAmount" className="text-white">Valor do Cashout (R$)</Label>
+                  <Label htmlFor="cashoutAmount" className="text-white font-medium">Valor do Cashout (R$)</Label>
                   <Input
                     id="cashoutAmount"
                     type="number"
@@ -947,24 +947,24 @@ export default function Bets() {
                       ...prev, 
                       cashoutAmount: e.target.value 
                     }))}
-                    className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
 
                 {/* Profit/Loss Preview */}
                 {cashoutModal.cashoutAmount && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                  <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                    <div className="flex justify-between text-sm text-gray-300">
                       <span>Valor apostado:</span>
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(cashoutModal.bet.stake_amount)}</span>
+                      <span className="font-medium text-white">{formatCurrency(cashoutModal.bet.stake_amount)}</span>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex justify-between text-sm text-gray-300">
                       <span>Valor cashout:</span>
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(parseFloat(cashoutModal.cashoutAmount) || 0)}</span>
+                      <span className="font-medium text-white">{formatCurrency(parseFloat(cashoutModal.cashoutAmount) || 0)}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-medium border-t border-blue-200 dark:border-blue-800 pt-2 mt-2">
-                      <span className="text-gray-700 dark:text-gray-300">Lucro/Prejuízo:</span>
-                      <span className={parseFloat(cashoutModal.cashoutAmount) - cashoutModal.bet.stake_amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                    <div className="flex justify-between text-sm font-medium border-t border-gray-700 pt-2 mt-2">
+                      <span className="text-gray-300">Lucro/Prejuízo:</span>
+                      <span className={parseFloat(cashoutModal.cashoutAmount) - cashoutModal.bet.stake_amount >= 0 ? 'text-green-400' : 'text-red-400'}>
                         {formatCurrency((parseFloat(cashoutModal.cashoutAmount) || 0) - cashoutModal.bet.stake_amount)}
                       </span>
                     </div>
@@ -1004,7 +1004,7 @@ export default function Bets() {
                 <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
                 Editar Aposta
               </DialogTitle>
-              <DialogDescription className="text-sm">
+              <DialogDescription className="text-sm text-gray-400">
                 Edite os detalhes da aposta abaixo.
               </DialogDescription>
             </DialogHeader>
@@ -1013,7 +1013,7 @@ export default function Bets() {
               <div className="space-y-4">
                 {/* Bet Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="betDescription" className="text-white">Descrição da Aposta *</Label>
+                  <Label htmlFor="betDescription" className="text-white font-medium">Descrição da Aposta *</Label>
                   <Input
                     id="betDescription"
                     placeholder="Ex: Lakers vence"
@@ -1022,13 +1022,13 @@ export default function Bets() {
                       ...prev, 
                       formData: { ...prev.formData, bet_description: e.target.value }
                     }))}
-                    className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                   />
                 </div>
 
                 {/* Match Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="matchDescription" className="text-white">Descrição do Jogo</Label>
+                  <Label htmlFor="matchDescription" className="text-white font-medium">Descrição do Jogo</Label>
                   <Input
                     id="matchDescription"
                     placeholder="Ex: Lakers vs Warriors"
@@ -1037,14 +1037,14 @@ export default function Bets() {
                       ...prev, 
                       formData: { ...prev.formData, match_description: e.target.value }
                     }))}
-                    className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                   />
                 </div>
 
                 {/* Sport and League Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sport" className="text-white">Esporte *</Label>
+                    <Label htmlFor="sport" className="text-white font-medium">Esporte *</Label>
                     <Input
                       id="sport"
                       placeholder="Ex: Basquete"
@@ -1053,12 +1053,12 @@ export default function Bets() {
                         ...prev, 
                         formData: { ...prev.formData, sport: e.target.value }
                       }))}
-                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="league" className="text-white">Liga</Label>
+                    <Label htmlFor="league" className="text-white font-medium">Liga</Label>
                     <Input
                       id="league"
                       placeholder="Ex: NBA"
@@ -1067,7 +1067,7 @@ export default function Bets() {
                         ...prev, 
                         formData: { ...prev.formData, league: e.target.value }
                       }))}
-                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                     />
                   </div>
                 </div>
@@ -1075,7 +1075,7 @@ export default function Bets() {
                 {/* Odds and Stake Amount Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="odds" className="text-white">Odds *</Label>
+                    <Label htmlFor="odds" className="text-white font-medium">Odds *</Label>
                     <Input
                       id="odds"
                       type="number"
@@ -1086,12 +1086,12 @@ export default function Bets() {
                         ...prev, 
                         formData: { ...prev.formData, odds: e.target.value }
                       }))}
-                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="stakeAmount" className="text-white">Valor (R$) *</Label>
+                    <Label htmlFor="stakeAmount" className="text-white font-medium">Valor (R$) *</Label>
                     <Input
                       id="stakeAmount"
                       type="number"
@@ -1102,7 +1102,7 @@ export default function Bets() {
                         ...prev, 
                         formData: { ...prev.formData, stake_amount: e.target.value }
                       }))}
-                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
                     />
                   </div>
                 </div>
@@ -1110,7 +1110,7 @@ export default function Bets() {
                 {/* Dates Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="betDate" className="text-white">Data da Aposta</Label>
+                    <Label htmlFor="betDate" className="text-white font-medium">Data da Aposta</Label>
                     <Input
                       id="betDate"
                       type="date"
@@ -1119,12 +1119,12 @@ export default function Bets() {
                         ...prev, 
                         formData: { ...prev.formData, bet_date: e.target.value }
                       }))}
-                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 [color-scheme:dark]"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="matchDate" className="text-white">Data do Jogo</Label>
+                    <Label htmlFor="matchDate" className="text-white font-medium">Data do Jogo</Label>
                     <Input
                       id="matchDate"
                       type="date"
@@ -1133,14 +1133,14 @@ export default function Bets() {
                         ...prev, 
                         formData: { ...prev.formData, match_date: e.target.value }
                       }))}
-                      className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
+                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 [color-scheme:dark]"
                     />
                   </div>
                 </div>
 
                 {/* Status Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="status" className="text-white">Status da Aposta *</Label>
+                  <Label htmlFor="status" className="text-white font-medium">Status da Aposta *</Label>
                   <Select 
                     value={editModal.formData.status} 
                     onValueChange={(value: 'pending' | 'won' | 'lost' | 'void' | 'cashout') => 
@@ -1190,18 +1190,18 @@ export default function Bets() {
 
                 {/* Potential Return Preview */}
                 {editModal.formData.odds && editModal.formData.stake_amount && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                  <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                    <div className="flex justify-between text-sm text-gray-300">
                       <span>Valor apostado:</span>
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{formatCurrency(parseFloat(editModal.formData.stake_amount) || 0)}</span>
+                      <span className="font-medium text-white">{formatCurrency(parseFloat(editModal.formData.stake_amount) || 0)}</span>
                     </div>
-                    <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex justify-between text-sm text-gray-300">
                       <span>Odds:</span>
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{editModal.formData.odds}</span>
+                      <span className="font-medium text-white">{editModal.formData.odds}</span>
                     </div>
-                    <div className="flex justify-between text-sm font-medium border-t border-blue-200 dark:border-blue-800 pt-2 mt-2">
-                      <span className="text-gray-700 dark:text-gray-300">Retorno Potencial:</span>
-                      <span className="text-green-600 dark:text-green-400">
+                    <div className="flex justify-between text-sm font-medium border-t border-gray-700 pt-2 mt-2">
+                      <span className="text-gray-300">Retorno Potencial:</span>
+                      <span className="text-green-400">
                         {formatCurrency((parseFloat(editModal.formData.stake_amount) || 0) * (parseFloat(editModal.formData.odds) || 0))}
                       </span>
                     </div>
