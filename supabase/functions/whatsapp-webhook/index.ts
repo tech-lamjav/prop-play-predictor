@@ -70,13 +70,111 @@ serve(async (req) => {
     const phoneNumber = payload.sender?.phone_number
     const content = payload.content
     const contentType = payload.content_type || 'text'
+    const messageType = payload.message_type || 'incoming'
     const attachments = payload.attachments || []
     
-    // Check if message has attachments (images/audio)
+    // CRITICAL: Ignore outgoing messages to prevent infinite loops
+    if (messageType === 'outgoing') {
+      console.log('Ignoring outgoing message to prevent loop')
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Outgoing message ignored'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+    
+    // Check if message has attachments (images/audio) BEFORE checking content
     const hasImageAttachment = attachments.some(att => att.file_type === 'image')
     const hasAudioAttachment = attachments.some(att => att.file_type === 'audio')
     
-    // Determine actual content type and content
+    // Only ignore empty messages if there are NO attachments
+    if ((!content || content.trim().length === 0) && !hasImageAttachment && !hasAudioAttachment) {
+      console.log('Ignoring empty message with no attachments')
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Empty message ignored'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+    
+    // Ignore messages that look like system confirmations (only check if content exists)
+    if (content) {
+      const systemMessagePatterns = [
+        /🎯.*Aposta Registrada com Sucesso/i,
+        /📊.*Detalhes da Aposta/i,
+        /❓.*Não consegui identificar uma aposta/i,
+        /✅.*Sua aposta foi salva/i,
+        /🆔.*ID:/i,
+        /Status da Aposta Atualizado/i,
+        /Parabéns.*Sua aposta foi vencedora/i,
+        /Cashout realizado/i,
+        /Não desista.*Continue analisando/i
+      ]
+      
+      if (systemMessagePatterns.some(pattern => pattern.test(content))) {
+        console.log('Ignoring system/bot message:', content.substring(0, 50) + '...')
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'System message ignored'
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      }
+      
+      // Additional check: ignore messages that are too long (likely system messages)
+      if (content.length > 500) {
+        console.log('Ignoring long message (likely system message):', content.length, 'characters')
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Long message ignored'
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        )
+      }
+    }
+    
+    // Check if sender is a bot or system (based on sender info)
+    const sender = payload.sender || {}
+    const senderName = sender.name || ''
+    const senderType = sender.type || 'user'
+    
+    // Ignore if sender is identified as bot/system
+    if (senderType === 'bot' || senderType === 'system' || 
+        senderName.toLowerCase().includes('bot') || 
+        senderName.toLowerCase().includes('system') ||
+        senderName.toLowerCase().includes('assistant')) {
+      console.log('Ignoring message from bot/system sender:', senderName, senderType)
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Bot/system sender ignored'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+    
+    // Determine actual content type and content (hasImageAttachment and hasAudioAttachment already defined above)
     let actualContent = content
     let actualContentType = contentType
     let mediaUrl = null
@@ -94,6 +192,9 @@ serve(async (req) => {
       phoneNumber,
       content: actualContent,
       contentType: actualContentType,
+      messageType,
+      senderName: sender.name,
+      senderType: sender.type,
       hasImageAttachment,
       hasAudioAttachment,
       mediaUrl
@@ -172,16 +273,16 @@ serve(async (req) => {
 
     // Handle different message types
     let processedContent = ''
-    let messageType = actualContentType
+    let processedMessageType = actualContentType
 
     if (actualContentType === 'audio' && mediaUrl) {
       // Transcribe audio using OpenAI Whisper
       processedContent = await transcribeAudio(mediaUrl)
-      messageType = 'text' // Treat as text after transcription
+      processedMessageType = 'text' // Treat as text after transcription
     } else if (actualContentType === 'image' && mediaUrl) {
       // Process image using OpenAI Vision
       processedContent = await processImage(mediaUrl)
-      messageType = 'text' // Treat as text after processing
+      processedMessageType = 'text' // Treat as text after processing
     } else if (actualContentType === 'text' && actualContent) {
       processedContent = actualContent
     } else {
@@ -204,7 +305,7 @@ serve(async (req) => {
       .from('message_queue')
       .insert({
         user_id: user.id,
-        message_type: messageType,
+        message_type: processedMessageType,
         content: processedContent,
         media_url: mediaUrl,
         status: 'pending'
@@ -576,38 +677,65 @@ async function sendConfirmationMessage(supabase: any, userId: string, betId: str
     // Get bet details for confirmation message
     const { data: betDetails } = await supabase
       .from('bets')
-      .select('bet_type, sport, match_description, bet_description, odds, stake_amount, potential_return')
+      .select('bet_type, sport, match_description, bet_description, odds, stake_amount, potential_return, league')
       .eq('id', betId)
       .single()
 
     if (betDetails) {
-      const confirmationMessage = `✅ Aposta registrada com sucesso!
+      // Send message via Chatwoot API
+      const chatwootBaseUrl = Deno.env.get('CHATWOOT_BASE_URL')
+      const chatwootApiToken = Deno.env.get('CHATWOOT_API_ACCESS_TOKEN')
+      const chatwootAccountId = Deno.env.get('CHATWOOT_ACCOUNT_ID') || '1'
 
-📊 Detalhes:
-• Tipo: ${betDetails.bet_type === 'single' ? 'Simples' : betDetails.bet_type === 'multiple' ? 'Múltipla' : 'Sistema'}
-• Esporte: ${betDetails.sport}
-• Jogo: ${betDetails.match_description}
-• Aposta: ${betDetails.bet_description}
-• Odds: ${betDetails.odds}
-• Valor: R$ ${betDetails.stake_amount}
-• Retorno potencial: R$ ${betDetails.potential_return}
+      if (chatwootBaseUrl && chatwootApiToken) {
+        const betTypeText = {
+          'single': 'Simples',
+          'multiple': 'Múltipla',
+          'system': 'Sistema'
+        }[betDetails.bet_type] || betDetails.bet_type
 
-ID: ${betId}`
+        const confirmationMessage = `🎯 *Aposta Registrada com Sucesso!*
 
-      console.log(`Confirmation message for ${user.name}:`, confirmationMessage)
-      
-      // TODO: Implement actual message sending via Chatwoot API
-      // const chatwootResponse = await fetch('https://api.chatwoot.com/v1/accounts/{account_id}/conversations/{conversation_id}/messages', {
-      //   method: 'POST',
-      //   headers: { 
-      //     'Authorization': `Bearer ${CHATWOOT_API_KEY}`,
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({
-      //     message_type: 'outgoing',
-      //     content: confirmationMessage
-      //   })
-      // })
+📊 *Detalhes da Aposta:*
+• *Tipo:* ${betTypeText}
+• *Esporte:* ${betDetails.sport}${betDetails.league ? ` (${betDetails.league})` : ''}
+• *Jogo:* ${betDetails.match_description}
+• *Aposta:* ${betDetails.bet_description}
+• *Odds:* ${betDetails.odds}
+• *Valor:* R$ ${betDetails.stake_amount.toFixed(2)}
+• *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}
+
+🆔 *ID:* \`${betId}\`
+
+✅ Sua aposta foi salva no dashboard e você pode acompanhar o resultado em tempo real!`
+
+        try {
+          const response = await fetch(`${chatwootBaseUrl}/api/v1/accounts/${chatwootAccountId}/conversations/${user.conversation_id}/messages`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'api_access_token': chatwootApiToken
+            },
+            body: JSON.stringify({
+              content: confirmationMessage,
+              message_type: 'outgoing'
+            })
+          })
+
+          if (response.ok) {
+            const result = await response.json()
+            console.log(`✅ Confirmation message sent successfully. Message ID: ${result.id}`)
+          } else {
+            const errorText = await response.text()
+            console.error(`❌ Failed to send confirmation message: ${response.status} - ${errorText}`)
+          }
+        } catch (error) {
+          console.error('❌ Error sending confirmation message via Chatwoot:', error)
+        }
+      } else {
+        console.log('Chatwoot configuration missing, skipping message send')
+        console.log(`Confirmation message for ${user.name}:`, confirmationMessage)
+      }
     }
 
   } catch (error) {
@@ -632,39 +760,61 @@ async function sendHelpMessage(supabase: any, userId: string) {
       return
     }
 
-    const helpMessage = `❓ Não consegui identificar uma aposta na sua mensagem.
+    const helpMessage = `❓ *Não consegui identificar uma aposta na sua mensagem.*
 
-📝 Para registrar uma aposta, envie uma mensagem no formato:
+📝 *Para registrar uma aposta, envie uma mensagem no formato:*
 
-**Aposta Simples:**
-"Manchester United vs Liverpool - Over 2.5 gols - Odds 1.85 - R$ 100"
+*🎯 Aposta Simples:*
+\`Manchester United vs Liverpool - Over 2.5 gols - Odds 1.85 - R$ 100\`
 
-**Aposta Múltipla:**
-"Manchester vs Liverpool - Over 2.5 gols - 1.85
+*🎯 Aposta Múltipla:*
+\`Manchester vs Liverpool - Over 2.5 gols - 1.85
 Barcelona vs Real Madrid - Vitória do Barcelona - 2.10
-R$ 50"
+R$ 50\`
 
-**Você também pode enviar:**
-• Fotos de apostas
-• Mensagens de voz
-• Screenshots de sites de apostas
+*📱 Você também pode enviar:*
+• 📸 Fotos de apostas
+• 🎤 Mensagens de voz
+• 📱 Screenshots de sites de apostas
 
-💡 Dica: Seja específico com times, odds e valores!`
+💡 *Dica:* Seja específico com times, odds e valores!
 
-    console.log(`Help message for ${user.name}:`, helpMessage)
-    
-    // TODO: Implement actual message sending via Chatwoot API
-    // const chatwootResponse = await fetch('https://api.chatwoot.com/v1/accounts/{account_id}/conversations/{conversation_id}/messages', {
-    //   method: 'POST',
-    //   headers: { 
-    //     'Authorization': `Bearer ${CHATWOOT_API_KEY}`,
-    //     'Content-Type': 'application/json'
-    //   },
-    //   body: JSON.stringify({
-    //     message_type: 'outgoing',
-    //     content: helpMessage
-    //   })
-    // })
+*🔍 Exemplo de mensagem válida:*
+\`Apostei R$ 50 no Real Madrid ganhar contra o Barcelona, odds 2.10\``
+
+    // Send message via Chatwoot API
+    const chatwootBaseUrl = Deno.env.get('CHATWOOT_BASE_URL')
+    const chatwootApiToken = Deno.env.get('CHATWOOT_API_ACCESS_TOKEN')
+    const chatwootAccountId = Deno.env.get('CHATWOOT_ACCOUNT_ID') || '1'
+
+    if (chatwootBaseUrl && chatwootApiToken) {
+      try {
+        const response = await fetch(`${chatwootBaseUrl}/api/v1/accounts/${chatwootAccountId}/conversations/${user.conversation_id}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api_access_token': chatwootApiToken
+          },
+          body: JSON.stringify({
+            content: helpMessage,
+            message_type: 'outgoing'
+          })
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          console.log(`✅ Help message sent successfully. Message ID: ${result.id}`)
+        } else {
+          const errorText = await response.text()
+          console.error(`❌ Failed to send help message: ${response.status} - ${errorText}`)
+        }
+      } catch (error) {
+        console.error('❌ Error sending help message via Chatwoot:', error)
+      }
+    } else {
+      console.log('Chatwoot configuration missing, skipping help message send')
+      console.log(`Help message for ${user.name}:`, helpMessage)
+    }
 
   } catch (error) {
     console.error('Error sending help message:', error)
