@@ -145,7 +145,6 @@ export default function Bets() {
       }
 
       setBets(data || []);
-      calculateStats(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar apostas');
     } finally {
@@ -416,6 +415,11 @@ export default function Bets() {
     });
   };
 
+  // Calculate stats based on filtered bets
+  useEffect(() => {
+    calculateStats(filteredBets);
+  }, [filteredBets]);
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { color: 'bg-yellow-500', text: 'Pendente', icon: Clock },
@@ -493,79 +497,6 @@ export default function Bets() {
             </Button>
           </div>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total de Apostas</p>
-                  <p className="text-xl sm:text-2xl font-bold">{stats.totalBets}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Apostado</p>
-                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalStaked)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Retorno Total</p>
-                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalReturn)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Taxa de Acerto</p>
-                  <p className="text-xl sm:text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-2 md:col-span-1">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <TrendingUp className={`h-6 w-6 sm:h-8 sm:w-8 ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Lucro/Prejuízo</p>
-                  <p className={`text-lg sm:text-2xl font-bold ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(stats.profit)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <Alert className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
 
         {/* Filters */}
         <Card className="mb-6">
@@ -686,6 +617,79 @@ export default function Bets() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total de Apostas</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.totalBets}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Apostado</p>
+                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalStaked)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Retorno Total</p>
+                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalReturn)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Taxa de Acerto</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 md:col-span-1">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <TrendingUp className={`h-6 w-6 sm:h-8 sm:w-8 ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Lucro/Prejuízo</p>
+                  <p className={`text-lg sm:text-2xl font-bold ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(stats.profit)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Bets List */}
         {isLoading ? (
@@ -915,7 +919,7 @@ export default function Bets() {
 
                 {/* Cashout Amount */}
                 <div className="space-y-2">
-                  <Label htmlFor="cashoutAmount" className="text-gray-900 dark:text-gray-100">Valor do Cashout (R$)</Label>
+                  <Label htmlFor="cashoutAmount" className="text-white">Valor do Cashout (R$)</Label>
                   <Input
                     id="cashoutAmount"
                     type="number"
@@ -932,7 +936,7 @@ export default function Bets() {
 
                 {/* Cashout Odds */}
                 <div className="space-y-2">
-                  <Label htmlFor="cashoutOdds" className="text-gray-900 dark:text-gray-100">Odds no momento do Cashout</Label>
+                  <Label htmlFor="cashoutOdds" className="text-white">Odds no momento do Cashout</Label>
                   <Input
                     id="cashoutOdds"
                     type="number"
@@ -1009,7 +1013,7 @@ export default function Bets() {
               <div className="space-y-4">
                 {/* Bet Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="betDescription" className="text-gray-900 dark:text-gray-100">Descrição da Aposta *</Label>
+                  <Label htmlFor="betDescription" className="text-white">Descrição da Aposta *</Label>
                   <Input
                     id="betDescription"
                     placeholder="Ex: Lakers vence"
@@ -1024,7 +1028,7 @@ export default function Bets() {
 
                 {/* Match Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="matchDescription" className="text-gray-900 dark:text-gray-100">Descrição do Jogo</Label>
+                  <Label htmlFor="matchDescription" className="text-white">Descrição do Jogo</Label>
                   <Input
                     id="matchDescription"
                     placeholder="Ex: Lakers vs Warriors"
@@ -1040,7 +1044,7 @@ export default function Bets() {
                 {/* Sport and League Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sport" className="text-gray-900 dark:text-gray-100">Esporte *</Label>
+                    <Label htmlFor="sport" className="text-white">Esporte *</Label>
                     <Input
                       id="sport"
                       placeholder="Ex: Basquete"
@@ -1054,7 +1058,7 @@ export default function Bets() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="league" className="text-gray-900 dark:text-gray-100">Liga</Label>
+                    <Label htmlFor="league" className="text-white">Liga</Label>
                     <Input
                       id="league"
                       placeholder="Ex: NBA"
@@ -1071,7 +1075,7 @@ export default function Bets() {
                 {/* Odds and Stake Amount Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="odds" className="text-gray-900 dark:text-gray-100">Odds *</Label>
+                    <Label htmlFor="odds" className="text-white">Odds *</Label>
                     <Input
                       id="odds"
                       type="number"
@@ -1087,7 +1091,7 @@ export default function Bets() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="stakeAmount" className="text-gray-900 dark:text-gray-100">Valor (R$) *</Label>
+                    <Label htmlFor="stakeAmount" className="text-white">Valor (R$) *</Label>
                     <Input
                       id="stakeAmount"
                       type="number"
@@ -1106,7 +1110,7 @@ export default function Bets() {
                 {/* Dates Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="betDate" className="text-gray-900 dark:text-gray-100">Data da Aposta</Label>
+                    <Label htmlFor="betDate" className="text-white">Data da Aposta</Label>
                     <Input
                       id="betDate"
                       type="date"
@@ -1120,7 +1124,7 @@ export default function Bets() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="matchDate" className="text-gray-900 dark:text-gray-100">Data do Jogo</Label>
+                    <Label htmlFor="matchDate" className="text-white">Data do Jogo</Label>
                     <Input
                       id="matchDate"
                       type="date"
