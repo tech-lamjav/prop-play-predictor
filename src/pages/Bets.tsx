@@ -99,6 +99,7 @@ export default function Bets() {
       stake_amount: string;
       bet_date: string;
       match_date: string;
+      status: 'pending' | 'won' | 'lost' | 'void' | 'cashout';
     };
   }>({
     isOpen: false,
@@ -111,7 +112,8 @@ export default function Bets() {
       odds: '',
       stake_amount: '',
       bet_date: '',
-      match_date: ''
+      match_date: '',
+      status: 'pending'
     }
   });
   
@@ -216,36 +218,48 @@ export default function Bets() {
   };
 
   const processCashout = async () => {
-    if (!cashoutModal.bet || !cashoutModal.cashoutAmount || !cashoutModal.cashoutOdds) return;
+    console.log('processCashout called', { 
+      hasBet: !!cashoutModal.bet, 
+      cashoutAmount: cashoutModal.cashoutAmount 
+    });
+    
+    if (!cashoutModal.bet || !cashoutModal.cashoutAmount) {
+      console.log('Missing required fields');
+      return;
+    }
     
     try {
       const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
-      const cashoutOdds = parseFloat(cashoutModal.cashoutOdds);
       
-      if (isNaN(cashoutAmount) || isNaN(cashoutOdds)) {
-        setError('Valores inválidos para cashout');
+      if (isNaN(cashoutAmount)) {
+        setError('Valor inválido para cashout');
         return;
       }
+
+      console.log('Updating bet:', cashoutModal.bet.id, 'with amount:', cashoutAmount);
 
       const { error } = await supabase
         .from('bets')
         .update({
           status: 'cashout',
           cashout_amount: cashoutAmount,
-          cashout_odds: cashoutOdds,
           cashout_date: new Date().toISOString(),
           is_cashout: true
         })
         .eq('id', cashoutModal.bet.id);
 
       if (error) {
+        console.error('Supabase error:', error);
         throw error;
       }
 
+      console.log('Cashout successful, closing modal and refreshing');
+      
       // Close modal and refresh bets
       setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' });
       await fetchBets();
     } catch (err) {
+      console.error('Error in processCashout:', err);
       setError(err instanceof Error ? err.message : 'Erro ao processar cashout');
     }
   };
@@ -271,7 +285,8 @@ export default function Bets() {
         odds: bet.odds?.toString() || '',
         stake_amount: bet.stake_amount?.toString() || '',
         bet_date: bet.bet_date ? new Date(bet.bet_date).toISOString().split('T')[0] : '',
-        match_date: bet.match_date ? new Date(bet.match_date).toISOString().split('T')[0] : ''
+        match_date: bet.match_date ? new Date(bet.match_date).toISOString().split('T')[0] : '',
+        status: bet.status || 'pending'
       }
     });
   };
@@ -300,6 +315,7 @@ export default function Bets() {
         potential_return: potentialReturn,
         bet_date: editModal.formData.bet_date || new Date().toISOString(),
         match_date: editModal.formData.match_date || null,
+        status: editModal.formData.status,
         updated_at: new Date().toISOString()
       };
 
@@ -324,7 +340,8 @@ export default function Bets() {
           odds: '',
           stake_amount: '',
           bet_date: '',
-          match_date: ''
+          match_date: '',
+          status: 'pending'
         }
       });
       await fetchBets();
@@ -907,8 +924,8 @@ export default function Bets() {
               <div className="space-y-4">
                 {/* Bet Info */}
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="font-medium text-gray-900 dark:text-gray-100">{cashoutModal.bet.bet_description}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-medium text-gray-900 dark:text-gray-100 text-base">{cashoutModal.bet.bet_description}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">
                     {cashoutModal.bet.match_description}
                   </p>
                   <div className="flex justify-between text-sm mt-2 text-gray-700 dark:text-gray-300">
@@ -934,25 +951,8 @@ export default function Bets() {
                   />
                 </div>
 
-                {/* Cashout Odds */}
-                <div className="space-y-2">
-                  <Label htmlFor="cashoutOdds" className="text-white">Odds no momento do Cashout</Label>
-                  <Input
-                    id="cashoutOdds"
-                    type="number"
-                    step="0.01"
-                    placeholder="1.00"
-                    value={cashoutModal.cashoutOdds}
-                    onChange={(e) => setCashoutModal(prev => ({ 
-                      ...prev, 
-                      cashoutOdds: e.target.value 
-                    }))}
-                    className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-
                 {/* Profit/Loss Preview */}
-                {cashoutModal.cashoutAmount && cashoutModal.cashoutOdds && (
+                {cashoutModal.cashoutAmount && (
                   <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                       <span>Valor apostado:</span>
@@ -982,8 +982,8 @@ export default function Bets() {
                   </Button>
                   <Button
                     onClick={processCashout}
-                    disabled={!cashoutModal.cashoutAmount || !cashoutModal.cashoutOdds}
-                    className="flex-1 w-full"
+                    disabled={!cashoutModal.cashoutAmount}
+                    className="flex-1 w-full bg-green-600 hover:bg-green-700 text-white"
                   >
                     <DollarSign className="w-4 h-4 mr-2" />
                     {cashoutModal.bet?.is_cashout ? 'Atualizar' : 'Fazer Cashout'}
@@ -1136,6 +1136,56 @@ export default function Bets() {
                       className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 dark:[color-scheme:dark]"
                     />
                   </div>
+                </div>
+
+                {/* Status Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="status" className="text-white">Status da Aposta *</Label>
+                  <Select 
+                    value={editModal.formData.status} 
+                    onValueChange={(value: 'pending' | 'won' | 'lost' | 'void' | 'cashout') => 
+                      setEditModal(prev => ({ 
+                        ...prev, 
+                        formData: { ...prev.formData, status: value }
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-yellow-600" />
+                          <span>Pendente</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="won">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4 text-green-600" />
+                          <span>Ganhou</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="lost">
+                        <div className="flex items-center gap-2">
+                          <TrendingDown className="w-4 h-4 text-red-600" />
+                          <span>Perdeu</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="void">
+                        <div className="flex items-center gap-2">
+                          <X className="w-4 h-4 text-gray-600" />
+                          <span>Cancelada</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="cashout">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-blue-600" />
+                          <span>Cashout</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Potential Return Preview */}
