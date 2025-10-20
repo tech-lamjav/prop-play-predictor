@@ -10,6 +10,27 @@ const corsHeaders = {
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
 const OPENAI_API_URL = 'https://api.openai.com/v1'
 
+// Normalize Brazilian phone numbers by removing the 9th digit (extra 9 from mobile)
+// This allows matching numbers with or without the extra 9
+// Example: +5543991234567 becomes 554391234567
+//          +554391234567 also becomes 554391234567
+function normalizePhoneNumber(phone: string): string {
+  // Remove all non-digits
+  const cleaned = phone.replace(/\D/g, '')
+  
+  // Brazilian phone format: Country(2) + Area(2) + Number(8-9)
+  // If the number has 13 digits (55 + 2 area + 9 digits), remove the 9th digit (position 4)
+  // 5543991234567 -> 554391234567 (removes the extra 9 at position 4)
+  if (cleaned.length === 13 && cleaned.startsWith('55')) {
+    // Check if position 4 is a 9 (the extra mobile digit)
+    if (cleaned[4] === '9') {
+      return cleaned.slice(0, 4) + cleaned.slice(5) // Remove the 9th digit
+    }
+  }
+  
+  return cleaned
+}
+
 interface WhatsAppMessage {
   conversation_id?: string
   message_type?: 'text' | 'audio' | 'image'
@@ -217,14 +238,20 @@ serve(async (req) => {
       
       // If this is a sync message, try to find user by phone number
       if (phoneNumber) {
-        const cleanPhone = phoneNumber.replace(/\D/g, '')
-        console.log('Looking for user with phone:', cleanPhone)
+        const normalizedPhone = normalizePhoneNumber(phoneNumber)
+        console.log('Looking for user with normalized phone:', normalizedPhone)
         
-        const { data: syncUser, error: syncError } = await supabase
+        // Try to find user with normalized phone number
+        const { data: allUsers } = await supabase
           .from('users')
           .select('id, whatsapp_number, name')
-          .eq('whatsapp_number', cleanPhone)
-          .single()
+        
+        // Find user by comparing normalized phone numbers
+        const syncUser = allUsers?.find(u => 
+          normalizePhoneNumber(u.whatsapp_number || '') === normalizedPhone
+        )
+        
+        const syncError = !syncUser
 
         if (syncUser && !syncError) {
           console.log('Found user by phone, syncing conversation_id')
@@ -447,23 +474,26 @@ async function processMessage(supabase: any, messageId: string, content: string,
       const totalOdds = bettingInfo.matches.reduce((acc, match) => acc * (match.odds || 1), 1)
       
       // Save main bet to database
-      const { data: bet, error: betError } = await supabase
+      // Always use current date/time for bet_date (when the bet was placed)
+      const currentDate = new Date().toISOString()
+      
+      const { data: bet, error: betError} = await supabase
         .from('bets')
         .insert({
           user_id: userId,
           bet_type: bettingInfo.bet_type,
-          sport: bettingInfo.sport,
+          sport: bettingInfo.sport || 'outros', // Default to 'outros' if sport is not identified
           league: bettingInfo.league || null,
           match_description: bettingInfo.matches.length === 1 
             ? bettingInfo.matches[0]?.description 
-            : `${bettingInfo.matches.length} jogos múltiplos`,
+            : `Múltipla (${bettingInfo.matches.length} seleções)`,
           bet_description: bettingInfo.matches.length === 1 
             ? bettingInfo.matches[0]?.bet_description 
-            : `Aposta múltipla com ${bettingInfo.matches.length} seleções`,
+            : bettingInfo.matches.map((m, i) => `${m.description} - ${m.bet_description}`).join(' • '),
           odds: bettingInfo.bet_type === 'multiple' ? totalOdds : bettingInfo.matches[0]?.odds,
           stake_amount: bettingInfo.stake_amount,
           potential_return: bettingInfo.stake_amount * (bettingInfo.bet_type === 'multiple' ? totalOdds : bettingInfo.matches[0]?.odds),
-          bet_date: bettingInfo.bet_date || new Date().toISOString(),
+          bet_date: currentDate, // Always use current timestamp
           match_date: bettingInfo.matches[0]?.match_date || null,
           raw_input: content,
           processed_data: bettingInfo
@@ -487,7 +517,7 @@ async function processMessage(supabase: any, messageId: string, content: string,
             .insert({
               bet_id: bet.id,
               leg_number: i + 1,
-              sport: bettingInfo.sport,
+              sport: bettingInfo.sport || 'outros', // Default to 'outros' if sport is not identified
               match_description: match.description,
               bet_description: match.bet_description,
               odds: match.odds,
