@@ -28,29 +28,13 @@ export default function MainNav({ className }: MainNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigationItems = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: BarChart3,
-      description: 'Visão geral'
-    },
+    // Temporarily removed: Dashboard, Análises, Jogadores
+    // Will be added back later
     {
       name: 'Apostas',
       href: '/bets',
       icon: Target,
       description: 'Minhas apostas'
-    },
-    {
-      name: 'Análises',
-      href: '/analysis',
-      icon: TrendingUp,
-      description: 'Análises de jogadores'
-    },
-    {
-      name: 'Jogadores',
-      href: '/players',
-      icon: Users,
-      description: 'Seleção de jogadores'
     }
   ];
 
@@ -75,13 +59,13 @@ export default function MainNav({ className }: MainNavProps) {
           <div className="flex items-center">
             <Button
               variant="ghost"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/bets')}
               className="flex items-center space-x-2 hover:bg-transparent"
             >
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
+                <Target className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-foreground">Smart Betting</span>
+              <span className="text-xl font-bold text-foreground">Smart In Bet</span>
             </Button>
           </div>
 
