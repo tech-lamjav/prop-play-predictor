@@ -122,9 +122,9 @@ const Analysis = () => {
                   <Button 
                     variant="ghost" 
                     className="text-slate-300 hover:text-white"
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => navigate("/bets")}
                   >
-                    Dashboard
+                    Apostas
                   </Button>
                   <Button variant="ghost" className="text-slate-300 hover:text-white">
                     Players

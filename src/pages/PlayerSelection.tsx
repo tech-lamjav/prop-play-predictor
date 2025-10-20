@@ -95,7 +95,7 @@ export default function PlayerSelection() {
   }, [players, searchTerm, selectedTeam]);
 
   const handlePlayerSelect = (playerId: number) => {
-    navigate(`/dashboard?playerId=${playerId}`);
+    navigate(`/bets?playerId=${playerId}`);
   };
 
   const getStatusColor = (status: string) => {
