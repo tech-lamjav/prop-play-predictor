@@ -117,7 +117,7 @@ const Analysis = () => {
             <div className="flex items-center justify-between">
               {/* Logo and Navigation */}
               <div className="flex items-center space-x-8">
-                <div className="text-green-400 text-xl font-bold">SMART BETTING</div>
+                <div className="text-green-400 text-xl font-bold">SMARTBETTING</div>
                 <nav className="flex space-x-6">
                   <Button 
                     variant="ghost" 
@@ -440,7 +440,7 @@ const Analysis = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-green-400 font-bold mb-2">SMART BETTING</div>
+              <div className="text-green-400 font-bold mb-2">SMARTBETTING</div>
               <div className="text-sm text-slate-400">Advanced player props analysis</div>
             </div>
             <div className="flex space-x-6 text-sm text-slate-400">
@@ -451,7 +451,7 @@ const Analysis = () => {
             </div>
           </div>
           <div className="text-center text-sm text-slate-500 mt-4">
-            © 2023 Smart Betting. All rights reserved.
+            © 2023 Smartbetting. All rights reserved.
           </div>
         </div>
       </footer>

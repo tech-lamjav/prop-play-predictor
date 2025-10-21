@@ -58,7 +58,7 @@ export default function Onboarding() {
     {
       id: 3,
       title: 'Finalização',
-      description: 'Tudo pronto! Bem-vindo ao Smart In Bet',
+      description: 'Tudo pronto! Bem-vindo ao Smartbetting',
       icon: CheckCircle
     }
   ];
@@ -174,7 +174,7 @@ export default function Onboarding() {
   };
 
   const handleWhatsAppSync = () => {
-    const message = "Oi, gostaria de sincronizar minha conta Smart In Bet";
+    const message = "Oi, gostaria de sincronizar minha conta Smartbetting";
     const whatsappUrl = `https://wa.me/5511952132563?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message
@@ -426,7 +426,7 @@ export default function Onboarding() {
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smart In Bet</span>
+            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
           </div>
           <UserNav />
         </div>
@@ -436,7 +436,7 @@ export default function Onboarding() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Bem-vindo ao Smart In Bet
+            Bem-vindo ao Smartbetting
           </h1>
           <p className="text-muted-foreground">
             Vamos configurar sua conta em poucos passos
