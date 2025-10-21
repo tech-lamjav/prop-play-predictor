@@ -200,12 +200,15 @@ serve(async (req) => {
     let actualContentType = contentType
     let mediaUrl = null
     
-    if (hasImageAttachment && !content) {
+    // Handle cases where user sends media WITH text
+    if (hasImageAttachment) {
       actualContentType = 'image'
       mediaUrl = attachments.find(att => att.file_type === 'image')?.data_url
-    } else if (hasAudioAttachment && !content) {
+      // Keep the text content if present - we'll combine it with image analysis later
+    } else if (hasAudioAttachment) {
       actualContentType = 'audio'
       mediaUrl = attachments.find(att => att.file_type === 'audio')?.data_url
+      // Keep the text content if present - we'll combine it with audio transcription later
     }
 
     console.log('Extracted data:', {
@@ -304,11 +307,27 @@ serve(async (req) => {
 
     if (actualContentType === 'audio' && mediaUrl) {
       // Transcribe audio using OpenAI Whisper
-      processedContent = await transcribeAudio(mediaUrl)
+      const transcription = await transcribeAudio(mediaUrl)
+      
+      // Combine transcription with additional text if present
+      if (actualContent && actualContent.trim()) {
+        processedContent = `Transcrição do áudio: ${transcription}\n\nTexto adicional: ${actualContent}`
+        console.log('Combined audio transcription with text')
+      } else {
+        processedContent = transcription
+      }
       processedMessageType = 'text' // Treat as text after transcription
     } else if (actualContentType === 'image' && mediaUrl) {
       // Process image using OpenAI Vision
-      processedContent = await processImage(mediaUrl)
+      const imageAnalysis = await processImage(mediaUrl)
+      
+      // Combine image analysis with additional text if present
+      if (actualContent && actualContent.trim()) {
+        processedContent = `Análise da imagem: ${imageAnalysis}\n\nTexto adicional do usuário: ${actualContent}`
+        console.log('Combined image analysis with user text')
+      } else {
+        processedContent = imageAnalysis
+      }
       processedMessageType = 'text' // Treat as text after processing
     } else if (actualContentType === 'text' && actualContent) {
       processedContent = actualContent
@@ -477,6 +496,10 @@ async function processMessage(supabase: any, messageId: string, content: string,
       // Always use current date/time for bet_date (when the bet was placed)
       const currentDate = new Date().toISOString()
       
+      // Ensure stake_amount has a value (default to 0 if not identified)
+      const stakeAmount = bettingInfo.stake_amount || 0
+      const calculatedOdds = bettingInfo.bet_type === 'multiple' ? totalOdds : bettingInfo.matches[0]?.odds
+      
       const { data: bet, error: betError} = await supabase
         .from('bets')
         .insert({
@@ -490,9 +513,9 @@ async function processMessage(supabase: any, messageId: string, content: string,
           bet_description: bettingInfo.matches.length === 1 
             ? bettingInfo.matches[0]?.bet_description 
             : bettingInfo.matches.map((m, i) => `${m.description} - ${m.bet_description}`).join(' • '),
-          odds: bettingInfo.bet_type === 'multiple' ? totalOdds : bettingInfo.matches[0]?.odds,
-          stake_amount: bettingInfo.stake_amount,
-          potential_return: bettingInfo.stake_amount * (bettingInfo.bet_type === 'multiple' ? totalOdds : bettingInfo.matches[0]?.odds),
+          odds: calculatedOdds,
+          stake_amount: stakeAmount, // Default to 0 if not identified
+          potential_return: stakeAmount * calculatedOdds,
           bet_date: currentDate, // Always use current timestamp
           match_date: bettingInfo.matches[0]?.match_date || null,
           raw_input: content,
@@ -790,27 +813,24 @@ async function sendHelpMessage(supabase: any, userId: string) {
       return
     }
 
-    const helpMessage = `❓ *Não consegui identificar uma aposta na sua mensagem.*
+    const helpMessage = `🏀 *COMO ENVIAR SUAS APOSTAS NBA:*
 
-📝 *Para registrar uma aposta, envie uma mensagem no formato:*
+*📸 MELHOR FORMA - Screenshot da aposta:*
+• Tire print da sua aposta no site (1 aposta por print)
+• Envie a imagem aqui
+• Se faltar alguma info (como valor), escreva na mesma mensagem
+• Exemplo: *[IMAGEM]* + "100 reais"
 
-*🎯 Aposta Simples:*
-\`Manchester United vs Liverpool - Over 2.5 gols - Odds 1.85 - R$ 100\`
+*✍️ OU escreva algo como:*
+\`Lakers vs Warriors - LeBron 25+ pontos - Odd 1.85 - R$ 50\`
 
-*🎯 Aposta Múltipla:*
-\`Manchester vs Liverpool - Over 2.5 gols - 1.85
-Barcelona vs Real Madrid - Vitória do Barcelona - 2.10
-R$ 50\`
+⚠️ *IMPORTANTE:*
+• *1 mensagem = 1 aposta*
+• Envie TUDO junto (imagem + texto na mesma mensagem)
 
-*📱 Você também pode enviar:*
-• 📸 Fotos de apostas
-• 🎤 Mensagens de voz
-• 📱 Screenshots de sites de apostas
-
-💡 *Dica:* Seja específico com times, odds e valores!
-
-*🔍 Exemplo de mensagem válida:*
-\`Apostei R$ 50 no Real Madrid ganhar contra o Barcelona, odds 2.10\``
+💡 *Exemplos válidos:*
+• Screenshot + "apostei 50"
+• "Bucks vs Nets - Giannis 30+ pts - odd 2.0 - 100 reais"`
 
     // Send message via Chatwoot API
     const chatwootBaseUrl = Deno.env.get('CHATWOOT_BASE_URL')
