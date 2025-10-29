@@ -224,7 +224,7 @@ export default function BetListCompact({
 
       {/* Bets List */}
       <ScrollArea className="flex-1">
-        <div className="space-y-2 pr-4">
+        <div className="space-y-1 pr-4">
           {filteredBets.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-8">
@@ -237,79 +237,87 @@ export default function BetListCompact({
           ) : (
             filteredBets.map((bet) => (
               <Card key={bet.id} className="hover:shadow-sm transition-shadow">
-                <CardContent className="p-3">
+                <CardContent className="p-2">
                   <div className="space-y-2">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-2">
+                    {/* Header - Compact */}
+                    <div className="flex items-start justify-between gap-1">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-1 mb-1">
                           {getStatusBadge(bet.status)}
-                          <span className="text-lg">{getSportIcon(bet.sport)}</span>
+                          <span className="text-sm">{getSportIcon(bet.sport)}</span>
                           <span className="text-xs text-muted-foreground">{bet.sport}</span>
                         </div>
-                        <h4 className="font-medium text-sm truncate">{bet.bet_description}</h4>
+                        <h4 className="font-medium text-xs leading-tight overflow-hidden" style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical'
+                        }}>{bet.bet_description}</h4>
                         {bet.match_description && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
                             {bet.match_description}
                           </p>
                         )}
                       </div>
-                      
                     </div>
 
-                    {/* Values */}
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Valor</p>
-                        <p className="font-semibold">{formatCurrency(bet.stake_amount)}</p>
+                    {/* Values - Horizontal Layout */}
+                    <div className="flex justify-between items-center text-xs">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <span className="text-muted-foreground">Valor: </span>
+                          <span className="font-semibold">{formatCurrency(bet.stake_amount)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Odds: </span>
+                          <span className="font-semibold">{bet.odds}</span>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Odds</p>
-                        <p className="font-semibold">{bet.odds}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">
                           {bet.is_cashout ? 'Cashout' : 'Retorno'}
-                        </p>
-                        <p className="font-semibold text-green-600">
+                        </div>
+                        <div className="font-semibold text-green-600 text-xs">
                           {bet.is_cashout && bet.cashout_amount 
                             ? formatCurrency(bet.cashout_amount)
                             : formatCurrency(bet.potential_return)
                           }
-                        </p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Action buttons */}
-                    <div className="flex gap-1 flex-wrap">
+                    {/* Action buttons - Compact */}
+                    <div className="flex gap-1">
                       {bet.status === 'pending' && (
                         <>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => onStatusChange?.(bet.id, 'won')}
-                            className="flex-1 min-w-[60px] h-6 text-xs"
+                            className="flex-1 h-6 text-xs px-2"
                           >
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            Ganhou
+                            <span className="hidden sm:inline">Ganhou</span>
+                            <span className="sm:hidden">✓</span>
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => onStatusChange?.(bet.id, 'lost')}
-                            className="flex-1 min-w-[60px] h-6 text-xs"
+                            className="flex-1 h-6 text-xs px-2"
                           >
                             <TrendingDown className="w-3 h-3 mr-1" />
-                            Perdeu
+                            <span className="hidden sm:inline">Perdeu</span>
+                            <span className="sm:hidden">✗</span>
                           </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => onCashout?.(bet)}
-                            className="flex-1 min-w-[70px] h-6 text-xs"
+                            className="flex-1 h-6 text-xs px-2"
                           >
                             <DollarSign className="w-3 h-3 mr-1" />
-                            Cashout
+                            <span className="hidden sm:inline">Cashout</span>
+                            <span className="sm:hidden">$</span>
                           </Button>
                         </>
                       )}
@@ -318,17 +326,18 @@ export default function BetListCompact({
                           size="sm"
                           variant="outline"
                           onClick={() => onCashout?.(bet)}
-                          className="flex-1 h-6 text-xs"
+                          className="flex-1 h-6 text-xs px-2"
                         >
                           <DollarSign className="w-3 h-3 mr-1" />
-                          Editar Cashout
+                          <span className="hidden sm:inline">Editar Cashout</span>
+                          <span className="sm:hidden">Editar</span>
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => onEdit?.(bet)}
-                        className="min-w-[40px] h-6 text-xs"
+                        className="h-6 w-6 p-0"
                       >
                         <Edit className="w-3 h-3" />
                         <span className="sr-only">Editar</span>
@@ -337,15 +346,15 @@ export default function BetListCompact({
                         size="sm"
                         variant="destructive"
                         onClick={() => onDelete?.(bet.id)}
-                        className="min-w-[40px] h-6 text-xs"
+                        className="h-6 w-6 p-0"
                       >
                         <Trash2 className="w-3 h-3" />
                         <span className="sr-only">Excluir</span>
                       </Button>
                     </div>
 
-                    {/* Date */}
-                    <div className="text-xs text-muted-foreground">
+                    {/* Date - Compact */}
+                    <div className="text-xs text-muted-foreground text-center">
                       {formatDate(bet.bet_date)}
                     </div>
                   </div>
