@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import UserNav from '../components/UserNav';
 import { 
   User, 
@@ -18,22 +19,28 @@ import {
   BarChart3,
   Zap,
   Target,
-  TrendingUp
+  TrendingUp,
+  Copy
 } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
+import { useToast } from '../hooks/use-toast';
 
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    whatsappNumber: ''
+    whatsappNumber: '',
+    countryCode: '+55' // Default to Brazil
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const supabase = createClient();
+  const { toast } = useToast();
+  
+  const botWhatsAppNumber = '+5511952132563'; // Bot number for manual sync
 
   const steps = [
     {
@@ -51,7 +58,7 @@ export default function Onboarding() {
     {
       id: 3,
       title: 'Finalização',
-      description: 'Tudo pronto! Bem-vindo ao Smart In Bet',
+      description: 'Tudo pronto! Bem-vindo ao Smartbetting',
       icon: CheckCircle
     }
   ];
@@ -133,14 +140,17 @@ export default function Onboarding() {
 
       // Validate WhatsApp number
       const cleanNumber = formData.whatsappNumber.replace(/\D/g, '');
-      if (cleanNumber.length < 10) {
+      if (cleanNumber.length < 8) {
         throw new Error('Número de WhatsApp inválido');
       }
+
+      // Combine country code + number
+      const fullNumber = formData.countryCode.replace(/\D/g, '') + cleanNumber;
 
       // Update user with WhatsApp number
       const { error } = await supabase
         .from('users')
-        .update({ whatsapp_number: cleanNumber })
+        .update({ whatsapp_number: fullNumber })
         .eq('id', userId);
 
       if (error) {
@@ -154,10 +164,18 @@ export default function Onboarding() {
       setIsLoading(false);
     }
   };
+  
+  const copyBotNumber = () => {
+    navigator.clipboard.writeText(botWhatsAppNumber);
+    toast({
+      title: "Número copiado!",
+      description: "Cole no WhatsApp para sincronizar sua conta",
+    });
+  };
 
   const handleWhatsAppSync = () => {
-    const message = "Oi, gostaria de sincronizar minha conta Smart In Bet";
-    const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
+    const message = "Oi, gostaria de sincronizar minha conta Smartbetting";
+    const whatsappUrl = `https://wa.me/5511952132563?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');
@@ -239,16 +257,40 @@ export default function Onboarding() {
         <form onSubmit={handleStep2Submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="whatsapp">Número do WhatsApp</Label>
-            <Input
-              id="whatsapp"
-              type="tel"
-              placeholder="(11) 99999-9999"
-              value={formData.whatsappNumber}
-              onChange={(e) => setFormData(prev => ({ ...prev, whatsappNumber: e.target.value }))}
-              required
-            />
+            <div className="flex gap-2">
+              <Select
+                value={formData.countryCode}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, countryCode: value }))}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="+55">🇧🇷 +55</SelectItem>
+                  <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                  <SelectItem value="+54">🇦🇷 +54</SelectItem>
+                  <SelectItem value="+56">🇨🇱 +56</SelectItem>
+                  <SelectItem value="+57">🇨🇴 +57</SelectItem>
+                  <SelectItem value="+351">🇵🇹 +351</SelectItem>
+                  <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                  <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                id="whatsapp"
+                type="tel"
+                placeholder="(11) 99999-9999"
+                value={formData.whatsappNumber}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setFormData(prev => ({ ...prev, whatsappNumber: value }));
+                }}
+                className="flex-1"
+                required
+              />
+            </div>
             <p className="text-sm text-muted-foreground">
-              Inclua o código do país (ex: +55 para Brasil)
+              Código do país selecionado: {formData.countryCode}
             </p>
           </div>
 
@@ -310,6 +352,42 @@ export default function Onboarding() {
           Abrir WhatsApp
         </Button>
 
+        {/* Alternative: Manual number copy */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">
+              Ou copie o número manualmente
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+                Número do Bot:
+              </p>
+              <p className="text-lg font-bold text-green-700 dark:text-green-300 font-mono">
+                {botWhatsAppNumber}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyBotNumber}
+              className="border-green-300 hover:bg-green-100 dark:border-green-700 dark:hover:bg-green-900"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+            Cole este número no WhatsApp e envie uma mensagem
+          </p>
+        </div>
+
         <div className="flex space-x-2">
           <Button 
             variant="outline" 
@@ -348,7 +426,7 @@ export default function Onboarding() {
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smart In Bet</span>
+            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
           </div>
           <UserNav />
         </div>
@@ -358,7 +436,7 @@ export default function Onboarding() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Bem-vindo ao Smart In Bet
+            Bem-vindo ao Smartbetting
           </h1>
           <p className="text-muted-foreground">
             Vamos configurar sua conta em poucos passos

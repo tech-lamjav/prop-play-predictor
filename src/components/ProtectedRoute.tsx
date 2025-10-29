@@ -32,8 +32,8 @@ export default function ProtectedRoute({
 
   // If user is logged in but trying to access auth pages
   if (!requireAuth && user) {
-    // Redirect to dashboard instead of onboarding
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to bets page
+    return <Navigate to="/bets" replace />;
   }
 
   return <>{children}</>;

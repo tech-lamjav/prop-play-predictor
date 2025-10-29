@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import AuthenticatedLayout from "../components/AuthenticatedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -287,54 +288,55 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Target className="w-6 h-6 text-white" />
+    <AuthenticatedLayout>
+      <div className="min-h-screen bg-slate-900 text-white">
+        {/* Header */}
+        <header className="bg-slate-800 border-b border-slate-700 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">Prop Play Predictor</h1>
+                <p className="text-slate-400 text-sm">
+                  {playerData ? `${playerData.name} - ${playerData.team_name}` : 'Análise Inteligente de Prop Bets'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold">Prop Play Predictor</h1>
-              <p className="text-slate-400 text-sm">
-                {playerData ? `${playerData.name} - ${playerData.team_name}` : 'Análise Inteligente de Prop Bets'}
-              </p>
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/players')}
+                className="text-slate-300 border-slate-600 hover:bg-slate-700"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Players
+              </Button>
+              <Badge variant="secondary" className={`text-white ${
+                error ? 'bg-red-600' : isLoading || isAnalyzing ? 'bg-yellow-600' : 'bg-green-600'
+              }`}>
+                {error ? (
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                ) : isLoading || isAnalyzing ? (
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                )}
+                {error ? 'Erro' : isLoading || isAnalyzing ? 'Carregando' : 'Conectado'}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={refresh} disabled={isLoading || isAnalyzing}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading || isAnalyzing ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+              <Button variant="outline" size="sm">
+                <Calendar className="w-4 h-4 mr-2" />
+                Hoje
+              </Button>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate('/players')}
-              className="text-slate-300 border-slate-600 hover:bg-slate-700"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Players
-            </Button>
-            <Badge variant="secondary" className={`text-white ${
-              error ? 'bg-red-600' : isLoading || isAnalyzing ? 'bg-yellow-600' : 'bg-green-600'
-            }`}>
-              {error ? (
-                <AlertTriangle className="w-3 h-3 mr-1" />
-              ) : isLoading || isAnalyzing ? (
-                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-              ) : (
-                <CheckCircle className="w-3 h-3 mr-1" />
-              )}
-              {error ? 'Erro' : isLoading || isAnalyzing ? 'Carregando' : 'Conectado'}
-            </Badge>
-            <Button variant="outline" size="sm" onClick={refresh} disabled={isLoading || isAnalyzing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading || isAnalyzing ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
-            <Button variant="outline" size="sm">
-              <Calendar className="w-4 h-4 mr-2" />
-              Hoje
-            </Button>
-          </div>
-        </div>
-      </header>
+        </header>
 
       <div className="flex">
         {/* Left Sidebar - Teams and Lineups */}
@@ -851,6 +853,6 @@ export default function Dashboard() {
           </div>
         </aside>
       </div>
-    </div>
+    </AuthenticatedLayout>
   );
 }

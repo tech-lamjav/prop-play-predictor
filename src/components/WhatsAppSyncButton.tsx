@@ -21,8 +21,8 @@ export default function WhatsAppSyncButton({
   const { isSynced, isLoading, error, syncWhatsApp } = useWhatsAppSync(userId);
 
   const handleSync = () => {
-    const message = "Oi, gostaria de sincronizar minha conta Smart In Bet";
-    const whatsappUrl = `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
+    const message = "Oi, gostaria de sincronizar minha conta Smartbetting";
+    const whatsappUrl = `https://wa.me/5511952132563?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');

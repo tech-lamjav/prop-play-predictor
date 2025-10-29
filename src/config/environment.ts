@@ -1,7 +1,7 @@
-// Environment configuration for the Smart Betting application
+// Environment configuration for the Smartbetting application
 export const config = {
   app: {
-    name: import.meta.env.VITE_APP_NAME || 'Smart Betting',
+    name: import.meta.env.VITE_APP_NAME || 'Smartbetting',
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',
     environment: import.meta.env.MODE || 'development',
   },
