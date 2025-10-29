@@ -4,12 +4,6 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
-import { 
   Select,
   SelectContent,
   SelectItem,
@@ -23,7 +17,6 @@ import {
   Clock, 
   DollarSign, 
   Target,
-  MoreHorizontal,
   Edit,
   Trash2,
   Filter,
@@ -262,42 +255,6 @@ export default function BetListCompact({
                         )}
                       </div>
                       
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                            <MoreHorizontal className="w-3 h-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onEdit?.(bet)}>
-                            <Edit className="w-3 h-3 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          {onStatusChange && bet.status === 'pending' && (
-                            <>
-                              <DropdownMenuItem onClick={() => onStatusChange(bet.id, 'won')}>
-                                <TrendingUp className="w-3 h-3 mr-2" />
-                                Marcar como Ganha
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => onStatusChange(bet.id, 'lost')}>
-                                <TrendingDown className="w-3 h-3 mr-2" />
-                                Marcar como Perdida
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => onCashout?.(bet)}>
-                                <DollarSign className="w-3 h-3 mr-2" />
-                                Cashout
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          <DropdownMenuItem 
-                            onClick={() => onDelete?.(bet.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="w-3 h-3 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
 
                     {/* Values */}
@@ -321,6 +278,70 @@ export default function BetListCompact({
                           }
                         </p>
                       </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-1 flex-wrap">
+                      {bet.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onStatusChange?.(bet.id, 'won')}
+                            className="flex-1 min-w-[60px] h-6 text-xs"
+                          >
+                            <TrendingUp className="w-3 h-3 mr-1" />
+                            Ganhou
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onStatusChange?.(bet.id, 'lost')}
+                            className="flex-1 min-w-[60px] h-6 text-xs"
+                          >
+                            <TrendingDown className="w-3 h-3 mr-1" />
+                            Perdeu
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onCashout?.(bet)}
+                            className="flex-1 min-w-[70px] h-6 text-xs"
+                          >
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            Cashout
+                          </Button>
+                        </>
+                      )}
+                      {bet.status === 'cashout' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onCashout?.(bet)}
+                          className="flex-1 h-6 text-xs"
+                        >
+                          <DollarSign className="w-3 h-3 mr-1" />
+                          Editar Cashout
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onEdit?.(bet)}
+                        className="min-w-[40px] h-6 text-xs"
+                      >
+                        <Edit className="w-3 h-3" />
+                        <span className="sr-only">Editar</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => onDelete?.(bet.id)}
+                        className="min-w-[40px] h-6 text-xs"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span className="sr-only">Excluir</span>
+                      </Button>
                     </div>
 
                     {/* Date */}
