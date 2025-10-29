@@ -17,7 +17,15 @@ import {
   BarChart3,
   List,
   Filter,
-  X
+  X,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  Target,
+  Calendar,
+  Edit,
+  Save
 } from 'lucide-react';
 import {
   Dialog,
