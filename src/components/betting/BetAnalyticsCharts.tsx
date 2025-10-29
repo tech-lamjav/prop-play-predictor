@@ -250,17 +250,26 @@ export default function BetAnalyticsCharts({
               type="single" 
               value={volumePeriod} 
               onValueChange={(value) => setVolumePeriod(value as 'day' | 'week' | 'month')}
-              className="bg-slate-100 dark:bg-slate-800"
+              className="bg-background border border-border rounded-md"
             >
-              <ToggleGroupItem value="day" className="text-xs">
+              <ToggleGroupItem 
+                value="day" 
+                className="text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:bg-transparent data-[state=off]:text-foreground hover:bg-accent hover:text-accent-foreground"
+              >
                 <Calendar className="h-3 w-3 mr-1" />
                 Dia
               </ToggleGroupItem>
-              <ToggleGroupItem value="week" className="text-xs">
+              <ToggleGroupItem 
+                value="week" 
+                className="text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:bg-transparent data-[state=off]:text-foreground hover:bg-accent hover:text-accent-foreground"
+              >
                 <Calendar className="h-3 w-3 mr-1" />
                 Semana
               </ToggleGroupItem>
-              <ToggleGroupItem value="month" className="text-xs">
+              <ToggleGroupItem 
+                value="month" 
+                className="text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:bg-transparent data-[state=off]:text-foreground hover:bg-accent hover:text-accent-foreground"
+              >
                 <Calendar className="h-3 w-3 mr-1" />
                 Mês
               </ToggleGroupItem>
@@ -347,7 +356,7 @@ export default function BetAnalyticsCharts({
       </Card>
 
       {/* Performance Heatmap */}
-      <Card>
+      <Card className="relative z-10">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Activity className="h-5 w-5 text-orange-600" />
@@ -357,9 +366,9 @@ export default function BetAnalyticsCharts({
             Taxa de acerto por dia da semana e hora
           </p>
         </CardHeader>
-        <CardContent>
-          <div className="h-80">
-            <div className="grid grid-cols-8 gap-1 h-full">
+        <CardContent className="relative">
+          <div className="h-80 overflow-hidden">
+            <div className="grid grid-cols-8 gap-1 h-full max-h-full">
               {/* Days of week labels */}
               <div className="flex flex-col justify-center text-xs text-muted-foreground">
                 <div className="h-8"></div>
@@ -389,12 +398,12 @@ export default function BetAnalyticsCharts({
                     const bgColor = intensity > 0.6 ? 'bg-green-600' : 
                                   intensity > 0.4 ? 'bg-yellow-500' : 
                                   intensity > 0.2 ? 'bg-orange-500' : 
-                                  'bg-gray-300';
+                                  'bg-gray-300 dark:bg-gray-600';
                     
                     return (
                       <div
                         key={`${dayOfWeek}-${hour}`}
-                        className={`h-8 w-full ${bgColor} border border-gray-200 hover:border-gray-400 transition-colors cursor-pointer`}
+                        className={`h-8 w-full ${bgColor} border border-border hover:border-accent transition-colors cursor-pointer`}
                         title={`${dayOfWeek === 0 ? 'Dom' : dayOfWeek === 1 ? 'Seg' : dayOfWeek === 2 ? 'Ter' : dayOfWeek === 3 ? 'Qua' : dayOfWeek === 4 ? 'Qui' : dayOfWeek === 5 ? 'Sex' : 'Sáb'} ${hour}h - ${performance.toFixed(1)}% (${betsCount} apostas)`}
                       />
                     );
@@ -402,25 +411,25 @@ export default function BetAnalyticsCharts({
                 </div>
               ))}
             </div>
-            
-            {/* Legend */}
-            <div className="flex items-center justify-center space-x-4 mt-4 text-xs">
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-gray-300 rounded"></div>
-                <span>0-20%</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                <span>20-40%</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                <span>40-60%</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-green-600 rounded"></div>
-                <span>60%+</span>
-              </div>
+          </div>
+          
+          {/* Legend - Fixed at bottom */}
+          <div className="flex items-center justify-center space-x-4 mt-4 text-xs bg-background relative z-20">
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded"></div>
+              <span>0-20%</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-orange-500 rounded"></div>
+              <span>20-40%</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+              <span>40-60%</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <div className="w-3 h-3 bg-green-600 rounded"></div>
+              <span>60%+</span>
             </div>
           </div>
         </CardContent>
