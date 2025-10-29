@@ -532,25 +532,7 @@ export default function Bets() {
                   <span className="text-sm font-medium">Filtros Globais</span>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                  {/* Status Filter */}
-                  <Select 
-                    value={globalFilters.status} 
-                    onValueChange={(value) => setGlobalFilters(prev => ({ ...prev, status: value }))}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="won">Ganhou</SelectItem>
-                      <SelectItem value="lost">Perdeu</SelectItem>
-                      <SelectItem value="cashout">Cashout</SelectItem>
-                      <SelectItem value="void">Anulada</SelectItem>
-                    </SelectContent>
-                  </Select>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Sport Filter */}
                   <Select 
                     value={globalFilters.sport} 
@@ -586,20 +568,26 @@ export default function Bets() {
 
                   {/* Date Range */}
                   <div className="flex gap-2">
-                    <Input
-                      type="date"
-                      placeholder="De"
-                      value={globalFilters.dateFrom}
-                      onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                      className="h-9"
-                    />
-                    <Input
-                      type="date"
-                      placeholder="Até"
-                      value={globalFilters.dateTo}
-                      onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                      className="h-9"
-                    />
+                    <div className="relative flex-1">
+                      <Input
+                        type="date"
+                        placeholder="De"
+                        value={globalFilters.dateFrom}
+                        onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                        className="h-9 pr-8 cursor-pointer"
+                      />
+                      <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white pointer-events-none" />
+                    </div>
+                    <div className="relative flex-1">
+                      <Input
+                        type="date"
+                        placeholder="Até"
+                        value={globalFilters.dateTo}
+                        onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                        className="h-9 pr-8 cursor-pointer"
+                      />
+                      <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white pointer-events-none" />
+                    </div>
                   </div>
 
                   {/* Search */}

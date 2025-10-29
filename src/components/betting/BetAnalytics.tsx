@@ -18,7 +18,6 @@ export default function BetAnalytics({ bets, isLoading }: BetAnalyticsProps) {
     profitTimeline,
     volumeData,
     sportDistribution,
-    performanceHeatmap,
   } = useBetAnalytics(bets);
 
   return (
@@ -69,7 +68,6 @@ export default function BetAnalytics({ bets, isLoading }: BetAnalyticsProps) {
                 profitTimeline={profitTimeline}
                 volumeData={volumeData}
                 sportDistribution={sportDistribution}
-                performanceHeatmap={performanceHeatmap}
                 isLoading={isLoading}
               />
             </CardContent>

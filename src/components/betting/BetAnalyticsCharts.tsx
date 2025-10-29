@@ -34,7 +34,6 @@ interface BetAnalyticsChartsProps {
   profitTimeline: ProfitTimelineData[];
   volumeData: (period: 'day' | 'week' | 'month') => VolumeData[];
   sportDistribution: SportDistributionData[];
-  performanceHeatmap: PerformanceHeatmapData[];
   isLoading?: boolean;
 }
 
@@ -67,7 +66,6 @@ export default function BetAnalyticsCharts({
   profitTimeline, 
   volumeData, 
   sportDistribution, 
-  performanceHeatmap,
   isLoading 
 }: BetAnalyticsChartsProps) {
   const [volumePeriod, setVolumePeriod] = useState<'day' | 'week' | 'month'>('day');
@@ -351,86 +349,6 @@ export default function BetAnalyticsCharts({
                 <Tooltip content={<PieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Performance Heatmap */}
-      <Card className="relative z-10">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Activity className="h-5 w-5 text-orange-600" />
-            <span>Performance por Período</span>
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Taxa de acerto por dia da semana e hora
-          </p>
-        </CardHeader>
-        <CardContent className="relative">
-          <div className="h-80 overflow-hidden">
-            <div className="grid grid-cols-8 gap-1 h-full max-h-full">
-              {/* Days of week labels */}
-              <div className="flex flex-col justify-center text-xs text-muted-foreground">
-                <div className="h-8"></div>
-                <div className="h-8 flex items-center justify-center">Dom</div>
-                <div className="h-8 flex items-center justify-center">Seg</div>
-                <div className="h-8 flex items-center justify-center">Ter</div>
-                <div className="h-8 flex items-center justify-center">Qua</div>
-                <div className="h-8 flex items-center justify-center">Qui</div>
-                <div className="h-8 flex items-center justify-center">Sex</div>
-                <div className="h-8 flex items-center justify-center">Sáb</div>
-              </div>
-              
-              {/* Hour labels and heatmap */}
-              {Array.from({ length: 24 }, (_, hour) => (
-                <div key={hour} className="flex flex-col">
-                  <div className="h-8 flex items-center justify-center text-xs text-muted-foreground">
-                    {hour}h
-                  </div>
-                  {Array.from({ length: 7 }, (_, dayOfWeek) => {
-                    const heatmapData = performanceHeatmap.find(
-                      data => data.dayOfWeek === dayOfWeek && data.hour === hour
-                    );
-                    const performance = heatmapData?.performance || 0;
-                    const betsCount = heatmapData?.betsCount || 0;
-                    
-                    const intensity = Math.min(performance / 100, 1);
-                    const bgColor = intensity > 0.6 ? 'bg-green-600' : 
-                                  intensity > 0.4 ? 'bg-yellow-500' : 
-                                  intensity > 0.2 ? 'bg-orange-500' : 
-                                  'bg-gray-300 dark:bg-gray-600';
-                    
-                    return (
-                      <div
-                        key={`${dayOfWeek}-${hour}`}
-                        className={`h-8 w-full ${bgColor} border border-border hover:border-accent transition-colors cursor-pointer`}
-                        title={`${dayOfWeek === 0 ? 'Dom' : dayOfWeek === 1 ? 'Seg' : dayOfWeek === 2 ? 'Ter' : dayOfWeek === 3 ? 'Qua' : dayOfWeek === 4 ? 'Qui' : dayOfWeek === 5 ? 'Sex' : 'Sáb'} ${hour}h - ${performance.toFixed(1)}% (${betsCount} apostas)`}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Legend - Fixed at bottom */}
-          <div className="flex items-center justify-center space-x-4 mt-4 text-xs bg-background relative z-20">
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded"></div>
-              <span>0-20%</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-orange-500 rounded"></div>
-              <span>20-40%</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-              <span>40-60%</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-3 h-3 bg-green-600 rounded"></div>
-              <span>60%+</span>
-            </div>
           </div>
         </CardContent>
       </Card>
