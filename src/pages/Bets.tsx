@@ -523,8 +523,8 @@ export default function Bets() {
         </div>
 
         {/* Global Filters */}
-        <div className="flex-shrink-0 px-4 py-3 border-b bg-slate-50 dark:bg-slate-900">
-          <Card>
+        <div className="flex-shrink-0 px-4 py-3 border-b bg-background">
+          <Card className="bg-card">
             <CardContent className="p-4">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
