@@ -574,9 +574,13 @@ export default function Bets() {
                         placeholder="De"
                         value={globalFilters.dateFrom}
                         onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                        className="h-9 pr-8 cursor-pointer"
+                        className="h-9 cursor-pointer"
+                        onClick={(e) => {
+                          // Trigger the date picker when clicking anywhere on the input
+                          const input = e.target as HTMLInputElement;
+                          input.showPicker();
+                        }}
                       />
-                      <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white pointer-events-none" />
                     </div>
                     <div className="relative flex-1">
                       <Input
@@ -584,9 +588,13 @@ export default function Bets() {
                         placeholder="Até"
                         value={globalFilters.dateTo}
                         onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                        className="h-9 pr-8 cursor-pointer"
+                        className="h-9 cursor-pointer"
+                        onClick={(e) => {
+                          // Trigger the date picker when clicking anywhere on the input
+                          const input = e.target as HTMLInputElement;
+                          input.showPicker();
+                        }}
                       />
-                      <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white pointer-events-none" />
                     </div>
                   </div>
 
