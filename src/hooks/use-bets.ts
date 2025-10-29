@@ -30,6 +30,24 @@ export interface BetStats {
   roi: number;
 }
 
+export interface BetAggregation {
+  period: string;
+  total: number;
+  won: number;
+  lost: number;
+  pending: number;
+  cashout: number;
+  profit: number;
+}
+
+export interface SportStats {
+  sport: string;
+  count: number;
+  winRate: number;
+  profit: number;
+  totalStaked: number;
+}
+
 export function useBets(userId: string) {
   const [bets, setBets] = useState<Bet[]>([]);
   const [stats, setStats] = useState<BetStats | null>(null);
@@ -184,6 +202,114 @@ export function useBets(userId: string) {
     });
   };
 
+  const getBetsByPeriod = (period: 'day' | 'week' | 'month') => {
+    const groupedBets = bets.reduce((acc, bet) => {
+      const betDate = new Date(bet.bet_date);
+      let key: string;
+      
+      switch (period) {
+        case 'day':
+          key = betDate.toISOString().split('T')[0];
+          break;
+        case 'week':
+          const weekStart = new Date(betDate);
+          weekStart.setDate(betDate.getDate() - betDate.getDay());
+          key = weekStart.toISOString().split('T')[0];
+          break;
+        case 'month':
+          key = `${betDate.getFullYear()}-${String(betDate.getMonth() + 1).padStart(2, '0')}`;
+          break;
+        default:
+          key = betDate.toISOString().split('T')[0];
+      }
+      
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(bet);
+      return acc;
+    }, {} as Record<string, Bet[]>);
+
+    return Object.entries(groupedBets)
+      .map(([period, bets]) => ({ period, bets }))
+      .sort((a, b) => a.period.localeCompare(b.period));
+  };
+
+  const getSportDistribution = () => {
+    const sportStats = bets.reduce((acc, bet) => {
+      if (!acc[bet.sport]) {
+        acc[bet.sport] = {
+          sport: bet.sport,
+          count: 0,
+          wins: 0,
+          profit: 0,
+          totalStaked: 0,
+        };
+      }
+      
+      acc[bet.sport].count++;
+      acc[bet.sport].totalStaked += bet.stake_amount;
+      
+      if (bet.status === 'won') {
+        acc[bet.sport].wins++;
+        acc[bet.sport].profit += bet.potential_return - bet.stake_amount;
+      } else if (bet.status === 'cashout') {
+        acc[bet.sport].wins++;
+        acc[bet.sport].profit += (bet.cashout_amount || 0) - bet.stake_amount;
+      } else if (bet.status === 'lost') {
+        acc[bet.sport].profit -= bet.stake_amount;
+      }
+      
+      return acc;
+    }, {} as Record<string, SportStats & { wins: number }>);
+
+    return Object.values(sportStats).map(sport => ({
+      sport: sport.sport,
+      count: sport.count,
+      winRate: sport.count > 0 ? (sport.wins / sport.count) * 100 : 0,
+      profit: sport.profit,
+      totalStaked: sport.totalStaked,
+    }));
+  };
+
+  const getProfitTimeline = () => {
+    const betsByDate = bets.reduce((acc, bet) => {
+      const date = new Date(bet.bet_date).toISOString().split('T')[0];
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(bet);
+      return acc;
+    }, {} as Record<string, Bet[]>);
+
+    const dates = Object.keys(betsByDate).sort();
+    let cumulativeProfit = 0;
+    
+    return dates.map(date => {
+      const dayBets = betsByDate[date];
+      let dailyProfit = 0;
+      
+      dayBets.forEach(bet => {
+        if (bet.status === 'won') {
+          dailyProfit += bet.potential_return - bet.stake_amount;
+        } else if (bet.status === 'cashout') {
+          dailyProfit += (bet.cashout_amount || 0) - bet.stake_amount;
+        } else if (bet.status === 'lost') {
+          dailyProfit -= bet.stake_amount;
+        }
+      });
+      
+      cumulativeProfit += dailyProfit;
+      
+      return {
+        date,
+        cumulativeProfit,
+        dailyProfit,
+        betsCount: dayBets.length,
+      };
+    });
+  };
+
   return {
     bets,
     stats,
@@ -195,6 +321,9 @@ export function useBets(userId: string) {
     deleteBet,
     getBetsByStatus,
     getBetsBySport,
-    getBetsByDateRange
+    getBetsByDateRange,
+    getBetsByPeriod,
+    getSportDistribution,
+    getProfitTimeline
   };
 }
