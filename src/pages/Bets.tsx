@@ -7,23 +7,17 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { 
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from '../components/ui/resizable';
-import { 
   RefreshCw, 
   AlertCircle,
-  BarChart3,
-  List,
-  Filter,
-  X,
-  DollarSign,
   TrendingUp,
   TrendingDown,
   Clock,
   Target,
+  DollarSign,
   Calendar,
+  X,
+  Filter,
+  List,
   Edit,
   Save
 } from 'lucide-react';
@@ -33,6 +27,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '../components/ui/dialog';
 import {
   Select,
@@ -43,8 +38,6 @@ import {
 } from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import BetAnalytics from '../components/betting/BetAnalytics';
-import BetListCompact from '../components/betting/BetListCompact';
 
 interface Bet {
   id: string;
@@ -124,8 +117,8 @@ export default function Bets() {
     }
   });
   
-  // Global filter states
-  const [globalFilters, setGlobalFilters] = useState({
+  // Filter states
+  const [filters, setFilters] = useState({
     status: 'all',
     sport: 'all',
     league: 'all',
@@ -374,37 +367,37 @@ export default function Bets() {
     return leagues.sort();
   }, [bets]);
 
-  // Filter bets based on global filters
+  // Filter bets based on filters
   const filteredBets = useMemo(() => {
     return bets.filter(bet => {
       // Status filter
-      if (globalFilters.status !== 'all' && bet.status !== globalFilters.status) {
+      if (filters.status !== 'all' && bet.status !== filters.status) {
         return false;
       }
 
       // Sport filter
-      if (globalFilters.sport !== 'all' && bet.sport !== globalFilters.sport) {
+      if (filters.sport !== 'all' && bet.sport !== filters.sport) {
         return false;
       }
 
       // League filter
-      if (globalFilters.league !== 'all' && bet.league !== globalFilters.league) {
+      if (filters.league !== 'all' && bet.league !== filters.league) {
         return false;
       }
 
       // Date from filter
-      if (globalFilters.dateFrom) {
+      if (filters.dateFrom) {
         const betDate = new Date(bet.bet_date);
-        const filterDate = new Date(globalFilters.dateFrom);
+        const filterDate = new Date(filters.dateFrom);
         if (betDate < filterDate) {
           return false;
         }
       }
 
       // Date to filter
-      if (globalFilters.dateTo) {
+      if (filters.dateTo) {
         const betDate = new Date(bet.bet_date);
-        const filterDate = new Date(globalFilters.dateTo);
+        const filterDate = new Date(filters.dateTo);
         // Set to end of day for inclusive comparison
         filterDate.setHours(23, 59, 59, 999);
         if (betDate > filterDate) {
@@ -413,8 +406,8 @@ export default function Bets() {
       }
 
       // Search query filter
-      if (globalFilters.searchQuery) {
-        const query = globalFilters.searchQuery.toLowerCase();
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
         const matchDescription = bet.bet_description?.toLowerCase().includes(query);
         const matchMatch = bet.match_description?.toLowerCase().includes(query);
         const matchLeague = bet.league?.toLowerCase().includes(query);
@@ -426,10 +419,10 @@ export default function Bets() {
 
       return true;
     });
-  }, [bets, globalFilters]);
+  }, [bets, filters]);
 
   const resetFilters = () => {
-    setGlobalFilters({
+    setFilters({
       status: 'all',
       sport: 'all',
       league: 'all',
@@ -504,14 +497,14 @@ export default function Bets() {
 
   return (
     <AuthenticatedLayout>
-      <div className="h-screen flex flex-col">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Header */}
-        <div className="flex-shrink-0 px-4 py-4 border-b">
+        <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Minhas Apostas</h1>
               <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-                Dashboard analítico das suas apostas registradas via WhatsApp
+                Acompanhe suas apostas registradas via WhatsApp
               </p>
             </div>
             
@@ -522,106 +515,186 @@ export default function Bets() {
           </div>
         </div>
 
-        {/* Global Filters */}
-        <div className="flex-shrink-0 px-4 py-3 border-b bg-background">
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium">Filtros Globais</span>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {/* Sport Filter */}
-                  <Select 
-                    value={globalFilters.sport} 
-                    onValueChange={(value) => setGlobalFilters(prev => ({ ...prev, sport: value }))}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Esporte" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      {uniqueSports.map((sport) => (
-                        <SelectItem key={sport} value={sport}>{sport}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                <CardTitle className="text-base sm:text-lg">Filtros</CardTitle>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={resetFilters}
+                className="w-full sm:w-auto"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Limpar Filtros
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select 
+                  value={filters.status} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="won">Ganhou</SelectItem>
+                    <SelectItem value="lost">Perdeu</SelectItem>
+                    <SelectItem value="cashout">Cashout</SelectItem>
+                    <SelectItem value="void">Anulada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  {/* League Filter */}
-                  <Select 
-                    value={globalFilters.league} 
-                    onValueChange={(value) => setGlobalFilters(prev => ({ ...prev, league: value }))}
-                    disabled={uniqueLeagues.length === 0}
-                  >
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Liga" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas</SelectItem>
-                      {uniqueLeagues.map((league) => (
-                        <SelectItem key={league} value={league}>{league}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              {/* Sport Filter */}
+              <div className="space-y-2">
+                <Label>Esporte</Label>
+                <Select 
+                  value={filters.sport} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, sport: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os esportes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {uniqueSports.map((sport) => (
+                      <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  {/* Date Range */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        type="date"
-                        placeholder="De"
-                        value={globalFilters.dateFrom}
-                        onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                        className="h-9 cursor-pointer"
-                        onClick={(e) => {
-                          // Trigger the date picker when clicking anywhere on the input
-                          const input = e.target as HTMLInputElement;
-                          input.showPicker();
-                        }}
-                      />
-                    </div>
-                    <div className="relative flex-1">
-                      <Input
-                        type="date"
-                        placeholder="Até"
-                        value={globalFilters.dateTo}
-                        onChange={(e) => setGlobalFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                        className="h-9 cursor-pointer"
-                        onClick={(e) => {
-                          // Trigger the date picker when clicking anywhere on the input
-                          const input = e.target as HTMLInputElement;
-                          input.showPicker();
-                        }}
-                      />
-                    </div>
-                  </div>
+              {/* League Filter */}
+              <div className="space-y-2">
+                <Label>Liga</Label>
+                <Select 
+                  value={filters.league} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, league: value }))}
+                  disabled={uniqueLeagues.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as ligas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {uniqueLeagues.map((league) => (
+                      <SelectItem key={league} value={league}>{league}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  {/* Search */}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Buscar..."
-                      value={globalFilters.searchQuery}
-                      onChange={(e) => setGlobalFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-                      className="h-9 flex-1"
-                    />
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={resetFilters}
-                      className="h-9 px-2"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+              {/* Date From Filter */}
+              <div className="space-y-2">
+                <Label>Data De</Label>
+                <Input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                />
+              </div>
+
+              {/* Date To Filter */}
+              <div className="space-y-2">
+                <Label>Data Até</Label>
+                <Input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                />
+              </div>
+
+              {/* Search Filter */}
+              <div className="space-y-2">
+                <Label>Buscar</Label>
+                <Input
+                  placeholder="Buscar apostas..."
+                  value={filters.searchQuery}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+                />
+              </div>
+            </div>
+            
+            {/* Results count */}
+            <div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+              <List className="w-4 h-4" />
+              Mostrando {filteredBets.length} de {bets.length} apostas
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total de Apostas</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.totalBets}</p>
                 </div>
               </div>
-              
-              {/* Results count */}
-              <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
-                <List className="w-4 h-4" />
-                Mostrando {filteredBets.length} de {bets.length} apostas
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Apostado</p>
+                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalStaked)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Retorno Total</p>
+                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalReturn)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Taxa de Acerto</p>
+                  <p className="text-xl sm:text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-2 md:col-span-1">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <TrendingUp className={`h-6 w-6 sm:h-8 sm:w-8 ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                <div className="sm:ml-4">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Lucro/Prejuízo</p>
+                  <p className={`text-lg sm:text-2xl font-bold ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(stats.profit)}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -629,66 +702,205 @@ export default function Bets() {
 
         {/* Error Alert */}
         {error && (
-          <div className="flex-shrink-0 px-4 py-2">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </div>
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        {/* Main Content - Split Layout */}
-        <div className="flex-1 min-h-0">
-          {/* Desktop: Split Layout */}
-          <div className="hidden lg:block h-full">
-            <ResizablePanelGroup direction="horizontal" className="h-full">
-              {/* Analytics Panel (60%) */}
-              <ResizablePanel defaultSize={60} minSize={40} className="min-h-0">
-                <div className="h-full p-4">
-                  <BetAnalytics bets={filteredBets} isLoading={isLoading} />
-                </div>
-              </ResizablePanel>
-              
-              <ResizableHandle className="w-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors" />
-              
-              {/* List Panel (40%) */}
-              <ResizablePanel defaultSize={40} minSize={30} className="min-h-0">
-                <div className="h-full p-4">
-                  <BetListCompact 
-                    bets={filteredBets}
-                    onEdit={openEditModal}
-                    onDelete={deleteBet}
-                    onStatusChange={updateBetStatus}
-                    onCashout={openCashoutModal}
-                    isLoading={isLoading}
-                  />
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+        {/* Bets List */}
+        {isLoading ? (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-full"></div>
+                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+        ) : bets.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Target className="w-12 h-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Nenhuma aposta encontrada
+              </h3>
+              <p className="text-gray-500 text-center mb-6">
+                Envie uma mensagem via WhatsApp para registrar suas apostas!
+              </p>
+            </CardContent>
+          </Card>
+        ) : filteredBets.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Filter className="w-12 h-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Nenhuma aposta corresponde aos filtros
+              </h3>
+              <p className="text-gray-500 text-center mb-6">
+                Tente ajustar os filtros para ver mais resultados.
+              </p>
+              <Button onClick={resetFilters} variant="outline">
+                Limpar Filtros
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filteredBets.map((bet) => (
+              <Card key={bet.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="space-y-3">
+                    {/* Header - Status and Sport */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {getStatusBadge(bet.status)}
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Target className="w-3.5 h-3.5 text-blue-600" />
+                            <span>{bet.sport}</span>
+                            {bet.league && (
+                              <>
+                                <span>•</span>
+                                <span className="text-xs">{bet.league}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <h3 className="font-semibold text-sm sm:text-base">{bet.bet_description}</h3>
+                        {bet.match_description && (
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                            {bet.match_description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-          {/* Mobile: Stacked Layout */}
-          <div className="lg:hidden h-full overflow-y-auto">
-            <div className="p-4 space-y-6">
-              {/* Analytics Section */}
-              <div>
-                <BetAnalytics bets={filteredBets} isLoading={isLoading} />
-              </div>
-              
-              {/* List Section */}
-              <div>
-                <BetListCompact 
-                  bets={filteredBets}
-                  onEdit={openEditModal}
-                  onDelete={deleteBet}
-                  onStatusChange={updateBetStatus}
-                  onCashout={openCashoutModal}
-                  isLoading={isLoading}
-                />
-              </div>
-            </div>
+                    {/* Values Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 border-y">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Valor</p>
+                        <p className="font-semibold text-sm">{formatCurrency(bet.stake_amount)}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Odds</p>
+                        <p className="font-semibold text-sm">{bet.odds}</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">
+                          {bet.is_cashout ? 'Cashout' : 'Retorno'}
+                        </p>
+                        <p className="font-semibold text-sm text-green-600">
+                          {bet.is_cashout && bet.cashout_amount 
+                            ? formatCurrency(bet.cashout_amount)
+                            : formatCurrency(bet.potential_return)
+                          }
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-0.5">Data</p>
+                        <p className="text-xs sm:text-sm">{new Date(bet.bet_date).toLocaleDateString('pt-BR')}</p>
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2 flex-wrap">
+                      {bet.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateBetStatus(bet.id, 'won')}
+                            className="flex-1 min-w-[80px]"
+                          >
+                            <TrendingUp className="w-3 h-3 sm:mr-1" />
+                            <span className="hidden xs:inline sm:inline">Ganhou</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateBetStatus(bet.id, 'lost')}
+                            className="flex-1 min-w-[80px]"
+                          >
+                            <TrendingDown className="w-3 h-3 sm:mr-1" />
+                            <span className="hidden xs:inline sm:inline">Perdeu</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openCashoutModal(bet)}
+                            className="flex-1 min-w-[90px]"
+                          >
+                            <DollarSign className="w-3 h-3 sm:mr-1" />
+                            <span className="hidden xs:inline sm:inline">Cashout</span>
+                          </Button>
+                        </>
+                      )}
+                      {bet.status === 'cashout' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openCashoutModal(bet)}
+                          className="flex-1"
+                        >
+                          <DollarSign className="w-3 h-3 mr-1" />
+                          <span className="text-xs sm:text-sm">Editar Cashout</span>
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditModal(bet)}
+                        className="min-w-[40px]"
+                      >
+                        <Edit className="w-3 h-3" />
+                        <span className="sr-only">Editar</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteBet(bet.id)}
+                        className="min-w-[40px]"
+                      >
+                        <X className="w-3 h-3" />
+                        <span className="sr-only">Excluir</span>
+                      </Button>
+                    </div>
+
+                    {/* Cashout info if applicable */}
+                    {bet.is_cashout && bet.cashout_amount && (
+                      <div className="pt-2 border-t flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <DollarSign className="w-3 h-3" />
+                          <span>Cashout: {formatCurrency(bet.cashout_amount)}</span>
+                        </div>
+                        {bet.cashout_odds && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <span>Odds: {bet.cashout_odds}</span>
+                          </div>
+                        )}
+                        {bet.cashout_date && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>{new Date(bet.cashout_date).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </div>
+        )}
 
         {/* Cashout Modal */}
         <Dialog open={cashoutModal.isOpen} onOpenChange={(open) => 
