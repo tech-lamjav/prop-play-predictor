@@ -1,15 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Lock, Zap, BarChart3, ArrowRight } from "lucide-react";
+import { Lock, Zap, BarChart3, ArrowRight, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Paywall() {
   const navigate = useNavigate();
 
   const handleUpgrade = () => {
-    // Dummy button - placeholder for future payment integration
-    console.log("Upgrade button clicked - payment integration coming soon");
-    // You can add toast notification here if needed
+    // Open WhatsApp with pre-filled message for upgrade
+    const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting";
+    const whatsappUrl = `https://wa.me/554391482828?text=${encodeURIComponent(message)}`;
+    
+    // Open WhatsApp with pre-filled message
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -110,11 +113,12 @@ export default function Paywall() {
                     className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6 gap-2"
                     size="lg"
                   >
-                    <span>Fazer Upgrade</span>
+                    <MessageCircle className="h-5 w-5" />
+                    <span>Fazer Upgrade via WhatsApp</span>
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                   <p className="text-sm text-muted-foreground text-center mt-4">
-                    Integração de pagamento em breve
+                    Entre em contato via WhatsApp para fazer upgrade do seu plano
                   </p>
                 </div>
               </div>
