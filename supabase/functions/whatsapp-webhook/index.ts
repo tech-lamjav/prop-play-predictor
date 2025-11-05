@@ -611,6 +611,15 @@ serve(async (req) => {
         if (syncUser && !syncError) {
           console.log('Found user by phone, syncing conversation_id')
           
+          // Check if this is the first sync by checking if conversation_id is NULL
+          const { data: userBeforeSync } = await supabase
+            .from('users')
+            .select('conversation_id')
+            .eq('id', syncUser.id)
+            .single()
+          
+          const isFirstSync = !userBeforeSync?.conversation_id
+          
           // Update user with conversation_id
           const { error: updateError } = await supabase
             .from('users')
@@ -630,6 +639,12 @@ serve(async (req) => {
               conversation_id: conversationId || undefined,
               whatsapp_number: syncUser.whatsapp_number || undefined
             }).catch(() => {})
+            
+            // Send welcome message only if this is the first sync
+            if (isFirstSync) {
+              console.log('First sync detected, sending welcome message')
+              await sendWelcomeMessage(supabase, syncUser.id).catch(() => {})
+            }
             
             return new Response(
               JSON.stringify({
@@ -1004,6 +1019,51 @@ async function processMessage(supabase: any, messageId: string, content: string,
       .update({ status: 'processing' })
       .eq('id', messageId)
 
+    // Validate if message looks like a betting message before processing
+    const normalizedContent = content.toLowerCase().trim()
+    
+    // List of simple greetings/common messages that are clearly not bets
+    const simpleGreetings = ['oi', 'olá', 'ola', 'hello', 'hi', 'hey', 'eae', 'e aí', 'eai', 'tudo bem', 'tudo bom', 'ok', 'okay', 'beleza', 'blz']
+    
+    // Check if message is too short or is a simple greeting
+    const isSimpleGreeting = simpleGreetings.some(greeting => normalizedContent === greeting)
+    const isTooShort = normalizedContent.length < 10 && !normalizedContent.match(/\d/) // Less than 10 chars and no numbers
+    
+    // Check if message has betting-related keywords
+    const bettingKeywords = ['odd', 'odds', 'aposta', 'apost', 'jogo', 'time', 'times', 'vs', 'pontos', 'gols', 'assist', 'rebote', 'stake', 'valor', 'reais', 'r$', 'bet', 'betting']
+    const hasBettingKeywords = bettingKeywords.some(keyword => normalizedContent.includes(keyword))
+    
+    // If it's a simple greeting or too short without numbers, skip betting extraction and send help
+    if (isSimpleGreeting || (isTooShort && !hasBettingKeywords)) {
+      console.log('Message appears to be a greeting or non-betting message, skipping extraction:', content)
+      
+      // Track that we skipped extraction
+      await trackEvent(
+        'bet_extraction_skipped',
+        {
+          message_id: messageId,
+          reason: isSimpleGreeting ? 'simple_greeting' : 'too_short_without_keywords',
+          content_length: content.length
+        },
+        userId,
+        traceId
+      ).catch(() => {})
+      
+      // Update message status to failed
+      await supabase
+        .from('message_queue')
+        .update({ 
+          status: 'failed',
+          error_message: 'Message does not appear to be a betting message'
+        })
+        .eq('id', messageId)
+      
+      // Send help message
+      await sendHelpMessage(supabase, userId)
+      
+      return // Exit early, don't process as bet
+    }
+    
     // Track bet extraction started
     await trackEvent(
       'bet_extraction_started',
@@ -1018,7 +1078,50 @@ async function processMessage(supabase: any, messageId: string, content: string,
     // Use OpenAI to extract betting information
     const bettingInfo = await extractBettingInfo(content, userId, traceId)
     
+    // Validate that betting info is valid and has meaningful matches
     if (bettingInfo && bettingInfo.matches && bettingInfo.matches.length > 0) {
+      // Additional validation: check if matches have valid descriptions and odds
+      const validMatches = bettingInfo.matches.filter(match => 
+        match.description && 
+        match.description.trim().length > 0 &&
+        match.bet_description && 
+        match.bet_description.trim().length > 0 &&
+        match.odds && 
+        match.odds >= 1.01
+      )
+      
+      // If no valid matches after filtering, treat as non-betting message
+      if (validMatches.length === 0) {
+        console.log('No valid matches found after validation, treating as non-betting message')
+        
+        // Track that extraction returned invalid matches
+        await trackEvent(
+          'bet_extraction_failed',
+          {
+            message_id: messageId,
+            reason: 'invalid_matches_extracted'
+          },
+          userId,
+          traceId
+        ).catch(() => {})
+        
+        // Update message status to failed
+        await supabase
+          .from('message_queue')
+          .update({ 
+            status: 'failed',
+            error_message: 'Extracted matches are invalid'
+          })
+          .eq('id', messageId)
+        
+        // Send help message
+        await sendHelpMessage(supabase, userId)
+        
+        return // Exit early, don't process as bet
+      }
+      
+      // Use only valid matches
+      bettingInfo.matches = validMatches
       // Track bet extraction success
       await trackEvent(
         'bet_extraction_success',
@@ -1358,11 +1461,18 @@ async function extractBettingInfo(content: string, userId: string, traceId: stri
     console.log('Extracting betting info from:', content)
     
     // Simplified prompt focused on business logic only
-    const prompt = `Analise a seguinte mensagem de aposta e extraia TODAS as informações possíveis.
+    const prompt = `Analise a seguinte mensagem e determine se é uma aposta esportiva válida. Se NÃO for uma aposta, retorne null imediatamente.
 
 MENSAGEM: "${content}"
 
-INSTRUÇÕES:
+IMPORTANTE - VALIDAÇÃO PRÉVIA:
+- Se a mensagem for apenas um cumprimento (ex: "oi", "olá", "tudo bem"), retorne null
+- Se a mensagem não mencionar nenhum time/jogador/esporte, retorne null
+- Se a mensagem não mencionar odds ou valores relacionados a apostas, retorne null
+- Se a mensagem for muito curta e não contiver informações de aposta, retorne null
+- APENAS extraia informações se for claramente uma aposta esportiva com odds, times/jogadores e tipo de aposta
+
+INSTRUÇÕES (APENAS SE FOR UMA APOSTA VÁLIDA):
 1. Identifique se é uma aposta simples, múltipla ou sistema
    - "single" = 1 única aposta
    - "multiple" = 2 ou mais apostas combinadas
@@ -1821,6 +1931,87 @@ async function sendHelpMessage(supabase: any, userId: string) {
 
   } catch (error) {
     console.error('Error sending help message:', error)
+  }
+}
+
+// Send welcome message to user when they sync WhatsApp for the first time
+async function sendWelcomeMessage(supabase: any, userId: string) {
+  try {
+    console.log('Sending welcome message for user:', userId)
+    
+    // Get user's conversation_id
+    const { data: user } = await supabase
+      .from('users')
+      .select('conversation_id, name')
+      .eq('id', userId)
+      .single()
+
+    if (!user?.conversation_id) {
+      console.log('No conversation_id found for user:', userId)
+      return
+    }
+
+    const welcomeMessage = `👋 *Bem-vindo ao Smartbetting!*
+
+Sua conta WhatsApp foi sincronizada com sucesso! 🎉
+
+Agora você pode enviar suas apostas diretamente aqui e acompanhar tudo no seu dashboard.
+
+*📸 MELHOR FORMA - Screenshot da aposta:*
+• Tire print da sua aposta no site (1 aposta por print)
+• Envie a imagem aqui
+• Se faltar alguma info (como valor), escreva na mesma mensagem
+• Exemplo: *[IMAGEM]* + "100 reais"
+
+*✍️ OU escreva algo como:*
+\`Lakers vs Warriors - LeBron 25+ pontos - Odd 1.85 - R$ 50\`
+
+⚠️ *IMPORTANTE:*
+• *1 mensagem = 1 aposta*
+• Envie TUDO junto (imagem + texto na mesma mensagem)
+
+💡 *Exemplos válidos:*
+• Screenshot + "apostei 50"
+• "Bucks vs Nets - Giannis 30+ pts - odd 2.0 - 100 reais"
+
+Vamos começar! Envie sua primeira aposta! 🚀`
+
+    // Send message via Chatwoot API
+    const chatwootBaseUrl = Deno.env.get('CHATWOOT_BASE_URL')
+    const chatwootApiToken = Deno.env.get('CHATWOOT_API_ACCESS_TOKEN')
+    const chatwootAccountId = Deno.env.get('CHATWOOT_ACCOUNT_ID') || '1'
+
+    if (chatwootBaseUrl && chatwootApiToken) {
+      try {
+        const response = await fetch(`${chatwootBaseUrl}/api/v1/accounts/${chatwootAccountId}/conversations/${user.conversation_id}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api_access_token': chatwootApiToken
+          },
+          body: JSON.stringify({
+            content: welcomeMessage,
+            message_type: 'outgoing'
+          })
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          console.log(`✅ Welcome message sent successfully. Message ID: ${result.id}`)
+        } else {
+          const errorText = await response.text()
+          console.error(`❌ Failed to send welcome message: ${response.status} - ${errorText}`)
+        }
+      } catch (error) {
+        console.error('❌ Error sending welcome message via Chatwoot:', error)
+      }
+    } else {
+      console.log('Chatwoot configuration missing, skipping welcome message send')
+      console.log(`Welcome message for ${user.name}:`, welcomeMessage)
+    }
+
+  } catch (error) {
+    console.error('Error sending welcome message:', error)
   }
 }
 

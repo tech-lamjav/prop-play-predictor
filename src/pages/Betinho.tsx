@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { 
   MessageCircle, 
   Bot, 
@@ -8,6 +9,7 @@ import {
   CheckCircle, 
   BarChart3, 
   TrendingUp, 
+  TrendingDown,
   Clock, 
   Shield, 
   Target, 
@@ -18,7 +20,6 @@ import {
   Timer, 
   Brain,
   Camera,
-  Mic,
   FileText,
   QrCode,
   Send,
@@ -27,13 +28,38 @@ import {
   List,
   Eye,
   Lock,
-  Sparkles
+  Sparkles,
+  RefreshCw,
+  X,
+  Calendar,
+  Edit
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { config } from "@/config/environment";
+
+// Helper function to get Supabase Storage public URL
+const getVideoUrl = (videoPath: string, bucketName: string = 'landing-page') => {
+  const supabaseUrl = config.supabase.url;
+  if (!supabaseUrl) return '';
+  
+  // Remove trailing slash if present
+  const baseUrl = supabaseUrl.replace(/\/$/, '');
+  
+  // Encode bucket name and video path to handle spaces and special characters
+  const encodedBucket = encodeURIComponent(bucketName);
+  const encodedPath = encodeURIComponent(videoPath);
+  
+  return `${baseUrl}/storage/v1/object/public/${encodedBucket}/${encodedPath}`;
+};
 
 const Betinho = () => {
   const navigate = useNavigate();
+  
+  // Caminho do vídeo no Supabase Storage
+  // Bucket: landing-page
+  // Arquivo: WhatsApp Video 2025-11-03 at 22.02.07.mp4
+  const screenshotVideoUrl = getVideoUrl('WhatsApp Video 2025-11-03 at 22.02.07.mp4', 'landing-page');
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -79,7 +105,7 @@ const Betinho = () => {
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-              Envie suas apostas por mensagem, áudio ou foto. 
+              Envie suas apostas por mensagem ou foto. 
               <span className="text-foreground font-semibold"> O Betinho organiza tudo automaticamente no seu dashboard.</span>
             </p>
 
@@ -133,7 +159,7 @@ const Betinho = () => {
               </CardHeader>
               <CardContent className="text-center">
                 <p className="text-muted-foreground">
-                  Mande uma mensagem, áudio ou foto da sua aposta para o Betinho no WhatsApp
+                  Mande uma mensagem ou foto da sua aposta para o Betinho no WhatsApp
                 </p>
               </CardContent>
             </Card>
@@ -147,7 +173,7 @@ const Betinho = () => {
               </CardHeader>
               <CardContent className="text-center">
                 <p className="text-muted-foreground">
-                  Nossa inteligência artificial extrai automaticamente todos os dados da sua aposta
+                  Nossa inteligência artificial extrai automaticamente todos os dados da sua aposta e registra na sua conta
                 </p>
               </CardContent>
             </Card>
@@ -203,21 +229,7 @@ const Betinho = () => {
                   <h3 className="text-lg font-semibold text-foreground">Análise de Screenshots</h3>
                 </div>
                 <p className="text-muted-foreground">
-                  Tire uma foto da sua aposta e nossa IA com GPT-4 Vision extrai todos os dados
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Mic className="w-6 h-6 text-green-600" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">Mensagens de Voz</h3>
-                </div>
-                <p className="text-muted-foreground">
-                  Grave um áudio descrevendo sua aposta e o Whisper converte em texto automaticamente
+                  Tire uma foto da sua aposta e nossa IA extrai todos os dados
                 </p>
               </CardContent>
             </Card>
@@ -318,10 +330,24 @@ const Betinho = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="bg-slate-700 rounded-lg p-4 mb-4 flex items-center justify-center">
-                  <div className="w-32 h-20 bg-slate-600 rounded flex items-center justify-center">
-                    <Camera className="w-8 h-8 text-slate-400" />
-                  </div>
+                <div className="bg-slate-700 rounded-lg p-4 mb-4 overflow-hidden">
+                  {screenshotVideoUrl ? (
+                    <video
+                      className="w-full rounded-lg"
+                      controls
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    >
+                      <source src={screenshotVideoUrl} type="video/mp4" />
+                      Seu navegador não suporta o elemento de vídeo.
+                    </video>
+                  ) : (
+                    <div className="w-full h-48 bg-slate-600 rounded flex items-center justify-center">
+                      <Camera className="w-8 h-8 text-slate-400" />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-slate-300 text-sm">
                   <CheckCircle className="w-4 h-4 text-green-400" />
@@ -330,31 +356,6 @@ const Betinho = () => {
               </CardContent>
             </Card>
 
-            {/* Voice Message Example */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                    <Mic className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-white">Mensagem de Voz</CardTitle>
-                    <p className="text-slate-300 text-sm">Grave um áudio descrevendo sua aposta</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-slate-700 rounded-lg p-4 mb-4">
-                  <p className="text-white font-mono text-sm">
-                    "Oi Betinho, apostei 100 reais no Bucks contra o Nets, Giannis vai fazer mais de 30 pontos, odd 2.0"
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-slate-300 text-sm">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>Whisper converte áudio em texto e Betinho processa a aposta</span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </section>
 
@@ -369,113 +370,376 @@ const Betinho = () => {
             </p>
           </div>
 
-          {/* Mock Dashboard Interface */}
+          {/* Mock Dashboard Interface - Réplica exata da página Bets */}
           <div className="max-w-7xl mx-auto">
-            <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl overflow-hidden">
-              {/* Dashboard Header */}
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                    <Bot className="w-6 h-6 text-white" />
-                  </div>
+            <div className="bg-background rounded-2xl p-4 md:p-6 shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-xl font-bold text-white">Minhas Apostas - Betinho</h3>
-                    <p className="text-slate-400 text-sm">Apostas registradas via WhatsApp</p>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-foreground">Minhas Apostas</h3>
+                    <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
+                      Acompanhe suas apostas registradas via WhatsApp
+                    </p>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge className="bg-green-600 text-white">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Conectado
-                  </Badge>
+                  
+                  <Button variant="outline" disabled className="w-full sm:w-auto">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Atualizar
+                  </Button>
                 </div>
               </div>
 
-              {/* Stats Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4 text-center">
-                    <Target className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">12</p>
-                    <p className="text-slate-300 text-sm">Total de Apostas</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4 text-center">
-                    <DollarSign className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">R$ 1.200</p>
-                    <p className="text-slate-300 text-sm">Total Apostado</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4 text-center">
-                    <TrendingUp className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">R$ 1.450</p>
-                    <p className="text-slate-300 text-sm">Retorno Total</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4 text-center">
-                    <Target className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">67%</p>
-                    <p className="text-slate-300 text-sm">Taxa de Acerto</p>
-                  </CardContent>
-                </Card>
-              </div>
+              {/* Filters */}
+              <Card className="mb-6">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                      <CardTitle className="text-base sm:text-lg">Filtros</CardTitle>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      disabled
+                      className="w-full sm:w-auto"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Limpar Filtros
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <div className="h-10 bg-muted rounded-md border border-border flex items-center px-3 text-sm text-muted-foreground">
+                        Todos
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Esporte</Label>
+                      <div className="h-10 bg-muted rounded-md border border-border flex items-center px-3 text-sm text-muted-foreground">
+                        Todos
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Liga</Label>
+                      <div className="h-10 bg-muted rounded-md border border-border flex items-center px-3 text-sm text-muted-foreground">
+                        Todas
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data Inicial</Label>
+                      <div className="h-10 bg-muted rounded-md border border-border flex items-center px-3 text-sm text-muted-foreground">
+                        --
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data Final</Label>
+                      <div className="h-10 bg-muted rounded-md border border-border flex items-center px-3 text-sm text-muted-foreground">
+                        --
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Buscar</Label>
+                      <div className="h-10 bg-muted rounded-md border border-border flex items-center px-3 text-sm text-muted-foreground">
+                        Buscar apostas...
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Results count */}
+                  <div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+                    <List className="w-4 h-4" />
+                    Mostrando 3 de 3 apostas
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* Bet Cards Preview */}
-              <div className="space-y-3">
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-green-500 text-white">Ganhou</Badge>
-                          <span className="text-sm text-slate-300">NBA • Lakers vs Warriors</span>
-                        </div>
-                        <h4 className="font-semibold text-white">LeBron 25+ pontos</h4>
-                        <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
-                          <div>
-                            <p className="text-slate-400">Valor</p>
-                            <p className="text-white font-semibold">R$ 50</p>
-                          </div>
-                          <div>
-                            <p className="text-slate-400">Odds</p>
-                            <p className="text-white font-semibold">1.85</p>
-                          </div>
-                          <div>
-                            <p className="text-slate-400">Retorno</p>
-                            <p className="text-green-400 font-semibold">R$ 92.50</p>
-                          </div>
-                        </div>
+              {/* Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                      <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                      <div className="sm:ml-4">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total de Apostas</p>
+                        <p className="text-xl sm:text-2xl font-bold">3</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-yellow-500 text-white">Pendente</Badge>
-                          <span className="text-sm text-slate-300">NBA • Bucks vs Nets</span>
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                      <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                      <div className="sm:ml-4">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Apostado</p>
+                        <p className="text-lg sm:text-2xl font-bold">R$ 150,00</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                      <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                      <div className="sm:ml-4">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">Retorno Total</p>
+                        <p className="text-lg sm:text-2xl font-bold">R$ 292,50</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                      <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                      <div className="sm:ml-4">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">Taxa de Acerto</p>
+                        <p className="text-xl sm:text-2xl font-bold">66.7%</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="col-span-2 md:col-span-1">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                      <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                      <div className="sm:ml-4">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">Lucro/Prejuízo</p>
+                        <p className="text-lg sm:text-2xl font-bold text-green-600">R$ 142,50</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Bets List */}
+              <div className="space-y-3">
+                {/* Bet Card 1 - Ganhou */}
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="space-y-3">
+                      {/* Header - Status and Sport */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <Badge className="bg-green-500 text-white flex items-center gap-1">
+                              <TrendingUp className="w-3 h-3" />
+                              Ganhou
+                            </Badge>
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Target className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Basquete</span>
+                              <span>•</span>
+                              <span className="text-xs">NBA</span>
+                            </div>
+                          </div>
+                          <h3 className="font-semibold text-sm sm:text-base">LeBron 25+ pontos</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                            Lakers vs Warriors
+                          </p>
                         </div>
-                        <h4 className="font-semibold text-white">Giannis 30+ pontos</h4>
-                        <div className="grid grid-cols-3 gap-4 mt-3 text-sm">
-                          <div>
-                            <p className="text-slate-400">Valor</p>
-                            <p className="text-white font-semibold">R$ 100</p>
-                          </div>
-                          <div>
-                            <p className="text-slate-400">Odds</p>
-                            <p className="text-white font-semibold">2.0</p>
-                          </div>
-                          <div>
-                            <p className="text-slate-400">Retorno</p>
-                            <p className="text-green-400 font-semibold">R$ 200</p>
-                          </div>
+                      </div>
+
+                      {/* Values Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 border-y">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Valor</p>
+                          <p className="font-semibold text-sm">R$ 50,00</p>
                         </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Odds</p>
+                          <p className="font-semibold text-sm">1.85</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Retorno</p>
+                          <p className="font-semibold text-sm text-green-600">R$ 92,50</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Data</p>
+                          <p className="text-xs sm:text-sm">15/01/2024</p>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" disabled className="min-w-[40px]">
+                          <Edit className="w-3 h-3" />
+                          <span className="sr-only">Editar</span>
+                        </Button>
+                        <Button size="sm" variant="destructive" disabled className="min-w-[40px]">
+                          <X className="w-3 h-3" />
+                          <span className="sr-only">Excluir</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Bet Card 2 - Pendente */}
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="space-y-3">
+                      {/* Header - Status and Sport */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <Badge className="bg-yellow-500 text-white flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Pendente
+                            </Badge>
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Target className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Basquete</span>
+                              <span>•</span>
+                              <span className="text-xs">NBA</span>
+                            </div>
+                          </div>
+                          <h3 className="font-semibold text-sm sm:text-base">Giannis 30+ pontos</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                            Bucks vs Nets
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Values Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 border-y">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Valor</p>
+                          <p className="font-semibold text-sm">R$ 100,00</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Odds</p>
+                          <p className="font-semibold text-sm">2.0</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Retorno</p>
+                          <p className="font-semibold text-sm text-green-600">R$ 200,00</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Data</p>
+                          <p className="text-xs sm:text-sm">18/01/2024</p>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" disabled className="flex-1 min-w-[80px]">
+                          <TrendingUp className="w-3 h-3 sm:mr-1" />
+                          <span className="hidden xs:inline sm:inline">Ganhou</span>
+                        </Button>
+                        <Button size="sm" variant="outline" disabled className="flex-1 min-w-[80px]">
+                          <TrendingDown className="w-3 h-3 sm:mr-1" />
+                          <span className="hidden xs:inline sm:inline">Perdeu</span>
+                        </Button>
+                        <Button size="sm" variant="outline" disabled className="flex-1 min-w-[90px]">
+                          <DollarSign className="w-3 h-3 sm:mr-1" />
+                          <span className="hidden xs:inline sm:inline">Cashout</span>
+                        </Button>
+                        <Button size="sm" variant="outline" disabled className="min-w-[40px]">
+                          <Edit className="w-3 h-3" />
+                          <span className="sr-only">Editar</span>
+                        </Button>
+                        <Button size="sm" variant="destructive" disabled className="min-w-[40px]">
+                          <X className="w-3 h-3" />
+                          <span className="sr-only">Excluir</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Bet Card 3 - Cashout */}
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="space-y-3">
+                      {/* Header - Status and Sport */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <Badge className="bg-blue-500 text-white flex items-center gap-1">
+                              <DollarSign className="w-3 h-3" />
+                              Cashout
+                            </Badge>
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Target className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Basquete</span>
+                              <span>•</span>
+                              <span className="text-xs">NBA</span>
+                            </div>
+                          </div>
+                          <h3 className="font-semibold text-sm sm:text-base">Curry 5+ cestas de 3</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                            Warriors vs Celtics
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Values Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 border-y">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Valor</p>
+                          <p className="font-semibold text-sm">R$ 50,00</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Odds</p>
+                          <p className="font-semibold text-sm">2.0</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Cashout</p>
+                          <p className="font-semibold text-sm text-green-600">R$ 75,00</p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-0.5">Data</p>
+                          <p className="text-xs sm:text-sm">20/01/2024</p>
+                        </div>
+                      </div>
+
+                      {/* Cashout info */}
+                      <div className="pt-2 border-t flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <DollarSign className="w-3 h-3" />
+                          <span>Cashout: R$ 75,00</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <span>Odds: 1.5</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>20/01/2024</span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2 flex-wrap">
+                        <Button size="sm" variant="outline" disabled className="flex-1">
+                          <DollarSign className="w-3 h-3 mr-1" />
+                          <span className="text-xs sm:text-sm">Editar Cashout</span>
+                        </Button>
+                        <Button size="sm" variant="outline" disabled className="min-w-[40px]">
+                          <Edit className="w-3 h-3" />
+                          <span className="sr-only">Editar</span>
+                        </Button>
+                        <Button size="sm" variant="destructive" disabled className="min-w-[40px]">
+                          <X className="w-3 h-3" />
+                          <span className="sr-only">Excluir</span>
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -507,9 +771,6 @@ const Betinho = () => {
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
                 Tecnologia de ponta para suas apostas
               </h2>
-              <p className="text-xl text-muted-foreground">
-                Powered by OpenAI GPT-4 Vision e Whisper para máxima precisão
-              </p>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8">
@@ -521,17 +782,12 @@ const Betinho = () => {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-foreground">IA Avançada</h3>
-                      <p className="text-muted-foreground">GPT-4 Vision + Whisper</p>
                     </div>
                   </div>
                   <ul className="space-y-3 text-muted-foreground">
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       <span>Análise precisa de imagens de apostas</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span>Transcrição automática de áudios</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
@@ -573,7 +829,7 @@ const Betinho = () => {
         </section>
 
         {/* Final CTA */}
-        <section className="py-20 px-6 text-center bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-3xl">
+        <section className="py-20 px-6 text-center">
           <div className="max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
               <Sparkles className="h-4 w-4" />
@@ -608,7 +864,7 @@ const Betinho = () => {
             </div>
             
             <p className="text-sm text-muted-foreground mt-6">
-              ✨ Gratuito para sempre • 🚀 Sem instalação • 📱 Funciona no WhatsApp
+              🚀 Sem instalação • 📱 Funciona no WhatsApp
             </p>
           </div>
         </section>
