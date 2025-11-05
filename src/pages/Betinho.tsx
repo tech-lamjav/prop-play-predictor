@@ -46,20 +46,19 @@ const getVideoUrl = (videoPath: string, bucketName: string = 'landing-page') => 
   // Remove trailing slash if present
   const baseUrl = supabaseUrl.replace(/\/$/, '');
   
-  // Encode bucket name and video path to handle spaces and special characters
-  const encodedBucket = encodeURIComponent(bucketName);
+  // Encode only the video path, bucket name should be used as-is (Supabase handles encoding)
+  // Note: If bucket has spaces, use "landing page" (with space) instead of "landing-page"
   const encodedPath = encodeURIComponent(videoPath);
   
-  return `${baseUrl}/storage/v1/object/public/${encodedBucket}/${encodedPath}`;
+  return `${baseUrl}/storage/v1/object/public/${bucketName}/${encodedPath}`;
 };
 
 const Betinho = () => {
   const navigate = useNavigate();
   
-  // Caminho do vídeo no Supabase Storage
-  // Bucket: landing-page
-  // Arquivo: WhatsApp Video 2025-11-03 at 22.02.07.mp4
-  const screenshotVideoUrl = getVideoUrl('WhatsApp Video 2025-11-03 at 22.02.07.mp4', 'landing-page');
+  // URL direta do vídeo no Supabase Storage
+  // URL completa: https://lavclmlvvfzkblrstojd.supabase.co/storage/v1/object/public/landing%20-page/WhatsApp%20Video%202025-11-03%20at%2022.02.07.mp4
+  const screenshotVideoUrl = 'https://lavclmlvvfzkblrstojd.supabase.co/storage/v1/object/public/landing%20-page/WhatsApp%20Video%202025-11-03%20at%2022.02.07.mp4';
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -278,84 +277,37 @@ const Betinho = () => {
           </div>
         </section>
 
-        {/* Example Messages Section */}
+        {/* Example Video Section */}
         <section className="py-20 px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Exemplos de como usar o <span className="text-green-600">Betinho</span>
+              Exemplo de como usar o <span className="text-green-600">Betinho</span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               Veja como é fácil enviar suas apostas de diferentes formas
             </p>
           </div>
 
-          <div className="max-w-4xl mx-auto space-y-8">
-            {/* Text Message Example */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                    <MessageCircle className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-white">Mensagem de Texto</CardTitle>
-                    <p className="text-slate-300 text-sm">Envie apostas em formato simples</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-slate-700 rounded-lg p-4 mb-4">
-                  <p className="text-white font-mono text-sm">
-                    "Lakers vs Warriors - LeBron 25+ pontos - Odd 1.85 - R$ 50"
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-slate-300 text-sm">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>Betinho extrai: Times, aposta, odds, valor e data automaticamente</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Screenshot Example */}
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
-                    <Camera className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-white">Screenshot da Aposta</CardTitle>
-                    <p className="text-slate-300 text-sm">Tire uma foto da sua aposta no site</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-slate-700 rounded-lg p-4 mb-4 overflow-hidden">
-                  {screenshotVideoUrl ? (
-                    <video
-                      className="w-full rounded-lg"
-                      controls
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                    >
-                      <source src={screenshotVideoUrl} type="video/mp4" />
-                      Seu navegador não suporta o elemento de vídeo.
-                    </video>
-                  ) : (
-                    <div className="w-full h-48 bg-slate-600 rounded flex items-center justify-center">
-                      <Camera className="w-8 h-8 text-slate-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-slate-300 text-sm">
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                  <span>IA analisa a imagem e extrai todos os dados da aposta</span>
-                </div>
-              </CardContent>
-            </Card>
-
+          <div className="max-w-4xl mx-auto">
+            {screenshotVideoUrl ? (
+              <div className="flex items-center justify-center">
+                <video
+                  className="max-w-full max-h-[60vh] rounded-lg object-contain shadow-2xl"
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                >
+                  <source src={screenshotVideoUrl} type="video/mp4" />
+                  Seu navegador não suporta o elemento de vídeo.
+                </video>
+              </div>
+            ) : (
+              <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center">
+                <Camera className="w-8 h-8 text-muted-foreground" />
+              </div>
+            )}
           </div>
         </section>
 
