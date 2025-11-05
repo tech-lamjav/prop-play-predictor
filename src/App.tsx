@@ -12,6 +12,7 @@ import Bets from "./pages/Bets";
 import PlayerSelectionTest from "./pages/PlayerSelectionTest";
 import Analysis from "./pages/Analysis";
 import Waitlist from "./pages/Waitlist";
+import Paywall from "./pages/Paywall";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -57,6 +58,7 @@ const App = () => (
             </ProtectedRoute>
           } />
           <Route path="/waitlist" element={<Waitlist />} />
+          <Route path="/paywall" element={<Paywall />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
