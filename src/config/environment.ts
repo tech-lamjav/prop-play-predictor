@@ -11,6 +11,11 @@ export const config = {
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
   },
   
+  posthog: {
+    key: import.meta.env.VITE_PUBLIC_POSTHOG_KEY,
+    host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+  },
+  
   gcs: {
     projectId: import.meta.env.VITE_GOOGLE_CLOUD_PROJECT_ID,
     bucketName: import.meta.env.VITE_GOOGLE_CLOUD_STORAGE_BUCKET,

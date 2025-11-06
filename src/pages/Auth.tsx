@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePostHog } from "@posthog/react";
 import { createClient } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 const Auth = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +41,23 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
+        // Get user data for PostHog identify
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user && posthog) {
+          // Identify user in PostHog
+          posthog.identify(user.id, {
+            email: user.email,
+            name: user.user_metadata?.name || user.email?.split('@')[0],
+          });
+          
+          // Track sign-in event
+          posthog.capture('signed_in', {
+            email: user.email,
+            method: 'email',
+          });
+        }
+        
         toast({
           title: "Success",
           description: "Welcome back!",
@@ -47,7 +66,7 @@ const Auth = () => {
         const { data: userData } = await supabase
           .from('users')
           .select('whatsapp_synced')
-          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .eq('id', user?.id)
           .single();
         
         if (!userData?.whatsapp_synced) {
@@ -107,6 +126,20 @@ const Auth = () => {
           
           if (userError) {
             console.error('Error creating user record:', userError);
+          }
+          
+          // Identify user in PostHog and track sign-up event
+          if (posthog) {
+            posthog.identify(user.id, {
+              email: user.email,
+              name: name || user.email?.split('@')[0],
+            });
+            
+            posthog.capture('signed_up', {
+              email: user.email,
+              name: name,
+              method: 'email',
+            });
           }
         }
         
