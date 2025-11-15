@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { UnitDisplay } from '../components/UnitDisplay';
+import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
+import { useUserUnit } from '../hooks/use-user-unit';
 import { 
   RefreshCw, 
   AlertCircle,
@@ -19,7 +22,10 @@ import {
   Filter,
   List,
   Edit,
-  Save
+  Save,
+  Settings,
+  BarChart3,
+  Percent
 } from 'lucide-react';
 import {
   Dialog,
@@ -65,15 +71,20 @@ interface Bet {
 
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
+  const { isConfigured } = useUserUnit();
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [stats, setStats] = useState({
     totalBets: 0,
     totalStaked: 0,
     totalReturn: 0,
     winRate: 0,
-    profit: 0
+    profit: 0,
+    averageStake: 0,
+    averageOdd: 0,
+    roi: 0
   });
   const [cashoutModal, setCashoutModal] = useState<{
     isOpen: boolean;
@@ -169,13 +180,24 @@ export default function Bets() {
     const totalEarnings = totalReturn + totalCashout;
     const winRate = totalBets > 0 ? ((wonBets.length + cashoutBets.length) / (wonBets.length + lostBets.length + cashoutBets.length)) * 100 : 0;
     const profit = totalEarnings - totalStaked;
+    const averageStake = totalBets > 0 ? totalStaked / totalBets : 0;
+    
+    // Calculate average odd
+    const totalOdds = betsData.reduce((sum, bet) => sum + bet.odds, 0);
+    const averageOdd = totalBets > 0 ? totalOdds / totalBets : 0;
+    
+    // Calculate ROI: (profit / totalStaked) * 100
+    const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
 
     setStats({
       totalBets,
       totalStaked,
       totalReturn: totalEarnings,
       winRate,
-      profit
+      profit,
+      averageStake,
+      averageOdd,
+      roi
     });
   };
 
@@ -508,10 +530,21 @@ export default function Bets() {
               </p>
             </div>
             
-            <Button onClick={fetchBets} variant="outline" disabled={isLoading} className="w-full sm:w-auto">
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setUnitConfigOpen(true)} 
+                variant="outline" 
+                className="w-full sm:w-auto"
+                title="Configurar sistema de unidades"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                {isConfigured() ? 'Unidades' : 'Config. Unidades'}
+              </Button>
+              <Button onClick={fetchBets} variant="outline" disabled={isLoading} className="w-full sm:w-auto">
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -636,65 +669,113 @@ export default function Bets() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total de Apostas</p>
-                  <p className="text-xl sm:text-2xl font-bold">{stats.totalBets}</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Total de Apostas</p>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full">{stats.totalBets}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Total Apostado</p>
+                </div>
+                <div className="text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full">
+                  <UnitDisplay value={stats.totalStaked} />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Apostado</p>
-                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalStaked)}</p>
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Retorno Total</p>
+                </div>
+                <div className="text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full">
+                  <UnitDisplay value={stats.totalReturn} />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Retorno Total</p>
-                  <p className="text-lg sm:text-2xl font-bold">{formatCurrency(stats.totalReturn)}</p>
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Taxa de Acerto</p>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full">
+                  {isNaN(stats.winRate) ? '0%' : `${stats.winRate.toFixed(1)}%`}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <TrendingUp className={`h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 flex-shrink-0 ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Lucro/Prejuízo</p>
+                </div>
+                <div className={`text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <UnitDisplay value={stats.profit} />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Taxa de Acerto</p>
-                  <p className="text-xl sm:text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Stake Média</p>
+                </div>
+                <div className="text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full">
+                  <UnitDisplay value={stats.averageStake} />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="col-span-2 md:col-span-1">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
-                <TrendingUp className={`h-6 w-6 sm:h-8 sm:w-8 ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                <div className="sm:ml-4">
-                  <p className="text-xs sm:text-sm font-medium text-muted-foreground">Lucro/Prejuízo</p>
-                  <p className={`text-lg sm:text-2xl font-bold ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(stats.profit)}
-                  </p>
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Odd Média</p>
                 </div>
+                <p className="text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full">
+                  {stats.averageOdd > 0 ? stats.averageOdd.toFixed(2) : '0.00'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden max-w-full">
+            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
+              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+                  <Percent className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">ROI</p>
+                </div>
+                <p className={`text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full ${stats.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {isNaN(stats.roi) ? '0.00%' : `${stats.roi >= 0 ? '+' : ''}${stats.roi.toFixed(2)}%`}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -1243,6 +1324,12 @@ export default function Bets() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Unit Configuration Modal */}
+        <UnitConfigurationModal 
+          open={unitConfigOpen} 
+          onOpenChange={setUnitConfigOpen} 
+        />
       </div>
     </AuthenticatedLayout>
   );

@@ -44,18 +44,13 @@ $$;
 -- Execute the function to setup the cron job
 SELECT public.setup_weekly_performance_cron();
 
--- Verify that the cron job was created successfully
-SELECT 
-  jobid,
-  schedule,
-  command,
-  nodename,
-  nodeport,
-  database,
-  username,
-  active
-FROM cron.job 
-WHERE jobname = 'calculate-weekly-performance';
+-- Verify that the cron job was created successfully (only if pg_cron is available)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM 1 FROM cron.job WHERE jobname = 'calculate-weekly-performance';
+  END IF;
+END $$;
 
 -- Alternative: If pg_cron is not available, you can use Supabase Edge Functions with scheduled triggers
 -- or use an external cron service to call the function via HTTP
