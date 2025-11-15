@@ -70,7 +70,7 @@ interface ProcessedBet {
 }
 
 // Daily bet limit configuration
-const DAILY_BET_LIMIT = 10
+const DAILY_BET_LIMIT = 5
 const TIMEZONE_GMT3 = 'America/Cuiaba' // GMT-3 (UTC-3)
 
 // JSON Schema for structured outputs
@@ -1808,6 +1808,9 @@ async function sendConfirmationMessage(supabase: any, userId: string, betId: str
         'system': 'Sistema'
       }[betDetails.bet_type] || betDetails.bet_type
 
+      // Hardcoded dashboard URL
+      const dashboardUrl = 'https://www.smartbetting.app/bets'
+
       const confirmationMessage = `🎯 *Aposta Registrada com Sucesso!*
 
 📊 *Detalhes da Aposta:*
@@ -1819,9 +1822,12 @@ async function sendConfirmationMessage(supabase: any, userId: string, betId: str
 • *Valor:* R$ ${betDetails.stake_amount.toFixed(2)}
 • *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}
 
-🆔 *ID:* \`${betId}\`
+✅ Sua aposta foi salva no dashboard e você pode acompanhar o resultado em tempo real!
 
-✅ Sua aposta foi salva no dashboard e você pode acompanhar o resultado em tempo real!`
+🔗 Acesse seu dashboard: ${dashboardUrl}
+
+⚠️ *IMPORTANTE:*
+Se você enviou uma imagem de aposta e não recebeu esta mensagem de confirmação, envie a imagem novamente.`
 
       if (chatwootBaseUrl && chatwootApiToken) {
 
@@ -1890,6 +1896,7 @@ async function sendHelpMessage(supabase: any, userId: string) {
 ⚠️ *IMPORTANTE:*
 • *1 mensagem = 1 aposta*
 • Envie TUDO junto (imagem + texto na mesma mensagem)
+• Se você enviou uma imagem de aposta e não recebeu uma mensagem de confirmação, envie a imagem novamente
 
 💡 *Exemplos válidos:*
 • Screenshot + "apostei 50"
@@ -1969,6 +1976,7 @@ Agora você pode enviar suas apostas diretamente aqui e acompanhar tudo no seu d
 ⚠️ *IMPORTANTE:*
 • *1 mensagem = 1 aposta*
 • Envie TUDO junto (imagem + texto na mesma mensagem)
+• Se você enviou uma imagem de aposta e não recebeu uma mensagem de confirmação, envie a imagem novamente
 
 💡 *Exemplos válidos:*
 • Screenshot + "apostei 50"
