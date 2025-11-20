@@ -47,6 +47,9 @@ export type Database = {
           name: string | null
           whatsapp_synced: boolean
           whatsapp_sync_token: string | null
+          unit_value: number | null
+          unit_calculation_method: string | null
+          bank_amount: number | null
           created_at: string
           updated_at: string
         }
@@ -58,6 +61,9 @@ export type Database = {
           name?: string | null
           whatsapp_synced?: boolean
           whatsapp_sync_token?: string | null
+          unit_value?: number | null
+          unit_calculation_method?: string | null
+          bank_amount?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -69,6 +75,9 @@ export type Database = {
           name?: string | null
           whatsapp_synced?: boolean
           whatsapp_sync_token?: string | null
+          unit_value?: number | null
+          unit_calculation_method?: string | null
+          bank_amount?: number | null
           created_at?: string
           updated_at?: string
         }

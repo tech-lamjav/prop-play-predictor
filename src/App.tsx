@@ -15,6 +15,7 @@ import Waitlist from "./pages/Waitlist";
 import Paywall from "./pages/Paywall";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { PostHogPageView } from "./components/PostHogPageView";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <PostHogPageView />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/betinho" element={<Betinho />} />
