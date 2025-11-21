@@ -10,6 +10,8 @@ import Onboarding from "./pages/Onboarding";
 import DashboardTest from "./pages/DashboardTest";
 import Bets from "./pages/Bets";
 import PlayerSelectionTest from "./pages/PlayerSelectionTest";
+import PlayerSelection from "./pages/PlayerSelection";
+import NBADashboard from "./pages/NBADashboard";
 import Analysis from "./pages/Analysis";
 import Waitlist from "./pages/Waitlist";
 import Paywall from "./pages/Paywall";
@@ -57,6 +59,16 @@ const App = () => (
           <Route path="/analysis" element={
             <ProtectedRoute>
               <Analysis />
+            </ProtectedRoute>
+          } />
+          <Route path="/nba-players" element={
+            <ProtectedRoute>
+              <PlayerSelection />
+            </ProtectedRoute>
+          } />
+          <Route path="/nba-dashboard/:playerName" element={
+            <ProtectedRoute>
+              <NBADashboard />
             </ProtectedRoute>
           } />
           <Route path="/waitlist" element={<Waitlist />} />

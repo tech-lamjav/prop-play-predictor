@@ -6,18 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, User, TrendingUp, Star, Target } from 'lucide-react';
-import { bigQueryService } from '@/services/bigquery.service';
-
-interface Player {
-  id: number;
-  name: string;
-  team_name: string;
-  position: string;
-  current_status: string;
-  games_played: number;
-  minutes: number;
-  team_rating_rank: number;
-}
+import { nbaDataService, Player } from '@/services/nba-data.service';
 
 export default function PlayerSelection() {
   const navigate = useNavigate();
@@ -38,32 +27,22 @@ export default function PlayerSelection() {
 
         console.log('Loading players data...');
         
-        const [playersResult, teamsResult] = await Promise.all([
-          bigQueryService.getAllPlayers(),
-          bigQueryService.getAvailableTeams()
-        ]);
+        const playersData = await nbaDataService.getAllPlayers();
 
-        console.log('Players result:', playersResult);
-        console.log('Teams result:', teamsResult);
+        console.log('Players data:', playersData);
 
-        if (playersResult.success && playersResult.data) {
-          console.log('Setting players:', playersResult.data);
-          // Remove duplicates based on player ID and name
-          const uniquePlayers = playersResult.data.filter((player, index, self) => 
-            index === self.findIndex(p => p.id === player.id && p.name === player.name)
-          );
-          console.log('Unique players:', uniquePlayers.length);
-          setPlayers(uniquePlayers);
-          setFilteredPlayers(uniquePlayers);
-        } else {
-          console.error('Players error:', playersResult.error);
-          setError(playersResult.error || 'Failed to load players');
-        }
+        // Remove duplicates based on player ID
+        const uniquePlayers = playersData.filter((player, index, self) => 
+          index === self.findIndex(p => p.player_id === player.player_id)
+        );
+        console.log('Unique players:', uniquePlayers.length);
+        setPlayers(uniquePlayers);
+        setFilteredPlayers(uniquePlayers);
 
-        if (teamsResult.success && teamsResult.data) {
-          console.log('Setting teams:', teamsResult.data);
-          setTeams(teamsResult.data);
-        }
+        // Extract unique teams
+        const uniqueTeams = [...new Set(playersData.map(p => p.team_name))].sort();
+        console.log('Setting teams:', uniqueTeams);
+        setTeams(uniqueTeams);
       } catch (err) {
         console.error('Error loading data:', err);
         setError('Failed to load player data');
@@ -82,7 +61,7 @@ export default function PlayerSelection() {
 
     if (searchTerm) {
       filtered = filtered.filter(player =>
-        player.name.toLowerCase().includes(searchTerm.toLowerCase())
+        player.player_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -95,7 +74,12 @@ export default function PlayerSelection() {
   }, [players, searchTerm, selectedTeam]);
 
   const handlePlayerSelect = (playerId: number) => {
-    navigate(`/bets?playerId=${playerId}`);
+    // Navigate to individual player dashboard using player name slug
+    const player = players.find(p => p.player_id === playerId);
+    if (player) {
+      const slug = player.player_name.toLowerCase().replace(/\s+/g, '-');
+      navigate(`/nba-dashboard/${slug}`);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -222,14 +206,14 @@ export default function PlayerSelection() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredPlayers.map((player, index) => (
             <Card 
-              key={`${player.id}-${index}`} 
+              key={`${player.player_id}-${index}`} 
               className="bg-slate-800 border-slate-700 hover:bg-slate-750 hover:border-slate-600 transition-all cursor-pointer"
-              onClick={() => handlePlayerSelect(player.id)}
+              onClick={() => handlePlayerSelect(player.player_id)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-semibold text-white">
-                    {player.name}
+                    {player.player_name}
                   </CardTitle>
                   <Badge className={getPositionColor(player.position)}>
                     {player.position}
@@ -247,21 +231,13 @@ export default function PlayerSelection() {
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Games Played</span>
-                    <span className="text-sm font-medium text-white">{player.games_played}</span>
+                    <span className="text-sm text-slate-400">Team</span>
+                    <span className="text-sm font-medium text-white">{player.team_abbreviation}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Minutes</span>
-                    <span className="text-sm font-medium text-white">{player.minutes?.toFixed(1)}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Team Rating</span>
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                      <span className="text-sm font-medium text-white">#{player.team_rating_rank}</span>
-                    </div>
+                    <span className="text-sm text-slate-400">Age</span>
+                    <span className="text-sm font-medium text-white">{player.age}</span>
                   </div>
                 </div>
                 
@@ -291,6 +267,7 @@ export default function PlayerSelection() {
         <div className="mt-8 text-center text-slate-400">
           Showing {filteredPlayers.length} of {players.length} players
         </div>
+      </div>
       </div>
     </AuthenticatedLayout>
   );

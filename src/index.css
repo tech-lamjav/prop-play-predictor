@@ -87,6 +87,17 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 220 27% 18%;
     --sidebar-ring: 217 33% 17%;
+
+    /* NBA Dashboard Terminal Theme */
+    --terminal-black: #0a0e0a;
+    --terminal-dark-gray: #151a15;
+    --terminal-gray: #1a201a;
+    --terminal-light-gray: #1f251f;
+    --terminal-border: #2a3f2a;
+    --terminal-border-subtle: #1f2a1f;
+    --terminal-green: #8fb382;
+    --terminal-text: #c5d0c0;
+    --terminal-red: #d67676;
   }
 }
 

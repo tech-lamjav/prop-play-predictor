@@ -255,6 +255,106 @@ export type Database = {
     CompositeTypes: {
       [_ in never]: never
     }
+  },
+  bigquery: {
+    Tables: {
+      dim_players: {
+        Row: {
+          player_id: number
+          player_name: string
+          position: string
+          team_id: number
+          team_name: string
+          team_abbreviation: string
+          age: number
+          last_game_text: string
+          current_status: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      dim_prop_player: {
+        Row: {
+          player_id: number
+          team_id: number
+          stat_type: string
+          rating_stars: number
+          is_leader_with_injury: boolean
+          is_available_backup: boolean
+          stat_rank: number
+          next_available_player_name: string
+          next_player_stats_when_leader_out: number
+          next_player_stats_normal: number
+          loaded_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      dim_teams: {
+        Row: {
+          team_id: number
+          team_name: string
+          team_abbreviation: string
+          conference: string
+          team_city: string
+          season: number
+          conference_rank: number
+          wins: number
+          losses: number
+          team_last_five_games: string
+          team_rating_rank: number
+          team_offensive_rating_rank: number
+          team_defensive_rating_rank: number
+          next_opponent_id: number
+          next_opponent_name: string
+          next_opponent_abbreviation: string
+          is_next_game_home: boolean
+          next_opponent_team_last_five_games: string
+          next_opponent_conference_rank: number
+          next_opponent_team_rating_rank: number
+          next_opponent_team_offensive_rating_rank: number
+          next_opponent_team_defensive_rating_rank: number
+          team_injury_report_time_brasilia: string
+          next_game_injury_report_time_brasilia: string
+          loaded_at: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      ft_game_player_stats: {
+        Row: {
+          player_id: number
+          game_date: string
+          game_id: number
+          stat_type: string
+          stat_value: number
+          line: number
+          is_b2b_game: boolean
+          stat_vs_line: string
+          played_against: string
+          home_away: string
+          is_played: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
 
