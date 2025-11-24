@@ -140,7 +140,7 @@ export default function Dashboard() {
   // Redirect to player selection if no player ID
   useEffect(() => {
     if (!playerId) {
-      navigate('/players');
+      navigate('/nba-players');
     }
   }, [playerId, navigate]);
 
@@ -308,7 +308,7 @@ export default function Dashboard() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => navigate('/players')}
+                onClick={() => navigate('/nba-players')}
                 className="text-slate-300 border-slate-600 hover:bg-slate-700"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />

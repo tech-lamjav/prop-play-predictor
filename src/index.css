@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -45,8 +47,16 @@ All colors MUST be HSL.
 
     --radius: 0.75rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(142 76% 30%));
-    --gradient-card: linear-gradient(135deg, hsl(var(--card)), hsl(220 27% 13%));
+    --gradient-primary: linear-gradient(
+      135deg,
+      hsl(var(--primary)),
+      hsl(142 76% 30%)
+    );
+    --gradient-card: linear-gradient(
+      135deg,
+      hsl(var(--card)),
+      hsl(220 27% 13%)
+    );
 
     --sidebar-background: 220 27% 10%;
     --sidebar-foreground: 210 40% 98%;
@@ -119,24 +129,138 @@ All colors MUST be HSL.
   .gradient-primary {
     background: var(--gradient-primary);
   }
-  
+
   .gradient-card {
     background: var(--gradient-card);
   }
-  
+
   .text-success {
     color: hsl(var(--success));
   }
-  
+
   .text-warning {
     color: hsl(var(--warning));
   }
-  
+
   .bg-success {
     background-color: hsl(var(--success));
   }
-  
+
   .bg-warning {
     background-color: hsl(var(--warning));
   }
+
+  /* Terminal Theme Utilities */
+  .bg-terminal-black {
+    background-color: var(--terminal-black);
+  }
+  .bg-terminal-dark-gray {
+    background-color: var(--terminal-dark-gray);
+  }
+  .bg-terminal-gray {
+    background-color: var(--terminal-gray);
+  }
+  .bg-terminal-light-gray {
+    background-color: var(--terminal-light-gray);
+  }
+  .border-terminal-border {
+    border-color: var(--terminal-border);
+  }
+  .border-terminal-border-subtle {
+    border-color: var(--terminal-border-subtle);
+  }
+  .text-terminal-green {
+    color: var(--terminal-green);
+  }
+  .text-terminal-text {
+    color: var(--terminal-text);
+  }
+  .text-terminal-red {
+    color: var(--terminal-red);
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Terminal Component Styles */
+.terminal-header {
+  background-color: var(--terminal-dark-gray);
+  border-bottom: 1px solid var(--terminal-border-subtle);
+}
+
+.terminal-container {
+  background-color: var(--terminal-dark-gray);
+  border: 1px solid var(--terminal-border-subtle);
+}
+
+.terminal-button {
+  background-color: var(--terminal-gray);
+  border: 1px solid var(--terminal-border-subtle);
+  color: var(--terminal-text);
+  transition: all 0.15s ease;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.terminal-button:hover {
+  background-color: var(--terminal-light-gray);
+  border-color: var(--terminal-border);
+}
+
+.terminal-input {
+  background-color: var(--terminal-gray);
+  border: 1px solid var(--terminal-border-subtle);
+  color: var(--terminal-text);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.terminal-input:focus {
+  outline: none;
+  border-color: var(--terminal-border);
+  background-color: var(--terminal-light-gray);
+}
+
+.terminal-input::placeholder {
+  color: var(--terminal-text);
+  opacity: 0.4;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--terminal-green);
+  text-transform: uppercase;
+}
+
+.data-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  color: var(--terminal-text);
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+.data-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-positive {
+  color: var(--terminal-green);
+}
+
+.stat-negative {
+  color: var(--terminal-red);
+}
+
+.stat-neutral {
+  color: var(--terminal-text);
 }

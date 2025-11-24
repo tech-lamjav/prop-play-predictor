@@ -1,8 +1,26 @@
 import React from 'react';
-import { UserIcon, BarChartIcon } from 'lucide-react';
-export const Header = () => {
-  return <div className="terminal-header p-3 flex justify-between items-center">
+import { UserIcon, BarChartIcon, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+interface NBAHeaderProps {
+  playerName?: string;
+}
+
+export const NBAHeader: React.FC<NBAHeaderProps> = ({ playerName }) => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="terminal-header p-3 flex justify-between items-center">
       <div className="flex items-center">
+        {playerName && (
+          <button 
+            onClick={() => navigate('/nba-players')}
+            className="terminal-button px-2 py-1 text-xs font-medium mr-4 flex items-center"
+          >
+            <ArrowLeft size={14} className="mr-1" />
+            BACK
+          </button>
+        )}
         <span className="text-base font-semibold mr-6 text-terminal-green tracking-wide">
           STATIX NBA
         </span>
@@ -26,5 +44,6 @@ export const Header = () => {
           <UserIcon size={16} />
         </button>
       </div>
-    </div>;
+    </div>
+  );
 };

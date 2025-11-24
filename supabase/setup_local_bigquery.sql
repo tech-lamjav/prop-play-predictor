@@ -1,18 +1,16 @@
--- Drop existing foreign tables if they exist (using the new names)
+-- Complete setup for local BigQuery foreign tables
+-- Run this in your local Supabase SQL Editor
+
+-- Step 1: Create the bigquery schema
+CREATE SCHEMA IF NOT EXISTS bigquery;
+
+-- Step 2: Drop existing foreign tables if they exist
 DROP FOREIGN TABLE IF EXISTS bigquery.dim_players CASCADE;
 DROP FOREIGN TABLE IF EXISTS bigquery.dim_prop_player CASCADE;
 DROP FOREIGN TABLE IF EXISTS bigquery.dim_teams CASCADE;
 DROP FOREIGN TABLE IF EXISTS bigquery.ft_game_player_stats CASCADE;
 
--- Also drop the old ones just in case
-DROP FOREIGN TABLE IF EXISTS bigquery.player_stats CASCADE;
-DROP FOREIGN TABLE IF EXISTS bigquery.betting_lines CASCADE;
-DROP FOREIGN TABLE IF EXISTS bigquery.team_lineups CASCADE;
-DROP FOREIGN TABLE IF EXISTS bigquery.game_schedule CASCADE;
-DROP FOREIGN TABLE IF EXISTS bigquery.dim_player_stat_line_perf CASCADE;
-DROP FOREIGN TABLE IF EXISTS bigquery.ft_player_stat_over_line CASCADE;
-
--- Recreate server with correct location (User provided this previously)
+-- Step 3: Drop and recreate the server
 DROP SERVER IF EXISTS bigquery_server CASCADE;
 
 -- Ensure extension and wrapper exist
@@ -31,9 +29,9 @@ CREATE SERVER bigquery_server
     location 'us-east1'
   );
 
--- Create foreign tables for your actual BigQuery tables
+-- Step 4: Create foreign tables
 
--- 1. dim_players table
+-- dim_players table
 CREATE FOREIGN TABLE bigquery.dim_players (
   player_id int8,
   player_name text,
@@ -51,7 +49,7 @@ OPTIONS (
   location 'us-east1'
 );
 
--- 2. dim_prop_player table
+-- dim_prop_player table
 CREATE FOREIGN TABLE bigquery.dim_prop_player (
   player_id int8,
   team_id int8,
@@ -71,7 +69,7 @@ OPTIONS (
   location 'us-east1'
 );
 
--- 3. dim_teams table
+-- dim_teams table
 CREATE FOREIGN TABLE bigquery.dim_teams (
   team_id int8,
   team_name text,
@@ -105,7 +103,7 @@ OPTIONS (
   location 'us-east1'
 );
 
--- 4. ft_game_player_stats table
+-- ft_game_player_stats table
 CREATE FOREIGN TABLE bigquery.ft_game_player_stats (
   player_id int8,
   game_date date,
@@ -125,6 +123,6 @@ OPTIONS (
   location 'us-east1'
 );
 
--- Grant permissions
-GRANT USAGE ON SCHEMA bigquery TO authenticated;
-GRANT SELECT ON ALL TABLES IN SCHEMA bigquery TO authenticated;
+-- Step 5: Grant permissions
+GRANT USAGE ON SCHEMA bigquery TO authenticated, anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA bigquery TO authenticated, anon;

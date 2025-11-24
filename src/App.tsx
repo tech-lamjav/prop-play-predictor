@@ -41,11 +41,6 @@ const App = () => (
               <Onboarding />
             </ProtectedRoute>
           } />
-          <Route path="/players" element={
-            <ProtectedRoute>
-              <PlayerSelectionTest />
-            </ProtectedRoute>
-          } />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardTest />
