@@ -70,7 +70,7 @@ interface ProcessedBet {
 }
 
 // Daily bet limit configuration
-const DAILY_BET_LIMIT = 5
+const DAILY_BET_LIMIT = 3
 const TIMEZONE_GMT3 = 'America/Cuiaba' // GMT-3 (UTC-3)
 
 // JSON Schema for structured outputs

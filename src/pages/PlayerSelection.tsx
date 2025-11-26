@@ -1,69 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Search, User, TrendingUp, Star, Target } from 'lucide-react';
-import { bigQueryService } from '@/services/bigquery.service';
-
-interface Player {
-  id: number;
-  name: string;
-  team_name: string;
-  position: string;
-  current_status: string;
-  games_played: number;
-  minutes: number;
-  team_rating_rank: number;
-}
+import { Search, Star, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
+import { nbaDataService, Player } from '@/services/nba-data.service';
 
 export default function PlayerSelection() {
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState('');
-  const [teams, setTeams] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
 
-  // Load players and teams
+  // Load players
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
         setError(null);
-
-        console.log('Loading players data...');
         
-        const [playersResult, teamsResult] = await Promise.all([
-          bigQueryService.getAllPlayers(),
-          bigQueryService.getAvailableTeams()
-        ]);
+        const playersData = await nbaDataService.getAllPlayers();
 
-        console.log('Players result:', playersResult);
-        console.log('Teams result:', teamsResult);
-
-        if (playersResult.success && playersResult.data) {
-          console.log('Setting players:', playersResult.data);
-          // Remove duplicates based on player ID and name
-          const uniquePlayers = playersResult.data.filter((player, index, self) => 
-            index === self.findIndex(p => p.id === player.id && p.name === player.name)
-          );
-          console.log('Unique players:', uniquePlayers.length);
-          setPlayers(uniquePlayers);
-          setFilteredPlayers(uniquePlayers);
-        } else {
-          console.error('Players error:', playersResult.error);
-          setError(playersResult.error || 'Failed to load players');
-        }
-
-        if (teamsResult.success && teamsResult.data) {
-          console.log('Setting teams:', teamsResult.data);
-          setTeams(teamsResult.data);
-        }
+        // Remove duplicates based on player ID
+        const uniquePlayers = playersData.filter((player, index, self) => 
+          index === self.findIndex(p => p.player_id === player.player_id)
+        );
+        
+        setPlayers(uniquePlayers);
+        setFilteredPlayers(uniquePlayers);
+        
+        // Initially expand all teams
+        const allTeams = new Set(uniquePlayers.map(p => p.team_name));
+        setExpandedTeams(allTeams);
+        
       } catch (err) {
         console.error('Error loading data:', err);
         setError('Failed to load player data');
@@ -75,68 +46,74 @@ export default function PlayerSelection() {
     loadData();
   }, []);
 
-  // Filter players based on search term and team
+  // Filter players based on search term
   useEffect(() => {
-    console.log('Filtering players. Total players:', players.length);
     let filtered = players;
 
     if (searchTerm) {
       filtered = filtered.filter(player =>
-        player.name.toLowerCase().includes(searchTerm.toLowerCase())
+        player.player_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        player.team_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        player.team_abbreviation.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    if (selectedTeam) {
-      filtered = filtered.filter(player => player.team_name === selectedTeam);
-    }
-
-    console.log('Filtered players:', filtered.length);
     setFilteredPlayers(filtered);
-  }, [players, searchTerm, selectedTeam]);
+  }, [players, searchTerm]);
 
   const handlePlayerSelect = (playerId: number) => {
-    navigate(`/bets?playerId=${playerId}`);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'questionable':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'doubtful':
-        return 'bg-orange-100 text-orange-800';
-      case 'out':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+    const player = players.find(p => p.player_id === playerId);
+    if (player) {
+      const slug = player.player_name.toLowerCase().replace(/\s+/g, '-');
+      navigate(`/nba-dashboard/${slug}`);
     }
   };
 
-  const getPositionColor = (position: string) => {
-    switch (position) {
-      case 'PG':
-        return 'bg-blue-100 text-blue-800';
-      case 'SG':
-        return 'bg-purple-100 text-purple-800';
-      case 'SF':
-        return 'bg-green-100 text-green-800';
-      case 'PF':
-        return 'bg-orange-100 text-orange-800';
-      case 'C':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const toggleTeam = (teamName: string) => {
+    const newExpanded = new Set(expandedTeams);
+    if (newExpanded.has(teamName)) {
+      newExpanded.delete(teamName);
+    } else {
+      newExpanded.add(teamName);
+    }
+    setExpandedTeams(newExpanded);
+  };
+
+  // Group players by team
+  const playersByTeam = filteredPlayers.reduce((acc, player) => {
+    if (!acc[player.team_name]) {
+      acc[player.team_name] = [];
+    }
+    acc[player.team_name].push(player);
+    return acc;
+  }, {} as Record<string, Player[]>);
+
+  // Sort teams alphabetically
+  const sortedTeams = Object.keys(playersByTeam).sort();
+
+  // Get best players (top rated)
+  const bestPlayers = [...players]
+    .filter(p => (p.rating_stars || 0) > 0)
+    .sort((a, b) => (b.rating_stars || 0) - (a.rating_stars || 0))
+    .slice(0, 10);
+
+  const scrollToTeam = (teamName: string) => {
+    const element = document.getElementById(`team-${teamName}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      if (!expandedTeams.has(teamName)) {
+        toggleTeam(teamName);
+      }
     }
   };
 
   if (isLoading) {
     return (
       <AuthenticatedLayout>
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="min-h-screen bg-terminal-black flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-slate-300">Loading players...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green mx-auto"></div>
+            <p className="mt-4 text-terminal-text font-mono">LOADING SYSTEM...</p>
           </div>
         </div>
       </AuthenticatedLayout>
@@ -146,14 +123,16 @@ export default function PlayerSelection() {
   if (error) {
     return (
       <AuthenticatedLayout>
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="min-h-screen bg-terminal-black flex items-center justify-center">
           <div className="text-center">
-            <div className="text-red-500 text-xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold text-white mb-2">Error Loading Players</h2>
-            <p className="text-slate-300 mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
+            <div className="text-terminal-red text-xl mb-4">⚠️ SYSTEM ERROR</div>
+            <p className="text-terminal-text mb-4 font-mono">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="terminal-button px-4 py-2 rounded"
+            >
+              RETRY CONNECTION
+            </button>
           </div>
         </div>
       </AuthenticatedLayout>
@@ -162,134 +141,164 @@ export default function PlayerSelection() {
 
   return (
     <AuthenticatedLayout>
-      <div className="min-h-screen bg-slate-900">
+      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
         {/* Header */}
-        <header className="bg-slate-800 border-b border-slate-700 p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Target className="w-6 h-6 text-white" />
+        <header className="terminal-header p-4 sticky top-0 z-10">
+          <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-terminal-green/20 border border-terminal-green rounded flex items-center justify-center">
+                <Trophy className="w-4 h-4 text-terminal-green" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Prop Play Predictor</h1>
-                <p className="text-slate-400 text-sm">NBA Player Analytics</p>
+                <h1 className="text-lg font-bold tracking-wider text-terminal-green">PLAYER DATABASE</h1>
+                <p className="text-[10px] text-terminal-text opacity-60">SECURE CONNECTION ESTABLISHED</p>
               </div>
+            </div>
+            
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-terminal-text opacity-50 h-4 w-4" />
+              <Input
+                placeholder="SEARCH DATABASE..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="terminal-input pl-10 h-9 text-xs w-full"
+              />
             </div>
           </div>
         </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Page Title */}
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Select a Player
-          </h2>
-          <p className="text-lg text-slate-300">
-            Choose a player to view detailed prop betting analysis
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                <Input
-                  placeholder="Search players..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:border-blue-500"
-                />
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          
+          {/* Best Players Section */}
+          {!searchTerm && bestPlayers.length > 0 && (
+            <section>
+              <div className="flex items-center space-x-2 mb-4 border-b border-terminal-border-subtle pb-2">
+                <Star className="w-4 h-4 text-terminal-green" />
+                <h2 className="section-title text-sm">TOP RATED PLAYERS</h2>
               </div>
-            </div>
-            <div className="md:w-64">
-              <select
-                value={selectedTeam}
-                onChange={(e) => setSelectedTeam(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Teams</option>
-                {teams.map((team, index) => (
-                  <option key={`team-${index}-${team}`} value={team}>{team}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Players Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredPlayers.map((player, index) => (
-            <Card 
-              key={`${player.id}-${index}`} 
-              className="bg-slate-800 border-slate-700 hover:bg-slate-750 hover:border-slate-600 transition-all cursor-pointer"
-              onClick={() => handlePlayerSelect(player.id)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-white">
-                    {player.name}
-                  </CardTitle>
-                  <Badge className={getPositionColor(player.position)}>
-                    {player.position}
-                  </Badge>
-                </div>
-                <p className="text-slate-300">{player.team_name}</p>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Status</span>
-                    <Badge className={getStatusColor(player.current_status)}>
-                      {player.current_status || 'Unknown'}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Games Played</span>
-                    <span className="text-sm font-medium text-white">{player.games_played}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Minutes</span>
-                    <span className="text-sm font-medium text-white">{player.minutes?.toFixed(1)}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Team Rating</span>
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                      <span className="text-sm font-medium text-white">#{player.team_rating_rank}</span>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {bestPlayers.map((player) => (
+                  <div 
+                    key={`best-${player.player_id}`}
+                    onClick={() => handlePlayerSelect(player.player_id)}
+                    className="terminal-button p-3 rounded cursor-pointer group hover:border-terminal-green transition-all"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="text-xs font-bold text-terminal-green group-hover:text-white transition-colors">
+                        {player.player_name}
+                      </div>
+                      <div className="flex items-center space-x-1 bg-terminal-dark-gray px-1.5 py-0.5 rounded border border-terminal-border-subtle">
+                        <span className="text-[10px] font-bold text-terminal-green">{player.rating_stars || 0}</span>
+                        <Star className="w-2 h-2 text-terminal-green fill-current" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-end">
+                      <div className="text-[10px] text-terminal-text opacity-60">
+                        {player.team_abbreviation} • {player.position}
+                      </div>
+                      <div className="text-[10px] text-terminal-text opacity-60">
+                        {player.current_status}
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Team Logos Navigation */}
+          {!searchTerm && (
+            <section className="py-4 overflow-x-auto scrollbar-hide">
+              <div className="flex space-x-4 min-w-max px-2">
+                {sortedTeams.map((teamName) => {
+                  // Find a player from this team to get the abbreviation
+                  const teamAbbr = playersByTeam[teamName][0]?.team_abbreviation || teamName.substring(0, 3).toUpperCase();
+                  return (
+                    <button
+                      key={`nav-${teamName}`}
+                      onClick={() => scrollToTeam(teamName)}
+                      className="flex flex-col items-center space-y-2 group"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-terminal-gray border border-terminal-border-subtle flex items-center justify-center group-hover:border-terminal-green group-hover:bg-terminal-dark-gray transition-all">
+                        <span className="text-xs font-bold text-terminal-text group-hover:text-terminal-green">
+                          {teamAbbr}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* All Players by Team */}
+          <section>
+            <div className="flex items-center space-x-2 mb-4 border-b border-terminal-border-subtle pb-2">
+              <div className="w-2 h-2 bg-terminal-green rounded-full"></div>
+              <h2 className="section-title text-sm">ROSTER BY TEAM</h2>
+            </div>
+
+            <div className="space-y-4">
+              {sortedTeams.map((teamName) => (
+                <div key={teamName} id={`team-${teamName}`} className="terminal-container rounded overflow-hidden">
+                  <button 
+                    onClick={() => toggleTeam(teamName)}
+                    className="w-full flex items-center justify-between p-3 bg-terminal-gray hover:bg-terminal-light-gray transition-colors border-b border-terminal-border-subtle"
+                  >
+                    <div className="flex items-center space-x-3">
+                      {expandedTeams.has(teamName) ? (
+                        <ChevronDown className="w-4 h-4 text-terminal-green" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-terminal-text opacity-50" />
+                      )}
+                      <span className="font-mono font-bold text-sm text-terminal-text">
+                        {teamName}
+                      </span>
+                      <span className="text-[10px] bg-terminal-dark-gray px-2 py-0.5 rounded text-terminal-text opacity-60 border border-terminal-border-subtle">
+                        {playersByTeam[teamName].length}
+                      </span>
+                    </div>
+                  </button>
+                  
+                  {expandedTeams.has(teamName) && (
+                    <div className="p-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 bg-terminal-dark-gray">
+                      {playersByTeam[teamName].map((player) => (
+                        <div 
+                          key={player.player_id}
+                          onClick={() => handlePlayerSelect(player.player_id)}
+                          className="terminal-button p-2 rounded cursor-pointer flex justify-between items-center group hover:border-terminal-green/50"
+                        >
+                          <div>
+                            <div className="text-xs font-medium text-terminal-text group-hover:text-terminal-green transition-colors">
+                              {player.player_name}
+                            </div>
+                            <div className="text-[10px] text-terminal-text opacity-50">
+                              {player.position}
+                            </div>
+                          </div>
+                          <div className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                            player.current_status?.toLowerCase() === 'active' 
+                              ? 'text-terminal-green border-terminal-green/30 bg-terminal-green/10' 
+                              : 'text-terminal-red border-terminal-red/30 bg-terminal-red/10'
+                          }`}>
+                            {player.current_status?.substring(0, 3).toUpperCase() || 'UNK'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
-                <Button 
-                  className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white border-0"
-                  variant="outline"
-                >
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  View Analysis
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ))}
 
-        {filteredPlayers.length === 0 && (
-          <div className="text-center py-12">
-            <User className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No players found</h3>
-            <p className="text-slate-400">
-              Try adjusting your search terms or team filter
-            </p>
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="mt-8 text-center text-slate-400">
-          Showing {filteredPlayers.length} of {players.length} players
+              {sortedTeams.length === 0 && (
+                <div className="text-center py-12 text-terminal-text opacity-50 font-mono">
+                  NO DATA FOUND MATCHING QUERY
+                </div>
+              )}
+            </div>
+          </section>
         </div>
       </div>
     </AuthenticatedLayout>
