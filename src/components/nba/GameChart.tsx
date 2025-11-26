@@ -26,7 +26,7 @@ const CustomXAxisTick = (props: any) => {
         y={0} 
         dy={12} 
         textAnchor="middle" 
-        fill="#8fb382" 
+        fill="#7a9bb5" 
         fontSize={11} 
         fontWeight={600}
       >
@@ -49,7 +49,6 @@ const CustomXAxisTick = (props: any) => {
 export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Points' }) => {
   // Transform game stats into chart data
   const chartData: ChartDataPoint[] = gameStats
-    .slice(0, 18) // Last 18 games
     .reverse() // Show oldest to newest
     .map((game, index) => ({
       game: `G${index + 1}`,
@@ -115,7 +114,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
               {chartData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={entry.isOver ? '#8fb382' : '#d67676'} 
+                  fill={entry.isOver ? '#7a9bb5' : '#5a7a95'} 
                 />
               ))}
             </Bar>

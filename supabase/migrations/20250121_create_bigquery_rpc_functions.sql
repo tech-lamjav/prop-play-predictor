@@ -178,6 +178,16 @@ SET search_path = ''
 AS $$
 BEGIN
   RETURN QUERY
+  WITH last_n_games AS (
+    -- Get the last N unique games for this player
+    SELECT t.game_id, MAX(t.game_date) as game_date
+    FROM bigquery.ft_game_player_stats t
+    WHERE t.player_id = p_player_id
+    GROUP BY t.game_id
+    ORDER BY MAX(t.game_date) DESC
+    LIMIT p_limit
+  )
+  -- Get all stat types for those games
   SELECT 
     t.player_id,
     t.game_date,
@@ -191,9 +201,9 @@ BEGIN
     t.home_away,
     t.is_played
   FROM bigquery.ft_game_player_stats t
+  INNER JOIN last_n_games lng ON t.game_id = lng.game_id
   WHERE t.player_id = p_player_id
-  ORDER BY t.game_date DESC
-  LIMIT p_limit;
+  ORDER BY t.game_date DESC, t.stat_type;
 END;
 $$;
 
@@ -265,6 +275,44 @@ BEGIN
 END;
 $$;
 
+-- Function to get all players for a specific team
+DROP FUNCTION IF EXISTS public.get_team_players(bigint);
+CREATE OR REPLACE FUNCTION public.get_team_players(p_team_id bigint)
+RETURNS TABLE (
+  player_id bigint,
+  player_name text,
+  "position" text,
+  team_id bigint,
+  age bigint,
+  current_status text,
+  rating_stars bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN QUERY
+  WITH player_ratings AS (
+    SELECT p.player_id, MAX(p.rating_stars) as max_stars
+    FROM bigquery.dim_prop_player p
+    GROUP BY p.player_id
+  )
+  SELECT 
+    t.player_id,
+    t.player_name,
+    t."position",
+    t.team_id,
+    t.age,
+    t.current_status,
+    COALESCE(pr.max_stars, 0) as rating_stars
+  FROM bigquery.dim_players t
+  LEFT JOIN player_ratings pr ON t.player_id = pr.player_id
+  WHERE t.team_id = p_team_id
+  ORDER BY COALESCE(pr.max_stars, 0) DESC NULLS LAST, t.player_name ASC;
+END;
+$$;
+
 -- Grant execute permissions to authenticated and anon users
 GRANT EXECUTE ON FUNCTION public.get_all_players() TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_player_by_id(bigint) TO authenticated, anon;
@@ -272,4 +320,6 @@ GRANT EXECUTE ON FUNCTION public.get_player_by_name(text) TO authenticated, anon
 GRANT EXECUTE ON FUNCTION public.get_player_props(bigint) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_player_game_stats(bigint, int) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_team_by_id(bigint) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.get_team_players(bigint) TO authenticated, anon;
+
 

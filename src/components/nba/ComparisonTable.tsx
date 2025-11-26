@@ -82,7 +82,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats, pla
                   </td>
                   <td className="text-right py-2 px-2">
                     <span className={`font-medium ${
-                      isOver ? 'stat-positive' : 'stat-negative'
+                      diff > 0 ? 'text-terminal-blue' : 'text-terminal-red'
                     }`}>
                       {diff > 0 ? '+' : ''}{diffPercent}%
                     </span>

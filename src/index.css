@@ -20,7 +20,7 @@ All colors MUST be HSL.
     --popover: 220 27% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 142 76% 36%;
+    --primary: 210 20% 50%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 220 27% 16%;
@@ -35,7 +35,7 @@ All colors MUST be HSL.
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --success: 142 76% 36%;
+    --success: 210 20% 50%;
     --success-foreground: 210 40% 98%;
 
     --warning: 38 92% 50%;
@@ -50,7 +50,7 @@ All colors MUST be HSL.
     --gradient-primary: linear-gradient(
       135deg,
       hsl(var(--primary)),
-      hsl(142 76% 30%)
+      hsl(210 20% 45%)
     );
     --gradient-card: linear-gradient(
       135deg,
@@ -60,7 +60,7 @@ All colors MUST be HSL.
 
     --sidebar-background: 220 27% 10%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 142 76% 36%;
+    --sidebar-primary: 210 20% 50%;
     --sidebar-primary-foreground: 210 40% 98%;
     --sidebar-accent: 220 27% 16%;
     --sidebar-accent-foreground: 210 40% 98%;
@@ -76,7 +76,7 @@ All colors MUST be HSL.
     --card-foreground: 210 40% 98%;
     --popover: 220 27% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 142 76% 36%;
+    --primary: 210 20% 50%;
     --primary-foreground: 210 40% 98%;
     --secondary: 220 27% 16%;
     --secondary-foreground: 210 40% 98%;
@@ -91,7 +91,7 @@ All colors MUST be HSL.
     --ring: 217 33% 17%;
     --sidebar-background: 220 27% 10%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 142 76% 36%;
+    --sidebar-primary: 210 20% 50%;
     --sidebar-primary-foreground: 210 40% 98%;
     --sidebar-accent: 220 27% 16%;
     --sidebar-accent-foreground: 210 40% 98%;
@@ -99,14 +99,14 @@ All colors MUST be HSL.
     --sidebar-ring: 217 33% 17%;
 
     /* NBA Dashboard Terminal Theme */
-    --terminal-black: #0a0e0a;
-    --terminal-dark-gray: #151a15;
-    --terminal-gray: #1a201a;
-    --terminal-light-gray: #1f251f;
-    --terminal-border: #2a3f2a;
-    --terminal-border-subtle: #1f2a1f;
-    --terminal-green: #8fb382;
-    --terminal-text: #c5d0c0;
+    --terminal-black: #0a0d0e;
+    --terminal-dark-gray: #151719;
+    --terminal-gray: #1a1d20;
+    --terminal-light-gray: #1f2225;
+    --terminal-border: #2a3540;
+    --terminal-border-subtle: #1f2528;
+    --terminal-blue: #7a9bb5;
+    --terminal-text: #c0cad5;
     --terminal-red: #d67676;
   }
 }
@@ -172,6 +172,9 @@ All colors MUST be HSL.
   .text-terminal-green {
     color: var(--terminal-green);
   }
+  .text-terminal-blue {
+    color: var(--terminal-blue);
+  }
   .text-terminal-text {
     color: var(--terminal-text);
   }
@@ -234,7 +237,7 @@ All colors MUST be HSL.
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: var(--terminal-green);
+  color: var(--terminal-blue);
   text-transform: uppercase;
 }
 
@@ -254,7 +257,7 @@ All colors MUST be HSL.
 }
 
 .stat-positive {
-  color: var(--terminal-green);
+  color: var(--terminal-blue);
 }
 
 .stat-negative {

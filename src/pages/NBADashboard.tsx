@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats } from '@/services/nba-data.service';
+import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team } from '@/services/nba-data.service';
 import { NBAHeader } from '@/components/nba/NBAHeader';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
+import { StatTypeSelector } from '@/components/nba/StatTypeSelector';
+import { PlayerHeader } from '@/components/nba/PlayerHeader';
+import { PropInsightsCard } from '@/components/nba/PropInsightsCard';
+import { TeammatesCard } from '@/components/nba/TeammatesCard';
+import { NextGamesCard } from '@/components/nba/NextGamesCard';
+import { SeasonStatsHeader } from '@/components/nba/SeasonStatsHeader';
+import { QuickFiltersBar } from '@/components/nba/QuickFiltersBar';
 import { useToast } from '@/hooks/use-toast';
 
 export default function NBADashboard() {
@@ -12,7 +19,13 @@ export default function NBADashboard() {
   const { toast } = useToast();
   const [player, setPlayer] = useState<Player | null>(null);
   const [gameStats, setGameStats] = useState<GamePlayerStats[]>([]);
+  const [propPlayers, setPropPlayers] = useState<PropPlayer[]>([]);
+  const [teammates, setTeammates] = useState<TeamPlayer[]>([]);
+  const [teamData, setTeamData] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedStatType, setSelectedStatType] = useState<string>('player_points');
+  const [lastNGames, setLastNGames] = useState<number | 'all'>('all');
+  const [homeAway, setHomeAway] = useState<'all' | 'home' | 'away'>('all');
 
   useEffect(() => {
     loadPlayer();
@@ -43,7 +56,30 @@ export default function NBADashboard() {
         setGameStats(stats);
       } catch (error) {
         console.error('Error loading game stats:', error);
-        // Don't show error toast for stats, just log it
+      }
+
+      // Load prop data
+      try {
+        const props = await nbaDataService.getPlayerProps(playerData.player_id);
+        setPropPlayers(props);
+      } catch (error) {
+        console.error('Error loading prop data:', error);
+      }
+
+      // Load teammates
+      try {
+        const teamPlayers = await nbaDataService.getTeamPlayers(playerData.team_id);
+        setTeammates(teamPlayers);
+      } catch (error) {
+        console.error('Error loading teammates:', error);
+      }
+
+      // Load team data
+      try {
+        const team = await nbaDataService.getTeamById(playerData.team_id);
+        setTeamData(team);
+      } catch (error) {
+        console.error('Error loading team data:', error);
       }
     } catch (error) {
       console.error('Error loading player:', error);
@@ -56,6 +92,72 @@ export default function NBADashboard() {
       setLoading(false);
     }
   };
+
+  // Calculate season averages from all game stats
+  // Must be before conditional returns to comply with Rules of Hooks
+  const seasonAverages = React.useMemo(() => {
+    const pointsGames = gameStats.filter(g => g.stat_type === 'player_points');
+    const assistsGames = gameStats.filter(g => g.stat_type === 'player_assists');
+    const reboundsGames = gameStats.filter(g => g.stat_type === 'player_rebounds');
+
+    return {
+      points: pointsGames.length > 0 
+        ? pointsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / pointsGames.length 
+        : 0,
+      assists: assistsGames.length > 0 
+        ? assistsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / assistsGames.length 
+        : 0,
+      rebounds: reboundsGames.length > 0 
+        ? reboundsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / reboundsGames.length 
+        : 0,
+    };
+  }, [gameStats]);
+
+  // Filter game stats based on selected filters
+  const filteredGameStats = useMemo(() => {
+    let filtered = gameStats.filter(g => g.stat_type === selectedStatType);
+
+    // Apply home/away filter
+    if (homeAway !== 'all') {
+      filtered = filtered.filter(g => {
+        const location = g.home_away?.toLowerCase();
+        return homeAway === 'home' ? location === 'home' : location === 'away';
+      });
+    }
+
+    // Apply last N games filter
+    if (lastNGames !== 'all') {
+      filtered = filtered.slice(0, lastNGames);
+    }
+
+    return filtered;
+  }, [gameStats, selectedStatType, homeAway, lastNGames]);
+
+  // Calculate stats for SeasonStatsHeader
+  const seasonStatsData = useMemo(() => {
+    const allStatsForType = gameStats.filter(g => g.stat_type === selectedStatType);
+    
+    const seasonAvg = allStatsForType.length > 0
+      ? allStatsForType.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / allStatsForType.length
+      : 0;
+
+    const graphAvg = filteredGameStats.length > 0
+      ? filteredGameStats.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / filteredGameStats.length
+      : 0;
+
+    const gamesOver = filteredGameStats.filter(g => g.stat_vs_line === 'Over').length;
+    const hitRate = filteredGameStats.length > 0
+      ? (gamesOver / filteredGameStats.length) * 100
+      : 0;
+
+    return {
+      seasonAvg,
+      graphAvg,
+      hitRate,
+      totalGames: filteredGameStats.length,
+      gamesOver,
+    };
+  }, [gameStats, filteredGameStats, selectedStatType]);
 
   if (loading) {
     return (
@@ -78,86 +180,69 @@ export default function NBADashboard() {
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
       <NBAHeader playerName={playerName} />
       <main className="container mx-auto px-3 py-4">
+        {/* Player Header */}
+        <PlayerHeader player={player} seasonAverages={seasonAverages} />
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Left Sidebar - Quick Info */}
-          <div className="lg:col-span-1">
-            <div className="terminal-container p-4 mb-3">
-              <h3 className="section-title mb-3">PLAYER INFO</h3>
-              <div className="space-y-3">
-                <div>
-                  <div className="data-label mb-1">NAME</div>
-                  <div className="text-lg font-semibold text-terminal-green">
-                    {player.player_name}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="data-label mb-1">POSITION</div>
-                    <div className="text-sm font-medium">{player.position}</div>
-                  </div>
-                  <div>
-                    <div className="data-label mb-1">AGE</div>
-                    <div className="text-sm font-medium">{player.age}</div>
-                  </div>
-                </div>
-                <div>
-                  <div className="data-label mb-1">TEAM</div>
-                  <div className="text-sm font-medium">
-                    {player.team_name} ({player.team_abbreviation})
-                  </div>
-                </div>
-                <div>
-                  <div className="data-label mb-1">STATUS</div>
-                  <div className={`text-sm font-medium ${
-                    player.current_status?.toLowerCase() === 'active' 
-                      ? 'text-terminal-green' 
-                      : 'text-terminal-red'
-                  }`}>
-                    {player.current_status || 'Active'}
-                  </div>
-                </div>
-                {player.last_game_text && (
-                  <div>
-                    <div className="data-label mb-1">LAST GAME</div>
-                    <div className="text-xs opacity-70">{player.last_game_text}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Stats Summary */}
-            {gameStats.length > 0 && (
-              <div className="terminal-container p-4 mb-3">
-                <h3 className="section-title mb-3">QUICK STATS</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="data-label">GAMES PLAYED</span>
-                    <span className="text-sm font-medium">{gameStats.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="data-label">AVG VALUE</span>
-                    <span className="text-sm font-medium stat-positive">
-                      {(gameStats.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / gameStats.length).toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="data-label">HIT RATE</span>
-                    <span className="text-sm font-medium stat-positive">
-                      {((gameStats.filter(g => g.stat_vs_line === 'Over').length / gameStats.length) * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
+          {/* Left Sidebar */}
+          <div className="lg:col-span-1 space-y-3">
+            {/* Next Game Card */}
+            {teamData && (
+              <NextGamesCard team={teamData} />
+            )}
+            
+            {/* Prop Insights */}
+            <PropInsightsCard propPlayers={propPlayers} playerName={player.player_name} />
+            
+            {/* Teammates Card */}
+            {teammates.length > 0 && (
+              <TeammatesCard 
+                teammates={teammates} 
+                currentPlayerId={player.player_id}
+                teamName={player.team_name}
+              />
             )}
           </div>
 
           {/* Main Content Area */}
           <div className="lg:col-span-2">
+            {/* Stat Type Selector */}
+            <StatTypeSelector
+              availableStats={[]}
+              selectedStat={selectedStatType}
+              onStatChange={setSelectedStatType}
+            />
+            
+            {/* Season Stats Header */}
+            <SeasonStatsHeader
+              seasonAvg={seasonStatsData.seasonAvg}
+              graphAvg={seasonStatsData.graphAvg}
+              hitRate={seasonStatsData.hitRate}
+              totalGames={seasonStatsData.totalGames}
+              gamesOver={seasonStatsData.gamesOver}
+              statType={selectedStatType}
+            />
+
+            {/* Quick Filters Bar */}
+            <QuickFiltersBar
+              lastNGames={lastNGames}
+              homeAway={homeAway}
+              onLastNGamesChange={setLastNGames}
+              onHomeAwayChange={setHomeAway}
+              totalGamesAvailable={gameStats.filter(g => g.stat_type === selectedStatType).length}
+            />
+            
             {/* Game Chart */}
-            <GameChart gameStats={gameStats} statType={gameStats[0]?.stat_type || 'Points'} />
+            <GameChart 
+              gameStats={filteredGameStats} 
+              statType={selectedStatType} 
+            />
             
             {/* Comparison Table */}
-            <ComparisonTable gameStats={gameStats} playerName={player.player_name} />
+            <ComparisonTable 
+              gameStats={filteredGameStats} 
+              playerName={player.player_name} 
+            />
           </div>
         </div>
       </main>

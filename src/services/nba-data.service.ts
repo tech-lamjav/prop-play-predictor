@@ -33,12 +33,36 @@ export interface Team {
   team_abbreviation: string;
   conference: string;
   team_city: string;
+  season: number;
+  conference_rank: number;
   wins: number;
   losses: number;
   team_last_five_games: string;
+  team_rating_rank: number;
+  team_offensive_rating_rank: number;
+  team_defensive_rating_rank: number;
+  next_opponent_id: number;
   next_opponent_name: string;
   next_opponent_abbreviation: string;
   is_next_game_home: boolean;
+  next_opponent_team_last_five_games: string;
+  next_opponent_conference_rank: number;
+  next_opponent_team_rating_rank: number;
+  next_opponent_team_offensive_rating_rank: number;
+  next_opponent_team_defensive_rating_rank: number;
+  team_injury_report_time_brasilia: string;
+  next_game_injury_report_time_brasilia: string;
+  loaded_at: string;
+}
+
+export interface TeamPlayer {
+  player_id: number;
+  player_name: string;
+  position: string;
+  team_id: number;
+  age: number;
+  current_status: string;
+  rating_stars: number;
 }
 
 export interface GamePlayerStats {
@@ -114,5 +138,13 @@ export const nbaDataService = {
     
     if (error) throw error;
     return data && data.length > 0 ? data[0] as Team : null;
+  },
+
+  async getTeamPlayers(teamId: number): Promise<TeamPlayer[]> {
+    const { data, error } = await supabase
+      .rpc('get_team_players', { p_team_id: teamId });
+    
+    if (error) throw error;
+    return (data || []) as TeamPlayer[];
   },
 };
