@@ -97,20 +97,24 @@ export const nbaDataService = {
   },
 
   async getPlayerByName(playerName: string): Promise<Player | null> {
-    // Convert slug to proper case (e.g., "anthony-davis" -> "Anthony Davis")
-    const formattedName = playerName
-      .replace(/-/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+    // Convert slug to searchable format (e.g., "lebron-james" -> "lebron james")
+    const searchName = playerName.replace(/-/g, ' ').toLowerCase();
     
-    const { data, error } = await supabase
-      .rpc('get_player_by_name', { 
-        p_player_name: formattedName
-      });
-    
-    if (error) throw error;
-    return data && data.length > 0 ? data[0] : null;
+    try {
+      // Get all players and search case-insensitively in JavaScript
+      // This is necessary because BigQuery foreign tables don't support UPPER() in WHERE clauses
+      const allPlayers = await this.getAllPlayers();
+      
+      // Find player by case-insensitive name match
+      const player = allPlayers.find(p => 
+        p.player_name.toLowerCase() === searchName
+      );
+      
+      return player || null;
+    } catch (error) {
+      console.error('Error finding player by name:', error);
+      return null;
+    }
   },
 
   async getPlayerProps(playerId: number): Promise<PropPlayer[]> {
