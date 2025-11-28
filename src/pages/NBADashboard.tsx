@@ -12,6 +12,7 @@ import { NextGamesCard } from '@/components/nba/NextGamesCard';
 import { SeasonStatsHeader } from '@/components/nba/SeasonStatsHeader';
 import { QuickFiltersBar } from '@/components/nba/QuickFiltersBar';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function NBADashboard() {
   const { playerName } = useParams<{ playerName: string }>();
@@ -50,36 +51,40 @@ export default function NBADashboard() {
       
       setPlayer(playerData);
       
-      // Load game stats
-      try {
-        const stats = await nbaDataService.getPlayerGameStats(playerData.player_id, 30);
-        setGameStats(stats);
-      } catch (error) {
-        console.error('Error loading game stats:', error);
+      // Load all data in parallel for better performance
+      const results = await Promise.allSettled([
+        nbaDataService.getPlayerGameStats(playerData.player_id, 10), // Reduced from 30 to 10 for faster initial load
+        nbaDataService.getPlayerProps(playerData.player_id),
+        nbaDataService.getTeamPlayers(playerData.team_id),
+        nbaDataService.getTeamById(playerData.team_id),
+      ]);
+
+      // Handle game stats
+      if (results[0].status === 'fulfilled') {
+        setGameStats(results[0].value);
+      } else {
+        console.error('Error loading game stats:', results[0].reason);
       }
 
-      // Load prop data
-      try {
-        const props = await nbaDataService.getPlayerProps(playerData.player_id);
-        setPropPlayers(props);
-      } catch (error) {
-        console.error('Error loading prop data:', error);
+      // Handle prop data
+      if (results[1].status === 'fulfilled') {
+        setPropPlayers(results[1].value);
+      } else {
+        console.error('Error loading prop data:', results[1].reason);
       }
 
-      // Load teammates
-      try {
-        const teamPlayers = await nbaDataService.getTeamPlayers(playerData.team_id);
-        setTeammates(teamPlayers);
-      } catch (error) {
-        console.error('Error loading teammates:', error);
+      // Handle teammates
+      if (results[2].status === 'fulfilled') {
+        setTeammates(results[2].value);
+      } else {
+        console.error('Error loading teammates:', results[2].reason);
       }
 
-      // Load team data
-      try {
-        const team = await nbaDataService.getTeamById(playerData.team_id);
-        setTeamData(team);
-      } catch (error) {
-        console.error('Error loading team data:', error);
+      // Handle team data
+      if (results[3].status === 'fulfilled') {
+        setTeamData(results[3].value);
+      } else {
+        console.error('Error loading team data:', results[3].reason);
       }
     } catch (error) {
       console.error('Error loading player:', error);
@@ -121,7 +126,10 @@ export default function NBADashboard() {
     if (homeAway !== 'all') {
       filtered = filtered.filter(g => {
         const location = g.home_away?.toLowerCase();
-        return homeAway === 'home' ? location === 'home' : location === 'away';
+        if (homeAway === 'home') {
+          return location === 'home' || location === 'h' || location === 'casa';
+        }
+        return location === 'away' || location === 'a' || location === 'fora';
       });
     }
 
@@ -159,20 +167,10 @@ export default function NBADashboard() {
     };
   }, [gameStats, filteredGameStats, selectedStatType]);
 
-  if (loading) {
-    return (
-      <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-        <NBAHeader playerName={playerName} />
-        <div className="flex items-center justify-center min-h-[calc(100vh-60px)]">
-          <div className="text-center">
-            <div className="text-xl font-mono">Loading player data...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Remove full page loading check to allow skeleton rendering
+  // if (loading) { ... }
 
-  if (!player) {
+  if (!player && !loading) {
     return null;
   }
 
@@ -181,27 +179,35 @@ export default function NBADashboard() {
       <NBAHeader playerName={playerName} />
       <main className="container mx-auto px-3 py-4">
         {/* Player Header */}
-        <PlayerHeader player={player} seasonAverages={seasonAverages} />
+        <PlayerHeader 
+          player={player || undefined} 
+          seasonAverages={seasonAverages} 
+          isLoading={loading}
+        />
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Left Sidebar */}
           <div className="lg:col-span-1 space-y-3">
             {/* Next Game Card */}
-            {teamData && (
-              <NextGamesCard team={teamData} />
-            )}
+            <NextGamesCard 
+              team={teamData || undefined} 
+              isLoading={loading}
+            />
             
             {/* Prop Insights */}
-            <PropInsightsCard propPlayers={propPlayers} playerName={player.player_name} />
+            <PropInsightsCard 
+              propPlayers={propPlayers} 
+              playerName={player?.player_name || ''} 
+              isLoading={loading}
+            />
             
-            {/* Teammates Card */}
-            {teammates.length > 0 && (
-              <TeammatesCard 
-                teammates={teammates} 
-                currentPlayerId={player.player_id}
-                teamName={player.team_name}
-              />
-            )}
+            {/* Teammates */}
+            <TeammatesCard 
+              teammates={teammates} 
+              currentPlayerId={player?.player_id || 0}
+              teamName={player?.team_name || ''}
+              isLoading={loading}
+            />
           </div>
 
           {/* Main Content Area */}
@@ -233,16 +239,24 @@ export default function NBADashboard() {
             />
             
             {/* Game Chart */}
-            <GameChart 
-              gameStats={filteredGameStats} 
-              statType={selectedStatType} 
-            />
+            {loading ? (
+              <Skeleton className="h-[400px] w-full bg-terminal-gray mb-6" />
+            ) : (
+              <GameChart 
+                gameStats={filteredGameStats} 
+                statType={selectedStatType} 
+              />
+            )}
             
             {/* Comparison Table */}
-            <ComparisonTable 
-              gameStats={filteredGameStats} 
-              playerName={player.player_name} 
-            />
+            {loading ? (
+              <Skeleton className="h-[300px] w-full bg-terminal-gray" />
+            ) : (
+              <ComparisonTable 
+                gameStats={filteredGameStats} 
+                playerName={player?.player_name || ''} 
+              />
+            )}
           </div>
         </div>
       </main>
