@@ -37,6 +37,7 @@ import {
 import { usePlayerStats, useTeamData } from "@/hooks/use-player-stats";
 import { InjuryInsightsDashboard } from "@/components/injury-insights/InjuryInsightsDashboard";
 import { supabase } from "@/integrations/supabase/client";
+import { getTeamLogoUrl, getPlayerPhotoUrl } from "@/utils/team-logos";
 
 // Mock data for the dashboard
 const mockPlayerData = {
@@ -343,8 +344,18 @@ export default function Dashboard() {
         <aside className="w-80 bg-slate-800 border-r border-slate-700 p-4">
           {/* Player's Team */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-4 text-white flex items-center">
-              <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+            <h3 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
+              {playerData?.team_name && (
+                <img 
+                  src={getTeamLogoUrl(playerData.team_name)} 
+                  alt={playerData.team_name}
+                  className="w-6 h-6 object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              )}
               {playerData?.team_name || 'Loading...'}
             </h3>
             <div className="space-y-2">
@@ -446,11 +457,29 @@ export default function Dashboard() {
                   </div>
                 ) : playerData ? (
                   <div className="flex items-center space-x-4">
-                    <img 
-                      src={`https://via.placeholder.com/80x80/1e40af/ffffff?text=${playerData.name.charAt(0)}`} 
-                      alt={playerData.name}
-                      className="w-20 h-20 rounded-full border-2 border-blue-500"
-                    />
+                    <div className="w-20 h-20 rounded-full border-2 border-blue-500 overflow-hidden bg-slate-700 flex items-center justify-center">
+                      <img 
+                        src={getPlayerPhotoUrl(playerData.name, playerData.team_name)} 
+                        alt={playerData.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Fallback to initials if photo fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const initials = playerData.name
+                              .split(' ')
+                              .map(n => n[0])
+                              .join('')
+                              .toUpperCase()
+                              .slice(0, 2);
+                            parent.innerHTML = `<span class="text-2xl font-bold text-blue-400">${initials}</span>`;
+                          }
+                        }}
+                      />
+                    </div>
                     <div className="flex-1">
                       <h2 className="text-2xl font-bold text-white">{playerData.name}</h2>
                       <p className="text-slate-300">{playerData.team_name} • {playerData.position}</p>
@@ -852,6 +881,7 @@ export default function Dashboard() {
             </div>
           </div>
         </aside>
+      </div>
       </div>
     </AuthenticatedLayout>
   );

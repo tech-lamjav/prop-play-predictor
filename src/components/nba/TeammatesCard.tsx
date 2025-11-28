@@ -3,17 +3,34 @@ import { useNavigate } from 'react-router-dom';
 import { TeamPlayer } from '@/services/nba-data.service';
 import { Star } from 'lucide-react';
 
+import { Skeleton } from '@/components/ui/skeleton';
+
 interface TeammatesCardProps {
   teammates: TeamPlayer[];
   currentPlayerId: number;
   teamName: string;
+  isLoading?: boolean;
 }
 
 export const TeammatesCard: React.FC<TeammatesCardProps> = ({ 
   teammates, 
   currentPlayerId,
-  teamName 
+  teamName,
+  isLoading
 }) => {
+  if (isLoading) {
+    return (
+      <div className="terminal-container p-4">
+        <h3 className="section-title mb-3">TEAMMATES</h3>
+        <Skeleton className="h-4 w-32 mb-4 bg-terminal-gray" />
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-12 w-full bg-terminal-gray" />
+          ))}
+        </div>
+      </div>
+    );
+  }
   const navigate = useNavigate();
 
   // Filter out current player and limit to top 5 teammates

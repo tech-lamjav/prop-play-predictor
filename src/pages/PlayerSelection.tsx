@@ -4,6 +4,7 @@ import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Input } from '@/components/ui/input';
 import { Search, Star, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
 import { nbaDataService, Player } from '@/services/nba-data.service';
+import { getTeamLogoUrl } from '@/utils/team-logos';
 
 export default function PlayerSelection() {
   const navigate = useNavigate();
@@ -213,18 +214,30 @@ export default function PlayerSelection() {
             <section className="py-4 overflow-x-auto scrollbar-hide">
               <div className="flex space-x-4 min-w-max px-2">
                 {sortedTeams.map((teamName) => {
-                  // Find a player from this team to get the abbreviation
+                  const logoUrl = getTeamLogoUrl(teamName);
                   const teamAbbr = playersByTeam[teamName][0]?.team_abbreviation || teamName.substring(0, 3).toUpperCase();
                   return (
                     <button
                       key={`nav-${teamName}`}
                       onClick={() => scrollToTeam(teamName)}
                       className="flex flex-col items-center space-y-2 group"
+                      title={teamName}
                     >
-                      <div className="w-12 h-12 rounded-full bg-terminal-gray border border-terminal-border-subtle flex items-center justify-center group-hover:border-terminal-green group-hover:bg-terminal-dark-gray transition-all">
-                        <span className="text-xs font-bold text-terminal-text group-hover:text-terminal-green">
-                          {teamAbbr}
-                        </span>
+                      <div className="w-12 h-12 rounded-full bg-terminal-gray border border-terminal-border-subtle flex items-center justify-center group-hover:border-terminal-green group-hover:bg-terminal-dark-gray transition-all overflow-hidden p-1">
+                        <img 
+                          src={logoUrl} 
+                          alt={teamName}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            // Fallback to text if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<span class="text-xs font-bold text-terminal-text group-hover:text-terminal-green">${teamAbbr}</span>`;
+                            }
+                          }}
+                        />
                       </div>
                     </button>
                   );
@@ -242,7 +255,7 @@ export default function PlayerSelection() {
 
             <div className="space-y-4">
               {sortedTeams.map((teamName) => (
-                <div key={teamName} id={`team-${teamName}`} className="terminal-container rounded overflow-hidden">
+                <div key={teamName} id={`team-${teamName}`} className="terminal-container rounded overflow-hidden scroll-mt-24">
                   <button 
                     onClick={() => toggleTeam(teamName)}
                     className="w-full flex items-center justify-between p-3 bg-terminal-gray hover:bg-terminal-light-gray transition-colors border-b border-terminal-border-subtle"

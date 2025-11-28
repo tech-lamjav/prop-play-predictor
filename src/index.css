@@ -98,16 +98,19 @@ All colors MUST be HSL.
     --sidebar-border: 220 27% 18%;
     --sidebar-ring: 217 33% 17%;
 
-    /* NBA Dashboard Terminal Theme */
-    --terminal-black: #0a0d0e;
-    --terminal-dark-gray: #151719;
-    --terminal-gray: #1a1d20;
-    --terminal-light-gray: #1f2225;
-    --terminal-border: #2a3540;
-    --terminal-border-subtle: #1f2528;
-    --terminal-blue: #7a9bb5;
-    --terminal-text: #c0cad5;
-    --terminal-red: #d67676;
+    /* NBA Dashboard Terminal Theme - Blue/Grey Palette */
+    --terminal-black: #0f1419;
+    --terminal-dark-gray: #1a1f26;
+    --terminal-gray: #242b35;
+    --terminal-light-gray: #2d3541;
+    --terminal-border: #3d4a5c;
+    --terminal-border-subtle: #252d38;
+    --terminal-green: #5b9bd5;  /* Changed from green to blue */
+    --terminal-green-bright: #7a9bb5; /* Lighter blue */
+    --terminal-blue: #5b9bd5;
+    --terminal-yellow: #e5c07b; /* Gold/Yellow for stars */
+    --terminal-text: #d4dce6;
+    --terminal-red: #e57373;
   }
 }
 
@@ -172,8 +175,17 @@ All colors MUST be HSL.
   .text-terminal-green {
     color: var(--terminal-green);
   }
+  .text-terminal-green-bright {
+    color: var(--terminal-green-bright);
+  }
   .text-terminal-blue {
     color: var(--terminal-blue);
+  }
+  .text-terminal-yellow {
+    color: var(--terminal-yellow);
+  }
+  .fill-terminal-yellow {
+    fill: var(--terminal-yellow);
   }
   .text-terminal-text {
     color: var(--terminal-text);

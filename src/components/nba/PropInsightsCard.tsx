@@ -2,12 +2,35 @@ import React from 'react';
 import { PropPlayer } from '@/services/nba-data.service';
 import { Star, TrendingUp, AlertTriangle, Users } from 'lucide-react';
 
+import { Skeleton } from '@/components/ui/skeleton';
+
 interface PropInsightsCardProps {
   propPlayers: PropPlayer[];
   playerName: string;
+  isLoading?: boolean;
 }
 
-export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers, playerName }) => {
+export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers, playerName, isLoading }) => {
+  if (isLoading) {
+    return (
+      <div className="terminal-container p-4 mb-3">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="section-title">PROP INSIGHTS</h3>
+          <Skeleton className="h-4 w-20 bg-terminal-gray" />
+        </div>
+        <div className="space-y-2 mb-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 w-full bg-terminal-gray" />
+          ))}
+        </div>
+        <div className="mt-3 pt-3 border-t border-terminal-border-subtle grid grid-cols-3 gap-2">
+          <Skeleton className="h-10 w-full bg-terminal-gray" />
+          <Skeleton className="h-10 w-full bg-terminal-gray" />
+          <Skeleton className="h-10 w-full bg-terminal-gray" />
+        </div>
+      </div>
+    );
+  }
   // Get top-rated props (3 stars)
   const topProps = propPlayers
     .filter(p => p.rating_stars === 3)
