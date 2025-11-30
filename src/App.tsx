@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import DashboardTest from "./pages/DashboardTest";
 import Bets from "./pages/Bets";
+import Bankroll from './pages/Bankroll';
 import PlayerSelectionTest from "./pages/PlayerSelectionTest";
 import PlayerSelection from "./pages/PlayerSelection";
 import NBADashboard from "./pages/NBADashboard";
@@ -49,6 +50,11 @@ const App = () => (
           <Route path="/bets" element={
             <ProtectedRoute>
               <Bets />
+            </ProtectedRoute>
+          } />
+          <Route path="/bankroll" element={
+            <ProtectedRoute>
+              <Bankroll />
             </ProtectedRoute>
           } />
           <Route path="/analysis" element={

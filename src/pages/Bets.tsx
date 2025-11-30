@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
-import AuthenticatedLayout from '../components/AuthenticatedLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { UnitDisplay } from '../components/UnitDisplay';
+import { BetsHeader } from '../components/bets/BetsHeader';
+import { BetStatsCard } from '../components/bets/BetStatsCard';
+import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
-import { useUserUnit } from '../hooks/use-user-unit';
+import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
+import { useUserUnit } from '@/hooks/use-user-unit';
+import { useNavigate } from 'react-router-dom';
 import { 
   RefreshCw, 
   AlertCircle,
@@ -20,12 +19,12 @@ import {
   Calendar,
   X,
   Filter,
-  List,
   Edit,
   Save,
   Settings,
-  BarChart3,
-  Percent
+  Search,
+  Trash2,
+  ChevronRight
 } from 'lucide-react';
 import {
   Dialog,
@@ -33,7 +32,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '../components/ui/dialog';
 import {
   Select,
@@ -44,6 +42,15 @@ import {
 } from '../components/ui/select';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Button } from '../components/ui/button';
+import { Skeleton } from '../components/ui/skeleton';
+import { useToast } from '../hooks/use-toast';
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface Bet {
   id: string;
@@ -67,14 +74,16 @@ interface Bet {
   cashout_date?: string;
   cashout_odds?: number;
   is_cashout?: boolean;
+  tags?: Tag[];
 }
 
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
-  const { isConfigured } = useUserUnit();
+  const { isConfigured, formatWithUnits, config, updateConfig, formatCurrency } = useUserUnit();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [stats, setStats] = useState({
     totalBets: 0,
@@ -86,6 +95,8 @@ export default function Bets() {
     averageOdd: 0,
     roi: 0
   });
+  
+  // Modals state
   const [cashoutModal, setCashoutModal] = useState<{
     isOpen: boolean;
     bet: Bet | null;
@@ -145,7 +156,6 @@ export default function Bets() {
     
     try {
       setIsLoading(true);
-      setError(null);
 
       const { data, error } = await supabase
         .from('bets')
@@ -153,13 +163,24 @@ export default function Bets() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      setBets(data || []);
+      // Fetch tags for each bet
+      const betsWithTags = await Promise.all(
+        (data || []).map(async (bet) => {
+          const { data: tags } = await supabase.rpc('get_bet_tags', { p_bet_id: bet.id });
+          return { ...bet, tags: tags || [] };
+        })
+      );
+
+      setBets(betsWithTags as any);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar apostas');
+      console.error('Error fetching bets:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to load bets',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -175,18 +196,15 @@ export default function Bets() {
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
-    const totalLost = lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
     
     const totalEarnings = totalReturn + totalCashout;
     const winRate = totalBets > 0 ? ((wonBets.length + cashoutBets.length) / (wonBets.length + lostBets.length + cashoutBets.length)) * 100 : 0;
     const profit = totalEarnings - totalStaked;
     const averageStake = totalBets > 0 ? totalStaked / totalBets : 0;
     
-    // Calculate average odd
     const totalOdds = betsData.reduce((sum, bet) => sum + bet.odds, 0);
     const averageOdd = totalBets > 0 ? totalOdds / totalBets : 0;
     
-    // Calculate ROI: (profit / totalStaked) * 100
     const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
 
     setStats({
@@ -201,6 +219,9 @@ export default function Bets() {
     });
   };
 
+  // ... (Keep existing updateBetStatus, deleteBet, processCashout, updateBetData logic but adapted if needed)
+  // For brevity, I'm keeping the logic but ensuring it uses the toast for notifications instead of local error state where appropriate
+  
   const updateBetStatus = async (betId: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -208,19 +229,16 @@ export default function Bets() {
         .update({ status: newStatus })
         .eq('id', betId);
 
-      if (error) {
-        throw error;
-      }
-
-      // Refresh bets
+      if (error) throw error;
       await fetchBets();
+      toast({ title: 'Success', description: 'Bet status updated' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao atualizar aposta');
+      toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
     }
   };
 
   const deleteBet = async (betId: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta aposta?')) return;
+    if (!window.confirm('Are you sure you want to delete this bet?')) return;
     
     try {
       const { error } = await supabase
@@ -228,37 +246,20 @@ export default function Bets() {
         .delete()
         .eq('id', betId);
 
-      if (error) {
-        throw error;
-      }
-
-      // Refresh bets
+      if (error) throw error;
       await fetchBets();
+      toast({ title: 'Success', description: 'Bet deleted' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir aposta');
+      toast({ title: 'Error', description: 'Failed to delete bet', variant: 'destructive' });
     }
   };
 
   const processCashout = async () => {
-    console.log('processCashout called', { 
-      hasBet: !!cashoutModal.bet, 
-      cashoutAmount: cashoutModal.cashoutAmount 
-    });
-    
-    if (!cashoutModal.bet || !cashoutModal.cashoutAmount) {
-      console.log('Missing required fields');
-      return;
-    }
+    if (!cashoutModal.bet || !cashoutModal.cashoutAmount) return;
     
     try {
       const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
-      
-      if (isNaN(cashoutAmount)) {
-        setError('Valor inválido para cashout');
-        return;
-      }
-
-      console.log('Updating bet:', cashoutModal.bet.id, 'with amount:', cashoutAmount);
+      if (isNaN(cashoutAmount)) throw new Error('Invalid amount');
 
       const { error } = await supabase
         .from('bets')
@@ -270,22 +271,54 @@ export default function Bets() {
         })
         .eq('id', cashoutModal.bet.id);
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Cashout successful, closing modal and refreshing');
-      
-      // Close modal and refresh bets
       setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' });
       await fetchBets();
+      toast({ title: 'Success', description: 'Cashout processed' });
     } catch (err) {
-      console.error('Error in processCashout:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao processar cashout');
+      toast({ title: 'Error', description: 'Failed to process cashout', variant: 'destructive' });
     }
   };
 
+  const updateBetData = async () => {
+    if (!editModal.bet) return;
+
+    try {
+      const odds = parseFloat(editModal.formData.odds);
+      const stakeAmount = parseFloat(editModal.formData.stake_amount);
+      const potentialReturn = stakeAmount * odds;
+
+      const updateData: any = {
+        bet_description: editModal.formData.bet_description,
+        match_description: editModal.formData.match_description || null,
+        sport: editModal.formData.sport,
+        league: editModal.formData.league || null,
+        odds: odds,
+        stake_amount: stakeAmount,
+        potential_return: potentialReturn,
+        bet_date: editModal.formData.bet_date || new Date().toISOString(),
+        match_date: editModal.formData.match_date || null,
+        status: editModal.formData.status,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('bets')
+        .update(updateData)
+        .eq('id', editModal.bet.id);
+
+      if (error) throw error;
+
+      setEditModal(prev => ({ ...prev, isOpen: false }));
+      await fetchBets();
+      toast({ title: 'Success', description: 'Bet updated' });
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to update bet', variant: 'destructive' });
+    }
+  };
+
+  // Helper functions
   const openCashoutModal = (bet: Bet) => {
     setCashoutModal({
       isOpen: true,
@@ -313,1024 +346,739 @@ export default function Bets() {
     });
   };
 
-  const updateBetData = async () => {
-    if (!editModal.bet) return;
-
-    try {
-      const odds = parseFloat(editModal.formData.odds);
-      const stakeAmount = parseFloat(editModal.formData.stake_amount);
-
-      if (isNaN(odds) || isNaN(stakeAmount)) {
-        setError('Odds e valor da aposta devem ser números válidos');
-        return;
-      }
-
-      const potentialReturn = stakeAmount * odds;
-
-      const updateData: any = {
-        bet_description: editModal.formData.bet_description,
-        match_description: editModal.formData.match_description || null,
-        sport: editModal.formData.sport,
-        league: editModal.formData.league || null,
-        odds: odds,
-        stake_amount: stakeAmount,
-        potential_return: potentialReturn,
-        bet_date: editModal.formData.bet_date || new Date().toISOString(),
-        match_date: editModal.formData.match_date || null,
-        status: editModal.formData.status,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase
-        .from('bets')
-        .update(updateData)
-        .eq('id', editModal.bet.id);
-
-      if (error) {
-        throw error;
-      }
-
-      // Close modal and refresh
-      setEditModal({
-        isOpen: false,
-        bet: null,
-        formData: {
-          bet_description: '',
-          match_description: '',
-          sport: '',
-          league: '',
-          odds: '',
-          stake_amount: '',
-          bet_date: '',
-          match_date: '',
-          status: 'pending'
-        }
-      });
-      await fetchBets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao atualizar aposta');
-    }
-  };
-
   useEffect(() => {
     if (user?.id) {
       fetchBets();
     }
   }, [user?.id]);
 
-  // Get unique sports and leagues from bets
+  // Filter logic
   const uniqueSports = useMemo(() => {
     const sports = Array.from(new Set(bets.map(bet => bet.sport).filter(Boolean)));
     return sports.sort();
   }, [bets]);
 
-  const uniqueLeagues = useMemo(() => {
-    const leagues = Array.from(new Set(bets.map(bet => bet.league).filter(Boolean)));
-    return leagues.sort();
-  }, [bets]);
-
-  // Filter bets based on filters
   const filteredBets = useMemo(() => {
     return bets.filter(bet => {
-      // Status filter
-      if (filters.status !== 'all' && bet.status !== filters.status) {
-        return false;
-      }
-
-      // Sport filter
-      if (filters.sport !== 'all' && bet.sport !== filters.sport) {
-        return false;
-      }
-
-      // League filter
-      if (filters.league !== 'all' && bet.league !== filters.league) {
-        return false;
-      }
-
-      // Date from filter
+      if (filters.status !== 'all' && bet.status !== filters.status) return false;
+      if (filters.sport !== 'all' && bet.sport !== filters.sport) return false;
       if (filters.dateFrom) {
-        const betDate = new Date(bet.bet_date);
-        const filterDate = new Date(filters.dateFrom);
-        if (betDate < filterDate) {
-          return false;
-        }
+        if (new Date(bet.bet_date) < new Date(filters.dateFrom)) return false;
       }
-
-      // Date to filter
       if (filters.dateTo) {
-        const betDate = new Date(bet.bet_date);
         const filterDate = new Date(filters.dateTo);
-        // Set to end of day for inclusive comparison
         filterDate.setHours(23, 59, 59, 999);
-        if (betDate > filterDate) {
-          return false;
-        }
+        if (new Date(bet.bet_date) > filterDate) return false;
       }
-
-      // Search query filter
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
         const matchDescription = bet.bet_description?.toLowerCase().includes(query);
         const matchMatch = bet.match_description?.toLowerCase().includes(query);
         const matchLeague = bet.league?.toLowerCase().includes(query);
-        
-        if (!matchDescription && !matchMatch && !matchLeague) {
-          return false;
-        }
+        if (!matchDescription && !matchMatch && !matchLeague) return false;
       }
-
       return true;
     });
   }, [bets, filters]);
 
-  const resetFilters = () => {
-    setFilters({
-      status: 'all',
-      sport: 'all',
-      league: 'all',
-      searchQuery: '',
-      dateFrom: '',
-      dateTo: ''
-    });
-  };
-
-  // Calculate stats based on filtered bets
   useEffect(() => {
     calculateStats(filteredBets);
   }, [filteredBets]);
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { color: 'bg-yellow-500', text: 'Pendente', icon: Clock },
-      won: { color: 'bg-green-500', text: 'Ganhou', icon: TrendingUp },
-      lost: { color: 'bg-red-500', text: 'Perdeu', icon: TrendingDown },
-      void: { color: 'bg-gray-500', text: 'Anulada', icon: Clock },
-      cashout: { color: 'bg-blue-500', text: 'Cashout', icon: DollarSign }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    const Icon = config.icon;
-
-    return (
-      <Badge className={`${config.color} text-white flex items-center gap-1`}>
-        <Icon className="w-3 h-3" />
-        {config.text}
-      </Badge>
-    );
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green"></div>
       </div>
     );
   }
 
+  // Helper to translate status
+  const translateStatus = (status: string) => {
+    const map: Record<string, string> = {
+      'pending': 'PENDENTE',
+      'won': 'GANHOU',
+      'lost': 'PERDEU',
+      'void': 'ANULADA',
+      'cashout': 'CASHOUT'
+    };
+    return map[status] || status.toUpperCase();
+  };
+
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Você precisa estar logado para acessar suas apostas.
-          </AlertDescription>
-        </Alert>
+      <div className="min-h-screen bg-terminal-black flex items-center justify-center text-terminal-text">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-terminal-red" />
+          <p>Por favor, faça login para ver suas apostas.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <AuthenticatedLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Minhas Apostas</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-                Acompanhe suas apostas registradas via WhatsApp
-              </p>
+    <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
+      <BetsHeader />
+      
+      <main className="container mx-auto px-3 py-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <BetStatsCard 
+            label="TOTAL APOSTAS" 
+            value={stats.totalBets}
+            valueColor="text-terminal-text"
+          />
+          <BetStatsCard 
+            label="TAXA DE ACERTO" 
+            value={`${stats.winRate.toFixed(1)}%`}
+            trend={stats.winRate > 50 ? 'up' : 'down'}
+          />
+          <BetStatsCard 
+            label="LUCRO" 
+            value={formatWithUnits(stats.profit)}
+            valueColor={stats.profit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}
+            trend={stats.profit >= 0 ? 'up' : 'down'}
+          />
+          <BetStatsCard 
+            label="ROI" 
+            value={`${stats.roi.toFixed(1)}%`}
+            valueColor={stats.roi >= 0 ? 'text-terminal-green' : 'text-terminal-red'}
+          />
+          <BetStatsCard 
+            label="TOTAL APOSTADO" 
+            value={formatWithUnits(stats.totalStaked)}
+            valueColor="text-terminal-text"
+          />
+          <BetStatsCard 
+            label="RETORNO TOTAL" 
+            value={formatWithUnits(stats.totalReturn)}
+            valueColor="text-terminal-green"
+          />
+          <BetStatsCard 
+            label="MÉDIA APOSTA" 
+            value={formatWithUnits(stats.averageStake)}
+            valueColor="text-terminal-text"
+          />
+          <BetStatsCard 
+            label="MÉDIA ODDS" 
+            value={stats.averageOdd.toFixed(2)}
+            valueColor="text-terminal-blue"
+          />
+        </div>
+
+        <BankrollEvolutionChart 
+          bets={bets} 
+          initialBankroll={config.bank_amount}
+          onUpdateBankroll={async (amount) => {
+            if (config.unit_calculation_method === 'direct') {
+               return await updateConfig({
+                 method: 'direct',
+                 unitValue: config.unit_value || 10,
+                 bankAmount: amount
+               });
+            } else {
+               const currentDivisor = config.bank_amount && config.unit_value 
+                  ? config.bank_amount / config.unit_value 
+                  : 100;
+               
+               return await updateConfig({
+                 method: 'division',
+                 bankAmount: amount,
+                 divisor: currentDivisor
+               });
+            }
+          }}
+        />
+
+        {/* Cash Flow Button */}
+        <button
+          onClick={() => navigate('/bankroll')}
+          className="w-full terminal-container p-4 mb-6 flex items-center justify-between hover:bg-terminal-dark-gray/50 transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <DollarSign className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="text-left">
+              <div className="font-bold text-sm text-blue-400">FLUXO DE CAIXA</div>
+              <div className="text-xs opacity-60">Histórico detalhado de transações</div>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-blue-400 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+        </button>
+
+        {/* Filters Bar */}
+        <div className="terminal-container p-3 mb-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3 w-full">
+            <div className="relative col-span-2 md:w-auto md:min-w-[200px]">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-terminal-text opacity-50" />
+              <input 
+                type="text" 
+                placeholder="BUSCAR APOSTAS..." 
+                className="terminal-input w-full pl-8 pr-3 py-1.5 text-xs rounded-sm"
+                value={filters.searchQuery}
+                onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+              />
             </div>
             
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => setUnitConfigOpen(true)} 
-                variant="outline" 
-                className="w-full sm:w-auto"
-                title="Configurar sistema de unidades"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                {isConfigured() ? 'Unidades' : 'Config. Unidades'}
-              </Button>
-              <Button onClick={fetchBets} variant="outline" disabled={isLoading} className="w-full sm:w-auto">
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </Button>
-            </div>
+            <select 
+              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
+              value={filters.status}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+            >
+              <option value="all">TODOS STATUS</option>
+              <option value="pending">PENDENTE</option>
+              <option value="won">GANHOU</option>
+              <option value="lost">PERDEU</option>
+              <option value="cashout">CASHOUT</option>
+            </select>
+
+            <select 
+              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
+              value={filters.sport}
+              onChange={(e) => setFilters(prev => ({ ...prev, sport: e.target.value }))}
+            >
+              <option value="all">TODOS ESPORTES</option>
+              {uniqueSports.map(sport => (
+                <option key={sport} value={sport}>{sport.toUpperCase()}</option>
+              ))}
+            </select>
+
+            <input 
+              type="date"
+              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto"
+              value={filters.dateFrom}
+              onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+              placeholder="DATA INICIAL"
+            />
+
+            <input 
+              type="date"
+              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto"
+              value={filters.dateTo}
+              onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+              placeholder="DATA FINAL"
+            />
+          </div>
+
+          <div className="flex gap-2">
+             <button 
+              onClick={() => setUnitConfigOpen(true)}
+              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              UNIDADES
+            </button>
+            <button 
+              onClick={fetchBets}
+              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              ATUALIZAR
+            </button>
           </div>
         </div>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                <CardTitle className="text-base sm:text-lg">Filtros</CardTitle>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={resetFilters}
-                className="w-full sm:w-auto"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Limpar Filtros
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-              {/* Status Filter */}
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select 
-                  value={filters.status} 
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="pending">Pendente</SelectItem>
-                    <SelectItem value="won">Ganhou</SelectItem>
-                    <SelectItem value="lost">Perdeu</SelectItem>
-                    <SelectItem value="cashout">Cashout</SelectItem>
-                    <SelectItem value="void">Anulada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Sport Filter */}
-              <div className="space-y-2">
-                <Label>Esporte</Label>
-                <Select 
-                  value={filters.sport} 
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, sport: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os esportes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {uniqueSports.map((sport) => (
-                      <SelectItem key={sport} value={sport}>{sport}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* League Filter */}
-              <div className="space-y-2">
-                <Label>Liga</Label>
-                <Select 
-                  value={filters.league} 
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, league: value }))}
-                  disabled={uniqueLeagues.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as ligas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {uniqueLeagues.map((league) => (
-                      <SelectItem key={league} value={league}>{league}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Date From Filter */}
-              <div className="space-y-2">
-                <Label>Data De</Label>
-                <Input
-                  type="date"
-                  value={filters.dateFrom}
-                  onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                />
-              </div>
-
-              {/* Date To Filter */}
-              <div className="space-y-2">
-                <Label>Data Até</Label>
-                <Input
-                  type="date"
-                  value={filters.dateTo}
-                  onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                />
-              </div>
-
-              {/* Search Filter */}
-              <div className="space-y-2">
-                <Label>Buscar</Label>
-                <Input
-                  placeholder="Buscar apostas..."
-                  value={filters.searchQuery}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-                />
-              </div>
-            </div>
-            
-            {/* Results count */}
-            <div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
-              <List className="w-4 h-4" />
-              Mostrando {filteredBets.length} de {bets.length} apostas
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Total de Apostas</p>
-                </div>
-                <p className="text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full">{stats.totalBets}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Total Apostado</p>
-                </div>
-                <div className="text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full">
-                  <UnitDisplay value={stats.totalStaked} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Retorno Total</p>
-                </div>
-                <div className="text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full">
-                  <UnitDisplay value={stats.totalReturn} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Taxa de Acerto</p>
-                </div>
-                <p className="text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full">
-                  {isNaN(stats.winRate) ? '0%' : `${stats.winRate.toFixed(1)}%`}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <TrendingUp className={`h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 flex-shrink-0 ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Lucro/Prejuízo</p>
-                </div>
-                <div className={`text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full ${stats.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  <UnitDisplay value={stats.profit} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Stake Média</p>
-                </div>
-                <div className="text-xs sm:text-sm md:text-base font-bold leading-tight max-w-full">
-                  <UnitDisplay value={stats.averageStake} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-blue-600 flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">Odd Média</p>
-                </div>
-                <p className="text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full">
-                  {stats.averageOdd > 0 ? stats.averageOdd.toFixed(2) : '0.00'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden max-w-full">
-            <CardContent className="p-2.5 sm:p-3 md:p-4 overflow-hidden max-w-full">
-              <div className="flex flex-col gap-1.5 w-full min-w-0 max-w-full">
-                <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-                  <Percent className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate min-w-0 max-w-full">ROI</p>
-                </div>
-                <p className={`text-sm sm:text-base md:text-lg font-bold break-all overflow-wrap-anywhere max-w-full ${stats.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {isNaN(stats.roi) ? '0.00%' : `${stats.roi >= 0 ? '+' : ''}${stats.roi.toFixed(2)}%`}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <Alert className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Bets List */}
-        {isLoading ? (
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    <div className="h-3 bg-gray-200 rounded w-full"></div>
-                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        {/* Bets Table */}
+        <div className="terminal-container p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="section-title">APOSTAS RECENTES</h3>
+            <span className="text-[10px] opacity-50">MOSTRANDO {filteredBets.length} APOSTAS</span>
           </div>
-        ) : bets.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Target className="w-12 h-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Nenhuma aposta encontrada
-              </h3>
-              <p className="text-gray-500 text-center mb-6">
-                Envie uma mensagem via WhatsApp para registrar suas apostas!
-              </p>
-            </CardContent>
-          </Card>
-        ) : filteredBets.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Filter className="w-12 h-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Nenhuma aposta corresponde aos filtros
-              </h3>
-              <p className="text-gray-500 text-center mb-6">
-                Tente ajustar os filtros para ver mais resultados.
-              </p>
-              <Button onClick={resetFilters} variant="outline">
-                Limpar Filtros
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {filteredBets.map((bet) => (
-              <Card key={bet.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3 sm:p-4">
-                  <div className="space-y-3">
-                    {/* Header - Status and Sport */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          {getStatusBadge(bet.status)}
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Target className="w-3.5 h-3.5 text-blue-600" />
-                            <span>{bet.sport}</span>
-                            {bet.league && (
+          
+          {isLoading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full bg-terminal-gray" />
+              ))}
+            </div>
+          ) : filteredBets.length === 0 ? (
+            <div className="text-center py-12 opacity-50">
+              <Target className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>NENHUMA APOSTA ENCONTRADA</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-terminal-border-subtle">
+                      <th className="text-left py-2 px-2 data-label">DATA</th>
+                      <th className="text-left py-2 px-2 data-label">DESCRIÇÃO</th>
+                      <th className="text-left py-2 px-2 data-label">TAGS</th>
+                      <th className="text-left py-2 px-2 data-label">ESPORTE/LIGA</th>
+                      <th className="text-right py-2 px-2 data-label">VALOR</th>
+                      <th className="text-right py-2 px-2 data-label">ODDS</th>
+                      <th className="text-right py-2 px-2 data-label">RETORNO</th>
+                      <th className="text-center py-2 px-2 data-label">STATUS</th>
+                      <th className="text-right py-2 px-2 data-label">AÇÕES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBets.map((bet) => (
+                      <tr 
+                        key={bet.id}
+                        className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors"
+                      >
+                        <td className="py-2 px-2 opacity-70">
+                          {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="py-2 px-2 font-medium">
+                          <div>{bet.bet_description}</div>
+                          {bet.match_description && (
+                            <div className="text-[10px] opacity-50">{bet.match_description}</div>
+                          )}
+                        </td>
+                        <td className="py-2 px-2">
+                          <TagSelector
+                            betId={bet.id}
+                            selectedTags={bet.tags || []}
+                            onTagsChange={async (newTags) => {
+                              // Update local state immediately for responsiveness
+                              setBets(bets.map(b => 
+                                b.id === bet.id ? { ...b, tags: newTags } : b
+                              ));
+                              
+                              // Sync with database
+                              const currentTagIds = (bet.tags || []).map(t => t.id);
+                              const newTagIds = newTags.map(t => t.id);
+                              
+                              // Remove tags that were deselected
+                              const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
+                              for (const tagId of tagsToRemove) {
+                                await supabase.rpc('remove_tag_from_bet', {
+                                  p_bet_id: bet.id,
+                                  p_tag_id: tagId
+                                });
+                              }
+                              
+                              // Add tags that were selected
+                              const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
+                              for (const tagId of tagsToAdd) {
+                                await supabase.rpc('add_tag_to_bet', {
+                                  p_bet_id: bet.id,
+                                  p_tag_id: tagId
+                                });
+                              }
+                              
+                              // Refresh the bets list to get updated data
+                              await fetchBets();
+                            }}
+                          />
+                        </td>
+                        <td className="py-2 px-2 opacity-70">
+                          {bet.sport} {bet.league && `• ${bet.league}`}
+                        </td>
+                        <td className="text-right py-2 px-2">
+                          {formatWithUnits(bet.stake_amount)}
+                        </td>
+                        <td className="text-right py-2 px-2 text-terminal-blue">
+                          {bet.odds.toFixed(2)}
+                        </td>
+                        <td className={`text-right py-2 px-2 ${
+                          bet.status === 'won' ? 'text-terminal-green' : 
+                          bet.status === 'lost' ? 'text-terminal-red' : 
+                          'opacity-70'
+                        }`}>
+                          {bet.is_cashout && bet.cashout_amount 
+                            ? formatWithUnits(bet.cashout_amount)
+                            : formatWithUnits(bet.potential_return)
+                          }
+                        </td>
+                        <td className="text-center py-2 px-2">
+                          <span className={`px-2 py-0.5 text-[10px] uppercase font-bold ${
+                            bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
+                            bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+                            bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
+                            bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
+                            'text-terminal-text bg-terminal-text/10'
+                          }`}>
+                            {translateStatus(bet.status)}
+                          </span>
+                        </td>
+                        <td className="text-right py-3 px-2">
+                          <div className="flex justify-end gap-2">
+                            {bet.status === 'pending' && (
                               <>
-                                <span>•</span>
-                                <span className="text-xs">{bet.league}</span>
+                                <button 
+                                  onClick={() => updateBetStatus(bet.id, 'won')}
+                                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex items-center gap-2"
+                                  title="Marcar como Ganhou"
+                                >
+                                  <TrendingUp className="w-4 h-4 text-terminal-green hover:text-terminal-black" />
+                                  <span className="text-[10px] font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
+                                </button>
+                                <button 
+                                  onClick={() => updateBetStatus(bet.id, 'lost')}
+                                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center gap-2"
+                                  title="Marcar como Perdeu"
+                                >
+                                  <TrendingDown className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
+                                  <span className="text-[10px] font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
+                                </button>
+                                <button 
+                                  onClick={() => openCashoutModal(bet)}
+                                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-2"
+                                  title="Cashout"
+                                >
+                                  <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
+                                  <span className="text-[10px] font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
+                                </button>
                               </>
                             )}
+                            <button 
+                              onClick={() => openEditModal(bet)}
+                              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all"
+                              title="Editar"
+                            >
+                              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+                            </button>
+                            <button 
+                              onClick={() => deleteBet(bet.id)}
+                              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+                            </button>
                           </div>
-                        </div>
-                        <h3 className="font-semibold text-sm sm:text-base">{bet.bet_description}</h3>
-                        {bet.match_description && (
-                          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                            {bet.match_description}
-                          </p>
-                        )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Stacked View */}
+              <div className="md:hidden space-y-4">
+                {filteredBets.map((bet) => (
+                  <div 
+                    key={bet.id} 
+                    className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3"
+                  >
+                    {/* Header: Date + Status */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs opacity-50">
+                        {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
+                      </span>
+                      <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${
+                        bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
+                        bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+                        bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
+                        bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
+                        'text-terminal-text bg-terminal-text/10'
+                      }`}>
+                        {translateStatus(bet.status)}
+                      </span>
+                    </div>
+
+                    {/* Main Info: Description + Sport */}
+                    <div>
+                      <div className="font-medium text-sm text-terminal-text">{bet.bet_description}</div>
+                      {bet.match_description && (
+                        <div className="text-xs opacity-60 mt-0.5">{bet.match_description}</div>
+                      )}
+                      <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">
+                        {bet.sport} {bet.league && `• ${bet.league}`}
+                      </div>
+                      {/* Tags */}
+                      <div className="mt-2">
+                        <TagSelector
+                          betId={bet.id}
+                          selectedTags={bet.tags || []}
+                          onTagsChange={async (newTags) => {
+                            // Update local state immediately for responsiveness
+                            setBets(bets.map(b => 
+                              b.id === bet.id ? { ...b, tags: newTags } : b
+                            ));
+                            
+                            // Sync with database
+                            const currentTagIds = (bet.tags || []).map(t => t.id);
+                            const newTagIds = newTags.map(t => t.id);
+                            
+                            // Remove tags that were deselected
+                            const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
+                            for (const tagId of tagsToRemove) {
+                              await supabase.rpc('remove_tag_from_bet', {
+                                p_bet_id: bet.id,
+                                p_tag_id: tagId
+                              });
+                            }
+                            
+                            // Add tags that were selected
+                            const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
+                            for (const tagId of tagsToAdd) {
+                              await supabase.rpc('add_tag_to_bet', {
+                                p_bet_id: bet.id,
+                                p_tag_id: tagId
+                              });
+                            }
+                            
+                            // Refresh the bets list to get updated data
+                            await fetchBets();
+                          }}
+                        />
                       </div>
                     </div>
 
-                    {/* Values Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-2 border-y">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">Valor</p>
-                        <p className="font-semibold text-sm">{formatCurrency(bet.stake_amount)}</p>
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-3 gap-2 py-2 border-y border-terminal-border-subtle bg-terminal-dark-gray/30 -mx-4 px-4">
+                      <div className="text-center">
+                        <div className="text-[10px] opacity-50 uppercase mb-0.5">Valor</div>
+                        <div className="text-sm">{formatWithUnits(bet.stake_amount)}</div>
                       </div>
-                      
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">Odds</p>
-                        <p className="font-semibold text-sm">{bet.odds}</p>
+                      <div className="text-center border-l border-terminal-border-subtle">
+                        <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
+                        <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
                       </div>
-                      
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">
-                          {bet.is_cashout ? 'Cashout' : 'Retorno'}
-                        </p>
-                        <p className="font-semibold text-sm text-green-600">
+                      <div className="text-center border-l border-terminal-border-subtle">
+                        <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
+                        <div className={`text-sm ${
+                          bet.status === 'won' ? 'text-terminal-green' : 
+                          bet.status === 'lost' ? 'text-terminal-red' : 
+                          'opacity-70'
+                        }`}>
                           {bet.is_cashout && bet.cashout_amount 
-                            ? formatCurrency(bet.cashout_amount)
-                            : formatCurrency(bet.potential_return)
+                            ? formatWithUnits(bet.cashout_amount)
+                            : formatWithUnits(bet.potential_return)
                           }
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-0.5">Data</p>
-                        <p className="text-xs sm:text-sm">{new Date(bet.bet_date).toLocaleDateString('pt-BR')}</p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Action buttons */}
-                    <div className="flex gap-2 flex-wrap">
-                      {bet.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
+                    {/* Actions */}
+                    {/* Actions */}
+                    <div className="pt-2">
+                      {bet.status === 'pending' ? (
+                        <div className="grid grid-cols-4 gap-2">
+                          <button 
                             onClick={() => updateBetStatus(bet.id, 'won')}
-                            className="flex-1 min-w-[80px]"
+                            className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex justify-center items-center gap-2"
+                            title="Marcar como Ganhou"
                           >
-                            <TrendingUp className="w-3 h-3 sm:mr-1" />
-                            <span className="hidden xs:inline sm:inline">Ganhou</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
+                            <TrendingUp className="w-5 h-5 text-terminal-green hover:text-terminal-black" />
+                            <span className="text-xs font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
+                          </button>
+                          <button 
                             onClick={() => updateBetStatus(bet.id, 'lost')}
-                            className="flex-1 min-w-[80px]"
+                            className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center gap-2"
+                            title="Marcar como Perdeu"
                           >
-                            <TrendingDown className="w-3 h-3 sm:mr-1" />
-                            <span className="hidden xs:inline sm:inline">Perdeu</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
+                            <TrendingDown className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+                            <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
+                          </button>
+                          <button 
                             onClick={() => openCashoutModal(bet)}
-                            className="flex-1 min-w-[90px]"
+                            className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center gap-2"
+                            title="Cashout"
                           >
-                            <DollarSign className="w-3 h-3 sm:mr-1" />
-                            <span className="hidden xs:inline sm:inline">Cashout</span>
-                          </Button>
-                        </>
-                      )}
-                      {bet.status === 'cashout' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openCashoutModal(bet)}
-                          className="flex-1"
-                        >
-                          <DollarSign className="w-3 h-3 mr-1" />
-                          <span className="text-xs sm:text-sm">Editar Cashout</span>
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditModal(bet)}
-                        className="min-w-[40px]"
-                      >
-                        <Edit className="w-3 h-3" />
-                        <span className="sr-only">Editar</span>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => deleteBet(bet.id)}
-                        className="min-w-[40px]"
-                      >
-                        <X className="w-3 h-3" />
-                        <span className="sr-only">Excluir</span>
-                      </Button>
-                    </div>
-
-                    {/* Cashout info if applicable */}
-                    {bet.is_cashout && bet.cashout_amount && (
-                      <div className="pt-2 border-t flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <DollarSign className="w-3 h-3" />
-                          <span>Cashout: {formatCurrency(bet.cashout_amount)}</span>
+                            <DollarSign className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+                            <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
+                          </button>
+                          <button 
+                            onClick={() => openEditModal(bet)}
+                            className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
+                            title="Editar"
+                          >
+                            <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+                          </button>
+                          <button 
+                            onClick={() => deleteBet(bet.id)}
+                            className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+                          </button>
                         </div>
-                        {bet.cashout_odds && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <span>Odds: {bet.cashout_odds}</span>
-                          </div>
-                        )}
-                        {bet.cashout_date && (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            <span>{new Date(bet.cashout_date).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Cashout Modal */}
-        <Dialog open={cashoutModal.isOpen} onOpenChange={(open) => 
-          setCashoutModal(prev => ({ ...prev, isOpen: open }))
-        }>
-          <DialogContent className="sm:max-w-md max-w-[95vw]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
-                {cashoutModal.bet?.is_cashout ? 'Editar Cashout' : 'Fazer Cashout'}
-              </DialogTitle>
-              <DialogDescription className="text-sm text-gray-400">
-                {cashoutModal.bet?.is_cashout 
-                  ? 'Edite o valor do cashout desta aposta.'
-                  : 'Digite o valor do cashout para esta aposta.'
-                }
-              </DialogDescription>
-            </DialogHeader>
-            
-            {cashoutModal.bet && (
-              <div className="space-y-4">
-                {/* Bet Info */}
-                <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                  <p className="font-medium text-white text-base">{cashoutModal.bet.bet_description}</p>
-                  <p className="text-sm text-gray-300">
-                    {cashoutModal.bet.match_description}
-                  </p>
-                  <div className="flex justify-between text-sm mt-2 text-gray-300">
-                    <span>Valor apostado: {formatCurrency(cashoutModal.bet.stake_amount)}</span>
-                    <span>Odds originais: {cashoutModal.bet.odds}</span>
-                  </div>
-                </div>
-
-                {/* Cashout Amount */}
-                <div className="space-y-2">
-                  <Label htmlFor="cashoutAmount" className="text-white font-medium">Valor do Cashout (R$)</Label>
-                  <Input
-                    id="cashoutAmount"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={cashoutModal.cashoutAmount}
-                    onChange={(e) => setCashoutModal(prev => ({ 
-                      ...prev, 
-                      cashoutAmount: e.target.value 
-                    }))}
-                    className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 focus:ring-green-500"
-                  />
-                </div>
-
-                {/* Profit/Loss Preview */}
-                {cashoutModal.cashoutAmount && (
-                  <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                    <div className="flex justify-between text-sm text-gray-300">
-                      <span>Valor apostado:</span>
-                      <span className="font-medium text-white">{formatCurrency(cashoutModal.bet.stake_amount)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-300">
-                      <span>Valor cashout:</span>
-                      <span className="font-medium text-white">{formatCurrency(parseFloat(cashoutModal.cashoutAmount) || 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-medium border-t border-gray-700 pt-2 mt-2">
-                      <span className="text-gray-300">Lucro/Prejuízo:</span>
-                      <span className={parseFloat(cashoutModal.cashoutAmount) - cashoutModal.bet.stake_amount >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        {formatCurrency((parseFloat(cashoutModal.cashoutAmount) || 0) - cashoutModal.bet.stake_amount)}
-                      </span>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => openEditModal(bet)}
+                            className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
+                            title="Editar"
+                          >
+                            <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+                          </button>
+                          <button 
+                            onClick={() => deleteBet(bet.id)}
+                            className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </main>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                  <Button
-                    onClick={() => setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' })}
-                    variant="outline"
-                    className="flex-1 w-full"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={processCashout}
-                    disabled={!cashoutModal.cashoutAmount}
-                    className="flex-1 w-full bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    {cashoutModal.bet?.is_cashout ? 'Atualizar' : 'Fazer Cashout'}
-                  </Button>
+      {/* Keep existing Modals but wrap them or style them if possible. 
+          For now, using the existing Shadcn dialogs is fine as they are overlays.
+          I will just ensure they are rendered.
+      */}
+      
+      {/* Cashout Modal */}
+      <Dialog open={cashoutModal.isOpen} onOpenChange={(open) => 
+        setCashoutModal(prev => ({ ...prev, isOpen: open }))
+      }>
+        <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-terminal-green">
+              <DollarSign className="w-4 h-4" />
+              {cashoutModal.bet?.is_cashout ? 'EDITAR CASHOUT' : 'CASHOUT'}
+            </DialogTitle>
+            <DialogDescription className="text-terminal-text opacity-60">
+              {cashoutModal.bet?.is_cashout 
+                ? 'Atualize o valor do cashout para esta aposta.'
+                : 'Insira o valor do cashout para esta aposta.'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          {cashoutModal.bet && (
+            <div className="space-y-4">
+              <div className="p-3 bg-terminal-black rounded border border-terminal-border-subtle">
+                <p className="font-medium text-sm">{cashoutModal.bet.bet_description}</p>
+                <div className="flex justify-between text-xs mt-2 opacity-70">
+                  <span>VALOR: {formatWithUnits(cashoutModal.bet.stake_amount)}</span>
+                  <span>ODDS: {cashoutModal.bet.odds}</span>
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
 
-        {/* Edit Bet Modal */}
-        <Dialog open={editModal.isOpen} onOpenChange={(open) => 
-          setEditModal(prev => ({ ...prev, isOpen: open }))
-        }>
-          <DialogContent className="sm:max-w-lg max-w-[95vw] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
-                Editar Aposta
-              </DialogTitle>
-              <DialogDescription className="text-sm text-gray-400">
-                Edite os detalhes da aposta abaixo.
-              </DialogDescription>
-            </DialogHeader>
-            
-            {editModal.bet && (
-              <div className="space-y-4">
-                {/* Bet Description */}
+              <div className="space-y-2">
+                <Label className="text-xs uppercase opacity-70">Valor do Cashout (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={cashoutModal.cashoutAmount}
+                  onChange={(e) => setCashoutModal(prev => ({ ...prev, cashoutAmount: e.target.value }))}
+                  className="bg-terminal-black border-terminal-border text-terminal-text"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' })}
+                  variant="outline"
+                  className="flex-1 border-terminal-border hover:bg-terminal-gray text-terminal-text"
+                >
+                  CANCELAR
+                </Button>
+                <Button
+                  onClick={processCashout}
+                  disabled={!cashoutModal.cashoutAmount}
+                  className="flex-1 bg-terminal-green hover:bg-terminal-green-bright text-white"
+                >
+                  CONFIRMAR
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={editModal.isOpen} onOpenChange={(open) => 
+        setEditModal(prev => ({ ...prev, isOpen: open }))
+      }>
+        <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-terminal-blue">
+              <Edit className="w-4 h-4" />
+              EDITAR APOSTA
+            </DialogTitle>
+          </DialogHeader>
+          
+          {editModal.bet && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="betDescription" className="text-white font-medium">Descrição da Aposta *</Label>
+                  <Label className="text-xs uppercase opacity-70">Descrição</Label>
                   <Input
-                    id="betDescription"
-                    placeholder="Ex: Lakers vence"
                     value={editModal.formData.bet_description}
-                    onChange={(e) => setEditModal(prev => ({ 
-                      ...prev, 
-                      formData: { ...prev.formData, bet_description: e.target.value }
-                    }))}
-                    className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, bet_description: e.target.value } }))}
+                    className="bg-terminal-black border-terminal-border text-terminal-text"
                   />
                 </div>
-
-                {/* Match Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="matchDescription" className="text-white font-medium">Descrição do Jogo</Label>
+                  <Label className="text-xs uppercase opacity-70">Esporte</Label>
                   <Input
-                    id="matchDescription"
-                    placeholder="Ex: Lakers vs Warriors"
-                    value={editModal.formData.match_description}
-                    onChange={(e) => setEditModal(prev => ({ 
-                      ...prev, 
-                      formData: { ...prev.formData, match_description: e.target.value }
-                    }))}
-                    className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
+                    value={editModal.formData.sport}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport: e.target.value } }))}
+                    className="bg-terminal-black border-terminal-border text-terminal-text"
                   />
-                </div>
-
-                {/* Sport and League Row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sport" className="text-white font-medium">Esporte *</Label>
-                    <Input
-                      id="sport"
-                      placeholder="Ex: Basquete"
-                      value={editModal.formData.sport}
-                      onChange={(e) => setEditModal(prev => ({ 
-                        ...prev, 
-                        formData: { ...prev.formData, sport: e.target.value }
-                      }))}
-                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="league" className="text-white font-medium">Liga</Label>
-                    <Input
-                      id="league"
-                      placeholder="Ex: NBA"
-                      value={editModal.formData.league}
-                      onChange={(e) => setEditModal(prev => ({ 
-                        ...prev, 
-                        formData: { ...prev.formData, league: e.target.value }
-                      }))}
-                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Odds and Stake Amount Row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="odds" className="text-white font-medium">Odds *</Label>
-                    <Input
-                      id="odds"
-                      type="number"
-                      step="0.01"
-                      placeholder="1.50"
-                      value={editModal.formData.odds}
-                      onChange={(e) => setEditModal(prev => ({ 
-                        ...prev, 
-                        formData: { ...prev.formData, odds: e.target.value }
-                      }))}
-                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="stakeAmount" className="text-white font-medium">Valor (R$) *</Label>
-                    <Input
-                      id="stakeAmount"
-                      type="number"
-                      step="0.01"
-                      placeholder="100.00"
-                      value={editModal.formData.stake_amount}
-                      onChange={(e) => setEditModal(prev => ({ 
-                        ...prev, 
-                        formData: { ...prev.formData, stake_amount: e.target.value }
-                      }))}
-                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Dates Row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="betDate" className="text-white font-medium">Data da Aposta</Label>
-                    <Input
-                      id="betDate"
-                      type="date"
-                      value={editModal.formData.bet_date}
-                      onChange={(e) => setEditModal(prev => ({ 
-                        ...prev, 
-                        formData: { ...prev.formData, bet_date: e.target.value }
-                      }))}
-                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 [color-scheme:dark]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="matchDate" className="text-white font-medium">Data do Jogo</Label>
-                    <Input
-                      id="matchDate"
-                      type="date"
-                      value={editModal.formData.match_date}
-                      onChange={(e) => setEditModal(prev => ({ 
-                        ...prev, 
-                        formData: { ...prev.formData, match_date: e.target.value }
-                      }))}
-                      className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 [color-scheme:dark]"
-                    />
-                  </div>
-                </div>
-
-                {/* Status Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="status" className="text-white font-medium">Status da Aposta *</Label>
-                  <Select 
-                    value={editModal.formData.status} 
-                    onValueChange={(value: 'pending' | 'won' | 'lost' | 'void' | 'cashout') => 
-                      setEditModal(prev => ({ 
-                        ...prev, 
-                        formData: { ...prev.formData, status: value }
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-yellow-600" />
-                          <span>Pendente</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="won">
-                        <div className="flex items-center gap-2">
-                          <TrendingUp className="w-4 h-4 text-green-600" />
-                          <span>Ganhou</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="lost">
-                        <div className="flex items-center gap-2">
-                          <TrendingDown className="w-4 h-4 text-red-600" />
-                          <span>Perdeu</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="void">
-                        <div className="flex items-center gap-2">
-                          <X className="w-4 h-4 text-gray-600" />
-                          <span>Cancelada</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="cashout">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-blue-600" />
-                          <span>Cashout</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Potential Return Preview */}
-                {editModal.formData.odds && editModal.formData.stake_amount && (
-                  <div className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                    <div className="flex justify-between text-sm text-gray-300">
-                      <span>Valor apostado:</span>
-                      <span className="font-medium text-white">{formatCurrency(parseFloat(editModal.formData.stake_amount) || 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-300">
-                      <span>Odds:</span>
-                      <span className="font-medium text-white">{editModal.formData.odds}</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-medium border-t border-gray-700 pt-2 mt-2">
-                      <span className="text-gray-300">Retorno Potencial:</span>
-                      <span className="text-green-400">
-                        {formatCurrency((parseFloat(editModal.formData.stake_amount) || 0) * (parseFloat(editModal.formData.odds) || 0))}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                  <Button
-                    onClick={() => setEditModal({
-                      isOpen: false,
-                      bet: null,
-                      formData: {
-                        bet_description: '',
-                        match_description: '',
-                        sport: '',
-                        league: '',
-                        odds: '',
-                        stake_amount: '',
-                        bet_date: '',
-                        match_date: ''
-                      }
-                    })}
-                    variant="outline"
-                    className="flex-1 w-full"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={updateBetData}
-                    disabled={!editModal.formData.bet_description || !editModal.formData.sport || !editModal.formData.odds || !editModal.formData.stake_amount}
-                    className="flex-1 w-full"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Salvar Alterações
-                  </Button>
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
 
-        {/* Unit Configuration Modal */}
-        <UnitConfigurationModal 
-          open={unitConfigOpen} 
-          onOpenChange={setUnitConfigOpen} 
-        />
-      </div>
-    </AuthenticatedLayout>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase opacity-70">Valor</Label>
+                  <Input
+                    type="number"
+                    value={editModal.formData.stake_amount}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, stake_amount: e.target.value } }))}
+                    className="bg-terminal-black border-terminal-border text-terminal-text"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase opacity-70">Odds</Label>
+                  <Input
+                    type="number"
+                    value={editModal.formData.odds}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, odds: e.target.value } }))}
+                    className="bg-terminal-black border-terminal-border text-terminal-text"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase opacity-70">Status</Label>
+                <Select 
+                  value={editModal.formData.status} 
+                  onValueChange={(value: any) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, status: value } }))}
+                >
+                  <SelectTrigger className="bg-terminal-black border-terminal-border text-terminal-text">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
+                    <SelectItem value="pending">PENDENTE</SelectItem>
+                    <SelectItem value="won">GANHOU</SelectItem>
+                    <SelectItem value="lost">PERDEU</SelectItem>
+                    <SelectItem value="void">ANULADA</SelectItem>
+                    <SelectItem value="cashout">CASHOUT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
+                  variant="outline"
+                  className="flex-1 border-terminal-border hover:bg-terminal-gray text-terminal-text"
+                >
+                  CANCELAR
+                </Button>
+                <Button
+                  onClick={updateBetData}
+                  className="flex-1 bg-terminal-blue hover:bg-blue-600 text-white"
+                >
+                  SALVAR ALTERAÇÕES
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <UnitConfigurationModal 
+        open={unitConfigOpen} 
+        onOpenChange={setUnitConfigOpen} 
+      />
+    </div>
   );
 }
