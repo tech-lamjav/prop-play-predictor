@@ -90,6 +90,7 @@ export function useUserUnit() {
           throw new Error('Valor da unidade deve ser maior que zero');
         }
         unitValue = input.unitValue;
+        bankAmount = input.bankAmount || null;
       } else {
         // division method
         if (!input.bankAmount || input.bankAmount <= 0) {
