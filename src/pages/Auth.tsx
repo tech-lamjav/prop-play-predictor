@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import { createClient } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
@@ -21,8 +22,17 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   
   const supabase = createClient();
+
+  // Detect referral code from URL parameter
+  useEffect(() => {
+    const refParam = searchParams.get('ref');
+    if (refParam) {
+      setReferralCode(refParam.toUpperCase());
+    }
+  }, [searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,19 +123,54 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
-        // Create user record in our users table
+        // Get the newly created user
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          const userData: any = {
+            id: user.id,
+            email: user.email!,
+            name: name,
+            referred_by: referralCode.trim() ? referralCode.toUpperCase().trim() : null
+          };
+
+          // Create user record in our users table
           const { error: userError } = await supabase
             .from('users')
-            .insert({
-              id: user.id,
-              email: user.email!,
-              name: name
-            });
+            .insert(userData);
           
           if (userError) {
             console.error('Error creating user record:', userError);
+            toast({
+              title: "Error",
+              description: "Failed to create user record",
+              variant: "destructive",
+            });
+          } else if (referralCode.trim() && userData.referred_by) {
+            // Create referral record - find referrer by code
+            try {
+              const code = referralCode.toUpperCase().trim();
+              
+              // Find referrer by code
+              const { data: referrerData, error: referrerError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('referral_code', code)
+                .single();
+
+              if (!referrerError && referrerData && referrerData.id !== user.id) {
+                // Insert into referrals table
+                await supabase
+                  .from('referrals')
+                  .insert({
+                    referrer_id: referrerData.id,
+                    referred_id: user.id,
+                    referral_code: code
+                  });
+              }
+            } catch (err) {
+              // Silent fail - referral code is already saved in referred_by
+              console.error('Error creating referral record:', err);
+            }
           }
           
           // Identify user in PostHog and track sign-up event
@@ -265,6 +310,23 @@ const Auth = () => {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="referral-code">Código do amigo (opcional)</Label>
+                    <Input
+                      id="referral-code"
+                      type="text"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                      placeholder="ABC123"
+                      maxLength={6}
+                      className="font-mono text-center text-lg tracking-wider"
+                    />
+                    {referralCode && (
+                      <p className="text-xs text-muted-foreground">
+                        Você está se cadastrando com o código de indicação
+                      </p>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? t("loading") : t("auth.signup")}
