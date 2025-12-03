@@ -6,6 +6,7 @@ import { BetStatsCard } from '../components/bets/BetStatsCard';
 import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
 import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
+import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -85,6 +86,8 @@ export default function Bets() {
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
+  const [referralModalOpen, setReferralModalOpen] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalBets: 0,
     totalStaked: 0,
@@ -349,8 +352,26 @@ export default function Bets() {
   useEffect(() => {
     if (user?.id) {
       fetchBets();
+      fetchReferralCode();
     }
   }, [user?.id]);
+
+  const fetchReferralCode = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('referral_code')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      setReferralCode((data as any)?.referral_code || null);
+    } catch (err) {
+      console.error('Error fetching referral code:', err);
+    }
+  };
 
   // Filter logic
   const uniqueSports = useMemo(() => {
@@ -418,7 +439,7 @@ export default function Bets() {
 
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <BetsHeader />
+      <BetsHeader onReferralClick={() => setReferralModalOpen(true)} />
       
       <main className="container mx-auto px-3 py-4">
         {/* Stats Grid */}
@@ -1079,6 +1100,15 @@ export default function Bets() {
         open={unitConfigOpen} 
         onOpenChange={setUnitConfigOpen} 
       />
+
+      {user?.id && (
+        <ReferralModal
+          open={referralModalOpen}
+          onOpenChange={setReferralModalOpen}
+          userId={user.id}
+          referralCode={referralCode}
+        />
+      )}
     </div>
   );
 }

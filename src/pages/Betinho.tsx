@@ -34,7 +34,7 @@ import {
   Calendar,
   Edit
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { config } from "@/config/environment";
 
@@ -55,6 +55,17 @@ const getVideoUrl = (videoPath: string, bucketName: string = 'landing-page') => 
 
 const Betinho = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Helper to navigate to auth preserving ref parameter
+  const navigateToAuth = () => {
+    const refParam = searchParams.get('ref');
+    if (refParam) {
+      navigate(`/auth?ref=${refParam}`);
+    } else {
+      navigate('/auth');
+    }
+  };
   
   // URL direta do vídeo no Supabase Storage
   // URL completa: https://lavclmlvvfzkblrstojd.supabase.co/storage/v1/object/public/landing%20-page/WhatsApp%20Video%202025-11-03%20at%2022.02.07.mp4
@@ -75,13 +86,13 @@ const Betinho = () => {
             <LanguageToggle />
             <Button 
               variant="outline" 
-              onClick={() => navigate("/auth")} 
+              onClick={navigateToAuth} 
               className="text-sm sm:text-base px-3 sm:px-4 py-2"
             >
               Entrar
             </Button>
             <Button 
-              onClick={() => navigate("/auth")} 
+              onClick={navigateToAuth} 
               className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
             >
               Começar Grátis
@@ -127,7 +138,7 @@ const Betinho = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
               <Button 
                 size="lg" 
-                onClick={() => navigate("/auth")} 
+                onClick={navigateToAuth} 
                 className="w-full bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500"
               >
                 <MessageCircle className="h-5 w-5" />
@@ -702,7 +713,7 @@ const Betinho = () => {
               <div className="text-center mt-8">
                 <Button 
                   size="lg" 
-                  onClick={() => navigate("/auth")} 
+                  onClick={navigateToAuth} 
                   className="bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500"
                 >
                   <MessageCircle className="h-5 w-5" />
@@ -798,7 +809,7 @@ const Betinho = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button 
                 size="lg" 
-                onClick={() => navigate("/auth")} 
+                onClick={navigateToAuth} 
                 className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500"
               >
                 <MessageCircle className="h-5 w-5" />
