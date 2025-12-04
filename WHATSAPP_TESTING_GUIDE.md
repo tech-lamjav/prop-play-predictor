@@ -29,7 +29,7 @@ npm run dev
    - Nome: João Teste
    - Email: joao@teste.com
    - Senha: 123456
-   - WhatsApp: +5511952132563
+   - WhatsApp: +5511952133059
 
 #### Passo 2: Onboarding WhatsApp
 1. Após o cadastro, você será redirecionado para `/onboarding`
@@ -97,7 +97,7 @@ supabase logs
 
 ### Tabela `users`
 - `id`: UUID do usuário
-- `whatsapp_number`: +5511952132563
+- `whatsapp_number`: +5511952133059
 - `conversation_id`: ID da conversa no Chatroot
 - `whatsapp_synced`: true
 
@@ -129,7 +129,7 @@ supabase logs
 - Inclua o nome dos times e tipo de aposta
 
 ### Problema: WhatsApp não sincroniza
-- Verifique se o número está no formato correto (+5511952132563)
+- Verifique se o número está no formato correto (+5511952133059)
 - Confirme se a mensagem de sincronização foi enviada
 - Verifique se o conversation_id foi capturado
 
