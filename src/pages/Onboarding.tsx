@@ -40,7 +40,7 @@ export default function Onboarding() {
   const supabase = createClient();
   const { toast } = useToast();
   
-  const botWhatsAppNumber = '+5511952132563'; // Bot number for manual sync
+  const botWhatsAppNumber = '+5511952133059'; // Bot number for manual sync
 
   const steps = [
     {
@@ -175,7 +175,7 @@ export default function Onboarding() {
 
   const handleWhatsAppSync = () => {
     const message = "Oi, gostaria de sincronizar minha conta Smartbetting";
-    const whatsappUrl = `https://wa.me/5511952132563?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/5511952133059?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');

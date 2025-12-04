@@ -5,7 +5,7 @@ const testMessage = {
   content: "Aposta: Manchester United vs Liverpool - Over 2.5 gols - Odds: 1.85 - Valor: R$ 50,00",
   timestamp: new Date().toISOString(),
   sender: {
-    phone_number: "+5511952132563",
+    phone_number: "+5511952133059",
     name: "João Teste"
   }
 };
