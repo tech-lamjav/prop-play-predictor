@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
 import { BetsHeader } from '../components/bets/BetsHeader';
@@ -152,12 +152,14 @@ export default function Bets() {
     dateTo: ''
   });
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const isMountedRef = useRef(true);
 
-  const fetchBets = async () => {
+  const fetchBets = useCallback(async () => {
     if (!user?.id) return;
     
     try {
+      if (!isMountedRef.current) return;
       setIsLoading(true);
 
       const { data, error } = await supabase
@@ -168,16 +170,22 @@ export default function Bets() {
 
       if (error) throw error;
 
+      if (!isMountedRef.current) return;
+
       // Fetch tags for each bet
       const betsWithTags = await Promise.all(
         (data || []).map(async (bet) => {
+          if (!isMountedRef.current) return null;
           const { data: tags } = await supabase.rpc('get_bet_tags', { p_bet_id: bet.id });
           return { ...bet, tags: tags || [] };
         })
       );
 
-      setBets(betsWithTags as any);
+      if (!isMountedRef.current) return;
+
+      setBets(betsWithTags.filter(Boolean) as any);
     } catch (err) {
+      if (!isMountedRef.current) return;
       console.error('Error fetching bets:', err);
       toast({
         title: 'Error',
@@ -185,11 +193,15 @@ export default function Bets() {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [user?.id, supabase, toast]);
 
-  const calculateStats = (betsData: Bet[]) => {
+  const calculateStats = useCallback((betsData: Bet[]) => {
+    if (!isMountedRef.current) return;
+    
     const totalBets = betsData.length;
     const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
     
@@ -210,17 +222,19 @@ export default function Bets() {
     
     const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
 
-    setStats({
-      totalBets,
-      totalStaked,
-      totalReturn: totalEarnings,
-      winRate,
-      profit,
-      averageStake,
-      averageOdd,
-      roi
-    });
-  };
+    if (isMountedRef.current) {
+      setStats({
+        totalBets,
+        totalStaked,
+        totalReturn: totalEarnings,
+        winRate,
+        profit,
+        averageStake,
+        averageOdd,
+        roi
+      });
+    }
+  }, []);
 
   // ... (Keep existing updateBetStatus, deleteBet, processCashout, updateBetData logic but adapted if needed)
   // For brevity, I'm keeping the logic but ensuring it uses the toast for notifications instead of local error state where appropriate
@@ -233,10 +247,14 @@ export default function Bets() {
         .eq('id', betId);
 
       if (error) throw error;
-      await fetchBets();
-      toast({ title: 'Success', description: 'Bet status updated' });
+      if (isMountedRef.current) {
+        await fetchBets();
+        toast({ title: 'Success', description: 'Bet status updated' });
+      }
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
+      if (isMountedRef.current) {
+        toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
+      }
     }
   };
 
@@ -250,10 +268,14 @@ export default function Bets() {
         .eq('id', betId);
 
       if (error) throw error;
-      await fetchBets();
-      toast({ title: 'Success', description: 'Bet deleted' });
+      if (isMountedRef.current) {
+        await fetchBets();
+        toast({ title: 'Success', description: 'Bet deleted' });
+      }
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to delete bet', variant: 'destructive' });
+      if (isMountedRef.current) {
+        toast({ title: 'Error', description: 'Failed to delete bet', variant: 'destructive' });
+      }
     }
   };
 
@@ -276,11 +298,15 @@ export default function Bets() {
 
       if (error) throw error;
 
-      setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' });
-      await fetchBets();
-      toast({ title: 'Success', description: 'Cashout processed' });
+      if (isMountedRef.current) {
+        setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' });
+        await fetchBets();
+        toast({ title: 'Success', description: 'Cashout processed' });
+      }
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to process cashout', variant: 'destructive' });
+      if (isMountedRef.current) {
+        toast({ title: 'Error', description: 'Failed to process cashout', variant: 'destructive' });
+      }
     }
   };
 
@@ -313,11 +339,15 @@ export default function Bets() {
 
       if (error) throw error;
 
-      setEditModal(prev => ({ ...prev, isOpen: false }));
-      await fetchBets();
-      toast({ title: 'Success', description: 'Bet updated' });
+      if (isMountedRef.current) {
+        setEditModal(prev => ({ ...prev, isOpen: false }));
+        await fetchBets();
+        toast({ title: 'Success', description: 'Bet updated' });
+      }
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to update bet', variant: 'destructive' });
+      if (isMountedRef.current) {
+        toast({ title: 'Error', description: 'Failed to update bet', variant: 'destructive' });
+      }
     }
   };
 
@@ -349,14 +379,7 @@ export default function Bets() {
     });
   };
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchBets();
-      fetchReferralCode();
-    }
-  }, [user?.id]);
-
-  const fetchReferralCode = async () => {
+  const fetchReferralCode = useCallback(async () => {
     if (!user?.id) return;
     
     try {
@@ -367,11 +390,29 @@ export default function Bets() {
         .single();
 
       if (error) throw error;
-      setReferralCode((data as any)?.referral_code || null);
+      
+      if (isMountedRef.current) {
+        setReferralCode((data as any)?.referral_code || null);
+      }
     } catch (err) {
-      console.error('Error fetching referral code:', err);
+      if (isMountedRef.current) {
+        console.error('Error fetching referral code:', err);
+      }
     }
-  };
+  }, [user?.id, supabase]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    if (user?.id) {
+      fetchBets();
+      fetchReferralCode();
+    }
+    
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [user?.id, fetchBets, fetchReferralCode]);
 
   // Filter logic
   const uniqueSports = useMemo(() => {
@@ -403,8 +444,10 @@ export default function Bets() {
   }, [bets, filters]);
 
   useEffect(() => {
-    calculateStats(filteredBets);
-  }, [filteredBets]);
+    if (isMountedRef.current) {
+      calculateStats(filteredBets);
+    }
+  }, [filteredBets, calculateStats]);
 
   if (authLoading) {
     return (
