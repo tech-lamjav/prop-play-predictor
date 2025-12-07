@@ -19,6 +19,7 @@ import Paywall from "./pages/Paywall";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
+import ComoUsar from "./pages/ComoUsar";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
           } />
           <Route path="/waitlist" element={<Waitlist />} />
           <Route path="/paywall" element={<Paywall />} />
+          <Route path="/como-usar" element={<ComoUsar />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
