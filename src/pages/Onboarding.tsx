@@ -8,11 +8,10 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import UserNav from '../components/UserNav';
-import { 
-  User, 
-  MessageCircle, 
-  CheckCircle, 
-  ArrowRight, 
+import {
+  User,
+  CheckCircle,
+  ArrowRight,
   ArrowLeft,
   Smartphone,
   Shield,
@@ -20,10 +19,9 @@ import {
   Zap,
   Target,
   TrendingUp,
-  Copy
+  Send
 } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
-import { useToast } from '../hooks/use-toast';
 
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -38,9 +36,6 @@ export default function Onboarding() {
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const supabase = createClient();
-  const { toast } = useToast();
-  
-  const botWhatsAppNumber = '+5511952133059'; // Bot number for manual sync
 
   const steps = [
     {
@@ -51,14 +46,14 @@ export default function Onboarding() {
     },
     {
       id: 2,
-      title: 'Configuração WhatsApp',
-      description: 'Sincronize sua conta para receber notificações',
-      icon: MessageCircle
+      title: 'Configuração Telegram',
+      description: 'Conecte seu número ao bot do Telegram',
+      icon: Send
     },
     {
       id: 3,
       title: 'Finalização',
-      description: 'Tudo pronto! Bem-vindo ao Smartbetting',
+      description: 'Conecte com o bot no Telegram',
       icon: CheckCircle
     }
   ];
@@ -138,16 +133,16 @@ export default function Onboarding() {
         throw new Error('Usuário não autenticado');
       }
 
-      // Validate WhatsApp number
+      // Validate phone number (mantém o mesmo campo do backend)
       const cleanNumber = formData.whatsappNumber.replace(/\D/g, '');
       if (cleanNumber.length < 8) {
-        throw new Error('Número de WhatsApp inválido');
+        throw new Error('Número de telefone inválido');
       }
 
       // Combine country code + number
       const fullNumber = formData.countryCode.replace(/\D/g, '') + cleanNumber;
 
-      // Update user with WhatsApp number
+      // Update user with phone number (campo existente)
       const { error } = await supabase
         .from('users')
         .update({ whatsapp_number: fullNumber })
@@ -159,31 +154,15 @@ export default function Onboarding() {
 
       setCurrentStep(3);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar número do WhatsApp');
+      setError(err instanceof Error ? err.message : 'Erro ao salvar número do Telegram');
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const copyBotNumber = () => {
-    navigator.clipboard.writeText(botWhatsAppNumber);
-    toast({
-      title: "Número copiado!",
-      description: "Cole no WhatsApp para sincronizar sua conta",
-    });
-  };
 
-  const handleWhatsAppSync = () => {
-    const message = "Oi, gostaria de sincronizar minha conta Smartbetting";
-    const whatsappUrl = `https://wa.me/5511952133059?text=${encodeURIComponent(message)}`;
-    
-    // Open WhatsApp with pre-filled message
-    window.open(whatsappUrl, '_blank');
-    
-    // Show success and move to next step
-    setTimeout(() => {
-      setCurrentStep(3);
-    }, 2000);
+  const handleTelegramOpen = () => {
+    const telegramUrl = 'https://t.me/betinho_assistente_bot';
+    window.open(telegramUrl, '_blank');
   };
 
   const handleComplete = () => {
@@ -245,18 +224,18 @@ export default function Onboarding() {
   const renderStep2 = () => (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-          <MessageCircle className="w-6 h-6 text-green-600" />
+        <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+          <Send className="w-6 h-6 text-blue-600" />
         </div>
-        <CardTitle>Configure seu WhatsApp</CardTitle>
+        <CardTitle>Configure seu Telegram</CardTitle>
         <CardDescription>
-          Para receber notificações e enviar apostas
+          Conecte seu número ao bot do Telegram
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleStep2Submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="whatsapp">Número do WhatsApp</Label>
+            <Label htmlFor="whatsapp">Número do Telegram</Label>
             <div className="flex gap-2">
               <Select
                 value={formData.countryCode}
@@ -326,9 +305,9 @@ export default function Onboarding() {
         <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
           <CheckCircle className="w-6 h-6 text-green-600" />
         </div>
-        <CardTitle>Sincronize sua conta</CardTitle>
+        <CardTitle>Conecte com o bot</CardTitle>
         <CardDescription>
-          Envie uma mensagem para ativar o WhatsApp
+          Abra o bot no Telegram e compartilhe seu número
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -338,55 +317,19 @@ export default function Onboarding() {
           </p>
           <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
             <li>Clique no botão abaixo</li>
-            <li>Será aberto o WhatsApp com uma mensagem pré-definida</li>
-            <li>Envie a mensagem para nosso bot</li>
-            <li>Volte aqui e clique em "Finalizar"</li>
+            <li>No Telegram, toque em <em>Start</em> (/start)</li>
+            <li>Toque em “Enviar meu número” para sincronizar</li>
+            <li>Depois, finalize aqui</li>
           </ol>
         </div>
 
         <Button 
-          onClick={handleWhatsAppSync} 
-          className="w-full bg-green-600 hover:bg-green-700"
+          onClick={handleTelegramOpen}
+          className="w-full bg-blue-600 hover:bg-blue-700"
         >
-          <MessageCircle className="w-4 h-4 mr-2" />
-          Abrir WhatsApp
+          <Send className="w-4 h-4 mr-2" />
+          Abrir bot no Telegram
         </Button>
-
-        {/* Alternative: Manual number copy */}
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              Ou copie o número manualmente
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
-                Número do Bot:
-              </p>
-              <p className="text-lg font-bold text-green-700 dark:text-green-300 font-mono">
-                {botWhatsAppNumber}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyBotNumber}
-              className="border-green-300 hover:bg-green-100 dark:border-green-700 dark:hover:bg-green-900"
-            >
-              <Copy className="w-4 h-4" />
-            </Button>
-          </div>
-          <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-            Cole este número no WhatsApp e envie uma mensagem
-          </p>
-        </div>
 
         <div className="flex space-x-2">
           <Button 
@@ -497,7 +440,7 @@ export default function Onboarding() {
               <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                 <Smartphone className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">WhatsApp Integration</h3>
+              <h3 className="font-semibold text-foreground mb-2">Telegram Integration</h3>
               <p className="text-sm text-muted-foreground">
                 Envie apostas via texto, áudio ou imagem
               </p>

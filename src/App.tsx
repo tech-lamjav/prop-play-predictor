@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
 import ComoUsar from "./pages/ComoUsar";
+import Games from "./pages/Games";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,11 @@ const App = () => (
           <Route path="/analysis" element={
             <ProtectedRoute>
               <Analysis />
+            </ProtectedRoute>
+          } />
+          <Route path="/games" element={
+            <ProtectedRoute>
+              <Games />
             </ProtectedRoute>
           } />
           <Route path="/nba-players" element={

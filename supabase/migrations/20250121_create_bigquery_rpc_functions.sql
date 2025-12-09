@@ -322,4 +322,137 @@ GRANT EXECUTE ON FUNCTION public.get_player_game_stats(bigint, int) TO authentic
 GRANT EXECUTE ON FUNCTION public.get_team_by_id(bigint) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_team_players(bigint) TO authenticated, anon;
 
+-- Function to get upcoming games with optional filters
+DROP FUNCTION IF EXISTS public.get_games(date, text);
+CREATE OR REPLACE FUNCTION public.get_games(
+  p_game_date date DEFAULT NULL,
+  p_team_abbreviation text DEFAULT NULL
+)
+RETURNS TABLE (
+  game_id bigint,
+  game_date date,
+  home_team_id bigint,
+  home_team_name text,
+  home_team_abbreviation text,
+  home_team_score float8,
+  visitor_team_id bigint,
+  visitor_team_name text,
+  visitor_team_abbreviation text,
+  visitor_team_score float8,
+  winner_team_id bigint,
+  loaded_at timestamp,
+  home_team_is_b2b_game boolean,
+  visitor_team_is_b2b_game boolean,
+  home_team_is_next_game boolean,
+  visitor_team_is_next_game boolean
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    t.game_id,
+    t.game_date,
+    t.home_team_id,
+    t.home_team_name,
+    t.home_team_abbreviation,
+    t.home_team_score,
+    t.visitor_team_id,
+    t.visitor_team_name,
+    t.visitor_team_abbreviation,
+    t.visitor_team_score,
+    t.winner_team_id,
+    t.loaded_at,
+    t.home_team_is_b2b_game,
+    t.visitor_team_is_b2b_game,
+    t.home_team_is_next_game,
+    t.visitor_team_is_next_game
+  FROM bigquery.ft_games t
+  WHERE (p_game_date IS NULL OR t.game_date = p_game_date)
+    AND (
+      p_team_abbreviation IS NULL OR
+      LOWER(t.home_team_abbreviation) = LOWER(p_team_abbreviation) OR
+      LOWER(t.visitor_team_abbreviation) = LOWER(p_team_abbreviation)
+    )
+  ORDER BY t.game_date ASC, t.home_team_name ASC, t.game_id ASC;
+END;
+$$;
+
+-- Function to get shooting zones by player
+DROP FUNCTION IF EXISTS public.get_player_shooting_zones(bigint);
+CREATE OR REPLACE FUNCTION public.get_player_shooting_zones(p_player_id bigint)
+RETURNS TABLE (
+  player_id bigint,
+  player_name text,
+  corner_3_fga float8,
+  corner_3_fgm float8,
+  corner_3_fg_pct float8,
+  left_corner_3_fga float8,
+  left_corner_3_fgm float8,
+  left_corner_3_fg_pct float8,
+  right_corner_3_fga float8,
+  right_corner_3_fgm float8,
+  right_corner_3_fg_pct float8,
+  above_the_break_3_fga float8,
+  above_the_break_3_fgm float8,
+  above_the_break_3_fg_pct float8,
+  restricted_area_fga float8,
+  restricted_area_fgm float8,
+  restricted_area_fg_pct float8,
+  in_the_paint_non_ra_fga float8,
+  in_the_paint_non_ra_fgm float8,
+  in_the_paint_non_ra_fg_pct float8,
+  mid_range_fga float8,
+  mid_range_fgm float8,
+  mid_range_fg_pct float8,
+  backcourt_fga float8,
+  backcourt_fgm float8,
+  backcourt_fg_pct float8,
+  loaded_at timestamp
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    t.player_id,
+    t.player_name,
+    t.corner_3_fga,
+    t.corner_3_fgm,
+    t.corner_3_fg_pct,
+    t.left_corner_3_fga,
+    t.left_corner_3_fgm,
+    t.left_corner_3_fg_pct,
+    t.right_corner_3_fga,
+    t.right_corner_3_fgm,
+    t.right_corner_3_fg_pct,
+    t.above_the_break_3_fga,
+    t.above_the_break_3_fgm,
+    t.above_the_break_3_fg_pct,
+    t.restricted_area_fga,
+    t.restricted_area_fgm,
+    t.restricted_area_fg_pct,
+    t.in_the_paint_non_ra_fga,
+    t.in_the_paint_non_ra_fgm,
+    t.in_the_paint_non_ra_fg_pct,
+    t.mid_range_fga,
+    t.mid_range_fgm,
+    t.mid_range_fg_pct,
+    t.backcourt_fga,
+    t.backcourt_fgm,
+    t.backcourt_fg_pct,
+    t.loaded_at
+  FROM bigquery.dim_players_shooting_by_zones t
+  WHERE t.player_id = p_player_id;
+END;
+$$;
+
+-- Grant execute permissions for new functions
+GRANT EXECUTE ON FUNCTION public.get_games(date, text) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.get_player_shooting_zones(bigint) TO authenticated, anon;
+
 

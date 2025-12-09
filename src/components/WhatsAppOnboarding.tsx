@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
-import { CheckCircle, MessageCircle, Smartphone, AlertCircle } from 'lucide-react';
+import { CheckCircle, Smartphone, AlertCircle, Send } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
 
 interface WhatsAppOnboardingProps {
@@ -27,10 +27,10 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
     setError('');
 
     try {
-      // Validate WhatsApp number format
+      // Validate phone number format (campo mantido no backend)
       const cleanNumber = whatsappNumber.replace(/\D/g, '');
       if (cleanNumber.length < 10) {
-        throw new Error('Número de WhatsApp inválido');
+        throw new Error('Número inválido');
       }
 
       // Update user with WhatsApp number
@@ -51,14 +51,9 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
     }
   };
 
-  const handleWhatsAppSync = () => {
-    const message = "Oi, gostaria de sincronizar minha conta Smartbetting";
-    const whatsappUrl = `https://wa.me/5511952133059?text=${encodeURIComponent(message)}`;
-    
-    // Open WhatsApp with pre-filled message
-    window.open(whatsappUrl, '_blank');
-    
-    // Show success message
+  const handleTelegramOpen = () => {
+    const telegramUrl = 'https://t.me/betinho_assistente_bot';
+    window.open(telegramUrl, '_blank');
     setSuccess(true);
     setStep(3);
   };
@@ -72,17 +67,17 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
       <Card className="w-full max-w-md mx-auto">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-            <MessageCircle className="w-6 h-6 text-green-600" />
+            <Send className="w-6 h-6 text-green-600" />
           </div>
-          <CardTitle>Configure seu WhatsApp</CardTitle>
+          <CardTitle>Configure seu Telegram</CardTitle>
           <CardDescription>
-            Para receber notificações e enviar apostas via WhatsApp
+            Para receber notificações e enviar apostas via Telegram
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleWhatsAppNumberSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="whatsapp">Número do WhatsApp</Label>
+              <Label htmlFor="whatsapp">Número do Telegram</Label>
               <Input
                 id="whatsapp"
                 type="tel"
@@ -119,9 +114,9 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
           <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
             <Smartphone className="w-6 h-6 text-blue-600" />
           </div>
-          <CardTitle>Sincronize sua conta</CardTitle>
+          <CardTitle>Conecte com o bot</CardTitle>
           <CardDescription>
-            Envie uma mensagem para sincronizar sua conta
+            Abra o bot no Telegram e compartilhe seu número
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -131,18 +126,18 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
             </p>
             <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
               <li>Clique no botão abaixo</li>
-              <li>Será aberto o WhatsApp com uma mensagem pré-definida</li>
-              <li>Envie a mensagem para nosso bot</li>
-              <li>Volte aqui e clique em "Concluir"</li>
+              <li>No Telegram, toque em <em>Start</em> (/start)</li>
+              <li>Toque em “Enviar meu número”</li>
+              <li>Depois, finalize aqui</li>
             </ol>
           </div>
 
           <Button 
-            onClick={handleWhatsAppSync} 
-            className="w-full bg-green-600 hover:bg-green-700"
+            onClick={handleTelegramOpen}
+            className="w-full bg-blue-600 hover:bg-blue-700"
           >
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Abrir WhatsApp
+            <Send className="w-4 h-4 mr-2" />
+            Abrir bot no Telegram
           </Button>
 
           <Button 
@@ -164,7 +159,7 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
           <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
             <CheckCircle className="w-6 h-6 text-green-600" />
           </div>
-          <CardTitle>WhatsApp Configurado!</CardTitle>
+          <CardTitle>Telegram configurado!</CardTitle>
           <CardDescription>
             Sua conta foi sincronizada com sucesso
           </CardDescription>
@@ -173,7 +168,7 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
           <div className="space-y-4">
             <div className="bg-green-50 p-4 rounded-lg">
               <p className="text-sm text-green-800">
-                ✅ Agora você pode enviar apostas via WhatsApp
+                ✅ Agora você pode enviar apostas via Telegram
               </p>
               <p className="text-sm text-green-800">
                 ✅ Receberá notificações sobre suas apostas

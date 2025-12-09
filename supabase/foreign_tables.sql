@@ -3,6 +3,8 @@ DROP FOREIGN TABLE IF EXISTS bigquery.dim_players CASCADE;
 DROP FOREIGN TABLE IF EXISTS bigquery.dim_prop_player CASCADE;
 DROP FOREIGN TABLE IF EXISTS bigquery.dim_teams CASCADE;
 DROP FOREIGN TABLE IF EXISTS bigquery.ft_game_player_stats CASCADE;
+DROP FOREIGN TABLE IF EXISTS bigquery.ft_games CASCADE;
+DROP FOREIGN TABLE IF EXISTS bigquery.dim_players_shooting_by_zones CASCADE;
 
 -- Also drop the old ones just in case
 DROP FOREIGN TABLE IF EXISTS bigquery.player_stats CASCADE;
@@ -14,6 +16,7 @@ DROP FOREIGN TABLE IF EXISTS bigquery.ft_player_stat_over_line CASCADE;
 
 -- Recreate server with correct location (User provided this previously)
 DROP SERVER IF EXISTS bigquery_server CASCADE;
+DROP FOREIGN DATA WRAPPER IF EXISTS bigquery_wrapper CASCADE;
 
 -- Ensure extension and wrapper exist
 CREATE EXTENSION IF NOT EXISTS wrappers WITH SCHEMA extensions;
@@ -122,6 +125,67 @@ CREATE FOREIGN TABLE bigquery.ft_game_player_stats (
 SERVER bigquery_server
 OPTIONS (
   table 'ft_game_player_stats',
+  location 'us-east1'
+);
+
+-- 5. ft_games table
+CREATE FOREIGN TABLE bigquery.ft_games (
+  game_id int8,
+  game_date date,
+  home_team_id int8,
+  home_team_name text,
+  home_team_abbreviation text,
+  home_team_score float8,
+  visitor_team_id int8,
+  visitor_team_name text,
+  visitor_team_abbreviation text,
+  visitor_team_score float8,
+  winner_team_id int8,
+  loaded_at timestamp,
+  home_team_is_b2b_game boolean,
+  visitor_team_is_b2b_game boolean,
+  home_team_is_next_game boolean,
+  visitor_team_is_next_game boolean
+)
+SERVER bigquery_server
+OPTIONS (
+  table 'ft_games',
+  location 'us-east1'
+);
+
+-- 6. dim_players_shooting_by_zones table
+CREATE FOREIGN TABLE bigquery.dim_players_shooting_by_zones (
+  player_id int8,
+  player_name text,
+  corner_3_fga float8,
+  corner_3_fgm float8,
+  corner_3_fg_pct float8,
+  left_corner_3_fga float8,
+  left_corner_3_fgm float8,
+  left_corner_3_fg_pct float8,
+  right_corner_3_fga float8,
+  right_corner_3_fgm float8,
+  right_corner_3_fg_pct float8,
+  above_the_break_3_fga float8,
+  above_the_break_3_fgm float8,
+  above_the_break_3_fg_pct float8,
+  restricted_area_fga float8,
+  restricted_area_fgm float8,
+  restricted_area_fg_pct float8,
+  in_the_paint_non_ra_fga float8,
+  in_the_paint_non_ra_fgm float8,
+  in_the_paint_non_ra_fg_pct float8,
+  mid_range_fga float8,
+  mid_range_fgm float8,
+  mid_range_fg_pct float8,
+  backcourt_fga float8,
+  backcourt_fgm float8,
+  backcourt_fg_pct float8,
+  loaded_at timestamp
+)
+SERVER bigquery_server
+OPTIONS (
+  table 'dim_players_shooting_by_zones',
   location 'us-east1'
 );
 
