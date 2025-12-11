@@ -127,3 +127,6 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
   );
 };
 
+
+
+
