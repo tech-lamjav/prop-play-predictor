@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team } from '@/services/nba-data.service';
+import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones } from '@/services/nba-data.service';
 import { NBAHeader } from '@/components/nba/NBAHeader';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
@@ -13,6 +13,7 @@ import { SeasonStatsHeader } from '@/components/nba/SeasonStatsHeader';
 import { QuickFiltersBar } from '@/components/nba/QuickFiltersBar';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ShootingZonesCard } from '@/components/nba/ShootingZonesCard';
 
 export default function NBADashboard() {
   const { playerName } = useParams<{ playerName: string }>();
@@ -23,6 +24,7 @@ export default function NBADashboard() {
   const [propPlayers, setPropPlayers] = useState<PropPlayer[]>([]);
   const [teammates, setTeammates] = useState<TeamPlayer[]>([]);
   const [teamData, setTeamData] = useState<Team | null>(null);
+  const [shootingZones, setShootingZones] = useState<PlayerShootingZones | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedStatType, setSelectedStatType] = useState<string>('player_points');
   const [lastNGames, setLastNGames] = useState<number | 'all'>('all');
@@ -57,6 +59,7 @@ export default function NBADashboard() {
         nbaDataService.getPlayerProps(playerData.player_id),
         nbaDataService.getTeamPlayers(playerData.team_id),
         nbaDataService.getTeamById(playerData.team_id),
+        nbaDataService.getPlayerShootingZones(playerData.player_id),
       ]);
 
       // Handle game stats
@@ -85,6 +88,13 @@ export default function NBADashboard() {
         setTeamData(results[3].value);
       } else {
         console.error('Error loading team data:', results[3].reason);
+      }
+
+      // Handle shooting zones
+      if (results[4].status === 'fulfilled') {
+        setShootingZones(results[4].value);
+      } else {
+        console.error('Error loading shooting zones:', results[4].reason);
       }
     } catch (error) {
       console.error('Error loading player:', error);
@@ -261,6 +271,14 @@ export default function NBADashboard() {
         </div>
       </main>
       
+      <section className="container mx-auto px-3 pb-6">
+        <ShootingZonesCard
+          data={shootingZones}
+          isLoading={loading}
+          playerName={player?.player_name || ''}
+        />
+      </section>
+
       <footer className="terminal-header p-3 mt-6">
         <div className="container mx-auto flex justify-between items-center text-[10px]">
           <div className="opacity-50">

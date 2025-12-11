@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Input } from '@/components/ui/input';
 import { Search, Star, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
@@ -8,12 +8,14 @@ import { getTeamLogoUrl } from '@/utils/team-logos';
 
 export default function PlayerSelection() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
+  const [pendingTeamFilter, setPendingTeamFilter] = useState<string | null>(null);
 
   // Load players
   useEffect(() => {
@@ -47,6 +49,15 @@ export default function PlayerSelection() {
     loadData();
   }, []);
 
+  // Capture team query param to pre-filter/anchor
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const teamParam = params.get('team');
+    if (teamParam) {
+      setPendingTeamFilter(teamParam);
+    }
+  }, [location.search]);
+
   // Filter players based on search term
   useEffect(() => {
     let filtered = players;
@@ -61,6 +72,26 @@ export default function PlayerSelection() {
 
     setFilteredPlayers(filtered);
   }, [players, searchTerm]);
+
+  // Apply pending team filter once data is loaded
+  useEffect(() => {
+    if (pendingTeamFilter && players.length > 0) {
+      const normalized = pendingTeamFilter.toLowerCase();
+      const teamMatch = players.find(
+        (p) =>
+          p.team_abbreviation.toLowerCase() === normalized ||
+          p.team_name.toLowerCase().includes(normalized)
+      );
+
+      if (teamMatch) {
+        setSearchTerm(teamMatch.team_abbreviation);
+        setTimeout(() => scrollToTeam(teamMatch.team_name), 300);
+      }
+
+      setPendingTeamFilter(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTeamFilter, players]);
 
   const handlePlayerSelect = (playerId: number) => {
     const player = players.find(p => p.player_id === playerId);

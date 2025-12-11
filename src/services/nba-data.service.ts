@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+const supabaseClient = supabase as any;
 
 export interface Player {
   player_id: number;
@@ -79,9 +80,58 @@ export interface GamePlayerStats {
   is_played: string;
 }
 
+export interface Game {
+  game_id: number;
+  game_date: string;
+  home_team_id: number;
+  home_team_name: string;
+  home_team_abbreviation: string;
+  home_team_score: number | null;
+  visitor_team_id: number;
+  visitor_team_name: string;
+  visitor_team_abbreviation: string;
+  visitor_team_score: number | null;
+  winner_team_id: number | null;
+  loaded_at: string;
+  home_team_is_b2b_game: boolean;
+  visitor_team_is_b2b_game: boolean;
+  home_team_is_next_game: boolean;
+  visitor_team_is_next_game: boolean;
+}
+
+export interface PlayerShootingZones {
+  player_id: number;
+  player_name: string;
+  corner_3_fga: number;
+  corner_3_fgm: number;
+  corner_3_fg_pct: number;
+  left_corner_3_fga: number;
+  left_corner_3_fgm: number;
+  left_corner_3_fg_pct: number;
+  right_corner_3_fga: number;
+  right_corner_3_fgm: number;
+  right_corner_3_fg_pct: number;
+  above_the_break_3_fga: number;
+  above_the_break_3_fgm: number;
+  above_the_break_3_fg_pct: number;
+  restricted_area_fga: number;
+  restricted_area_fgm: number;
+  restricted_area_fg_pct: number;
+  in_the_paint_non_ra_fga: number;
+  in_the_paint_non_ra_fgm: number;
+  in_the_paint_non_ra_fg_pct: number;
+  mid_range_fga: number;
+  mid_range_fgm: number;
+  mid_range_fg_pct: number;
+  backcourt_fga: number;
+  backcourt_fgm: number;
+  backcourt_fg_pct: number;
+  loaded_at: string;
+}
+
 export const nbaDataService = {
   async getAllPlayers(): Promise<Player[]> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .rpc('get_all_players');
     
     if (error) throw error;
@@ -89,7 +139,7 @@ export const nbaDataService = {
   },
 
   async getPlayerById(playerId: number): Promise<Player | null> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .rpc('get_player_by_id', { p_player_id: playerId });
     
     if (error) throw error;
@@ -118,7 +168,7 @@ export const nbaDataService = {
   },
 
   async getPlayerProps(playerId: number): Promise<PropPlayer[]> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .rpc('get_player_props', { p_player_id: playerId });
     
     if (error) throw error;
@@ -126,7 +176,7 @@ export const nbaDataService = {
   },
 
   async getPlayerGameStats(playerId: number, limit = 15): Promise<GamePlayerStats[]> {
-    const { data, error} = await supabase
+    const { data, error} = await supabaseClient
       .rpc('get_player_game_stats', { 
         p_player_id: playerId,
         p_limit: limit 
@@ -137,7 +187,7 @@ export const nbaDataService = {
   },
 
   async getTeamById(teamId: number): Promise<Team | null> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .rpc('get_team_by_id', { p_team_id: teamId });
     
     if (error) throw error;
@@ -145,10 +195,31 @@ export const nbaDataService = {
   },
 
   async getTeamPlayers(teamId: number): Promise<TeamPlayer[]> {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .rpc('get_team_players', { p_team_id: teamId });
     
     if (error) throw error;
     return (data || []) as TeamPlayer[];
+  },
+
+  async getGames(params?: { gameDate?: string; teamAbbreviation?: string }): Promise<Game[]> {
+    const { gameDate, teamAbbreviation } = params || {};
+    const { data, error } = await supabaseClient.rpc('get_games', {
+      p_game_date: gameDate ?? null,
+      p_team_abbreviation: teamAbbreviation ?? null,
+    });
+
+    if (error) throw error;
+    return (data || []) as Game[];
+  },
+
+  async getPlayerShootingZones(playerId: number): Promise<PlayerShootingZones | null> {
+    const { data, error } = await supabaseClient.rpc('get_player_shooting_zones', {
+      p_player_id: playerId,
+    });
+
+    if (error) throw error;
+    if (!data || data.length === 0) return null;
+    return data[0] as PlayerShootingZones;
   },
 };

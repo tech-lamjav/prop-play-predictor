@@ -247,7 +247,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      [key: string]: {
+        Args: any
+        Returns: any
+      }
     }
     Enums: {
       [_ in never]: never

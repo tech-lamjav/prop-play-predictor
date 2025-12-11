@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from './ui/button';
-import { MessageCircle, CheckCircle, AlertCircle } from 'lucide-react';
+import { MessageCircle, CheckCircle, AlertCircle, Send } from 'lucide-react';
 import { useWhatsAppSync } from '../hooks/use-whatsapp-sync';
 
 interface WhatsAppSyncButtonProps {
@@ -21,14 +21,9 @@ export default function WhatsAppSyncButton({
   const { isSynced, isLoading, error, syncWhatsApp } = useWhatsAppSync(userId);
 
   const handleSync = () => {
-    const message = "Oi, gostaria de sincronizar minha conta Smartbetting";
-    const whatsappUrl = `https://wa.me/5511952133059?text=${encodeURIComponent(message)}`;
-    
-    // Open WhatsApp with pre-filled message
-    window.open(whatsappUrl, '_blank');
-    
-    // Show instructions
-    alert('Envie a mensagem no WhatsApp e aguarde a confirmação. Em seguida, clique novamente neste botão para confirmar a sincronização.');
+    const telegramUrl = 'https://t.me/betinho_assistente_bot';
+    window.open(telegramUrl, '_blank');
+    alert('No Telegram, toque em Start (/start) e depois em “Enviar meu número”.');
   };
 
   const handleConfirmSync = async () => {
@@ -53,7 +48,7 @@ export default function WhatsAppSyncButton({
     return (
       <Button variant={variant} size={size} disabled className={className}>
         <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-        WhatsApp Sincronizado
+        Telegram sincronizado
       </Button>
     );
   }
@@ -79,8 +74,8 @@ export default function WhatsAppSyncButton({
       onClick={handleSync}
       className={className}
     >
-      <MessageCircle className="w-4 h-4 mr-2" />
-      Sincronizar WhatsApp
+      <Send className="w-4 h-4 mr-2" />
+      Abrir bot no Telegram
     </Button>
   );
 }

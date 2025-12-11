@@ -126,11 +126,12 @@ const Auth = () => {
         // Get the newly created user
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          const normalizedReferralCode = referralCode.trim() ? referralCode.toUpperCase().trim() : null;
           const userData: any = {
             id: user.id,
             email: user.email!,
             name: name,
-            referred_by: referralCode.trim() ? referralCode.toUpperCase().trim() : null
+            referred_by: normalizedReferralCode
           };
 
           // Create user record in our users table
@@ -145,16 +146,14 @@ const Auth = () => {
               description: "Failed to create user record",
               variant: "destructive",
             });
-          } else if (referralCode.trim() && userData.referred_by) {
+          } else if (normalizedReferralCode && userData.referred_by) {
             // Create referral record - find referrer by code
             try {
-              const code = referralCode.toUpperCase().trim();
-              
               // Find referrer by code
               const { data: referrerData, error: referrerError } = await supabase
                 .from('users')
                 .select('id')
-                .eq('referral_code', code)
+                .eq('referral_code', normalizedReferralCode)
                 .single();
 
               if (!referrerError && referrerData && referrerData.id !== user.id) {
@@ -164,7 +163,7 @@ const Auth = () => {
                   .insert({
                     referrer_id: referrerData.id,
                     referred_id: user.id,
-                    referral_code: code
+                    referral_code: normalizedReferralCode
                   });
               }
             } catch (err) {
@@ -175,15 +174,18 @@ const Auth = () => {
           
           // Identify user in PostHog and track sign-up event
           if (posthog) {
+            const referralProperties = normalizedReferralCode ? { referred_by_code: normalizedReferralCode } : {};
             posthog.identify(user.id, {
               email: user.email,
               name: name || user.email?.split('@')[0],
+              ...referralProperties,
             });
             
             posthog.capture('signed_up', {
               email: user.email,
               name: name,
               method: 'email',
+              ...referralProperties,
             });
           }
           

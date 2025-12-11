@@ -1,14 +1,14 @@
-# Setup do Processo de Onboarding WhatsApp
+# Setup do Processo de Onboarding via Telegram
 
 ## 📋 O que foi implementado
 
 ### 1. **Migrations do Banco de Dados**
-- `005_create_users_table.sql` - Tabela de usuários com campos para WhatsApp
+- `005_create_users_table.sql` - Tabela de usuários com campos de telefone (campo `whatsapp_number` permanece e é usado para Telegram)
 - `006_create_betting_tables.sql` - Tabelas para apostas e sistema de filas
 
 ### 2. **Componentes React**
-- `WhatsAppOnboarding.tsx` - Componente principal de onboarding
-- `WhatsAppSyncButton.tsx` - Botão reutilizável para sincronização
+- `WhatsAppOnboarding.tsx` - Componente principal de onboarding (agora exibe fluxo Telegram)
+- `WhatsAppSyncButton.tsx` - Botão reutilizável para abrir o bot no Telegram
 - `use-whatsapp-sync.ts` - Hook para gerenciar estado do WhatsApp
 
 ### 3. **Página de Onboarding**
@@ -58,15 +58,15 @@ As seguintes dependências são necessárias (já devem estar instaladas):
 - E-mail
 - Validação de dados
 
-### Passo 2: Configuração WhatsApp
-- Número do WhatsApp
+### Passo 2: Configuração Telegram
+- Número de telefone (campo `whatsapp_number` mantido)
 - Validação do formato
 - Salvamento no banco
 
 ### Passo 3: Sincronização
-- Botão para abrir WhatsApp
-- Mensagem pré-definida
-- Confirmação de sincronização
+- Botão para abrir o bot no Telegram (`t.me/betinho_assistente_bot`)
+- Instruções: tocar em Start (/start) e “Enviar meu número”
+- Sem necessidade de cópia manual de número
 
 ## 🎯 Próximos Passos
 
@@ -81,8 +81,8 @@ As seguintes dependências são necessárias (já devem estar instaladas):
 ### Teste Manual do Onboarding
 1. Acesse `/onboarding`
 2. Preencha as informações pessoais
-3. Configure o número do WhatsApp
-4. Teste o botão de sincronização
+3. Configure o número de telefone (usado no Telegram)
+4. Abra o bot no Telegram e toque em Start / “Enviar meu número”
 5. Verifique se os dados foram salvos no banco
 
 ### Verificação no Banco
@@ -155,13 +155,13 @@ AND routine_name LIKE '%whatsapp%';
 - Verifique se o usuário está autenticado
 - Confirme se as policies estão corretas
 
-### Erro: "WhatsApp sync failed"
+### Erro: "Telegram sync failed"
 - Verifique se o número está no formato correto
-- Confirme se a função `sync_whatsapp` foi criada
+- Confirme se a função de sincronização (campo `whatsapp_number`) está disponível
 
 ## 📝 Notas Importantes
 
-- O número do WhatsApp deve incluir código do país
+- O número (campo `whatsapp_number`) deve incluir código do país
 - A sincronização real requer a Edge Function
 - O conversation_id será capturado quando o usuário enviar mensagem
 - O sistema de filas está preparado para múltiplas mensagens
