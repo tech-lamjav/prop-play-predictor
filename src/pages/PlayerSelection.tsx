@@ -1,53 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Input } from '@/components/ui/input';
 import { Search, Star, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
-import { nbaDataService, Player } from '@/services/nba-data.service';
+import { Player } from '@/services/nba-data.service';
 import { getTeamLogoUrl } from '@/utils/team-logos';
+import { useAllPlayers } from '@/hooks/use-all-players';
 
 export default function PlayerSelection() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
+  const { players, loading: isLoading, error: asyncError, refetch } = useAllPlayers();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [pendingTeamFilter, setPendingTeamFilter] = useState<string | null>(null);
+  const [teamsInitialized, setTeamsInitialized] = useState(false);
 
-  // Load players
+  // Initialize expanded teams only once when players first load
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const playersData = await nbaDataService.getAllPlayers();
-
-        // Remove duplicates based on player ID
-        const uniquePlayers = playersData.filter((player, index, self) => 
-          index === self.findIndex(p => p.player_id === player.player_id)
-        );
-        
-        setPlayers(uniquePlayers);
-        setFilteredPlayers(uniquePlayers);
-        
-        // Initially expand all teams
-        const allTeams = new Set(uniquePlayers.map(p => p.team_name));
-        setExpandedTeams(allTeams);
-        
-      } catch (err) {
-        console.error('Error loading data:', err);
-        setError('Failed to load player data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
+    if (players.length > 0 && !teamsInitialized) {
+      const allTeams = new Set(players.map(p => p.team_name));
+      setExpandedTeams(allTeams);
+      setTeamsInitialized(true);
+    }
+  }, [players, teamsInitialized]);
 
   // Capture team query param to pre-filter/anchor
   useEffect(() => {
@@ -58,19 +34,18 @@ export default function PlayerSelection() {
     }
   }, [location.search]);
 
-  // Filter players based on search term
-  useEffect(() => {
-    let filtered = players;
-
-    if (searchTerm) {
-      filtered = filtered.filter(player =>
-        player.player_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        player.team_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        player.team_abbreviation.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  // Filter players based on search term using useMemo to prevent infinite loops
+  const filteredPlayers = useMemo(() => {
+    if (!searchTerm) {
+      return players;
     }
 
-    setFilteredPlayers(filtered);
+    const searchLower = searchTerm.toLowerCase();
+    return players.filter(player =>
+      player.player_name.toLowerCase().includes(searchLower) ||
+      player.team_name.toLowerCase().includes(searchLower) ||
+      player.team_abbreviation.toLowerCase().includes(searchLower)
+    );
   }, [players, searchTerm]);
 
   // Apply pending team filter once data is loaded
@@ -152,15 +127,30 @@ export default function PlayerSelection() {
     );
   }
 
-  if (error) {
+  // Only show error screen if we have no players AND there's an error
+  // If we have cached players, show them even if there's a service error
+  if (asyncError && players.length === 0) {
+    const isServiceError = asyncError.message.toLowerCase().includes('service unavailable') ||
+                          asyncError.message.toLowerCase().includes('database service') ||
+                          asyncError.message.toLowerCase().includes('bigquery');
+    
     return (
       <AuthenticatedLayout>
         <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-          <div className="text-center">
+          <div className="text-center max-w-md">
             <div className="text-terminal-red text-xl mb-4">⚠️ SYSTEM ERROR</div>
-            <p className="text-terminal-text mb-4 font-mono">{error}</p>
+            <p className="text-terminal-text mb-4 font-mono text-sm">
+              {isServiceError 
+                ? 'Database service unavailable. This may be due to BigQuery connection issues. Check Supabase logs for details.'
+                : 'Failed to load player data'}
+            </p>
+            {isServiceError && (
+              <p className="text-terminal-text mb-4 font-mono text-xs opacity-60">
+                Tip: Check if BigQuery wrapper is configured correctly in Supabase.
+              </p>
+            )}
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => refetch()}
               className="terminal-button px-4 py-2 rounded"
             >
               RETRY CONNECTION

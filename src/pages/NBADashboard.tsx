@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones } from '@/services/nba-data.service';
+import { GamePlayerStats } from '@/services/nba-data.service';
 import { NBAHeader } from '@/components/nba/NBAHeader';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
@@ -14,99 +14,60 @@ import { QuickFiltersBar } from '@/components/nba/QuickFiltersBar';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShootingZonesCard } from '@/components/nba/ShootingZonesCard';
+import { usePlayerData } from '@/hooks/use-player-data';
 
 export default function NBADashboard() {
   const { playerName } = useParams<{ playerName: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [gameStats, setGameStats] = useState<GamePlayerStats[]>([]);
-  const [propPlayers, setPropPlayers] = useState<PropPlayer[]>([]);
-  const [teammates, setTeammates] = useState<TeamPlayer[]>([]);
-  const [teamData, setTeamData] = useState<Team | null>(null);
-  const [shootingZones, setShootingZones] = useState<PlayerShootingZones | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    player,
+    gameStats,
+    propPlayers,
+    teammates,
+    teamData,
+    shootingZones,
+    loading,
+    error,
+  } = usePlayerData({ playerName, gameStatsLimit: 10 });
+  
   const [selectedStatType, setSelectedStatType] = useState<string>('player_points');
   const [lastNGames, setLastNGames] = useState<number | 'all'>('all');
   const [homeAway, setHomeAway] = useState<'all' | 'home' | 'away'>('all');
 
+  // Handle errors
   useEffect(() => {
-    loadPlayer();
-  }, [playerName]);
+    if (!error) return;
 
-  const loadPlayer = async () => {
-    if (!playerName) return;
+    const errorMessage = error.message.toLowerCase();
     
-    try {
-      setLoading(true);
-      const playerData = await nbaDataService.getPlayerByName(playerName);
-      
-      if (!playerData) {
-        toast({
-          title: 'Player not found',
-          description: `Could not find player "${playerName.replace(/-/g, ' ')}"`,
-          variant: 'destructive',
-        });
-        navigate('/nba-players');
-        return;
-      }
-      
-      setPlayer(playerData);
-      
-      // Load all data in parallel for better performance
-      const results = await Promise.allSettled([
-        nbaDataService.getPlayerGameStats(playerData.player_id, 10), // Reduced from 30 to 10 for faster initial load
-        nbaDataService.getPlayerProps(playerData.player_id),
-        nbaDataService.getTeamPlayers(playerData.team_id),
-        nbaDataService.getTeamById(playerData.team_id),
-        nbaDataService.getPlayerShootingZones(playerData.player_id),
-      ]);
-
-      // Handle game stats
-      if (results[0].status === 'fulfilled') {
-        setGameStats(results[0].value);
-      } else {
-        console.error('Error loading game stats:', results[0].reason);
-      }
-
-      // Handle prop data
-      if (results[1].status === 'fulfilled') {
-        setPropPlayers(results[1].value);
-      } else {
-        console.error('Error loading prop data:', results[1].reason);
-      }
-
-      // Handle teammates
-      if (results[2].status === 'fulfilled') {
-        setTeammates(results[2].value);
-      } else {
-        console.error('Error loading teammates:', results[2].reason);
-      }
-
-      // Handle team data
-      if (results[3].status === 'fulfilled') {
-        setTeamData(results[3].value);
-      } else {
-        console.error('Error loading team data:', results[3].reason);
-      }
-
-      // Handle shooting zones
-      if (results[4].status === 'fulfilled') {
-        setShootingZones(results[4].value);
-      } else {
-        console.error('Error loading shooting zones:', results[4].reason);
-      }
-    } catch (error) {
-      console.error('Error loading player:', error);
+    if (errorMessage.includes('service unavailable') || errorMessage.includes('database service')) {
       toast({
-        title: 'Error',
-        description: 'Failed to load player data',
+        title: 'Service Unavailable',
+        description: 'Database service is not available. Please check if Supabase is running.',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
+    } else if (errorMessage.includes('function not found') || errorMessage.includes('migrations')) {
+      toast({
+        title: 'Database Error',
+        description: 'Database function not found. Please check if migrations are applied.',
+        variant: 'destructive',
+      });
+    } else if (errorMessage.includes('not found') && errorMessage.includes('player')) {
+      toast({
+        title: 'Player not found',
+        description: `Could not find player "${playerName?.replace(/-/g, ' ') || ''}"`,
+        variant: 'destructive',
+      });
+      navigate('/nba-players');
+    } else {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load player data',
+        variant: 'destructive',
+      });
     }
-  };
+  }, [error, playerName, navigate, toast]);
 
   // Calculate season averages from all game stats
   // Must be before conditional returns to comply with Rules of Hooks

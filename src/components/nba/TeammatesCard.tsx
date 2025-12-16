@@ -18,6 +18,9 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
   teamName,
   isLoading
 }) => {
+  // Hooks must be called before any conditional returns
+  const navigate = useNavigate();
+
   if (isLoading) {
     return (
       <div className="terminal-container p-4">
@@ -31,7 +34,6 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
       </div>
     );
   }
-  const navigate = useNavigate();
 
   // Filter out current player and limit to top 5 teammates
   const displayTeammates = teammates

@@ -131,11 +131,47 @@ export interface PlayerShootingZones {
 
 export const nbaDataService = {
   async getAllPlayers(): Promise<Player[]> {
-    const { data, error } = await supabaseClient
-      .rpc('get_all_players');
-    
-    if (error) throw error;
-    return data || [];
+    try {
+      const { data, error } = await supabaseClient
+        .rpc('get_all_players');
+      
+      if (error) {
+        // Check for specific error types
+        if (error.code === 'PGRST001' || error.status === 503) {
+          const serviceError: any = new Error(
+            'Database service unavailable. This may be due to BigQuery connection issues. ' +
+            'Please check if BigQuery wrapper is configured correctly.'
+          );
+          serviceError.code = error.code;
+          serviceError.status = error.status || 503;
+          serviceError.details = error.details;
+          serviceError.hint = error.hint || 'Check Supabase logs and BigQuery wrapper configuration';
+          serviceError.originalError = error;
+          throw serviceError;
+        }
+        
+        // Enhance error with more context
+        const enhancedError: any = new Error(error.message || 'Failed to fetch players');
+        enhancedError.code = error.code;
+        enhancedError.status = error.status || (error as any).statusCode;
+        enhancedError.details = error.details;
+        enhancedError.hint = error.hint;
+        enhancedError.originalError = error;
+        throw enhancedError;
+      }
+      return data || [];
+    } catch (error: any) {
+      // Re-throw if it's already an enhanced error
+      if (error.status === 503 || error.code === 'PGRST001') {
+        throw error;
+      }
+      // Wrap unexpected errors
+      const wrappedError: any = new Error(
+        error.message || 'Failed to fetch players. Check BigQuery connection.'
+      );
+      wrappedError.originalError = error;
+      throw wrappedError;
+    }
   },
 
   async getPlayerById(playerId: number): Promise<Player | null> {
@@ -161,8 +197,31 @@ export const nbaDataService = {
       );
       
       return player || null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error finding player by name:', error);
+      
+      // Re-throw service errors (503, connection errors, etc.) so they can be handled properly
+      if (
+        error?.code === 'PGRST001' || 
+        error?.status === 503 || 
+        error?.statusCode === 503 ||
+        error?.message?.includes('Service Unavailable') ||
+        error?.message?.includes('ECONNREFUSED') ||
+        error?.message?.includes('Failed to fetch')
+      ) {
+        const serviceError = new Error('Database service unavailable. Please check if Supabase is running and the RPC function exists.');
+        (serviceError as any).originalError = error;
+        throw serviceError;
+      }
+      
+      // For function not found errors (PGRST116)
+      if (error?.code === 'PGRST116' || error?.message?.includes('function') && error?.message?.includes('not found')) {
+        const functionError = new Error('Database function not found. Please check if migrations are applied.');
+        (functionError as any).originalError = error;
+        throw functionError;
+      }
+      
+      // For other errors, return null (player not found)
       return null;
     }
   },

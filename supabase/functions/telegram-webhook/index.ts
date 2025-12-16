@@ -293,17 +293,24 @@ async function sendConfirmationMessageTelegram(
 
 async function getDailyBetCount(supabase: any, userId: string): Promise<number> {
   try {
+    // Get current UTC time
     const nowUTC = new Date()
-    const gmt3Offset = -3 * 60 * 60 * 1000
+
+    // Convert to GMT-3 time (subtract 3 hours)
+    const gmt3Offset = -3 * 60 * 60 * 1000 // -3 hours in milliseconds
     const nowGMT3 = new Date(nowUTC.getTime() + gmt3Offset)
 
+    // Get date string in GMT-3 (YYYY-MM-DD)
     const year = nowGMT3.getUTCFullYear()
     const month = String(nowGMT3.getUTCMonth() + 1).padStart(2, "0")
     const day = String(nowGMT3.getUTCDate()).padStart(2, "0")
     const gmt3DateString = `${year}-${month}-${day}`
 
+    // Create midnight in GMT-3 (00:00:00 GMT-3)
+    // Since GMT-3 is UTC-3, midnight GMT-3 = 03:00 UTC
     const startOfDayUTC = new Date(`${gmt3DateString}T03:00:00.000Z`)
 
+    // Start of tomorrow in GMT-3
     const tomorrowGMT3 = new Date(nowGMT3.getTime() + 24 * 60 * 60 * 1000)
     const tomorrowYear = tomorrowGMT3.getUTCFullYear()
     const tomorrowMonth = String(tomorrowGMT3.getUTCMonth() + 1).padStart(2, "0")
@@ -311,6 +318,7 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
     const gmt3TomorrowDateString = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`
     const startOfTomorrowUTC = new Date(`${gmt3TomorrowDateString}T03:00:00.000Z`)
 
+    // Query bets from start of today (GMT-3) to start of tomorrow (GMT-3)
     const { count, error } = await supabase
       .from("bets")
       .select("*", { count: "exact", head: true })
@@ -323,6 +331,12 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
       return 0
     }
 
+    console.log(`Daily bet count query for user ${userId}:`, {
+      startOfDay: startOfDayUTC.toISOString(),
+      startOfTomorrow: startOfTomorrowUTC.toISOString(),
+      count: count || 0
+    })
+
     return count || 0
   } catch (error) {
     console.error("Error getting daily bet count:", error)
@@ -332,6 +346,7 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
 
 async function hasReachedDailyLimit(supabase: any, userId: string): Promise<boolean> {
   try {
+    // First, check user's subscription status
     const { data: user, error: userError } = await supabase
       .from("users")
       .select("subscription_status")
@@ -340,17 +355,23 @@ async function hasReachedDailyLimit(supabase: any, userId: string): Promise<bool
 
     if (userError) {
       console.error("Error fetching user subscription status:", userError)
+      // In case of error, fail open (allow bet)
       return false
     }
 
+    // Premium users have no limit - skip the check
     if (user?.subscription_status === "premium") {
+      console.log(`User ${userId} has premium status - no bet limit applied`)
       return false
     }
 
+    // Free or disabled users have the limit applied
     const betCount = await getDailyBetCount(supabase, userId)
+    console.log(`User ${userId} has ${betCount} bets today (limit: ${DAILY_BET_LIMIT}, status: ${user?.subscription_status || "free"})`)
     return betCount >= DAILY_BET_LIMIT
   } catch (error) {
     console.error("Error checking daily limit:", error)
+    // In case of error, allow the bet (fail open)
     return false
   }
 }
@@ -796,9 +817,13 @@ async function processMessage(
         return
       }
 
+      // Check if user has reached daily bet limit
       const limitReached = await hasReachedDailyLimit(supabase, userId)
 
       if (limitReached) {
+        console.log(`User ${userId} has reached daily bet limit (${DAILY_BET_LIMIT} bets/day)`)
+
+        // Track daily limit reached
         await trackEvent(
           "daily_limit_reached",
           { user_id: userId, daily_limit: DAILY_BET_LIMIT, channel: "telegram" },
@@ -806,13 +831,16 @@ async function processMessage(
           traceId
         ).catch(() => {})
 
+        // Update message status to completed (but not saved)
         await supabase
           .from("message_queue")
           .update({ status: "completed", processed_at: new Date().toISOString(), error_message: "Daily bet limit reached" })
           .eq("id", messageId)
 
+        // Send paywall message instead of confirmation
         await sendPaywallMessageTelegram(chatId)
-        return
+
+        return // Exit early, don't save the bet
       }
 
       const MAX_INDIVIDUAL_ODD = 20.0

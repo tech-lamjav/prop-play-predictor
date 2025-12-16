@@ -1,18 +1,54 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Lock, Zap, BarChart3, ArrowRight, MessageCircle } from "lucide-react";
+import { Lock, Zap, BarChart3, ArrowRight, CreditCard, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export default function Paywall() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleUpgrade = () => {
-    // Open WhatsApp with pre-filled message for upgrade
-    const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting";
-    const whatsappUrl = `https://wa.me/554391482828?text=${encodeURIComponent(message)}`;
+  const handleUpgrade = async () => {
+    setIsLoading(true);
     
-    // Open WhatsApp with pre-filled message
-    window.open(whatsappUrl, '_blank');
+    try {
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("Você precisa estar logado para fazer upgrade");
+        navigate("/auth?redirect=/paywall");
+        return;
+      }
+
+      // Call Edge Function to create checkout session
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          success_url: `${window.location.origin}/bets?checkout=success`,
+          cancel_url: `${window.location.origin}/paywall?checkout=canceled`,
+        },
+      });
+
+      if (error) {
+        console.error('Error creating checkout session:', error);
+        toast.error("Erro ao iniciar checkout. Tente novamente.");
+        return;
+      }
+
+      if (data?.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      } else {
+        toast.error("Erro ao criar sessão de pagamento");
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error("Erro inesperado. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -110,15 +146,25 @@ export default function Paywall() {
                 <div className="pt-6 border-t">
                   <Button 
                     onClick={handleUpgrade}
+                    disabled={isLoading}
                     className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6 gap-2"
                     size="lg"
                   >
-                    <MessageCircle className="h-5 w-5" />
-                    <span>Fazer Upgrade via WhatsApp</span>
-                    <ArrowRight className="h-5 w-5" />
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Preparando checkout...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-5 w-5" />
+                        <span>Fazer Upgrade Agora</span>
+                        <ArrowRight className="h-5 w-5" />
+                      </>
+                    )}
                   </Button>
                   <p className="text-sm text-muted-foreground text-center mt-4">
-                    Entre em contato via WhatsApp para fazer upgrade do seu plano
+                    Pagamento seguro via Stripe. Cancele a qualquer momento.
                   </p>
                 </div>
               </div>
@@ -139,4 +185,3 @@ export default function Paywall() {
     </div>
   );
 }
-
