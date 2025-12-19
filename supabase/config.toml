@@ -3,3 +3,8 @@ project_id = "lavclmlvvfzkblrstojd"
 [api]
 # Expose both public and bigquery schemas via PostgREST
 schemas = ["public", "graphql_public", "bigquery"]
+
+[functions.stripe-webhook]
+# Desabilita verificação JWT para webhooks do Stripe
+# Webhooks do Stripe usam assinatura própria (stripe-signature) ao invés de JWT
+verify_jwt = false
