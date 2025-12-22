@@ -49,6 +49,7 @@ serve(async (req) => {
       );
     }
 
+    // SUPABASE_URL is automatically provided by Supabase Edge Functions
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -71,7 +72,7 @@ serve(async (req) => {
     // Obter dados do body
     const body = await req.json();
     console.log('Request body:', body);
-    const { priceId } = body;
+    const { priceId, returnPath } = body;
     
     if (!priceId) {
       console.error('Missing priceId in body');
@@ -82,8 +83,28 @@ serve(async (req) => {
     }
 
     console.log('Price ID received:', priceId);
+    console.log('Return path received:', returnPath);
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'http://localhost:8080';
+    // SITE_URL is the frontend URL for redirects (configured in Edge Function secrets)
+    const SITE_URL = Deno.env.get('SITE_URL') || 'http://localhost:8080';
+
+    // Mapear returnPath para rota
+    const routeMap: Record<string, string> = {
+      'betinho': '/paywall',
+      'platform': '/paywall-platform'
+    };
+
+    const returnRoute = returnPath ? (routeMap[returnPath] || '/paywall') : '/paywall';
+    console.log('Mapped return route:', returnRoute);
+
+    // Mapear returnPath para subscriptionType
+    const subscriptionTypeMap: Record<string, string> = {
+      'betinho': 'betinho',
+      'platform': 'platform'
+    };
+
+    const subscriptionType = returnPath ? (subscriptionTypeMap[returnPath] || 'betinho') : 'betinho';
+    console.log('Subscription type:', subscriptionType);
 
     // Criar ou buscar customer no Stripe (necessário para Accounts V2)
     let customerId: string;
@@ -123,8 +144,8 @@ serve(async (req) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription', // ou 'payment' para pagamento único
-      success_url: `${SUPABASE_URL}/paywall?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${SUPABASE_URL}/paywall?canceled=true`,
+      success_url: `${SITE_URL}${returnRoute}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${SITE_URL}${returnRoute}?canceled=true`,
       metadata: {
         userId: user.id,
         userEmail: user.email || '',
@@ -132,6 +153,7 @@ serve(async (req) => {
       subscription_data: {
         metadata: {
           userId: user.id,
+          subscriptionType: subscriptionType, // Adicionar tipo de subscription
         },
       },
     });

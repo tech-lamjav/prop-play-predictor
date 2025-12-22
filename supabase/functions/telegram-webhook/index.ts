@@ -332,9 +332,10 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
 
 async function hasReachedDailyLimit(supabase: any, userId: string): Promise<boolean> {
   try {
+    // Check only betinho subscription status for daily limit
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("subscription_status")
+      .select("subscription_betinho_status")
       .eq("id", userId)
       .single()
 
@@ -343,7 +344,8 @@ async function hasReachedDailyLimit(supabase: any, userId: string): Promise<bool
       return false
     }
 
-    if (user?.subscription_status === "premium") {
+    // Premium users (betinho subscription) have no limit
+    if (user?.subscription_betinho_status === "premium") {
       return false
     }
 

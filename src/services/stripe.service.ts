@@ -16,7 +16,7 @@ export class StripeService {
     return StripeService.instance;
   }
 
-  async createCheckoutSession(priceId: string): Promise<CheckoutSessionResponse> {
+  async createCheckoutSession(priceId: string, returnPath?: string): Promise<CheckoutSessionResponse> {
     // Garantir que temos uma sessão ativa
     const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
     
@@ -40,7 +40,7 @@ export class StripeService {
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': supabaseKey,
       },
-      body: JSON.stringify({ priceId }),
+      body: JSON.stringify({ priceId, returnPath }),
     });
 
     if (!response.ok) {
