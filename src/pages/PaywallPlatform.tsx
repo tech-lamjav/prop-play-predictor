@@ -10,9 +10,9 @@ import { toast } from "@/hooks/use-toast";
 
 // Price ID do Stripe - substitua pelo seu Price ID real
 // Você pode obter isso no Stripe Dashboard → Products → Seu Produto → Price ID
-const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_BETINHO; // Configure no .env.local
+const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_PLATFORM; // Configure no .env.local
 
-export default function Paywall() {
+export default function PaywallPlatform() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
@@ -35,15 +35,15 @@ export default function Paywall() {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('subscription_betinho_status')
+          .select('subscription_platform_status')
           .eq('id', user.id)
           .single();
 
         if (error) {
           console.error('Error fetching subscription status:', error);
         } else {
-          // Type assertion necessário porque subscription_betinho_status pode não estar nos tipos gerados
-          const status = (data as any)?.subscription_betinho_status;
+          // Type assertion necessário porque subscription_platform_status pode não estar nos tipos gerados
+          const status = (data as any)?.subscription_platform_status;
           setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
         }
       } catch (error) {
@@ -70,15 +70,15 @@ export default function Paywall() {
         if (user?.id) {
           supabase
             .from('users')
-            .select('subscription_betinho_status')
+            .select('subscription_platform_status')
             .eq('id', user.id)
             .single()
             .then(({ data }) => {
               if (data) {
-                const status = (data as any)?.subscription_betinho_status;
+                const status = (data as any)?.subscription_platform_status;
                 setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
                 if (status === 'premium') {
-                  navigate('/bets');
+                  navigate('/nba-players');
                 }
               }
             });
@@ -115,7 +115,7 @@ export default function Paywall() {
     setIsLoading(true);
     try {
       //console.log('STRIPE_PRICE_ID', STRIPE_PRICE_ID);
-      const { url } = await stripeService.createCheckoutSession(STRIPE_PRICE_ID, 'betinho');
+      const { url } = await stripeService.createCheckoutSession(STRIPE_PRICE_ID, 'platform');
       await stripeService.redirectToCheckout(url);
     } catch (error) {
       console.error('Error creating checkout session:', error);
@@ -221,13 +221,13 @@ export default function Paywall() {
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-primary mb-6">
-              <Lock className="h-10 w-10 text-white" />
+              <BarChart3 className="h-10 w-10 text-white" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Limite Diário Atingido
+              Acesso à Plataforma Premium
             </h1>
             <p className="text-xl text-muted-foreground">
-              Você atingiu o limite de <span className="font-semibold text-foreground">10 apostas grátis</span> por dia.
+              Desbloqueie análises avançadas e insights exclusivos para melhorar suas estratégias
             </p>
             {isCheckingStatus && (
               <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground">
@@ -240,9 +240,9 @@ export default function Paywall() {
           {/* Main Card */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-2xl">Continue Apostando</CardTitle>
+              <CardTitle className="text-2xl">Desbloqueie Análises Avançadas</CardTitle>
               <CardDescription>
-                Faça upgrade para continuar registrando suas apostas sem limites
+                Assine o plano premium e tenha acesso completo à plataforma de análise
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -251,23 +251,23 @@ export default function Paywall() {
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mt-0.5">
-                      <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <BarChart3 className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Apostas Ilimitadas</p>
+                      <p className="font-semibold text-foreground">Análises Detalhadas</p>
                       <p className="text-sm text-muted-foreground">
-                        Registre quantas apostas quiser, sem limites diários
+                        Acesse análises profundas e estatísticas avançadas de jogadores e times
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mt-0.5">
-                      <BarChart3 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Dashboard Completo</p>
+                      <p className="font-semibold text-foreground">Insights Exclusivos</p>
                       <p className="text-sm text-muted-foreground">
-                        Acesse todas as funcionalidades do dashboard premium
+                        Receba insights e recomendações personalizadas baseadas em dados
                       </p>
                     </div>
                   </div>
@@ -344,8 +344,8 @@ export default function Paywall() {
           <Card className="bg-muted/50">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground text-center">
-                O limite diário é resetado automaticamente à meia-noite (horário GMT-3).
-                Você pode continuar usando o plano gratuito com 10 apostas por dia ou fazer upgrade para apostas ilimitadas.
+                Com o plano premium, você tem acesso completo a todas as funcionalidades da plataforma de análise.
+                Cancele quando quiser, sem compromisso.
               </p>
             </CardContent>
           </Card>
