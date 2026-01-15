@@ -16,7 +16,7 @@ export class StripeService {
     return StripeService.instance;
   }
 
-  async createCheckoutSession(priceId: string): Promise<CheckoutSessionResponse> {
+  async createCheckoutSession(priceId: string, productType: string = 'betinho'): Promise<CheckoutSessionResponse> {
     // Garantir que temos uma sessão ativa
     const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
     
@@ -31,8 +31,17 @@ export class StripeService {
 
     console.log('Session found, calling stripe-create-checkout with token');
     console.log('Supabase URL:', supabaseUrl);
+    console.log('Product Type:', productType);
+    console.log('Price ID:', priceId);
+
+    if (!priceId) {
+      throw new Error('Price ID is required but was not provided.');
+    }
 
     // Usar fetch diretamente para garantir que o token seja enviado
+    const requestBody = { priceId, productType };
+    console.log('Request body being sent:', requestBody);
+    
     const response = await fetch(`${supabaseUrl}/functions/v1/stripe-create-checkout`, {
       method: 'POST',
       headers: {
@@ -40,7 +49,7 @@ export class StripeService {
         'Authorization': `Bearer ${session.access_token}`,
         'apikey': supabaseKey,
       },
-      body: JSON.stringify({ priceId }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
