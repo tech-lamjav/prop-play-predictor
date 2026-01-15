@@ -382,31 +382,31 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
 }
 
 // Check if user has reached the daily bet limit
-// Also checks user subscription_status - premium users have no limit
+// Also checks user betinho_subscription_status - premium users have no limit
 async function hasReachedDailyLimit(supabase: any, userId: string): Promise<boolean> {
   try {
-    // First, check user's subscription status
+    // First, check user's Betinho subscription status
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('subscription_status')
+      .select('betinho_subscription_status')
       .eq('id', userId)
       .single()
 
     if (userError) {
-      console.error('Error fetching user subscription status:', userError)
+      console.error('Error fetching user Betinho subscription status:', userError)
       // In case of error, fail open (allow bet)
       return false
     }
 
     // Premium users have no limit - skip the check
-    if (user?.subscription_status === 'premium') {
-      console.log(`User ${userId} has premium status - no bet limit applied`)
+    if (user?.betinho_subscription_status === 'premium') {
+      console.log(`User ${userId} has premium Betinho status - no bet limit applied`)
       return false
     }
 
     // Free or disabled users have the limit applied
     const betCount = await getDailyBetCount(supabase, userId)
-    console.log(`User ${userId} has ${betCount} bets today (limit: ${DAILY_BET_LIMIT}, status: ${user?.subscription_status || 'free'})`)
+    console.log(`User ${userId} has ${betCount} bets today (limit: ${DAILY_BET_LIMIT}, status: ${user?.betinho_subscription_status || 'free'})`)
     return betCount >= DAILY_BET_LIMIT
   } catch (error) {
     console.error('Error checking daily limit:', error)
