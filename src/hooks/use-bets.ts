@@ -12,13 +12,19 @@ export interface Bet {
   odds: number;
   stake_amount: number;
   potential_return: number;
-  status: 'pending' | 'won' | 'lost' | 'void';
+  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout';
   bet_date: string;
   match_date?: string;
   created_at: string;
   updated_at: string;
   raw_input?: string;
   processed_data?: any;
+  cashout_amount?: number;
+  cashout_date?: string;
+  cashout_odds?: number;
+  is_cashout?: boolean;
+  channel?: string;
+  betting_house?: string;
 }
 
 export interface BetStats {
