@@ -53,38 +53,46 @@ serve(async (req) => {
     console.log('[Webhook] Received webhook event:', event.type);
     console.log('[Webhook] Event ID:', event.id);
     
+    // Helper function to determine which subscription field to update
+    const getSubscriptionField = (productType: string | undefined): string => {
+      // Default to 'betinho' if productType is not specified (backward compatibility)
+      const product = productType || 'betinho';
+      if (product === 'analytics') {
+        return 'analytics_subscription_status';
+      }
+      return 'betinho_subscription_status';
+    };
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
+        const productType = session.metadata?.productType;
+        const subscriptionField = getSubscriptionField(productType);
+        
         console.log('[Webhook] Checkout session completed');
         console.log('[Webhook] Session ID:', session.id);
         console.log('[Webhook] Session metadata:', JSON.stringify(session.metadata));
         console.log('[Webhook] UserId from metadata:', userId);
+        console.log('[Webhook] ProductType from metadata:', productType);
+        console.log('[Webhook] Updating field:', subscriptionField);
         
         if (userId) {
-          // Buscar a subscription criada para obter o tipo
-          if (session.subscription) {
-            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-            const subscriptionType = subscription.metadata?.subscriptionType || 'betinho';
-            
-            const statusField = subscriptionType === 'platform' 
-              ? 'subscription_platform_status' 
-              : 'subscription_betinho_status';
-            
-            console.log(`[Webhook] Updating ${statusField} to premium for user:`, userId);
-            const { data, error } = await supabase
-              .from('users')
-              .update({ [statusField]: 'premium' })
-              .eq('id', userId);
-            
-            if (error) {
-              console.error('[Webhook] Error updating subscription status:', error);
-              console.error('[Webhook] Error details:', JSON.stringify(error));
-            } else {
-              console.log(`[Webhook] ✅ ${statusField} updated to premium for user:`, userId);
-              console.log('[Webhook] Updated data:', JSON.stringify(data));
-            }
+          console.log(`[Webhook] Updating ${subscriptionField} to premium for user:`, userId);
+          const updateData: Record<string, string> = {};
+          updateData[subscriptionField] = 'premium';
+          
+          const { data, error } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', userId);
+          
+          if (error) {
+            console.error('[Webhook] Error updating subscription status:', error);
+            console.error('[Webhook] Error details:', JSON.stringify(error));
+          } else {
+            console.log(`[Webhook] ✅ ${subscriptionField} updated to premium for user:`, userId);
+            console.log('[Webhook] Updated data:', JSON.stringify(data));
           }
         } else {
           console.warn('[Webhook] ⚠️ No userId found in session metadata');
@@ -97,26 +105,25 @@ serve(async (req) => {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata?.userId;
-        const subscriptionType = subscription.metadata?.subscriptionType || 'betinho';
+        const productType = subscription.metadata?.productType;
+        const subscriptionField = getSubscriptionField(productType);
         
-        console.log(`Subscription ${event.type} - userId: ${userId}, type: ${subscriptionType}, status: ${subscription.status}`);
+        console.log(`Subscription ${event.type} - userId: ${userId}, status: ${subscription.status}, productType: ${productType}`);
         
         if (userId) {
-          const statusField = subscriptionType === 'platform' 
-            ? 'subscription_platform_status' 
-            : 'subscription_betinho_status';
-          
           const status = subscription.status === 'active' ? 'premium' : 'free';
+          const updateData: Record<string, string> = {};
+          updateData[subscriptionField] = status;
           
           const { data, error } = await supabase
             .from('users')
-            .update({ [statusField]: status })
+            .update(updateData)
             .eq('id', userId);
           
           if (error) {
-            console.error('Error updating subscription status:', error);
+            console.error(`Error updating ${subscriptionField}:`, error);
           } else {
-            console.log(`${statusField} updated to ${status} for user: ${userId}`);
+            console.log(`${subscriptionField} updated to ${status} for user: ${userId}`);
           }
         } else {
           console.warn('No userId found in subscription metadata');
@@ -127,24 +134,23 @@ serve(async (req) => {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata?.userId;
-        const subscriptionType = subscription.metadata?.subscriptionType || 'betinho';
-        
-        console.log(`Subscription deleted - userId: ${userId}, type: ${subscriptionType}`);
+        const productType = subscription.metadata?.productType;
+        const subscriptionField = getSubscriptionField(productType);
         
         if (userId) {
-          const statusField = subscriptionType === 'platform' 
-            ? 'subscription_platform_status' 
-            : 'subscription_betinho_status';
+          console.log(`Deleting subscription for user: ${userId}, productType: ${productType}`);
+          const updateData: Record<string, string> = {};
+          updateData[subscriptionField] = 'free';
           
           const { data, error } = await supabase
             .from('users')
-            .update({ [statusField]: 'free' })
+            .update(updateData)
             .eq('id', userId);
           
           if (error) {
-            console.error('Error updating subscription status:', error);
+            console.error(`Error updating ${subscriptionField} to free:`, error);
           } else {
-            console.log(`${statusField} updated to free for user: ${userId}`);
+            console.log(`${subscriptionField} updated to free for user: ${userId}`);
           }
         }
         break;

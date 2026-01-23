@@ -49,7 +49,6 @@ serve(async (req) => {
       );
     }
 
-    // SUPABASE_URL is automatically provided by Supabase Edge Functions
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -72,7 +71,7 @@ serve(async (req) => {
     // Obter dados do body
     const body = await req.json();
     console.log('Request body:', body);
-    const { priceId, returnPath } = body;
+    const { priceId, productType } = body;
     
     if (!priceId) {
       console.error('Missing priceId in body');
@@ -82,34 +81,19 @@ serve(async (req) => {
       );
     }
 
+    // Default to 'betinho' if productType is not provided (backward compatibility)
+    const finalProductType = productType || 'betinho';
     console.log('Price ID received:', priceId);
-    console.log('Return path received:', returnPath);
+    console.log('Product Type:', finalProductType);
 
-    // SITE_URL is the frontend URL for redirects (configured in Edge Function secrets)
-    const SITE_URL = Deno.env.get('SITE_URL') || 'http://localhost:8080';
-
-    // Mapear returnPath para rota
-    const routeMap: Record<string, string> = {
-      'betinho': '/paywall',
-      'platform': '/paywall-platform'
-    };
-
-    const returnRoute = returnPath ? (routeMap[returnPath] || '/paywall') : '/paywall';
-    console.log('Mapped return route:', returnRoute);
-
-    // Mapear returnPath para subscriptionType
-    const subscriptionTypeMap: Record<string, string> = {
-      'betinho': 'betinho',
-      'platform': 'platform'
-    };
-
-    const subscriptionType = returnPath ? (subscriptionTypeMap[returnPath] || 'betinho') : 'betinho';
-    console.log('Subscription type:', subscriptionType);
+    // Use SITE_URL for frontend redirects, fallback to SUPABASE_URL for local dev
+    const SITE_URL = Deno.env.get('SITE_URL') || Deno.env.get('SUPABASE_URL') || 'http://localhost:8080';
+    console.log('Using SITE_URL:', SITE_URL);
 
     // Criar ou buscar customer no Stripe (necessário para Accounts V2)
     let customerId: string;
     
-    // Verificar se já existe um customer_id salvo no metadata do usuário
+    // 1. Verificar se já existe um customer_id salvo no nosso banco
     const { data: userData } = await supabase
       .from('users')
       .select('stripe_customer_id')
@@ -117,18 +101,62 @@ serve(async (req) => {
       .single();
 
     if (userData?.stripe_customer_id) {
-      // Usar customer existente
+      // Usar customer existente do nosso banco
       customerId = userData.stripe_customer_id;
+      console.log('Using existing customer from database:', customerId);
+    } else if (user.email) {
+      // 2. Buscar no Stripe se já existe um customer com este email
+      console.log('Searching for existing Stripe customer by email:', user.email);
+      const existingCustomers = await stripe.customers.list({
+        email: user.email,
+        limit: 1,
+      });
+
+      if (existingCustomers.data.length > 0) {
+        // Usar customer existente do Stripe
+        customerId = existingCustomers.data[0].id;
+        console.log('Found existing Stripe customer:', customerId);
+        
+        // Atualizar metadata do customer existente com o userId
+        await stripe.customers.update(customerId, {
+          metadata: {
+            userId: user.id,
+          },
+        });
+      } else {
+        // 3. Criar novo customer no Stripe (não existe em lugar nenhum)
+        console.log('Creating new Stripe customer for email:', user.email);
+        const customer = await stripe.customers.create({
+          email: user.email,
+          metadata: {
+            userId: user.id,
+          },
+        });
+        customerId = customer.id;
+        console.log('Created new Stripe customer:', customerId);
+      }
+
+      // Salvar customer_id no nosso banco de dados
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ stripe_customer_id: customerId })
+        .eq('id', user.id);
+      
+      if (updateError) {
+        console.error('Error saving stripe_customer_id to database:', updateError);
+      } else {
+        console.log('Saved stripe_customer_id to database');
+      }
     } else {
-      // Criar novo customer no Stripe
+      // Usuário sem email - criar customer sem email
+      console.log('Creating new Stripe customer without email');
       const customer = await stripe.customers.create({
-        email: user.email || undefined,
         metadata: {
           userId: user.id,
         },
       });
       customerId = customer.id;
-
+      
       // Salvar customer_id no banco de dados
       await supabase
         .from('users')
@@ -144,16 +172,17 @@ serve(async (req) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription', // ou 'payment' para pagamento único
-      success_url: `${SITE_URL}${returnRoute}?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${SITE_URL}${returnRoute}?canceled=true`,
+      success_url: `${SITE_URL}/paywall?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${SITE_URL}/paywall?canceled=true`,
       metadata: {
         userId: user.id,
         userEmail: user.email || '',
+        productType: finalProductType, // Add productType to session metadata
       },
       subscription_data: {
         metadata: {
           userId: user.id,
-          subscriptionType: subscriptionType, // Adicionar tipo de subscription
+          productType: finalProductType, // Add productType to subscription metadata
         },
       },
     });

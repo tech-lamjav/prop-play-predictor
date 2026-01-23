@@ -335,17 +335,17 @@ async function hasReachedDailyLimit(supabase: any, userId: string): Promise<bool
     // Check only betinho subscription status for daily limit
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("subscription_betinho_status")
+      .select("betinho_subscription_status")
       .eq("id", userId)
       .single()
 
     if (userError) {
-      console.error("Error fetching user subscription status:", userError)
+      console.error("Error fetching user Betinho subscription status:", userError)
       return false
     }
 
     // Premium users (betinho subscription) have no limit
-    if (user?.subscription_betinho_status === "premium") {
+    if (user?.betinho_subscription_status === "premium") {
       return false
     }
 
@@ -819,6 +819,12 @@ async function processMessage(
         match.odds >= 1.01
       )
 
+      console.log("bet_validation_matches", {
+        message_id: messageId,
+        original_count: bettingInfo.matches.length,
+        valid_count: validMatches.length
+      })
+
       if (validMatches.length === 0) {
         console.log("bet_extraction_valid_matches_empty", { message_id: messageId, raw_matches: bettingInfo.matches })
         await trackEvent(
@@ -854,11 +860,13 @@ async function processMessage(
 
       const MAX_INDIVIDUAL_ODD = 20.0
 
-      if (bettingInfo.matches.length > 1 && bettingInfo.bet_type !== "multiple") {
+      // BUGFIX: Use validMatches instead of bettingInfo.matches for bet_type check
+      if (validMatches.length > 1 && bettingInfo.bet_type !== "multiple") {
         bettingInfo.bet_type = "multiple"
       }
 
-      const validatedMatches = bettingInfo.matches.map((match) => {
+      // BUGFIX: Use validMatches instead of bettingInfo.matches for validation
+      const validatedMatches = validMatches.map((match) => {
         const odd = match.odds || 1
         if (odd > MAX_INDIVIDUAL_ODD) {
           trackEvent(
@@ -893,9 +901,19 @@ async function processMessage(
 
       const currentDate = new Date().toISOString()
       const stakeAmount = bettingInfo.stake_amount || 0
-      const calculatedOdds = bettingInfo.bet_type === "multiple" ? totalOdds : (validatedMatches[0]?.odds || bettingInfo.matches[0]?.odds)
+      // BUGFIX: Use validatedMatches for fallback instead of bettingInfo.matches
+      const calculatedOdds = bettingInfo.bet_type === "multiple" ? totalOdds : (validatedMatches[0]?.odds || 1.01)
 
       bettingInfo.matches = validatedMatches
+
+      console.log("bet_insert_starting", {
+        message_id: messageId,
+        user_id: userId,
+        bet_type: bettingInfo.bet_type,
+        stake_amount: stakeAmount,
+        calculated_odds: calculatedOdds,
+        matches_count: validatedMatches.length
+      })
 
       const { data: bet, error: betError } = await supabase
         .from("bets")
@@ -919,8 +937,11 @@ async function processMessage(
         .single()
 
       if (betError) {
+        console.error("bet_insert_error", { message_id: messageId, error: betError })
         throw betError
       }
+
+      console.log("bet_insert_success", { message_id: messageId, bet_id: bet.id })
 
       await trackEvent(
         "bet_created",
@@ -952,7 +973,9 @@ async function processMessage(
         .update({ status: "completed", processed_at: new Date().toISOString() })
         .eq("id", messageId)
 
+      console.log("bet_sending_confirmation", { message_id: messageId, bet_id: bet.id, chat_id: chatId })
       await sendConfirmationMessageTelegram(chatId, bet)
+      console.log("bet_confirmation_sent", { message_id: messageId, bet_id: bet.id })
     } else {
       await trackEvent(
         "bet_extraction_failed",

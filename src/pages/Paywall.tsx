@@ -26,7 +26,7 @@ export default function Paywall() {
   const canceled = searchParams.get('canceled');
   const sessionId = searchParams.get('session_id');
 
-  // Verificar status de assinatura do usuário
+  // Verificar status de assinatura do usuário (Betinho)
   useEffect(() => {
     const checkSubscriptionStatus = async () => {
       if (!user?.id) return;
@@ -35,15 +35,15 @@ export default function Paywall() {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('subscription_betinho_status')
+          .select('betinho_subscription_status')
           .eq('id', user.id)
           .single();
 
         if (error) {
-          console.error('Error fetching subscription status:', error);
+          console.error('Error fetching Betinho subscription status:', error);
         } else {
-          // Type assertion necessário porque subscription_betinho_status pode não estar nos tipos gerados
-          const status = (data as any)?.subscription_betinho_status;
+          // Type assertion necessário porque betinho_subscription_status pode não estar nos tipos gerados
+          const status = (data as any)?.betinho_subscription_status;
           setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
         }
       } catch (error) {
@@ -70,12 +70,12 @@ export default function Paywall() {
         if (user?.id) {
           supabase
             .from('users')
-            .select('subscription_betinho_status')
+            .select('betinho_subscription_status')
             .eq('id', user.id)
             .single()
             .then(({ data }) => {
               if (data) {
-                const status = (data as any)?.subscription_betinho_status;
+                const status = (data as any)?.betinho_subscription_status;
                 setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
                 if (status === 'premium') {
                   navigate('/bets');
@@ -114,7 +114,11 @@ export default function Paywall() {
 
     setIsLoading(true);
     try {
-      //console.log('STRIPE_PRICE_ID', STRIPE_PRICE_ID);
+      if (!STRIPE_PRICE_ID) {
+        throw new Error('Price ID não configurado. Verifique a variável de ambiente VITE_STRIPE_PRICE_ID_BETINHO.');
+      }
+      
+      console.log('Creating checkout session with Price ID:', STRIPE_PRICE_ID);
       const { url } = await stripeService.createCheckoutSession(STRIPE_PRICE_ID, 'betinho');
       await stripeService.redirectToCheckout(url);
     } catch (error) {
@@ -227,7 +231,7 @@ export default function Paywall() {
               Limite Diário Atingido
             </h1>
             <p className="text-xl text-muted-foreground">
-              Você atingiu o limite de <span className="font-semibold text-foreground">10 apostas grátis</span> por dia.
+              Você atingiu seu limite diário de apostas.
             </p>
             {isCheckingStatus && (
               <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground">
@@ -345,7 +349,7 @@ export default function Paywall() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground text-center">
                 O limite diário é resetado automaticamente à meia-noite (horário GMT-3).
-                Você pode continuar usando o plano gratuito com 10 apostas por dia ou fazer upgrade para apostas ilimitadas.
+                Você pode continuar usando o plano gratuito ou fazer upgrade para apostas ilimitadas.
               </p>
             </CardContent>
           </Card>
