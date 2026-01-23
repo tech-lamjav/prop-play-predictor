@@ -16,6 +16,7 @@ import NBADashboard from "./pages/NBADashboard";
 import Analysis from "./pages/Analysis";
 import Waitlist from "./pages/Waitlist";
 import Paywall from "./pages/Paywall";
+import PaywallPlatform from "./pages/PaywallPlatform";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
@@ -81,6 +82,7 @@ const App = () => (
           } />
           <Route path="/waitlist" element={<Waitlist />} />
           <Route path="/paywall" element={<Paywall />} />
+          <Route path="/paywall-platform" element={<PaywallPlatform />} />
           <Route path="/como-usar" element={<ComoUsar />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -332,6 +332,7 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
 
 async function hasReachedDailyLimit(supabase: any, userId: string): Promise<boolean> {
   try {
+    // Check only betinho subscription status for daily limit
     const { data: user, error: userError } = await supabase
       .from("users")
       .select("betinho_subscription_status")
@@ -343,6 +344,7 @@ async function hasReachedDailyLimit(supabase: any, userId: string): Promise<bool
       return false
     }
 
+    // Premium users (betinho subscription) have no limit
     if (user?.betinho_subscription_status === "premium") {
       return false
     }
@@ -548,6 +550,41 @@ REQUISITOS DE SAÍDA:
 - Sem texto extra, retorne JSON válido seguindo o schema abaixo
 - matches é um array de jogos; odds sempre >= 1.01
 - stake_amount pode ser 0 se não informado
+
+CLASSIFICAÇÃO DE ESPORTE:
+ - Identifique o esporte com base nas informações da aposta
+ - Padronize e retorne o nome do esporte de acordo com a lista abaixo:
+  * Futebol
+  * Basquete
+  * Tênis
+  * Futebol Americano
+  * Futsal
+  * Vôlei
+  * eSports
+  * MMA/UFC
+  * Boxe
+  * Hóquei no Gelo
+  * Beisebol
+  * Golfe
+  * Tênis de Mesa
+  * Handebol
+  * Rugby
+  * Corrida de Cavalos
+  * Ciclismo
+  * Críquete
+  * Dardos
+  * Snooker
+  * Badminton
+  * Futebol Australiano
+  * Esqui
+  * Biatlo
+  * Automobilismo
+  * Vôlei de Praia
+  * Padel
+  * Natação
+  * Atletismo
+ - Se não for possível identificar o esporte, retorne o esporte como null.
+ - Se o esporte for identificado e não estiver na lista, retorne ele como está.
 
 SCHEMA:
 {

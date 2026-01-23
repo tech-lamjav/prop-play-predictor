@@ -102,6 +102,12 @@ export type Database = {
           updated_at: string
           raw_input: string | null
           processed_data: any | null
+          cashout_amount: number | null
+          cashout_date: string | null
+          cashout_odds: number | null
+          is_cashout: boolean | null
+          channel: string | null
+          betting_house: string | null
         }
         Insert: {
           id?: string
@@ -121,6 +127,12 @@ export type Database = {
           updated_at?: string
           raw_input?: string | null
           processed_data?: any | null
+          cashout_amount?: number | null
+          cashout_date?: string | null
+          cashout_odds?: number | null
+          is_cashout?: boolean | null
+          channel?: string | null
+          betting_house?: string | null
         }
         Update: {
           id?: string
@@ -140,6 +152,12 @@ export type Database = {
           updated_at?: string
           raw_input?: string | null
           processed_data?: any | null
+          cashout_amount?: number | null
+          cashout_date?: string | null
+          cashout_odds?: number | null
+          is_cashout?: boolean | null
+          channel?: string | null
+          betting_house?: string | null
         }
         Relationships: [
           {

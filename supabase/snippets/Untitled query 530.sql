@@ -1,0 +1,1 @@
+select distinct sport from bets
