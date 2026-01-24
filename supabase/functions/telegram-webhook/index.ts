@@ -586,6 +586,123 @@ CLASSIFICAÇÃO DE ESPORTE:
  - Se não for possível identificar o esporte, retorne o esporte como string vazia.
  - Se o esporte for identificado e não estiver na lista, retorne ele como está.
 
+CLASSIFICAÇÃO DE LIGAS:
+ - Identifique a liga com base nas informações da aposta
+ - Padronize e retorne o nome da liga de acordo com o campo "league" do seguinte json:
+
+[
+  {
+    "league": "US - NBA",
+    "sport": "Futebol"
+  },
+  {
+    "league": "BR - Copa do Brasil",
+    "sport": "Futebol"
+  },
+  {
+    "league": "US - NBA",
+    "sport": "Basquete"
+  },
+  {
+    "league": "EU - Europa League",
+    "sport": "Futebol"
+  },
+  {
+    "league": "Mundial de Clubes FIFA",
+    "sport": "Futebol"
+  },
+  {
+    "league": "EN - Premier League",
+    "sport": "Futebol"
+  },
+  {
+    "league": "SAU - Pro League",
+    "sport": "Futebol"
+  },
+  {
+    "league": "AU - NBL",
+    "sport": "Basquete"
+  },
+  {
+    "league": "ITA - Série A",
+    "sport": "Futebol"
+  },
+  {
+    "league": "EU - Champions League",
+    "sport": "Futebol"
+  },
+  {
+    "league": "US - NFL",
+    "sport": "Futebol Americano"
+  },
+  {
+    "league": "ME - Liga Premier",
+    "sport": "Futebol"
+  {
+    "league": "EU - Conference League",
+    "sport": "Futebol"
+  },
+  {
+    "league": "AME - Copa Sul-Americana",
+    "sport": "Futebol"
+  },
+  {
+    "league": "AME - Copa Libertadores",
+    "sport": "Futebol"
+  },
+  {
+    "league": "AL - Bundesliga",
+    "sport": "Futebol"
+  },
+  {
+    "league": "FR - Ligue 1",
+    "sport": "Futebol"
+  },
+  {
+    "league": "Fórmula 1",
+    "sport": "Automobilismo"
+  },
+  {
+    "league": "HOL - Eerste Divisie",
+    "sport": "Futebol"
+  },
+  {
+    "league": "BR - Série B",
+    "sport": "Futebol"
+  },
+  {
+    "league": "TUR - Lig 1",
+    "sport": "Futebol"
+  },
+  {
+    "league": "ES - La Liga",
+    "sport": "Futebol"
+  },
+  {
+    "league": "EU - Eliminatória UEFA",
+    "sport": "Futebol"
+  },
+  {
+    "league": "PT - Primeira Liga",
+    "sport": "Futebol"
+  },
+  {
+    "league": "BR - Série A",
+    "sport": "Futebol"
+  },
+  {
+    "league": "BR - Paulistão",
+    "sport": "Futebol"
+  },
+  {
+    "league": "BEL - Pro League",
+    "sport": "Futebol"
+  }
+]
+- Se não for possível identificar a liga, retorne a liga como string vazia.
+- Se a liga for identificada e não estiver na lista, retorne ela como está.
+- Se forem identificadas múltiplas ligas, retorne "Diversos"
+
 SCHEMA:
 {
   bet_type: "single" | "multiple" | "system",
