@@ -81,10 +81,11 @@ interface Bet {
 }
 
 const SPORTS_LIST = [
+  'Futebol',
+  'Basquete',
   'Atletismo',
   'Automobilismo',
   'Badminton',
-  'Basquete',
   'Beisebol',
   'Biatlo',
   'Boxe',
@@ -94,7 +95,6 @@ const SPORTS_LIST = [
   'Dardos',
   'eSports',
   'Esqui',
-  'Futebol',
   'Futebol Americano',
   'Futsal',
   'Golfe',
@@ -110,7 +110,38 @@ const SPORTS_LIST = [
   'Tênis de Mesa',
   'Vôlei',
   'Vôlei de Praia',
-].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+];
+
+const LEAGUES_LIST = [
+  'US - NBA',
+  'BR - Série A',
+  'EU - Champions League',
+  'AL - Bundesliga',
+  'AME - Copa Libertadores',
+  'AME - Copa Sul-Americana',
+  'AU - NBL',
+  'BEL - Pro League',
+  'BR - Copa do Brasil',
+  'BR - Paulistão',
+  'Diversos',
+  'EN - Premier League',
+  'ES - La Liga',
+  'EU - Conference League',
+  'EU - Eliminatórias UEFA Copa do Mundo',
+  'EU - Europa League',
+  'Fórmula 1',
+  'FR - Ligue 1',
+  'Futebol',
+  'HOL - Eerste Divisie',
+  'ITA - Série A',
+  'ME - Liga Premier',
+  'Mundial de Clubes FIFA',
+  'Outros',
+  'PT - Primeira Liga',
+  'SAU - Pro League',
+  'TUR - Lig 1',
+  'US - NFL',
+];
 
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
@@ -180,6 +211,11 @@ export default function Bets() {
   const [isSportQueryTouched, setIsSportQueryTouched] = useState(false);
   const [sportHighlightIndex, setSportHighlightIndex] = useState(-1);
   const sportItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  
+  const [isLeagueDropdownOpen, setIsLeagueDropdownOpen] = useState(false);
+  const [isLeagueQueryTouched, setIsLeagueQueryTouched] = useState(false);
+  const [leagueHighlightIndex, setLeagueHighlightIndex] = useState(-1);
+  const leagueItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -419,6 +455,9 @@ export default function Bets() {
     setIsSportDropdownOpen(false);
     setIsSportQueryTouched(false);
     setSportHighlightIndex(-1);
+    setIsLeagueDropdownOpen(false);
+    setIsLeagueQueryTouched(false);
+    setLeagueHighlightIndex(-1);
   };
 
   const fetchReferralCode = useCallback(async () => {
@@ -462,10 +501,16 @@ export default function Bets() {
     return sports.sort();
   }, [bets]);
 
+  const uniqueLeagues = useMemo(() => {
+    const leagues = Array.from(new Set(bets.map(bet => bet.league).filter(Boolean)));
+    return leagues.sort();
+  }, [bets]);
+
   const filteredBets = useMemo(() => {
     return bets.filter(bet => {
       if (filters.status !== 'all' && bet.status !== filters.status) return false;
       if (filters.sport !== 'all' && bet.sport !== filters.sport) return false;
+      if (filters.league !== 'all' && bet.league !== filters.league) return false;
       if (filters.dateFrom) {
         if (new Date(bet.bet_date) < new Date(filters.dateFrom)) return false;
       }
@@ -494,6 +539,15 @@ export default function Bets() {
     return SPORTS_LIST.filter((sport) => sport.toLowerCase().includes(query));
   }, [editModal.formData.sport, isSportQueryTouched]);
 
+  const filteredLeaguesList = useMemo(() => {
+    if (!isLeagueQueryTouched) {
+      return LEAGUES_LIST;
+    }
+    const query = editModal.formData.league.trim().toLowerCase();
+    if (!query) return LEAGUES_LIST;
+    return LEAGUES_LIST.filter((league) => league.toLowerCase().includes(query));
+  }, [editModal.formData.league, isLeagueQueryTouched]);
+
   useEffect(() => {
     if (!isSportDropdownOpen || filteredSportsList.length === 0) {
       setSportHighlightIndex(-1);
@@ -515,6 +569,28 @@ export default function Bets() {
       currentItem.scrollIntoView({ block: 'nearest' });
     }
   }, [isSportDropdownOpen, sportHighlightIndex]);
+
+  useEffect(() => {
+    if (!isLeagueDropdownOpen || filteredLeaguesList.length === 0) {
+      setLeagueHighlightIndex(-1);
+      return;
+    }
+
+    setLeagueHighlightIndex((prev) => {
+      if (prev < 0 || prev >= filteredLeaguesList.length) {
+        return 0;
+      }
+      return prev;
+    });
+  }, [isLeagueDropdownOpen, filteredLeaguesList.length]);
+
+  useEffect(() => {
+    if (!isLeagueDropdownOpen || leagueHighlightIndex < 0) return;
+    const currentItem = leagueItemRefs.current[leagueHighlightIndex];
+    if (currentItem?.scrollIntoView) {
+      currentItem.scrollIntoView({ block: 'nearest' });
+    }
+  }, [isLeagueDropdownOpen, leagueHighlightIndex]);
 
   useEffect(() => {
     if (isMountedRef.current) {
@@ -681,6 +757,17 @@ export default function Bets() {
               ))}
             </select>
 
+            <select 
+              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
+              value={filters.league}
+              onChange={(e) => setFilters(prev => ({ ...prev, league: e.target.value }))}
+            >
+              <option value="all">TODAS LIGAS</option>
+              {uniqueLeagues.map(league => (
+                <option key={league} value={league}>{league.toUpperCase()}</option>
+              ))}
+            </select>
+
             <input 
               type="date"
               className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto"
@@ -745,6 +832,7 @@ export default function Bets() {
                       <th className="text-left py-2 px-2 data-label">DESCRIÇÃO</th>
                       <th className="text-left py-2 px-2 data-label">TAGS</th>
                       <th className="text-left py-2 px-2 data-label">ESPORTE</th>
+                      <th className="text-left py-2 px-2 data-label">LIGA</th>
                       <th className="text-right py-2 px-2 data-label">VALOR</th>
                       <th className="text-right py-2 px-2 data-label">ODDS</th>
                       <th className="text-right py-2 px-2 data-label">RETORNO</th>
@@ -805,7 +893,10 @@ export default function Bets() {
                           />
                         </td>
                         <td className="py-2 px-2 opacity-70">
-                          {bet.sport} {bet.league && `• ${bet.league}`}
+                          {bet.sport}
+                        </td>
+                        <td className="py-2 px-2 opacity-70">
+                          {bet.league || '-'}
                         </td>
                         <td className="text-right py-2 px-2">
                           {formatWithUnits(bet.stake_amount)}
@@ -916,8 +1007,13 @@ export default function Bets() {
                         <div className="text-xs opacity-60 mt-0.5">{bet.match_description}</div>
                       )}
                       <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">
-                        {bet.sport} {bet.league && `• ${bet.league}`}
+                        {bet.sport}
                       </div>
+                      {bet.league && (
+                        <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">
+                          {bet.league}
+                        </div>
+                      )}
                       {/* Tags */}
                       <div className="mt-2">
                         <TagSelector
@@ -1126,7 +1222,10 @@ export default function Bets() {
           if (!open) {
             setIsSportDropdownOpen(false);
             setIsSportQueryTouched(false);
-        setSportHighlightIndex(-1);
+            setSportHighlightIndex(-1);
+            setIsLeagueDropdownOpen(false);
+            setIsLeagueQueryTouched(false);
+            setLeagueHighlightIndex(-1);
           }
         }
       }>
@@ -1140,15 +1239,15 @@ export default function Bets() {
           
           {editModal.bet && (
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs uppercase opacity-70">Descrição</Label>
+                <Input
+                  value={editModal.formData.bet_description}
+                  onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, bet_description: e.target.value } }))}
+                  className="bg-terminal-black border-terminal-border text-terminal-text"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase opacity-70">Descrição</Label>
-                  <Input
-                    value={editModal.formData.bet_description}
-                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, bet_description: e.target.value } }))}
-                    className="bg-terminal-black border-terminal-border text-terminal-text"
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase opacity-70">Esporte</Label>
                   <div className="relative">
@@ -1250,6 +1349,113 @@ export default function Bets() {
                         ) : (
                           <div className="px-3 py-2 text-xs opacity-60">
                             Nenhum esporte encontrado
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase opacity-70">Liga</Label>
+                  <div className="relative">
+                    <Input
+                      value={editModal.formData.league}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setEditModal(prev => ({ ...prev, formData: { ...prev.formData, league: value } }));
+                        setIsLeagueQueryTouched(true);
+                        setIsLeagueDropdownOpen(true);
+                        setLeagueHighlightIndex(0);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Tab') {
+                          setIsLeagueDropdownOpen(false);
+                          setIsLeagueQueryTouched(false);
+                          setLeagueHighlightIndex(-1);
+                          return;
+                        }
+
+                        if (event.key === 'ArrowDown') {
+                          event.preventDefault();
+                          if (!isLeagueDropdownOpen) {
+                            setIsLeagueDropdownOpen(true);
+                            setIsLeagueQueryTouched(true);
+                          }
+                          setLeagueHighlightIndex((prev) => {
+                            if (filteredLeaguesList.length === 0) return -1;
+                            const next = prev < filteredLeaguesList.length - 1 ? prev + 1 : 0;
+                            return next;
+                          });
+                          return;
+                        }
+
+                        if (event.key === 'ArrowUp') {
+                          event.preventDefault();
+                          if (!isLeagueDropdownOpen) {
+                            setIsLeagueDropdownOpen(true);
+                            setIsLeagueQueryTouched(true);
+                          }
+                          setLeagueHighlightIndex((prev) => {
+                            if (filteredLeaguesList.length === 0) return -1;
+                            const next = prev > 0 ? prev - 1 : filteredLeaguesList.length - 1;
+                            return next;
+                          });
+                          return;
+                        }
+
+                        if (event.key === 'Enter') {
+                          if (leagueHighlightIndex >= 0 && filteredLeaguesList[leagueHighlightIndex]) {
+                            event.preventDefault();
+                            const selectedLeague = filteredLeaguesList[leagueHighlightIndex];
+                            setEditModal(prev => ({ ...prev, formData: { ...prev.formData, league: selectedLeague } }));
+                            setIsLeagueDropdownOpen(false);
+                            setIsLeagueQueryTouched(false);
+                            setLeagueHighlightIndex(-1);
+                          }
+                          return;
+                        }
+
+                        if (event.key === 'Escape') {
+                          setIsLeagueDropdownOpen(false);
+                          setLeagueHighlightIndex(-1);
+                        }
+                      }}
+                      onFocus={() => {
+                        setIsLeagueDropdownOpen(true);
+                        setIsLeagueQueryTouched(false);
+                      }}
+                      onBlur={() => setIsLeagueDropdownOpen(false)}
+                      placeholder="Selecione ou digite a liga"
+                      className="bg-terminal-black border-terminal-border text-terminal-text"
+                    />
+                    {isLeagueDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-dark-gray">
+                        {filteredLeaguesList.length > 0 ? (
+                          filteredLeaguesList.map((league, index) => (
+                            <button
+                              key={league}
+                              type="button"
+                              tabIndex={-1}
+                              ref={(element) => {
+                                leagueItemRefs.current[index] = element;
+                              }}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                setEditModal(prev => ({ ...prev, formData: { ...prev.formData, league } }));
+                                setIsLeagueDropdownOpen(false);
+                                setIsLeagueQueryTouched(false);
+                                setLeagueHighlightIndex(-1);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm text-terminal-text hover:bg-terminal-black ${
+                                index === leagueHighlightIndex ? 'bg-terminal-black' : ''
+                              }`}
+                            >
+                              {league}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-xs opacity-60">
+                            Nenhuma liga encontrada
                           </div>
                         )}
                       </div>
