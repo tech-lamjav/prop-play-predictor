@@ -40,6 +40,7 @@ export function normalizePhoneCandidates(phone: string): string[] {
 
 // Utility to mask phone for logs (keeps country and last 4 digits)
 export function maskPhone(phone: string): string {
+  if (!phone) return ''
   const cleaned = phone.replace(/\D/g, '')
   if (cleaned.length <= 4) return cleaned
   const prefix = cleaned.slice(0, 2)

@@ -80,6 +80,38 @@ interface Bet {
   tags?: Tag[];
 }
 
+const SPORTS_LIST = [
+  'Atletismo',
+  'Automobilismo',
+  'Badminton',
+  'Basquete',
+  'Beisebol',
+  'Biatlo',
+  'Boxe',
+  'Corrida de Cavalos',
+  'Críquete',
+  'Ciclismo',
+  'Dardos',
+  'eSports',
+  'Esqui',
+  'Futebol',
+  'Futebol Americano',
+  'Futsal',
+  'Golfe',
+  'Handebol',
+  'Hóquei no Gelo',
+  'MMA/UFC',
+  'Natação',
+  'Outros',
+  'Padel',
+  'Rugby',
+  'Snooker',
+  'Tênis',
+  'Tênis de Mesa',
+  'Vôlei',
+  'Vôlei de Praia',
+].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isConfigured, formatWithUnits, config, updateConfig, formatCurrency } = useUserUnit();
@@ -143,6 +175,11 @@ export default function Bets() {
       status: 'pending'
     }
   });
+
+  const [isSportDropdownOpen, setIsSportDropdownOpen] = useState(false);
+  const [isSportQueryTouched, setIsSportQueryTouched] = useState(false);
+  const [sportHighlightIndex, setSportHighlightIndex] = useState(-1);
+  const sportItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -379,6 +416,9 @@ export default function Bets() {
         status: bet.status || 'pending'
       }
     });
+    setIsSportDropdownOpen(false);
+    setIsSportQueryTouched(false);
+    setSportHighlightIndex(-1);
   };
 
   const fetchReferralCode = useCallback(async () => {
@@ -444,6 +484,37 @@ export default function Bets() {
       return true;
     });
   }, [bets, filters]);
+
+  const filteredSportsList = useMemo(() => {
+    if (!isSportQueryTouched) {
+      return SPORTS_LIST;
+    }
+    const query = editModal.formData.sport.trim().toLowerCase();
+    if (!query) return SPORTS_LIST;
+    return SPORTS_LIST.filter((sport) => sport.toLowerCase().includes(query));
+  }, [editModal.formData.sport, isSportQueryTouched]);
+
+  useEffect(() => {
+    if (!isSportDropdownOpen || filteredSportsList.length === 0) {
+      setSportHighlightIndex(-1);
+      return;
+    }
+
+    setSportHighlightIndex((prev) => {
+      if (prev < 0 || prev >= filteredSportsList.length) {
+        return 0;
+      }
+      return prev;
+    });
+  }, [isSportDropdownOpen, filteredSportsList.length]);
+
+  useEffect(() => {
+    if (!isSportDropdownOpen || sportHighlightIndex < 0) return;
+    const currentItem = sportItemRefs.current[sportHighlightIndex];
+    if (currentItem?.scrollIntoView) {
+      currentItem.scrollIntoView({ block: 'nearest' });
+    }
+  }, [isSportDropdownOpen, sportHighlightIndex]);
 
   useEffect(() => {
     if (isMountedRef.current) {
@@ -1050,7 +1121,14 @@ export default function Bets() {
 
       {/* Edit Modal */}
       <Dialog open={editModal.isOpen} onOpenChange={(open) => 
-        setEditModal(prev => ({ ...prev, isOpen: open }))
+        {
+          setEditModal(prev => ({ ...prev, isOpen: open }));
+          if (!open) {
+            setIsSportDropdownOpen(false);
+            setIsSportQueryTouched(false);
+        setSportHighlightIndex(-1);
+          }
+        }
       }>
         <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1073,11 +1151,110 @@ export default function Bets() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase opacity-70">Esporte</Label>
-                  <Input
-                    value={editModal.formData.sport}
-                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport: e.target.value } }))}
-                    className="bg-terminal-black border-terminal-border text-terminal-text"
-                  />
+                  <div className="relative">
+                    <Input
+                      value={editModal.formData.sport}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport: value } }));
+                        setIsSportQueryTouched(true);
+                        setIsSportDropdownOpen(true);
+                        setSportHighlightIndex(0);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Tab') {
+                          setIsSportDropdownOpen(false);
+                          setIsSportQueryTouched(false);
+                          setSportHighlightIndex(-1);
+                          return;
+                        }
+
+                        if (event.key === 'ArrowDown') {
+                          event.preventDefault();
+                          if (!isSportDropdownOpen) {
+                            setIsSportDropdownOpen(true);
+                            setIsSportQueryTouched(true);
+                          }
+                          setSportHighlightIndex((prev) => {
+                            if (filteredSportsList.length === 0) return -1;
+                            const next = prev < filteredSportsList.length - 1 ? prev + 1 : 0;
+                            return next;
+                          });
+                          return;
+                        }
+
+                        if (event.key === 'ArrowUp') {
+                          event.preventDefault();
+                          if (!isSportDropdownOpen) {
+                            setIsSportDropdownOpen(true);
+                            setIsSportQueryTouched(true);
+                          }
+                          setSportHighlightIndex((prev) => {
+                            if (filteredSportsList.length === 0) return -1;
+                            const next = prev > 0 ? prev - 1 : filteredSportsList.length - 1;
+                            return next;
+                          });
+                          return;
+                        }
+
+                        if (event.key === 'Enter') {
+                          if (sportHighlightIndex >= 0 && filteredSportsList[sportHighlightIndex]) {
+                            event.preventDefault();
+                            const selectedSport = filteredSportsList[sportHighlightIndex];
+                            setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport: selectedSport } }));
+                            setIsSportDropdownOpen(false);
+                            setIsSportQueryTouched(false);
+                            setSportHighlightIndex(-1);
+                          }
+                          return;
+                        }
+
+                        if (event.key === 'Escape') {
+                          setIsSportDropdownOpen(false);
+                          setSportHighlightIndex(-1);
+                        }
+                      }}
+                      onFocus={() => {
+                        setIsSportDropdownOpen(true);
+                        setIsSportQueryTouched(false);
+                      }}
+                      onBlur={() => setIsSportDropdownOpen(false)}
+                      placeholder="Selecione ou digite o esporte"
+                      className="bg-terminal-black border-terminal-border text-terminal-text"
+                    />
+                    {isSportDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-dark-gray">
+                        {filteredSportsList.length > 0 ? (
+                          filteredSportsList.map((sport, index) => (
+                            <button
+                              key={sport}
+                              type="button"
+                              tabIndex={-1}
+                              ref={(element) => {
+                                sportItemRefs.current[index] = element;
+                              }}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport } }));
+                                setIsSportDropdownOpen(false);
+                                setIsSportQueryTouched(false);
+                                setSportHighlightIndex(-1);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm text-terminal-text hover:bg-terminal-black ${
+                                index === sportHighlightIndex ? 'bg-terminal-black' : ''
+                              }`}
+                            >
+                              {sport}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-xs opacity-60">
+                            Nenhum esporte encontrado
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

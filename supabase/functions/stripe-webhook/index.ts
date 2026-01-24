@@ -70,7 +70,7 @@ serve(async (req) => {
             
             const statusField = subscriptionType === 'platform' 
               ? 'subscription_platform_status' 
-              : 'subscription_betinho_status';
+              : 'betinho_subscription_status';
             
             console.log(`[Webhook] Updating ${statusField} to premium for user:`, userId);
             const { data, error } = await supabase
@@ -104,7 +104,7 @@ serve(async (req) => {
         if (userId) {
           const statusField = subscriptionType === 'platform' 
             ? 'subscription_platform_status' 
-            : 'subscription_betinho_status';
+            : 'betinho_subscription_status';
           
           const status = subscription.status === 'active' ? 'premium' : 'free';
           
@@ -134,7 +134,7 @@ serve(async (req) => {
         if (userId) {
           const statusField = subscriptionType === 'platform' 
             ? 'subscription_platform_status' 
-            : 'subscription_betinho_status';
+            : 'betinho_subscription_status';
           
           const { data, error } = await supabase
             .from('users')
