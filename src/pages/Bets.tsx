@@ -744,7 +744,7 @@ export default function Bets() {
                       <th className="text-left py-2 px-2 data-label">DATA</th>
                       <th className="text-left py-2 px-2 data-label">DESCRIÇÃO</th>
                       <th className="text-left py-2 px-2 data-label">TAGS</th>
-                      <th className="text-left py-2 px-2 data-label">ESPORTE/LIGA</th>
+                      <th className="text-left py-2 px-2 data-label">ESPORTE</th>
                       <th className="text-right py-2 px-2 data-label">VALOR</th>
                       <th className="text-right py-2 px-2 data-label">ODDS</th>
                       <th className="text-right py-2 px-2 data-label">RETORNO</th>
