@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3?target=deno&deno-std=0.177.1"
 import { normalizePhoneNumber, normalizePhoneCandidates, maskPhone } from "../shared/phone.ts"
 import { generateTraceId, identifyUser, trackEvent, trackLLMGeneration } from "../shared/posthog.ts"
 
@@ -583,7 +583,7 @@ CLASSIFICAÇÃO DE ESPORTE:
   * Padel
   * Natação
   * Atletismo
- - Se não for possível identificar o esporte, retorne o esporte como null.
+ - Se não for possível identificar o esporte, retorne o esporte como string vazia.
  - Se o esporte for identificado e não estiver na lista, retorne ele como está.
 
 SCHEMA:
@@ -1024,6 +1024,7 @@ async function findUserByTelegram(
 }
 
 async function findUserByPhone(supabase: any, phone: string): Promise<any | null> {
+  if (!phone) return null
   const normalizedCandidates = normalizePhoneCandidates(phone)
   const { data: users } = await supabase
     .from("users")
@@ -1123,8 +1124,17 @@ serve(async (req) => {
     const text = updateMessage.text || updateMessage.caption || ""
     const traceId = generateTraceId()
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing Supabase configuration")
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error" }),
+        { headers: { "Content-Type": "application/json" }, status: 500 }
+      )
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Debug info about message content fields
@@ -1144,12 +1154,20 @@ serve(async (req) => {
     // Handle contact sync first
     if (updateMessage.contact) {
       const contactPhone = updateMessage.contact.phone_number
-    console.log('contact_received', {
-      chat_id: chatId,
-      from_user_id: fromUser?.id,
-      contact_phone: maskPhone(contactPhone),
-      raw_contact: contactPhone
-    })
+      if (!contactPhone) {
+        console.log('contact_received_no_phone', { chat_id: chatId })
+        await sendTelegramMessage(chatId, "Não consegui identificar seu número de telefone. Tente novamente.")
+        return new Response(
+          JSON.stringify({ success: true, error: "Contact without phone" }),
+          { headers: { "Content-Type": "application/json" }, status: 200 }
+        )
+      }
+      console.log('contact_received', {
+        chat_id: chatId,
+        from_user_id: fromUser?.id,
+        contact_phone: maskPhone(contactPhone),
+        raw_contact: contactPhone
+      })
       const userMatch = await findUserByPhone(supabase, contactPhone)
 
       if (userMatch) {
