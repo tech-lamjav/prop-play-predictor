@@ -524,7 +524,7 @@ export default function Bets() {
 
   // Reset filter if selected tag no longer exists
   useEffect(() => {
-    if (filters.selectedTag !== 'all' && userTags.length > 0) {
+    if (filters.selectedTag !== 'all') {
       const tagExists = userTags.some(tag => tag.id === filters.selectedTag);
       if (!tagExists) {
         setFilters(prev => ({ ...prev, selectedTag: 'all' }));
