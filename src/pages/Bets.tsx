@@ -522,6 +522,16 @@ export default function Bets() {
     };
   }, [user?.id, fetchBets, fetchReferralCode, fetchUserTags]);
 
+  // Reset filter if selected tag no longer exists
+  useEffect(() => {
+    if (filters.selectedTag !== 'all' && userTags.length > 0) {
+      const tagExists = userTags.some(tag => tag.id === filters.selectedTag);
+      if (!tagExists) {
+        setFilters(prev => ({ ...prev, selectedTag: 'all' }));
+      }
+    }
+  }, [userTags, filters.selectedTag]);
+
   // Filter logic
   const uniqueSports = useMemo(() => {
     const sports = Array.from(new Set(bets.map(bet => bet.sport).filter(Boolean)));
@@ -737,6 +747,7 @@ export default function Bets() {
 
         {/* Cash Flow Button */}
         <button
+          type="button"
           onClick={() => navigate('/bankroll')}
           className="w-full terminal-container p-4 mb-6 flex items-center justify-between hover:bg-terminal-dark-gray/50 transition-all group"
         >
@@ -832,6 +843,7 @@ export default function Bets() {
 
           <div className="flex gap-2">
              <button 
+              type="button"
               onClick={() => setUnitConfigOpen(true)}
               className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
             >
@@ -839,6 +851,7 @@ export default function Bets() {
               UNIDADES
             </button>
             <button 
+              type="button"
               onClick={fetchBets}
               className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
             >
@@ -935,6 +948,7 @@ export default function Bets() {
                               // Refresh the bets list to get updated data
                               await fetchBets();
                             }}
+                            onTagsUpdated={fetchUserTags}
                           />
                         </td>
                         <td className="py-2 px-2 opacity-70">
@@ -975,6 +989,7 @@ export default function Bets() {
                             {bet.status === 'pending' && (
                               <>
                                 <button 
+                                  type="button"
                                   onClick={() => updateBetStatus(bet.id, 'won')}
                                   className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex items-center gap-2"
                                   title="Marcar como Ganhou"
@@ -983,6 +998,7 @@ export default function Bets() {
                                   <span className="text-[10px] font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
                                 </button>
                                 <button 
+                                  type="button"
                                   onClick={() => updateBetStatus(bet.id, 'lost')}
                                   className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center gap-2"
                                   title="Marcar como Perdeu"
@@ -991,6 +1007,7 @@ export default function Bets() {
                                   <span className="text-[10px] font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
                                 </button>
                                 <button 
+                                  type="button"
                                   onClick={() => openCashoutModal(bet)}
                                   className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-2"
                                   title="Cashout"
@@ -1001,6 +1018,7 @@ export default function Bets() {
                               </>
                             )}
                             <button 
+                              type="button"
                               onClick={() => openEditModal(bet)}
                               className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all"
                               title="Editar"
@@ -1008,6 +1026,7 @@ export default function Bets() {
                               <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
                             </button>
                             <button 
+                              type="button"
                               onClick={() => deleteBet(bet.id)}
                               className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all"
                               title="Excluir"
@@ -1095,6 +1114,7 @@ export default function Bets() {
                             // Refresh the bets list to get updated data
                             await fetchBets();
                           }}
+                          onTagsUpdated={fetchUserTags}
                         />
                       </div>
                     </div>
@@ -1130,6 +1150,7 @@ export default function Bets() {
                       {bet.status === 'pending' ? (
                         <div className="grid grid-cols-4 gap-2">
                           <button 
+                            type="button"
                             onClick={() => updateBetStatus(bet.id, 'won')}
                             className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex justify-center items-center gap-2"
                             title="Marcar como Ganhou"
@@ -1138,6 +1159,7 @@ export default function Bets() {
                             <span className="text-xs font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
                           </button>
                           <button 
+                            type="button"
                             onClick={() => updateBetStatus(bet.id, 'lost')}
                             className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center gap-2"
                             title="Marcar como Perdeu"
@@ -1146,6 +1168,7 @@ export default function Bets() {
                             <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
                           </button>
                           <button 
+                            type="button"
                             onClick={() => openCashoutModal(bet)}
                             className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center gap-2"
                             title="Cashout"
@@ -1154,6 +1177,7 @@ export default function Bets() {
                             <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
                           </button>
                           <button 
+                            type="button"
                             onClick={() => openEditModal(bet)}
                             className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
                             title="Editar"
@@ -1161,6 +1185,7 @@ export default function Bets() {
                             <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
                           </button>
                           <button 
+                            type="button"
                             onClick={() => deleteBet(bet.id)}
                             className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
                             title="Excluir"
@@ -1171,6 +1196,7 @@ export default function Bets() {
                       ) : (
                         <div className="flex gap-2">
                           <button 
+                            type="button"
                             onClick={() => openEditModal(bet)}
                             className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
                             title="Editar"
@@ -1178,6 +1204,7 @@ export default function Bets() {
                             <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
                           </button>
                           <button 
+                            type="button"
                             onClick={() => deleteBet(bet.id)}
                             className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
                             title="Excluir"
