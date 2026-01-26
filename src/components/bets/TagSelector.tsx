@@ -15,6 +15,7 @@ interface TagSelectorProps {
   selectedTags: Tag[];
   onTagsChange: (tags: Tag[]) => void;
   className?: string;
+  onTagsUpdated?: () => void;
 }
 
 const TAG_COLORS = [
@@ -32,7 +33,8 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
   betId,
   selectedTags,
   onTagsChange,
-  className = ''
+  className = '',
+  onTagsUpdated
 }) => {
   const { user } = useAuth();
   const supabase = createClient();
@@ -182,6 +184,8 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
       setNewTagName('');
       // Auto-select the newly created tag
       handleTagToggle(data);
+      // Notify parent that tags were updated
+      onTagsUpdated?.();
     }
 
     setIsCreating(false);
@@ -196,6 +200,8 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
     if (!error) {
       setAllTags(allTags.filter(t => t.id !== tagId));
       onTagsChange(selectedTags.filter(t => t.id !== tagId));
+      // Notify parent that tags were updated
+      onTagsUpdated?.();
     }
   };
 
@@ -233,6 +239,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
           >
             {tag.name}
             <button
+              type="button"
               onClick={() => handleTagToggle(tag)}
               className="hover:opacity-70"
             >
@@ -243,6 +250,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
         
         {selectedTags.length < 10 && (
           <button
+            type="button"
             ref={buttonRef}
             onClick={() => setIsOpen(!isOpen)}
             className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs border border-terminal-border hover:border-terminal-blue transition-colors"
@@ -282,6 +290,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                 maxLength={50}
               />
               <button
+                type="button"
                 onClick={createTag}
                 disabled={!newTagName.trim() || isCreating}
                 className="px-2 py-1 bg-terminal-blue text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50"
@@ -302,6 +311,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                     className="flex items-center justify-between p-1 hover:bg-terminal-black rounded group"
                   >
                     <button
+                      type="button"
                       onClick={() => handleTagToggle(tag)}
                       className="flex-1 text-left flex items-center gap-2"
                     >
@@ -312,6 +322,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                       <span className="text-xs">{tag.name}</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => deleteTag(tag.id)}
                       className="opacity-0 group-hover:opacity-100 p-1 hover:text-terminal-red transition-opacity"
                     >
