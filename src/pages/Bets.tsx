@@ -224,8 +224,12 @@ export default function Bets() {
     league: 'all',
     searchQuery: '',
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
+    selectedTag: 'all'
   });
+
+  // User tags state
+  const [userTags, setUserTags] = useState<Tag[]>([]);
 
   const supabase = useMemo(() => createClient(), []);
   const isMountedRef = useRef(true);
@@ -482,18 +486,41 @@ export default function Bets() {
     }
   }, [user?.id, supabase]);
 
+  const fetchUserTags = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('tags')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name');
+
+      if (error) throw error;
+      
+      if (isMountedRef.current) {
+        setUserTags(data || []);
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        console.error('Error fetching user tags:', err);
+      }
+    }
+  }, [user?.id, supabase]);
+
   useEffect(() => {
     isMountedRef.current = true;
     
     if (user?.id) {
       fetchBets();
       fetchReferralCode();
+      fetchUserTags();
     }
     
     return () => {
       isMountedRef.current = false;
     };
-  }, [user?.id, fetchBets, fetchReferralCode]);
+  }, [user?.id, fetchBets, fetchReferralCode, fetchUserTags]);
 
   // Filter logic
   const uniqueSports = useMemo(() => {
@@ -525,6 +552,11 @@ export default function Bets() {
         const matchMatch = bet.match_description?.toLowerCase().includes(query);
         const matchLeague = bet.league?.toLowerCase().includes(query);
         if (!matchDescription && !matchMatch && !matchLeague) return false;
+      }
+      // Filter by tag: bet must have the selected tag
+      if (filters.selectedTag !== 'all') {
+        const betTagIds = (bet.tags || []).map(tag => tag.id);
+        if (!betTagIds.includes(filters.selectedTag)) return false;
       }
       return true;
     });
@@ -767,6 +799,19 @@ export default function Bets() {
                 <option key={league} value={league}>{league.toUpperCase()}</option>
               ))}
             </select>
+
+            {userTags.length > 0 && (
+              <select 
+                className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
+                value={filters.selectedTag}
+                onChange={(e) => setFilters(prev => ({ ...prev, selectedTag: e.target.value }))}
+              >
+                <option value="all">TODAS AS TAGS</option>
+                {userTags.map(tag => (
+                  <option key={tag.id} value={tag.id}>{tag.name.toUpperCase()}</option>
+                ))}
+              </select>
+            )}
 
             <input 
               type="date"
