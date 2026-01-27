@@ -1762,7 +1762,7 @@ export default function Bets() {
 
               <div className="space-y-2">
                 <Label className="text-xs uppercase opacity-70">Data da Aposta</Label>
-                <Popover open={isEditDatePopoverOpen} onOpenChange={setIsEditDatePopoverOpen}>
+                <Popover open={isEditDatePopoverOpen} onOpenChange={setIsEditDatePopoverOpen} modal>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
