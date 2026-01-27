@@ -17,7 +17,7 @@ import {
   Clock,
   Target,
   DollarSign,
-  Calendar,
+  Calendar as CalendarIcon,
   X,
   Filter,
   Edit,
@@ -25,7 +25,9 @@ import {
   Settings,
   Search,
   Trash2,
-  ChevronRight
+  ChevronRight,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import {
   Dialog,
@@ -41,11 +43,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../components/ui/popover';
+import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 import { useToast } from '../hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface Tag {
   id: string;
@@ -230,6 +240,18 @@ export default function Bets() {
 
   // User tags state
   const [userTags, setUserTags] = useState<Tag[]>([]);
+
+  // Sort state
+  type SortDirection = 'asc' | 'desc';
+  type SortColumn = 'bet_date' | 'sport' | 'league' | 'stake_amount' | 'odds' | 'return' | 'status' | null;
+  
+  const [sortConfig, setSortConfig] = useState<{
+    column: SortColumn;
+    direction: SortDirection;
+  }>({
+    column: 'bet_date',
+    direction: 'desc'  // padrão: mais recente primeiro
+  });
 
   const supabase = useMemo(() => createClient(), []);
   const isMountedRef = useRef(true);
@@ -572,6 +594,69 @@ export default function Bets() {
     });
   }, [bets, filters]);
 
+  // Sort logic
+  const sortedBets = useMemo(() => {
+    if (!sortConfig.column) return filteredBets;
+    
+    return [...filteredBets].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+      
+      switch (sortConfig.column) {
+        case 'bet_date':
+          aValue = new Date(a.bet_date).getTime();
+          bValue = new Date(b.bet_date).getTime();
+          break;
+        case 'sport':
+          aValue = (a.sport || '').toLowerCase();
+          bValue = (b.sport || '').toLowerCase();
+          break;
+        case 'league':
+          aValue = (a.league || '').toLowerCase();
+          bValue = (b.league || '').toLowerCase();
+          break;
+        case 'stake_amount':
+          aValue = a.stake_amount || 0;
+          bValue = b.stake_amount || 0;
+          break;
+        case 'odds':
+          aValue = a.odds || 0;
+          bValue = b.odds || 0;
+          break;
+        case 'return':
+          aValue = a.is_cashout && a.cashout_amount 
+            ? a.cashout_amount 
+            : (a.potential_return || 0);
+          bValue = b.is_cashout && b.cashout_amount 
+            ? b.cashout_amount 
+            : (b.potential_return || 0);
+          break;
+        case 'status':
+          // Ordem customizada: pending, won, lost, cashout, void
+          const statusOrder: Record<string, number> = {
+            'pending': 1,
+            'won': 2,
+            'lost': 3,
+            'cashout': 4,
+            'void': 5
+          };
+          aValue = statusOrder[a.status] || 999;
+          bValue = statusOrder[b.status] || 999;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [filteredBets, sortConfig]);
+
   const filteredSportsList = useMemo(() => {
     if (!isSportQueryTouched) {
       return SPORTS_LIST;
@@ -640,6 +725,25 @@ export default function Bets() {
     }
   }, [filteredBets, calculateStats]);
 
+  // Handle sort
+  const handleSort = (column: SortColumn) => {
+    setSortConfig(prev => {
+      if (prev.column === column) {
+        // Toggle direction if same column
+        return {
+          column,
+          direction: prev.direction === 'asc' ? 'desc' : 'asc'
+        };
+      } else {
+        // New column, default to ascending
+        return {
+          column,
+          direction: 'asc'
+        };
+      }
+    });
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-terminal-black flex items-center justify-center">
@@ -658,6 +762,42 @@ export default function Bets() {
       'cashout': 'CASHOUT'
     };
     return map[status] || status.toUpperCase();
+  };
+
+  // Date conversion helpers
+  const parseDateString = (dateString: string): Date | undefined => {
+    if (!dateString) return undefined;
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? undefined : date;
+  };
+
+  const formatDateToString = (date: Date | undefined): string => {
+    if (!date) return '';
+    return date.toISOString().split('T')[0];
+  };
+
+  // Sortable Header Component
+  const SortableHeader = ({ column, label, align = 'left' }: { column: SortColumn; label: string; align?: 'left' | 'right' | 'center' }) => {
+    const isActive = sortConfig.column === column;
+    return (
+      <th 
+        className={`${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} py-2 px-2 data-label cursor-pointer hover:text-terminal-green transition-colors select-none`}
+        onClick={() => handleSort(column)}
+      >
+        <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'}`}>
+          {label}
+          {isActive ? (
+            sortConfig.direction === 'asc' ? (
+              <ChevronUp className="w-3 h-3 text-terminal-green" />
+            ) : (
+              <ChevronDown className="w-3 h-3 text-terminal-green" />
+            )
+          ) : (
+            <ChevronUp className="w-3 h-3 opacity-30" />
+          )}
+        </div>
+      </th>
+    );
   };
 
   if (!user) {
@@ -824,21 +964,63 @@ export default function Bets() {
               </select>
             )}
 
-            <input 
-              type="date"
-              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto"
-              value={filters.dateFrom}
-              onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-              placeholder="DATA INICIAL"
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full md:w-auto justify-start text-left font-normal bg-terminal-black border-terminal-border text-terminal-text hover:bg-terminal-gray text-xs px-3 py-1.5 h-auto"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {(() => {
+                    const date = parseDateString(filters.dateFrom);
+                    return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inicial';
+                  })()}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                <CalendarComponent
+                  mode="single"
+                  selected={parseDateString(filters.dateFrom) || undefined}
+                  onSelect={(date) => {
+                    setFilters(prev => ({ 
+                      ...prev, 
+                      dateFrom: formatDateToString(date) 
+                    }));
+                  }}
+                  initialFocus
+                  className="bg-terminal-dark-gray"
+                />
+              </PopoverContent>
+            </Popover>
 
-            <input 
-              type="date"
-              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto"
-              value={filters.dateTo}
-              onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-              placeholder="DATA FINAL"
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full md:w-auto justify-start text-left font-normal bg-terminal-black border-terminal-border text-terminal-text hover:bg-terminal-gray text-xs px-3 py-1.5 h-auto"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {(() => {
+                    const date = parseDateString(filters.dateTo);
+                    return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Data final';
+                  })()}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                <CalendarComponent
+                  mode="single"
+                  selected={parseDateString(filters.dateTo) || undefined}
+                  onSelect={(date) => {
+                    setFilters(prev => ({ 
+                      ...prev, 
+                      dateTo: formatDateToString(date) 
+                    }));
+                  }}
+                  initialFocus
+                  className="bg-terminal-dark-gray"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex gap-2">
@@ -865,7 +1047,7 @@ export default function Bets() {
         <div className="terminal-container p-4">
           <div className="flex justify-between items-center mb-3">
             <h3 className="section-title">APOSTAS RECENTES</h3>
-            <span className="text-[10px] opacity-50">MOSTRANDO {filteredBets.length} APOSTAS</span>
+            <span className="text-[10px] opacity-50">MOSTRANDO {sortedBets.length} APOSTAS</span>
           </div>
           
           {isLoading ? (
@@ -886,20 +1068,20 @@ export default function Bets() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-terminal-border-subtle">
-                      <th className="text-left py-2 px-2 data-label">DATA</th>
+                      <SortableHeader column="bet_date" label="DATA" />
                       <th className="text-left py-2 px-2 data-label">DESCRIÇÃO</th>
                       <th className="text-left py-2 px-2 data-label">TAGS</th>
-                      <th className="text-left py-2 px-2 data-label">ESPORTE</th>
-                      <th className="text-left py-2 px-2 data-label">LIGA</th>
-                      <th className="text-right py-2 px-2 data-label">VALOR</th>
-                      <th className="text-right py-2 px-2 data-label">ODDS</th>
-                      <th className="text-right py-2 px-2 data-label">RETORNO</th>
-                      <th className="text-center py-2 px-2 data-label">STATUS</th>
+                      <SortableHeader column="sport" label="ESPORTE" />
+                      <SortableHeader column="league" label="LIGA" />
+                      <SortableHeader column="stake_amount" label="VALOR" align="right" />
+                      <SortableHeader column="odds" label="ODDS" align="right" />
+                      <SortableHeader column="return" label="RETORNO" align="right" />
+                      <SortableHeader column="status" label="STATUS" align="center" />
                       <th className="text-right py-2 px-2 data-label">AÇÕES</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredBets.map((bet) => (
+                    {sortedBets.map((bet) => (
                       <tr 
                         key={bet.id}
                         className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors"
@@ -1043,7 +1225,7 @@ export default function Bets() {
 
               {/* Mobile Stacked View */}
               <div className="md:hidden space-y-4">
-                {filteredBets.map((bet) => (
+                {sortedBets.map((bet) => (
                   <div 
                     key={bet.id} 
                     className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3"
@@ -1555,6 +1737,41 @@ export default function Bets() {
                     className="bg-terminal-black border-terminal-border text-terminal-text"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase opacity-70">Data da Aposta</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal bg-terminal-black border-terminal-border text-terminal-text hover:bg-terminal-gray"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {(() => {
+                        const date = parseDateString(editModal.formData.bet_date);
+                        return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data';
+                      })()}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                    <CalendarComponent
+                      mode="single"
+                      selected={parseDateString(editModal.formData.bet_date) || undefined}
+                      onSelect={(date) => {
+                        setEditModal(prev => ({ 
+                          ...prev, 
+                          formData: { 
+                            ...prev.formData, 
+                            bet_date: formatDateToString(date) 
+                          } 
+                        }));
+                      }}
+                      initialFocus
+                      className="bg-terminal-dark-gray"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-2">
