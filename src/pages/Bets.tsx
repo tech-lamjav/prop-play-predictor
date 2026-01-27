@@ -54,7 +54,7 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 import { useToast } from '../hooks/use-toast';
-import { format } from 'date-fns';
+import { format, parse, isValid, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface Tag {
@@ -216,6 +216,9 @@ export default function Bets() {
       status: 'pending'
     }
   });
+  const [isEditDatePopoverOpen, setIsEditDatePopoverOpen] = useState(false);
+  const [isFilterDateFromOpen, setIsFilterDateFromOpen] = useState(false);
+  const [isFilterDateToOpen, setIsFilterDateToOpen] = useState(false);
 
   const [isSportDropdownOpen, setIsSportDropdownOpen] = useState(false);
   const [isSportQueryTouched, setIsSportQueryTouched] = useState(false);
@@ -767,13 +770,13 @@ export default function Bets() {
   // Date conversion helpers
   const parseDateString = (dateString: string): Date | undefined => {
     if (!dateString) return undefined;
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? undefined : date;
+    const date = parse(dateString, 'yyyy-MM-dd', new Date());
+    return isValid(date) ? date : undefined;
   };
 
   const formatDateToString = (date: Date | undefined): string => {
     if (!date) return '';
-    return date.toISOString().split('T')[0];
+    return format(date, 'yyyy-MM-dd');
   };
 
   // Sortable Header Component
@@ -964,11 +967,11 @@ export default function Bets() {
               </select>
             )}
 
-            <Popover>
+            <Popover open={isFilterDateFromOpen} onOpenChange={setIsFilterDateFromOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full md:w-auto justify-start text-left font-normal bg-terminal-black border-terminal-border text-terminal-text hover:bg-terminal-gray text-xs px-3 py-1.5 h-auto"
+                  className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {(() => {
@@ -982,10 +985,18 @@ export default function Bets() {
                   mode="single"
                   selected={parseDateString(filters.dateFrom) || undefined}
                   onSelect={(date) => {
-                    setFilters(prev => ({ 
-                      ...prev, 
-                      dateFrom: formatDateToString(date) 
-                    }));
+                    const formatted = formatDateToString(date);
+                    setFilters(prev => {
+                      const next = { ...prev, dateFrom: formatted };
+                      const fromDate = parseDateString(formatted);
+                      const toDate = parseDateString(prev.dateTo);
+                      if (fromDate && toDate && isBefore(toDate, fromDate)) {
+                        next.dateTo = '';
+                      }
+                      return next;
+                    });
+                    setIsFilterDateFromOpen(false);
+                    setIsFilterDateToOpen(true);
                   }}
                   initialFocus
                   className="bg-terminal-dark-gray"
@@ -993,11 +1004,11 @@ export default function Bets() {
               </PopoverContent>
             </Popover>
 
-            <Popover>
+            <Popover open={isFilterDateToOpen} onOpenChange={setIsFilterDateToOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full md:w-auto justify-start text-left font-normal bg-terminal-black border-terminal-border text-terminal-text hover:bg-terminal-gray text-xs px-3 py-1.5 h-auto"
+                  className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {(() => {
@@ -1010,11 +1021,20 @@ export default function Bets() {
                 <CalendarComponent
                   mode="single"
                   selected={parseDateString(filters.dateTo) || undefined}
+                  disabled={(date) => {
+                    const fromDate = parseDateString(filters.dateFrom);
+                    return fromDate ? isBefore(date, fromDate) : false;
+                  }}
                   onSelect={(date) => {
+                    const fromDate = parseDateString(filters.dateFrom);
+                    if (fromDate && date && isBefore(date, fromDate)) {
+                      return;
+                    }
                     setFilters(prev => ({ 
                       ...prev, 
                       dateTo: formatDateToString(date) 
                     }));
+                    setIsFilterDateToOpen(false);
                   }}
                   initialFocus
                   className="bg-terminal-dark-gray"
@@ -1474,6 +1494,7 @@ export default function Bets() {
         {
           setEditModal(prev => ({ ...prev, isOpen: open }));
           if (!open) {
+            setIsEditDatePopoverOpen(false);
             setIsSportDropdownOpen(false);
             setIsSportQueryTouched(false);
             setSportHighlightIndex(-1);
@@ -1741,7 +1762,7 @@ export default function Bets() {
 
               <div className="space-y-2">
                 <Label className="text-xs uppercase opacity-70">Data da Aposta</Label>
-                <Popover>
+                <Popover open={isEditDatePopoverOpen} onOpenChange={setIsEditDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -1766,6 +1787,7 @@ export default function Bets() {
                             bet_date: formatDateToString(date) 
                           } 
                         }));
+                        setIsEditDatePopoverOpen(false);
                       }}
                       initialFocus
                       className="bg-terminal-dark-gray"
