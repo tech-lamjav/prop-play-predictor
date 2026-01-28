@@ -6,9 +6,11 @@ import { BetStatsCard } from '../components/bets/BetStatsCard';
 import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
 import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
+import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useNavigate } from 'react-router-dom';
+import { MultiSelectFilter } from '../components/ui/multi-select-filter';
 import { 
   RefreshCw, 
   AlertCircle,
@@ -27,7 +29,8 @@ import {
   Trash2,
   ChevronRight,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Plus
 } from 'lucide-react';
 import {
   Dialog,
@@ -161,6 +164,7 @@ export default function Bets() {
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -229,16 +233,16 @@ export default function Bets() {
   const [isLeagueQueryTouched, setIsLeagueQueryTouched] = useState(false);
   const [leagueHighlightIndex, setLeagueHighlightIndex] = useState(-1);
   const leagueItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  
+
   // Filter states
   const [filters, setFilters] = useState({
-    status: 'all',
-    sport: 'all',
-    league: 'all',
+    status: [] as string[],
+    sport: [] as string[],
+    league: [] as string[],
     searchQuery: '',
     dateFrom: '',
     dateTo: '',
-    selectedTag: 'all'
+    selectedTags: [] as string[]
   });
 
   // User tags state
@@ -343,7 +347,7 @@ export default function Bets() {
   // ... (Keep existing updateBetStatus, deleteBet, processCashout, updateBetData logic but adapted if needed)
   // For brevity, I'm keeping the logic but ensuring it uses the toast for notifications instead of local error state where appropriate
   
-  const updateBetStatus = async (betId: string, newStatus: string) => {
+  const updateBetStatus = useCallback(async (betId: string, newStatus: string) => {
     try {
       const { error } = await supabase
         .from('bets')
@@ -360,9 +364,9 @@ export default function Bets() {
         toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
       }
     }
-  };
+  }, [supabase, fetchBets, toast]);
 
-  const deleteBet = async (betId: string) => {
+  const deleteBet = useCallback(async (betId: string) => {
     if (!window.confirm('Are you sure you want to delete this bet?')) return;
     
     try {
@@ -381,7 +385,7 @@ export default function Bets() {
         toast({ title: 'Error', description: 'Failed to delete bet', variant: 'destructive' });
       }
     }
-  };
+  }, [supabase, fetchBets, toast]);
 
   const processCashout = async () => {
     if (!cashoutModal.bet || !cashoutModal.cashoutAmount) return;
@@ -455,17 +459,62 @@ export default function Bets() {
     }
   };
 
+  const createBet = async (data: CreateBetFormData): Promise<boolean> => {
+    if (!user?.id) return false;
+    
+    try {
+      const odds = parseFloat(data.odds);
+      const stakeAmount = parseFloat(data.stake_amount);
+      if (isNaN(odds) || isNaN(stakeAmount)) {
+        throw new Error('Valores inválidos');
+      }
+      const potentialReturn = stakeAmount * odds;
+
+      const { error } = await supabase
+        .from('bets')
+        .insert({
+          user_id: user.id,
+          bet_type: 'single',
+          bet_description: data.bet_description,
+          match_description: data.match_description || null,
+          sport: data.sport || 'Outros',
+          league: data.league || null,
+          odds: odds,
+          stake_amount: stakeAmount,
+          potential_return: potentialReturn,
+          bet_date: data.bet_date || new Date().toISOString(),
+          match_date: data.match_date || null,
+          betting_house: data.betting_house || null,
+          status: 'pending',
+          channel: 'web'
+        });
+
+      if (error) throw error;
+
+      if (isMountedRef.current) {
+        await fetchBets();
+        toast({ title: 'Sucesso', description: 'Aposta cadastrada com sucesso' });
+      }
+      return true;
+    } catch (err) {
+      if (isMountedRef.current) {
+        toast({ title: 'Erro', description: 'Falha ao cadastrar aposta', variant: 'destructive' });
+      }
+      return false;
+    }
+  };
+
   // Helper functions
-  const openCashoutModal = (bet: Bet) => {
+  const openCashoutModal = useCallback((bet: Bet) => {
     setCashoutModal({
       isOpen: true,
       bet,
       cashoutAmount: bet.cashout_amount?.toString() || '',
       cashoutOdds: bet.cashout_odds?.toString() || ''
     });
-  };
+  }, []);
 
-  const openEditModal = (bet: Bet) => {
+  const openEditModal = useCallback((bet: Bet) => {
     setEditModal({
       isOpen: true,
       bet,
@@ -487,7 +536,7 @@ export default function Bets() {
     setIsLeagueDropdownOpen(false);
     setIsLeagueQueryTouched(false);
     setLeagueHighlightIndex(-1);
-  };
+  }, []);
 
   const fetchReferralCode = useCallback(async () => {
     if (!user?.id) return;
@@ -515,16 +564,17 @@ export default function Bets() {
     if (!user?.id) return;
     
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('tags')
-        .select('*')
+        .select('id,name,color,user_id')
         .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
       
       if (isMountedRef.current) {
-        setUserTags(data || []);
+        const tags = Array.isArray(data) ? (data as unknown as Tag[]) : [];
+        setUserTags(tags);
       }
     } catch (err) {
       if (isMountedRef.current) {
@@ -547,32 +597,87 @@ export default function Bets() {
     };
   }, [user?.id, fetchBets, fetchReferralCode, fetchUserTags]);
 
-  // Reset filter if selected tag no longer exists
+  // Reset filter if selected tags no longer exist
   useEffect(() => {
-    if (filters.selectedTag !== 'all') {
-      const tagExists = userTags.some(tag => tag.id === filters.selectedTag);
-      if (!tagExists) {
-        setFilters(prev => ({ ...prev, selectedTag: 'all' }));
+    if (filters.selectedTags.length > 0) {
+      const validTags = filters.selectedTags.filter(tagId => 
+        userTags.some(tag => tag.id === tagId)
+      );
+      if (validTags.length !== filters.selectedTags.length) {
+        setFilters(prev => ({ ...prev, selectedTags: validTags }));
       }
     }
-  }, [userTags, filters.selectedTag]);
+  }, [userTags, filters.selectedTags]);
 
   // Filter logic
   const uniqueSports = useMemo(() => {
     const sports = Array.from(new Set(bets.map(bet => bet.sport).filter(Boolean)));
-    return sports.sort();
+    // Ordenar de acordo com a ordem de SPORTS_LIST
+    return sports.sort((a, b) => {
+      const indexA = SPORTS_LIST.indexOf(a);
+      const indexB = SPORTS_LIST.indexOf(b);
+      // Se ambos estão na lista, manter a ordem da lista
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      // Se apenas A está na lista, A vem primeiro
+      if (indexA !== -1) return -1;
+      // Se apenas B está na lista, B vem primeiro
+      if (indexB !== -1) return 1;
+      // Se nenhum está na lista, ordenar alfabeticamente
+      return a.localeCompare(b);
+    });
   }, [bets]);
 
   const uniqueLeagues = useMemo(() => {
     const leagues = Array.from(new Set(bets.map(bet => bet.league).filter(Boolean)));
-    return leagues.sort();
+    // Ordenar de acordo com a ordem de LEAGUES_LIST
+    return leagues.sort((a, b) => {
+      const indexA = LEAGUES_LIST.indexOf(a);
+      const indexB = LEAGUES_LIST.indexOf(b);
+      // Se ambos estão na lista, manter a ordem da lista
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      // Se apenas A está na lista, A vem primeiro
+      if (indexA !== -1) return -1;
+      // Se apenas B está na lista, B vem primeiro
+      if (indexB !== -1) return 1;
+      // Se nenhum está na lista, ordenar alfabeticamente
+      return a.localeCompare(b);
+    });
   }, [bets]);
 
   const filteredBets = useMemo(() => {
     return bets.filter(bet => {
-      if (filters.status !== 'all' && bet.status !== filters.status) return false;
-      if (filters.sport !== 'all' && bet.sport !== filters.sport) return false;
-      if (filters.league !== 'all' && bet.league !== filters.league) return false;
+      // Filter by status: if any statuses selected, bet must match one of them
+      if (filters.status.length > 0 && !filters.status.includes(bet.status)) return false;
+      
+      // Filter by sport: if any sports selected, bet must match one of them
+      if (filters.sport.length > 0) {
+        const includeEmpty = filters.sport.includes('__empty__');
+        const sportValues = filters.sport.filter(v => v !== '__empty__');
+        const betSport = bet.sport || '';
+        
+        const matchesEmpty = includeEmpty && !betSport;
+        const matchesValue = sportValues.length > 0 && sportValues.includes(betSport);
+        
+        if (!matchesEmpty && !matchesValue) {
+          return false;
+        }
+      }
+      
+      // Filter by league: if any leagues selected, bet must match one of them
+      if (filters.league.length > 0) {
+        const includeEmpty = filters.league.includes('__empty__');
+        const leagueValues = filters.league.filter(v => v !== '__empty__');
+        const betLeague = bet.league || '';
+        
+        const matchesEmpty = includeEmpty && !betLeague;
+        const matchesValue = leagueValues.length > 0 && leagueValues.includes(betLeague);
+        
+        if (!matchesEmpty && !matchesValue) {
+          return false;
+        }
+      }
+      
+      // Filter by date range
       if (filters.dateFrom) {
         if (new Date(bet.bet_date) < new Date(filters.dateFrom)) return false;
       }
@@ -581,6 +686,8 @@ export default function Bets() {
         filterDate.setHours(23, 59, 59, 999);
         if (new Date(bet.bet_date) > filterDate) return false;
       }
+      
+      // Filter by search query
       if (filters.searchQuery) {
         const query = filters.searchQuery.toLowerCase();
         const matchDescription = bet.bet_description?.toLowerCase().includes(query);
@@ -588,11 +695,13 @@ export default function Bets() {
         const matchLeague = bet.league?.toLowerCase().includes(query);
         if (!matchDescription && !matchMatch && !matchLeague) return false;
       }
-      // Filter by tag: bet must have the selected tag
-      if (filters.selectedTag !== 'all') {
+      
+      // Filter by tags: if any tags selected, bet must have at least one of them
+      if (filters.selectedTags.length > 0) {
         const betTagIds = (bet.tags || []).map(tag => tag.id);
-        if (!betTagIds.includes(filters.selectedTag)) return false;
+        if (!filters.selectedTags.some(tagId => betTagIds.includes(tagId))) return false;
       }
+      
       return true;
     });
   }, [bets, filters]);
@@ -747,13 +856,18 @@ export default function Bets() {
     });
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green"></div>
-      </div>
-    );
-  }
+  // Clear all filters
+  const clearAllFilters = () => {
+    setFilters({
+      status: [],
+      sport: [],
+      league: [],
+      searchQuery: '',
+      dateFrom: '',
+      dateTo: '',
+      selectedTags: []
+    });
+  };
 
   // Helper to translate status
   const translateStatus = (status: string) => {
@@ -802,6 +916,332 @@ export default function Bets() {
       </th>
     );
   };
+
+  const desktopRows = useMemo(() => {
+    const rows = sortedBets.map((bet) => (
+      <tr 
+        key={bet.id}
+        className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors"
+      >
+        <td className="py-2 px-2 opacity-70">
+          {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
+        </td>
+        <td className="py-2 px-2 font-medium">
+          <div>{bet.bet_description}</div>
+          {bet.match_description && (
+            <div className="text-[10px] opacity-50">{bet.match_description}</div>
+          )}
+        </td>
+        <td className="py-2 px-2">
+          <TagSelector
+            betId={bet.id}
+            selectedTags={bet.tags || []}
+            onTagsChange={async (newTags) => {
+              // Update local state immediately for responsiveness
+              setBets(bets.map(b => 
+                b.id === bet.id ? { ...b, tags: newTags } : b
+              ));
+              
+              // Sync with database
+              const currentTagIds = (bet.tags || []).map(t => t.id);
+              const newTagIds = newTags.map(t => t.id);
+              
+              // Remove tags that were deselected
+              const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
+              for (const tagId of tagsToRemove) {
+                await supabase.rpc('remove_tag_from_bet', {
+                  p_bet_id: bet.id,
+                  p_tag_id: tagId
+                });
+              }
+              
+              // Add tags that were selected
+              const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
+              for (const tagId of tagsToAdd) {
+                await supabase.rpc('add_tag_to_bet', {
+                  p_bet_id: bet.id,
+                  p_tag_id: tagId
+                });
+              }
+              
+              // Refresh the bets list to get updated data
+              await fetchBets();
+            }}
+            onTagsUpdated={fetchUserTags}
+          />
+        </td>
+        <td className="py-2 px-2 opacity-70">
+          {bet.sport}
+        </td>
+        <td className="py-2 px-2 opacity-70">
+          {bet.league || '-'}
+        </td>
+        <td className="text-right py-2 px-2">
+          {formatWithUnits(bet.stake_amount)}
+        </td>
+        <td className="text-right py-2 px-2 text-terminal-blue">
+          {bet.odds.toFixed(2)}
+        </td>
+        <td className={`text-right py-2 px-2 ${
+          bet.status === 'won' ? 'text-terminal-green' : 
+          bet.status === 'lost' ? 'text-terminal-red' : 
+          'opacity-70'
+        }`}>
+          {bet.is_cashout && bet.cashout_amount 
+            ? formatWithUnits(bet.cashout_amount)
+            : formatWithUnits(bet.potential_return)
+          }
+        </td>
+        <td className="text-center py-2 px-2">
+          <span className={`px-2 py-0.5 text-[10px] uppercase font-bold ${
+            bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
+            bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+            bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
+            bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
+            'text-terminal-text bg-terminal-text/10'
+          }`}>
+            {translateStatus(bet.status)}
+          </span>
+        </td>
+        <td className="text-right py-3 px-2">
+          <div className="flex justify-end gap-2">
+            {bet.status === 'pending' && (
+              <>
+                <button 
+                  type="button"
+                  onClick={() => updateBetStatus(bet.id, 'won')}
+                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex items-center gap-2"
+                  title="Marcar como Ganhou"
+                >
+                  <TrendingUp className="w-4 h-4 text-terminal-green hover:text-terminal-black" />
+                  <span className="text-[10px] font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => updateBetStatus(bet.id, 'lost')}
+                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center gap-2"
+                  title="Marcar como Perdeu"
+                >
+                  <TrendingDown className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
+                  <span className="text-[10px] font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => openCashoutModal(bet)}
+                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-2"
+                  title="Cashout"
+                >
+                  <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
+                  <span className="text-[10px] font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
+                </button>
+              </>
+            )}
+            <button 
+              type="button"
+              onClick={() => openEditModal(bet)}
+              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all"
+              title="Editar"
+            >
+              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+            </button>
+            <button 
+              type="button"
+              onClick={() => deleteBet(bet.id)}
+              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all"
+              title="Excluir"
+            >
+              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    ));
+    return rows;
+  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatWithUnits, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+
+  const mobileCards = useMemo(() => {
+    const cards = sortedBets.map((bet) => (
+      <div 
+        key={bet.id} 
+        className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3"
+      >
+        {/* Header: Date + Status */}
+        <div className="flex justify-between items-center">
+          <span className="text-xs opacity-50">
+            {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
+          </span>
+          <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${
+            bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
+            bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+            bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
+            bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
+            'text-terminal-text bg-terminal-text/10'
+          }`}>
+            {translateStatus(bet.status)}
+          </span>
+        </div>
+
+        {/* Main Info: Description + Sport */}
+        <div>
+          <div className="font-medium text-sm text-terminal-text">{bet.bet_description}</div>
+          {bet.match_description && (
+            <div className="text-xs opacity-60 mt-0.5">{bet.match_description}</div>
+          )}
+          <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">
+            {bet.sport}
+          </div>
+          {bet.league && (
+            <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">
+              {bet.league}
+            </div>
+          )}
+          {/* Tags */}
+          <div className="mt-2">
+            <TagSelector
+              betId={bet.id}
+              selectedTags={bet.tags || []}
+              onTagsChange={async (newTags) => {
+                // Update local state immediately for responsiveness
+                setBets(bets.map(b => 
+                  b.id === bet.id ? { ...b, tags: newTags } : b
+                ));
+                
+                // Sync with database
+                const currentTagIds = (bet.tags || []).map(t => t.id);
+                const newTagIds = newTags.map(t => t.id);
+                
+                // Remove tags that were deselected
+                const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
+                for (const tagId of tagsToRemove) {
+                  await supabase.rpc('remove_tag_from_bet', {
+                    p_bet_id: bet.id,
+                    p_tag_id: tagId
+                  });
+                }
+                
+                // Add tags that were selected
+                const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
+                for (const tagId of tagsToAdd) {
+                  await supabase.rpc('add_tag_to_bet', {
+                    p_bet_id: bet.id,
+                    p_tag_id: tagId
+                  });
+                }
+                
+                // Refresh the bets list to get updated data
+                await fetchBets();
+              }}
+              onTagsUpdated={fetchUserTags}
+            />
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-2 py-2 border-y border-terminal-border-subtle bg-terminal-dark-gray/30 -mx-4 px-4">
+          <div className="text-center">
+            <div className="text-[10px] opacity-50 uppercase mb-0.5">Valor</div>
+            <div className="text-sm">{formatWithUnits(bet.stake_amount)}</div>
+          </div>
+          <div className="text-center border-l border-terminal-border-subtle">
+            <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
+            <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
+          </div>
+          <div className="text-center border-l border-terminal-border-subtle">
+            <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
+            <div className={`text-sm ${
+              bet.status === 'won' ? 'text-terminal-green' : 
+              bet.status === 'lost' ? 'text-terminal-red' : 
+              'opacity-70'
+            }`}>
+              {bet.is_cashout && bet.cashout_amount 
+                ? formatWithUnits(bet.cashout_amount)
+                : formatWithUnits(bet.potential_return)
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="pt-2">
+          {bet.status === 'pending' ? (
+            <div className="grid grid-cols-4 gap-2">
+              <button 
+                type="button"
+                onClick={() => updateBetStatus(bet.id, 'won')}
+                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex justify-center items-center gap-2"
+                title="Marcar como Ganhou"
+              >
+                <TrendingUp className="w-5 h-5 text-terminal-green hover:text-terminal-black" />
+                <span className="text-xs font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => updateBetStatus(bet.id, 'lost')}
+                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center gap-2"
+                title="Marcar como Perdeu"
+              >
+                <TrendingDown className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+                <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => openCashoutModal(bet)}
+                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center gap-2"
+                title="Cashout"
+              >
+                <DollarSign className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+                <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => openEditModal(bet)}
+                className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
+                title="Editar"
+              >
+                <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+              </button>
+              <button 
+                type="button"
+                onClick={() => deleteBet(bet.id)}
+                className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
+                title="Excluir"
+              >
+                <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button 
+                type="button"
+                onClick={() => openEditModal(bet)}
+                className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
+                title="Editar"
+              >
+                <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+              </button>
+              <button 
+                type="button"
+                onClick={() => deleteBet(bet.id)}
+                className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
+                title="Excluir"
+              >
+                <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    ));
+    return cards;
+  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatWithUnits, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green"></div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -908,143 +1348,163 @@ export default function Bets() {
 
         {/* Filters Bar */}
         <div className="terminal-container p-3 mb-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3 w-full">
-            <div className="relative col-span-2 md:w-auto md:min-w-[200px]">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-terminal-text opacity-50" />
-              <input 
-                type="text" 
-                placeholder="BUSCAR APOSTAS..." 
-                className="terminal-input w-full pl-8 pr-3 py-1.5 text-xs rounded-sm"
-                value={filters.searchQuery}
-                onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+          <div className="flex flex-col gap-3 w-full">
+            {/* Primeira linha: Filtros principais */}
+            <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3 w-full">
+              <div className="relative col-span-2 md:w-auto md:min-w-[200px]">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-terminal-text opacity-50" />
+                <input 
+                  type="text" 
+                  placeholder="BUSCAR APOSTAS..." 
+                  className="terminal-input w-full pl-8 pr-3 py-1.5 text-xs rounded-sm"
+                  value={filters.searchQuery}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+                />
+              </div>
+              
+              <MultiSelectFilter
+                label="STATUS"
+                placeholder="TODOS STATUS"
+                options={[
+                  { value: 'pending', label: 'PENDENTE' },
+                  { value: 'won', label: 'GANHOU' },
+                  { value: 'lost', label: 'PERDEU' },
+                  { value: 'cashout', label: 'CASHOUT' },
+                  { value: 'void', label: 'ANULADA' },
+                ]}
+                selected={filters.status}
+                onChange={(values) => setFilters(prev => ({ ...prev, status: values }))}
+              />
+
+              <MultiSelectFilter
+                label="ESPORTES"
+                placeholder="TODOS ESPORTES"
+                options={[
+                  ...uniqueSports.map(sport => ({
+                    value: sport,
+                    label: sport.toUpperCase()
+                  })),
+                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                ]}
+                selected={filters.sport}
+                onChange={(values) => setFilters(prev => ({ ...prev, sport: values }))}
+              />
+
+              <MultiSelectFilter
+                label="LIGAS"
+                placeholder="TODAS LIGAS"
+                options={[
+                  ...uniqueLeagues.map(league => ({
+                    value: league,
+                    label: league.toUpperCase()
+                  })),
+                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                ]}
+                selected={filters.league}
+                onChange={(values) => setFilters(prev => ({ ...prev, league: values }))}
+              />
+
+              <MultiSelectFilter
+                label="TAGS"
+                placeholder="TODAS AS TAGS"
+                options={userTags.map(tag => ({
+                  value: tag.id,
+                  label: tag.name.toUpperCase()
+                }))}
+                selected={filters.selectedTags}
+                onChange={(values) => setFilters(prev => ({ ...prev, selectedTags: values }))}
               />
             </div>
-            
-            <select 
-              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            >
-              <option value="all">TODOS STATUS</option>
-              <option value="pending">PENDENTE</option>
-              <option value="won">GANHOU</option>
-              <option value="lost">PERDEU</option>
-              <option value="cashout">CASHOUT</option>
-            </select>
 
-            <select 
-              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
-              value={filters.sport}
-              onChange={(e) => setFilters(prev => ({ ...prev, sport: e.target.value }))}
-            >
-              <option value="all">TODOS ESPORTES</option>
-              {uniqueSports.map(sport => (
-                <option key={sport} value={sport}>{sport.toUpperCase()}</option>
-              ))}
-            </select>
+            {/* Segunda linha: Filtros de data */}
+            <div className="flex gap-3">
+              <Popover open={isFilterDateFromOpen} onOpenChange={setIsFilterDateFromOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {(() => {
+                      const date = parseDateString(filters.dateFrom);
+                      return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'DATA INICIAL';
+                    })()}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                  <CalendarComponent
+                    mode="single"
+                    selected={parseDateString(filters.dateFrom) || undefined}
+                    onSelect={(date) => {
+                      const formatted = formatDateToString(date);
+                      setFilters(prev => {
+                        const next = { ...prev, dateFrom: formatted };
+                        const fromDate = parseDateString(formatted);
+                        const toDate = parseDateString(prev.dateTo);
+                        if (fromDate && toDate && isBefore(toDate, fromDate)) {
+                          next.dateTo = '';
+                        }
+                        return next;
+                      });
+                      setIsFilterDateFromOpen(false);
+                      setIsFilterDateToOpen(true);
+                    }}
+                    initialFocus
+                    className="bg-terminal-dark-gray"
+                  />
+                </PopoverContent>
+              </Popover>
 
-            <select 
-              className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
-              value={filters.league}
-              onChange={(e) => setFilters(prev => ({ ...prev, league: e.target.value }))}
-            >
-              <option value="all">TODAS LIGAS</option>
-              {uniqueLeagues.map(league => (
-                <option key={league} value={league}>{league.toUpperCase()}</option>
-              ))}
-            </select>
-
-            {userTags.length > 0 && (
-              <select 
-                className="terminal-input px-3 py-1.5 text-xs rounded-sm w-full md:w-auto md:min-w-[120px]"
-                value={filters.selectedTag}
-                onChange={(e) => setFilters(prev => ({ ...prev, selectedTag: e.target.value }))}
-              >
-                <option value="all">TODAS AS TAGS</option>
-                {userTags.map(tag => (
-                  <option key={tag.id} value={tag.id}>{tag.name.toUpperCase()}</option>
-                ))}
-              </select>
-            )}
-
-            <Popover open={isFilterDateFromOpen} onOpenChange={setIsFilterDateFromOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {(() => {
-                    const date = parseDateString(filters.dateFrom);
-                    return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inicial';
-                  })()}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
-                <CalendarComponent
-                  mode="single"
-                  selected={parseDateString(filters.dateFrom) || undefined}
-                  onSelect={(date) => {
-                    const formatted = formatDateToString(date);
-                    setFilters(prev => {
-                      const next = { ...prev, dateFrom: formatted };
-                      const fromDate = parseDateString(formatted);
-                      const toDate = parseDateString(prev.dateTo);
-                      if (fromDate && toDate && isBefore(toDate, fromDate)) {
-                        next.dateTo = '';
+              <Popover open={isFilterDateToOpen} onOpenChange={setIsFilterDateToOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {(() => {
+                      const date = parseDateString(filters.dateTo);
+                      return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'DATA FINAL';
+                    })()}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                  <CalendarComponent
+                    mode="single"
+                    selected={parseDateString(filters.dateTo) || undefined}
+                    disabled={(date) => {
+                      const fromDate = parseDateString(filters.dateFrom);
+                      return fromDate ? isBefore(date, fromDate) : false;
+                    }}
+                    onSelect={(date) => {
+                      const fromDate = parseDateString(filters.dateFrom);
+                      if (fromDate && date && isBefore(date, fromDate)) {
+                        return;
                       }
-                      return next;
-                    });
-                    setIsFilterDateFromOpen(false);
-                    setIsFilterDateToOpen(true);
-                  }}
-                  initialFocus
-                  className="bg-terminal-dark-gray"
-                />
-              </PopoverContent>
-            </Popover>
-
-            <Popover open={isFilterDateToOpen} onOpenChange={setIsFilterDateToOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {(() => {
-                    const date = parseDateString(filters.dateTo);
-                    return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Data final';
-                  })()}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
-                <CalendarComponent
-                  mode="single"
-                  selected={parseDateString(filters.dateTo) || undefined}
-                  disabled={(date) => {
-                    const fromDate = parseDateString(filters.dateFrom);
-                    return fromDate ? isBefore(date, fromDate) : false;
-                  }}
-                  onSelect={(date) => {
-                    const fromDate = parseDateString(filters.dateFrom);
-                    if (fromDate && date && isBefore(date, fromDate)) {
-                      return;
-                    }
-                    setFilters(prev => ({ 
-                      ...prev, 
-                      dateTo: formatDateToString(date) 
-                    }));
-                    setIsFilterDateToOpen(false);
-                  }}
-                  initialFocus
-                  className="bg-terminal-dark-gray"
-                />
-              </PopoverContent>
-            </Popover>
+                      setFilters(prev => ({ 
+                        ...prev, 
+                        dateTo: formatDateToString(date) 
+                      }));
+                      setIsFilterDateToOpen(false);
+                    }}
+                    initialFocus
+                    className="bg-terminal-dark-gray"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           <div className="flex gap-2">
-             <button 
+            <button 
+              type="button"
+              onClick={clearAllFilters}
+              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-red hover:text-terminal-red transition-colors"
+            >
+              <X className="w-4 h-4" />
+              LIMPAR FILTROS
+            </button>
+            <button 
               type="button"
               onClick={() => setUnitConfigOpen(true)}
               className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
@@ -1067,7 +1527,17 @@ export default function Bets() {
         <div className="terminal-container p-4">
           <div className="flex justify-between items-center mb-3">
             <h3 className="section-title">APOSTAS RECENTES</h3>
-            <span className="text-[10px] opacity-50">MOSTRANDO {sortedBets.length} APOSTAS</span>
+            <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+                className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                NOVA APOSTA
+              </button>
+              <span className="text-[10px] opacity-50">MOSTRANDO {sortedBets.length} APOSTAS</span>
+            </div>
           </div>
           
           {isLoading ? (
@@ -1101,323 +1571,14 @@ export default function Bets() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedBets.map((bet) => (
-                      <tr 
-                        key={bet.id}
-                        className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors"
-                      >
-                        <td className="py-2 px-2 opacity-70">
-                          {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
-                        </td>
-                        <td className="py-2 px-2 font-medium">
-                          <div>{bet.bet_description}</div>
-                          {bet.match_description && (
-                            <div className="text-[10px] opacity-50">{bet.match_description}</div>
-                          )}
-                        </td>
-                        <td className="py-2 px-2">
-                          <TagSelector
-                            betId={bet.id}
-                            selectedTags={bet.tags || []}
-                            onTagsChange={async (newTags) => {
-                              // Update local state immediately for responsiveness
-                              setBets(bets.map(b => 
-                                b.id === bet.id ? { ...b, tags: newTags } : b
-                              ));
-                              
-                              // Sync with database
-                              const currentTagIds = (bet.tags || []).map(t => t.id);
-                              const newTagIds = newTags.map(t => t.id);
-                              
-                              // Remove tags that were deselected
-                              const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
-                              for (const tagId of tagsToRemove) {
-                                await supabase.rpc('remove_tag_from_bet', {
-                                  p_bet_id: bet.id,
-                                  p_tag_id: tagId
-                                });
-                              }
-                              
-                              // Add tags that were selected
-                              const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
-                              for (const tagId of tagsToAdd) {
-                                await supabase.rpc('add_tag_to_bet', {
-                                  p_bet_id: bet.id,
-                                  p_tag_id: tagId
-                                });
-                              }
-                              
-                              // Refresh the bets list to get updated data
-                              await fetchBets();
-                            }}
-                            onTagsUpdated={fetchUserTags}
-                          />
-                        </td>
-                        <td className="py-2 px-2 opacity-70">
-                          {bet.sport}
-                        </td>
-                        <td className="py-2 px-2 opacity-70">
-                          {bet.league || '-'}
-                        </td>
-                        <td className="text-right py-2 px-2">
-                          {formatWithUnits(bet.stake_amount)}
-                        </td>
-                        <td className="text-right py-2 px-2 text-terminal-blue">
-                          {bet.odds.toFixed(2)}
-                        </td>
-                        <td className={`text-right py-2 px-2 ${
-                          bet.status === 'won' ? 'text-terminal-green' : 
-                          bet.status === 'lost' ? 'text-terminal-red' : 
-                          'opacity-70'
-                        }`}>
-                          {bet.is_cashout && bet.cashout_amount 
-                            ? formatWithUnits(bet.cashout_amount)
-                            : formatWithUnits(bet.potential_return)
-                          }
-                        </td>
-                        <td className="text-center py-2 px-2">
-                          <span className={`px-2 py-0.5 text-[10px] uppercase font-bold ${
-                            bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
-                            bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
-                            bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
-                            bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
-                            'text-terminal-text bg-terminal-text/10'
-                          }`}>
-                            {translateStatus(bet.status)}
-                          </span>
-                        </td>
-                        <td className="text-right py-3 px-2">
-                          <div className="flex justify-end gap-2">
-                            {bet.status === 'pending' && (
-                              <>
-                                <button 
-                                  type="button"
-                                  onClick={() => updateBetStatus(bet.id, 'won')}
-                                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex items-center gap-2"
-                                  title="Marcar como Ganhou"
-                                >
-                                  <TrendingUp className="w-4 h-4 text-terminal-green hover:text-terminal-black" />
-                                  <span className="text-[10px] font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => updateBetStatus(bet.id, 'lost')}
-                                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center gap-2"
-                                  title="Marcar como Perdeu"
-                                >
-                                  <TrendingDown className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
-                                  <span className="text-[10px] font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => openCashoutModal(bet)}
-                                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-2"
-                                  title="Cashout"
-                                >
-                                  <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
-                                  <span className="text-[10px] font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
-                                </button>
-                              </>
-                            )}
-                            <button 
-                              type="button"
-                              onClick={() => openEditModal(bet)}
-                              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all"
-                              title="Editar"
-                            >
-                              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => deleteBet(bet.id)}
-                              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all"
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {desktopRows}
                   </tbody>
                 </table>
               </div>
 
               {/* Mobile Stacked View */}
               <div className="md:hidden space-y-4">
-                {sortedBets.map((bet) => (
-                  <div 
-                    key={bet.id} 
-                    className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3"
-                  >
-                    {/* Header: Date + Status */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs opacity-50">
-                        {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
-                      </span>
-                      <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${
-                        bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
-                        bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
-                        bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
-                        bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
-                        'text-terminal-text bg-terminal-text/10'
-                      }`}>
-                        {translateStatus(bet.status)}
-                      </span>
-                    </div>
-
-                    {/* Main Info: Description + Sport */}
-                    <div>
-                      <div className="font-medium text-sm text-terminal-text">{bet.bet_description}</div>
-                      {bet.match_description && (
-                        <div className="text-xs opacity-60 mt-0.5">{bet.match_description}</div>
-                      )}
-                      <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">
-                        {bet.sport}
-                      </div>
-                      {bet.league && (
-                        <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">
-                          {bet.league}
-                        </div>
-                      )}
-                      {/* Tags */}
-                      <div className="mt-2">
-                        <TagSelector
-                          betId={bet.id}
-                          selectedTags={bet.tags || []}
-                          onTagsChange={async (newTags) => {
-                            // Update local state immediately for responsiveness
-                            setBets(bets.map(b => 
-                              b.id === bet.id ? { ...b, tags: newTags } : b
-                            ));
-                            
-                            // Sync with database
-                            const currentTagIds = (bet.tags || []).map(t => t.id);
-                            const newTagIds = newTags.map(t => t.id);
-                            
-                            // Remove tags that were deselected
-                            const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
-                            for (const tagId of tagsToRemove) {
-                              await supabase.rpc('remove_tag_from_bet', {
-                                p_bet_id: bet.id,
-                                p_tag_id: tagId
-                              });
-                            }
-                            
-                            // Add tags that were selected
-                            const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
-                            for (const tagId of tagsToAdd) {
-                              await supabase.rpc('add_tag_to_bet', {
-                                p_bet_id: bet.id,
-                                p_tag_id: tagId
-                              });
-                            }
-                            
-                            // Refresh the bets list to get updated data
-                            await fetchBets();
-                          }}
-                          onTagsUpdated={fetchUserTags}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-2 py-2 border-y border-terminal-border-subtle bg-terminal-dark-gray/30 -mx-4 px-4">
-                      <div className="text-center">
-                        <div className="text-[10px] opacity-50 uppercase mb-0.5">Valor</div>
-                        <div className="text-sm">{formatWithUnits(bet.stake_amount)}</div>
-                      </div>
-                      <div className="text-center border-l border-terminal-border-subtle">
-                        <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
-                        <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
-                      </div>
-                      <div className="text-center border-l border-terminal-border-subtle">
-                        <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
-                        <div className={`text-sm ${
-                          bet.status === 'won' ? 'text-terminal-green' : 
-                          bet.status === 'lost' ? 'text-terminal-red' : 
-                          'opacity-70'
-                        }`}>
-                          {bet.is_cashout && bet.cashout_amount 
-                            ? formatWithUnits(bet.cashout_amount)
-                            : formatWithUnits(bet.potential_return)
-                          }
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    {/* Actions */}
-                    <div className="pt-2">
-                      {bet.status === 'pending' ? (
-                        <div className="grid grid-cols-4 gap-2">
-                          <button 
-                            type="button"
-                            onClick={() => updateBetStatus(bet.id, 'won')}
-                            className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex justify-center items-center gap-2"
-                            title="Marcar como Ganhou"
-                          >
-                            <TrendingUp className="w-5 h-5 text-terminal-green hover:text-terminal-black" />
-                            <span className="text-xs font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => updateBetStatus(bet.id, 'lost')}
-                            className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center gap-2"
-                            title="Marcar como Perdeu"
-                          >
-                            <TrendingDown className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
-                            <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => openCashoutModal(bet)}
-                            className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center gap-2"
-                            title="Cashout"
-                          >
-                            <DollarSign className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
-                            <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => openEditModal(bet)}
-                            className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
-                            title="Editar"
-                          >
-                            <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => deleteBet(bet.id)}
-                            className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <button 
-                            type="button"
-                            onClick={() => openEditModal(bet)}
-                            className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
-                            title="Editar"
-                          >
-                            <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => deleteBet(bet.id)}
-                            className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {mobileCards}
               </div>
             </>
           )}
@@ -1834,6 +1995,14 @@ export default function Bets() {
           )}
         </DialogContent>
       </Dialog>
+
+      <CreateBetModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onCreate={createBet}
+        sportsList={SPORTS_LIST}
+        leaguesList={LEAGUES_LIST}
+      />
 
       <UnitConfigurationModal 
         open={unitConfigOpen} 
