@@ -291,7 +291,7 @@ async function sendConfirmationMessageTelegram(
   await sendTelegramMessage(chatId, confirmationMessage)
 }
 
-async function getDailyBetCount(supabase: any, userId: string): Promise<number> {
+async function getDailyBetCount(supabase: any, userId: string, traceId?: string): Promise<number> {
   try {
     const nowUTC = new Date()
     const gmt3Offset = -3 * 60 * 60 * 1000
@@ -311,6 +311,33 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
     const gmt3TomorrowDateString = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`
     const startOfTomorrowUTC = new Date(`${gmt3TomorrowDateString}T03:00:00.000Z`)
 
+    console.log("daily_limit_window_calculation", {
+      user_id: userId,
+      trace_id: traceId,
+      now_utc: nowUTC.toISOString(),
+      now_gmt3: nowGMT3.toISOString(),
+      start_of_day_utc: startOfDayUTC.toISOString(),
+      start_of_tomorrow_utc: startOfTomorrowUTC.toISOString(),
+      gmt3_date_string: gmt3DateString
+    })
+
+    if (traceId) {
+      await trackEvent(
+        "daily_limit_window_calculation",
+        {
+          user_id: userId,
+          now_utc: nowUTC.toISOString(),
+          now_gmt3: nowGMT3.toISOString(),
+          start_of_day_utc: startOfDayUTC.toISOString(),
+          start_of_tomorrow_utc: startOfTomorrowUTC.toISOString(),
+          gmt3_date_string: gmt3DateString,
+          channel: "telegram"
+        },
+        userId,
+        traceId
+      ).catch(() => {})
+    }
+
     const { count, error } = await supabase
       .from("bets")
       .select("*", { count: "exact", head: true })
@@ -320,18 +347,73 @@ async function getDailyBetCount(supabase: any, userId: string): Promise<number> 
 
     if (error) {
       console.error("Error counting daily bets:", error)
+      if (traceId) {
+        await trackEvent(
+          "daily_limit_count_error",
+          {
+            user_id: userId,
+            error: JSON.stringify(error),
+            channel: "telegram"
+          },
+          userId,
+          traceId
+        ).catch(() => {})
+      }
       return 0
     }
 
-    return count || 0
+    const betCount = count || 0
+
+    console.log("daily_limit_bet_count", {
+      user_id: userId,
+      trace_id: traceId,
+      bet_count: betCount,
+      start_of_day_utc: startOfDayUTC.toISOString(),
+      start_of_tomorrow_utc: startOfTomorrowUTC.toISOString()
+    })
+
+    if (traceId) {
+      await trackEvent(
+        "daily_limit_bet_count",
+        {
+          user_id: userId,
+          bet_count: betCount,
+          start_of_day_utc: startOfDayUTC.toISOString(),
+          start_of_tomorrow_utc: startOfTomorrowUTC.toISOString(),
+          channel: "telegram"
+        },
+        userId,
+        traceId
+      ).catch(() => {})
+    }
+
+    return betCount
   } catch (error) {
     console.error("Error getting daily bet count:", error)
+    if (traceId) {
+      await trackEvent(
+        "daily_limit_count_exception",
+        {
+          user_id: userId,
+          error_message: error instanceof Error ? error.message : String(error),
+          channel: "telegram"
+        },
+        userId,
+        traceId
+      ).catch(() => {})
+    }
     return 0
   }
 }
 
-async function hasReachedDailyLimit(supabase: any, userId: string): Promise<boolean> {
+async function hasReachedDailyLimit(supabase: any, userId: string, traceId?: string): Promise<boolean> {
   try {
+    console.log("daily_limit_check_start", {
+      user_id: userId,
+      trace_id: traceId,
+      daily_limit: DAILY_BET_LIMIT
+    })
+
     // Check only betinho subscription status for daily limit
     const { data: user, error: userError } = await supabase
       .from("users")
@@ -341,18 +423,117 @@ async function hasReachedDailyLimit(supabase: any, userId: string): Promise<bool
 
     if (userError) {
       console.error("Error fetching user Betinho subscription status:", userError)
+      console.log("daily_limit_user_lookup_error", {
+        user_id: userId,
+        trace_id: traceId,
+        error: JSON.stringify(userError)
+      })
+      if (traceId) {
+        await trackEvent(
+          "daily_limit_user_lookup_error",
+          {
+            user_id: userId,
+            error: JSON.stringify(userError),
+            channel: "telegram"
+          },
+          userId,
+          traceId
+        ).catch(() => {})
+      }
       return false
+    }
+
+    const subscriptionStatus = user?.betinho_subscription_status || null
+
+    console.log("daily_limit_subscription_status", {
+      user_id: userId,
+      trace_id: traceId,
+      betinho_subscription_status: subscriptionStatus
+    })
+
+    if (traceId) {
+      await trackEvent(
+        "daily_limit_subscription_status",
+        {
+          user_id: userId,
+          betinho_subscription_status: subscriptionStatus,
+          channel: "telegram"
+        },
+        userId,
+        traceId
+      ).catch(() => {})
     }
 
     // Premium users (betinho subscription) have no limit
     if (user?.betinho_subscription_status === "premium") {
+      console.log("daily_limit_premium_bypass", {
+        user_id: userId,
+        trace_id: traceId,
+        betinho_subscription_status: subscriptionStatus
+      })
+      if (traceId) {
+        await trackEvent(
+          "daily_limit_premium_bypass",
+          {
+            user_id: userId,
+            betinho_subscription_status: subscriptionStatus,
+            channel: "telegram"
+          },
+          userId,
+          traceId
+        ).catch(() => {})
+      }
       return false
     }
 
-    const betCount = await getDailyBetCount(supabase, userId)
-    return betCount >= DAILY_BET_LIMIT
+    const betCount = await getDailyBetCount(supabase, userId, traceId)
+    const limitReached = betCount >= DAILY_BET_LIMIT
+
+    console.log("daily_limit_evaluation", {
+      user_id: userId,
+      trace_id: traceId,
+      bet_count: betCount,
+      daily_limit: DAILY_BET_LIMIT,
+      limit_reached: limitReached,
+      betinho_subscription_status: subscriptionStatus
+    })
+
+    if (traceId) {
+      await trackEvent(
+        "daily_limit_evaluation",
+        {
+          user_id: userId,
+          bet_count: betCount,
+          daily_limit: DAILY_BET_LIMIT,
+          limit_reached: limitReached,
+          betinho_subscription_status: subscriptionStatus,
+          channel: "telegram"
+        },
+        userId,
+        traceId
+      ).catch(() => {})
+    }
+
+    return limitReached
   } catch (error) {
     console.error("Error checking daily limit:", error)
+    console.log("daily_limit_check_exception", {
+      user_id: userId,
+      trace_id: traceId,
+      error_message: error instanceof Error ? error.message : String(error)
+    })
+    if (traceId) {
+      await trackEvent(
+        "daily_limit_check_exception",
+        {
+          user_id: userId,
+          error_message: error instanceof Error ? error.message : String(error),
+          channel: "telegram"
+        },
+        userId,
+        traceId
+      ).catch(() => {})
+    }
     return false
   }
 }
@@ -956,7 +1137,15 @@ async function processMessage(
         return
       }
 
-      const limitReached = await hasReachedDailyLimit(supabase, userId)
+      const limitReached = await hasReachedDailyLimit(supabase, userId, traceId)
+
+      console.log("daily_limit_check_result", {
+        user_id: userId,
+        message_id: messageId,
+        trace_id: traceId,
+        limit_reached: limitReached,
+        daily_limit: DAILY_BET_LIMIT
+      })
 
       if (limitReached) {
         await trackEvent(
@@ -1119,15 +1308,37 @@ async function processMessage(
 async function findUserByTelegram(
   supabase: any,
   telegramUserId?: string,
-  chatId?: string
+  chatId?: string,
+  traceId?: string
 ): Promise<{ id: string; name?: string | null; telegram_chat_id?: string | null; whatsapp_number?: string | null } | null> {
-  if (!telegramUserId && !chatId) return null
+  if (!telegramUserId && !chatId) {
+    console.log("daily_limit_user_resolution_missing_ids", {
+      telegram_user_id: telegramUserId,
+      chat_id: chatId,
+      trace_id: traceId
+    })
+    return null
+  }
 
   const ors: string[] = []
   if (chatId) ors.push(`telegram_chat_id.eq.${chatId}`)
   if (telegramUserId) ors.push(`telegram_user_id.eq.${telegramUserId}`)
 
-  if (ors.length === 0) return null
+  if (ors.length === 0) {
+    console.log("daily_limit_user_resolution_no_conditions", {
+      telegram_user_id: telegramUserId,
+      chat_id: chatId,
+      trace_id: traceId
+    })
+    return null
+  }
+
+  console.log("daily_limit_user_resolution_start", {
+    telegram_user_id: telegramUserId,
+    chat_id: chatId,
+    trace_id: traceId,
+    query_conditions: ors.join(",")
+  })
 
   const { data, error } = await supabase
     .from("users")
@@ -1136,7 +1347,32 @@ async function findUserByTelegram(
     .limit(1)
     .maybeSingle()
 
-  if (error || !data) return null
+  if (error) {
+    console.log("daily_limit_user_resolution_error", {
+      telegram_user_id: telegramUserId,
+      chat_id: chatId,
+      trace_id: traceId,
+      error: JSON.stringify(error)
+    })
+    return null
+  }
+
+  if (!data) {
+    console.log("daily_limit_user_resolution_not_found", {
+      telegram_user_id: telegramUserId,
+      chat_id: chatId,
+      trace_id: traceId
+    })
+    return null
+  }
+
+  console.log("daily_limit_user_resolution_success", {
+    telegram_user_id: telegramUserId,
+    chat_id: chatId,
+    resolved_user_id: data.id,
+    trace_id: traceId
+  })
+
   return data
 }
 
@@ -1331,7 +1567,7 @@ serve(async (req) => {
 
     // Find user by telegram ids
     const telegramUserId = fromUser?.id ? String(fromUser.id) : undefined
-    const user = await findUserByTelegram(supabase, telegramUserId, String(chatId))
+    const user = await findUserByTelegram(supabase, telegramUserId, String(chatId), traceId)
 
     if (!user) {
       await trackEvent(
@@ -1348,6 +1584,13 @@ serve(async (req) => {
         { headers: { "Content-Type": "application/json" }, status: 200 }
       )
     }
+
+    console.log("daily_limit_user_mapped", {
+      telegram_user_id: telegramUserId,
+      chat_id: String(chatId),
+      resolved_user_id: user.id,
+      trace_id: traceId
+    })
 
     await identifyUser(user.id, {
       name: fromUser?.first_name || user.name || undefined,
