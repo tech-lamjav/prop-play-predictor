@@ -89,7 +89,6 @@ interface Bet {
   cashout_odds?: number;
   is_cashout?: boolean;
   channel?: string;
-  betting_house?: string;
   tags?: Tag[];
 }
 
@@ -470,7 +469,7 @@ export default function Bets() {
       }
       const potentialReturn = stakeAmount * odds;
 
-      const { error } = await supabase
+      const { data: newBet, error } = await supabase
         .from('bets')
         .insert({
           user_id: user.id,
@@ -484,12 +483,21 @@ export default function Bets() {
           potential_return: potentialReturn,
           bet_date: data.bet_date || new Date().toISOString(),
           match_date: data.match_date || null,
-          betting_house: data.betting_house || null,
           status: 'pending',
           channel: 'web'
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      const tagIds = data.selectedTagIds ?? [];
+      for (const tagId of tagIds) {
+        await supabase.rpc('add_tag_to_bet', {
+          p_bet_id: newBet.id,
+          p_tag_id: tagId
+        });
+      }
 
       if (isMountedRef.current) {
         await fetchBets();
@@ -2002,6 +2010,8 @@ export default function Bets() {
         onCreate={createBet}
         sportsList={SPORTS_LIST}
         leaguesList={LEAGUES_LIST}
+        userTags={userTags}
+        onTagsUpdated={fetchUserTags}
       />
 
       <UnitConfigurationModal 
