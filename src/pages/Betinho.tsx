@@ -72,7 +72,7 @@ const Betinho = () => {
   
   // URL direta do vídeo no Supabase Storage
   // URL completa: https://lavclmlvvfzkblrstojd.supabase.co/storage/v1/object/public/landing%20-page/WhatsApp%20Video%202025-11-03%20at%2022.02.07.mp4
-  const screenshotVideoUrl = 'https://lavclmlvvfzkblrstojd.supabase.co/storage/v1/object/public/landing%20-page/WhatsApp%20Video%202025-11-03%20at%2022.02.07.mp4';
+  const screenshotVideoUrl = 'https://lavclmlvvfzkblrstojd.supabase.co/storage/v1/object/public/landing%20-page/WhatsApp%20Video%202026-01-22%20at%2016.05.33.mp4';
 
   type MockBetStatus = 'pending' | 'won' | 'lost' | 'cashout';
   // Mock data para a prévia do dashboard
