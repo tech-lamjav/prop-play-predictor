@@ -107,7 +107,6 @@ export type Database = {
           cashout_odds: number | null
           is_cashout: boolean | null
           channel: string | null
-          betting_house: string | null
         }
         Insert: {
           id?: string
@@ -132,7 +131,6 @@ export type Database = {
           cashout_odds?: number | null
           is_cashout?: boolean | null
           channel?: string | null
-          betting_house?: string | null
         }
         Update: {
           id?: string
@@ -157,7 +155,6 @@ export type Database = {
           cashout_odds?: number | null
           is_cashout?: boolean | null
           channel?: string | null
-          betting_house?: string | null
         }
         Relationships: [
           {

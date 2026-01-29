@@ -7,7 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TagSelector } from '@/components/bets/TagSelector';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+
+export interface CreateBetTag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 export interface CreateBetFormData {
   bet_description: string;
@@ -18,7 +25,7 @@ export interface CreateBetFormData {
   stake_amount: string;
   bet_date: string;
   match_date: string;
-  betting_house: string;
+  selectedTagIds: string[];
 }
 
 interface CreateBetModalProps {
@@ -27,6 +34,8 @@ interface CreateBetModalProps {
   onCreate: (data: CreateBetFormData) => Promise<boolean>;
   sportsList: string[];
   leaguesList: string[];
+  userTags: CreateBetTag[];
+  onTagsUpdated?: () => void;
 }
 
 const getDefaultFormData = (): CreateBetFormData => ({
@@ -38,7 +47,7 @@ const getDefaultFormData = (): CreateBetFormData => ({
   stake_amount: '',
   bet_date: new Date().toISOString().split('T')[0],
   match_date: '',
-  betting_house: '',
+  selectedTagIds: [],
 });
 
 const parseDateString = (dateString: string): Date | undefined => {
@@ -52,14 +61,23 @@ const formatDateToString = (date: Date | undefined): string => {
   return format(date, 'yyyy-MM-dd');
 };
 
+type CreateBetFormState = Omit<CreateBetFormData, 'selectedTagIds'> & { selectedTags: CreateBetTag[] };
+
+const getDefaultFormState = (): CreateBetFormState => {
+  const { selectedTagIds: _, ...rest } = getDefaultFormData();
+  return { ...rest, selectedTags: [] };
+};
+
 export const CreateBetModal: React.FC<CreateBetModalProps> = ({
   open,
   onOpenChange,
   onCreate,
   sportsList,
   leaguesList,
+  userTags: _userTags,
+  onTagsUpdated,
 }) => {
-  const [formData, setFormData] = useState<CreateBetFormData>(getDefaultFormData());
+  const [formData, setFormData] = useState<CreateBetFormState>(getDefaultFormState());
   const [isCreateDatePopoverOpen, setIsCreateDatePopoverOpen] = useState(false);
   const [isCreateMatchDatePopoverOpen, setIsCreateMatchDatePopoverOpen] = useState(false);
   const [isCreateSportDropdownOpen, setIsCreateSportDropdownOpen] = useState(false);
@@ -72,7 +90,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
   const createLeagueItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const resetForm = useCallback(() => {
-    setFormData(getDefaultFormData());
+    setFormData(getDefaultFormState());
     setIsCreateDatePopoverOpen(false);
     setIsCreateMatchDatePopoverOpen(false);
     setIsCreateSportDropdownOpen(false);
@@ -161,7 +179,11 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
   };
 
   const handleCreate = async () => {
-    const success = await onCreate(formData);
+    const payload: CreateBetFormData = {
+      ...formData,
+      selectedTagIds: formData.selectedTags.map((t) => t.id),
+    };
+    const success = await onCreate(payload);
     if (success) {
       handleOpenChange(false);
     }
@@ -501,12 +523,12 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs uppercase opacity-70">Casa de Apostas (opcional)</Label>
-            <Input
-              value={formData.betting_house}
-              onChange={(e) => setFormData((prev) => ({ ...prev, betting_house: e.target.value }))}
-              className="bg-terminal-black border-terminal-border text-terminal-text"
-              placeholder="Ex: Bet365"
+            <Label className="text-xs uppercase opacity-70">Tags (opcional)</Label>
+            <TagSelector
+              selectedTags={formData.selectedTags}
+              onTagsChange={(tags) => setFormData((prev) => ({ ...prev, selectedTags: tags }))}
+              onTagsUpdated={onTagsUpdated}
+              className="w-full"
             />
           </div>
 

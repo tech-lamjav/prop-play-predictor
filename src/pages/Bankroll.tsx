@@ -37,7 +37,6 @@ interface Bet {
   cashout_odds?: number;
   is_cashout?: boolean;
   channel?: string;
-  betting_house?: string;
   tags?: Tag[];
 }
 
