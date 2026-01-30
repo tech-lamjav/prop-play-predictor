@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Save, Edit2 } from 'lucide-react';
-import { Bet } from '@/types/supabase';
+import { Bet } from '@/hooks/use-bets';
 
 interface BankrollEvolutionChartProps {
   bets: Bet[];
@@ -42,7 +42,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
     
     // Filter settled bets and sort by date ascending
     const settledBets = bets
-      .filter(bet => ['won', 'lost', 'cashout'].includes(bet.status))
+      .filter(bet => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(bet.status))
       .sort((a, b) => new Date(a.bet_date).getTime() - new Date(b.bet_date).getTime());
 
     if (settledBets.length === 0) return [];
@@ -65,6 +65,10 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
         profit = -bet.stake_amount;
       } else if (bet.status === 'cashout' && bet.cashout_amount) {
         profit = bet.cashout_amount - bet.stake_amount;
+      } else if (bet.status === 'half_won') {
+        profit = (bet.stake_amount + bet.potential_return) / 2 - bet.stake_amount;
+      } else if (bet.status === 'half_lost') {
+        profit = bet.stake_amount / 2 - bet.stake_amount;
       }
 
       currentBankroll += profit;

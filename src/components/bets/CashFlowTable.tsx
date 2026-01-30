@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 interface Bet {
   id: string;
   bet_description: string;
-  status: 'won' | 'lost' | 'cashout' | 'pending' | 'void';
+  status: 'won' | 'lost' | 'cashout' | 'pending' | 'void' | 'half_won' | 'half_lost';
   stake_amount: number;
   potential_return: number;
   cashout_amount?: number;
@@ -21,7 +21,7 @@ interface CashFlowEntry {
   id: string;
   date: string;
   description: string;
-  type: 'win' | 'loss' | 'cashout' | 'initial';
+  type: 'win' | 'loss' | 'cashout' | 'half_win' | 'half_loss' | 'initial';
   amount: number;
   balance: number;
 }
@@ -36,7 +36,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
     
     // Filter settled bets and sort by date ascending
     const settledBets = bets
-      .filter(bet => ['won', 'lost', 'cashout'].includes(bet.status))
+      .filter(bet => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(bet.status))
       .sort((a, b) => new Date(a.bet_date).getTime() - new Date(b.bet_date).getTime());
 
     if (settledBets.length === 0) return [];
@@ -57,7 +57,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
     // Process each settled bet
     settledBets.forEach(bet => {
       let amount = 0;
-      let type: 'win' | 'loss' | 'cashout' = 'loss';
+      let type: CashFlowEntry['type'] = 'loss';
 
       if (bet.status === 'won') {
         amount = bet.potential_return - bet.stake_amount;
@@ -68,6 +68,12 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       } else if (bet.status === 'cashout' && bet.cashout_amount) {
         amount = bet.cashout_amount - bet.stake_amount;
         type = 'cashout';
+      } else if (bet.status === 'half_won') {
+        amount = (bet.stake_amount + bet.potential_return) / 2 - bet.stake_amount;
+        type = 'half_win';
+      } else if (bet.status === 'half_lost') {
+        amount = bet.stake_amount / 2 - bet.stake_amount;
+        type = 'half_loss';
       }
 
       currentBalance += amount;
@@ -90,6 +96,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       case 'win': return 'GANHOU';
       case 'loss': return 'PERDEU';
       case 'cashout': return 'CASHOUT';
+      case 'half_win': return '1/2 GREEN';
+      case 'half_loss': return '1/2 RED';
       case 'initial': return 'INICIAL';
     }
   };
@@ -99,6 +107,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       case 'win': return 'text-terminal-green';
       case 'loss': return 'text-terminal-red';
       case 'cashout': return 'text-terminal-blue';
+      case 'half_win': return 'text-terminal-green opacity-80';
+      case 'half_loss': return 'text-terminal-red opacity-80';
       case 'initial': return 'text-terminal-text opacity-70';
     }
   };
