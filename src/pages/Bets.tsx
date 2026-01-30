@@ -1218,59 +1218,53 @@ export default function Bets() {
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Actions - mobile: dropdown Resultado + Cashout + Editar + Excluir */}
         <div className="pt-2">
           {bet.status === 'pending' ? (
-            <div className="grid grid-cols-4 gap-2">
-              <button 
-                type="button"
-                onClick={() => updateBetStatus(bet.id, 'won')}
-                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex justify-center items-center gap-2"
-                title="Marcar como Ganhou"
-              >
-                <TrendingUp className="w-5 h-5 text-terminal-green hover:text-terminal-black" />
-                <span className="text-xs font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => updateBetStatus(bet.id, 'lost')}
-                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center gap-2"
-                title="Marcar como Perdeu"
-              >
-                <TrendingDown className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
-                <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => updateBetStatus(bet.id, 'half_won')}
-                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex justify-center items-center gap-2"
-                title="Marcar como 1/2 Green"
-              >
-                <TrendingUp className="w-5 h-5 text-terminal-green hover:text-terminal-black opacity-70" />
-                <span className="text-xs font-bold text-terminal-green hover:text-terminal-black">1/2 GREEN</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => updateBetStatus(bet.id, 'half_lost')}
-                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center gap-2"
-                title="Marcar como 1/2 Red"
-              >
-                <TrendingDown className="w-5 h-5 text-terminal-red hover:text-terminal-black opacity-70" />
-                <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">1/2 RED</span>
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-2 text-terminal-text w-full sm:w-auto justify-center"
+                  >
+                    <Target className="w-4 h-4 opacity-70" />
+                    <span className="text-xs font-bold uppercase">Resultado</span>
+                    <ChevronDown className="w-3 h-3 opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-terminal-dark-gray border-terminal-border text-terminal-text min-w-[180px]">
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingUp className="w-4 h-4 text-terminal-green" />
+                    <span>Ganhou</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingDown className="w-4 h-4 text-terminal-red" />
+                    <span>Perdeu</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
+                    <span>1/2 Green</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
+                    <span>1/2 Red</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <button 
                 type="button"
                 onClick={() => openCashoutModal(bet)}
-                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center gap-2"
+                className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial min-w-0"
                 title="Cashout"
               >
-                <DollarSign className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+                <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black shrink-0" />
                 <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
               </button>
               <button 
                 type="button"
                 onClick={() => openEditModal(bet)}
-                className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
+                className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center"
                 title="Editar"
               >
                 <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
@@ -1278,7 +1272,7 @@ export default function Bets() {
               <button 
                 type="button"
                 onClick={() => deleteBet(bet.id)}
-                className="col-span-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
+                className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center justify-center"
                 title="Excluir"
               >
                 <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
@@ -1572,30 +1566,30 @@ export default function Bets() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button 
               type="button"
               onClick={clearAllFilters}
-              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-red hover:text-terminal-red transition-colors"
+              className="terminal-button px-4 py-2.5 text-sm flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-red hover:text-terminal-red transition-colors min-h-[40px]"
             >
-              <X className="w-4 h-4" />
-              LIMPAR FILTROS
+              <X className="w-4 h-4 shrink-0" />
+              <span>LIMPAR FILTROS</span>
             </button>
             <button 
               type="button"
               onClick={() => setUnitConfigOpen(true)}
-              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
+              className="terminal-button px-4 py-2.5 text-sm flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-green transition-colors min-h-[40px]"
             >
-              <Settings className="w-4 h-4" />
-              UNIDADES
+              <Settings className="w-4 h-4 shrink-0" />
+              <span>UNIDADES</span>
             </button>
             <button 
               type="button"
               onClick={fetchBets}
-              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
+              className="terminal-button px-4 py-2.5 text-sm flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-green transition-colors min-h-[40px]"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              ATUALIZAR
+              <RefreshCw className={`w-4 h-4 shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>ATUALIZAR</span>
             </button>
           </div>
         </div>
