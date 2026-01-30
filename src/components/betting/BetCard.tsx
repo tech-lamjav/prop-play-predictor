@@ -34,8 +34,14 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
         return 'bg-green-100 text-green-800 border-green-200';
       case 'lost':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'half_won':
+        return 'bg-green-50 text-green-700 border-green-100';
+      case 'half_lost':
+        return 'bg-red-50 text-red-700 border-red-100';
       case 'void':
         return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'cashout':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     }
@@ -47,11 +53,28 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
         return <TrendingUp className="w-4 h-4" />;
       case 'lost':
         return <TrendingDown className="w-4 h-4" />;
+      case 'half_won':
+        return <TrendingUp className="w-4 h-4 opacity-70" />;
+      case 'half_lost':
+        return <TrendingDown className="w-4 h-4 opacity-70" />;
       case 'void':
         return <Clock className="w-4 h-4" />;
       default:
         return <Clock className="w-4 h-4" />;
     }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      won: 'Ganhou',
+      lost: 'Perdeu',
+      half_won: '1/2 Green',
+      half_lost: '1/2 Red',
+      void: 'Anulada',
+      cashout: 'Cashout',
+      pending: 'Pendente',
+    };
+    return labels[status] || status;
   };
 
   const getSportIcon = (sport: string) => {
@@ -107,7 +130,7 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
           <div className="flex items-center space-x-2">
             <Badge className={getStatusColor(bet.status)}>
               {getStatusIcon(bet.status)}
-              <span className="ml-1 capitalize">{bet.status}</span>
+              <span className="ml-1">{getStatusLabel(bet.status)}</span>
             </Badge>
             
             <DropdownMenu>
@@ -130,6 +153,14 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
                     <DropdownMenuItem onClick={() => onStatusChange(bet.id, 'lost')}>
                       <TrendingDown className="w-4 h-4 mr-2" />
                       Marcar como Perdida
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onStatusChange(bet.id, 'half_won')}>
+                      <TrendingUp className="w-4 h-4 mr-2 opacity-70" />
+                      Marcar como 1/2 Green
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onStatusChange(bet.id, 'half_lost')}>
+                      <TrendingDown className="w-4 h-4 mr-2 opacity-70" />
+                      Marcar como 1/2 Red
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onStatusChange(bet.id, 'void')}>
                       <Clock className="w-4 h-4 mr-2" />

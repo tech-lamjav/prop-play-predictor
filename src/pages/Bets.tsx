@@ -51,6 +51,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -77,7 +83,7 @@ interface Bet {
   odds: number;
   stake_amount: number;
   potential_return: number;
-  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout';
+  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
   bet_date: string;
   match_date?: string;
   created_at: string;
@@ -202,7 +208,7 @@ export default function Bets() {
       stake_amount: string;
       bet_date: string;
       match_date: string;
-      status: 'pending' | 'won' | 'lost' | 'void' | 'cashout';
+      status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
     };
   }>({
     isOpen: false,
@@ -315,12 +321,19 @@ export default function Bets() {
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
     const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
+    const halfWonBets = betsData.filter(bet => bet.status === 'half_won');
+    const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
+    const totalHalfWon = halfWonBets.reduce((sum, bet) => sum + (bet.stake_amount + bet.potential_return) / 2, 0);
+    const totalHalfLost = halfLostBets.reduce((sum, bet) => sum + bet.stake_amount / 2, 0);
     
-    const totalEarnings = totalReturn + totalCashout;
-    const winRate = totalBets > 0 ? ((wonBets.length + cashoutBets.length) / (wonBets.length + lostBets.length + cashoutBets.length)) * 100 : 0;
+    const totalEarnings = totalReturn + totalCashout + totalHalfWon + totalHalfLost;
+    const settledCount = wonBets.length + lostBets.length + cashoutBets.length + halfWonBets.length + halfLostBets.length;
+    const winEquiv = wonBets.length + cashoutBets.length + halfWonBets.length * 0.5;
+    const lossEquiv = lostBets.length + halfLostBets.length * 0.5;
+    const winRate = settledCount > 0 ? (winEquiv / (winEquiv + lossEquiv)) * 100 : 0;
     const profit = totalEarnings - totalStaked;
     const averageStake = totalBets > 0 ? totalStaked / totalBets : 0;
     
@@ -746,19 +759,29 @@ export default function Bets() {
         case 'return':
           aValue = a.is_cashout && a.cashout_amount 
             ? a.cashout_amount 
-            : (a.potential_return || 0);
+            : a.status === 'half_won' 
+              ? (a.stake_amount + a.potential_return) / 2 
+              : a.status === 'half_lost' 
+                ? a.stake_amount / 2 
+                : (a.potential_return || 0);
           bValue = b.is_cashout && b.cashout_amount 
             ? b.cashout_amount 
-            : (b.potential_return || 0);
+            : b.status === 'half_won' 
+              ? (b.stake_amount + b.potential_return) / 2 
+              : b.status === 'half_lost' 
+                ? b.stake_amount / 2 
+                : (b.potential_return || 0);
           break;
         case 'status':
-          // Ordem customizada: pending, won, lost, cashout, void
+          // Ordem customizada: pending, won, lost, half_won, half_lost, cashout, void
           const statusOrder: Record<string, number> = {
             'pending': 1,
             'won': 2,
             'lost': 3,
-            'cashout': 4,
-            'void': 5
+            'half_won': 4,
+            'half_lost': 5,
+            'cashout': 6,
+            'void': 7
           };
           aValue = statusOrder[a.status] || 999;
           bValue = statusOrder[b.status] || 999;
@@ -884,7 +907,9 @@ export default function Bets() {
       'won': 'GANHOU',
       'lost': 'PERDEU',
       'void': 'ANULADA',
-      'cashout': 'CASHOUT'
+      'cashout': 'CASHOUT',
+      'half_won': '1/2 GREEN',
+      'half_lost': '1/2 RED'
     };
     return map[status] || status.toUpperCase();
   };
@@ -991,19 +1016,25 @@ export default function Bets() {
           {bet.odds.toFixed(2)}
         </td>
         <td className={`text-right py-2 px-2 ${
-          bet.status === 'won' ? 'text-terminal-green' : 
-          bet.status === 'lost' ? 'text-terminal-red' : 
+          bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' : 
+          bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 
           'opacity-70'
         }`}>
           {bet.is_cashout && bet.cashout_amount 
             ? formatWithUnits(bet.cashout_amount)
-            : formatWithUnits(bet.potential_return)
+            : bet.status === 'half_won'
+              ? formatWithUnits((bet.stake_amount + bet.potential_return) / 2)
+              : bet.status === 'half_lost'
+                ? formatWithUnits(bet.stake_amount / 2)
+                : formatWithUnits(bet.potential_return)
           }
         </td>
-        <td className="text-center py-2 px-2">
-          <span className={`px-2 py-0.5 text-[10px] uppercase font-bold ${
+        <td className="text-center py-2 px-2 whitespace-nowrap">
+          <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
             bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
             bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+            bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
+            bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
             bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
             bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
             'text-terminal-text bg-terminal-text/10'
@@ -1011,28 +1042,40 @@ export default function Bets() {
             {translateStatus(bet.status)}
           </span>
         </td>
-        <td className="text-right py-3 px-2">
-          <div className="flex justify-end gap-2">
+        <td className="py-2 px-2">
+          <div className="flex flex-row items-center gap-2 justify-end">
             {bet.status === 'pending' && (
               <>
-                <button 
-                  type="button"
-                  onClick={() => updateBetStatus(bet.id, 'won')}
-                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex items-center gap-2"
-                  title="Marcar como Ganhou"
-                >
-                  <TrendingUp className="w-4 h-4 text-terminal-green hover:text-terminal-black" />
-                  <span className="text-[10px] font-bold text-terminal-green hover:text-terminal-black">GANHOU</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => updateBetStatus(bet.id, 'lost')}
-                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center gap-2"
-                  title="Marcar como Perdeu"
-                >
-                  <TrendingDown className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
-                  <span className="text-[10px] font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-2 text-terminal-text"
+                    >
+                      <Target className="w-4 h-4 opacity-70" />
+                      <span className="text-[10px] font-bold uppercase">Resultado</span>
+                      <ChevronDown className="w-3 h-3 opacity-70" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
+                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
+                      <TrendingUp className="w-4 h-4 text-terminal-green" />
+                      <span>Ganhou</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
+                      <TrendingDown className="w-4 h-4 text-terminal-red" />
+                      <span>Perdeu</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
+                      <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
+                      <span>1/2 Green</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
+                      <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
+                      <span>1/2 Red</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <button 
                   type="button"
                   onClick={() => openCashoutModal(bet)}
@@ -1078,9 +1121,11 @@ export default function Bets() {
           <span className="text-xs opacity-50">
             {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
           </span>
-          <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${
+          <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
             bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
             bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+            bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
+            bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
             bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
             bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
             'text-terminal-text bg-terminal-text/10'
@@ -1157,13 +1202,17 @@ export default function Bets() {
           <div className="text-center border-l border-terminal-border-subtle">
             <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
             <div className={`text-sm ${
-              bet.status === 'won' ? 'text-terminal-green' : 
-              bet.status === 'lost' ? 'text-terminal-red' : 
+              bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' : 
+              bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 
               'opacity-70'
             }`}>
               {bet.is_cashout && bet.cashout_amount 
                 ? formatWithUnits(bet.cashout_amount)
-                : formatWithUnits(bet.potential_return)
+                : bet.status === 'half_won'
+                  ? formatWithUnits((bet.stake_amount + bet.potential_return) / 2)
+                  : bet.status === 'half_lost'
+                    ? formatWithUnits(bet.stake_amount / 2)
+                    : formatWithUnits(bet.potential_return)
               }
             </div>
           </div>
@@ -1190,6 +1239,24 @@ export default function Bets() {
               >
                 <TrendingDown className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
                 <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">PERDEU</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => updateBetStatus(bet.id, 'half_won')}
+                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-green hover:text-terminal-black hover:border-terminal-green transition-all flex justify-center items-center gap-2"
+                title="Marcar como 1/2 Green"
+              >
+                <TrendingUp className="w-5 h-5 text-terminal-green hover:text-terminal-black opacity-70" />
+                <span className="text-xs font-bold text-terminal-green hover:text-terminal-black">1/2 GREEN</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => updateBetStatus(bet.id, 'half_lost')}
+                className="col-span-2 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center gap-2"
+                title="Marcar como 1/2 Red"
+              >
+                <TrendingDown className="w-5 h-5 text-terminal-red hover:text-terminal-black opacity-70" />
+                <span className="text-xs font-bold text-terminal-red hover:text-terminal-black">1/2 RED</span>
               </button>
               <button 
                 type="button"
@@ -1377,6 +1444,8 @@ export default function Bets() {
                   { value: 'pending', label: 'PENDENTE' },
                   { value: 'won', label: 'GANHOU' },
                   { value: 'lost', label: 'PERDEU' },
+                  { value: 'half_won', label: '1/2 GREEN' },
+                  { value: 'half_lost', label: '1/2 RED' },
                   { value: 'cashout', label: 'CASHOUT' },
                   { value: 'void', label: 'ANULADA' },
                 ]}
@@ -1978,6 +2047,8 @@ export default function Bets() {
                     <SelectItem value="pending">PENDENTE</SelectItem>
                     <SelectItem value="won">GANHOU</SelectItem>
                     <SelectItem value="lost">PERDEU</SelectItem>
+                    <SelectItem value="half_won">1/2 GREEN</SelectItem>
+                    <SelectItem value="half_lost">1/2 RED</SelectItem>
                     <SelectItem value="void">ANULADA</SelectItem>
                     <SelectItem value="cashout">CASHOUT</SelectItem>
                   </SelectContent>

@@ -12,7 +12,7 @@ export interface Bet {
   odds: number;
   stake_amount: number;
   potential_return: number;
-  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout';
+  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
   bet_date: string;
   match_date?: string;
   created_at: string;
@@ -49,19 +49,28 @@ export function useBets(userId: string) {
     
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
-    const pendingBets = betsData.filter(bet => bet.status === 'pending');
+    const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
+    const halfWonBets = betsData.filter(bet => bet.status === 'half_won');
+    const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
-    const totalLost = lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
+    const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
+    const totalHalfWon = halfWonBets.reduce((sum, bet) => sum + (bet.stake_amount + bet.potential_return) / 2, 0);
+    const totalHalfLost = halfLostBets.reduce((sum, bet) => sum + bet.stake_amount / 2, 0);
     
-    const winRate = totalBets > 0 ? (wonBets.length / (wonBets.length + lostBets.length)) * 100 : 0;
-    const profit = totalReturn - totalLost;
+    const totalEarnings = totalReturn + totalCashout + totalHalfWon + totalHalfLost;
+    
+    const winEquiv = wonBets.length + cashoutBets.length + halfWonBets.length * 0.5;
+    const lossEquiv = lostBets.length + halfLostBets.length * 0.5;
+    const settledCount = winEquiv + lossEquiv;
+    const winRate = settledCount > 0 ? (winEquiv / settledCount) * 100 : 0;
+    const profit = totalEarnings - totalStaked;
     const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
 
     setStats({
       totalBets,
       totalStaked,
-      totalReturn,
+      totalReturn: totalEarnings,
       winRate,
       profit,
       roi

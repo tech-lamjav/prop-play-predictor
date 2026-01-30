@@ -25,7 +25,7 @@ interface Bet {
   odds: number;
   stake_amount: number;
   potential_return: number;
-  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout';
+  status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
   bet_date: string;
   match_date?: string;
   created_at: string;

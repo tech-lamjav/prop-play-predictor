@@ -63,6 +63,8 @@ const statusOptions = [
   { value: 'pending', label: 'Pendente', icon: Clock },
   { value: 'won', label: 'Ganha', icon: TrendingUp },
   { value: 'lost', label: 'Perdida', icon: TrendingDown },
+  { value: 'half_won', label: '1/2 Green', icon: TrendingUp },
+  { value: 'half_lost', label: '1/2 Red', icon: TrendingDown },
   { value: 'void', label: 'Anulada', icon: X },
 ];
 
