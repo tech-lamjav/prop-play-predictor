@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3?target=deno&deno-std=0.177.1"
+import { createClient } from "npm:@supabase/supabase-js@2"
 import { normalizePhoneNumber, normalizePhoneCandidates, maskPhone } from "../shared/phone.ts"
 import { generateTraceId, identifyUser, trackEvent, trackLLMGeneration } from "../shared/posthog.ts"
 
@@ -947,53 +947,73 @@ SCHEMA:
     })
 
     if (message.tool_calls && message.tool_calls.length > 0) {
-      const toolCall = message.tool_calls[0]
-      if (toolCall.function?.name === "calculate_multiple_odds") {
-        try {
-          const args = JSON.parse(toolCall.function.arguments || "{}")
-          const odds = args.odds as number[]
-          const combinedOdd = await calculateMultipleOdds(odds)
-          const toolResponse = { role: "tool" as const, tool_call_id: toolCall.id, content: JSON.stringify({ combined_odd: combinedOdd }) }
-
-          const followUp = await fetch(`${OPENAI_API_URL}/chat/completions`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "gpt-4o",
-              messages: [...messages, message, toolResponse],
-              tools: [CALCULATE_ODDS_TOOL],
-              tool_choice: "none",
-              response_format: { type: "json_schema", json_schema: { name: "betting_info", strict: true, schema: BETTING_INFO_SCHEMA } },
-              max_tokens: 1500,
-              temperature: 0.1
-            })
-          })
-
-          const followLatency = Date.now() - startTime - initialLatency
-          const followResult = await followUp.json()
-          totalLatency += followLatency
-          const followUsage = followResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-          totalUsage = {
-            prompt_tokens: (totalUsage.prompt_tokens || 0) + (followUsage.prompt_tokens || 0),
-            completion_tokens: (totalUsage.completion_tokens || 0) + (followUsage.completion_tokens || 0),
-            total_tokens: (totalUsage.total_tokens || 0) + (followUsage.total_tokens || 0)
+      try {
+        const toolResponses: Array<{ role: "tool"; tool_call_id: string; content: string }> = []
+        for (const toolCall of message.tool_calls) {
+          const id = toolCall.id
+          const name = toolCall.function?.name
+          const argsJson = toolCall.function?.arguments || "{}"
+          if (name === "calculate_multiple_odds") {
+            const args = JSON.parse(argsJson)
+            const odds = (args?.odds as number[]) ?? []
+            const combinedOdd = await calculateMultipleOdds(odds)
+            toolResponses.push({ role: "tool" as const, tool_call_id: id, content: JSON.stringify({ combined_odd: combinedOdd }) })
+          } else {
+            toolResponses.push({ role: "tool" as const, tool_call_id: id, content: JSON.stringify({ error: "unknown_tool" }) })
           }
+        }
 
-          message = followResult.choices[0].message
-          result = followResult
-          console.log("extract_betting_after_tool", {
-            content_preview: typeof message.content === "string" ? message.content.slice(0, 200) : "",
-            tool_calls_len: message.tool_calls?.length || 0
+        const followUp = await fetch(`${OPENAI_API_URL}/chat/completions`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [...messages, message, ...toolResponses],
+            tools: [CALCULATE_ODDS_TOOL],
+            tool_choice: "none",
+            response_format: { type: "json_schema", json_schema: { name: "betting_info", strict: true, schema: BETTING_INFO_SCHEMA } },
+            max_tokens: 1500,
+            temperature: 0.1
           })
-        } catch (err) {
+        })
+
+        const followLatency = Date.now() - startTime - initialLatency
+        const followResult = await followUp.json()
+        totalLatency += followLatency
+        const followUsage = followResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+        totalUsage = {
+          prompt_tokens: (totalUsage.prompt_tokens || 0) + (followUsage.prompt_tokens || 0),
+          completion_tokens: (totalUsage.completion_tokens || 0) + (followUsage.completion_tokens || 0),
+          total_tokens: (totalUsage.total_tokens || 0) + (followUsage.total_tokens || 0)
+        }
+
+        const followChoice = followResult?.choices?.[0]
+        if (!followChoice?.message) {
+          const apiError = followResult?.error?.message || JSON.stringify(followResult).slice(0, 500)
+          console.error("extract_betting_follow_no_choices", { followResult: followResult?.error || followResult })
           await trackEvent(
             "processing_error",
-            { error_type: "tool_call_error", error_message: (err as any)?.message?.substring(0, 500), operation: "extract_betting", channel: "telegram" },
+            { error_type: "tool_call_error", error_message: apiError, operation: "extract_betting", channel: "telegram" },
             userId,
             traceId
           ).catch(() => {})
           return null
         }
+
+        message = followChoice.message
+        result = followResult
+        console.log("extract_betting_after_tool", {
+          content_preview: typeof message.content === "string" ? message.content.slice(0, 200) : "",
+          tool_calls_len: message.tool_calls?.length || 0
+        })
+      } catch (err) {
+        await trackEvent(
+          "processing_error",
+          { error_type: "tool_call_error", error_message: (err as any)?.message?.substring(0, 500), operation: "extract_betting", channel: "telegram" },
+          userId,
+          traceId
+        ).catch(() => {})
+        return null
       }
     }
 
