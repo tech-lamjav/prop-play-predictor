@@ -21,6 +21,7 @@ export interface CreateBetFormData {
   match_description: string;
   sport: string;
   league: string;
+  betting_market: string;
   odds: string;
   stake_amount: string;
   bet_date: string;
@@ -34,6 +35,7 @@ interface CreateBetModalProps {
   onCreate: (data: CreateBetFormData) => Promise<boolean>;
   sportsList: string[];
   leaguesList: string[];
+  bettingMarketsList: string[];
   userTags: CreateBetTag[];
   onTagsUpdated?: () => void;
 }
@@ -43,6 +45,7 @@ const getDefaultFormData = (): CreateBetFormData => ({
   match_description: '',
   sport: '',
   league: '',
+  betting_market: '',
   odds: '',
   stake_amount: '',
   bet_date: new Date().toISOString().split('T')[0],
@@ -74,6 +77,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
   onCreate,
   sportsList,
   leaguesList,
+  bettingMarketsList,
   userTags: _userTags,
   onTagsUpdated,
 }) => {
@@ -88,6 +92,10 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
   const [isCreateLeagueQueryTouched, setIsCreateLeagueQueryTouched] = useState(false);
   const [createLeagueHighlightIndex, setCreateLeagueHighlightIndex] = useState(-1);
   const createLeagueItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const [isCreateBettingMarketDropdownOpen, setIsCreateBettingMarketDropdownOpen] = useState(false);
+  const [isCreateBettingMarketQueryTouched, setIsCreateBettingMarketQueryTouched] = useState(false);
+  const [createBettingMarketHighlightIndex, setCreateBettingMarketHighlightIndex] = useState(-1);
+  const createBettingMarketItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const resetForm = useCallback(() => {
     setFormData(getDefaultFormState());
@@ -99,6 +107,9 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
     setIsCreateLeagueDropdownOpen(false);
     setIsCreateLeagueQueryTouched(false);
     setCreateLeagueHighlightIndex(-1);
+    setIsCreateBettingMarketDropdownOpen(false);
+    setIsCreateBettingMarketQueryTouched(false);
+    setCreateBettingMarketHighlightIndex(-1);
   }, []);
 
   useEffect(() => {
@@ -126,6 +137,15 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
     if (!query) return leaguesList;
     return leaguesList.filter((league) => league.toLowerCase().includes(query));
   }, [formData.league, isCreateLeagueQueryTouched, leaguesList]);
+
+  const filteredCreateBettingMarketsList = useMemo(() => {
+    if (!isCreateBettingMarketQueryTouched) {
+      return bettingMarketsList;
+    }
+    const query = formData.betting_market.trim().toLowerCase();
+    if (!query) return bettingMarketsList;
+    return bettingMarketsList.filter((market) => market.toLowerCase().includes(query));
+  }, [formData.betting_market, isCreateBettingMarketQueryTouched, bettingMarketsList]);
 
   useEffect(() => {
     if (!isCreateSportDropdownOpen || filteredCreateSportsList.length === 0) {
@@ -170,6 +190,27 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
       currentItem.scrollIntoView({ block: 'nearest' });
     }
   }, [isCreateLeagueDropdownOpen, createLeagueHighlightIndex]);
+
+  useEffect(() => {
+    if (!isCreateBettingMarketDropdownOpen || filteredCreateBettingMarketsList.length === 0) {
+      setCreateBettingMarketHighlightIndex(-1);
+      return;
+    }
+    setCreateBettingMarketHighlightIndex((prev) => {
+      if (prev < 0 || prev >= filteredCreateBettingMarketsList.length) {
+        return 0;
+      }
+      return prev;
+    });
+  }, [isCreateBettingMarketDropdownOpen, filteredCreateBettingMarketsList.length]);
+
+  useEffect(() => {
+    if (!isCreateBettingMarketDropdownOpen || createBettingMarketHighlightIndex < 0) return;
+    const currentItem = createBettingMarketItemRefs.current[createBettingMarketHighlightIndex];
+    if (currentItem?.scrollIntoView) {
+      currentItem.scrollIntoView({ block: 'nearest' });
+    }
+  }, [isCreateBettingMarketDropdownOpen, createBettingMarketHighlightIndex]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     onOpenChange(nextOpen);
@@ -430,6 +471,108 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs uppercase opacity-70">Mercado (opcional)</Label>
+            <div className="relative">
+              <Input
+                value={formData.betting_market}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData((prev) => ({ ...prev, betting_market: value }));
+                  setIsCreateBettingMarketQueryTouched(true);
+                  setIsCreateBettingMarketDropdownOpen(true);
+                  setCreateBettingMarketHighlightIndex(0);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Tab') {
+                    setIsCreateBettingMarketDropdownOpen(false);
+                    setIsCreateBettingMarketQueryTouched(false);
+                    setCreateBettingMarketHighlightIndex(-1);
+                    return;
+                  }
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    if (!isCreateBettingMarketDropdownOpen) {
+                      setIsCreateBettingMarketDropdownOpen(true);
+                      setIsCreateBettingMarketQueryTouched(true);
+                    }
+                    setCreateBettingMarketHighlightIndex((prev) => {
+                      if (filteredCreateBettingMarketsList.length === 0) return -1;
+                      const next = prev < filteredCreateBettingMarketsList.length - 1 ? prev + 1 : 0;
+                      return next;
+                    });
+                    return;
+                  }
+                  if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    if (!isCreateBettingMarketDropdownOpen) {
+                      setIsCreateBettingMarketDropdownOpen(true);
+                      setIsCreateBettingMarketQueryTouched(true);
+                    }
+                    setCreateBettingMarketHighlightIndex((prev) => {
+                      if (filteredCreateBettingMarketsList.length === 0) return -1;
+                      const next = prev > 0 ? prev - 1 : filteredCreateBettingMarketsList.length - 1;
+                      return next;
+                    });
+                    return;
+                  }
+                  if (event.key === 'Enter') {
+                    if (createBettingMarketHighlightIndex >= 0 && filteredCreateBettingMarketsList[createBettingMarketHighlightIndex]) {
+                      event.preventDefault();
+                      const selectedMarket = filteredCreateBettingMarketsList[createBettingMarketHighlightIndex];
+                      setFormData((prev) => ({ ...prev, betting_market: selectedMarket }));
+                      setIsCreateBettingMarketDropdownOpen(false);
+                      setIsCreateBettingMarketQueryTouched(false);
+                      setCreateBettingMarketHighlightIndex(-1);
+                    }
+                    return;
+                  }
+                  if (event.key === 'Escape') {
+                    setIsCreateBettingMarketDropdownOpen(false);
+                    setCreateBettingMarketHighlightIndex(-1);
+                  }
+                }}
+                onFocus={() => {
+                  setIsCreateBettingMarketDropdownOpen(true);
+                  setIsCreateBettingMarketQueryTouched(false);
+                }}
+                onBlur={() => setIsCreateBettingMarketDropdownOpen(false)}
+                placeholder="Selecione ou digite o mercado"
+                className="bg-terminal-black border-terminal-border text-terminal-text"
+              />
+              {isCreateBettingMarketDropdownOpen && formData.betting_market && (
+                <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-dark-gray">
+                  {filteredCreateBettingMarketsList.length > 0 ? (
+                    filteredCreateBettingMarketsList.map((market, index) => (
+                      <button
+                        key={market}
+                        type="button"
+                        tabIndex={-1}
+                        ref={(element) => {
+                          createBettingMarketItemRefs.current[index] = element;
+                        }}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          setFormData((prev) => ({ ...prev, betting_market: market }));
+                          setIsCreateBettingMarketDropdownOpen(false);
+                          setIsCreateBettingMarketQueryTouched(false);
+                          setCreateBettingMarketHighlightIndex(-1);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm text-terminal-text hover:bg-terminal-black ${
+                          index === createBettingMarketHighlightIndex ? 'bg-terminal-black' : ''
+                        }`}
+                      >
+                        {market}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-xs opacity-60">Nenhum mercado encontrado</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

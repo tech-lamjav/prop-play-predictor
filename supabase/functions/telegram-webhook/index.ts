@@ -55,6 +55,7 @@ interface ProcessedBet {
   bet_type: string
   sport: string
   league?: string
+  betting_market?: string
   matches: Array<{
     description: string
     bet_description: string
@@ -92,9 +93,10 @@ const BETTING_INFO_SCHEMA = {
     },
     stake_amount: { type: "number", minimum: 0 },
     bet_date: { type: "string" },
-    odds_are_individual: { type: "boolean" }
+    odds_are_individual: { type: "boolean" },
+    betting_market: { type: "string" }
   },
-  required: ["bet_type", "sport", "matches", "stake_amount", "bet_date", "odds_are_individual", "league"],
+  required: ["bet_type", "sport", "matches", "stake_amount", "bet_date", "odds_are_individual", "league", "betting_market"],
   additionalProperties: false
 }
 
@@ -819,6 +821,7 @@ CLASSIFICAÇÃO DE LIGAS:
   {
     "league": "ME - Liga Premier",
     "sport": "Futebol"
+  },
   {
     "league": "EU - Conference League",
     "sport": "Futebol"
@@ -884,11 +887,23 @@ CLASSIFICAÇÃO DE LIGAS:
 - Se a liga for identificada e não estiver na lista, retorne ela como está.
 - Se forem identificadas múltiplas ligas, retorne "Diversos"
 
+CLASSIFICAÇÃO DE MERCADO DA APOSTA:
+- Identifique o mercado da aposta com base na descrição (tipo de aposta, odds, termos usados).
+- Valores permitidos (use exatamente um):
+  * "Múltipla" = múltiplas seleções combinadas (acumulada)
+  * "Money Line" = aposta no vencedor do jogo/evento (1x2 em futebol, winner)
+  * "Handicap" = linha de handicap (asiático ou europeu)
+  * "Over/Under" = totais (over/under gols, pontos)
+  * "Dupla Chance" = duas opções (ex: 1X, X2, 12)
+  * "Ambas Marcam" = sim/não (ambas marcam, BTTS)
+- Retorne string vazia "" se não for possível identificar o mercado.
+
 SCHEMA:
 {
   bet_type: "single" | "multiple" | "system",
   sport: string,
   league: string | null,
+  betting_market: string,
   matches: [{
     description: string,
     bet_description: string,
@@ -1248,6 +1263,7 @@ async function processMessage(
           bet_type: bettingInfo.bet_type,
           sport: bettingInfo.sport || "outros",
           league: bettingInfo.league || null,
+          betting_market: bettingInfo.betting_market || null,
           match_description: validatedMatches.length === 1 ? validatedMatches[0]?.description : `Múltipla (${validatedMatches.length} seleções)`,
           bet_description: validatedMatches.length === 1 ? validatedMatches[0]?.bet_description : validatedMatches.map((m, i) => `${m.description} - ${m.bet_description}`).join(" • "),
           odds: calculatedOdds,
