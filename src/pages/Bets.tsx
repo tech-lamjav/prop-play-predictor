@@ -62,6 +62,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
 import { useToast } from '../hooks/use-toast';
 import { format, parse, isValid, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -78,6 +79,7 @@ interface Bet {
   bet_type: string;
   sport: string;
   league?: string;
+  betting_market?: string;
   match_description?: string;
   bet_description: string;
   odds: number;
@@ -96,6 +98,13 @@ interface Bet {
   is_cashout?: boolean;
   channel?: string;
   tags?: Tag[];
+}
+
+/** Trunca texto em até maxLength caracteres, mantendo quebras de linha (\n) no resultado. */
+function truncateDescription(text: string | undefined, maxLength: number = 50): string {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + '…';
 }
 
 const SPORTS_LIST = [
@@ -161,6 +170,15 @@ const LEAGUES_LIST = [
   'US - NFL',
 ];
 
+const BETTING_MARKETS_LIST = [
+  'Múltipla',
+  'Money Line',
+  'Handicap',
+  'Over/Under',
+  'Dupla Chance',
+  'Ambas Marcam',
+];
+
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isConfigured, formatWithUnits, config, updateConfig, formatCurrency } = useUserUnit();
@@ -204,6 +222,7 @@ export default function Bets() {
       match_description: string;
       sport: string;
       league: string;
+      betting_market: string;
       odds: string;
       stake_amount: string;
       bet_date: string;
@@ -218,6 +237,7 @@ export default function Bets() {
       match_description: '',
       sport: '',
       league: '',
+      betting_market: '',
       odds: '',
       stake_amount: '',
       bet_date: '',
@@ -239,11 +259,17 @@ export default function Bets() {
   const [leagueHighlightIndex, setLeagueHighlightIndex] = useState(-1);
   const leagueItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
+  const [isBettingMarketDropdownOpen, setIsBettingMarketDropdownOpen] = useState(false);
+  const [isBettingMarketQueryTouched, setIsBettingMarketQueryTouched] = useState(false);
+  const [bettingMarketHighlightIndex, setBettingMarketHighlightIndex] = useState(-1);
+  const bettingMarketItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
   // Filter states
   const [filters, setFilters] = useState({
     status: [] as string[],
     sport: [] as string[],
     league: [] as string[],
+    betting_market: [] as string[],
     searchQuery: '',
     dateFrom: '',
     dateTo: '',
@@ -255,7 +281,7 @@ export default function Bets() {
 
   // Sort state
   type SortDirection = 'asc' | 'desc';
-  type SortColumn = 'bet_date' | 'sport' | 'league' | 'stake_amount' | 'odds' | 'return' | 'status' | null;
+  type SortColumn = 'bet_date' | 'sport' | 'league' | 'betting_market' | 'stake_amount' | 'odds' | 'return' | 'status' | null;
   
   const [sortConfig, setSortConfig] = useState<{
     column: SortColumn;
@@ -443,6 +469,7 @@ export default function Bets() {
         match_description: editModal.formData.match_description || null,
         sport: editModal.formData.sport,
         league: editModal.formData.league || null,
+        betting_market: editModal.formData.betting_market || null,
         odds: odds,
         stake_amount: stakeAmount,
         potential_return: potentialReturn,
@@ -491,6 +518,7 @@ export default function Bets() {
           match_description: data.match_description || null,
           sport: data.sport || 'Outros',
           league: data.league || null,
+          betting_market: data.betting_market || null,
           odds: odds,
           stake_amount: stakeAmount,
           potential_return: potentialReturn,
@@ -544,6 +572,7 @@ export default function Bets() {
         match_description: bet.match_description || '',
         sport: bet.sport || '',
         league: bet.league || '',
+        betting_market: bet.betting_market || '',
         odds: bet.odds?.toString() || '',
         stake_amount: bet.stake_amount?.toString() || '',
         bet_date: bet.bet_date ? new Date(bet.bet_date).toISOString().split('T')[0] : '',
@@ -557,6 +586,9 @@ export default function Bets() {
     setIsLeagueDropdownOpen(false);
     setIsLeagueQueryTouched(false);
     setLeagueHighlightIndex(-1);
+    setIsBettingMarketDropdownOpen(false);
+    setIsBettingMarketQueryTouched(false);
+    setBettingMarketHighlightIndex(-1);
   }, []);
 
   const fetchReferralCode = useCallback(async () => {
@@ -665,6 +697,18 @@ export default function Bets() {
     });
   }, [bets]);
 
+  const uniqueBettingMarkets = useMemo(() => {
+    const markets = Array.from(new Set(bets.map(bet => bet.betting_market).filter(Boolean)));
+    return markets.sort((a, b) => {
+      const indexA = BETTING_MARKETS_LIST.indexOf(a);
+      const indexB = BETTING_MARKETS_LIST.indexOf(b);
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [bets]);
+
   const filteredBets = useMemo(() => {
     return bets.filter(bet => {
       // Filter by status: if any statuses selected, bet must match one of them
@@ -698,6 +742,20 @@ export default function Bets() {
         }
       }
       
+      // Filter by betting_market: if any markets selected, bet must match one of them
+      if (filters.betting_market.length > 0) {
+        const includeEmpty = filters.betting_market.includes('__empty__');
+        const marketValues = filters.betting_market.filter(v => v !== '__empty__');
+        const betMarket = bet.betting_market || '';
+        
+        const matchesEmpty = includeEmpty && !betMarket;
+        const matchesValue = marketValues.length > 0 && marketValues.includes(betMarket);
+        
+        if (!matchesEmpty && !matchesValue) {
+          return false;
+        }
+      }
+      
       // Filter by date range
       if (filters.dateFrom) {
         if (new Date(bet.bet_date) < new Date(filters.dateFrom)) return false;
@@ -714,7 +772,8 @@ export default function Bets() {
         const matchDescription = bet.bet_description?.toLowerCase().includes(query);
         const matchMatch = bet.match_description?.toLowerCase().includes(query);
         const matchLeague = bet.league?.toLowerCase().includes(query);
-        if (!matchDescription && !matchMatch && !matchLeague) return false;
+        const matchBettingMarket = bet.betting_market?.toLowerCase().includes(query);
+        if (!matchDescription && !matchMatch && !matchLeague && !matchBettingMarket) return false;
       }
       
       // Filter by tags: if any tags selected, bet must have at least one of them
@@ -747,6 +806,10 @@ export default function Bets() {
         case 'league':
           aValue = (a.league || '').toLowerCase();
           bValue = (b.league || '').toLowerCase();
+          break;
+        case 'betting_market':
+          aValue = (a.betting_market || '').toLowerCase();
+          bValue = (b.betting_market || '').toLowerCase();
           break;
         case 'stake_amount':
           aValue = a.stake_amount || 0;
@@ -818,6 +881,15 @@ export default function Bets() {
     return LEAGUES_LIST.filter((league) => league.toLowerCase().includes(query));
   }, [editModal.formData.league, isLeagueQueryTouched]);
 
+  const filteredBettingMarketsList = useMemo(() => {
+    if (!isBettingMarketQueryTouched) {
+      return BETTING_MARKETS_LIST;
+    }
+    const query = editModal.formData.betting_market.trim().toLowerCase();
+    if (!query) return BETTING_MARKETS_LIST;
+    return BETTING_MARKETS_LIST.filter((market) => market.toLowerCase().includes(query));
+  }, [editModal.formData.betting_market, isBettingMarketQueryTouched]);
+
   useEffect(() => {
     if (!isSportDropdownOpen || filteredSportsList.length === 0) {
       setSportHighlightIndex(-1);
@@ -863,6 +935,27 @@ export default function Bets() {
   }, [isLeagueDropdownOpen, leagueHighlightIndex]);
 
   useEffect(() => {
+    if (!isBettingMarketDropdownOpen || filteredBettingMarketsList.length === 0) {
+      setBettingMarketHighlightIndex(-1);
+      return;
+    }
+    setBettingMarketHighlightIndex((prev) => {
+      if (prev < 0 || prev >= filteredBettingMarketsList.length) {
+        return 0;
+      }
+      return prev;
+    });
+  }, [isBettingMarketDropdownOpen, filteredBettingMarketsList.length]);
+
+  useEffect(() => {
+    if (!isBettingMarketDropdownOpen || bettingMarketHighlightIndex < 0) return;
+    const currentItem = bettingMarketItemRefs.current[bettingMarketHighlightIndex];
+    if (currentItem?.scrollIntoView) {
+      currentItem.scrollIntoView({ block: 'nearest' });
+    }
+  }, [isBettingMarketDropdownOpen, bettingMarketHighlightIndex]);
+
+  useEffect(() => {
     if (isMountedRef.current) {
       calculateStats(filteredBets);
     }
@@ -893,6 +986,7 @@ export default function Bets() {
       status: [],
       sport: [],
       league: [],
+      betting_market: [],
       searchQuery: '',
       dateFrom: '',
       dateTo: '',
@@ -931,7 +1025,7 @@ export default function Bets() {
     const isActive = sortConfig.column === column;
     return (
       <th 
-        className={`${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} py-2 px-2 data-label cursor-pointer hover:text-terminal-green transition-colors select-none`}
+        className={`${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} py-1.5 px-1.5 data-label cursor-pointer hover:text-terminal-green transition-colors select-none`}
         onClick={() => handleSort(column)}
       >
         <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'}`}>
@@ -956,16 +1050,33 @@ export default function Bets() {
         key={bet.id}
         className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors"
       >
-        <td className="py-2 px-2 opacity-70">
+        <td className="py-1.5 px-1.5 opacity-70">
           {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
         </td>
-        <td className="py-2 px-2 font-medium">
-          <div>{bet.bet_description}</div>
-          {bet.match_description && (
-            <div className="text-[10px] opacity-50">{bet.match_description}</div>
-          )}
+        <td className="py-1.5 px-1.5 font-medium min-w-0 overflow-hidden">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default inline-block w-full min-w-0">
+                <div className="whitespace-pre-line break-words">{truncateDescription(bet.bet_description, 50)}</div>
+                {bet.match_description && (
+                  <div className="text-[10px] opacity-50 break-words">{truncateDescription(bet.match_description, 50)}</div>
+                )}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs px-2 py-1 text-xs bg-terminal-black border-terminal-border text-terminal-text">
+              <div className="whitespace-pre-line">
+                {bet.bet_description}
+                {bet.match_description && (
+                  <>
+                    {'\n'}
+                    <span className="opacity-70">{bet.match_description}</span>
+                  </>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
         </td>
-        <td className="py-2 px-2">
+        <td className="py-1.5 px-1.5">
           <TagSelector
             betId={bet.id}
             selectedTags={bet.tags || []}
@@ -1003,19 +1114,22 @@ export default function Bets() {
             onTagsUpdated={fetchUserTags}
           />
         </td>
-        <td className="py-2 px-2 opacity-70">
+        <td className="py-1.5 px-1.5 opacity-70">
           {bet.sport}
         </td>
-        <td className="py-2 px-2 opacity-70">
+        <td className="py-1.5 px-1.5 opacity-70">
           {bet.league || '-'}
         </td>
-        <td className="text-right py-2 px-2">
+        <td className="py-1.5 px-1.5 opacity-70">
+          {bet.betting_market || '-'}
+        </td>
+        <td className="text-right py-1.5 px-1.5">
           {formatWithUnits(bet.stake_amount)}
         </td>
-        <td className="text-right py-2 px-2 text-terminal-blue">
+        <td className="text-right py-1.5 px-1.5 text-terminal-blue">
           {bet.odds.toFixed(2)}
         </td>
-        <td className={`text-right py-2 px-2 ${
+        <td className={`text-right py-1.5 px-1.5 ${
           bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' : 
           bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 
           'opacity-70'
@@ -1029,8 +1143,8 @@ export default function Bets() {
                 : formatWithUnits(bet.potential_return)
           }
         </td>
-        <td className="text-center py-2 px-2 whitespace-nowrap">
-          <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
+        <td className="text-center py-1.5 px-1.5 whitespace-nowrap">
+          <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
             bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
             bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
             bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
@@ -1042,19 +1156,19 @@ export default function Bets() {
             {translateStatus(bet.status)}
           </span>
         </td>
-        <td className="py-2 px-2">
-          <div className="flex flex-row items-center gap-2 justify-end">
+        <td className="py-1.5 px-1.5 min-w-0">
+          <div className="flex flex-row items-center gap-1.5 justify-end flex-nowrap">
             {bet.status === 'pending' && (
               <>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-2 text-terminal-text"
+                      className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-1.5 text-terminal-text shrink-0 text-[10px] font-bold uppercase"
                     >
-                      <Target className="w-4 h-4 opacity-70" />
-                      <span className="text-[10px] font-bold uppercase">Resultado</span>
-                      <ChevronDown className="w-3 h-3 opacity-70" />
+                      <Target className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                      Resultado
+                      <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
@@ -1079,29 +1193,29 @@ export default function Bets() {
                 <button 
                   type="button"
                   onClick={() => openCashoutModal(bet)}
-                  className="px-3 py-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-2"
+                  className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-1.5 shrink-0 text-[10px] font-bold text-terminal-blue hover:text-terminal-black"
                   title="Cashout"
                 >
-                  <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
-                  <span className="text-[10px] font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
+                  <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                  CASHOUT
                 </button>
               </>
             )}
             <button 
               type="button"
               onClick={() => openEditModal(bet)}
-              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all"
+              className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all shrink-0"
               title="Editar"
             >
-              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+              <Edit className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
             </button>
             <button 
               type="button"
               onClick={() => deleteBet(bet.id)}
-              className="p-2 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all"
+              className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all shrink-0"
               title="Excluir"
             >
-              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+              <Trash2 className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
             </button>
           </div>
         </td>
@@ -1134,18 +1248,43 @@ export default function Bets() {
           </span>
         </div>
 
-        {/* Main Info: Description + Sport */}
+        {/* Main Info: Description + Sport — truncado 50 chars; toque para ver completo */}
         <div>
-          <div className="font-medium text-sm text-terminal-text">{bet.bet_description}</div>
-          {bet.match_description && (
-            <div className="text-xs opacity-60 mt-0.5">{bet.match_description}</div>
-          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="w-full text-left font-medium text-sm text-terminal-text cursor-pointer focus:outline-none focus:ring-0"
+              >
+                <span className="whitespace-pre-line block">{truncateDescription(bet.bet_description, 50)}</span>
+                {bet.match_description && (
+                  <span className="text-xs opacity-60 mt-0.5 block">{truncateDescription(bet.match_description, 50)}</span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="max-w-[min(90vw,320px)] p-3 text-xs bg-terminal-black border-terminal-border text-terminal-text">
+              <div className="whitespace-pre-line">
+                {bet.bet_description}
+                {bet.match_description && (
+                  <>
+                    {'\n'}
+                    <span className="opacity-70">{bet.match_description}</span>
+                  </>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
           <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">
             {bet.sport}
           </div>
           {bet.league && (
             <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">
               {bet.league}
+            </div>
+          )}
+          {bet.betting_market && (
+            <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">
+              {bet.betting_market}
             </div>
           )}
           {/* Tags */}
@@ -1476,6 +1615,20 @@ export default function Bets() {
               />
 
               <MultiSelectFilter
+                label="MERCADOS"
+                placeholder="TODOS MERCADOS"
+                options={[
+                  ...uniqueBettingMarkets.map(market => ({
+                    value: market,
+                    label: market.toUpperCase()
+                  })),
+                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                ]}
+                selected={filters.betting_market}
+                onChange={(values) => setFilters(prev => ({ ...prev, betting_market: values }))}
+              />
+
+              <MultiSelectFilter
                 label="TAGS"
                 placeholder="TODAS AS TAGS"
                 options={userTags.map(tag => ({
@@ -1624,21 +1777,35 @@ export default function Bets() {
             </div>
           ) : (
             <>
-              {/* Desktop Table View */}
+              {/* Desktop Table View - table-fixed + colgroup para caber sem rolagem horizontal */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs table-fixed">
+                  <colgroup>
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '17%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '13%' }} />
+                  </colgroup>
                   <thead>
                     <tr className="border-b border-terminal-border-subtle">
                       <SortableHeader column="bet_date" label="DATA" />
-                      <th className="text-left py-2 px-2 data-label">DESCRIÇÃO</th>
-                      <th className="text-left py-2 px-2 data-label">TAGS</th>
+                      <th className="text-left py-1.5 px-1.5 data-label">DESCRIÇÃO</th>
+                      <th className="text-left py-1.5 px-1.5 data-label">TAGS</th>
                       <SortableHeader column="sport" label="ESPORTE" />
                       <SortableHeader column="league" label="LIGA" />
+                      <SortableHeader column="betting_market" label="MERCADO" />
                       <SortableHeader column="stake_amount" label="VALOR" align="right" />
                       <SortableHeader column="odds" label="ODDS" align="right" />
                       <SortableHeader column="return" label="RETORNO" align="right" />
                       <SortableHeader column="status" label="STATUS" align="center" />
-                      <th className="text-right py-2 px-2 data-label">AÇÕES</th>
+                      <th className="text-right py-1.5 px-1.5 data-label">AÇÕES</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1733,6 +1900,9 @@ export default function Bets() {
             setIsLeagueDropdownOpen(false);
             setIsLeagueQueryTouched(false);
             setLeagueHighlightIndex(-1);
+            setIsBettingMarketDropdownOpen(false);
+            setIsBettingMarketQueryTouched(false);
+            setBettingMarketHighlightIndex(-1);
           }
         }
       }>
@@ -1969,6 +2139,109 @@ export default function Bets() {
                     )}
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase opacity-70">Mercado</Label>
+                  <div className="relative">
+                    <Input
+                      value={editModal.formData.betting_market}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setEditModal(prev => ({ ...prev, formData: { ...prev.formData, betting_market: value } }));
+                        setIsBettingMarketQueryTouched(true);
+                        setIsBettingMarketDropdownOpen(true);
+                        setBettingMarketHighlightIndex(0);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Tab') {
+                          setIsBettingMarketDropdownOpen(false);
+                          setIsBettingMarketQueryTouched(false);
+                          setBettingMarketHighlightIndex(-1);
+                          return;
+                        }
+                        if (event.key === 'ArrowDown') {
+                          event.preventDefault();
+                          if (!isBettingMarketDropdownOpen) {
+                            setIsBettingMarketDropdownOpen(true);
+                            setIsBettingMarketQueryTouched(true);
+                          }
+                          setBettingMarketHighlightIndex((prev) => {
+                            if (filteredBettingMarketsList.length === 0) return -1;
+                            const next = prev < filteredBettingMarketsList.length - 1 ? prev + 1 : 0;
+                            return next;
+                          });
+                          return;
+                        }
+                        if (event.key === 'ArrowUp') {
+                          event.preventDefault();
+                          if (!isBettingMarketDropdownOpen) {
+                            setIsBettingMarketDropdownOpen(true);
+                            setIsBettingMarketQueryTouched(true);
+                          }
+                          setBettingMarketHighlightIndex((prev) => {
+                            if (filteredBettingMarketsList.length === 0) return -1;
+                            const next = prev > 0 ? prev - 1 : filteredBettingMarketsList.length - 1;
+                            return next;
+                          });
+                          return;
+                        }
+                        if (event.key === 'Enter') {
+                          if (bettingMarketHighlightIndex >= 0 && filteredBettingMarketsList[bettingMarketHighlightIndex]) {
+                            event.preventDefault();
+                            const selectedMarket = filteredBettingMarketsList[bettingMarketHighlightIndex];
+                            setEditModal(prev => ({ ...prev, formData: { ...prev.formData, betting_market: selectedMarket } }));
+                            setIsBettingMarketDropdownOpen(false);
+                            setIsBettingMarketQueryTouched(false);
+                            setBettingMarketHighlightIndex(-1);
+                          }
+                          return;
+                        }
+                        if (event.key === 'Escape') {
+                          setIsBettingMarketDropdownOpen(false);
+                          setBettingMarketHighlightIndex(-1);
+                        }
+                      }}
+                      onFocus={() => {
+                        setIsBettingMarketDropdownOpen(true);
+                        setIsBettingMarketQueryTouched(false);
+                      }}
+                      onBlur={() => setIsBettingMarketDropdownOpen(false)}
+                      placeholder="Selecione ou digite o mercado"
+                      className="bg-terminal-black border-terminal-border text-terminal-text"
+                    />
+                    {isBettingMarketDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-dark-gray">
+                        {filteredBettingMarketsList.length > 0 ? (
+                          filteredBettingMarketsList.map((market, index) => (
+                            <button
+                              key={market}
+                              type="button"
+                              tabIndex={-1}
+                              ref={(element) => {
+                                bettingMarketItemRefs.current[index] = element;
+                              }}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                setEditModal(prev => ({ ...prev, formData: { ...prev.formData, betting_market: market } }));
+                                setIsBettingMarketDropdownOpen(false);
+                                setIsBettingMarketQueryTouched(false);
+                                setBettingMarketHighlightIndex(-1);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm text-terminal-text hover:bg-terminal-black ${
+                                index === bettingMarketHighlightIndex ? 'bg-terminal-black' : ''
+                              }`}
+                            >
+                              {market}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-xs opacity-60">
+                            Nenhum mercado encontrado
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -2075,6 +2348,7 @@ export default function Bets() {
         onCreate={createBet}
         sportsList={SPORTS_LIST}
         leaguesList={LEAGUES_LIST}
+        bettingMarketsList={BETTING_MARKETS_LIST}
         userTags={userTags}
         onTagsUpdated={fetchUserTags}
       />

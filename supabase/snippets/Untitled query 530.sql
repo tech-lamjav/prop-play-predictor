@@ -1,2 +1,2 @@
-UPDATE bets
-set user_id = 'ab77f00a-7c91-4d65-9f5e-2a85ccfcdeb0'
+update bets
+set user_id = 'cc57ab07-8ebe-4916-b69b-38ed4a57de2a'
