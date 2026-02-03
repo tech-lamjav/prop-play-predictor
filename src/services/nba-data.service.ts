@@ -1,6 +1,30 @@
 import { supabase } from '@/integrations/supabase/client';
 const supabaseClient = supabase as any;
 
+// Helper function to retry failed requests
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 1000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      console.warn(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`, error);
+      if (attempt < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 1.5; // Exponential backoff
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 export interface Player {
   player_id: number;
   player_name: string;
@@ -73,6 +97,7 @@ export interface GamePlayerStats {
   stat_type: string;
   stat_value: number;
   line: number;
+  line_most_recent: number | null;  // Linha atual das casas de apostas
   is_b2b_game: boolean;
   stat_vs_line: string;
   played_against: string;
@@ -97,6 +122,8 @@ export interface Game {
   visitor_team_is_b2b_game: boolean;
   home_team_is_next_game: boolean;
   visitor_team_is_next_game: boolean;
+  home_team_last_five: string | null;  // Últimos 5 resultados (ex: "WWLWL")
+  visitor_team_last_five: string | null;  // Últimos 5 resultados (ex: "LWWLW")
 }
 
 export interface PlayerShootingZones {
@@ -131,19 +158,23 @@ export interface PlayerShootingZones {
 
 export const nbaDataService = {
   async getAllPlayers(): Promise<Player[]> {
-    const { data, error } = await supabaseClient
-      .rpc('get_all_players');
-    
-    if (error) throw error;
-    return data || [];
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_all_players');
+      
+      if (error) throw error;
+      return data || [];
+    });
   },
 
   async getPlayerById(playerId: number): Promise<Player | null> {
-    const { data, error } = await supabaseClient
-      .rpc('get_player_by_id', { p_player_id: playerId });
-    
-    if (error) throw error;
-    return data && data.length > 0 ? data[0] : null;
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_by_id', { p_player_id: playerId });
+      
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] : null;
+    });
   },
 
   async getPlayerByName(playerName: string): Promise<Player | null> {
@@ -168,58 +199,70 @@ export const nbaDataService = {
   },
 
   async getPlayerProps(playerId: number): Promise<PropPlayer[]> {
-    const { data, error } = await supabaseClient
-      .rpc('get_player_props', { p_player_id: playerId });
-    
-    if (error) throw error;
-    return (data || []) as PropPlayer[];
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_props', { p_player_id: playerId });
+      
+      if (error) throw error;
+      return (data || []) as PropPlayer[];
+    });
   },
 
   async getPlayerGameStats(playerId: number, limit = 15): Promise<GamePlayerStats[]> {
-    const { data, error} = await supabaseClient
-      .rpc('get_player_game_stats', { 
-        p_player_id: playerId,
-        p_limit: limit 
-      });
-    
-    if (error) throw error;
-    return (data || []) as GamePlayerStats[];
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_game_stats', { 
+          p_player_id: playerId,
+          p_limit: limit 
+        });
+      
+      if (error) throw error;
+      return (data || []) as GamePlayerStats[];
+    });
   },
 
   async getTeamById(teamId: number): Promise<Team | null> {
-    const { data, error } = await supabaseClient
-      .rpc('get_team_by_id', { p_team_id: teamId });
-    
-    if (error) throw error;
-    return data && data.length > 0 ? data[0] as Team : null;
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_team_by_id', { p_team_id: teamId });
+      
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] as Team : null;
+    });
   },
 
   async getTeamPlayers(teamId: number): Promise<TeamPlayer[]> {
-    const { data, error } = await supabaseClient
-      .rpc('get_team_players', { p_team_id: teamId });
-    
-    if (error) throw error;
-    return (data || []) as TeamPlayer[];
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_team_players', { p_team_id: teamId });
+      
+      if (error) throw error;
+      return (data || []) as TeamPlayer[];
+    });
   },
 
   async getGames(params?: { gameDate?: string; teamAbbreviation?: string }): Promise<Game[]> {
-    const { gameDate, teamAbbreviation } = params || {};
-    const { data, error } = await supabaseClient.rpc('get_games', {
-      p_game_date: gameDate ?? null,
-      p_team_abbreviation: teamAbbreviation ?? null,
-    });
+    return withRetry(async () => {
+      const { gameDate, teamAbbreviation } = params || {};
+      const { data, error } = await supabaseClient.rpc('get_games', {
+        p_game_date: gameDate ?? null,
+        p_team_abbreviation: teamAbbreviation ?? null,
+      });
 
-    if (error) throw error;
-    return (data || []) as Game[];
+      if (error) throw error;
+      return (data || []) as Game[];
+    });
   },
 
   async getPlayerShootingZones(playerId: number): Promise<PlayerShootingZones | null> {
-    const { data, error } = await supabaseClient.rpc('get_player_shooting_zones', {
-      p_player_id: playerId,
-    });
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_player_shooting_zones', {
+        p_player_id: playerId,
+      });
 
-    if (error) throw error;
-    if (!data || data.length === 0) return null;
-    return data[0] as PlayerShootingZones;
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+      return data[0] as PlayerShootingZones;
+    });
   },
 };

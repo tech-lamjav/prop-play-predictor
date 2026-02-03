@@ -22,6 +22,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
 import ComoUsar from "./pages/ComoUsar";
 import Games from "./pages/Games";
+import Home from "./pages/Home";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
         <PostHogPageView />
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/betinho" element={<Betinho />} />
           <Route path="/auth" element={
             <ProtectedRoute requireAuth={false}>
@@ -65,21 +67,13 @@ const App = () => (
               <Analysis />
             </ProtectedRoute>
           } />
-          <Route path="/games" element={
-            <ProtectedRoute>
-              <Games />
-            </ProtectedRoute>
-          } />
+          <Route path="/games" element={<Games />} />
           <Route path="/nba-players" element={
             <ProtectedRoute>
               <PlayerSelection />
             </ProtectedRoute>
           } />
-          <Route path="/nba-dashboard/:playerName" element={
-            <ProtectedRoute>
-              <NBADashboard />
-            </ProtectedRoute>
-          } />
+          <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
           <Route path="/waitlist" element={<Waitlist />} />
           <Route path="/paywall" element={<Paywall />} />
           <Route path="/paywall-platform" element={<PaywallPlatform />} />

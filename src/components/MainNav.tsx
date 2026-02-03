@@ -47,9 +47,21 @@ export default function MainNav({ className }: MainNavProps) {
     setIsMobileMenuOpen(false);
   };
 
-  if (!user) {
-    return null;
-  }
+  // Navigation items for public pages
+  const publicNavigationItems = [
+    {
+      name: 'Home',
+      href: '/home',
+      icon: BarChart3,
+      description: 'Página inicial'
+    },
+    {
+      name: 'Jogos',
+      href: '/games',
+      icon: TrendingUp,
+      description: 'Próximos jogos'
+    }
+  ];
 
   return (
     <nav className={`bg-background border-b border-border sticky top-0 z-50 ${className}`}>
@@ -71,7 +83,7 @@ export default function MainNav({ className }: MainNavProps) {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            {navigationItems.map((item) => {
+            {(user ? navigationItems : publicNavigationItems).map((item) => {
               const Icon = item.icon;
               return (
                 <Button
@@ -93,23 +105,43 @@ export default function MainNav({ className }: MainNavProps) {
 
           {/* Right side - WhatsApp Status & User Menu */}
           <div className="flex items-center space-x-4">
-            {/* WhatsApp Status Badge */}
-            <div className="hidden sm:flex items-center">
-              {isSynced ? (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  WhatsApp Conectado
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                  WhatsApp Pendente
-                </Badge>
-              )}
-            </div>
+            {user ? (
+              <>
+                {/* WhatsApp Status Badge */}
+                <div className="hidden sm:flex items-center">
+                  {isSynced ? (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      WhatsApp Conectado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                      WhatsApp Pendente
+                    </Badge>
+                  )}
+                </div>
 
-            {/* User Menu */}
-            <UserNav />
+                {/* User Menu */}
+                <UserNav />
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate('/auth')}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Entrar
+                </Button>
+                <Button
+                  onClick={() => navigate('/paywall-platform')}
+                  className="bg-primary text-primary-foreground hover:opacity-90"
+                >
+                  Assinar
+                </Button>
+              </>
+            )}
 
             {/* Mobile menu button */}
             <Button
@@ -131,7 +163,7 @@ export default function MainNav({ className }: MainNavProps) {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-background">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              {navigationItems.map((item) => {
+              {(user ? navigationItems : publicNavigationItems).map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button
@@ -154,22 +186,24 @@ export default function MainNav({ className }: MainNavProps) {
               })}
               
               {/* Mobile WhatsApp Status */}
-              <div className="px-3 py-2 border-t border-border mt-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Status WhatsApp:</span>
-                  {isSynced ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                      Conectado
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                      Pendente
-                    </Badge>
-                  )}
+              {user && (
+                <div className="px-3 py-2 border-t border-border mt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status WhatsApp:</span>
+                    {isSynced ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        Conectado
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                        <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                        Pendente
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}

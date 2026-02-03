@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones } from '@/services/nba-data.service';
-import { NBAHeader } from '@/components/nba/NBAHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
 import { StatTypeSelector } from '@/components/nba/StatTypeSelector';
@@ -14,11 +14,14 @@ import { QuickFiltersBar } from '@/components/nba/QuickFiltersBar';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShootingZonesCard } from '@/components/nba/ShootingZonesCard';
+import { useSubscription } from '@/hooks/use-subscription';
+import { isFreePlayer } from '@/config/freemium';
 
 export default function NBADashboard() {
   const { playerName } = useParams<{ playerName: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isPremium, isLoading: subscriptionLoading } = useSubscription();
   const [player, setPlayer] = useState<Player | null>(null);
   const [gameStats, setGameStats] = useState<GamePlayerStats[]>([]);
   const [propPlayers, setPropPlayers] = useState<PropPlayer[]>([]);
@@ -34,6 +37,24 @@ export default function NBADashboard() {
     loadPlayer();
   }, [playerName]);
 
+  // Verificar acesso freemium após carregar o jogador
+  useEffect(() => {
+    if (!subscriptionLoading && player && !isPremium) {
+      const playerFullName = player.player_name;
+      if (!isFreePlayer(playerFullName)) {
+        toast({
+          title: 'Acesso Premium Necessário',
+          description: `Análises completas de ${playerFullName} estão disponíveis apenas para assinantes premium.`,
+          variant: 'default',
+        });
+        // Redirecionar após um pequeno delay para mostrar o toast
+        setTimeout(() => {
+          navigate('/paywall-platform');
+        }, 2000);
+      }
+    }
+  }, [player, isPremium, subscriptionLoading, navigate, toast]);
+
   const loadPlayer = async () => {
     if (!playerName) return;
     
@@ -47,7 +68,7 @@ export default function NBADashboard() {
           description: `Could not find player "${playerName.replace(/-/g, ' ')}"`,
           variant: 'destructive',
         });
-        navigate('/nba-players');
+        navigate('/home');
         return;
       }
       
@@ -177,6 +198,20 @@ export default function NBADashboard() {
     };
   }, [gameStats, filteredGameStats, selectedStatType]);
 
+  // Get current betting line for selected stat type
+  const currentLine = useMemo(() => {
+    // Get the most recent game's line_most_recent for the selected stat type
+    const statsForType = gameStats.filter(g => g.stat_type === selectedStatType);
+    if (statsForType.length === 0) return null;
+    
+    // Sort by date descending and get the first one's line_most_recent
+    const sortedStats = [...statsForType].sort((a, b) => 
+      new Date(b.game_date).getTime() - new Date(a.game_date).getTime()
+    );
+    
+    return sortedStats[0]?.line_most_recent ?? null;
+  }, [gameStats, selectedStatType]);
+
   // Remove full page loading check to allow skeleton rendering
   // if (loading) { ... }
 
@@ -186,7 +221,7 @@ export default function NBADashboard() {
 
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <NBAHeader playerName={playerName} />
+      <AnalyticsNav showBack backTo="/home" title={player?.player_name} />
       <main className="container mx-auto px-3 py-4">
         {/* Player Header */}
         <PlayerHeader 
@@ -254,7 +289,8 @@ export default function NBADashboard() {
             ) : (
               <GameChart 
                 gameStats={filteredGameStats} 
-                statType={selectedStatType} 
+                statType={selectedStatType}
+                currentLine={currentLine}
               />
             )}
             
