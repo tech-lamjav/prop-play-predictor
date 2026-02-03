@@ -20,6 +20,7 @@ import Paywall from "./pages/Paywall";
 import PaywallPlatform from "./pages/PaywallPlatform";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
 import ComoUsar from "./pages/ComoUsar";
 import Games from "./pages/Games";
@@ -63,7 +64,9 @@ const App = () => (
           } />
           <Route path="/betting-dashboard" element={
             <ProtectedRoute>
-              <BettingDashboard />
+              <PremiumRoute>
+                <BettingDashboard />
+              </PremiumRoute>
             </ProtectedRoute>
           } />
           <Route path="/analysis" element={

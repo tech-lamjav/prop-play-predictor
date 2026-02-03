@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Lock, Zap, BarChart3, ArrowRight, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
@@ -25,6 +25,10 @@ export default function Paywall() {
   const success = searchParams.get('success');
   const canceled = searchParams.get('canceled');
   const sessionId = searchParams.get('session_id');
+  const from = searchParams.get('from');
+
+  const ALLOWED_REDIRECT_PATHS = ['/betting-dashboard'];
+  const redirectAfterPremium = from && ALLOWED_REDIRECT_PATHS.includes(from) ? from : '/bets';
 
   // Verificar status de assinatura do usuário (Betinho)
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function Paywall() {
                 const status = (data as any)?.betinho_subscription_status;
                 setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
                 if (status === 'premium') {
-                  navigate('/bets');
+                  navigate(redirectAfterPremium);
                 }
               }
             });
@@ -142,53 +146,9 @@ export default function Paywall() {
     window.open(whatsappUrl, '_blank');
   };
 
-  // Se o usuário já é premium, mostrar mensagem diferente
+  // Se o usuário já é premium, redirecionar direto para o destino
   if (subscriptionStatus === 'premium' && !isCheckingStatus) {
-    return (
-      <div className="min-h-screen bg-background">
-        <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-          <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <span className="text-lg sm:text-2xl font-bold text-foreground">Smart Betting</span>
-            </div>
-            <Button 
-              onClick={() => navigate("/bets")} 
-              className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
-            >
-              Dashboard
-            </Button>
-          </div>
-        </nav>
-
-        <div className="container mx-auto px-4 sm:px-6 py-20">
-          <div className="max-w-2xl mx-auto">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                  <CardTitle className="text-2xl">Você já é Premium!</CardTitle>
-                </div>
-                <CardDescription>
-                  Sua assinatura está ativa. Aproveite todos os benefícios do plano premium.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={() => navigate("/bets")}
-                  className="w-full bg-gradient-primary hover:opacity-90"
-                  size="lg"
-                >
-                  Ir para Dashboard
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to={redirectAfterPremium} replace />;
   }
 
   return (
@@ -211,7 +171,7 @@ export default function Paywall() {
               Entrar
             </Button>
             <Button 
-              onClick={() => navigate("/bets")} 
+              onClick={() => navigate(redirectAfterPremium)} 
               className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
             >
               Dashboard

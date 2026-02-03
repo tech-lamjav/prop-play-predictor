@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '../integrations/supabase/client';
 import { useAuth } from './use-auth';
 
@@ -31,43 +31,43 @@ export function useUserUnit() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch user unit configuration
-  useEffect(() => {
-    const fetchConfig = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
+  const fetchConfig = useCallback(async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('users')
+        .select('unit_value, unit_calculation_method, bank_amount')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 is "not found" which is OK for new users
+        throw fetchError;
       }
 
-      try {
-        const { data, error: fetchError } = await supabase
-          .from('users')
-          .select('unit_value, unit_calculation_method, bank_amount')
-          .eq('id', user.id)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          // PGRST116 is "not found" which is OK for new users
-          throw fetchError;
-        }
-
-        if (data) {
-          setConfig({
-            unit_value: data.unit_value ? parseFloat(data.unit_value.toString()) : null,
-            unit_calculation_method: data.unit_calculation_method as UnitCalculationMethod,
-            bank_amount: data.bank_amount ? parseFloat(data.bank_amount.toString()) : null,
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching unit config:', err);
-        setError(err instanceof Error ? err.message : 'Erro ao buscar configuração');
-      } finally {
-        setIsLoading(false);
+      if (data) {
+        setConfig({
+          unit_value: data.unit_value ? parseFloat(data.unit_value.toString()) : null,
+          unit_calculation_method: data.unit_calculation_method as UnitCalculationMethod,
+          bank_amount: data.bank_amount ? parseFloat(data.bank_amount.toString()) : null,
+        });
       }
-    };
-
-    fetchConfig();
+    } catch (err) {
+      console.error('Error fetching unit config:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao buscar configuração');
+    } finally {
+      setIsLoading(false);
+    }
   }, [user?.id, supabase]);
+
+  // Fetch user unit configuration on mount and when user changes
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
 
   /**
    * Update user unit configuration
@@ -231,6 +231,7 @@ export function useUserUnit() {
     error,
     updateConfig,
     clearConfig,
+    refetchConfig: fetchConfig,
     toUnits,
     formatUnits,
     formatWithUnits,
