@@ -1089,8 +1089,8 @@ export default function Bets() {
             betId={bet.id}
             selectedTags={bet.tags || []}
             onTagsChange={async (newTags) => {
-              // Update local state immediately for responsiveness
-              setBets(bets.map(b => 
+              // Update local state immediately for responsiveness (functional update to avoid stale closure)
+              setBets(prev => prev.map(b =>
                 b.id === bet.id ? { ...b, tags: newTags } : b
               ));
               
@@ -1116,8 +1116,11 @@ export default function Bets() {
                 });
               }
               
-              // Refresh the bets list to get updated data
-              await fetchBets();
+              // Refetch only this bet's tags to confirm save, without full list refetch (avoids race and slowness)
+              const { data: freshTags } = await supabase.rpc('get_bet_tags', { p_bet_id: bet.id });
+              setBets(prev => prev.map(b =>
+                b.id === bet.id ? { ...b, tags: freshTags ?? [] } : b
+              ));
             }}
             onTagsUpdated={fetchUserTags}
           />
@@ -1301,8 +1304,8 @@ export default function Bets() {
               betId={bet.id}
               selectedTags={bet.tags || []}
               onTagsChange={async (newTags) => {
-                // Update local state immediately for responsiveness
-                setBets(bets.map(b => 
+                // Update local state immediately for responsiveness (functional update to avoid stale closure)
+                setBets(prev => prev.map(b =>
                   b.id === bet.id ? { ...b, tags: newTags } : b
                 ));
                 
@@ -1328,8 +1331,11 @@ export default function Bets() {
                   });
                 }
                 
-                // Refresh the bets list to get updated data
-                await fetchBets();
+                // Refetch only this bet's tags to confirm save, without full list refetch (avoids race and slowness)
+                const { data: freshTags } = await supabase.rpc('get_bet_tags', { p_bet_id: bet.id });
+                setBets(prev => prev.map(b =>
+                  b.id === bet.id ? { ...b, tags: freshTags ?? [] } : b
+                ));
               }}
               onTagsUpdated={fetchUserTags}
             />
