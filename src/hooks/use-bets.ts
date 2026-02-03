@@ -7,6 +7,7 @@ export interface Bet {
   bet_type: string;
   sport: string;
   league?: string;
+  betting_market?: string;
   match_description?: string;
   bet_description: string;
   odds: number;

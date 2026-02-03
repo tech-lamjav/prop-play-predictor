@@ -30,7 +30,8 @@ import {
   ChevronRight,
   ChevronUp,
   ChevronDown,
-  Plus
+  Plus,
+  BarChart3
 } from 'lucide-react';
 import {
   Dialog,
@@ -1021,11 +1022,11 @@ export default function Bets() {
   };
 
   // Sortable Header Component
-  const SortableHeader = ({ column, label, align = 'left' }: { column: SortColumn; label: string; align?: 'left' | 'right' | 'center' }) => {
+  const SortableHeader = ({ column, label, align = 'left', className: extraClassName }: { column: SortColumn; label: string; align?: 'left' | 'right' | 'center'; className?: string }) => {
     const isActive = sortConfig.column === column;
     return (
       <th 
-        className={`${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} py-1.5 px-1.5 data-label cursor-pointer hover:text-terminal-green transition-colors select-none`}
+        className={`${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} py-1.5 px-1.5 data-label cursor-pointer hover:text-terminal-green transition-colors select-none ${extraClassName ?? ''}`}
         onClick={() => handleSort(column)}
       >
         <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'}`}>
@@ -1129,7 +1130,7 @@ export default function Bets() {
         <td className="text-right py-1.5 px-1.5 text-terminal-blue">
           {bet.odds.toFixed(2)}
         </td>
-        <td className={`text-right py-1.5 px-1.5 ${
+        <td className={`text-right py-1.5 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap ${
           bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' : 
           bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 
           'opacity-70'
@@ -1143,7 +1144,7 @@ export default function Bets() {
                 : formatWithUnits(bet.potential_return)
           }
         </td>
-        <td className="text-center py-1.5 px-1.5 whitespace-nowrap">
+        <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
           <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
             bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
             bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
@@ -1156,7 +1157,7 @@ export default function Bets() {
             {translateStatus(bet.status)}
           </span>
         </td>
-        <td className="py-1.5 px-1.5 min-w-0">
+        <td className="py-1.5 px-1.5 min-w-[11rem]">
           <div className="flex flex-row items-center gap-1.5 justify-end flex-nowrap">
             {bet.status === 'pending' && (
               <>
@@ -1477,18 +1478,37 @@ export default function Bets() {
           <BetStatsCard 
             label="TAXA DE ACERTO" 
             value={`${stats.winRate.toFixed(1)}%`}
-            trend={stats.winRate > 50 ? 'up' : 'down'}
+            trend={
+              stats.winRate > 50
+                ? 'up'
+                : stats.winRate < 50
+                  ? 'down'
+                  : undefined
+            }
           />
           <BetStatsCard 
             label="LUCRO" 
             value={formatWithUnits(stats.profit)}
             valueColor={stats.profit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}
-            trend={stats.profit >= 0 ? 'up' : 'down'}
+            trend={
+              stats.profit > 0
+                ? 'up'
+                : stats.profit < 0
+                  ? 'down'
+                  : undefined
+            }
           />
           <BetStatsCard 
             label="ROI" 
             value={`${stats.roi.toFixed(1)}%`}
             valueColor={stats.roi >= 0 ? 'text-terminal-green' : 'text-terminal-red'}
+            trend={
+              stats.roi > 0
+                ? 'up'
+                : stats.roi < 0
+                  ? 'down'
+                  : undefined
+            }
           />
           <BetStatsCard 
             label="TOTAL APOSTADO" 
@@ -1536,23 +1556,41 @@ export default function Bets() {
           }}
         />
 
-        {/* Cash Flow Button */}
-        <button
-          type="button"
-          onClick={() => navigate('/bankroll')}
-          className="w-full terminal-container p-4 mb-6 flex items-center justify-between hover:bg-terminal-dark-gray/50 transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-              <DollarSign className="w-5 h-5 text-blue-400" />
+        {/* Dashboard + Cash Flow Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => navigate('/betting-dashboard')}
+            className="w-full terminal-container p-4 flex items-center justify-between hover:bg-terminal-dark-gray/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded bg-terminal-green/10 flex items-center justify-center group-hover:bg-terminal-green/20 transition-colors">
+                <BarChart3 className="w-5 h-5 text-terminal-green" />
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-sm text-terminal-green">DASHBOARD</div>
+                <div className="text-xs opacity-60">KPIs e gráficos por período</div>
+              </div>
             </div>
-            <div className="text-left">
-              <div className="font-bold text-sm text-blue-400">FLUXO DE CAIXA</div>
-              <div className="text-xs opacity-60">Histórico detalhado de transações</div>
+            <ChevronRight className="w-5 h-5 text-terminal-green opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/bankroll')}
+            className="w-full terminal-container p-4 flex items-center justify-between hover:bg-terminal-dark-gray/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                <DollarSign className="w-5 h-5 text-blue-400" />
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-sm text-blue-400">FLUXO DE CAIXA</div>
+                <div className="text-xs opacity-60">Histórico detalhado de transações</div>
+              </div>
             </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-blue-400 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-        </button>
+            <ChevronRight className="w-5 h-5 text-blue-400 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+          </button>
+        </div>
 
         {/* Filters Bar */}
         <div className="terminal-container p-3 mb-4 flex flex-col md:flex-row gap-3 items-center justify-between">
@@ -1777,22 +1815,9 @@ export default function Bets() {
             </div>
           ) : (
             <>
-              {/* Desktop Table View - table-fixed + colgroup para caber sem rolagem horizontal */}
+              {/* Desktop Table View - table-auto para min-width das células (RETORNO/STATUS/AÇÕES) serem respeitados */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-xs table-fixed">
-                  <colgroup>
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '17%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '7%' }} />
-                    <col style={{ width: '7%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '7%' }} />
-                    <col style={{ width: '13%' }} />
-                  </colgroup>
+                <table className="w-full text-xs min-w-[960px] table-auto">
                   <thead>
                     <tr className="border-b border-terminal-border-subtle">
                       <SortableHeader column="bet_date" label="DATA" />
@@ -1803,9 +1828,9 @@ export default function Bets() {
                       <SortableHeader column="betting_market" label="MERCADO" />
                       <SortableHeader column="stake_amount" label="VALOR" align="right" />
                       <SortableHeader column="odds" label="ODDS" align="right" />
-                      <SortableHeader column="return" label="RETORNO" align="right" />
-                      <SortableHeader column="status" label="STATUS" align="center" />
-                      <th className="text-right py-1.5 px-1.5 data-label">AÇÕES</th>
+                      <SortableHeader column="return" label="RETORNO" align="right" className="min-w-[5.5rem]" />
+                      <SortableHeader column="status" label="STATUS" align="center" className="min-w-[5rem]" />
+                      <th className="text-right py-1.5 px-1.5 data-label min-w-[11rem]">AÇÕES</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -1,6 +1,6 @@
 import React from 'react';
-import { UserIcon, BarChartIcon, ArrowLeft, Users, LogOut, Settings } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { UserIcon, BarChartIcon, ArrowLeft, Users, LogOut, Settings, BarChart3 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import {
   DropdownMenu,
@@ -17,7 +17,9 @@ interface BetsHeaderProps {
 
 export const BetsHeader: React.FC<BetsHeaderProps> = ({ title = "STATIX BETS", onReferralClick }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
+  const isDashboard = location.pathname === '/betting-dashboard';
 
   const handleSignOut = async () => {
     await signOut();
@@ -27,12 +29,23 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({ title = "STATIX BETS", o
   return (
     <div className="terminal-header p-3 flex justify-between items-center">
       <div className="flex items-center">
-        <button 
+        <button
+          type="button"
           onClick={() => navigate('/bets')}
-          className="terminal-button px-3 py-2 text-sm font-medium mr-4 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
+          className="terminal-button px-3 py-2 text-sm font-medium mr-2 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
         >
           <ArrowLeft size={16} className="mr-2" />
           INÍCIO
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/betting-dashboard')}
+          className={`terminal-button px-3 py-2 text-sm font-medium mr-4 flex items-center border-terminal-border transition-colors ${
+            isDashboard ? 'border-terminal-green text-terminal-green' : 'hover:border-terminal-green'
+          }`}
+        >
+          <BarChart3 size={16} className="mr-2" />
+          DASHBOARD
         </button>
         <span className="text-base font-semibold mr-6 text-terminal-green tracking-wide">
           Betinho
