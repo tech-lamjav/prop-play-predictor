@@ -713,6 +713,9 @@ export default function Bets() {
   // For brevity, I'm keeping the logic but ensuring it uses the toast for notifications instead of local error state where appropriate
   
   const updateBetStatus = useCallback(async (betId: string, newStatus: string) => {
+    if (isMountedRef.current) {
+      setBets(prev => prev.map(b => b.id === betId ? { ...b, status: newStatus as Bet['status'] } : b));
+    }
     try {
       const { error } = await supabase
         .from('bets')
@@ -721,19 +724,22 @@ export default function Bets() {
 
       if (error) throw error;
       if (isMountedRef.current) {
-        await fetchBets();
         toast({ title: 'Success', description: 'Bet status updated' });
       }
     } catch (err) {
       if (isMountedRef.current) {
+        setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending' } : b));
         toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
       }
     }
-  }, [supabase, fetchBets, toast]);
+  }, [supabase, toast]);
 
   const deleteBet = useCallback(async (betId: string) => {
     if (!window.confirm('Are you sure you want to delete this bet?')) return;
-    
+
+    if (isMountedRef.current) {
+      setBets(prev => prev.filter(b => b.id !== betId));
+    }
     try {
       const { error } = await supabase
         .from('bets')
@@ -742,7 +748,6 @@ export default function Bets() {
 
       if (error) throw error;
       if (isMountedRef.current) {
-        await fetchBets();
         toast({ title: 'Success', description: 'Bet deleted' });
       }
     } catch (err) {
@@ -750,34 +755,49 @@ export default function Bets() {
         toast({ title: 'Error', description: 'Failed to delete bet', variant: 'destructive' });
       }
     }
-  }, [supabase, fetchBets, toast]);
+  }, [supabase, toast]);
 
   const processCashout = async () => {
     if (!cashoutModal.bet || !cashoutModal.cashoutAmount) return;
-    
-    try {
-      const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
-      if (isNaN(cashoutAmount)) throw new Error('Invalid amount');
 
+    const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
+    if (isNaN(cashoutAmount)) {
+      toast({ title: 'Error', description: 'Invalid amount', variant: 'destructive' });
+      return;
+    }
+
+    const betId = cashoutModal.bet.id;
+    const cashoutDate = new Date().toISOString();
+    if (isMountedRef.current) {
+      setBets(prev => prev.map(b => b.id === betId ? {
+        ...b,
+        status: 'cashout',
+        cashout_amount: cashoutAmount,
+        cashout_date: cashoutDate,
+        is_cashout: true
+      } : b));
+      setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' });
+    }
+
+    try {
       const { error } = await supabase
         .from('bets')
         .update({
           status: 'cashout',
           cashout_amount: cashoutAmount,
-          cashout_date: new Date().toISOString(),
+          cashout_date: cashoutDate,
           is_cashout: true
         })
-        .eq('id', cashoutModal.bet.id);
+        .eq('id', betId);
 
       if (error) throw error;
 
       if (isMountedRef.current) {
-        setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' });
-        await fetchBets();
         toast({ title: 'Success', description: 'Cashout processed' });
       }
     } catch (err) {
       if (isMountedRef.current) {
+        setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending', cashout_amount: undefined, cashout_date: undefined, is_cashout: false } : b));
         toast({ title: 'Error', description: 'Failed to process cashout', variant: 'destructive' });
       }
     }
@@ -786,40 +806,54 @@ export default function Bets() {
   const updateBetData = async () => {
     if (!editModal.bet) return;
 
+    const odds = parseFloat(editModal.formData.odds);
+    const stakeAmount = parseFloat(editModal.formData.stake_amount);
+    const potentialReturn = stakeAmount * odds;
+    const updatedAt = new Date().toISOString();
+
+    const updateData: any = {
+      bet_description: editModal.formData.bet_description,
+      match_description: editModal.formData.match_description || null,
+      sport: editModal.formData.sport,
+      league: editModal.formData.league || null,
+      betting_market: editModal.formData.betting_market || null,
+      odds: odds,
+      stake_amount: stakeAmount,
+      potential_return: potentialReturn,
+      bet_date: editModal.formData.bet_date || updatedAt,
+      match_date: editModal.formData.match_date || null,
+      status: editModal.formData.status,
+      updated_at: updatedAt
+    };
+
+    const betId = editModal.bet.id;
+    const updatedBet: Partial<Bet> = {
+      ...editModal.bet,
+      ...updateData,
+      bet_date: updateData.bet_date,
+      match_date: updateData.match_date,
+      status: editModal.formData.status
+    };
+
+    if (isMountedRef.current) {
+      setBets(prev => prev.map(b => b.id === betId ? { ...b, ...updatedBet } : b));
+      setEditModal(prev => ({ ...prev, isOpen: false }));
+    }
+
     try {
-      const odds = parseFloat(editModal.formData.odds);
-      const stakeAmount = parseFloat(editModal.formData.stake_amount);
-      const potentialReturn = stakeAmount * odds;
-
-      const updateData: any = {
-        bet_description: editModal.formData.bet_description,
-        match_description: editModal.formData.match_description || null,
-        sport: editModal.formData.sport,
-        league: editModal.formData.league || null,
-        betting_market: editModal.formData.betting_market || null,
-        odds: odds,
-        stake_amount: stakeAmount,
-        potential_return: potentialReturn,
-        bet_date: editModal.formData.bet_date || new Date().toISOString(),
-        match_date: editModal.formData.match_date || null,
-        status: editModal.formData.status,
-        updated_at: new Date().toISOString()
-      };
-
       const { error } = await supabase
         .from('bets')
         .update(updateData)
-        .eq('id', editModal.bet.id);
+        .eq('id', betId);
 
       if (error) throw error;
 
       if (isMountedRef.current) {
-        setEditModal(prev => ({ ...prev, isOpen: false }));
-        await fetchBets();
         toast({ title: 'Success', description: 'Bet updated' });
       }
     } catch (err) {
       if (isMountedRef.current) {
+        setBets(prev => prev.map(b => b.id === betId ? { ...b, ...editModal.bet } : b));
         toast({ title: 'Error', description: 'Failed to update bet', variant: 'destructive' });
       }
     }
@@ -827,7 +861,7 @@ export default function Bets() {
 
   const createBet = async (data: CreateBetFormData): Promise<boolean> => {
     if (!user?.id) return false;
-    
+
     try {
       const odds = parseFloat(data.odds);
       const stakeAmount = parseFloat(data.stake_amount);
@@ -854,7 +888,7 @@ export default function Bets() {
           status: 'pending',
           channel: 'web'
         })
-        .select('id')
+        .select('*')
         .single();
 
       if (error) throw error;
@@ -867,8 +901,11 @@ export default function Bets() {
         });
       }
 
+      const { data: tags } = await supabase.rpc('get_bet_tags', { p_bet_id: newBet.id });
+      const betWithTags = { ...newBet, tags: tags ?? [] };
+
       if (isMountedRef.current) {
-        await fetchBets();
+        setBets(prev => [betWithTags, ...prev]);
         toast({ title: 'Sucesso', description: 'Aposta cadastrada com sucesso' });
       }
       return true;
