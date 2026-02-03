@@ -20,12 +20,18 @@ interface BankrollEvolutionChartProps {
   bets: Bet[];
   initialBankroll: number | null;
   onUpdateBankroll: (amount: number) => Promise<boolean>;
+  /** When true, hide initial bankroll edit and show as "Lucro acumulado no período" (e.g. for dashboard period view). */
+  readOnly?: boolean;
+  /** Optional: chart container height (responsive). */
+  chartHeight?: number;
 }
 
 export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   bets,
   initialBankroll,
-  onUpdateBankroll
+  onUpdateBankroll,
+  readOnly = false,
+  chartHeight = 300,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempBankroll, setTempBankroll] = useState<string>('');
@@ -109,50 +115,57 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
         <div>
           <h3 className="section-title flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-terminal-green" />
-            EVOLUÇÃO DA BANCA
+            {readOnly ? 'LUCRO ACUMULADO NO PERÍODO' : 'EVOLUÇÃO DA BANCA'}
           </h3>
-          <p className="text-xs opacity-60 mt-1">Acompanhe o crescimento do seu capital</p>
+          <p className="text-xs opacity-60 mt-1">
+            {readOnly ? 'Evolução do lucro no intervalo selecionado' : 'Acompanhe o crescimento do seu capital'}
+          </p>
         </div>
 
         <div className="flex items-center gap-4 bg-terminal-dark-gray/50 p-2 rounded border border-terminal-border-subtle">
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase opacity-50">Banca Inicial</span>
-            {isEditing ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={tempBankroll}
-                  onChange={(e) => setTempBankroll(e.target.value)}
-                  className="w-24 bg-terminal-black border border-terminal-border text-xs p-1 rounded text-terminal-text"
-                  placeholder="0.00"
-                />
-                <button 
-                  onClick={handleSave}
-                  disabled={isUpdating}
-                  className="p-1 hover:text-terminal-green transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                </button>
+          {!readOnly && (
+            <>
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase opacity-50">Banca Inicial</span>
+                {isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={tempBankroll}
+                      onChange={(e) => setTempBankroll(e.target.value)}
+                      className="w-24 bg-terminal-black border border-terminal-border text-xs p-1 rounded text-terminal-text"
+                      placeholder="0.00"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isUpdating}
+                      className="p-1 hover:text-terminal-green transition-colors"
+                    >
+                      <Save className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-terminal-text">
+                      R$ {initialBankroll?.toFixed(2) || '0.00'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="p-1 opacity-50 hover:opacity-100 hover:text-terminal-blue transition-opacity"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-terminal-text">
-                  R$ {initialBankroll?.toFixed(2) || '0.00'}
-                </span>
-                <button 
-                  onClick={() => setIsEditing(true)}
-                  className="p-1 opacity-50 hover:opacity-100 hover:text-terminal-blue transition-opacity"
-                >
-                  <Edit2 className="w-3 h-3" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="h-8 w-px bg-terminal-border-subtle mx-2"></div>
+              <div className="h-8 w-px bg-terminal-border-subtle mx-2" />
+            </>
+          )}
 
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase opacity-50">Banca Atual</span>
+            <span className="text-[10px] uppercase opacity-50">{readOnly ? 'Lucro no período' : 'Banca Atual'}</span>
             <span className={`font-mono font-bold ${totalProfit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
               R$ {currentBankroll.toFixed(2)}
             </span>
@@ -161,13 +174,14 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
           <div className="flex flex-col text-right">
             <span className="text-[10px] uppercase opacity-50">Lucro</span>
             <span className={`font-mono text-xs ${totalProfit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
-              {totalProfit >= 0 ? '+' : ''}{totalProfit.toFixed(2)} ({profitPercentage >= 0 ? '+' : ''}{profitPercentage.toFixed(1)}%)
+              {totalProfit >= 0 ? '+' : ''}{totalProfit.toFixed(2)}
+              {!readOnly && initialBankroll ? ` (${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(1)}%)` : ''}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="h-[300px] w-full">
+      <div style={{ height: chartHeight }} className="w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
             <defs>
@@ -177,17 +191,17 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-            <XAxis 
-              dataKey="date" 
-              stroke="#666" 
-              tick={{ fill: '#666', fontSize: 10 }}
+            <XAxis
+              dataKey="date"
+              stroke="#666"
+              tick={{ fill: 'var(--terminal-text)', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               minTickGap={30}
             />
-            <YAxis 
-              stroke="#666" 
-              tick={{ fill: '#666', fontSize: 10 }}
+            <YAxis
+              stroke="#666"
+              tick={{ fill: 'var(--terminal-text)', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(value) => `R$${value}`}
@@ -209,13 +223,15 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                 return label;
               }}
             />
-            <Area 
-              type="monotone" 
-              dataKey="bankroll" 
-              stroke="#00d4ff" 
+            <Area
+              type="monotone"
+              dataKey="bankroll"
+              stroke="#00d4ff"
               strokeWidth={2}
-              fillOpacity={1} 
-              fill="url(#colorBankroll)" 
+              fillOpacity={1}
+              fill="url(#colorBankroll)"
+              animationDuration={500}
+              animationEasing="ease-in-out"
             />
           </AreaChart>
         </ResponsiveContainer>

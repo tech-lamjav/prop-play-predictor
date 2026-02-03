@@ -30,7 +30,7 @@ export const BetStatsCard: React.FC<BetStatsCardProps> = ({
     <div className="terminal-container p-3 md:p-4 flex flex-col items-center justify-center h-full min-w-0 overflow-hidden">
       <div className="data-label text-[10px] md:text-xs mb-0.5 md:mb-1 truncate w-full text-center">{label}</div>
       <div className="flex items-center justify-center gap-1 md:gap-2 min-w-0 w-full overflow-hidden">
-        <div className={`text-base md:text-2xl font-bold ${valueColor} min-w-0 overflow-hidden text-ellipsis whitespace-nowrap max-w-full`} title={typeof value === 'string' ? value : String(value)}>
+        <div className={`text-sm md:text-lg font-bold ${valueColor} min-w-0 overflow-hidden text-ellipsis whitespace-nowrap max-w-full`} title={typeof value === 'string' ? value : String(value)}>
           {value}
         </div>
         {getTrendIcon()}

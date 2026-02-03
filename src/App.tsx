@@ -10,6 +10,7 @@ import Onboarding from "./pages/Onboarding";
 import DashboardTest from "./pages/DashboardTest";
 import Bets from "./pages/Bets";
 import Bankroll from './pages/Bankroll';
+import BettingDashboard from './pages/BettingDashboard';
 import PlayerSelectionTest from "./pages/PlayerSelectionTest";
 import PlayerSelection from "./pages/PlayerSelection";
 import NBADashboard from "./pages/NBADashboard";
@@ -58,6 +59,11 @@ const App = () => (
           <Route path="/bankroll" element={
             <ProtectedRoute>
               <Bankroll />
+            </ProtectedRoute>
+          } />
+          <Route path="/betting-dashboard" element={
+            <ProtectedRoute>
+              <BettingDashboard />
             </ProtectedRoute>
           } />
           <Route path="/analysis" element={
