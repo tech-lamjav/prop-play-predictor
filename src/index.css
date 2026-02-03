@@ -285,3 +285,14 @@ All colors MUST be HSL.
 .recharts-default-tooltip * {
   color: #e5e5e5 !important;
 }
+
+/* Remove hover background on axis labels (e.g. "Basquete" in profit charts) */
+.recharts-cartesian-axis-tick rect {
+  fill: transparent !important;
+}
+
+/* Remove hover row highlight (gray/white band) - Recharts draws this as tooltip-cursor rect spanning the full row */
+.recharts-tooltip-cursor,
+.recharts-rectangle.recharts-tooltip-cursor {
+  fill: transparent !important;
+}
