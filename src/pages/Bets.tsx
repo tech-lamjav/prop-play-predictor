@@ -180,6 +180,325 @@ const BETTING_MARKETS_LIST = [
   'Ambas Marcam',
 ];
 
+type BetRowProps = {
+  bet: Bet;
+  formatValue: (value: number) => string;
+  translateStatus: (status: string) => string;
+  onBetTagsChange: (betId: string, newTags: Tag[], currentTagIds: string[]) => Promise<void>;
+  onTagsUpdated: () => void;
+  updateBetStatus: (betId: string, newStatus: string) => void;
+  openCashoutModal: (bet: Bet) => void;
+  openEditModal: (bet: Bet) => void;
+  deleteBet: (betId: string) => void;
+};
+
+const BetRow = React.memo(function BetRow({
+  bet,
+  formatValue,
+  translateStatus,
+  onBetTagsChange,
+  onTagsUpdated,
+  updateBetStatus,
+  openCashoutModal,
+  openEditModal,
+  deleteBet,
+}: BetRowProps) {
+  const handleTagsChange = useCallback((newTags: Tag[]) => {
+    onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
+  }, [bet.id, bet.tags, onBetTagsChange]);
+
+  return (
+    <tr className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors">
+      <td className="py-1.5 px-1.5 opacity-70">
+        {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
+      </td>
+      <td className="py-1.5 px-1.5 font-medium min-w-0 overflow-hidden">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-default inline-block w-full min-w-0">
+              <div className="whitespace-pre-line break-words">{truncateDescription(bet.bet_description, 50)}</div>
+              {bet.match_description && (
+                <div className="text-[10px] opacity-50 break-words">{truncateDescription(bet.match_description, 50)}</div>
+              )}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs px-2 py-1 text-xs bg-terminal-black border-terminal-border text-terminal-text">
+            <div className="whitespace-pre-line">
+              {bet.bet_description}
+              {bet.match_description && (
+                <>
+                  {'\n'}
+                  <span className="opacity-70">{bet.match_description}</span>
+                </>
+              )}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </td>
+      <td className="py-1.5 px-1.5">
+        <TagSelector
+          betId={bet.id}
+          selectedTags={bet.tags || []}
+          onTagsChange={handleTagsChange}
+          onTagsUpdated={onTagsUpdated}
+        />
+      </td>
+      <td className="py-1.5 px-1.5 opacity-70">{bet.sport}</td>
+      <td className="py-1.5 px-1.5 opacity-70">{bet.league || '-'}</td>
+      <td className="py-1.5 px-1.5 opacity-70">{bet.betting_market || '-'}</td>
+      <td className="text-right py-1.5 px-1.5">{formatValue(bet.stake_amount)}</td>
+      <td className="text-right py-1.5 px-1.5 text-terminal-blue">{bet.odds.toFixed(2)}</td>
+      <td className={`text-right py-1.5 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap ${
+        bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' :
+        bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-70'
+      }`}>
+        {bet.is_cashout && bet.cashout_amount
+          ? formatValue(bet.cashout_amount)
+          : bet.status === 'half_won'
+            ? formatValue((bet.stake_amount + bet.potential_return) / 2)
+            : bet.status === 'half_lost'
+              ? formatValue(bet.stake_amount / 2)
+              : formatValue(bet.potential_return)}
+      </td>
+      <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
+        <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
+          bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
+          bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+          bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
+          bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
+          bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
+          bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
+          'text-terminal-text bg-terminal-text/10'
+        }`}>
+          {translateStatus(bet.status)}
+        </span>
+      </td>
+      <td className="py-1.5 px-1.5 min-w-[11rem]">
+        <div className="flex flex-row items-center gap-1.5 justify-end flex-nowrap">
+          {bet.status === 'pending' && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-1.5 text-terminal-text shrink-0 text-[10px] font-bold uppercase"
+                  >
+                    <Target className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                    Resultado
+                    <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingUp className="w-4 h-4 text-terminal-green" />
+                    <span>Ganhou</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingDown className="w-4 h-4 text-terminal-red" />
+                    <span>Perdeu</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
+                    <span>1/2 Green</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
+                    <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
+                    <span>1/2 Red</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <button
+                type="button"
+                onClick={() => openCashoutModal(bet)}
+                className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-1.5 shrink-0 text-[10px] font-bold text-terminal-blue hover:text-terminal-black"
+                title="Cashout"
+              >
+                <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                CASHOUT
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => openEditModal(bet)}
+            className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all shrink-0"
+            title="Editar"
+          >
+            <Edit className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteBet(bet.id)}
+            className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all shrink-0"
+            title="Excluir"
+          >
+            <Trash2 className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+type BetCardProps = BetRowProps;
+
+const BetCard = React.memo(function BetCard({
+  bet,
+  formatValue,
+  translateStatus,
+  onBetTagsChange,
+  onTagsUpdated,
+  updateBetStatus,
+  openCashoutModal,
+  openEditModal,
+  deleteBet,
+}: BetCardProps) {
+  const handleTagsChange = useCallback((newTags: Tag[]) => {
+    onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
+  }, [bet.id, bet.tags, onBetTagsChange]);
+
+  return (
+    <div className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3">
+      <div className="flex justify-between items-center">
+        <span className="text-xs opacity-50">{new Date(bet.bet_date).toLocaleDateString('pt-BR')}</span>
+        <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
+          bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
+          bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
+          bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
+          bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
+          bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
+          bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
+          'text-terminal-text bg-terminal-text/10'
+        }`}>
+          {translateStatus(bet.status)}
+        </span>
+      </div>
+      <div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="w-full text-left font-medium text-sm text-terminal-text cursor-pointer focus:outline-none focus:ring-0"
+            >
+              <span className="whitespace-pre-line block">{truncateDescription(bet.bet_description, 50)}</span>
+              {bet.match_description && (
+                <span className="text-xs opacity-60 mt-0.5 block">{truncateDescription(bet.match_description, 50)}</span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="start" className="max-w-[min(90vw,320px)] p-3 text-xs bg-terminal-black border-terminal-border text-terminal-text">
+            <div className="whitespace-pre-line">
+              {bet.bet_description}
+              {bet.match_description && (
+                <>
+                  {'\n'}
+                  <span className="opacity-70">{bet.match_description}</span>
+                </>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">{bet.sport}</div>
+        {bet.league && <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">{bet.league}</div>}
+        {bet.betting_market && <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">{bet.betting_market}</div>}
+        <div className="mt-2">
+          <TagSelector
+            betId={bet.id}
+            selectedTags={bet.tags || []}
+            onTagsChange={handleTagsChange}
+            onTagsUpdated={onTagsUpdated}
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 py-2 border-y border-terminal-border-subtle bg-terminal-dark-gray/30 -mx-4 px-4">
+        <div className="text-center">
+          <div className="text-[10px] opacity-50 uppercase mb-0.5">Valor</div>
+          <div className="text-sm">{formatValue(bet.stake_amount)}</div>
+        </div>
+        <div className="text-center border-l border-terminal-border-subtle">
+          <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
+          <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
+        </div>
+        <div className="text-center border-l border-terminal-border-subtle">
+          <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
+          <div className={`text-sm ${
+            bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' :
+            bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-70'
+          }`}>
+            {bet.is_cashout && bet.cashout_amount
+              ? formatValue(bet.cashout_amount)
+              : bet.status === 'half_won'
+                ? formatValue((bet.stake_amount + bet.potential_return) / 2)
+                : bet.status === 'half_lost'
+                  ? formatValue(bet.stake_amount / 2)
+                  : formatValue(bet.potential_return)}
+          </div>
+        </div>
+      </div>
+      <div className="pt-2">
+        {bet.status === 'pending' ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-2 text-terminal-text w-full sm:w-auto justify-center"
+                >
+                  <Target className="w-4 h-4 opacity-70" />
+                  <span className="text-xs font-bold uppercase">Resultado</span>
+                  <ChevronDown className="w-3 h-3 opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="bg-terminal-dark-gray border-terminal-border text-terminal-text min-w-[180px]">
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
+                  <TrendingUp className="w-4 h-4 text-terminal-green" />
+                  <span>Ganhou</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
+                  <TrendingDown className="w-4 h-4 text-terminal-red" />
+                  <span>Perdeu</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
+                  <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
+                  <span>1/2 Green</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
+                  <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
+                  <span>1/2 Red</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button
+              type="button"
+              onClick={() => openCashoutModal(bet)}
+              className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial min-w-0"
+              title="Cashout"
+            >
+              <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black shrink-0" />
+              <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
+            </button>
+            <button type="button" onClick={() => openEditModal(bet)} className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center" title="Editar">
+              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+            </button>
+            <button type="button" onClick={() => deleteBet(bet.id)} className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center justify-center" title="Excluir">
+              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <button type="button" onClick={() => openEditModal(bet)} className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center" title="Editar">
+              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+            </button>
+            <button type="button" onClick={() => deleteBet(bet.id)} className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center" title="Excluir">
+              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
@@ -644,6 +963,21 @@ export default function Bets() {
     }
   }, [user?.id, supabase]);
 
+  const handleBetTagsChange = useCallback(async (betId: string, newTags: Tag[], currentTagIds: string[]) => {
+    setBets(prev => prev.map(b =>
+      b.id === betId ? { ...b, tags: newTags } : b
+    ));
+    const newTagIds = newTags.map(t => t.id);
+    const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
+    for (const tagId of tagsToRemove) {
+      await supabase.rpc('remove_tag_from_bet', { p_bet_id: betId, p_tag_id: tagId });
+    }
+    const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
+    for (const tagId of tagsToAdd) {
+      await supabase.rpc('add_tag_to_bet', { p_bet_id: betId, p_tag_id: tagId });
+    }
+  }, [supabase]);
+
   useEffect(() => {
     isMountedRef.current = true;
     
@@ -1053,409 +1387,38 @@ export default function Bets() {
   };
 
   const desktopRows = useMemo(() => {
-    const rows = sortedBets.map((bet) => (
-      <tr 
+    return sortedBets.map((bet) => (
+      <BetRow
         key={bet.id}
-        className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors"
-      >
-        <td className="py-1.5 px-1.5 opacity-70">
-          {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
-        </td>
-        <td className="py-1.5 px-1.5 font-medium min-w-0 overflow-hidden">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="cursor-default inline-block w-full min-w-0">
-                <div className="whitespace-pre-line break-words">{truncateDescription(bet.bet_description, 50)}</div>
-                {bet.match_description && (
-                  <div className="text-[10px] opacity-50 break-words">{truncateDescription(bet.match_description, 50)}</div>
-                )}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs px-2 py-1 text-xs bg-terminal-black border-terminal-border text-terminal-text">
-              <div className="whitespace-pre-line">
-                {bet.bet_description}
-                {bet.match_description && (
-                  <>
-                    {'\n'}
-                    <span className="opacity-70">{bet.match_description}</span>
-                  </>
-                )}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </td>
-        <td className="py-1.5 px-1.5">
-          <TagSelector
-            betId={bet.id}
-            selectedTags={bet.tags || []}
-            onTagsChange={async (newTags) => {
-              // Update local state immediately for responsiveness (functional update to avoid stale closure)
-              setBets(prev => prev.map(b =>
-                b.id === bet.id ? { ...b, tags: newTags } : b
-              ));
-              
-              // Sync with database
-              const currentTagIds = (bet.tags || []).map(t => t.id);
-              const newTagIds = newTags.map(t => t.id);
-              
-              // Remove tags that were deselected
-              const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
-              for (const tagId of tagsToRemove) {
-                await supabase.rpc('remove_tag_from_bet', {
-                  p_bet_id: bet.id,
-                  p_tag_id: tagId
-                });
-              }
-              
-              // Add tags that were selected
-              const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
-              for (const tagId of tagsToAdd) {
-                await supabase.rpc('add_tag_to_bet', {
-                  p_bet_id: bet.id,
-                  p_tag_id: tagId
-                });
-              }
-              
-              // Refetch only this bet's tags to confirm save, without full list refetch (avoids race and slowness)
-              const { data: freshTags } = await supabase.rpc('get_bet_tags', { p_bet_id: bet.id });
-              setBets(prev => prev.map(b =>
-                b.id === bet.id ? { ...b, tags: freshTags ?? [] } : b
-              ));
-            }}
-            onTagsUpdated={fetchUserTags}
-          />
-        </td>
-        <td className="py-1.5 px-1.5 opacity-70">
-          {bet.sport}
-        </td>
-        <td className="py-1.5 px-1.5 opacity-70">
-          {bet.league || '-'}
-        </td>
-        <td className="py-1.5 px-1.5 opacity-70">
-          {bet.betting_market || '-'}
-        </td>
-        <td className="text-right py-1.5 px-1.5">
-          {formatValue(bet.stake_amount)}
-        </td>
-        <td className="text-right py-1.5 px-1.5 text-terminal-blue">
-          {bet.odds.toFixed(2)}
-        </td>
-        <td className={`text-right py-1.5 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap ${
-          bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' : 
-          bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 
-          'opacity-70'
-        }`}>
-          {bet.is_cashout && bet.cashout_amount 
-            ? formatValue(bet.cashout_amount)
-            : bet.status === 'half_won'
-              ? formatValue((bet.stake_amount + bet.potential_return) / 2)
-              : bet.status === 'half_lost'
-                ? formatValue(bet.stake_amount / 2)
-                : formatValue(bet.potential_return)
-          }
-        </td>
-        <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
-          <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
-            bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
-            bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
-            bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
-            bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
-            bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
-            bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
-            'text-terminal-text bg-terminal-text/10'
-          }`}>
-            {translateStatus(bet.status)}
-          </span>
-        </td>
-        <td className="py-1.5 px-1.5 min-w-[11rem]">
-          <div className="flex flex-row items-center gap-1.5 justify-end flex-nowrap">
-            {bet.status === 'pending' && (
-              <>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-1.5 text-terminal-text shrink-0 text-[10px] font-bold uppercase"
-                    >
-                      <Target className="w-3.5 h-3.5 opacity-70 shrink-0" />
-                      Resultado
-                      <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
-                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
-                      <TrendingUp className="w-4 h-4 text-terminal-green" />
-                      <span>Ganhou</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
-                      <TrendingDown className="w-4 h-4 text-terminal-red" />
-                      <span>Perdeu</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
-                      <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
-                      <span>1/2 Green</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
-                      <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
-                      <span>1/2 Red</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <button 
-                  type="button"
-                  onClick={() => openCashoutModal(bet)}
-                  className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-1.5 shrink-0 text-[10px] font-bold text-terminal-blue hover:text-terminal-black"
-                  title="Cashout"
-                >
-                  <DollarSign className="w-3.5 h-3.5 shrink-0" />
-                  CASHOUT
-                </button>
-              </>
-            )}
-            <button 
-              type="button"
-              onClick={() => openEditModal(bet)}
-              className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all shrink-0"
-              title="Editar"
-            >
-              <Edit className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
-            </button>
-            <button 
-              type="button"
-              onClick={() => deleteBet(bet.id)}
-              className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all shrink-0"
-              title="Excluir"
-            >
-              <Trash2 className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
-            </button>
-          </div>
-        </td>
-      </tr>
+        bet={bet}
+        formatValue={formatValue}
+        translateStatus={translateStatus}
+        onBetTagsChange={handleBetTagsChange}
+        onTagsUpdated={fetchUserTags}
+        updateBetStatus={updateBetStatus}
+        openCashoutModal={openCashoutModal}
+        openEditModal={openEditModal}
+        deleteBet={deleteBet}
+      />
     ));
-    return rows;
-  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatValue, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [sortedBets, formatValue, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   const mobileCards = useMemo(() => {
-    const cards = sortedBets.map((bet) => (
-      <div 
-        key={bet.id} 
-        className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3"
-      >
-        {/* Header: Date + Status */}
-        <div className="flex justify-between items-center">
-          <span className="text-xs opacity-50">
-            {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
-          </span>
-          <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
-            bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
-            bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
-            bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
-            bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
-            bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
-            bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
-            'text-terminal-text bg-terminal-text/10'
-          }`}>
-            {translateStatus(bet.status)}
-          </span>
-        </div>
-
-        {/* Main Info: Description + Sport — truncado 50 chars; toque para ver completo */}
-        <div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="w-full text-left font-medium text-sm text-terminal-text cursor-pointer focus:outline-none focus:ring-0"
-              >
-                <span className="whitespace-pre-line block">{truncateDescription(bet.bet_description, 50)}</span>
-                {bet.match_description && (
-                  <span className="text-xs opacity-60 mt-0.5 block">{truncateDescription(bet.match_description, 50)}</span>
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" align="start" className="max-w-[min(90vw,320px)] p-3 text-xs bg-terminal-black border-terminal-border text-terminal-text">
-              <div className="whitespace-pre-line">
-                {bet.bet_description}
-                {bet.match_description && (
-                  <>
-                    {'\n'}
-                    <span className="opacity-70">{bet.match_description}</span>
-                  </>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-          <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">
-            {bet.sport}
-          </div>
-          {bet.league && (
-            <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">
-              {bet.league}
-            </div>
-          )}
-          {bet.betting_market && (
-            <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">
-              {bet.betting_market}
-            </div>
-          )}
-          {/* Tags */}
-          <div className="mt-2">
-            <TagSelector
-              betId={bet.id}
-              selectedTags={bet.tags || []}
-              onTagsChange={async (newTags) => {
-                // Update local state immediately for responsiveness (functional update to avoid stale closure)
-                setBets(prev => prev.map(b =>
-                  b.id === bet.id ? { ...b, tags: newTags } : b
-                ));
-                
-                // Sync with database
-                const currentTagIds = (bet.tags || []).map(t => t.id);
-                const newTagIds = newTags.map(t => t.id);
-                
-                // Remove tags that were deselected
-                const tagsToRemove = currentTagIds.filter(id => !newTagIds.includes(id));
-                for (const tagId of tagsToRemove) {
-                  await supabase.rpc('remove_tag_from_bet', {
-                    p_bet_id: bet.id,
-                    p_tag_id: tagId
-                  });
-                }
-                
-                // Add tags that were selected
-                const tagsToAdd = newTagIds.filter(id => !currentTagIds.includes(id));
-                for (const tagId of tagsToAdd) {
-                  await supabase.rpc('add_tag_to_bet', {
-                    p_bet_id: bet.id,
-                    p_tag_id: tagId
-                  });
-                }
-                
-                // Refetch only this bet's tags to confirm save, without full list refetch (avoids race and slowness)
-                const { data: freshTags } = await supabase.rpc('get_bet_tags', { p_bet_id: bet.id });
-                setBets(prev => prev.map(b =>
-                  b.id === bet.id ? { ...b, tags: freshTags ?? [] } : b
-                ));
-              }}
-              onTagsUpdated={fetchUserTags}
-            />
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 py-2 border-y border-terminal-border-subtle bg-terminal-dark-gray/30 -mx-4 px-4">
-          <div className="text-center">
-            <div className="text-[10px] opacity-50 uppercase mb-0.5">Valor</div>
-            <div className="text-sm">{formatValue(bet.stake_amount)}</div>
-          </div>
-          <div className="text-center border-l border-terminal-border-subtle">
-            <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
-            <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
-          </div>
-          <div className="text-center border-l border-terminal-border-subtle">
-            <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
-            <div className={`text-sm ${
-              bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' : 
-              bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 
-              'opacity-70'
-            }`}>
-              {bet.is_cashout && bet.cashout_amount 
-                ? formatValue(bet.cashout_amount)
-                : bet.status === 'half_won'
-                  ? formatValue((bet.stake_amount + bet.potential_return) / 2)
-                  : bet.status === 'half_lost'
-                    ? formatValue(bet.stake_amount / 2)
-                    : formatValue(bet.potential_return)
-              }
-            </div>
-          </div>
-        </div>
-
-        {/* Actions - mobile: dropdown Resultado + Cashout + Editar + Excluir */}
-        <div className="pt-2">
-          {bet.status === 'pending' ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-2 text-terminal-text w-full sm:w-auto justify-center"
-                  >
-                    <Target className="w-4 h-4 opacity-70" />
-                    <span className="text-xs font-bold uppercase">Resultado</span>
-                    <ChevronDown className="w-3 h-3 opacity-70" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="bg-terminal-dark-gray border-terminal-border text-terminal-text min-w-[180px]">
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingUp className="w-4 h-4 text-terminal-green" />
-                    <span>Ganhou</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingDown className="w-4 h-4 text-terminal-red" />
-                    <span>Perdeu</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
-                    <span>1/2 Green</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
-                    <span>1/2 Red</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <button 
-                type="button"
-                onClick={() => openCashoutModal(bet)}
-                className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial min-w-0"
-                title="Cashout"
-              >
-                <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black shrink-0" />
-                <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
-              </button>
-              <button 
-                type="button"
-                onClick={() => openEditModal(bet)}
-                className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center"
-                title="Editar"
-              >
-                <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
-              </button>
-              <button 
-                type="button"
-                onClick={() => deleteBet(bet.id)}
-                className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center justify-center"
-                title="Excluir"
-              >
-                <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <button 
-                type="button"
-                onClick={() => openEditModal(bet)}
-                className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center"
-                title="Editar"
-              >
-                <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
-              </button>
-              <button 
-                type="button"
-                onClick={() => deleteBet(bet.id)}
-                className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center"
-                title="Excluir"
-              >
-                <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+    return sortedBets.map((bet) => (
+      <BetCard
+        key={bet.id}
+        bet={bet}
+        formatValue={formatValue}
+        translateStatus={translateStatus}
+        onBetTagsChange={handleBetTagsChange}
+        onTagsUpdated={fetchUserTags}
+        updateBetStatus={updateBetStatus}
+        openCashoutModal={openCashoutModal}
+        openEditModal={openEditModal}
+        deleteBet={deleteBet}
+      />
     ));
-    return cards;
-  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatValue, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [sortedBets, formatValue, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   if (authLoading) {
     return (
