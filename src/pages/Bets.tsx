@@ -182,12 +182,19 @@ const BETTING_MARKETS_LIST = [
 
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
-  const { isConfigured, formatWithUnits, config, updateConfig, formatCurrency } = useUserUnit();
+  const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
+  const [showUnitsView, setShowUnitsView] = useState(false);
+  const formatValue = showUnitsView
+    ? (value: number) => {
+        const u = toUnits(value);
+        return u !== null ? formatUnits(u) : formatCurrency(value);
+      }
+    : formatCurrency;
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
@@ -1125,7 +1132,7 @@ export default function Bets() {
           {bet.betting_market || '-'}
         </td>
         <td className="text-right py-1.5 px-1.5">
-          {formatWithUnits(bet.stake_amount)}
+          {formatValue(bet.stake_amount)}
         </td>
         <td className="text-right py-1.5 px-1.5 text-terminal-blue">
           {bet.odds.toFixed(2)}
@@ -1136,12 +1143,12 @@ export default function Bets() {
           'opacity-70'
         }`}>
           {bet.is_cashout && bet.cashout_amount 
-            ? formatWithUnits(bet.cashout_amount)
+            ? formatValue(bet.cashout_amount)
             : bet.status === 'half_won'
-              ? formatWithUnits((bet.stake_amount + bet.potential_return) / 2)
+              ? formatValue((bet.stake_amount + bet.potential_return) / 2)
               : bet.status === 'half_lost'
-                ? formatWithUnits(bet.stake_amount / 2)
-                : formatWithUnits(bet.potential_return)
+                ? formatValue(bet.stake_amount / 2)
+                : formatValue(bet.potential_return)
           }
         </td>
         <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
@@ -1223,7 +1230,7 @@ export default function Bets() {
       </tr>
     ));
     return rows;
-  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatWithUnits, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatValue, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   const mobileCards = useMemo(() => {
     const cards = sortedBets.map((bet) => (
@@ -1333,7 +1340,7 @@ export default function Bets() {
         <div className="grid grid-cols-3 gap-2 py-2 border-y border-terminal-border-subtle bg-terminal-dark-gray/30 -mx-4 px-4">
           <div className="text-center">
             <div className="text-[10px] opacity-50 uppercase mb-0.5">Valor</div>
-            <div className="text-sm">{formatWithUnits(bet.stake_amount)}</div>
+            <div className="text-sm">{formatValue(bet.stake_amount)}</div>
           </div>
           <div className="text-center border-l border-terminal-border-subtle">
             <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
@@ -1347,12 +1354,12 @@ export default function Bets() {
               'opacity-70'
             }`}>
               {bet.is_cashout && bet.cashout_amount 
-                ? formatWithUnits(bet.cashout_amount)
+                ? formatValue(bet.cashout_amount)
                 : bet.status === 'half_won'
-                  ? formatWithUnits((bet.stake_amount + bet.potential_return) / 2)
+                  ? formatValue((bet.stake_amount + bet.potential_return) / 2)
                   : bet.status === 'half_lost'
-                    ? formatWithUnits(bet.stake_amount / 2)
-                    : formatWithUnits(bet.potential_return)
+                    ? formatValue(bet.stake_amount / 2)
+                    : formatValue(bet.potential_return)
               }
             </div>
           </div>
@@ -1442,7 +1449,7 @@ export default function Bets() {
       </div>
     ));
     return cards;
-  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatWithUnits, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [sortedBets, bets, supabase, fetchBets, fetchUserTags, formatValue, translateStatus, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   if (authLoading) {
     return (
@@ -1465,7 +1472,13 @@ export default function Bets() {
 
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <BetsHeader onReferralClick={() => setReferralModalOpen(true)} />
+      <BetsHeader
+        onReferralClick={() => setReferralModalOpen(true)}
+        showUnitsView={showUnitsView}
+        onShowUnitsViewChange={setShowUnitsView}
+        onUnitConfigClick={() => setUnitConfigOpen(true)}
+        unitsConfigured={isConfigured()}
+      />
       
       <main className="container mx-auto px-3 py-4">
         {/* Stats Grid */}
@@ -1488,7 +1501,7 @@ export default function Bets() {
           />
           <BetStatsCard 
             label="LUCRO" 
-            value={formatWithUnits(stats.profit)}
+            value={formatValue(stats.profit)}
             valueColor={stats.profit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}
             trend={
               stats.profit > 0
@@ -1512,17 +1525,17 @@ export default function Bets() {
           />
           <BetStatsCard 
             label="TOTAL APOSTADO" 
-            value={formatWithUnits(stats.totalStaked)}
+            value={formatValue(stats.totalStaked)}
             valueColor="text-terminal-text"
           />
           <BetStatsCard 
             label="RETORNO TOTAL" 
-            value={formatWithUnits(stats.totalReturn)}
+            value={formatValue(stats.totalReturn)}
             valueColor="text-terminal-green"
           />
           <BetStatsCard 
             label="MÉDIA APOSTA" 
-            value={formatWithUnits(stats.averageStake)}
+            value={formatValue(stats.averageStake)}
             valueColor="text-terminal-text"
           />
           <BetStatsCard 
@@ -1768,14 +1781,6 @@ export default function Bets() {
             </button>
             <button 
               type="button"
-              onClick={() => setUnitConfigOpen(true)}
-              className="terminal-button px-4 py-2.5 text-sm flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-green transition-colors min-h-[40px]"
-            >
-              <Settings className="w-4 h-4 shrink-0" />
-              <span>UNIDADES</span>
-            </button>
-            <button 
-              type="button"
               onClick={fetchBets}
               className="terminal-button px-4 py-2.5 text-sm flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-green transition-colors min-h-[40px]"
             >
@@ -1876,7 +1881,7 @@ export default function Bets() {
               <div className="p-3 bg-terminal-black rounded border border-terminal-border-subtle">
                 <p className="font-medium text-sm">{cashoutModal.bet.bet_description}</p>
                 <div className="flex justify-between text-xs mt-2 opacity-70">
-                  <span>VALOR: {formatWithUnits(cashoutModal.bet.stake_amount)}</span>
+                  <span>VALOR: {formatValue(cashoutModal.bet.stake_amount)}</span>
                   <span>ODDS: {cashoutModal.bet.odds}</span>
                 </div>
               </div>
@@ -2380,7 +2385,10 @@ export default function Bets() {
 
       <UnitConfigurationModal 
         open={unitConfigOpen} 
-        onOpenChange={setUnitConfigOpen} 
+        onOpenChange={(open) => {
+          setUnitConfigOpen(open);
+          if (!open) refetchConfig();
+        }} 
       />
 
       {user?.id && (

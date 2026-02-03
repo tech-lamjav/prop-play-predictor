@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { UnitConfigurationModal } from '@/components/UnitConfigurationModal';
 import { BarChart3, ChevronRight, DollarSign, Target, Download } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 
@@ -43,13 +44,21 @@ const PERIOD_OPTIONS: { value: DateRangePreset; label: string }[] = [
 export default function BettingDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { bets, isLoading: betsLoading } = useBets(user?.id ?? '');
-  const { formatWithUnits } = useUserUnit();
+  const { toUnits, formatUnits, formatCurrency, isConfigured, refetchConfig } = useUserUnit();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const chartHeight = isMobile ? 200 : 280;
   const bankrollChartHeight = isMobile ? 200 : 300;
   const [period, setPeriod] = useState<DateRangePreset>('30');
+  const [showUnitsView, setShowUnitsView] = useState(false);
+  const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [betsWithTags, setBetsWithTags] = useState<BetWithTags[]>([]);
+  const formatValue = showUnitsView
+    ? (value: number) => {
+        const u = toUnits(value);
+        return u !== null ? formatUnits(u) : formatCurrency(value);
+      }
+    : formatCurrency;
 
   useEffect(() => {
     if (!bets.length) {
@@ -138,7 +147,12 @@ export default function BettingDashboard() {
 
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <BetsHeader />
+      <BetsHeader
+        showUnitsView={showUnitsView}
+        onShowUnitsViewChange={setShowUnitsView}
+        onUnitConfigClick={() => setUnitConfigOpen(true)}
+        unitsConfigured={isConfigured()}
+      />
 
       <main className="container mx-auto px-3 py-4 max-w-7xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -149,7 +163,7 @@ export default function BettingDashboard() {
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <button
               type="button"
-              onClick={() => exportBetsToCSV(currentBets, formatWithUnits)}
+              onClick={() => exportBetsToCSV(currentBets, formatValue)}
               className="terminal-button px-4 py-2 text-sm font-medium flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
             >
               <Download className="w-4 h-4" />
@@ -180,7 +194,7 @@ export default function BettingDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
           <BetStatsCard
             label="LUCRO"
-            value={formatWithUnits(currentStats.profit)}
+            value={formatValue(currentStats.profit)}
             valueColor={
               currentStats.profit >= 0
                 ? 'text-terminal-green'
@@ -238,12 +252,12 @@ export default function BettingDashboard() {
           />
           <BetStatsCard
             label="TOTAL APOSTADO"
-            value={formatWithUnits(currentStats.totalStaked)}
+            value={formatValue(currentStats.totalStaked)}
             valueColor="text-terminal-text"
           />
           <BetStatsCard
             label="RETORNO TOTAL"
-            value={formatWithUnits(currentStats.totalReturn)}
+            value={formatValue(currentStats.totalReturn)}
             valueColor="text-terminal-green"
           />
           <BetStatsCard
@@ -271,22 +285,22 @@ export default function BettingDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <ProfitBySportChart
                   bets={currentBets}
-                  formatValue={(v) => formatWithUnits(v)}
+                  formatValue={(v) => formatValue(v)}
                   chartHeight={chartHeight}
                 />
                 <ProfitByLeagueChart
                   bets={currentBets}
-                  formatValue={(v) => formatWithUnits(v)}
+                  formatValue={(v) => formatValue(v)}
                   chartHeight={chartHeight}
                 />
                 <ProfitByMarketChart
                   bets={currentBets}
-                  formatValue={(v) => formatWithUnits(v)}
+                  formatValue={(v) => formatValue(v)}
                   chartHeight={chartHeight}
                 />
                 <ProfitByTagChart
                   bets={currentBetsWithTags}
-                  formatValue={(v) => formatWithUnits(v)}
+                  formatValue={(v) => formatValue(v)}
                   chartHeight={chartHeight}
                 />
               </div>
@@ -338,6 +352,14 @@ export default function BettingDashboard() {
           </>
         )}
       </main>
+
+      <UnitConfigurationModal
+        open={unitConfigOpen}
+        onOpenChange={(open) => {
+          setUnitConfigOpen(open);
+          if (!open) refetchConfig();
+        }}
+      />
     </div>
   );
 }

@@ -91,8 +91,10 @@ export const ProfitByLeagueChart: React.FC<ProfitByLeagueChartProps> = ({
                 backgroundColor: '#0a0a0a',
                 border: '1px solid #333',
                 borderRadius: '4px',
-                color: '#fff',
+                color: '#e5e5e5',
               }}
+              labelStyle={{ color: '#e5e5e5' }}
+              itemStyle={{ color: '#e5e5e5' }}
               formatter={(value: number) => [formatValue(value), 'Lucro']}
               labelFormatter={(label) => label}
             />

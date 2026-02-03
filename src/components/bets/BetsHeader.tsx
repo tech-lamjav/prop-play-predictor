@@ -9,13 +9,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
 
 interface BetsHeaderProps {
   title?: string;
   onReferralClick?: () => void;
+  showUnitsView?: boolean;
+  onShowUnitsViewChange?: (checked: boolean) => void;
+  onUnitConfigClick?: () => void;
+  unitsConfigured?: boolean;
 }
 
-export const BetsHeader: React.FC<BetsHeaderProps> = ({ title = "STATIX BETS", onReferralClick }) => {
+export const BetsHeader: React.FC<BetsHeaderProps> = ({
+  title = "STATIX BETS",
+  onReferralClick,
+  showUnitsView = false,
+  onShowUnitsViewChange,
+  onUnitConfigClick,
+  unitsConfigured = true,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -52,6 +65,30 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({ title = "STATIX BETS", o
         </span>
       </div>
       <div className="flex items-center space-x-2">
+        {onShowUnitsViewChange !== undefined && (
+          <div className="flex items-center gap-2 mr-2">
+            <Label htmlFor="header-show-units" className="text-xs whitespace-nowrap text-terminal-text opacity-80 cursor-pointer">
+              Unidades
+            </Label>
+            <Switch
+              id="header-show-units"
+              checked={showUnitsView}
+              onCheckedChange={onShowUnitsViewChange}
+              disabled={!unitsConfigured}
+              className="data-[state=unchecked]:bg-white/80 data-[state=checked]:bg-[var(--terminal-green)]"
+            />
+          </div>
+        )}
+        {onUnitConfigClick && (
+          <button
+            type="button"
+            onClick={onUnitConfigClick}
+            className="terminal-button px-3 py-2 text-sm font-medium flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors mr-2"
+          >
+            <Settings size={16} className="shrink-0" />
+            <span className="hidden sm:inline">UNIDADES</span>
+          </button>
+        )}
         {onReferralClick && (
           <button 
             onClick={onReferralClick}
