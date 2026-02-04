@@ -10,6 +10,7 @@ import Onboarding from "./pages/Onboarding";
 import DashboardTest from "./pages/DashboardTest";
 import Bets from "./pages/Bets";
 import Bankroll from './pages/Bankroll';
+import BettingDashboard from './pages/BettingDashboard';
 import PlayerSelectionTest from "./pages/PlayerSelectionTest";
 import PlayerSelection from "./pages/PlayerSelection";
 import NBADashboard from "./pages/NBADashboard";
@@ -19,6 +20,7 @@ import Paywall from "./pages/Paywall";
 import PaywallPlatform from "./pages/PaywallPlatform";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
 import ComoUsar from "./pages/ComoUsar";
 import Games from "./pages/Games";
@@ -60,6 +62,13 @@ const App = () => (
           <Route path="/bankroll" element={
             <ProtectedRoute>
               <Bankroll />
+            </ProtectedRoute>
+          } />
+          <Route path="/betting-dashboard" element={
+            <ProtectedRoute>
+              <PremiumRoute>
+                <BettingDashboard />
+              </PremiumRoute>
             </ProtectedRoute>
           } />
           <Route path="/analysis" element={
