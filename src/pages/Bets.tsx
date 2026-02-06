@@ -1284,12 +1284,12 @@ export default function Bets() {
   }, [isSportDropdownOpen, filteredSportsList.length]);
 
   useEffect(() => {
-    if (!isSportDropdownOpen || sportHighlightIndex < 0) return;
+    if (!editModal.isOpen || !isSportDropdownOpen || sportHighlightIndex < 0) return;
     const currentItem = sportItemRefs.current[sportHighlightIndex];
     if (currentItem?.scrollIntoView) {
       currentItem.scrollIntoView({ block: 'nearest' });
     }
-  }, [isSportDropdownOpen, sportHighlightIndex]);
+  }, [editModal.isOpen, isSportDropdownOpen, sportHighlightIndex]);
 
   useEffect(() => {
     if (!isLeagueDropdownOpen || filteredLeaguesList.length === 0) {
@@ -1306,12 +1306,12 @@ export default function Bets() {
   }, [isLeagueDropdownOpen, filteredLeaguesList.length]);
 
   useEffect(() => {
-    if (!isLeagueDropdownOpen || leagueHighlightIndex < 0) return;
+    if (!editModal.isOpen || !isLeagueDropdownOpen || leagueHighlightIndex < 0) return;
     const currentItem = leagueItemRefs.current[leagueHighlightIndex];
     if (currentItem?.scrollIntoView) {
       currentItem.scrollIntoView({ block: 'nearest' });
     }
-  }, [isLeagueDropdownOpen, leagueHighlightIndex]);
+  }, [editModal.isOpen, isLeagueDropdownOpen, leagueHighlightIndex]);
 
   useEffect(() => {
     if (!isBettingMarketDropdownOpen || filteredBettingMarketsList.length === 0) {
@@ -1327,12 +1327,12 @@ export default function Bets() {
   }, [isBettingMarketDropdownOpen, filteredBettingMarketsList.length]);
 
   useEffect(() => {
-    if (!isBettingMarketDropdownOpen || bettingMarketHighlightIndex < 0) return;
+    if (!editModal.isOpen || !isBettingMarketDropdownOpen || bettingMarketHighlightIndex < 0) return;
     const currentItem = bettingMarketItemRefs.current[bettingMarketHighlightIndex];
     if (currentItem?.scrollIntoView) {
       currentItem.scrollIntoView({ block: 'nearest' });
     }
-  }, [isBettingMarketDropdownOpen, bettingMarketHighlightIndex]);
+  }, [editModal.isOpen, isBettingMarketDropdownOpen, bettingMarketHighlightIndex]);
 
   useEffect(() => {
     if (isMountedRef.current) {
@@ -1939,6 +1939,9 @@ export default function Bets() {
             setIsBettingMarketDropdownOpen(false);
             setIsBettingMarketQueryTouched(false);
             setBettingMarketHighlightIndex(-1);
+            sportItemRefs.current = [];
+            leagueItemRefs.current = [];
+            bettingMarketItemRefs.current = [];
           }
         }
       }>
