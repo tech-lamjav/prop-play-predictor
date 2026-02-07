@@ -89,20 +89,24 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
               </div>
 
               {/* Backup Player Info */}
-              {prop.next_available_player_name && (
+              {prop.is_available_backup && prop.next_available_player_name && prop.next_available_player_name.trim() !== '' && (
                 <div className="mt-2 pt-2 border-t border-terminal-border-subtle">
                   <div className="flex items-center gap-2 text-[10px]">
                     <Users className="w-3 h-3 opacity-50" />
                     <span className="opacity-60">NEXT:</span>
                     <span className="text-terminal-text">{prop.next_available_player_name}</span>
                   </div>
-                  {prop.next_player_stats_normal > 0 && (
+                  {(prop.next_player_stats_normal > 0 || prop.next_player_stats_when_leader_out > 0) && (
                     <div className="flex items-center gap-2 text-[10px] mt-1 ml-5">
-                      <span className="opacity-60">AVG:</span>
-                      <span className="stat-positive">{prop.next_player_stats_normal.toFixed(1)}</span>
+                      {prop.next_player_stats_normal > 0 && (
+                        <>
+                          <span className="opacity-60">AVG:</span>
+                          <span className="stat-positive">{prop.next_player_stats_normal.toFixed(1)}</span>
+                        </>
+                      )}
                       {prop.next_player_stats_when_leader_out > 0 && (
                         <>
-                          <span className="opacity-60">→</span>
+                          {prop.next_player_stats_normal > 0 && <span className="opacity-60">→</span>}
                           <span className="stat-positive font-bold">
                             {prop.next_player_stats_when_leader_out.toFixed(1)}
                           </span>

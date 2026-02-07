@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, Tooltip } from 'recharts';
 import { GamePlayerStats } from '@/services/nba-data.service';
 import { RotateCcw } from 'lucide-react';
 
@@ -15,7 +15,37 @@ interface ChartDataPoint {
   opponent: string;
   date: string;
   isOver: boolean;
+  line: number;
+  statVsLine: string;
 }
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload as ChartDataPoint;
+    return (
+      <div className="bg-terminal-dark-gray border border-terminal-border-subtle rounded p-2 shadow-lg">
+        <p className="text-xs font-bold text-terminal-text mb-1">{data.opponent}</p>
+        <p className="text-[10px] text-terminal-text opacity-70 mb-1">{data.date}</p>
+        <p className="text-xs text-terminal-green">
+          Stat: <span className="font-bold">{data.value.toFixed(1)}</span>
+        </p>
+        {data.line > 0 && (
+          <>
+            <p className="text-xs text-terminal-text opacity-70">
+              Line: <span className="font-medium">{data.line.toFixed(1)}</span>
+            </p>
+            <p className={`text-xs font-medium ${
+              data.statVsLine === 'Over' ? 'text-terminal-green' : 'text-terminal-red'
+            }`}>
+              {data.statVsLine}
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
 
 const CustomXAxisTick = (props: any) => {
   const { x, y, payload, data } = props;
@@ -66,6 +96,8 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
       opponent: game.played_against,
       date: new Date(game.game_date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
       isOver: game.stat_vs_line === 'Over',
+      line: game.line ?? 0,
+      statVsLine: game.stat_vs_line || '',
     }));
 
   const average = chartData.length > 0
@@ -233,6 +265,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
                 stroke: '#3a3d3a'
               }} 
             />
+            <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="value" radius={[2, 2, 0, 0]}>
               {chartData.map((entry, index) => {
                 const isOverLine = adjustedLine !== null ? entry.value > adjustedLine : entry.isOver;

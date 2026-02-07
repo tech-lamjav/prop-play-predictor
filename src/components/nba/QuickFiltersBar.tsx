@@ -1,5 +1,5 @@
 import React from 'react';
-import { Filter, Home, Plane, Globe } from 'lucide-react';
+import { Filter, Home, Plane, Globe, X } from 'lucide-react';
 
 interface QuickFiltersBarProps {
   lastNGames: number | 'all';
@@ -7,6 +7,7 @@ interface QuickFiltersBarProps {
   onLastNGamesChange: (value: number | 'all') => void;
   onHomeAwayChange: (value: 'all' | 'home' | 'away') => void;
   totalGamesAvailable: number;
+  onClearFilters?: () => void;
 }
 
 export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
@@ -15,7 +16,17 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
   onLastNGamesChange,
   onHomeAwayChange,
   totalGamesAvailable,
+  onClearFilters,
 }) => {
+  const hasActiveFilters = lastNGames !== 'all' || homeAway !== 'all';
+
+  const handleClearFilters = () => {
+    onLastNGamesChange('all');
+    onHomeAwayChange('all');
+    if (onClearFilters) {
+      onClearFilters();
+    }
+  };
   const gameOptions: Array<{ value: number | 'all'; label: string }> = [
     { value: 5, label: 'Last 5' },
     { value: 10, label: 'Last 10' },
@@ -100,21 +111,25 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
           </div>
         </div>
 
-        {/* Active Filters Count */}
-        {(lastNGames !== 'all' || homeAway !== 'all') && (
-          <div className="ml-auto">
+        {/* Active Filters Count and Clear Button */}
+        {hasActiveFilters && (
+          <div className="ml-auto flex items-center gap-2">
             <div className="text-xs px-2 py-1 rounded bg-terminal-green/10 text-terminal-green border border-terminal-green/30">
-              {lastNGames !== 'all' || homeAway !== 'all' ? (
-                <>
-                  {[
-                    lastNGames !== 'all' && `Last ${lastNGames}`,
-                    homeAway !== 'all' && homeAway.charAt(0).toUpperCase() + homeAway.slice(1),
-                  ]
-                    .filter(Boolean)
-                    .join(' • ')}
-                </>
-              ) : null}
+              {[
+                lastNGames !== 'all' && `Last ${lastNGames}`,
+                homeAway !== 'all' && homeAway.charAt(0).toUpperCase() + homeAway.slice(1),
+              ]
+                .filter(Boolean)
+                .join(' • ')}
             </div>
+            <button
+              onClick={handleClearFilters}
+              className="px-2 py-1 text-xs font-medium rounded border border-terminal-red/30 text-terminal-red hover:bg-terminal-red/10 hover:border-terminal-red/50 transition-all flex items-center gap-1"
+              title="Limpar filtros"
+            >
+              <X className="w-3 h-3" />
+              Limpar
+            </button>
           </div>
         )}
       </div>
