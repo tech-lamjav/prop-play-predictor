@@ -40,6 +40,35 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading })
     return lastFive.split('').join(' ');
   };
 
+  const renderLastFiveWithColors = (lastFive: string | null) => {
+    if (!lastFive) return <span className="opacity-50">N/A</span>;
+    
+    return (
+      <div className="flex items-center justify-center gap-1">
+        {lastFive.split('').map((result, index) => {
+          const isWin = result === 'V' || result === 'W';
+          return (
+            <span
+              key={index}
+              className={`text-xs font-medium ${
+                isWin ? 'text-terminal-green' : 'text-terminal-red'
+              }`}
+            >
+              {result}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const calculateRecordFromLastFive = (lastFive: string | null): { wins: number; losses: number } => {
+    if (!lastFive) return { wins: 0, losses: 0 };
+    const wins = (lastFive.match(/W/g) || []).length;
+    const losses = (lastFive.match(/L/g) || []).length;
+    return { wins, losses };
+  };
+
   return (
     <div className="terminal-container p-4">
       <h3 className="section-title mb-3">NEXT GAME</h3>
@@ -120,22 +149,33 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading })
             <div className="text-sm font-medium">
               {team.wins}-{team.losses}
             </div>
-            <div className={`text-xs mt-1 ${getRecordColor(team.team_last_five_games)}`}>
-              {formatLastFive(team.team_last_five_games)}
+            <div className="mt-1">
+              {renderLastFiveWithColors(team.team_last_five_games)}
             </div>
           </div>
           
           <div className="p-2 rounded bg-black/20 text-center">
             <div className="data-label text-xs mb-1">OPPONENT</div>
-            <div className="text-sm font-medium opacity-70">
-              {team.next_opponent_team_last_five_games ? 
-                formatLastFive(team.next_opponent_team_last_five_games) : 
-                'N/A'
-              }
-            </div>
-            <div className="text-xs mt-1 opacity-50">
-              Last 5
-            </div>
+            {team.next_opponent_team_last_five_games ? (
+              <>
+                {(() => {
+                  const record = calculateRecordFromLastFive(team.next_opponent_team_last_five_games);
+                  return (
+                    <div className="text-sm font-medium opacity-70">
+                      {record.wins}-{record.losses}
+                    </div>
+                  );
+                })()}
+                <div className="mt-1">
+                  {renderLastFiveWithColors(team.next_opponent_team_last_five_games)}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-medium opacity-70">N/A</div>
+                <div className="text-xs mt-1 opacity-50">Last 5</div>
+              </>
+            )}
           </div>
         </div>
 

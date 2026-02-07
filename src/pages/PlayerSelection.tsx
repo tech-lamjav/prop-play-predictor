@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Star, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
 import { nbaDataService, Player } from '@/services/nba-data.service';
 import { getTeamLogoUrl } from '@/utils/team-logos';
+import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-status';
 
 export default function PlayerSelection() {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ export default function PlayerSelection() {
   const handlePlayerSelect = (playerId: number) => {
     const player = players.find(p => p.player_id === playerId);
     if (player) {
-      const slug = player.player_name.toLowerCase().replace(/\s+/g, '-');
+      const slug = player.player_name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
       navigate(`/nba-dashboard/${slug}`);
     }
   };
@@ -323,11 +324,12 @@ export default function PlayerSelection() {
                             </div>
                           </div>
                           <div className={`text-[10px] px-1.5 py-0.5 rounded border ${
-                            player.current_status?.toLowerCase() === 'active' 
-                              ? 'text-terminal-green border-terminal-green/30 bg-terminal-green/10' 
-                              : 'text-terminal-red border-terminal-red/30 bg-terminal-red/10'
+                            (() => {
+                              const style = getInjuryStatusStyle(player.current_status);
+                              return `${style.textClass} ${style.borderClass} ${style.bgClass}`;
+                            })()
                           }`}>
-                            {player.current_status?.substring(0, 3).toUpperCase() || 'UNK'}
+                            {getInjuryStatusLabel(player.current_status)}
                           </div>
                         </div>
                       ))}

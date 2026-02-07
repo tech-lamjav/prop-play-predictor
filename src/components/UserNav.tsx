@@ -1,8 +1,7 @@
 import React from 'react';
 import { useAuth } from '../hooks/use-auth';
-import { useWhatsAppSync } from '../hooks/use-whatsapp-sync';
 import { Button } from './ui/button';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -10,13 +9,10 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { 
-  User, 
-  Settings, 
-  LogOut, 
-  MessageCircle,
-  CheckCircle,
-  AlertCircle
+import {
+  User,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,7 +22,6 @@ interface UserNavProps {
 
 export default function UserNav({ className }: UserNavProps) {
   const { user, signOut } = useAuth();
-  const { isSynced, isLoading } = useWhatsAppSync(user?.id || '');
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -43,29 +38,8 @@ export default function UserNav({ className }: UserNavProps) {
       .slice(0, 2);
   };
 
-  const getWhatsAppStatus = () => {
-    if (isLoading) {
-      return { icon: AlertCircle, text: 'Verificando...', color: 'text-gray-500' };
-    }
-    if (isSynced) {
-      return { icon: CheckCircle, text: 'WhatsApp Sincronizado', color: 'text-green-600' };
-    }
-    return { icon: MessageCircle, text: 'Sincronizar WhatsApp', color: 'text-blue-600' };
-  };
-
-  const whatsappStatus = getWhatsAppStatus();
-  const StatusIcon = whatsappStatus.icon;
-
   return (
     <div className={`flex items-center space-x-4 ${className}`}>
-      {/* WhatsApp Status */}
-      <div className="flex items-center space-x-2">
-        <StatusIcon className={`w-4 h-4 ${whatsappStatus.color}`} />
-        <span className={`text-sm ${whatsappStatus.color}`}>
-          {whatsappStatus.text}
-        </span>
-      </div>
-
       {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -75,8 +75,9 @@ export default function NBADashboard() {
       setPlayer(playerData);
       
       // Load all data in parallel for better performance
+      // Fetch all games for season averages, and limited games for chart display
       const results = await Promise.allSettled([
-        nbaDataService.getPlayerGameStats(playerData.player_id, 10), // Reduced from 30 to 10 for faster initial load
+        nbaDataService.getPlayerGameStats(playerData.player_id, 100), // Fetch up to 100 games for season averages and filters
         nbaDataService.getPlayerProps(playerData.player_id),
         nbaDataService.getTeamPlayers(playerData.team_id),
         nbaDataService.getTeamById(playerData.team_id),

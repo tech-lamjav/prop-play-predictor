@@ -25,6 +25,7 @@ import { PostHogPageView } from "./components/PostHogPageView";
 import ComoUsar from "./pages/ComoUsar";
 import Games from "./pages/Games";
 import Home from "./pages/Home";
+import GameDetail from "./pages/GameDetail";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
             </ProtectedRoute>
           } />
           <Route path="/games" element={<Games />} />
+          <Route path="/game/:gameId" element={<GameDetail />} />
           <Route path="/nba-players" element={
             <ProtectedRoute>
               <PlayerSelection />

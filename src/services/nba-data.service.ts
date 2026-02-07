@@ -178,18 +178,26 @@ export const nbaDataService = {
   },
 
   async getPlayerByName(playerName: string): Promise<Player | null> {
-    // Convert slug to searchable format (e.g., "lebron-james" -> "lebron james")
-    const searchName = playerName.replace(/-/g, ' ').toLowerCase();
+    // Normalize: remove diacritics/accents, replace hyphens with spaces, lowercase
+    const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/-/g, ' ').toLowerCase();
+    const searchName = normalize(playerName);
     
     try {
       // Get all players and search case-insensitively in JavaScript
       // This is necessary because BigQuery foreign tables don't support UPPER() in WHERE clauses
       const allPlayers = await this.getAllPlayers();
       
-      // Find player by case-insensitive name match
-      const player = allPlayers.find(p => 
-        p.player_name.toLowerCase() === searchName
-      );
+      // Find player by normalized name match (handles accents, hyphens, case)
+      let player = allPlayers.find(p => normalize(p.player_name) === searchName);
+      
+      // If still not found, try partial match (for edge cases)
+      if (!player) {
+        const searchWords = searchName.split(' ');
+        player = allPlayers.find(p => {
+          const dbNormalized = normalize(p.player_name);
+          return searchWords.every(word => dbNormalized.includes(word));
+        });
+      }
       
       return player || null;
     } catch (error) {

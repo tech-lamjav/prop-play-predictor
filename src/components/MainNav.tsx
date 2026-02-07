@@ -1,7 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { 
   BarChart3, 
   Target, 
@@ -12,7 +11,6 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
-import { useWhatsAppSync } from '../hooks/use-whatsapp-sync';
 import UserNav from './UserNav';
 import { useState } from 'react';
 
@@ -103,28 +101,10 @@ export default function MainNav({ className }: MainNavProps) {
             })}
           </div>
 
-          {/* Right side - WhatsApp Status & User Menu */}
+          {/* Right side - User Menu */}
           <div className="flex items-center space-x-4">
             {user ? (
-              <>
-                {/* WhatsApp Status Badge */}
-                <div className="hidden sm:flex items-center">
-                  {isSynced ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                      WhatsApp Conectado
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                      WhatsApp Pendente
-                    </Badge>
-                  )}
-                </div>
-
-                {/* User Menu */}
-                <UserNav />
-              </>
+              <UserNav />
             ) : (
               <>
                 <Button
@@ -184,26 +164,6 @@ export default function MainNav({ className }: MainNavProps) {
                   </Button>
                 );
               })}
-              
-              {/* Mobile WhatsApp Status */}
-              {user && (
-                <div className="px-3 py-2 border-t border-border mt-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Status WhatsApp:</span>
-                    {isSynced ? (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                        Conectado
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                        Pendente
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
