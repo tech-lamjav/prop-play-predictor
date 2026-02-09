@@ -183,6 +183,7 @@ const BETTING_MARKETS_LIST = [
 type BetRowProps = {
   bet: Bet;
   formatValue: (value: number) => string;
+  formatBetDate: (dateStr: string) => string;
   translateStatus: (status: string) => string;
   onBetTagsChange: (betId: string, newTags: Tag[], currentTagIds: string[]) => Promise<void>;
   onTagsUpdated: () => void;
@@ -195,6 +196,7 @@ type BetRowProps = {
 const BetRow = React.memo(function BetRow({
   bet,
   formatValue,
+  formatBetDate,
   translateStatus,
   onBetTagsChange,
   onTagsUpdated,
@@ -210,7 +212,7 @@ const BetRow = React.memo(function BetRow({
   return (
     <tr className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors">
       <td className="py-1.5 px-1.5 opacity-70">
-        {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
+        {formatBetDate(bet.bet_date)}
       </td>
       <td className="py-1.5 px-1.5 font-medium min-w-0 overflow-hidden">
         <Tooltip>
@@ -345,6 +347,7 @@ type BetCardProps = BetRowProps;
 const BetCard = React.memo(function BetCard({
   bet,
   formatValue,
+  formatBetDate,
   translateStatus,
   onBetTagsChange,
   onTagsUpdated,
@@ -360,7 +363,7 @@ const BetCard = React.memo(function BetCard({
   return (
     <div className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3">
       <div className="flex justify-between items-center">
-        <span className="text-xs opacity-50">{new Date(bet.bet_date).toLocaleDateString('pt-BR')}</span>
+        <span className="text-xs opacity-50">{formatBetDate(bet.bet_date)}</span>
         <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
           bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
           bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
@@ -811,6 +814,19 @@ export default function Bets() {
     const potentialReturn = stakeAmount * odds;
     const updatedAt = new Date().toISOString();
 
+    // Convert yyyy-MM-dd to local midnight ISO so the calendar day is preserved in all timezones
+    const dateOnlyToISO = (dateStr: string) => {
+      if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d).toISOString();
+    };
+    const betDateISO = editModal.formData.bet_date
+      ? (dateOnlyToISO(editModal.formData.bet_date) ?? updatedAt)
+      : updatedAt;
+    const matchDateISO = editModal.formData.match_date
+      ? dateOnlyToISO(editModal.formData.match_date)
+      : null;
+
     const updateData: any = {
       bet_description: editModal.formData.bet_description,
       match_description: editModal.formData.match_description || null,
@@ -820,8 +836,8 @@ export default function Bets() {
       odds: odds,
       stake_amount: stakeAmount,
       potential_return: potentialReturn,
-      bet_date: editModal.formData.bet_date || updatedAt,
-      match_date: editModal.formData.match_date || null,
+      bet_date: betDateISO,
+      match_date: matchDateISO,
       status: editModal.formData.status,
       updated_at: updatedAt
     };
@@ -830,8 +846,8 @@ export default function Bets() {
     const updatedBet: Partial<Bet> = {
       ...editModal.bet,
       ...updateData,
-      bet_date: updateData.bet_date,
-      match_date: updateData.match_date,
+      bet_date: betDateISO,
+      match_date: matchDateISO ?? undefined,
       status: editModal.formData.status
     };
 
@@ -939,8 +955,8 @@ export default function Bets() {
         betting_market: bet.betting_market || '',
         odds: bet.odds?.toString() || '',
         stake_amount: bet.stake_amount?.toString() || '',
-        bet_date: bet.bet_date ? new Date(bet.bet_date).toISOString().split('T')[0] : '',
-        match_date: bet.match_date ? new Date(bet.match_date).toISOString().split('T')[0] : '',
+        bet_date: bet.bet_date ? String(bet.bet_date).split('T')[0] : '',
+        match_date: bet.match_date ? String(bet.match_date).split('T')[0] : '',
         status: bet.status || 'pending'
       }
     });
@@ -1174,10 +1190,18 @@ export default function Bets() {
       let bValue: any;
       
       switch (sortConfig.column) {
-        case 'bet_date':
-          aValue = new Date(a.bet_date).getTime();
-          bValue = new Date(b.bet_date).getTime();
+        case 'bet_date': {
+          const aDatePart = String(a.bet_date || '').split('T')[0];
+          const bDatePart = String(b.bet_date || '').split('T')[0];
+          const dateCmp = aDatePart.localeCompare(bDatePart);
+          if (dateCmp !== 0) {
+            return sortConfig.direction === 'asc' ? dateCmp : -dateCmp;
+          }
+          // Mesmo dia: desempate por created_at (mesma direção da ordenação)
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
           break;
+        }
         case 'sport':
           aValue = (a.sport || '').toLowerCase();
           bValue = (b.sport || '').toLowerCase();
@@ -1399,6 +1423,14 @@ export default function Bets() {
     return format(date, 'yyyy-MM-dd');
   };
 
+  /** Format bet_date for display using only the date part (avoids timezone shift). */
+  const formatBetDateForDisplay = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const datePart = String(dateStr).split('T')[0];
+    const date = parse(datePart, 'yyyy-MM-dd', new Date());
+    return isValid(date) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : '';
+  };
+
   // Sortable Header Component
   const SortableHeader = ({ column, label, align = 'left', className: extraClassName }: { column: SortColumn; label: string; align?: 'left' | 'right' | 'center'; className?: string }) => {
     const isActive = sortConfig.column === column;
@@ -1429,6 +1461,7 @@ export default function Bets() {
         key={bet.id}
         bet={bet}
         formatValue={formatValue}
+        formatBetDate={formatBetDateForDisplay}
         translateStatus={translateStatus}
         onBetTagsChange={handleBetTagsChange}
         onTagsUpdated={fetchUserTags}
@@ -1438,7 +1471,7 @@ export default function Bets() {
         deleteBet={deleteBet}
       />
     ));
-  }, [sortedBets, formatValue, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [sortedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   const mobileCards = useMemo(() => {
     return sortedBets.map((bet) => (
@@ -1446,6 +1479,7 @@ export default function Bets() {
         key={bet.id}
         bet={bet}
         formatValue={formatValue}
+        formatBetDate={formatBetDateForDisplay}
         translateStatus={translateStatus}
         onBetTagsChange={handleBetTagsChange}
         onTagsUpdated={fetchUserTags}
@@ -1455,7 +1489,7 @@ export default function Bets() {
         deleteBet={deleteBet}
       />
     ));
-  }, [sortedBets, formatValue, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [sortedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   if (authLoading) {
     return (
