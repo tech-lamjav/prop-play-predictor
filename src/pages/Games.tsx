@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
-import { Input } from '@/components/ui/input';
 import { nbaDataService, Game } from '@/services/nba-data.service';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Lock, Zap, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, Lock, Zap, BarChart3, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useToast } from '@/hooks/use-toast';
 import { TeamAutocomplete } from '@/components/nba/TeamAutocomplete';
 import { FreePropCard } from '@/components/nba/FreePropCard';
 import { getTeamLogoUrl } from '@/utils/team-logos';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 interface Filters {
   date: string;
@@ -17,28 +18,54 @@ interface Filters {
 }
 
 const ITEMS_PER_PAGE = 12;
+const SAO_PAULO_TIMEZONE = 'America/Sao_Paulo';
+
+const getSaoPauloTodayISO = (): string => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: SAO_PAULO_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+
+  const year = parts.find((p) => p.type === 'year')?.value ?? '';
+  const month = parts.find((p) => p.type === 'month')?.value ?? '';
+  const day = parts.find((p) => p.type === 'day')?.value ?? '';
+  return `${year}-${month}-${day}`;
+};
+
+const toSaoPauloISO = (date: Date): string =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: SAO_PAULO_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 
 // Helper to parse date without timezone issues
 const parseGameDate = (dateString: string): Date => {
-  // If dateString is in format YYYY-MM-DD, parse it as local date
+  // If dateString is in format YYYY-MM-DD, parse as Sao Paulo midday to avoid timezone drift
   if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
+    return new Date(`${dateString}T12:00:00-03:00`);
   }
-  // Otherwise, parse normally but use UTC to avoid timezone shifts
-  const date = new Date(dateString);
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  return new Date(dateString);
 };
 
 // Format date for display (day of week + date)
 const formatGameDate = (dateString: string): string => {
   const date = parseGameDate(dateString);
-  return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+  return date.toLocaleDateString('pt-BR', {
+    timeZone: SAO_PAULO_TIMEZONE,
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  });
 };
 
 // Check if game is finished
 const isGameFinished = (game: Game): boolean => {
-  return game.home_team_score !== null && game.visitor_team_score !== null;
+  // Prefer winner_team_id as the source of truth to avoid showing FT for 0-0 scheduled games
+  return game.winner_team_id !== null;
 };
 
 // Componente para mostrar últimos resultados (V/D)
@@ -78,8 +105,8 @@ export default function Games() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Default to today's date
-  const today = new Date().toISOString().split('T')[0];
+  // Default to today's date in Sao Paulo timezone (GMT-3)
+  const today = getSaoPauloTodayISO();
   const [filters, setFilters] = useState<Filters>({ date: today, teamAbbreviation: '' });
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -163,52 +190,6 @@ export default function Games() {
       <AnalyticsNav />
       
       <main className="container mx-auto px-4 py-4 space-y-4">
-        {/* Filters Section - Compacto */}
-        <section className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-4">
-          <div className="flex flex-col md:flex-row md:items-end gap-3">
-            <div className="flex-1">
-              <label className="text-[10px] uppercase tracking-wide text-terminal-text opacity-70 mb-1 block">
-                DATA
-              </label>
-              <Input
-                type="date"
-                value={filters.date}
-                onChange={(e) => setFilters({ ...filters, date: e.target.value })}
-                className="terminal-input h-9 text-sm"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-[10px] uppercase tracking-wide text-terminal-text opacity-70 mb-1 block">
-                TIME
-              </label>
-              <TeamAutocomplete
-                value={filters.teamAbbreviation}
-                onValueChange={(value) => setFilters({ ...filters, teamAbbreviation: value })}
-                placeholder="Buscar time..."
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleApplyFilters} 
-                disabled={isLoading} 
-                size="sm"
-                className="terminal-button bg-terminal-green hover:bg-terminal-green/80 text-terminal-black font-bold"
-              >
-                {isLoading ? '...' : 'FILTRAR'}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleResetFilters} 
-                disabled={isLoading}
-                size="sm" 
-                className="terminal-button"
-              >
-                <RefreshCw className="w-3 h-3" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
         {error && (
           <div className="bg-terminal-dark-gray border border-terminal-red p-3 rounded text-terminal-red text-sm">
             {error}
@@ -220,6 +201,87 @@ export default function Games() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Games List */}
             <div className="lg:col-span-3">
+              <div className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-3 mb-3">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                  <div className="hidden lg:block pt-0.5">
+                    <div className="text-[10px] uppercase tracking-wide text-terminal-text opacity-70">Filtros</div>
+                    <div className="text-xs text-terminal-text opacity-50 mt-1 leading-tight">Data e time para refinar os jogos</div>
+                  </div>
+                  <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+                  <div className="w-full lg:w-[220px]">
+                    <label className="text-[10px] uppercase tracking-wide text-terminal-text opacity-70 mb-1 block">
+                      Data
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="terminal-input h-9 text-sm w-full justify-start border-terminal-border-subtle bg-terminal-gray/30 hover:bg-terminal-gray/40"
+                        >
+                          <CalendarIcon className="w-4 h-4 mr-2 opacity-70" />
+                          {parseGameDate(filters.date).toLocaleDateString('pt-BR', {
+                            timeZone: SAO_PAULO_TIMEZONE,
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border-subtle" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={parseGameDate(filters.date)}
+                          onSelect={(date) => {
+                            if (!date) return;
+                            setFilters({ ...filters, date: toSaoPauloISO(date) });
+                          }}
+                          initialFocus
+                          className="bg-terminal-dark-gray text-terminal-text"
+                          classNames={{
+                            caption_label: 'text-sm font-semibold text-terminal-text',
+                            head_cell: 'text-terminal-text/60 rounded-md w-9 font-medium text-[0.75rem]',
+                            day: 'h-9 w-9 p-0 font-normal text-terminal-text hover:bg-terminal-gray/40',
+                            day_selected: 'bg-terminal-green text-terminal-black hover:bg-terminal-green/90',
+                            day_today: 'bg-terminal-gray text-terminal-text',
+                            nav_button: 'h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 border border-terminal-border-subtle',
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="w-full lg:w-[220px]">
+                    <label className="text-[10px] uppercase tracking-wide text-terminal-text opacity-70 mb-1 block">
+                      Time
+                    </label>
+                    <TeamAutocomplete
+                      value={filters.teamAbbreviation}
+                      onValueChange={(value) => setFilters({ ...filters, teamAbbreviation: value })}
+                      placeholder="Buscar time..."
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={handleApplyFilters} 
+                      disabled={isLoading} 
+                      size="sm"
+                      className="terminal-button bg-terminal-green hover:bg-terminal-green/80 text-terminal-black font-bold"
+                    >
+                      {isLoading ? '...' : 'Filtrar'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleResetFilters} 
+                      disabled={isLoading}
+                      size="sm" 
+                      className="terminal-button"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              </div>
+
               {isLoading ? (
             <div className="bg-terminal-dark-gray border border-terminal-border-subtle p-6 rounded text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-terminal-green mx-auto mb-2"></div>

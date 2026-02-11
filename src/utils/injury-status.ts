@@ -23,8 +23,7 @@ export function getInjuryStatusStyle(status: string | null | undefined): {
   if (
     statusLower === 'active' ||
     statusLower === 'available' ||
-    statusLower.includes('unk') ||
-    statusLower === 'probable'
+    statusLower.includes('unk')
   ) {
     return {
       textClass: 'text-terminal-green',
@@ -33,15 +32,30 @@ export function getInjuryStatusStyle(status: string | null | undefined): {
     };
   }
 
-  // Questionable / Doubtful -> Yellow
-  if (
-    statusLower.includes('questionable') ||
-    statusLower.includes('doubtful')
-  ) {
+  // Probable -> intermediate green/yellow
+  if (statusLower.includes('probable')) {
     return {
-      textClass: 'text-terminal-yellow',
-      borderClass: 'border-terminal-yellow/30',
-      bgClass: 'bg-terminal-yellow/10',
+      textClass: 'text-lime-400',
+      borderClass: 'border-lime-400/30',
+      bgClass: 'bg-lime-400/10',
+    };
+  }
+
+  // Questionable -> Yellow
+  if (statusLower.includes('questionable')) {
+    return {
+      textClass: 'text-yellow-400',
+      borderClass: 'border-yellow-400/30',
+      bgClass: 'bg-yellow-400/10',
+    };
+  }
+
+  // Doubtful -> Orange (between questionable and out)
+  if (statusLower.includes('doubtful')) {
+    return {
+      textClass: 'text-orange-400',
+      borderClass: 'border-orange-400/30',
+      bgClass: 'bg-orange-400/10',
     };
   }
 
@@ -67,20 +81,19 @@ export function getInjuryStatusStyle(status: string | null | undefined): {
 }
 
 /**
- * Get short status label (first 3 characters).
- * UNK/unknown is shown as Available (Disp.) so it's clear the player is available.
+ * Get full status label for better readability.
  */
 export function getInjuryStatusLabel(status: string | null | undefined): string {
-  if (!status) return 'Disp.';
+  if (!status) return 'Available';
   
   const statusUpper = status.toUpperCase();
   const statusLower = status.toLowerCase();
-  if (statusLower.includes('unk') || statusLower === 'unknown') return 'Disp.';
-  if (statusUpper.includes('QUESTIONABLE')) return 'Q';
-  if (statusUpper.includes('DOUBTFUL')) return 'D';
-  if (statusUpper.includes('PROBABLE')) return 'P';
-  if (statusUpper.includes('ACTIVE') || statusUpper.includes('AVAILABLE')) return 'Disp.';
-  if (statusUpper.includes('OUT') || statusUpper.includes('INACTIVE')) return 'OUT';
+  if (statusLower.includes('unk') || statusLower === 'unknown') return 'Available';
+  if (statusUpper.includes('QUESTIONABLE')) return 'Questionable';
+  if (statusUpper.includes('DOUBTFUL')) return 'Doubtful';
+  if (statusUpper.includes('PROBABLE')) return 'Probable';
+  if (statusUpper.includes('ACTIVE') || statusUpper.includes('AVAILABLE')) return 'Available';
+  if (statusUpper.includes('OUT') || statusUpper.includes('INACTIVE')) return 'Out';
   
-  return statusUpper.substring(0, 3);
+  return status;
 }
