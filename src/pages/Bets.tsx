@@ -9,6 +9,7 @@ import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
+import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useNavigate } from 'react-router-dom';
 import { MultiSelectFilter } from '../components/ui/multi-select-filter';
 import { 
@@ -502,8 +503,11 @@ const BetCard = React.memo(function BetCard({
   );
 });
 
+const DAILY_BET_LIMIT = 3;
+
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
+  const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -517,6 +521,7 @@ export default function Bets() {
         return u !== null ? formatUnits(u) : formatCurrency(value);
       }
     : formatCurrency;
+  const [dailyBetCount, setDailyBetCount] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
@@ -667,6 +672,53 @@ export default function Bets() {
       }
     }
   }, [user?.id, supabase, toast]);
+
+  const getDailyBetCount = useCallback(async (): Promise<number> => {
+    if (!user?.id) return 0;
+
+    const nowUTC = new Date();
+    const gmt3Offset = -3 * 60 * 60 * 1000;
+    const nowGMT3 = new Date(nowUTC.getTime() + gmt3Offset);
+
+    const year = nowGMT3.getUTCFullYear();
+    const month = String(nowGMT3.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(nowGMT3.getUTCDate()).padStart(2, '0');
+    const gmt3DateString = `${year}-${month}-${day}`;
+
+    const startOfDayUTC = new Date(`${gmt3DateString}T03:00:00.000Z`);
+
+    const tomorrowGMT3 = new Date(nowGMT3.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowYear = tomorrowGMT3.getUTCFullYear();
+    const tomorrowMonth = String(tomorrowGMT3.getUTCMonth() + 1).padStart(2, '0');
+    const tomorrowDay = String(tomorrowGMT3.getUTCDate()).padStart(2, '0');
+    const gmt3TomorrowDateString = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
+    const startOfTomorrowUTC = new Date(`${gmt3TomorrowDateString}T03:00:00.000Z`);
+
+    const { count, error } = await supabase
+      .from('bets')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('bet_date', startOfDayUTC.toISOString())
+      .lt('bet_date', startOfTomorrowUTC.toISOString());
+
+    if (error) return 0;
+    return count ?? 0;
+  }, [user?.id, supabase]);
+
+  const fetchDailyBetCount = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const count = await getDailyBetCount();
+      if (isMountedRef.current) {
+        setDailyBetCount(count);
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        setDailyBetCount(0);
+      }
+    }
+  }, [user?.id, getDailyBetCount]);
 
   const calculateStats = useCallback((betsData: Bet[]) => {
     if (!isMountedRef.current) return;
@@ -878,6 +930,14 @@ export default function Bets() {
   const createBet = async (data: CreateBetFormData): Promise<boolean> => {
     if (!user?.id) return false;
 
+    if (isBetinhoFree) {
+      const currentCount = await getDailyBetCount();
+      if (currentCount >= DAILY_BET_LIMIT) {
+        navigate('/paywall');
+        return false;
+      }
+    }
+
     try {
       const odds = parseFloat(data.odds);
       const stakeAmount = parseFloat(data.stake_amount);
@@ -922,6 +982,7 @@ export default function Bets() {
 
       if (isMountedRef.current) {
         setBets(prev => [betWithTags, ...prev]);
+        setDailyBetCount(prev => (prev ?? 0) + 1);
         toast({ title: 'Sucesso', description: 'Aposta cadastrada com sucesso' });
       }
       return true;
@@ -1036,6 +1097,7 @@ export default function Bets() {
     
     if (user?.id) {
       fetchBets();
+      fetchDailyBetCount();
       fetchReferralCode();
       fetchUserTags();
     }
@@ -1043,7 +1105,7 @@ export default function Bets() {
     return () => {
       isMountedRef.current = false;
     };
-  }, [user?.id, fetchBets, fetchReferralCode, fetchUserTags]);
+  }, [user?.id, fetchBets, fetchDailyBetCount, fetchReferralCode, fetchUserTags]);
 
   // Reset filter if selected tags no longer exist
   useEffect(() => {
@@ -1837,12 +1899,23 @@ export default function Bets() {
             <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => {
+                if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
+                  navigate('/paywall');
+                  return;
+                }
+                setIsCreateModalOpen(true);
+              }}
                 className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 NOVA APOSTA
               </button>
+              {isBetinhoFree && dailyBetCount !== null && (
+                <span className="text-[10px] opacity-50">
+                  {dailyBetCount}/{DAILY_BET_LIMIT} apostas hoje
+                </span>
+              )}
               <span className="text-[10px] opacity-50">MOSTRANDO {sortedBets.length} APOSTAS</span>
             </div>
           </div>

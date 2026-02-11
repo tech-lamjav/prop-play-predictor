@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Lock, Zap, BarChart3, ArrowRight, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Lock, Zap, BarChart3, ArrowRight, ArrowLeft, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/integrations/supabase/client";
@@ -140,7 +140,7 @@ export default function Paywall() {
   const handleUpgrade = () => {
     // Open WhatsApp with pre-filled message for upgrade
     const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting";
-    const whatsappUrl = `https://wa.me/554391482828?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/5511952136845?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');
@@ -165,16 +165,18 @@ export default function Paywall() {
           <div className="flex items-center gap-2 sm:gap-4">
             <Button 
               variant="outline" 
-              onClick={() => navigate("/auth")} 
-              className="text-sm sm:text-base px-3 sm:px-4 py-2"
+              onClick={() => navigate("/bets")} 
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
             >
-              Entrar
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Bets
             </Button>
             <Button 
-              onClick={() => navigate(redirectAfterPremium)} 
-              className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
+              variant="outline" 
+              onClick={() => navigate("/auth")} 
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
             >
-              Dashboard
+              Entrar
             </Button>
           </div>
         </div>
@@ -256,7 +258,8 @@ export default function Paywall() {
                   <Button 
                     onClick={handleStripeCheckout}
                     disabled={isLoading || authLoading}
-                    className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6 gap-2 disabled:opacity-50"
+                    variant="outline"
+                    className="w-full py-6 gap-2 disabled:opacity-50 text-lg"
                     size="lg"
                   >
                     {isLoading ? (
