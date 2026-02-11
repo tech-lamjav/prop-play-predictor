@@ -6,7 +6,6 @@ import {
   Target, 
   TrendingUp, 
   Users, 
-  Settings,
   Menu,
   X
 } from 'lucide-react';
@@ -22,12 +21,27 @@ export default function MainNav({ className }: MainNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSynced } = useWhatsAppSync(user?.id || '');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigationItems = [
-    // Temporarily removed: Dashboard, Análises, Jogadores
-    // Will be added back later
+    {
+      name: 'Home',
+      href: '/home',
+      icon: BarChart3,
+      description: 'Página inicial'
+    },
+    {
+      name: 'Jogos',
+      href: '/games',
+      icon: TrendingUp,
+      description: 'Próximos jogos'
+    },
+    {
+      name: 'Jogadores',
+      href: '/nba-players',
+      icon: Users,
+      description: 'Banco de jogadores'
+    },
     {
       name: 'Apostas',
       href: '/bets',
@@ -58,6 +72,12 @@ export default function MainNav({ className }: MainNavProps) {
       href: '/games',
       icon: TrendingUp,
       description: 'Próximos jogos'
+    },
+    {
+      name: 'Apostas',
+      href: '/bets',
+      icon: Target,
+      description: 'Minhas apostas'
     }
   ];
 

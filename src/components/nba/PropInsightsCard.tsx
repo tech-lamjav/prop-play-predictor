@@ -88,29 +88,30 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
                 </div>
               </div>
 
-              {/* Backup Player Info */}
+              {/* Backup / Desfalque: when main player is out, next player is the main option */}
               {prop.is_available_backup && prop.next_available_player_name && prop.next_available_player_name.trim() !== '' && (
                 <div className="mt-2 pt-2 border-t border-terminal-border-subtle">
+                  <div className="text-[9px] opacity-50 mb-1">Desfalque: quando o titular está fora, o próximo assume.</div>
                   <div className="flex items-center gap-2 text-[10px]">
                     <Users className="w-3 h-3 opacity-50" />
-                    <span className="opacity-60">NEXT:</span>
+                    <span className="opacity-60">PRÓXIMO:</span>
                     <span className="text-terminal-text">{prop.next_available_player_name}</span>
                   </div>
                   {(prop.next_player_stats_normal > 0 || prop.next_player_stats_when_leader_out > 0) && (
                     <div className="flex items-center gap-2 text-[10px] mt-1 ml-5">
                       {prop.next_player_stats_normal > 0 && (
                         <>
-                          <span className="opacity-60">AVG:</span>
-                          <span className="stat-positive">{prop.next_player_stats_normal.toFixed(1)}</span>
+                          <span className="opacity-60">Média normal:</span>
+                          <span className="text-terminal-green">{prop.next_player_stats_normal.toFixed(1)}</span>
                         </>
                       )}
                       {prop.next_player_stats_when_leader_out > 0 && (
                         <>
                           {prop.next_player_stats_normal > 0 && <span className="opacity-60">→</span>}
-                          <span className="stat-positive font-bold">
+                          <span className="text-terminal-green font-bold">
                             {prop.next_player_stats_when_leader_out.toFixed(1)}
                           </span>
-                          <span className="opacity-60">(when {playerName.split(' ')[0]} out)</span>
+                          <span className="opacity-60">(com titular fora)</span>
                         </>
                       )}
                     </div>

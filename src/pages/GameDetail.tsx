@@ -186,10 +186,14 @@ export default function GameDetail() {
           </Button>
         </div>
 
-        {/* Expanded Game Header */}
-        <div className="terminal-container p-4 md:p-6 mb-4">
+        {/* Layout: left = header + injury (compact), right = lineup */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left column: game header + injury report */}
+          <div className="lg:col-span-5 xl:col-span-4 space-y-4">
+        {/* Game Header - Compact */}
+        <div className="terminal-container p-3 md:p-4">
           {/* Main Matchup Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center mb-3">
             {/* Home Team */}
             <div className="flex items-center gap-3 md:gap-4 md:order-1">
               <div className="w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
@@ -365,9 +369,9 @@ export default function GameDetail() {
           )}
         </div>
 
-        {/* Injury Report Section - Compact */}
+        {/* Injury Report - below header on the left */}
         {(homeInjuredPlayers.length > 0 || visitorInjuredPlayers.length > 0) && (
-          <div className="terminal-container px-4 py-3 mb-4">
+          <div className="terminal-container px-3 py-3">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-bold text-terminal-text">Injury Report</span>
               <span className="text-[10px] bg-terminal-red/20 text-terminal-red px-1.5 py-0.5 rounded">
@@ -426,151 +430,127 @@ export default function GameDetail() {
             </div>
           </div>
         )}
+          </div>
 
-        {/* Lineups Table */}
+          {/* Right column: Lineups - two tables side by side */}
+          <div className="lg:col-span-7 xl:col-span-8">
         <div className="terminal-container p-4">
           <h3 className="text-sm font-bold text-terminal-text mb-4">Lineups</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
-                <colgroup>
-                  <col style={{ width: '35%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '35%' }} />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-terminal-border-subtle">
-                    <th className="text-left py-2 px-3 text-xs font-medium text-terminal-text opacity-60">
-                      {game.home_team_abbreviation}
-                    </th>
-                    <th className="text-center py-2 px-1 text-xs font-medium text-terminal-text opacity-60">
-                    </th>
-                    <th className="text-center py-2 px-1 text-xs font-medium text-terminal-text opacity-60">
-                      POS
-                    </th>
-                    <th className="text-center py-2 px-1 text-xs font-medium text-terminal-text opacity-60">
-                    </th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-terminal-text opacity-60">
-                      {game.visitor_team_abbreviation}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedPositions.map((pos) => {
-                    const homePlayersAtPos = homePlayersByPos[pos] || [];
-                    const visitorPlayersAtPos = visitorPlayersByPos[pos] || [];
-                    const maxCount = Math.max(homePlayersAtPos.length, visitorPlayersAtPos.length);
-                    
-                    return Array.from({ length: maxCount }).map((_, idx) => {
-                      const homePlayer = homePlayersAtPos[idx];
-                      const visitorPlayer = visitorPlayersAtPos[idx];
-                      
-                      return (
-                        <tr
-                          key={`${pos}-${idx}`}
-                          className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors"
-                        >
-                          {/* Home Player */}
-                          <td className="py-2 px-3">
-                            {homePlayer ? (
-                              <div
-                                onClick={() => handlePlayerClick(homePlayer.player_id)}
-                                className="flex items-center gap-2 cursor-pointer hover:text-terminal-green transition-colors"
-                              >
-                                <div className="w-7 h-7 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0">
-                                  <span className="text-[9px] font-bold text-terminal-text">
-                                    {homePlayer.player_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                                  </span>
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-xs font-medium text-terminal-text truncate">
-                                    {homePlayer.player_name}
-                                  </div>
-                                  {homePlayer.rating_stars > 0 && (
-                                    <div className="text-[9px] text-terminal-yellow opacity-70">
-                                      {'★'.repeat(Math.min(homePlayer.rating_stars, 5))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-xs opacity-30">—</span>
-                            )}
-                          </td>
-                          
-                          {/* Home Status */}
-                          <td className="py-2 px-2 text-center">
-                            {homePlayer ? (() => {
-                              const injuryStyle = getInjuryStatusStyle(homePlayer.current_status);
-                              return (
-                                <div className={`text-[10px] px-1.5 py-0.5 rounded border inline-block ${
-                                  injuryStyle.textClass} ${injuryStyle.borderClass} ${injuryStyle.bgClass}`}>
-                                  {getInjuryStatusLabel(homePlayer.current_status)}
-                                </div>
-                              );
-                            })() : (
-                              <span className="text-xs opacity-30">—</span>
-                            )}
-                          </td>
-                          
-                          {/* Position */}
-                          <td className="py-2 px-2 text-center">
-                            <span className="text-xs font-medium text-terminal-text opacity-60">
-                              {pos}
-                            </span>
-                          </td>
-                          
-                          {/* Away Status */}
-                          <td className="py-2 px-2 text-center">
-                            {visitorPlayer ? (() => {
-                              const injuryStyle = getInjuryStatusStyle(visitorPlayer.current_status);
-                              return (
-                                <div className={`text-[10px] px-1.5 py-0.5 rounded border inline-block ${
-                                  injuryStyle.textClass} ${injuryStyle.borderClass} ${injuryStyle.bgClass}`}>
-                                  {getInjuryStatusLabel(visitorPlayer.current_status)}
-                                </div>
-                              );
-                            })() : (
-                              <span className="text-xs opacity-30">—</span>
-                            )}
-                          </td>
-                          
-                          {/* Away Player */}
-                          <td className="py-2 px-3 text-right">
-                            {visitorPlayer ? (
-                              <div
-                                onClick={() => handlePlayerClick(visitorPlayer.player_id)}
-                                className="flex items-center gap-2 justify-end cursor-pointer hover:text-terminal-green transition-colors"
-                              >
-                                <div className="min-w-0">
-                                  <div className="text-xs font-medium text-terminal-text truncate">
-                                    {visitorPlayer.player_name}
-                                  </div>
-                                  {visitorPlayer.rating_stars > 0 && (
-                                    <div className="text-[9px] text-terminal-yellow opacity-70 text-right">
-                                      {'★'.repeat(Math.min(visitorPlayer.rating_stars, 5))}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="w-7 h-7 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0">
-                                  <span className="text-[9px] font-bold text-terminal-text">
-                                    {visitorPlayer.player_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-xs opacity-30">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    });
-                  })}
-                </tbody>
-              </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Home team lineup - sorted by position then rating */}
+            <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+              <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
+                <span className="text-xs font-bold text-terminal-text">{game.home_team_abbreviation}</span>
+              </div>
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-terminal-border-subtle">
+                      <th className="text-left py-2 px-2 text-[10px] font-medium text-terminal-text opacity-60">Player</th>
+                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">POS</th>
+                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedPositions.flatMap((pos) => (homePlayersByPos[pos] || []).map((homePlayer) => (
+                      <tr
+                        key={homePlayer.player_id}
+                        className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors"
+                      >
+                        <td className="py-2 px-2">
+                          <div
+                            onClick={() => handlePlayerClick(homePlayer.player_id)}
+                            className="flex items-center gap-2 cursor-pointer hover:text-terminal-green transition-colors"
+                          >
+                            <div className="w-6 h-6 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0">
+                              <span className="text-[8px] font-bold text-terminal-text">
+                                {homePlayer.player_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-terminal-text truncate">{homePlayer.player_name}</div>
+                              {homePlayer.rating_stars > 0 && (
+                                <div className="text-[9px] text-terminal-yellow opacity-70">{'★'.repeat(Math.min(homePlayer.rating_stars, 5))}</div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2 px-1 text-center text-xs text-terminal-text opacity-60">{homePlayer.position || '—'}</td>
+                        <td className="py-2 px-1 text-center">
+                          {(() => {
+                            const injuryStyle = getInjuryStatusStyle(homePlayer.current_status);
+                            return (
+                              <span className={`text-[9px] px-1 py-0.5 rounded border ${injuryStyle.textClass} ${injuryStyle.borderClass} ${injuryStyle.bgClass}`}>
+                                {getInjuryStatusLabel(homePlayer.current_status)}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    )))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {/* Visitor team lineup */}
+            <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+              <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
+                <span className="text-xs font-bold text-terminal-text">{game.visitor_team_abbreviation}</span>
+              </div>
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-terminal-border-subtle">
+                      <th className="text-left py-2 px-2 text-[10px] font-medium text-terminal-text opacity-60">Player</th>
+                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">POS</th>
+                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedPositions.flatMap((pos) => (visitorPlayersByPos[pos] || []).map((visitorPlayer) => (
+                      <tr
+                        key={visitorPlayer.player_id}
+                        className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors"
+                      >
+                        <td className="py-2 px-2">
+                          <div
+                            onClick={() => handlePlayerClick(visitorPlayer.player_id)}
+                            className="flex items-center gap-2 cursor-pointer hover:text-terminal-green transition-colors"
+                          >
+                            <div className="w-6 h-6 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0">
+                              <span className="text-[8px] font-bold text-terminal-text">
+                                {visitorPlayer.player_name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-medium text-terminal-text truncate">{visitorPlayer.player_name}</div>
+                              {visitorPlayer.rating_stars > 0 && (
+                                <div className="text-[9px] text-terminal-yellow opacity-70">{'★'.repeat(Math.min(visitorPlayer.rating_stars, 5))}</div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2 px-1 text-center text-xs text-terminal-text opacity-60">{visitorPlayer.position || '—'}</td>
+                        <td className="py-2 px-1 text-center">
+                          {(() => {
+                            const injuryStyle = getInjuryStatusStyle(visitorPlayer.current_status);
+                            return (
+                              <span className={`text-[9px] px-1 py-0.5 rounded border ${injuryStyle.textClass} ${injuryStyle.borderClass} ${injuryStyle.bgClass}`}>
+                                {getInjuryStatusLabel(visitorPlayer.current_status)}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    )))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+        </div>
+          </div>
+        </div>
       </main>
     </div>
   );

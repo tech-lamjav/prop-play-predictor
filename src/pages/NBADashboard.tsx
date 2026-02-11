@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
@@ -12,13 +12,17 @@ import { NextGamesCard } from '@/components/nba/NextGamesCard';
 import { SeasonStatsHeader } from '@/components/nba/SeasonStatsHeader';
 import { QuickFiltersBar } from '@/components/nba/QuickFiltersBar';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShootingZonesCard } from '@/components/nba/ShootingZonesCard';
 import { useSubscription } from '@/hooks/use-subscription';
 import { isFreePlayer } from '@/config/freemium';
 
+const VALID_STAT_TYPES = ['player_points', 'player_assists', 'player_rebounds', 'player_points_rebounds_assists', 'player_points_assists', 'player_rebounds_assists'];
+
 export default function NBADashboard() {
   const { playerName } = useParams<{ playerName: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isPremium, isLoading: subscriptionLoading } = useSubscription();
@@ -29,7 +33,9 @@ export default function NBADashboard() {
   const [teamData, setTeamData] = useState<Team | null>(null);
   const [shootingZones, setShootingZones] = useState<PlayerShootingZones | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedStatType, setSelectedStatType] = useState<string>('player_points');
+  const initialStat = searchParams.get('stat');
+  const statFromUrl = initialStat && VALID_STAT_TYPES.includes(initialStat) ? initialStat : 'player_points';
+  const [selectedStatType, setSelectedStatType] = useState<string>(statFromUrl);
   const [lastNGames, setLastNGames] = useState<number | 'all'>('all');
   const [homeAway, setHomeAway] = useState<'all' | 'home' | 'away'>('all');
 
@@ -185,16 +191,31 @@ export default function NBADashboard() {
       ? filteredGameStats.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / filteredGameStats.length
       : 0;
 
-    const gamesOver = filteredGameStats.filter(g => g.stat_vs_line === 'Over').length;
-    const hitRate = filteredGameStats.length > 0
-      ? (gamesOver / filteredGameStats.length) * 100
+    const isOverGame = (g: GamePlayerStats) => {
+      const statVsLine = (g.stat_vs_line || '').trim().toLowerCase();
+      if (statVsLine) {
+        if (statVsLine.includes('over')) return true;
+        if (statVsLine.includes('under')) return false;
+      }
+
+      // Fallback when stat_vs_line is missing/inconsistent
+      const line = g.line ?? 0;
+      return line > 0 ? (g.stat_value ?? 0) > line : false;
+    };
+
+    const gamesForHitRate = filteredGameStats.filter(
+      g => (g.line ?? 0) > 0 || !!(g.stat_vs_line && g.stat_vs_line.trim())
+    );
+    const gamesOver = gamesForHitRate.filter(isOverGame).length;
+    const hitRate = gamesForHitRate.length > 0
+      ? (gamesOver / gamesForHitRate.length) * 100
       : 0;
 
     return {
       seasonAvg,
       graphAvg,
       hitRate,
-      totalGames: filteredGameStats.length,
+      totalGames: gamesForHitRate.length,
       gamesOver,
     };
   }, [gameStats, filteredGameStats, selectedStatType]);
@@ -213,11 +234,19 @@ export default function NBADashboard() {
     return sortedStats[0]?.line_most_recent ?? null;
   }, [gameStats, selectedStatType]);
 
-  // Remove full page loading check to allow skeleton rendering
-  // if (loading) { ... }
-
   if (!player && !loading) {
-    return null;
+    return (
+      <div className="w-full min-h-screen bg-terminal-black text-terminal-text flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-terminal-text opacity-80">Jogador não encontrado.</p>
+        <Button
+          variant="outline"
+          className="terminal-button"
+          onClick={() => navigate('/home')}
+        >
+          Voltar ao início
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -292,6 +321,7 @@ export default function NBADashboard() {
                 gameStats={filteredGameStats} 
                 statType={selectedStatType}
                 currentLine={currentLine}
+                seasonAvg={seasonStatsData.seasonAvg}
               />
             )}
             

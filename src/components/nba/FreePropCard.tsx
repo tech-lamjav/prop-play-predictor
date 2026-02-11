@@ -65,7 +65,8 @@ export function FreePropCard() {
 
   const handleClick = () => {
     const slug = freeProp.player.player_name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
-    navigate(`/nba-dashboard/${slug}`);
+    const statParam = encodeURIComponent(freeProp.prop.stat_type);
+    navigate(`/nba-dashboard/${slug}?stat=${statParam}`);
   };
 
   return (

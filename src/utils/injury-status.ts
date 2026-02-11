@@ -67,16 +67,19 @@ export function getInjuryStatusStyle(status: string | null | undefined): {
 }
 
 /**
- * Get short status label (first 3 characters)
+ * Get short status label (first 3 characters).
+ * UNK/unknown is shown as Available (Disp.) so it's clear the player is available.
  */
 export function getInjuryStatusLabel(status: string | null | undefined): string {
-  if (!status) return 'UNK';
+  if (!status) return 'Disp.';
   
   const statusUpper = status.toUpperCase();
+  const statusLower = status.toLowerCase();
+  if (statusLower.includes('unk') || statusLower === 'unknown') return 'Disp.';
   if (statusUpper.includes('QUESTIONABLE')) return 'Q';
   if (statusUpper.includes('DOUBTFUL')) return 'D';
   if (statusUpper.includes('PROBABLE')) return 'P';
-  if (statusUpper.includes('ACTIVE') || statusUpper.includes('AVAILABLE')) return 'ACT';
+  if (statusUpper.includes('ACTIVE') || statusUpper.includes('AVAILABLE')) return 'Disp.';
   if (statusUpper.includes('OUT') || statusUpper.includes('INACTIVE')) return 'OUT';
   
   return statusUpper.substring(0, 3);

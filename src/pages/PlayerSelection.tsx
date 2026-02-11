@@ -13,6 +13,7 @@ export default function PlayerSelection() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [teamFilter, setTeamFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
@@ -59,9 +60,16 @@ export default function PlayerSelection() {
     }
   }, [location.search]);
 
-  // Filter players based on search term
+  // Filter players based on exact team filter and search term
   useEffect(() => {
     let filtered = players;
+
+    if (teamFilter) {
+      const normalizedTeam = teamFilter.toLowerCase();
+      filtered = filtered.filter(
+        (player) => player.team_abbreviation.toLowerCase() === normalizedTeam
+      );
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(player =>
@@ -72,7 +80,7 @@ export default function PlayerSelection() {
     }
 
     setFilteredPlayers(filtered);
-  }, [players, searchTerm]);
+  }, [players, searchTerm, teamFilter]);
 
   // Apply pending team filter once data is loaded
   useEffect(() => {
@@ -81,11 +89,14 @@ export default function PlayerSelection() {
       const teamMatch = players.find(
         (p) =>
           p.team_abbreviation.toLowerCase() === normalized ||
-          p.team_name.toLowerCase().includes(normalized)
+          p.team_name.toLowerCase() === normalized
       );
 
       if (teamMatch) {
-        setSearchTerm(teamMatch.team_abbreviation);
+        // Apply exact team filter (do not use text search to avoid false positives)
+        setTeamFilter(teamMatch.team_abbreviation);
+        setSearchTerm('');
+        setExpandedTeams(new Set([teamMatch.team_name]));
         setTimeout(() => scrollToTeam(teamMatch.team_name), 300);
       }
 
@@ -203,7 +214,7 @@ export default function PlayerSelection() {
         <div className="container mx-auto px-4 py-6 space-y-8">
           
           {/* Best Players Section */}
-          {!searchTerm && bestPlayers.length > 0 && (
+          {!searchTerm && !teamFilter && bestPlayers.length > 0 && (
             <section>
               <div className="flex items-center space-x-2 mb-4 border-b border-terminal-border-subtle pb-2">
                 <Star className="w-4 h-4 text-terminal-green" />
@@ -242,7 +253,7 @@ export default function PlayerSelection() {
           )}
 
           {/* Team Logos Navigation */}
-          {!searchTerm && (
+          {!searchTerm && !teamFilter && (
             <section className="py-4 overflow-x-auto scrollbar-hide">
               <div className="flex space-x-4 min-w-max px-2">
                 {sortedTeams.map((teamName) => {
