@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Lock, ArrowRight, MessageCircle, Loader2, Check, BarChart2, Database, FileText } from "lucide-react";
+import { Lock, ArrowRight, ArrowLeft, MessageCircle, Loader2, Check, BarChart2, Database, FileText, BarChart3 } from "lucide-react";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/integrations/supabase/client";
@@ -127,7 +127,7 @@ export default function PaywallDashboard() {
 
   const handleWhatsApp = () => {
     const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting para acessar o Dashboard Premium";
-    const whatsappUrl = `https://wa.me/554391482828?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/5511952136845?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -144,19 +144,19 @@ export default function PaywallDashboard() {
     },
     {
       icon: BarChart2,
-      iconColor: "text-terminal-blue",
+      iconColor: "text-terminal-green",
       title: "Análise por esporte, liga e mercado",
       description: "Entenda exatamente onde você ganha e onde perde dinheiro.",
     },
     {
       icon: Database,
-      iconColor: "text-terminal-text",
+      iconColor: "text-terminal-green",
       title: "Registro ilimitado de apostas",
       description: "Registre quantas apostas quiser, sem limites diários.",
     },
     {
       icon: FileText,
-      iconColor: "text-terminal-blue",
+      iconColor: "text-terminal-green",
       title: "Decisões baseadas em dados",
       description: "Ajuste sua estratégia com base em números, não em feeling.",
     },
@@ -164,7 +164,35 @@ export default function PaywallDashboard() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text">
-      {/* Header */}
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
+              <BarChart3 className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-lg sm:text-2xl font-bold text-foreground">Smart Betting</span>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/bets")} 
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Bets
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/auth")} 
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
+            >
+              Entrar
+            </Button>
+          </div>
+        </div>
+      </nav>
+
       <div className="container mx-auto px-4 sm:px-6 py-12">
         <div className="text-center mb-12 max-w-4xl mx-auto">
           <h1 className="text-3xl md:text-4xl font-bold text-terminal-text mb-4">
@@ -189,9 +217,7 @@ export default function PaywallDashboard() {
           {/* Left: Locked Dashboard Preview */}
           <div className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg overflow-hidden">
             <div className="p-4">
-              <p className="text-sm text-terminal-text">
-                Esse dashboard mostra exatamente onde você ganha e onde perde dinheiro.
-              </p>
+              <br />
             </div>
             <div className="relative aspect-video overflow-hidden">
               <img
@@ -230,7 +256,7 @@ export default function PaywallDashboard() {
                     <Icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-semibold text-terminal-text text-sm">{feature.title}</p>
+                    <p className="font-semibold text-terminal-text text-base">{feature.title}</p>
                     <p className="text-xs text-terminal-text/70">{feature.description}</p>
                   </div>
                 </div>
