@@ -80,7 +80,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats, pla
                   </td>
                   <td className="text-right py-2 px-2">
                     <span className={`px-2 py-0.5 bg-terminal-light-gray font-medium ${
-                      isOver ? 'stat-positive' : 'stat-negative'
+                      isOver ? 'text-green-500' : 'text-red-500'
                     }`}>
                       {statValue.toFixed(1)}
                     </span>
@@ -109,7 +109,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats, pla
         <span>SHOWING {recentGames.length} GAMES</span>
         <span>
           HIT RATE: {' '}
-          <span className="stat-positive font-medium">
+          <span className="text-green-500 font-medium">
             {(() => {
               const gamesWithValidLine = recentGames.filter(g => (g.line ?? 0) > 0);
               if (gamesWithValidLine.length === 0) return 'N/A';

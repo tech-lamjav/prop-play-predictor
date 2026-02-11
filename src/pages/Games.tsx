@@ -232,24 +232,30 @@ export default function Games() {
             </div>
           ) : (
             <>
-              {/* Vertical List of Game Cards */}
-              <div className="space-y-1.5">
+              {/* Games grid: 1 column mobile, 2 columns on larger screens */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
                 {paginatedGames.map((game) => {
                   const finished = isGameFinished(game);
-                  const gameDate = parseGameDate(game.game_date);
                   const dateDisplay = formatGameDate(game.game_date);
+                  const homeWon = finished && game.winner_team_id === game.home_team_id;
+                  const visitorWon = finished && game.winner_team_id === game.visitor_team_id;
+                  const winnerAbbr = homeWon
+                    ? game.home_team_abbreviation
+                    : visitorWon
+                      ? game.visitor_team_abbreviation
+                      : null;
                   
                   return (
                     <div 
                       key={game.game_id} 
                       onClick={() => navigate(`/game/${game.game_id}`)}
                       className={`bg-terminal-dark-gray border rounded-lg p-3 hover:border-terminal-green/50 transition-all cursor-pointer ${
-                        finished ? 'opacity-70 border-terminal-border-subtle' : 'border-terminal-border-subtle'
+                        finished ? 'border-terminal-border-subtle' : 'border-terminal-border-subtle'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         {/* Home Team */}
-                        <div className="flex items-center gap-2 flex-1">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                           <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
                             <img
                               src={getTeamLogoUrl(game.home_team_name)}
@@ -266,12 +272,19 @@ export default function Games() {
                             />
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="text-xs font-bold text-terminal-green truncate">
-                              {game.home_team_name}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-xs font-bold truncate ${
+                                homeWon ? 'text-terminal-green' : 'text-terminal-text'
+                              }`}>
+                                {game.home_team_name}
+                              </span>
+                              {game.home_team_is_b2b_game && (
+                                <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 rounded flex-shrink-0">B2B</span>
+                              )}
+                            </div>
                             {finished && (
-                              <span className={`text-xs font-medium ${
-                                game.winner_team_id === game.home_team_id ? 'text-terminal-green' : 'opacity-60'
+                              <span className={`text-sm font-bold tabular-nums ${
+                                homeWon ? 'text-terminal-green' : 'text-terminal-text opacity-50'
                               }`}>
                                 {game.home_team_score}
                               </span>
@@ -279,36 +292,39 @@ export default function Games() {
                           </div>
                         </div>
 
-                        {/* Center: Date/Time and Status */}
-                        <div className="flex flex-col items-center gap-0.5 px-3 flex-shrink-0">
-                          <div className="text-[9px] text-terminal-text opacity-50">
+                        {/* Center: Date and FT only when finished */}
+                        <div className="flex flex-col items-center gap-0.5 px-2 flex-shrink-0">
+                          <div className="text-[9px] text-terminal-text opacity-50 whitespace-nowrap">
                             {dateDisplay}
                           </div>
-                          {finished ? (
+                          {finished && (
                             <span className="text-[8px] bg-terminal-gray/30 text-terminal-text px-1.5 py-0.5 rounded">
                               FT
                             </span>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              {game.home_team_is_b2b_game && (
-                                <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 rounded">B2B</span>
-                              )}
-                              {game.visitor_team_is_b2b_game && (
-                                <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 rounded">B2B</span>
-                              )}
-                            </div>
+                          )}
+                          {finished && winnerAbbr && (
+                            <span className="text-[8px] bg-terminal-green/20 text-terminal-green px-1.5 py-0.5 rounded border border-terminal-green/30">
+                              {winnerAbbr} VENCEU
+                            </span>
                           )}
                         </div>
 
                         {/* Visitor Team */}
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
                           <div className="flex flex-col items-end min-w-0">
-                            <span className="text-xs font-bold text-terminal-text truncate">
-                              {game.visitor_team_name}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                              {game.visitor_team_is_b2b_game && (
+                                <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 rounded flex-shrink-0">B2B</span>
+                              )}
+                              <span className={`text-xs font-bold truncate ${
+                                visitorWon ? 'text-terminal-green' : 'text-terminal-text'
+                              }`}>
+                                {game.visitor_team_name}
+                              </span>
+                            </div>
                             {finished && (
-                              <span className={`text-xs font-medium ${
-                                game.winner_team_id === game.visitor_team_id ? 'text-terminal-green' : 'opacity-60'
+                              <span className={`text-sm font-bold tabular-nums ${
+                                visitorWon ? 'text-terminal-green' : 'text-terminal-text opacity-50'
                               }`}>
                                 {game.visitor_team_score}
                               </span>

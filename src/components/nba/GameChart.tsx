@@ -7,6 +7,7 @@ interface GameChartProps {
   gameStats: GamePlayerStats[];
   statType?: string;
   currentLine?: number | null;
+  seasonAvg?: number;
 }
 
 interface ChartDataPoint {
@@ -35,7 +36,7 @@ const CustomTooltip = ({ active, payload }: any) => {
               Line: <span className="font-medium">{data.line.toFixed(1)}</span>
             </p>
             <p className={`text-xs font-medium ${
-              data.statVsLine === 'Over' ? 'text-terminal-green' : 'text-terminal-red'
+              data.statVsLine === 'Over' ? 'text-green-500' : 'text-red-500'
             }`}>
               {data.statVsLine}
             </p>
@@ -78,7 +79,7 @@ const CustomXAxisTick = (props: any) => {
   );
 };
 
-export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Points', currentLine }) => {
+export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Points', currentLine, seasonAvg }) => {
   const [adjustedLine, setAdjustedLine] = useState<number | null>(currentLine ?? null);
   const [isDragging, setIsDragging] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -306,16 +307,19 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
             </span>
           )}
           <span className="font-medium opacity-60">AVG: {average}</span>
+          {seasonAvg !== undefined && seasonAvg !== null && (
+            <span className="font-medium opacity-60">Média temporada: {Number(seasonAvg).toFixed(1)}</span>
+          )}
         </div>
       </div>
       
       {adjustedLine !== null && (
         <div className="mt-2 text-[10px] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 text-green-500">
               <span className="w-2 h-2 rounded-sm bg-green-500"></span> OVER
             </span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 text-red-500">
               <span className="w-2 h-2 rounded-sm bg-red-500"></span> UNDER
             </span>
             <span className="flex items-center gap-1">
@@ -324,7 +328,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
           </div>
           {currentLine !== null && (
             <span className="opacity-50">
-              Original: {currentLine.toFixed(1)}
+              Linha do mercado: {currentLine.toFixed(1)}
             </span>
           )}
         </div>
