@@ -6,12 +6,20 @@ import {
   Target, 
   TrendingUp, 
   Users, 
+  ChevronDown,
   Menu,
   X
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import UserNav from './UserNav';
 import { useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface MainNavProps {
   className?: string;
@@ -23,31 +31,15 @@ export default function MainNav({ className }: MainNavProps) {
   const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navigationItems = [
-    {
-      name: 'Home',
-      href: '/home',
-      icon: BarChart3,
-      description: 'Página inicial'
-    },
-    {
-      name: 'Jogos',
-      href: '/games',
-      icon: TrendingUp,
-      description: 'Próximos jogos'
-    },
-    {
-      name: 'Jogadores',
-      href: '/nba-players',
-      icon: Users,
-      description: 'Banco de jogadores'
-    },
-    {
-      name: 'Apostas',
-      href: '/bets',
-      icon: Target,
-      description: 'Minhas apostas'
-    }
+  const analysisItems = [
+    { name: 'Home NBA', href: '/home', icon: BarChart3 },
+    { name: 'Jogos', href: '/games', icon: TrendingUp },
+    { name: 'Jogadores', href: '/nba-players', icon: Users },
+  ];
+
+  const betinhoModuleItems = [
+    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
+    { name: 'Apostas', href: '/bets', icon: Target },
   ];
 
   const isActive = (path: string) => {
@@ -59,28 +51,6 @@ export default function MainNav({ className }: MainNavProps) {
     setIsMobileMenuOpen(false);
   };
 
-  // Navigation items for public pages
-  const publicNavigationItems = [
-    {
-      name: 'Home',
-      href: '/home',
-      icon: BarChart3,
-      description: 'Página inicial'
-    },
-    {
-      name: 'Jogos',
-      href: '/games',
-      icon: TrendingUp,
-      description: 'Próximos jogos'
-    },
-    {
-      name: 'Apostas',
-      href: '/bets',
-      icon: Target,
-      description: 'Minhas apostas'
-    }
-  ];
-
   return (
     <nav className={`bg-background border-b border-border sticky top-0 z-50 ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -89,36 +59,67 @@ export default function MainNav({ className }: MainNavProps) {
           <div className="flex items-center">
             <Button
               variant="ghost"
-              onClick={() => navigate('/bets')}
+              onClick={() => navigate('/home')}
               className="flex items-center space-x-2 hover:bg-transparent"
             >
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
-                <Target className="w-5 h-5 text-white" />
+                <BarChart3 className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-foreground">Smartbetting</span>
             </Button>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {(user ? navigationItems : publicNavigationItems).map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.name}
-                  variant={isActive(item.href) ? "default" : "ghost"}
-                  onClick={() => handleNavigation(item.href)}
-                  className={`flex items-center space-x-2 ${
-                    isActive(item.href) 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.name}</span>
+          {/* Desktop Center Module Dropdowns */}
+          <div className="hidden md:flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <span>Análises</span>
+                  <ChevronDown className="w-4 h-4" />
                 </Button>
-              );
-            })}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuLabel>Módulo NBA</DropdownMenuLabel>
+                {analysisItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={item.href}
+                      onClick={() => handleNavigation(item.href)}
+                      className={`cursor-pointer ${isActive(item.href) ? 'font-semibold' : ''}`}
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {item.name}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2">
+                  <span>Betinho</span>
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuLabel>Módulo Betinho</DropdownMenuLabel>
+                {betinhoModuleItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={item.href}
+                      onClick={() => handleNavigation(item.href)}
+                      className={`cursor-pointer ${isActive(item.href) ? 'font-semibold' : ''}`}
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {item.name}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Right side - User Menu */}
@@ -163,7 +164,7 @@ export default function MainNav({ className }: MainNavProps) {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-background">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              {(user ? navigationItems : publicNavigationItems).map((item) => {
+              {[...analysisItems, ...betinhoModuleItems].map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button
@@ -179,7 +180,7 @@ export default function MainNav({ className }: MainNavProps) {
                     <Icon className="w-4 h-4" />
                     <div className="text-left">
                       <div className="font-medium">{item.name}</div>
-                      <div className="text-xs opacity-70">{item.description}</div>
+                      <div className="text-xs opacity-70">{item.href}</div>
                     </div>
                   </Button>
                 );

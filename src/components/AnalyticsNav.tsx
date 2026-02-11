@@ -10,11 +10,20 @@ import {
   LogIn,
   Zap,
   ChevronLeft,
-  Home
+  ChevronDown,
+  Target
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
 import UserNav from './UserNav';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface AnalyticsNavProps {
   className?: string;
@@ -30,17 +39,15 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
   const { isPremium } = useSubscription();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navigationItems = [
-    {
-      name: 'Jogadores',
-      href: '/home',
-      icon: Users,
-    },
-    {
-      name: 'Jogos',
-      href: '/games',
-      icon: Calendar,
-    },
+  const analysisItems = [
+    { name: 'Home NBA', href: '/home', icon: BarChart3 },
+    { name: 'Jogos', href: '/games', icon: Calendar },
+    { name: 'Jogadores', href: '/nba-players', icon: Users },
+  ];
+
+  const betinhoModuleItems = [
+    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
+    { name: 'Apostas', href: '/bets', icon: Target },
   ];
 
   const isActive = (path: string) => {
@@ -92,28 +99,75 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
             )}
           </div>
 
-          {/* Center - Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-              return (
+          {/* Center - Desktop Module Dropdowns */}
+          <div className="hidden md:flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
-                  key={item.name}
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleNavigation(item.href)}
-                  className={`flex items-center gap-2 px-4 h-9 transition-all ${
-                    active 
-                      ? 'bg-terminal-green/10 text-terminal-green border border-terminal-green/30' 
-                      : 'text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray border border-transparent'
-                  }`}
+                  className="flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray"
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-xs font-medium">{item.name}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide">Análises</span>
+                  <ChevronDown className="w-3 h-3 opacity-70" />
                 </Button>
-              );
-            })}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                className="w-56 bg-terminal-dark-gray border-terminal-border-subtle text-terminal-text"
+              >
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wide opacity-70">Módulo NBA</DropdownMenuLabel>
+                {analysisItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={item.href}
+                      onClick={() => handleNavigation(item.href)}
+                      className={`cursor-pointer focus:bg-terminal-gray/40 focus:text-terminal-green ${
+                        isActive(item.href) ? 'text-terminal-green' : ''
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {item.name}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wide">Betinho</span>
+                  <ChevronDown className="w-3 h-3 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                className="w-56 bg-terminal-dark-gray border-terminal-border-subtle text-terminal-text"
+              >
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wide opacity-70">Módulo Betinho</DropdownMenuLabel>
+                {betinhoModuleItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={item.href}
+                      onClick={() => handleNavigation(item.href)}
+                      className={`cursor-pointer focus:bg-terminal-gray/40 focus:text-terminal-green ${
+                        isActive(item.href) ? 'text-terminal-green' : ''
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {item.name}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Right side - Auth & Premium */}
@@ -171,7 +225,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-terminal-border-subtle py-2">
             <div className="flex flex-col gap-1">
-              {navigationItems.map((item) => {
+              {[...analysisItems, ...betinhoModuleItems].map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
                 return (
