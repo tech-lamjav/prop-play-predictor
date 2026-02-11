@@ -17,6 +17,7 @@ import NBADashboard from "./pages/NBADashboard";
 import Analysis from "./pages/Analysis";
 import Waitlist from "./pages/Waitlist";
 import Paywall from "./pages/Paywall";
+import PaywallDashboard from "./pages/PaywallDashboard";
 import PaywallPlatform from "./pages/PaywallPlatform";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -67,7 +68,7 @@ const App = () => (
           } />
           <Route path="/betting-dashboard" element={
             <ProtectedRoute>
-              <PremiumRoute>
+              <PremiumRoute redirectTo="/paywall-dashboard">
                 <BettingDashboard />
               </PremiumRoute>
             </ProtectedRoute>
@@ -87,6 +88,7 @@ const App = () => (
           <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
           <Route path="/waitlist" element={<Waitlist />} />
           <Route path="/paywall" element={<Paywall />} />
+          <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
           <Route path="/paywall-platform" element={<PaywallPlatform />} />
           <Route path="/como-usar" element={<ComoUsar />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
