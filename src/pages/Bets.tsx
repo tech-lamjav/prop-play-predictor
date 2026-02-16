@@ -28,6 +28,7 @@ import {
   Settings,
   Search,
   Trash2,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   ChevronDown,
@@ -625,6 +626,10 @@ export default function Bets() {
     column: 'bet_date',
     direction: 'desc'  // padrão: mais recente primeiro
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
 
   const supabase = useMemo(() => createClient(), []);
   const isMountedRef = useRef(true);
@@ -1328,6 +1333,16 @@ export default function Bets() {
     });
   }, [filteredBets, sortConfig]);
 
+  // Pagination: slice sortedBets for current page
+  const totalPages = Math.max(1, Math.ceil(sortedBets.length / pageSize));
+  const paginatedBets = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedBets.slice(start, start + pageSize);
+  }, [sortedBets, currentPage, pageSize]);
+
+  const paginationStartIndex = sortedBets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const paginationEndIndex = Math.min(currentPage * pageSize, sortedBets.length);
+
   const filteredSportsList = useMemo(() => {
     if (!isSportQueryTouched) {
       return SPORTS_LIST;
@@ -1426,6 +1441,11 @@ export default function Bets() {
     }
   }, [filteredBets, calculateStats]);
 
+  // Reset to page 1 when filters, sort, or page size change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, sortConfig, pageSize]);
+
   // Handle sort
   const handleSort = (column: SortColumn) => {
     setSortConfig(prev => {
@@ -1518,7 +1538,7 @@ export default function Bets() {
   };
 
   const desktopRows = useMemo(() => {
-    return sortedBets.map((bet) => (
+    return paginatedBets.map((bet) => (
       <BetRow
         key={bet.id}
         bet={bet}
@@ -1533,10 +1553,10 @@ export default function Bets() {
         deleteBet={deleteBet}
       />
     ));
-  }, [sortedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   const mobileCards = useMemo(() => {
-    return sortedBets.map((bet) => (
+    return paginatedBets.map((bet) => (
       <BetCard
         key={bet.id}
         bet={bet}
@@ -1551,7 +1571,11 @@ export default function Bets() {
         deleteBet={deleteBet}
       />
     ));
-  }, [sortedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  }, [totalPages]);
 
   if (authLoading) {
     return (
@@ -1916,7 +1940,6 @@ export default function Bets() {
                   {dailyBetCount}/{DAILY_BET_LIMIT} apostas hoje
                 </span>
               )}
-              <span className="text-[10px] opacity-50">MOSTRANDO {sortedBets.length} APOSTAS</span>
             </div>
           </div>
           
@@ -1960,6 +1983,50 @@ export default function Bets() {
               {/* Mobile Stacked View */}
               <div className="md:hidden space-y-4">
                 {mobileCards}
+              </div>
+
+              {/* Pagination footer */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-terminal-border-subtle">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-terminal-text opacity-70">Mostrando</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="w-[70px] h-8 text-xs terminal-button border-terminal-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-terminal-dark-gray border-terminal-border">
+                      <SelectItem value="15">15</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-[10px] text-terminal-text opacity-70">
+                    de {sortedBets.length} apostas
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="terminal-button h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-[10px] text-terminal-text opacity-70 min-w-[4rem] text-center">
+                    {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="terminal-button h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </>
           )}
