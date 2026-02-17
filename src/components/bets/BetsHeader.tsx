@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserIcon, BarChartIcon, ArrowLeft, Users, LogOut, Settings, BarChart3 } from 'lucide-react';
+import { UserIcon, ArrowLeft, Users, LogOut, Settings, BarChart3 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import {
@@ -99,9 +99,6 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
             <span className="hidden sm:inline">Indique um amigo</span>
           </button>
         )}
-        <button className="terminal-button p-1.5">
-          <BarChartIcon size={16} />
-        </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="terminal-button p-1.5 hover:border-terminal-green transition-colors">
