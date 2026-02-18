@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import { createClient } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const posthog = usePostHog();
@@ -82,7 +83,12 @@ const Auth = () => {
         if (!userData?.whatsapp_synced) {
           navigate("/onboarding");
         } else {
-          navigate("/bets");
+          const from = (location.state as { from?: { pathname?: string; search?: string } })?.from;
+          if (from?.pathname && from.pathname.startsWith("/") && !from.pathname.startsWith("//")) {
+            navigate(from.pathname + (from.search || ""));
+          } else {
+            navigate("/bets");
+          }
         }
       }
     } catch (error) {

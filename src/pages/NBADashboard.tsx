@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShootingZonesCard } from '@/components/nba/ShootingZonesCard';
 import { useSubscription } from '@/hooks/use-subscription';
+import { useAuth } from '@/hooks/use-auth';
 import { isFreePlayer } from '@/config/freemium';
 
 const VALID_STAT_TYPES = ['player_points', 'player_assists', 'player_rebounds', 'player_points_rebounds_assists', 'player_points_assists', 'player_rebounds_assists'];
@@ -23,8 +24,10 @@ const VALID_STAT_TYPES = ['player_points', 'player_assists', 'player_rebounds', 
 export default function NBADashboard() {
   const { playerName } = useParams<{ playerName: string }>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const { isPremium, isLoading: subscriptionLoading } = useSubscription();
   const [player, setPlayer] = useState<Player | null>(null);
   const [gameStats, setGameStats] = useState<GamePlayerStats[]>([]);
@@ -43,23 +46,26 @@ export default function NBADashboard() {
     loadPlayer();
   }, [playerName]);
 
-  // Verificar acesso freemium após carregar o jogador
+  // PLG freemium: deslogado só acessa jogadores FREE_PLAYERS; outros → login
+  const isFree = player ? isFreePlayer(player.player_name) : false;
+  if (!authLoading && !user && player && !isFree) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // Logado mas não premium: jogador não grátis → paywall
   useEffect(() => {
-    if (!subscriptionLoading && player && !isPremium) {
+    if (!subscriptionLoading && user && player && !isPremium && !isFree) {
       const playerFullName = player.player_name;
-      if (!isFreePlayer(playerFullName)) {
-        toast({
-          title: 'Acesso Premium Necessário',
-          description: `Análises completas de ${playerFullName} estão disponíveis apenas para assinantes premium.`,
-          variant: 'default',
-        });
-        // Redirecionar após um pequeno delay para mostrar o toast
-        setTimeout(() => {
-          navigate('/paywall-platform');
-        }, 2000);
-      }
+      toast({
+        title: 'Acesso Premium Necessário',
+        description: `Análises completas de ${playerFullName} estão disponíveis apenas para assinantes premium.`,
+        variant: 'default',
+      });
+      setTimeout(() => {
+        navigate('/paywall-platform');
+      }, 2000);
     }
-  }, [player, isPremium, subscriptionLoading, navigate, toast]);
+  }, [player, user, isPremium, isFree, subscriptionLoading, navigate, toast]);
 
   const loadPlayer = async () => {
     if (!playerName) return;
@@ -74,7 +80,7 @@ export default function NBADashboard() {
           description: `Could not find player "${playerName.replace(/-/g, ' ')}"`,
           variant: 'destructive',
         });
-        navigate('/home');
+        navigate('/home-players');
         return;
       }
       
@@ -241,7 +247,7 @@ export default function NBADashboard() {
         <Button
           variant="outline"
           className="terminal-button"
-          onClick={() => navigate('/home')}
+          onClick={() => navigate('/home-players')}
         >
           Voltar ao início
         </Button>
@@ -251,7 +257,7 @@ export default function NBADashboard() {
 
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <AnalyticsNav showBack backTo="/home" title={player?.player_name} />
+      <AnalyticsNav showBack backTo="/home-players" title={player?.player_name} />
       <main className="container mx-auto px-3 py-4">
         {/* Player Header */}
         <PlayerHeader 

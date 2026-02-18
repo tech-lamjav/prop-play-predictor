@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { nbaDataService, Game, TeamPlayer, Team } from '@/services/nba-data.service';
 import { getTeamLogoUrl, getPlayerPhotoUrl } from '@/utils/team-logos';
 import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -28,6 +29,8 @@ const formatGameDateSaoPaulo = (dateString: string): string => {
 export default function GameDetail() {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [game, setGame] = useState<Game | null>(null);
   const [homePlayers, setHomePlayers] = useState<TeamPlayer[]>([]);
@@ -35,6 +38,18 @@ export default function GameDetail() {
   const [homeTeam, setHomeTeam] = useState<Team | null>(null);
   const [visitorTeam, setVisitorTeam] = useState<Team | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // PLG freemium: detalhe do jogo exige login (deslogado redireciona para /auth)
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green" />
+      </div>
+    );
+  }
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
 
   useEffect(() => {
     loadGameData();
@@ -54,7 +69,7 @@ export default function GameDetail() {
           description: 'Could not find the requested game.',
           variant: 'destructive',
         });
-        navigate('/games');
+        navigate('/home-games');
         return;
       }
 
@@ -192,14 +207,14 @@ export default function GameDetail() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text">
-      <AnalyticsNav showBack backTo="/games" title="Game Details" />
+      <AnalyticsNav showBack backTo="/home-games" title="Game Details" />
       
       <main className="container mx-auto px-4 py-4">
         {/* Back Button */}
         <div className="mb-4">
           <Button
             variant="ghost"
-            onClick={() => navigate('/games')}
+            onClick={() => navigate('/home-games')}
             className="terminal-button"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -391,8 +406,8 @@ export default function GameDetail() {
           )}
         </div>
 
-        {/* Injury Report - below header on the left */}
-        {(homeInjuredPlayers.length > 0 || visitorInjuredPlayers.length > 0) && (
+        {/* Injury Report - below header on the left (only for B2B games) */}
+        {isB2B && (homeInjuredPlayers.length > 0 || visitorInjuredPlayers.length > 0) && (
           <div className="terminal-container px-3 py-3">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-bold text-terminal-text">Injury Report</span>

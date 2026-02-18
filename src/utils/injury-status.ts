@@ -8,7 +8,8 @@ export function getInjuryStatusStyle(status: string | null | undefined): {
   borderClass: string;
   bgClass: string;
 } {
-  if (!status) {
+  const raw = (status ?? '').trim();
+  if (!raw) {
     // Default to UNK (available) - green
     return {
       textClass: 'text-terminal-green',
@@ -17,7 +18,7 @@ export function getInjuryStatusStyle(status: string | null | undefined): {
     };
   }
 
-  const statusLower = status.toLowerCase();
+  const statusLower = raw.toLowerCase();
 
   // Active / Available / UNK -> Green
   if (
@@ -59,9 +60,10 @@ export function getInjuryStatusStyle(status: string | null | undefined): {
     };
   }
 
-  // Out / Inactive -> Red
+  // Out / Inactive -> Red (catch all variants so "Out" is always red)
   if (
     statusLower === 'out' ||
+    statusLower.includes('out') ||
     statusLower === 'inactive' ||
     statusLower.includes('injured')
   ) {
