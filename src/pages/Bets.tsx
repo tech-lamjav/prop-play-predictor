@@ -33,7 +33,8 @@ import {
   ChevronUp,
   ChevronDown,
   Plus,
-  BarChart3
+  BarChart3,
+  Send
 } from 'lucide-react';
 import {
   Dialog,
@@ -2582,6 +2583,17 @@ export default function Bets() {
           referralCode={referralCode}
         />
       )}
+
+      <a
+        href="https://t.me/betinho_assistente_bot"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
+        title="Abrir Telegram"
+      >
+        <Send size={20} />
+        <span className="hidden sm:inline text-sm font-medium">Telegram</span>
+      </a>
     </div>
   );
 }
