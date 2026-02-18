@@ -35,7 +35,10 @@ export default function NBADashboard() {
   const [teammates, setTeammates] = useState<TeamPlayer[]>([]);
   const [teamData, setTeamData] = useState<Team | null>(null);
   const [shootingZones, setShootingZones] = useState<PlayerShootingZones | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // core: stats + props
+  const [sidebarLoading, setSidebarLoading] = useState(true); // teammates + team
+  const [shootingZonesLoading, setShootingZonesLoading] = useState(true);
+  const [playerLookupDone, setPlayerLookupDone] = useState(false);
   const initialStat = searchParams.get('stat');
   const statFromUrl = initialStat && VALID_STAT_TYPES.includes(initialStat) ? initialStat : 'player_points';
   const [selectedStatType, setSelectedStatType] = useState<string>(statFromUrl);
@@ -72,9 +75,16 @@ export default function NBADashboard() {
     
     try {
       setLoading(true);
+      setSidebarLoading(true);
+      setShootingZonesLoading(true);
+      setPlayerLookupDone(false);
       const playerData = await nbaDataService.getPlayerByName(playerName);
       
       if (!playerData) {
+        setPlayerLookupDone(true);
+        setLoading(false);
+        setSidebarLoading(false);
+        setShootingZonesLoading(false);
         toast({
           title: 'Player not found',
           description: `Could not find player "${playerName.replace(/-/g, ' ')}"`,
@@ -85,60 +95,96 @@ export default function NBADashboard() {
       }
       
       setPlayer(playerData);
-      
-      // Load all data in parallel for better performance
-      // Fetch all games for season averages, and limited games for chart display
-      const results = await Promise.allSettled([
-        nbaDataService.getPlayerGameStats(playerData.player_id, 100), // Fetch up to 100 games for season averages and filters
-        nbaDataService.getPlayerProps(playerData.player_id),
-        nbaDataService.getTeamPlayers(playerData.team_id),
-        nbaDataService.getTeamById(playerData.team_id),
-        nbaDataService.getPlayerShootingZones(playerData.player_id),
-      ]);
+      setPlayerLookupDone(true);
 
-      // Handle game stats
-      if (results[0].status === 'fulfilled') {
-        setGameStats(results[0].value);
-      } else {
-        console.error('Error loading game stats:', results[0].reason);
+      // Preferred path: single bundle RPC (fewer round-trips, faster TTFD)
+      try {
+        const bundle = await nbaDataService.getPlayerDashboardBundle(playerData.player_id, 40);
+        if (bundle) {
+          setPlayer(bundle.player || playerData);
+          setGameStats(bundle.game_stats || []);
+          setPropPlayers(bundle.prop_players || []);
+          setTeamData(bundle.team || null);
+          setTeammates(bundle.teammates || []);
+          setShootingZones(bundle.shooting_zones || null);
+          setLoading(false);
+          setSidebarLoading(false);
+          setShootingZonesLoading(false);
+          return;
+        }
+      } catch (bundleError) {
+        // Keep dashboard resilient across environments while bundle is rolling out.
+        console.warn('Bundle RPC failed, falling back to existing RPC flow.', bundleError);
       }
 
-      // Handle prop data
-      if (results[1].status === 'fulfilled') {
-        setPropPlayers(results[1].value);
-      } else {
-        console.error('Error loading prop data:', results[1].reason);
-      }
+      // Fallback path: existing progressive RPC flow
+      void (async () => {
+        try {
+          const coreResults = await Promise.allSettled([
+            nbaDataService.getPlayerGameStats(playerData.player_id, 100),
+            nbaDataService.getPlayerProps(playerData.player_id),
+          ]);
 
-      // Handle teammates
-      if (results[2].status === 'fulfilled') {
-        setTeammates(results[2].value);
-      } else {
-        console.error('Error loading teammates:', results[2].reason);
-      }
+          if (coreResults[0].status === 'fulfilled') {
+            setGameStats(coreResults[0].value);
+          } else {
+            console.error('Error loading game stats:', coreResults[0].reason);
+          }
 
-      // Handle team data
-      if (results[3].status === 'fulfilled') {
-        setTeamData(results[3].value);
-      } else {
-        console.error('Error loading team data:', results[3].reason);
-      }
+          if (coreResults[1].status === 'fulfilled') {
+            setPropPlayers(coreResults[1].value);
+          } else {
+            console.error('Error loading prop data:', coreResults[1].reason);
+          }
+        } finally {
+          setLoading(false);
+        }
+      })();
 
-      // Handle shooting zones
-      if (results[4].status === 'fulfilled') {
-        setShootingZones(results[4].value);
-      } else {
-        console.error('Error loading shooting zones:', results[4].reason);
-      }
+      void (async () => {
+        try {
+          const sideResults = await Promise.allSettled([
+            nbaDataService.getTeamPlayers(playerData.team_id),
+            nbaDataService.getTeamById(playerData.team_id),
+          ]);
+
+          if (sideResults[0].status === 'fulfilled') {
+            setTeammates(sideResults[0].value);
+          } else {
+            console.error('Error loading teammates:', sideResults[0].reason);
+          }
+
+          if (sideResults[1].status === 'fulfilled') {
+            setTeamData(sideResults[1].value);
+          } else {
+            console.error('Error loading team data:', sideResults[1].reason);
+          }
+        } finally {
+          setSidebarLoading(false);
+        }
+      })();
+
+      void (async () => {
+        try {
+          const zones = await nbaDataService.getPlayerShootingZones(playerData.player_id);
+          setShootingZones(zones);
+        } catch (error) {
+          console.error('Error loading shooting zones:', error);
+        } finally {
+          setShootingZonesLoading(false);
+        }
+      })();
     } catch (error) {
+      setPlayerLookupDone(true);
       console.error('Error loading player:', error);
       toast({
         title: 'Error',
         description: 'Failed to load player data',
         variant: 'destructive',
       });
-    } finally {
       setLoading(false);
+      setSidebarLoading(false);
+      setShootingZonesLoading(false);
     }
   };
 
@@ -240,7 +286,7 @@ export default function NBADashboard() {
     return sortedStats[0]?.line_most_recent ?? null;
   }, [gameStats, selectedStatType]);
 
-  if (!player && !loading) {
+  if (!player && playerLookupDone) {
     return (
       <div className="w-full min-h-screen bg-terminal-black text-terminal-text flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-terminal-text opacity-80">Jogador não encontrado.</p>
@@ -272,7 +318,7 @@ export default function NBADashboard() {
             {/* Next Game Card */}
             <NextGamesCard 
               team={teamData || undefined} 
-              isLoading={loading}
+              isLoading={sidebarLoading}
             />
             
             {/* Prop Insights */}
@@ -287,7 +333,7 @@ export default function NBADashboard() {
               teammates={teammates} 
               currentPlayerId={player?.player_id || 0}
               teamName={player?.team_name || ''}
-              isLoading={loading}
+              isLoading={sidebarLoading}
             />
           </div>
 
@@ -347,7 +393,7 @@ export default function NBADashboard() {
       <section className="container mx-auto px-3 pb-6">
         <ShootingZonesCard
           data={shootingZones}
-          isLoading={loading}
+          isLoading={shootingZonesLoading}
           playerName={player?.player_name || ''}
         />
       </section>

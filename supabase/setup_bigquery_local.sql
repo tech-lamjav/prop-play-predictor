@@ -291,6 +291,112 @@ BEGIN
   FROM bigquery.dim_player_shooting_by_zones t WHERE t.player_id = p_player_id;
 END; $$;
 
+DROP FUNCTION IF EXISTS public.get_player_dashboard_bundle(bigint, int);
+CREATE OR REPLACE FUNCTION public.get_player_dashboard_bundle(
+  p_player_id bigint,
+  p_games_limit int DEFAULT 40
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_player RECORD;
+  v_team RECORD;
+  v_shooting RECORD;
+BEGIN
+  -- Player base
+  SELECT *
+  INTO v_player
+  FROM public.get_all_players() p
+  WHERE p.player_id = p_player_id
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'player', NULL,
+      'game_stats', '[]'::jsonb,
+      'prop_players', '[]'::jsonb,
+      'team', NULL,
+      'teammates', '[]'::jsonb,
+      'shooting_zones', NULL
+    );
+  END IF;
+
+  -- Team
+  SELECT *
+  INTO v_team
+  FROM public.get_team_by_id(v_player.team_id) t
+  LIMIT 1;
+
+  -- Shooting zones
+  SELECT *
+  INTO v_shooting
+  FROM public.get_player_shooting_zones(p_player_id) sz
+  LIMIT 1;
+
+  RETURN jsonb_build_object(
+    'player', to_jsonb(v_player),
+
+    -- Só os stat types usados no dashboard (reduz payload)
+    'game_stats',
+      COALESCE(
+        (
+          SELECT jsonb_agg(to_jsonb(gs) ORDER BY gs.game_date DESC, gs.stat_type)
+          FROM public.get_player_game_stats(p_player_id, p_games_limit) gs
+          WHERE gs.stat_type IN (
+            'player_points',
+            'player_assists',
+            'player_rebounds',
+            'player_points_rebounds_assists',
+            'player_points_assists',
+            'player_rebounds_assists'
+          )
+        ),
+        '[]'::jsonb
+      ),
+
+    'prop_players',
+      COALESCE(
+        (
+          SELECT jsonb_agg(to_jsonb(pp) ORDER BY pp.rating_stars DESC, pp.stat_rank ASC)
+          FROM public.get_player_props(p_player_id) pp
+          WHERE pp.stat_type IN (
+            'player_points',
+            'player_assists',
+            'player_rebounds',
+            'player_points_rebounds_assists',
+            'player_points_assists',
+            'player_rebounds_assists'
+          )
+        ),
+        '[]'::jsonb
+      ),
+
+    'team', to_jsonb(v_team),
+
+    -- Tira o próprio jogador e limita teammates
+    'teammates',
+      COALESCE(
+        (
+          SELECT jsonb_agg(to_jsonb(tp))
+          FROM (
+            SELECT *
+            FROM public.get_team_players(v_player.team_id) tp
+            WHERE tp.player_id <> p_player_id
+            ORDER BY tp.rating_stars DESC NULLS LAST, tp.player_name ASC
+            LIMIT 12
+          ) tp
+        ),
+        '[]'::jsonb
+      ),
+
+    'shooting_zones', to_jsonb(v_shooting)
+  );
+END;
+$$;
+
 -- Permissões para acesso via API
 GRANT EXECUTE ON FUNCTION public.get_all_players() TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_player_by_id(bigint) TO authenticated, anon;
@@ -300,6 +406,7 @@ GRANT EXECUTE ON FUNCTION public.get_team_by_id(bigint) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_team_players(bigint) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_games(date, text) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_player_shooting_zones(bigint) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.get_player_dashboard_bundle(bigint, int) TO authenticated, anon;
 
 
 -- ============================================
@@ -308,6 +415,9 @@ GRANT EXECUTE ON FUNCTION public.get_player_shooting_zones(bigint) TO authentica
 -- Deve retornar jogadores com seus dados
 
 SELECT * FROM public.get_all_players() LIMIT 3;
+
+-- Teste do bundle do dashboard (substitua 219 por um player_id válido da sua base se necessário)
+SELECT public.get_player_dashboard_bundle(219, 40);
 
 
 -- ============================================

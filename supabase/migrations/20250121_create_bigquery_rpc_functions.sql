@@ -103,6 +103,15 @@ BEGIN
   RETURN;
 END; $$;
 
+DROP FUNCTION IF EXISTS public.get_player_dashboard_bundle(bigint, int);
+CREATE FUNCTION public.get_player_dashboard_bundle(p_player_id bigint, p_games_limit int DEFAULT 40)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  -- Placeholder: será substituído pelo setup_bigquery_local.sql
+  RETURN NULL;
+END; $$;
+
 -- Grant permissions
 GRANT EXECUTE ON FUNCTION public.get_all_players() TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_player_by_id(bigint) TO authenticated, anon;
@@ -112,3 +121,4 @@ GRANT EXECUTE ON FUNCTION public.get_team_by_id(bigint) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_team_players(bigint) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_games(date, text) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.get_player_shooting_zones(bigint) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.get_player_dashboard_bundle(bigint, int) TO authenticated, anon;
