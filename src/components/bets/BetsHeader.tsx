@@ -40,34 +40,35 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
   };
 
   return (
-    <div className="terminal-header p-3 flex justify-between items-center">
-      <div className="flex items-center">
+    <div className="terminal-header w-full max-w-full overflow-x-hidden py-2 px-2 md:p-3 min-h-12 md:min-h-0">
+      <div className="w-full min-w-0 flex justify-between items-center gap-1">
+        <div className="flex items-center min-w-0">
         <button
           type="button"
           onClick={() => navigate('/bets')}
-          className="terminal-button px-3 py-2 text-sm font-medium mr-4 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
+          className="terminal-button px-1.5 sm:px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium mr-1 sm:mr-1.5 md:mr-4 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
         >
-          <ArrowLeft size={16} className="mr-2" />
-          INÍCIO
+          <ArrowLeft size={16} className="sm:mr-1.5 md:mr-2" />
+          <span className="hidden sm:inline">INÍCIO</span>
         </button>
         {!isDashboard && (
           <button
             type="button"
             onClick={() => navigate('/betting-dashboard')}
-            className="terminal-button px-3 py-2 text-sm font-medium mr-4 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
+            className="terminal-button px-1.5 sm:px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium mr-1 sm:mr-1.5 md:mr-4 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
           >
-            <BarChart3 size={16} className="mr-2" />
-            DASHBOARD
+            <BarChart3 size={16} className="sm:mr-1.5 md:mr-2" />
+            <span className="hidden sm:inline">DASHBOARD</span>
           </button>
         )}
-        <span className="text-base font-semibold mr-6 text-terminal-green tracking-wide">
+        <span className="text-xs sm:text-sm md:text-base font-semibold mr-1 sm:mr-2 md:mr-6 text-terminal-green tracking-wide truncate">
           Betinho
         </span>
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center shrink-0 space-x-1 md:space-x-2 ml-1 md:ml-0">
         {onShowUnitsViewChange !== undefined && (
-          <div className="flex items-center gap-2 mr-2">
-            <Label htmlFor="header-show-units" className="text-xs whitespace-nowrap text-terminal-text opacity-80 cursor-pointer">
+          <div className="flex items-center gap-1 md:gap-2 mr-0.5 md:mr-2">
+            <Label htmlFor="header-show-units" className="hidden sm:inline text-xs whitespace-nowrap text-terminal-text opacity-80 cursor-pointer">
               Unidades
             </Label>
             <Switch
@@ -75,7 +76,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
               checked={showUnitsView}
               onCheckedChange={onShowUnitsViewChange}
               disabled={!unitsConfigured}
-              className="data-[state=unchecked]:bg-white/80 data-[state=checked]:bg-[var(--terminal-green)]"
+              className="scale-75 sm:scale-90 md:scale-100 origin-right data-[state=unchecked]:bg-white/80 data-[state=checked]:bg-[var(--terminal-green)]"
             />
           </div>
         )}
@@ -83,7 +84,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
           <button
             type="button"
             onClick={onUnitConfigClick}
-            className="terminal-button px-3 py-2 text-sm font-medium flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors mr-2"
+            className="terminal-button px-1.5 md:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium flex items-center gap-1.5 md:gap-2 border-terminal-border hover:border-terminal-green transition-colors mr-0.5 md:mr-2"
           >
             <Settings size={16} className="shrink-0" />
             <span className="hidden sm:inline">UNIDADES</span>
@@ -92,16 +93,16 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
         {onReferralClick && (
           <button 
             onClick={onReferralClick}
-            className="terminal-button px-3 py-2 text-sm font-medium flex items-center border-terminal-border hover:border-terminal-green transition-colors"
+            className="terminal-button px-1.5 md:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium flex items-center border-terminal-border hover:border-terminal-green transition-colors"
             title="Indique um amigo"
           >
-            <Users size={16} className="mr-2" />
+            <Users size={16} className="mr-1.5 md:mr-2" />
             <span className="hidden sm:inline">Indique um amigo</span>
           </button>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="terminal-button p-1.5 hover:border-terminal-green transition-colors">
+            <button className="terminal-button p-1 md:p-1.5 hover:border-terminal-green transition-colors">
               <UserIcon size={16} />
             </button>
           </DropdownMenuTrigger>
@@ -141,6 +142,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
       </div>
     </div>
   );
