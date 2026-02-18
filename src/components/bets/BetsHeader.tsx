@@ -45,21 +45,21 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
         <button
           type="button"
           onClick={() => navigate('/bets')}
-          className="terminal-button px-3 py-2 text-sm font-medium mr-2 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
+          className="terminal-button px-3 py-2 text-sm font-medium mr-4 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
         >
           <ArrowLeft size={16} className="mr-2" />
           INÍCIO
         </button>
-        <button
-          type="button"
-          onClick={() => navigate('/betting-dashboard')}
-          className={`terminal-button px-3 py-2 text-sm font-medium mr-4 flex items-center border-terminal-border transition-colors ${
-            isDashboard ? 'border-terminal-green text-terminal-green' : 'hover:border-terminal-green'
-          }`}
-        >
-          <BarChart3 size={16} className="mr-2" />
-          DASHBOARD
-        </button>
+        {!isDashboard && (
+          <button
+            type="button"
+            onClick={() => navigate('/betting-dashboard')}
+            className="terminal-button px-3 py-2 text-sm font-medium mr-4 flex items-center border-terminal-border hover:border-terminal-green transition-colors"
+          >
+            <BarChart3 size={16} className="mr-2" />
+            DASHBOARD
+          </button>
+        )}
         <span className="text-base font-semibold mr-6 text-terminal-green tracking-wide">
           Betinho
         </span>
