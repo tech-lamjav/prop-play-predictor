@@ -8,8 +8,7 @@ import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
 
-// Price ID do Stripe - substitua pelo seu Price ID real
-// Você pode obter isso no Stripe Dashboard → Products → Seu Produto → Price ID
+// Price ID do Stripe para a Plataforma de Análises
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_PLATFORM; // Configure no .env.local
 
 export default function PaywallPlatform() {
@@ -35,15 +34,14 @@ export default function PaywallPlatform() {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('subscription_platform_status')
+          .select('analytics_subscription_status')
           .eq('id', user.id)
           .single();
 
         if (error) {
           console.error('Error fetching subscription status:', error);
         } else {
-          // Type assertion necessário porque subscription_platform_status pode não estar nos tipos gerados
-          const status = (data as any)?.subscription_platform_status;
+          const status = (data as any)?.analytics_subscription_status;
           setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
         }
       } catch (error) {
@@ -70,12 +68,12 @@ export default function PaywallPlatform() {
         if (user?.id) {
           supabase
             .from('users')
-            .select('subscription_platform_status')
+            .select('analytics_subscription_status')
             .eq('id', user.id)
             .single()
             .then(({ data }) => {
               if (data) {
-                const status = (data as any)?.subscription_platform_status;
+                const status = (data as any)?.analytics_subscription_status;
                 setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
                 if (status === 'premium') {
                   navigate('/nba-players');
@@ -114,8 +112,10 @@ export default function PaywallPlatform() {
 
     setIsLoading(true);
     try {
-      //console.log('STRIPE_PRICE_ID', STRIPE_PRICE_ID);
-      const { url } = await stripeService.createCheckoutSession(STRIPE_PRICE_ID, 'platform');
+      if (!STRIPE_PRICE_ID) {
+        throw new Error('Price ID não configurado. Verifique a variável de ambiente VITE_STRIPE_PRICE_ID_PLATFORM.');
+      }
+      const { url } = await stripeService.createCheckoutSession(STRIPE_PRICE_ID, 'analytics');
       await stripeService.redirectToCheckout(url);
     } catch (error) {
       console.error('Error creating checkout session:', error);

@@ -56,8 +56,8 @@ serve(async (req) => {
     // Helper function to determine which subscription field to update
     const getSubscriptionField = (productType: string | undefined): string => {
       // Default to 'betinho' if productType is not specified (backward compatibility)
-      const product = productType || 'betinho';
-      if (product === 'analytics') {
+      const product = (productType || 'betinho').toLowerCase();
+      if (product === 'analytics' || product === 'platform') {
         return 'analytics_subscription_status';
       }
       return 'betinho_subscription_status';
