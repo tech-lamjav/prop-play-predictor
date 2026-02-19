@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { nbaDataService, Game, TeamPlayer, Team } from '@/services/nba-data.service';
-import { getTeamLogoUrl, getPlayerPhotoUrl } from '@/utils/team-logos';
+import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -505,8 +505,11 @@ export default function GameDetail() {
                                 alt={homePlayer.player_name}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
+                                data-player-photo-index="0"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
+                                  const hasNext = tryNextPlayerPhotoUrl(target, homePlayer.player_name, game.home_team_name);
+                                  if (hasNext) return;
                                   target.style.display = 'none';
                                   const parent = target.parentElement;
                                   if (parent) {
@@ -577,8 +580,11 @@ export default function GameDetail() {
                                 alt={visitorPlayer.player_name}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
+                                data-player-photo-index="0"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
+                                  const hasNext = tryNextPlayerPhotoUrl(target, visitorPlayer.player_name, game.visitor_team_name);
+                                  if (hasNext) return;
                                   target.style.display = 'none';
                                   const parent = target.parentElement;
                                   if (parent) {

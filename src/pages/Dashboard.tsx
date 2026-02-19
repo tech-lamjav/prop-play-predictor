@@ -37,7 +37,7 @@ import {
 import { usePlayerStats, useTeamData } from "@/hooks/use-player-stats";
 import { InjuryInsightsDashboard } from "@/components/injury-insights/InjuryInsightsDashboard";
 import { supabase } from "@/integrations/supabase/client";
-import { getTeamLogoUrl, getPlayerPhotoUrl } from "@/utils/team-logos";
+import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from "@/utils/team-logos";
 
 // Mock data for the dashboard
 const mockPlayerData = {
@@ -463,9 +463,13 @@ export default function Dashboard() {
                         alt={playerData.name}
                         className="w-full h-full object-cover"
                         loading="lazy"
+                        data-player-photo-index="0"
                         onError={(e) => {
-                          // Fallback to initials if photo fails to load
                           const target = e.target as HTMLImageElement;
+                          const hasNext = tryNextPlayerPhotoUrl(target, playerData.name, playerData.team_name);
+                          if (hasNext) return;
+
+                          // Fallback to initials only after all extensions fail
                           target.style.display = 'none';
                           const parent = target.parentElement;
                           if (parent) {
