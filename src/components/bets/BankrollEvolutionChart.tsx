@@ -15,11 +15,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, Save, Edit2 } from 'lucide-react';
 import { Bet } from '@/hooks/use-bets';
+import type { CapitalMovement } from '@/hooks/use-capital-movements';
 
 interface BankrollEvolutionChartProps {
   bets: Bet[];
   initialBankroll: number | null;
   onUpdateBankroll: (amount: number) => Promise<boolean>;
+  /** Capital movements (aportes/resgates) to include in timeline. Only affects_balance=true are applied to balance. */
+  capitalMovements?: CapitalMovement[];
   /** When true, hide initial bankroll edit and show as "Lucro acumulado no período" (e.g. for dashboard period view). */
   readOnly?: boolean;
   /** Optional: chart container height (responsive). */
@@ -30,6 +33,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   bets,
   initialBankroll,
   onUpdateBankroll,
+  capitalMovements = [],
   readOnly = false,
   chartHeight = 300,
 }) => {
@@ -45,53 +49,49 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
 
   const chartData = useMemo(() => {
     const startAmount = initialBankroll || 0;
-    
-    // Filter settled bets and sort by date ascending
-    const settledBets = bets
-      .filter(bet => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(bet.status))
-      .sort((a, b) => new Date(a.bet_date).getTime() - new Date(b.bet_date).getTime());
 
-    if (settledBets.length === 0) return [];
+    const betEvents: { date: Date; profit: number; label: string }[] = bets
+      .filter((bet) => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(bet.status))
+      .map((bet) => {
+        let profit = 0;
+        if (bet.status === 'won') profit = bet.potential_return - bet.stake_amount;
+        else if (bet.status === 'lost') profit = -bet.stake_amount;
+        else if (bet.status === 'cashout' && bet.cashout_amount) profit = bet.cashout_amount - bet.stake_amount;
+        else if (bet.status === 'half_won') profit = (bet.stake_amount + bet.potential_return) / 2 - bet.stake_amount;
+        else if (bet.status === 'half_lost') profit = bet.stake_amount / 2 - bet.stake_amount;
+        return { date: new Date(bet.bet_date), profit, label: bet.bet_description };
+      });
+
+    const movementEvents: { date: Date; profit: number; label: string }[] = capitalMovements
+      .filter((m) => m.affects_balance)
+      .map((m) => ({
+        date: new Date(m.movement_date),
+        profit: m.type === 'deposit' ? m.amount : -m.amount,
+        label: m.type === 'deposit' ? 'Aporte' : 'Resgate',
+      }));
+
+    const allEvents = [...betEvents, ...movementEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    if (allEvents.length === 0) return [];
 
     let currentBankroll = startAmount;
-    const data = [
-      {
-        date: 'Início',
-        fullDate: 'Início',
-        bankroll: startAmount,
-        profit: 0
-      }
+    const data: { date: string; fullDate: string; bankroll: number; profit: number }[] = [
+      { date: 'Início', fullDate: 'Início', bankroll: startAmount, profit: 0 },
     ];
 
-    settledBets.forEach(bet => {
-      let profit = 0;
-      if (bet.status === 'won') {
-        profit = bet.potential_return - bet.stake_amount;
-      } else if (bet.status === 'lost') {
-        profit = -bet.stake_amount;
-      } else if (bet.status === 'cashout' && bet.cashout_amount) {
-        profit = bet.cashout_amount - bet.stake_amount;
-      } else if (bet.status === 'half_won') {
-        profit = (bet.stake_amount + bet.potential_return) / 2 - bet.stake_amount;
-      } else if (bet.status === 'half_lost') {
-        profit = bet.stake_amount / 2 - bet.stake_amount;
-      }
-
-      currentBankroll += profit;
-
-      const date = new Date(bet.bet_date);
-      const formattedDate = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-
+    allEvents.forEach((ev) => {
+      currentBankroll += ev.profit;
+      const formattedDate = ev.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       data.push({
         date: formattedDate,
-        fullDate: date.toLocaleDateString('pt-BR'),
+        fullDate: ev.date.toLocaleDateString('pt-BR'),
         bankroll: Number(currentBankroll.toFixed(2)),
-        profit: profit
+        profit: ev.profit,
       });
     });
 
     return data;
-  }, [bets, initialBankroll]);
+  }, [bets, initialBankroll, capitalMovements]);
 
   const handleSave = async () => {
     const amount = parseFloat(tempBankroll);

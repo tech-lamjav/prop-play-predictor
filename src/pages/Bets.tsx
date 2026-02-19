@@ -9,6 +9,7 @@ import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
+import { useCapitalMovements } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useNavigate } from 'react-router-dom';
 import { MultiSelectFilter } from '../components/ui/multi-select-filter';
@@ -511,6 +512,7 @@ export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
+  const { movements: capitalMovements } = useCapitalMovements(user?.id);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [bets, setBets] = useState<Bet[]>([]);
@@ -1675,24 +1677,23 @@ export default function Bets() {
         <BankrollEvolutionChart 
           bets={bets} 
           initialBankroll={config.bank_amount}
+          capitalMovements={capitalMovements}
           onUpdateBankroll={async (amount) => {
             if (config.unit_calculation_method === 'direct') {
-               return await updateConfig({
-                 method: 'direct',
-                 unitValue: config.unit_value || 10,
-                 bankAmount: amount
-               });
-            } else {
-               const currentDivisor = config.bank_amount && config.unit_value 
-                  ? config.bank_amount / config.unit_value 
-                  : 100;
-               
-               return await updateConfig({
-                 method: 'division',
-                 bankAmount: amount,
-                 divisor: currentDivisor
-               });
+              return await updateConfig({
+                method: 'direct',
+                unitValue: config.unit_value || 10,
+                bankAmount: amount
+              });
             }
+            const currentDivisor = config.bank_amount && config.unit_value
+              ? config.bank_amount / config.unit_value
+              : 100;
+            return await updateConfig({
+              method: 'division',
+              bankAmount: amount,
+              divisor: currentDivisor
+            });
           }}
         />
 
