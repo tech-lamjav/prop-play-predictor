@@ -39,7 +39,7 @@ const App = () => (
         <PostHogPageView />
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/home-players" element={<Home />} />
           <Route path="/betinho" element={<Betinho />} />
           <Route path="/auth" element={
             <ProtectedRoute requireAuth={false}>
@@ -78,7 +78,7 @@ const App = () => (
               <Analysis />
             </ProtectedRoute>
           } />
-          <Route path="/games" element={<Games />} />
+          <Route path="/home-games" element={<Games />} />
           <Route path="/game/:gameId" element={<GameDetail />} />
           <Route path="/nba-players" element={
             <ProtectedRoute>

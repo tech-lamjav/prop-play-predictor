@@ -42,6 +42,13 @@ const toSaoPauloISO = (date: Date): string =>
     day: '2-digit',
   }).format(date);
 
+// Add N days to an ISO date string (timezone-safe)
+const addDaysToISO = (isoDate: string, days: number): string => {
+  const d = parseGameDate(isoDate);
+  const ts = d.getTime() + days * 24 * 60 * 60 * 1000;
+  return toSaoPauloISO(new Date(ts));
+};
+
 // Helper to parse date without timezone issues
 const parseGameDate = (dateString: string): Date => {
   // If dateString is in format YYYY-MM-DD, parse as Sao Paulo midday to avoid timezone drift
@@ -130,8 +137,42 @@ export default function Games() {
     }
   };
 
+  // Initial load: show today's games, or the next date that has games (up to 14 days ahead)
   useEffect(() => {
-    loadGames();
+    let cancelled = false;
+    const maxDaysAhead = 14;
+
+    const run = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        let dateToUse = getSaoPauloTodayISO();
+        let data = await nbaDataService.getGames({ gameDate: dateToUse });
+
+        for (let i = 1; data.length === 0 && i <= maxDaysAhead; i++) {
+          if (cancelled) return;
+          dateToUse = addDaysToISO(getSaoPauloTodayISO(), i);
+          data = await nbaDataService.getGames({ gameDate: dateToUse });
+        }
+
+        if (cancelled) return;
+        setGames(data);
+        setFilters((prev) => ({ ...prev, date: dateToUse }));
+        setCurrentPage(1);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Error loading games', err);
+          setError('Não foi possível carregar os jogos.');
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -173,11 +214,27 @@ export default function Games() {
   };
 
   const handleResetFilters = async () => {
-    setFilters({ date: today, teamAbbreviation: '' });
-    await nbaDataService.getGames({ gameDate: today }).then(setGames).catch((err) => {
+    setFilters((prev) => ({ ...prev, teamAbbreviation: '' }));
+    try {
+      setIsLoading(true);
+      setError(null);
+      const todayISO = getSaoPauloTodayISO();
+      let dateToUse = todayISO;
+      let data = await nbaDataService.getGames({ gameDate: dateToUse });
+      const maxDaysAhead = 14;
+      for (let i = 1; data.length === 0 && i <= maxDaysAhead; i++) {
+        dateToUse = addDaysToISO(todayISO, i);
+        data = await nbaDataService.getGames({ gameDate: dateToUse });
+      }
+      setGames(data);
+      setFilters((prev) => ({ ...prev, date: dateToUse }));
+      setCurrentPage(1);
+    } catch (err) {
       console.error('Error reloading games', err);
       setError('Não foi possível carregar os jogos.');
-    });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePageChange = (page: number) => {
@@ -196,11 +253,14 @@ export default function Games() {
           </div>
         )}
 
-        {/* Games List and Free Prop Card */}
+        {/* Hero: Prop Grátis do Dia (PLG aha moment) */}
+        <section className="mb-4">
+          <FreePropCard layout="horizontal" />
+        </section>
+
+        {/* Games List */}
         <section>
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Games List */}
-            <div className="lg:col-span-3">
+          <div>
               <div className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-3 mb-3">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                   <div className="hidden lg:block pt-0.5">
@@ -517,12 +577,6 @@ export default function Games() {
               )}
             </>
           )}
-            </div>
-
-            {/* Free Prop Card Sidebar */}
-            <div className="lg:col-span-1">
-              <FreePropCard />
-            </div>
           </div>
         </section>
 

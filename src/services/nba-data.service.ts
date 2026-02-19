@@ -1,5 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 const supabaseClient = supabase as any;
+let allPlayersCache: { data: Player[]; expiresAt: number } | null = null;
+const ALL_PLAYERS_CACHE_TTL_MS = 60 * 1000;
 
 // Helper function to retry failed requests
 async function withRetry<T>(
@@ -13,6 +15,22 @@ async function withRetry<T>(
     try {
       return await fn();
     } catch (error) {
+      const err = error as any;
+      const code = String(err?.code || '');
+      const message = String(err?.message || '');
+
+      // Skip retries for deterministic infra/schema errors.
+      // These won't succeed on retry and only slow down UX.
+      const nonRetryableCodes = new Set(['HV00J', '42883', 'PGRST202', 'PGRST204']);
+      const isNonRetryable =
+        nonRetryableCodes.has(code) ||
+        message.includes('required option `table` is not specified') ||
+        message.includes('function') && message.includes('does not exist');
+
+      if (isNonRetryable) {
+        throw err;
+      }
+
       lastError = error as Error;
       console.warn(`Attempt ${attempt + 1} failed, retrying in ${delay}ms...`, error);
       if (attempt < retries - 1) {
@@ -156,14 +174,32 @@ export interface PlayerShootingZones {
   loaded_at: string;
 }
 
+export interface PlayerDashboardBundle {
+  player: Player | null;
+  game_stats: GamePlayerStats[];
+  prop_players: PropPlayer[];
+  team: Team | null;
+  teammates: TeamPlayer[];
+  shooting_zones: PlayerShootingZones | null;
+}
+
 export const nbaDataService = {
   async getAllPlayers(): Promise<Player[]> {
+    if (allPlayersCache && Date.now() < allPlayersCache.expiresAt) {
+      return allPlayersCache.data;
+    }
+
     return withRetry(async () => {
       const { data, error } = await supabaseClient
         .rpc('get_all_players');
       
       if (error) throw error;
-      return data || [];
+      const players = (data || []) as Player[];
+      allPlayersCache = {
+        data: players,
+        expiresAt: Date.now() + ALL_PLAYERS_CACHE_TTL_MS,
+      };
+      return players;
     });
   },
 
@@ -181,7 +217,19 @@ export const nbaDataService = {
     // Normalize: remove diacritics/accents, replace hyphens with spaces, lowercase
     const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/-/g, ' ').toLowerCase();
     const searchName = normalize(playerName);
-    
+
+    // Fast path: use dedicated RPC if available in the environment
+    try {
+      const { data, error } = await supabaseClient.rpc('get_player_by_name', {
+        p_player_name: playerName,
+      });
+      if (!error && data && data.length > 0) {
+        return data[0] as Player;
+      }
+    } catch {
+      // Fallback handled below (function may not exist in some environments)
+    }
+
     try {
       // Get all players and search case-insensitively in JavaScript
       // This is necessary because BigQuery foreign tables don't support UPPER() in WHERE clauses
@@ -271,6 +319,37 @@ export const nbaDataService = {
       if (error) throw error;
       if (!data || data.length === 0) return null;
       return data[0] as PlayerShootingZones;
+    });
+  },
+
+  async getPlayerDashboardBundle(playerId: number, gamesLimit = 40): Promise<PlayerDashboardBundle | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_player_dashboard_bundle', {
+        p_player_id: playerId,
+        p_games_limit: gamesLimit,
+      });
+
+      if (error) throw error;
+      if (!data) return null;
+
+      // Be resilient to different SQL client return shapes.
+      let payload: any = data;
+      if (Array.isArray(payload) && payload.length === 1 && payload[0]?.get_player_dashboard_bundle) {
+        payload = payload[0].get_player_dashboard_bundle;
+      } else if (payload?.get_player_dashboard_bundle) {
+        payload = payload.get_player_dashboard_bundle;
+      }
+
+      if (!payload || typeof payload !== 'object') return null;
+
+      return {
+        player: (payload.player ?? null) as Player | null,
+        game_stats: (payload.game_stats ?? []) as GamePlayerStats[],
+        prop_players: (payload.prop_players ?? []) as PropPlayer[],
+        team: (payload.team ?? null) as Team | null,
+        teammates: (payload.teammates ?? []) as TeamPlayer[],
+        shooting_zones: (payload.shooting_zones ?? null) as PlayerShootingZones | null,
+      };
     });
   },
 };

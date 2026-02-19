@@ -40,8 +40,8 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Home NBA', href: '/home', icon: BarChart3 },
-    { name: 'Jogos', href: '/games', icon: Calendar },
+    { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
+    { name: 'Jogos', href: '/home-games', icon: Calendar },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
   ];
 
@@ -69,7 +69,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate(backTo || '/home')}
+                onClick={() => navigate(backTo || '/home-players')}
                 className="text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray -ml-2"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
@@ -78,7 +78,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
             ) : (
               <div 
                 className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => navigate('/home')}
+                onClick={() => navigate('/home-players')}
               >
                 <div className="w-8 h-8 bg-terminal-green/20 border border-terminal-green/50 rounded flex items-center justify-center">
                   <BarChart3 className="w-4 h-4 text-terminal-green" />

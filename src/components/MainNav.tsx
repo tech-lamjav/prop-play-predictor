@@ -32,8 +32,8 @@ export default function MainNav({ className }: MainNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Home NBA', href: '/home', icon: BarChart3 },
-    { name: 'Jogos', href: '/games', icon: TrendingUp },
+    { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
+    { name: 'Jogos', href: '/home-games', icon: TrendingUp },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
   ];
 
@@ -59,7 +59,7 @@ export default function MainNav({ className }: MainNavProps) {
           <div className="flex items-center">
             <Button
               variant="ghost"
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/home-players')}
               className="flex items-center space-x-2 hover:bg-transparent"
             >
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">

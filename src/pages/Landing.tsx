@@ -5,11 +5,19 @@ import { BarChart3, TrendingUp, Clock, Shield, Target, Database, Zap, CheckCircl
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { FREE_PLAYERS } from "@/config/freemium";
+
+const getFreePlayerDashboardPath = () => {
+  const name = FREE_PLAYERS[0];
+  const slug = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, "-");
+  return `/nba-dashboard/${slug}`;
+};
+
 const Landing = () => {
   const navigate = useNavigate();
-  const {
-    t
-  } = useTranslation();
+  const { t } = useTranslation();
+  const dashboardPath = getFreePlayerDashboardPath();
+  const firstFreePlayerName = FREE_PLAYERS[0];
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Navigation */}
@@ -67,10 +75,13 @@ const Landing = () => {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-              <Button size="lg" onClick={() => navigate("/waitlist")} className="w-full bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500">
-                <Timer className="h-5 w-5" />
-                Entrar na lista de espera
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-lg mx-auto">
+              <Button size="lg" onClick={() => navigate(dashboardPath)} className="w-full sm:flex-1 bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500">
+                <PlayCircle className="h-5 w-5" />
+                Experimente agora — Veja a análise de {firstFreePlayerName}
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="w-full sm:flex-1 gap-2 text-lg py-6">
+                Criar conta grátis
               </Button>
             </div>
           </div>
@@ -393,14 +404,14 @@ const Landing = () => {
             <div className="text-center mt-12">
               <Button 
                 size="lg" 
-                onClick={() => navigate("/waitlist")} 
+                onClick={() => navigate(dashboardPath)} 
                 className="bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500"
               >
                 <PlayCircle className="h-5 w-5" />
-                Entrar na lista de espera
+                Ver análise real agora
               </Button>
               <p className="text-sm text-muted-foreground mt-4">
-                Acesso completo a todas as funcionalidades
+                Sem login — experimente o dashboard com dados reais
               </p>
             </div>
           </div>
@@ -662,14 +673,17 @@ const Landing = () => {
             </div>
 
             {/* Bottom CTA */}
-            <div className="text-center mt-16">
+            <div className="text-center mt-16 flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button 
                 size="lg" 
-                onClick={() => navigate("/waitlist")} 
+                onClick={() => navigate(dashboardPath)} 
                 className="bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500 px-8 shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                <Timer className="h-5 w-5" />
-                Entrar na lista de espera
+                <PlayCircle className="h-5 w-5" />
+                Ver análise grátis agora
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="gap-2 text-lg py-6 px-8">
+                Criar conta grátis
               </Button>
             </div>
           </div>
@@ -719,10 +733,13 @@ const Landing = () => {
             <p className="text-xl text-muted-foreground mb-8">
               Junte-se aos apostadores que já economizam horas por dia e tomam decisões baseadas em dados confiáveis.
             </p>
-            <div className="space-y-4">
-              <Button size="lg" onClick={() => navigate("/waitlist")} className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500">
-                <Timer className="h-5 w-5" />
-                Entrar na lista de espera
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button size="lg" onClick={() => navigate(dashboardPath)} className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500">
+                <PlayCircle className="h-5 w-5" />
+                Experimente a análise grátis
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="gap-2 text-lg px-8 py-6">
+                Criar conta
               </Button>
             </div>
           </div>

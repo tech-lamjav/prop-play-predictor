@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Star, Trophy, Lock, Zap, BarChart3, CheckCircle, ArrowRight, TrendingUp } from 'lucide-react';
 import { nbaDataService, Player } from '@/services/nba-data.service';
 import { useSubscription } from '@/hooks/use-subscription';
+import { useAuth } from '@/hooks/use-auth';
 import { isFreePlayer } from '@/config/freemium';
 import { Button } from '@/components/ui/button';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -11,6 +12,7 @@ import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-statu
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { isPremium, isLoading: subscriptionLoading } = useSubscription();
   const [players, setPlayers] = useState<Player[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
@@ -304,15 +306,24 @@ export default function Home() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
               {premiumPlayers.slice(0, isPremium ? premiumPlayers.length : 12).map((player) => {
                 const canAccess = isPremium || isFreePlayer(player.player_name);
-                
+                const slug = player.player_name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
+                const handleClick = () => {
+                  if (canAccess) {
+                    handlePlayerSelect(player.player_id);
+                  } else if (!user) {
+                    navigate('/auth', { state: { from: { pathname: `/nba-dashboard/${slug}`, search: '' } } });
+                  } else {
+                    navigate('/paywall-platform');
+                  }
+                };
                 return (
                   <div 
                     key={`premium-${player.player_id}`}
-                    onClick={() => canAccess ? handlePlayerSelect(player.player_id) : undefined}
-                    className={`terminal-button p-3 md:p-4 rounded transition-all relative ${
+                    onClick={handleClick}
+                    className={`terminal-button p-3 md:p-4 rounded transition-all relative cursor-pointer ${
                       canAccess 
-                        ? 'cursor-pointer group hover:border-terminal-green hover:bg-terminal-dark-gray/50' 
-                        : 'cursor-not-allowed opacity-60'
+                        ? 'group hover:border-terminal-green hover:bg-terminal-dark-gray/50' 
+                        : 'opacity-60 hover:border-terminal-yellow/50 hover:bg-terminal-dark-gray/30'
                     }`}
                   >
                     {/* Simple Lock Badge - No Heavy Overlay */}
