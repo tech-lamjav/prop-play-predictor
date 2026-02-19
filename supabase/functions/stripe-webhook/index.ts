@@ -155,6 +155,108 @@ serve(async (req) => {
         }
         break;
       }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const invoiceAny = invoice as any;
+        const subscriptionId =
+          (typeof invoice.subscription === 'string'
+            ? invoice.subscription
+            : invoice.subscription?.id) ||
+          invoiceAny?.subscription_details?.subscription ||
+          invoiceAny?.parent?.subscription_details?.subscription ||
+          invoiceAny?.lines?.data?.[0]?.parent?.subscription_item_details?.subscription;
+
+        // In newer Stripe payloads, subscription metadata can already be present on invoice
+        // even when `invoice.subscription` is not set.
+        const metadataUserId =
+          invoiceAny?.subscription_details?.metadata?.userId ||
+          invoiceAny?.parent?.subscription_details?.metadata?.userId ||
+          invoiceAny?.lines?.data?.[0]?.metadata?.userId ||
+          invoice.metadata?.userId;
+        const metadataProductType =
+          invoiceAny?.subscription_details?.metadata?.productType ||
+          invoiceAny?.parent?.subscription_details?.metadata?.productType ||
+          invoiceAny?.lines?.data?.[0]?.metadata?.productType ||
+          invoice.metadata?.productType;
+        const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+
+        console.log('[Webhook] invoice.paid received');
+        console.log('[Webhook] Invoice ID:', invoice.id);
+        console.log('[Webhook] Subscription ID from invoice:', subscriptionId);
+        console.log('[Webhook] User ID from invoice metadata:', metadataUserId);
+        console.log('[Webhook] Product type from invoice metadata:', metadataProductType);
+        console.log('[Webhook] Customer ID from invoice:', customerId);
+
+        let userId: string | undefined = metadataUserId;
+        let productType: string | undefined = metadataProductType;
+        const linePriceId =
+          invoiceAny?.lines?.data?.[0]?.pricing?.price_details?.price ||
+          invoiceAny?.lines?.data?.[0]?.price?.id;
+
+        if (!productType && linePriceId) {
+          const analyticsPriceId =
+            Deno.env.get('STRIPE_PRICE_ID_PLATFORM') ||
+            Deno.env.get('STRIPE_PRICE_ID_ANALYTICS');
+          const betinhoPriceId = Deno.env.get('STRIPE_PRICE_ID_BETINHO');
+
+          if (analyticsPriceId && linePriceId === analyticsPriceId) {
+            productType = 'analytics';
+          } else if (betinhoPriceId && linePriceId === betinhoPriceId) {
+            productType = 'betinho';
+          }
+
+          console.log('[Webhook] linePriceId from invoice:', linePriceId);
+          console.log('[Webhook] productType inferred from price:', productType || 'not inferred');
+        }
+
+        if (!userId && subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          userId = subscription.metadata?.userId;
+          productType = productType || subscription.metadata?.productType;
+        }
+
+        // Last fallback: resolve user by stripe_customer_id
+        if (!userId && customerId) {
+          const { data: userByCustomer, error: findUserError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('stripe_customer_id', customerId)
+            .single();
+
+          if (findUserError) {
+            console.error('[Webhook] Could not resolve user by stripe_customer_id:', findUserError);
+          } else if (userByCustomer?.id) {
+            userId = userByCustomer.id;
+            console.log('[Webhook] Resolved userId by stripe_customer_id:', userId);
+          }
+        }
+
+        if (!userId) {
+          console.warn('[Webhook] invoice.paid without resolvable userId, skipping');
+          break;
+        }
+
+        const subscriptionField = getSubscriptionField(productType);
+
+        console.log('[Webhook] Updating field from invoice.paid:', subscriptionField);
+
+        const updateData: Record<string, string> = {};
+        updateData[subscriptionField] = 'premium';
+
+        const { data, error } = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', userId);
+
+        if (error) {
+          console.error(`[Webhook] Error updating ${subscriptionField} on invoice.paid:`, error);
+        } else {
+          console.log(`[Webhook] ✅ ${subscriptionField} updated to premium via invoice.paid for user:`, userId);
+          console.log('[Webhook] Updated data:', JSON.stringify(data));
+        }
+        break;
+      }
     }
 
     return new Response(

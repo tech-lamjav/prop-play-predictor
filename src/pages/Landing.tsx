@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,18 +14,62 @@ const getFreePlayerDashboardPath = () => {
   return `/nba-dashboard/${slug}`;
 };
 
+const MOCK_STAT_LABELS = [
+  { id: 'PTS', full: 'POINTS' },
+  { id: 'AST', full: 'ASSISTS' },
+  { id: 'REB', full: 'REBOUNDS' },
+  { id: '3PT', full: '3-POINTERS' },
+  { id: 'STL', full: 'STEALS' },
+  { id: 'BLK', full: 'BLOCKS' },
+  { id: 'TO',  full: 'TURNOVERS' },
+  { id: 'P+A', full: 'POINTS + ASSISTS' },
+  { id: 'P+R', full: 'POINTS + REBOUNDS' },
+  { id: 'R+A', full: 'REBOUNDS + ASSISTS' },
+  { id: 'PRA', full: 'PTS + REB + AST' },
+  { id: 'DD',  full: 'DOUBLE-DOUBLE' },
+];
+
+type MockStatData = { values: number[]; line: number; avg: number; hitRate: string; over: number; total: number };
+
+const MOCK_DATA: Record<string, MockStatData> = {
+  PTS:  { values: [24,31,28,33,22,30,27,35,29,25,32,28,34,23,30], line: 27.5, avg: 29.1, hitRate: '67.0', over: 10, total: 15 },
+  AST:  { values: [8,12,10,14,7,11,9,13,10,8,12,11,15,6,10],     line: 9.5,  avg: 10.2, hitRate: '60.0', over: 9,  total: 15 },
+  REB:  { values: [11,14,13,15,9,12,10,16,13,11,14,12,15,10,13],  line: 11.5, avg: 12.8, hitRate: '73.3', over: 11, total: 15 },
+  '3PT':{ values: [1,2,1,3,0,2,1,2,1,0,3,2,1,0,2],               line: 1.5,  avg: 1.4,  hitRate: '40.0', over: 6,  total: 15 },
+  STL:  { values: [1,2,1,0,2,1,3,1,2,0,1,2,1,1,2],               line: 1.5,  avg: 1.3,  hitRate: '33.3', over: 5,  total: 15 },
+  BLK:  { values: [1,0,1,2,0,1,1,0,2,1,0,1,0,1,1],               line: 0.5,  avg: 0.8,  hitRate: '53.3', over: 8,  total: 15 },
+  TO:   { values: [3,4,2,5,3,2,4,3,2,4,3,5,2,3,4],               line: 3.5,  avg: 3.3,  hitRate: '33.3', over: 5,  total: 15 },
+  'P+A':{ values: [32,43,38,47,29,41,36,48,39,33,44,39,49,29,40], line: 37.5, avg: 39.1, hitRate: '66.7', over: 10, total: 15 },
+  'P+R':{ values: [35,45,41,48,31,42,37,51,42,36,46,40,49,33,43], line: 39.5, avg: 41.3, hitRate: '66.7', over: 10, total: 15 },
+  'R+A':{ values: [19,26,23,29,16,23,19,29,23,19,26,23,30,16,23], line: 21.5, avg: 22.9, hitRate: '60.0', over: 9,  total: 15 },
+  PRA:  { values: [43,57,51,62,38,53,46,64,52,44,58,51,64,39,53], line: 49.5, avg: 51.7, hitRate: '66.7', over: 10, total: 15 },
+  DD:   { values: [1,1,1,1,0,1,1,1,1,1,1,1,1,0,1],               line: 0.5,  avg: 0.9,  hitRate: '86.7', over: 13, total: 15 },
+};
+
+const MOCK_GAMES = [
+  { opp: 'LAL', date: '02/14' }, { opp: 'GSW', date: '02/12' }, { opp: 'BOS', date: '02/10' },
+  { opp: 'MIA', date: '02/08' }, { opp: 'PHX', date: '02/06' }, { opp: 'DAL', date: '02/04' },
+  { opp: 'NYK', date: '02/02' }, { opp: 'MIL', date: '01/31' }, { opp: 'CLE', date: '01/29' },
+  { opp: 'OKC', date: '01/27' }, { opp: 'MIN', date: '01/25' }, { opp: 'PHI', date: '01/23' },
+  { opp: 'SAC', date: '01/21' }, { opp: 'HOU', date: '01/19' }, { opp: 'LAC', date: '01/17' },
+];
+
 const Landing = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const dashboardPath = getFreePlayerDashboardPath();
   const firstFreePlayerName = FREE_PLAYERS[0];
+  const [selectedStat, setSelectedStat] = useState('PTS');
+
+  const statData = useMemo(() => MOCK_DATA[selectedStat] || MOCK_DATA.PTS, [selectedStat]);
+  const maxVal = useMemo(() => Math.max(...statData.values) + 3, [statData]);
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-primary rounded-md flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
             <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
@@ -33,7 +78,7 @@ const Landing = () => {
             <LanguageToggle />
             <Button 
               variant="outline" 
-              onClick={() => navigate("/auth")} 
+              onClick={() => navigate("/home-games")} 
               className="text-sm sm:text-base px-3 sm:px-4 py-2"
             >
               Entrar
@@ -55,7 +100,7 @@ const Landing = () => {
           <div className="relative text-center">
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 max-w-5xl mx-auto leading-tight">
-              Pare de <span className="bg-gradient-primary bg-clip-text text-green-600">apostar no escuro</span>
+              Pare de <span className="bg-gradient-primary bg-clip-text text-[#5b9bd5]">apostar no escuro</span>
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -76,7 +121,7 @@ const Landing = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-lg mx-auto">
-              <Button size="lg" onClick={() => navigate(dashboardPath)} className="w-full sm:flex-1 bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500">
+              <Button size="lg" onClick={() => navigate(dashboardPath)} className="w-full sm:flex-1 hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-[#5b9bd5] hover:bg-[#4a8ac4]">
                 <PlayCircle className="h-5 w-5" />
                 Experimente agora — Veja a análise de {firstFreePlayerName}
               </Button>
@@ -99,304 +144,178 @@ const Landing = () => {
             </p>
           </div>
 
-          {/* Mock Dashboard Interface */}
+          {/* Mock Dashboard Interface — mirrors real NBADashboard terminal style */}
           <div className="max-w-7xl mx-auto">
-            <div className="bg-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl overflow-hidden">
-              {/* Dashboard Header */}
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-700">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <Target className="w-6 h-6 text-white" />
+            <div className="bg-terminal-black rounded-sm p-4 md:p-6 shadow-2xl overflow-hidden border border-terminal-border-subtle">
+              {/* Player Header */}
+              <div className="terminal-container p-4 mb-3">
+                <div className="flex items-start gap-4">
+                  <div className="w-16 h-16 rounded-sm bg-terminal-gray border-2 border-terminal-green flex items-center justify-center flex-shrink-0">
+                    <span className="text-xl font-bold text-terminal-green">NJ</span>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Smartbetting Dashboard</h3>
-                    <p className="text-slate-400 text-sm">Análise de dados</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-xl font-bold text-terminal-green mb-1">Nikola Jokic</h3>
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="opacity-70">Denver Nuggets</span>
+                      <span className="opacity-50">•</span>
+                      <span className="opacity-70">C</span>
+                      <span className="opacity-50">•</span>
+                      <span className="text-terminal-green">Active</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-terminal-border-subtle">
+                      <div>
+                        <div className="data-label mb-1">POINTS</div>
+                        <div className="text-lg font-bold text-terminal-text">29.1</div>
+                      </div>
+                      <div>
+                        <div className="data-label mb-1">ASSISTS</div>
+                        <div className="text-lg font-bold text-terminal-text">10.2</div>
+                      </div>
+                      <div>
+                        <div className="data-label mb-1">REBOUNDS</div>
+                        <div className="text-lg font-bold text-terminal-text">12.8</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Badge className="bg-green-600 text-white">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Conectado
-                  </Badge>
+              </div>
+
+              {/* Stat Type Selector — interactive */}
+              <div className="terminal-container p-4 mb-3">
+                <h3 className="section-title mb-3">SELECT STAT TYPE</h3>
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
+                  {MOCK_STAT_LABELS.map((s) => {
+                    const active = selectedStat === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedStat(s.id)}
+                        className={`terminal-button p-2 text-center transition-all ${
+                          active ? 'bg-terminal-blue text-terminal-black border-terminal-blue' : 'hover:border-terminal-blue/50'
+                        }`}
+                      >
+                        <div className="text-xs font-bold">{s.id}</div>
+                        {active && <div className="text-[8px] mt-0.5 opacity-80">ACTIVE</div>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 text-[10px] opacity-50">
+                  VIEWING: {MOCK_STAT_LABELS.find(s => s.id === selectedStat)?.full}
                 </div>
               </div>
 
-              <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4">
-                {/* Player Profile Card */}
-                <div className="md:col-span-2 lg:col-span-1">
-                  <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
-                      <div className="text-center">
-                        <div className="w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 lg:mb-2">
-                          <span className="text-white font-bold text-sm lg:text-xs">LD</span>
-                        </div>
-                        <h4 className="text-base lg:text-sm font-bold text-white mb-2 lg:mb-1">Luka Dončić</h4>
-                        <p className="text-slate-300 text-sm lg:text-xs mb-2 lg:mb-1">Dallas Mavericks • PG/SG</p>
-                        <Badge className="bg-green-600 text-white text-sm lg:text-xs px-3 lg:px-2 py-1">Ativo</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* PPG Card */}
-                <div>
-                  <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-2 lg:mb-1">
-                          <TrendingUp className="w-5 h-5 lg:w-4 lg:h-4 text-blue-400 mr-2 lg:mr-1" />
-                          <p className="text-slate-300 text-sm lg:text-xs font-medium">Pontos</p>
-                        </div>
-                        <p className="text-white font-bold text-4xl lg:text-3xl mb-2 lg:mb-1">28.4</p>
-                        <p className="text-blue-400 text-sm lg:text-xs">+1.2 vs média</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Assists Card */}
-                <div>
-                  <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-2 lg:mb-1">
-                          <TrendingUp className="w-5 h-5 lg:w-4 lg:h-4 text-green-400 mr-2 lg:mr-1" />
-                          <p className="text-slate-300 text-sm lg:text-xs font-medium">Assistências</p>
-                        </div>
-                        <p className="text-white font-bold text-4xl lg:text-3xl mb-2 lg:mb-1">8.7</p>
-                        <p className="text-green-400 text-sm lg:text-xs">+0.3 vs média</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Rebounds Card */}
-                <div>
-                  <Card className="bg-slate-700 border-slate-600 h-full">
-                    <CardContent className="p-4 lg:p-3 h-full flex flex-col justify-center">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-2 lg:mb-1">
-                          <TrendingUp className="w-5 h-5 lg:w-4 lg:h-4 text-green-400 mr-2 lg:mr-1" />
-                          <p className="text-slate-300 text-sm lg:text-xs font-medium">Rebotes</p>
-                        </div>
-                        <p className="text-white font-bold text-4xl lg:text-3xl mb-2 lg:mb-1">8.1</p>
-                        <p className="text-green-400 text-sm lg:text-xs">+0.5 vs média</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+              {/* Stats Header — reactive to selected stat */}
+              <div className="terminal-container p-4 mb-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <div className="data-label text-xs mb-1">GRAPH AVG</div>
+                    <div className="text-3xl font-bold text-terminal-green">{statData.avg.toFixed(1)}</div>
+                    <div className="text-xs opacity-50 mt-1">{MOCK_STAT_LABELS.find(s => s.id === selectedStat)?.full}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="data-label text-xs mb-1">HIT RATE</div>
+                    <div className="text-3xl font-bold text-terminal-green">{statData.hitRate}%</div>
+                    <div className="text-xs opacity-50 mt-1">({statData.over}/{statData.total})</div>
+                  </div>
                 </div>
               </div>
 
-              {/* Performance Chart Preview */}
-              <div className="mt-8 space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
-                <div className="lg:col-span-2">
-                  <Card className="bg-slate-700 border-slate-600">
-                    <CardHeader>
-                      <CardTitle className="text-white">Performance vs Linha de Aposta - Últimos 15 Jogos</CardTitle>
-                      <p className="text-slate-300 text-sm">Pontos reais vs linha oferecida pelo bookmaker</p>
-                    </CardHeader>
-                    <CardContent>
-                      {/* Mobile: Simple Stats View, Desktop: Chart */}
-                      <div className="block sm:hidden">
-                        {/* Mobile: Key Stats Summary */}
-                        <div className="bg-slate-800 rounded-lg p-4">
-                          <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-green-400">10</div>
-                              <div className="text-xs text-slate-300">Acima da Linha</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-2xl font-bold text-red-400">5</div>
-                              <div className="text-xs text-slate-300">Abaixo da Linha</div>
-                            </div>
-                          </div>
-                          
-                          <div className="border-t border-slate-700 pt-4">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-slate-300 text-sm">Linha de Aposta:</span>
-                              <span className="text-white font-bold">22.5 pontos</span>
-                            </div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-slate-300 text-sm">Média Últimos 15:</span>
-                              <span className="text-white font-bold">23.2 pontos</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-slate-300 text-sm">Taxa de Acerto:</span>
-                              <span className="text-green-400 font-bold">67%</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Desktop: Full Chart */}
-                      <div className="hidden sm:block">
-                        <div className="h-64 bg-slate-800 rounded-lg p-4 relative">
-                          {/* Y-Axis Labels */}
-                          <div className="absolute left-2 top-4 bottom-4 flex flex-col justify-between text-xs text-slate-400">
-                            <span>35</span>
-                            <span>30</span>
-                            <span>25</span>
-                            <span>20</span>
-                            <span>15</span>
-                            <span>10</span>
-                          </div>
-                          
-                          {/* Chart Area */}
-                          <div className="ml-8 h-full flex items-end space-x-1 relative">
-                            {/* Reference Line */}
-                            <div className="absolute inset-x-0 top-1/2 h-0.5 bg-white opacity-60 border-dashed"></div>
-                            <div className="absolute top-1/2 right-2 text-white text-xs bg-slate-700 px-2 py-1 rounded">
-                              Linha: 22.5
-                            </div>
-                            
-                            {/* Chart Bars */}
-                            {[18, 17, 26, 29, 10, 19, 25, 32, 30, 18, 24, 27, 31, 16, 28].map((height, index) => {
-                              const barHeight = Math.max((height / 35) * 200, 16);
-                              return (
-                                <div key={index} className="flex flex-col items-center flex-1">
-                                  <div
-                                    className={`w-4 rounded-t transition-all duration-300 hover:opacity-80 ${
-                                      height > 22.5 ? 'bg-green-500' : 'bg-red-500'
-                                    }`}
-                                    style={{ 
-                                      height: `${barHeight}px`,
-                                      minHeight: '16px'
-                                    }}
-                                    title={`Jogo ${index + 1}: ${height} pontos`}
-                                  />
-                                  <div className="text-xs text-slate-400 mt-1">
-                                    {index + 1}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          
-                          {/* X-Axis Label */}
-                          <div className="text-center text-xs text-slate-400 mt-2">
-                            Jogos (Últimos 15)
-                          </div>
-                        </div>
-                        
-                        {/* Chart Legend */}
-                        <div className="flex items-center justify-center gap-6 mt-4 text-sm">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 bg-green-500 rounded"></div>
-                            <span className="text-slate-300">Acima da Linha (10 jogos)</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 bg-red-500 rounded"></div>
-                            <span className="text-slate-300">Abaixo da Linha (5 jogos)</span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+              {/* Chart — reactive to selected stat */}
+              <div className="terminal-container p-4 mb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="section-title">Performance vs Linha</h3>
+                  <div className="text-[10px] opacity-50">ÚLTIMOS {statData.total} JOGOS</div>
                 </div>
 
-                {/* Injury Report - Vertical Orientation */}
-                <div>
-                  <Card className="bg-gradient-to-b from-red-900/20 to-orange-900/20 border-red-500/30">
-                    <CardHeader>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
-                          <Shield className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-white text-lg">Injury Report</CardTitle>
-                          <p className="text-slate-300 text-xs">Nosso diferencial competitivo</p>
-                        </div>
+                <div className="hidden sm:block">
+                  <div className="h-56 p-4 pb-0 relative">
+                    <div className="ml-6 h-[160px] flex items-end gap-1 relative">
+                      <div className="absolute inset-x-0 border-t-2 border-dashed border-white/80 z-10" style={{ bottom: `${(statData.line / maxVal) * 100}%` }}></div>
+                      <div className="absolute right-1 z-10 bg-terminal-dark-gray px-2 py-0.5 rounded-sm text-[10px] font-bold text-white border border-white/40" style={{ bottom: `${(statData.line / maxVal) * 100}%`, transform: 'translateY(50%)' }}>
+                        Linha: {statData.line}
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {/* Player Status */}
-                        <div>
-                          <h4 className="text-white font-semibold text-sm mb-3">Status do Jogador</h4>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between p-2 bg-slate-800 rounded-lg">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span className="text-white font-medium text-sm">Luka Dončić</span>
-                              </div>
-                              <Badge className="bg-green-600 text-white text-xs">Ativo</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-2 bg-slate-800 rounded-lg">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                <span className="text-white font-medium text-sm">Kyrie Irving</span>
-                              </div>
-                              <Badge className="bg-yellow-600 text-white text-xs">Questionable</Badge>
-                            </div>
+                      {statData.values.map((v, i) => {
+                        const h = Math.max((v / maxVal) * 160, 4);
+                        return (
+                          <div key={i} className="flex-1 flex items-end justify-center px-[2px]">
+                            <div
+                              className={`w-full max-w-[14px] transition-all duration-300 ${v > statData.line ? 'bg-green-500' : 'bg-red-500'}`}
+                              style={{ height: `${h}px`, minHeight: '4px', borderRadius: '1px 1px 0 0' }}
+                            />
                           </div>
+                        );
+                      })}
+                    </div>
+                    <div className="ml-6 flex gap-1 mt-1">
+                      {MOCK_GAMES.map((g, i) => (
+                        <div key={i} className="flex-1 text-center">
+                          <div className="text-[9px] font-semibold text-terminal-green-bright leading-tight">{g.opp}</div>
+                          <div className="text-[8px] opacity-40 leading-tight">{g.date}</div>
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center gap-6 mt-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                      <span className="opacity-70">Over ({statData.over})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
+                      <span className="opacity-70">Under ({statData.total - statData.over})</span>
+                    </div>
+                  </div>
+                </div>
 
-                        {/* Opponent Impact */}
-                        <div>
-                          <h4 className="text-white font-semibold text-sm mb-3">Impacto no Oponente</h4>
-                          <div className="space-y-2">
-                            <div className="p-2 bg-slate-800 rounded-lg">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-white font-medium text-sm">Miami Heat</span>
-                                <Badge className="bg-red-600 text-white text-xs">Alto Impacto</Badge>
-                              </div>
-                              <p className="text-slate-300 text-xs">
-                                Jimmy Butler lesionado - Defesa vulnerável
-                              </p>
-                            </div>
-                            <div className="p-2 bg-slate-800 rounded-lg">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-white font-medium text-sm">Bam Adebayo</span>
-                                <Badge className="bg-yellow-600 text-white text-xs">Médio Impacto</Badge>
-                              </div>
-                              <p className="text-slate-300 text-xs">
-                                Probable - Pode afetar rebotes
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="block sm:hidden">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center bg-terminal-dark-gray p-3 rounded-sm border border-terminal-border-subtle">
+                      <div className="text-xl font-bold text-green-400">{statData.over}</div>
+                      <div className="text-[10px] opacity-60">OVER</div>
+                    </div>
+                    <div className="text-center bg-terminal-dark-gray p-3 rounded-sm border border-terminal-border-subtle">
+                      <div className="text-xl font-bold text-terminal-red">{statData.total - statData.over}</div>
+                      <div className="text-[10px] opacity-60">UNDER</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-
-              {/* Bottom Features Row */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <Brain className="w-8 h-8 text-blue-400" />
-                      <div>
-                        <h4 className="text-white font-semibold">IA Avançada</h4>
-                        <p className="text-slate-300 text-sm">Análise preditiva</p>
+              {/* Shooting Zones */}
+              <div className="terminal-container p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="section-title">SHOOTING ZONES</h3>
+                  <div className="text-[10px] opacity-50">Nikola Jokic</div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {[
+                    { title: 'Restricted Area', fga: '8.2', fgm: '5.4', pct: '65.9%' },
+                    { title: 'Paint (Non-RA)', fga: '3.1', fgm: '1.6', pct: '51.6%' },
+                    { title: 'Mid Range', fga: '4.5', fgm: '2.3', pct: '51.1%' },
+                    { title: 'Above the Break 3', fga: '2.8', fgm: '1.0', pct: '35.7%' },
+                    { title: 'Corner 3', fga: '0.4', fgm: '0.2', pct: '50.0%' },
+                    { title: 'Backcourt', fga: '0.1', fgm: '0.0', pct: '0.0%' },
+                  ].map((z) => (
+                    <div key={z.title} className="p-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-sm">
+                      <div className="text-xs font-bold text-terminal-green mb-2">{z.title}</div>
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex flex-col">
+                          <span className="opacity-60">FGA</span>
+                          <span className="font-semibold">{z.fga}</span>
+                        </div>
+                        <div className="flex flex-col text-terminal-blue">
+                          <span className="opacity-60">FGM</span>
+                          <span className="font-semibold">{z.fgm}</span>
+                        </div>
+                        <div className="flex flex-col text-terminal-yellow">
+                          <span className="opacity-60">FG%</span>
+                          <span className="font-semibold">{z.pct}</span>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <Database className="w-8 h-8 text-green-400" />
-                      <div>
-                        <h4 className="text-white font-semibold">Dados Históricos</h4>
-                        <p className="text-slate-300 text-sm">5+ anos de dados</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="bg-slate-700 border-slate-600">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <Zap className="w-8 h-8 text-yellow-400" />
-                      <div>
-                        <h4 className="text-white font-semibold">Dados Atualizados</h4>
-                        <p className="text-slate-300 text-sm">Informações sempre relevantes</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -405,7 +324,7 @@ const Landing = () => {
               <Button 
                 size="lg" 
                 onClick={() => navigate(dashboardPath)} 
-                className="bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500"
+                className="hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-[#5b9bd5] hover:bg-[#4a8ac4]"
               >
                 <PlayCircle className="h-5 w-5" />
                 Ver análise real agora
@@ -425,7 +344,7 @@ const Landing = () => {
             </h2>
             
             <div className="grid md:grid-cols-2 gap-8 mt-12">
-              <Card className="bg-destructive/5 border-destructive/20 p-6">
+              <Card className="bg-destructive/5 border-destructive/20 p-6 rounded-sm">
                 <CardContent className="space-y-4">
                   <div className="text-destructive font-semibold text-lg">Sem a Smartbetting</div>
                   <ul className="space-y-3 text-left text-muted-foreground">
@@ -437,7 +356,7 @@ const Landing = () => {
                 </CardContent>
               </Card>
 
-              <Card className="bg-success/5 border-success/20 p-6">
+              <Card className="bg-success/5 border-success/20 p-6 rounded-sm">
                 <CardContent className="space-y-4">
                   <div className="text-success font-semibold text-lg">Com Smartbetting</div>
                   <ul className="space-y-3 text-left text-muted-foreground">
@@ -464,9 +383,9 @@ const Landing = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300 rounded-sm">
               <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                <div className="w-16 h-16 bg-gradient-primary rounded-sm flex items-center justify-center mb-4 mx-auto">
                   <Database className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle className="text-center text-foreground">Dados Relevantes</CardTitle>
@@ -476,9 +395,9 @@ const Landing = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300 rounded-sm">
               <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                <div className="w-16 h-16 bg-gradient-primary rounded-sm flex items-center justify-center mb-4 mx-auto">
                   <Brain className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle className="text-center text-foreground">IA Especializada</CardTitle>
@@ -488,9 +407,9 @@ const Landing = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300 rounded-sm">
               <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                <div className="w-16 h-16 bg-gradient-primary rounded-sm flex items-center justify-center mb-4 mx-auto">
                   <Target className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle className="text-center text-foreground">Transparência Total</CardTitle>
@@ -509,12 +428,12 @@ const Landing = () => {
         <section className="py-20 px-6">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-md text-sm font-medium mb-6">
                 <Target className="h-4 w-4" />
                 Feito para você
               </div>
               <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
-                Perfeito para o seu <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">perfil de apostador</span>
+                Perfeito para o seu <span className="text-[#5b9bd5]">perfil de apostador</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 Não importa se você tem 10 minutos ou 10 horas por dia - nossa plataforma se adapta ao seu ritmo
@@ -523,13 +442,13 @@ const Landing = () => {
 
             <div className="grid md:grid-cols-2 gap-8">
               {/* Busy Bettor Profile */}
-              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 rounded-sm">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
                 <CardContent className="relative p-8 space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <div className="w-20 h-20 bg-gradient-primary rounded-sm flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                         <Clock className="h-10 w-10 text-white" />
                       </div>
                       <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent rounded-full flex items-center justify-center">
@@ -543,7 +462,7 @@ const Landing = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
                       <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
                         <CheckCircle className="h-5 w-5 text-white" />
                       </div>
@@ -561,7 +480,7 @@ const Landing = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
                       <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                         <Zap className="h-5 w-5 text-white" />
                       </div>
@@ -571,7 +490,7 @@ const Landing = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
                       <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
                         <Shield className="h-5 w-5 text-white" />
                       </div>
@@ -582,7 +501,7 @@ const Landing = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
+                  <div className="mt-6 p-4 bg-muted/50 rounded-md border border-border">
                     <div className="flex items-center gap-2 mb-2">
                       <Timer className="h-5 w-5 text-primary" />
                       <span className="font-semibold text-foreground">Perfeito para você se:</span>
@@ -597,13 +516,13 @@ const Landing = () => {
               </Card>
 
               {/* Professional Aspirant Profile */}
-              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 rounded-sm">
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
                 <CardContent className="relative p-8 space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <div className="w-20 h-20 bg-gradient-primary rounded-sm flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                         <TrendingUp className="h-10 w-10 text-white" />
                       </div>
                       <div className="absolute -top-2 -right-2 w-8 h-8 bg-success rounded-full flex items-center justify-center">
@@ -617,7 +536,7 @@ const Landing = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
                       <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                         <Database className="h-5 w-5 text-white" />
                       </div>
@@ -636,7 +555,7 @@ const Landing = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
                       <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
                         <Target className="h-5 w-5 text-white" />
                       </div>
@@ -646,7 +565,7 @@ const Landing = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
                       <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                         <Brain className="h-5 w-5 text-white" />
                       </div>
@@ -657,7 +576,7 @@ const Landing = () => {
                     </div>
                   </div>
 
-                  <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
+                  <div className="mt-6 p-4 bg-muted/50 rounded-md border border-border">
                     <div className="flex items-center gap-2 mb-2">
                       <TrendingUp className="h-5 w-5 text-success" />
                       <span className="font-semibold text-foreground">Perfeito para você se:</span>
@@ -677,7 +596,7 @@ const Landing = () => {
               <Button 
                 size="lg" 
                 onClick={() => navigate(dashboardPath)} 
-                className="bg-gradient-primary hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-green-600 hover:bg-green-500 px-8 shadow-lg hover:shadow-xl transition-all duration-300"
+                className="hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-[#5b9bd5] hover:bg-[#4a8ac4] px-8 shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <PlayCircle className="h-5 w-5" />
                 Ver análise grátis agora
@@ -693,7 +612,7 @@ const Landing = () => {
         {/* Trust & Risk Mitigation */}
         <section className="py-16 px-6">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-muted/30 rounded-3xl p-8 md:p-12">
+            <div className="bg-muted/30 rounded-md p-8 md:p-12">
               <div className="text-center space-y-6">
                 <Shield className="h-16 w-16 text-primary mx-auto" />
                 <h3 className="text-2xl md:text-3xl font-bold text-foreground">
@@ -734,7 +653,7 @@ const Landing = () => {
               Junte-se aos apostadores que já economizam horas por dia e tomam decisões baseadas em dados confiáveis.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button size="lg" onClick={() => navigate(dashboardPath)} className="bg-gradient-primary hover:opacity-90 gap-2 text-lg px-8 py-6 bg-green-600 hover:bg-green-500">
+              <Button size="lg" onClick={() => navigate(dashboardPath)} className="hover:opacity-90 gap-2 text-lg px-8 py-6 bg-[#5b9bd5] hover:bg-[#4a8ac4]">
                 <PlayCircle className="h-5 w-5" />
                 Experimente a análise grátis
               </Button>

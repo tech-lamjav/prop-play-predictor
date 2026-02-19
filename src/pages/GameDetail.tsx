@@ -39,6 +39,12 @@ export default function GameDetail() {
   const [visitorTeam, setVisitorTeam] = useState<Team | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      loadGameData();
+    }
+  }, [gameId, authLoading, user]);
+
   // PLG freemium: detalhe do jogo exige login (deslogado redireciona para /auth)
   if (authLoading) {
     return (
@@ -50,10 +56,6 @@ export default function GameDetail() {
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
-
-  useEffect(() => {
-    loadGameData();
-  }, [gameId]);
 
   const loadGameData = async () => {
     if (!gameId) return;

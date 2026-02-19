@@ -82,10 +82,28 @@ serve(async (req) => {
     }
 
     // Normalize product type (backward compatibility for legacy values)
-    const normalizedProductType = (productType || 'betinho').toLowerCase();
-    const finalProductType = normalizedProductType === 'platform' ? 'analytics' : normalizedProductType;
+    const normalizedProductType = String(productType || 'betinho').trim().toLowerCase();
+    const referer = req.headers.get('referer') || '';
+    const analyticsPriceIds = [
+      Deno.env.get('STRIPE_PRICE_ID_PLATFORM'),
+      Deno.env.get('STRIPE_PRICE_ID_ANALYTICS'),
+    ].filter(Boolean) as string[];
+
+    let finalProductType: 'analytics' | 'betinho';
+    if (normalizedProductType === 'analytics' || normalizedProductType === 'platform') {
+      finalProductType = 'analytics';
+    } else if (analyticsPriceIds.includes(priceId)) {
+      finalProductType = 'analytics';
+    } else if (referer.includes('/paywall-platform')) {
+      finalProductType = 'analytics';
+    } else {
+      finalProductType = 'betinho';
+    }
+
     console.log('Price ID received:', priceId);
-    console.log('Product Type:', finalProductType);
+    console.log('Product Type received:', normalizedProductType);
+    console.log('Referer:', referer || 'n/a');
+    console.log('Product Type resolved:', finalProductType);
 
     // Use SITE_URL for frontend redirects, fallback to SUPABASE_URL for local dev
     const SITE_URL = Deno.env.get('SITE_URL') || Deno.env.get('SUPABASE_URL') || 'http://localhost:8080';
@@ -169,6 +187,11 @@ serve(async (req) => {
 
     // Redirect to the correct paywall route per product
     const paywallPath = finalProductType === 'analytics' ? '/paywall-platform' : '/paywall';
+    const successUrl = `${SITE_URL}${paywallPath}?success=true&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${SITE_URL}${paywallPath}?canceled=true`;
+    console.log('Selected paywallPath:', paywallPath);
+    console.log('Success URL:', successUrl);
+    console.log('Cancel URL:', cancelUrl);
 
     // Criar sessão de checkout
     const session = await stripe.checkout.sessions.create({
@@ -176,8 +199,9 @@ serve(async (req) => {
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription', // ou 'payment' para pagamento único
-      success_url: `${SITE_URL}${paywallPath}?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${SITE_URL}${paywallPath}?canceled=true`,
+      allow_promotion_codes: true,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         userId: user.id,
         userEmail: user.email || '',

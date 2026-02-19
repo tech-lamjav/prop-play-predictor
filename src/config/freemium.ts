@@ -6,8 +6,8 @@
  */
 
 export const FREE_PLAYERS = [
-  'LeBron James',
-  'Stephen Curry',
+  'Nikola Jokic',
+  'Victor Wembanyama',
 ] as const;
 
 /**
