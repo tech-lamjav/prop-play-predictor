@@ -401,7 +401,7 @@ export default function NBADashboard() {
       <footer className="terminal-header p-3 mt-6">
         <div className="container mx-auto flex justify-between items-center text-[10px]">
           <div className="opacity-50">
-            © 2025 STATIX NBA - ALL RIGHTS RESERVED
+            © 2025 Smartbetting - All rights reserved
           </div>
           <div className="flex space-x-3 opacity-50">
             <a href="#" className="hover:opacity-100 transition-opacity">

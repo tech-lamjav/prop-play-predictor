@@ -84,8 +84,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                   <BarChart3 className="w-4 h-4 text-terminal-green" />
                 </div>
                 <div className="hidden sm:block">
-                  <span className="text-sm font-bold text-terminal-green tracking-wide">NBA</span>
-                  <span className="text-sm font-bold text-terminal-text ml-1">Analytics</span>
+                  <span className="text-sm font-bold text-terminal-green tracking-wide">Smartbetting</span>
                 </div>
               </div>
             )}

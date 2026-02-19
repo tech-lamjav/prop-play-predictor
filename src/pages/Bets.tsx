@@ -9,7 +9,7 @@ import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MultiSelectFilter } from '../components/ui/multi-select-filter';
 import { 
   RefreshCw, 
@@ -504,6 +504,7 @@ export default function Bets() {
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
@@ -1018,15 +1019,32 @@ export default function Bets() {
   useEffect(() => {
     isMountedRef.current = true;
     
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || !user?.id) return;
+    const checkWhatsappSynced = async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('whatsapp_synced')
+        .eq('id', user.id)
+        .single();
+      if (data?.whatsapp_synced === false) {
+        navigate('/onboarding?product=betinho', { state: { from: location } });
+      }
+    };
+    checkWhatsappSynced();
+  }, [authLoading, user?.id, supabase, navigate, location]);
+
+  useEffect(() => {
     if (user?.id) {
       fetchBets();
       fetchReferralCode();
       fetchUserTags();
     }
-    
-    return () => {
-      isMountedRef.current = false;
-    };
   }, [user?.id, fetchBets, fetchReferralCode, fetchUserTags]);
 
   // Reset filter if selected tags no longer exist

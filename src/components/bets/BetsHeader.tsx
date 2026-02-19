@@ -22,7 +22,7 @@ interface BetsHeaderProps {
 }
 
 export const BetsHeader: React.FC<BetsHeaderProps> = ({
-  title = "STATIX BETS",
+  title = "Apostas",
   onReferralClick,
   showUnitsView = false,
   onShowUnitsViewChange,
@@ -61,7 +61,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
           DASHBOARD
         </button>
         <span className="text-base font-semibold mr-6 text-terminal-green tracking-wide">
-          Betinho
+          Smartbetting
         </span>
       </div>
       <div className="flex items-center space-x-2">
@@ -121,7 +121,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
               </>
             )}
             <DropdownMenuItem 
-              onClick={() => navigate('/onboarding')}
+              onClick={() => navigate('/onboarding?product=betinho')}
               className="text-terminal-text hover:bg-terminal-gray focus:bg-terminal-gray cursor-pointer"
             >
               <Settings className="mr-2 h-4 w-4" />

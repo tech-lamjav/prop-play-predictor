@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,8 @@ import {
   Settings
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
+import { createClient } from "@/integrations/supabase/client";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { BankrollEvolutionChart } from "@/components/bets/BankrollEvolutionChart";
 import { config } from "@/config/environment";
@@ -59,6 +62,23 @@ const getVideoUrl = (videoPath: string, bucketName: string = 'landing-page') => 
 const Betinho = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, isLoading: authLoading } = useAuth();
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (authLoading || !user?.id) return;
+    const checkWhatsappSynced = async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('whatsapp_synced')
+        .eq('id', user.id)
+        .single();
+      if (data?.whatsapp_synced === false) {
+        navigate('/onboarding?product=betinho', { state: { from: { pathname: '/betinho' } } });
+      }
+    };
+    checkWhatsappSynced();
+  }, [authLoading, user?.id, supabase, navigate]);
 
   // Helper to navigate to auth preserving ref parameter
   const navigateToAuth = () => {
@@ -168,7 +188,7 @@ const Betinho = () => {
             <div className="w-10 h-10 bg-terminal-blue/20 border border-terminal-border rounded-lg flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-terminal-blue" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-terminal-text">Smart Betting</span>
+            <span className="text-lg sm:text-2xl font-bold text-terminal-text">Smartbetting</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <LanguageToggle />

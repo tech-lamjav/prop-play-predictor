@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Progress } from '../components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import UserNav from '../components/UserNav';
+import AnalyticsNav from '../components/AnalyticsNav';
 import {
   User,
   CheckCircle,
@@ -19,12 +20,19 @@ import {
   Zap,
   Target,
   TrendingUp,
-  Send
+  Send,
+  Gamepad2
 } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
 
 export default function Onboarding() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const supabase = createClient();
+  const isBetinhoOnly = searchParams.get('product') === 'betinho' || (location.state as { onboardingProduct?: string })?.onboardingProduct === 'betinho';
+
+  const [currentStep, setCurrentStep] = useState(isBetinhoOnly ? 1 : 0);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,8 +42,6 @@ export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const supabase = createClient();
 
   const steps = [
     {
@@ -58,7 +64,8 @@ export default function Onboarding() {
     }
   ];
 
-  const progress = (currentStep / steps.length) * 100;
+  const progress = currentStep === 0 ? 0 : (currentStep / steps.length) * 100;
+  const showChoiceStep = currentStep === 0;
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -168,6 +175,43 @@ export default function Onboarding() {
   const handleComplete = () => {
     navigate('/bets');
   };
+
+  const renderStep0 = () => (
+    <div className="max-w-md mx-auto">
+      <div className="terminal-container p-6 rounded-lg">
+        <h2 className="section-title text-base md:text-lg text-center mb-2 text-terminal-green">
+          O que você quer fazer primeiro?
+        </h2>
+        <p className="text-center text-sm text-terminal-text opacity-70 mb-6">
+          Escolha como começar no Smartbetting
+        </p>
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => navigate('/home-games')}
+            className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
+          >
+            <Gamepad2 className="w-8 h-8 text-terminal-green" />
+            <span className="font-semibold text-terminal-green">Conhecer análises</span>
+            <span className="text-sm text-terminal-text opacity-80 font-normal">
+              Ver jogos, props e dashboards da NBA
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentStep(1)}
+            className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
+          >
+            <Send className="w-8 h-8 text-terminal-green" />
+            <span className="font-semibold text-terminal-green">Configurar Betinho (Telegram)</span>
+            <span className="text-sm text-terminal-text opacity-80 font-normal">
+              Registrar apostas via bot no Telegram
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderStep1 = () => (
     <Card className="w-full max-w-md mx-auto">
@@ -354,12 +398,33 @@ export default function Onboarding() {
 
   if (!userId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-terminal-black">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green"></div>
       </div>
     );
   }
 
+  // Step 0: choice screen — same design system as analytics platform (terminal theme)
+  if (showChoiceStep) {
+    return (
+      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
+        <AnalyticsNav />
+        <div className="container mx-auto px-4 py-8 md:py-12">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-terminal-green mb-2">
+              BEM-VINDO AO SMARTBETTING
+            </h1>
+            <p className="text-sm text-terminal-text opacity-70">
+              Escolha como começar
+            </p>
+          </div>
+          {renderStep0()}
+        </div>
+      </div>
+    );
+  }
+
+  // Betinho onboarding steps (1–3): original Smartbetting layout
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}

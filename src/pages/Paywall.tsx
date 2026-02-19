@@ -160,7 +160,7 @@ export default function Paywall() {
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smart Betting</span>
+            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <Button 

@@ -22,7 +22,7 @@ export const NBAHeader: React.FC<NBAHeaderProps> = ({ playerName }) => {
           </button>
         )}
         <span className="text-base font-semibold mr-6 text-terminal-green tracking-wide">
-          STATIX NBA
+          Smartbetting
         </span>
         <div className="hidden sm:flex space-x-2">
           <button className="terminal-button px-3 py-1 text-xs font-medium">

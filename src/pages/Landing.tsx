@@ -27,7 +27,7 @@ const Landing = () => {
             <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smart Betting</span>
+            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <LanguageToggle />
@@ -109,7 +109,7 @@ const Landing = () => {
                     <Target className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Smart Betting Dashboard</h3>
+                    <h3 className="text-xl font-bold text-white">Smartbetting Dashboard</h3>
                     <p className="text-slate-400 text-sm">Análise de dados</p>
                   </div>
                 </div>
@@ -427,7 +427,7 @@ const Landing = () => {
             <div className="grid md:grid-cols-2 gap-8 mt-12">
               <Card className="bg-destructive/5 border-destructive/20 p-6">
                 <CardContent className="space-y-4">
-                  <div className="text-destructive font-semibold text-lg">Sem a Smart Betting</div>
+                  <div className="text-destructive font-semibold text-lg">Sem a Smartbetting</div>
                   <ul className="space-y-3 text-left text-muted-foreground">
                     <li>• Horas coletando stats manualmente</li>
                     <li>• Incerteza sobre quais dados analisar</li>
@@ -439,7 +439,7 @@ const Landing = () => {
 
               <Card className="bg-success/5 border-success/20 p-6">
                 <CardContent className="space-y-4">
-                  <div className="text-success font-semibold text-lg">Com Smart Betting</div>
+                  <div className="text-success font-semibold text-lg">Com Smartbetting</div>
                   <ul className="space-y-3 text-left text-muted-foreground">
                     <li>• Análises prontas em segundos</li>
                     <li>• Dados relevantes pré-selecionados</li>
