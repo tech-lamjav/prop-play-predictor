@@ -81,8 +81,9 @@ serve(async (req) => {
       );
     }
 
-    // Default to 'betinho' if productType is not provided (backward compatibility)
-    const finalProductType = productType || 'betinho';
+    // Normalize product type (backward compatibility for legacy values)
+    const normalizedProductType = (productType || 'betinho').toLowerCase();
+    const finalProductType = normalizedProductType === 'platform' ? 'analytics' : normalizedProductType;
     console.log('Price ID received:', priceId);
     console.log('Product Type:', finalProductType);
 
@@ -166,14 +167,17 @@ serve(async (req) => {
 
     console.log('Creating Stripe checkout session with customer:', customerId);
 
+    // Redirect to the correct paywall route per product
+    const paywallPath = finalProductType === 'analytics' ? '/paywall-platform' : '/paywall';
+
     // Criar sessão de checkout
     const session = await stripe.checkout.sessions.create({
       customer: customerId, // Usar customer_id ao invés de customer_email
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription', // ou 'payment' para pagamento único
-      success_url: `${SITE_URL}/paywall?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${SITE_URL}/paywall?canceled=true`,
+      success_url: `${SITE_URL}${paywallPath}?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${SITE_URL}${paywallPath}?canceled=true`,
       metadata: {
         userId: user.id,
         userEmail: user.email || '',
