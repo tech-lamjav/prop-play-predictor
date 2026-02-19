@@ -178,13 +178,17 @@ export default function Games() {
 
   const filteredGames = useMemo(() => {
     return [...games].sort((a, b) => {
-      // Sort by date first
-      const dateA = parseGameDate(a.game_date || '');
-      const dateB = parseGameDate(b.game_date || '');
-      const dateCompare = dateA.getTime() - dateB.getTime();
+      // Sort by exact datetime (Brasilia) when available, fallback to game_date
+      const dateA = a.game_datetime_brasilia
+        ? new Date(a.game_datetime_brasilia).getTime()
+        : parseGameDate(a.game_date || '').getTime();
+      const dateB = b.game_datetime_brasilia
+        ? new Date(b.game_datetime_brasilia).getTime()
+        : parseGameDate(b.game_date || '').getTime();
+      const dateCompare = dateA - dateB;
       if (dateCompare !== 0) return dateCompare;
-      
-      // If same date, sort by home team name
+
+      // If same datetime, sort by home team name
       return a.home_team_name.localeCompare(b.home_team_name);
     });
   }, [games]);

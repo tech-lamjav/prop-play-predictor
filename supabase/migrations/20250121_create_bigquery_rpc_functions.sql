@@ -78,7 +78,7 @@ END; $$;
 
 DROP FUNCTION IF EXISTS public.get_games(date, text);
 CREATE FUNCTION public.get_games(p_game_date date DEFAULT NULL, p_team_abbreviation text DEFAULT NULL)
-RETURNS TABLE (game_id bigint, game_date date, home_team_id bigint, home_team_name text,
+RETURNS TABLE (game_id bigint, game_date date, game_datetime_brasilia timestamp, home_team_id bigint, home_team_name text,
   home_team_abbreviation text, home_team_score float8, visitor_team_id bigint, visitor_team_name text,
   visitor_team_abbreviation text, visitor_team_score float8, winner_team_id bigint, loaded_at timestamp,
   home_team_is_b2b_game boolean, visitor_team_is_b2b_game boolean, home_team_is_next_game boolean,
