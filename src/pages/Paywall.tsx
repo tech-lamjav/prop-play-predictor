@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Lock, Zap, BarChart3, ArrowRight, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Lock, Zap, BarChart3, ArrowRight, ArrowLeft, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/integrations/supabase/client";
@@ -140,7 +140,7 @@ export default function Paywall() {
   const handleUpgrade = () => {
     // Open WhatsApp with pre-filled message for upgrade
     const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting";
-    const whatsappUrl = `https://wa.me/554391482828?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/5511952136845?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');
@@ -165,48 +165,52 @@ export default function Paywall() {
           <div className="flex items-center gap-2 sm:gap-4">
             <Button 
               variant="outline" 
-              onClick={() => navigate("/auth")} 
-              className="text-sm sm:text-base px-3 sm:px-4 py-2"
+              onClick={() => navigate("/bets")} 
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
             >
-              Entrar
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Bets
             </Button>
             <Button 
-              onClick={() => navigate(redirectAfterPremium)} 
-              className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
+              variant="outline" 
+              onClick={() => navigate("/auth")} 
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
             >
-              Dashboard
+              Entrar
             </Button>
           </div>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 sm:px-6 py-20">
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-primary mb-6">
-              <Lock className="h-10 w-10 text-white" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Limite Diário Atingido
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              Você atingiu seu limite diário de apostas.
-            </p>
-            {isCheckingStatus && (
-              <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Verificando status da assinatura...</span>
-              </div>
-            )}
+        {/* Header */}
+        <div className="text-center mb-12 max-w-4xl mx-auto">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-primary mb-6">
+            <Lock className="h-10 w-10 text-white" />
           </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+            Você chegou ao limite do plano gratuito!
+          </h1>
+          <p className="text-base text-muted-foreground">
+            O plano gratuito é ideal para começar. 
+            <br />
+            Para continuar registrando apostas e acompanhar seus resultados, faça upgrade para o plano premium.
+          </p>
+          {isCheckingStatus && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Verificando status da assinatura...</span>
+            </div>
+          )}
+        </div>
 
+        <div className="max-w-2xl mx-auto">
           {/* Main Card */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-2xl">Continue Apostando</CardTitle>
+              <CardTitle className="text-2xl">Desbloqueie o Plano Premium</CardTitle>
               <CardDescription>
-                Faça upgrade para continuar registrando suas apostas sem limites
+                Apostar mais exige mais controle.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -218,7 +222,7 @@ export default function Paywall() {
                       <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Apostas Ilimitadas</p>
+                      <p className="font-semibold text-foreground">Registro ilimitado de apostas</p>
                       <p className="text-sm text-muted-foreground">
                         Registre quantas apostas quiser, sem limites diários
                       </p>
@@ -229,9 +233,9 @@ export default function Paywall() {
                       <BarChart3 className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Dashboard Completo</p>
+                      <p className="font-semibold text-foreground">Dashboard Completo de gestão de apostas</p>
                       <p className="text-sm text-muted-foreground">
-                        Acesse todas as funcionalidades do dashboard premium
+                        Visualize lucro, prejuízo, ROI e evolução da sua banca em um só lugar
                       </p>
                     </div>
                   </div>
@@ -240,9 +244,9 @@ export default function Paywall() {
                       <ArrowRight className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Prioridade no Suporte</p>
+                      <p className="font-semibold text-foreground">Histórico e organização</p>
                       <p className="text-sm text-muted-foreground">
-                        Receba suporte prioritário para todas suas dúvidas
+                        Tenha todas as apostas organizadas para analisar padrões e decisões
                       </p>
                     </div>
                   </div>
@@ -254,7 +258,8 @@ export default function Paywall() {
                   <Button 
                     onClick={handleStripeCheckout}
                     disabled={isLoading || authLoading}
-                    className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6 gap-2 disabled:opacity-50"
+                    variant="outline"
+                    className="w-full py-6 gap-2 disabled:opacity-50 text-lg"
                     size="lg"
                   >
                     {isLoading ? (
@@ -270,7 +275,7 @@ export default function Paywall() {
                     ) : (
                       <>
                         <Zap className="h-5 w-5" />
-                        <span>Assinar Premium Agora</span>
+                        <span>Desbloquear Plano Premium</span>
                         <ArrowRight className="h-5 w-5" />
                       </>
                     )}
@@ -278,14 +283,16 @@ export default function Paywall() {
 
                   {/* Botão WhatsApp (Alternativa) */}
                   <Button 
-                    onClick={handleUpgrade}
-                    variant="outline"
-                    className="w-full text-lg py-6 gap-2"
-                    size="lg"
-                  >
-                    <MessageCircle className="h-5 w-5" />
-                    <span>Ou entre em contato via WhatsApp</span>
-                  </Button>
+                      onClick={handleUpgrade}
+                      variant="outline"
+                      className="w-full py-6 gap-2"
+                      size="lg"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                      <span className="text-sm sm:text-lg text-center">
+                        Ou fale com a gente pelo WhatsApp
+                      </span>
+                    </Button>
 
                   {!user && (
                     <p className="text-sm text-muted-foreground text-center">

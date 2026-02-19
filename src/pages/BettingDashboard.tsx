@@ -29,8 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UnitConfigurationModal } from '@/components/UnitConfigurationModal';
-import { BarChart3, ChevronRight, DollarSign, Target, Download } from 'lucide-react';
-import { AlertCircle } from 'lucide-react';
+import { BarChart3, ChevronRight, DollarSign, Target, Download, Send, AlertCircle } from 'lucide-react';
 
 const PERIOD_OPTIONS: { value: DateRangePreset; label: string }[] = [
   { value: '7', label: 'Últimos 7 dias' },
@@ -360,6 +359,17 @@ export default function BettingDashboard() {
           if (!open) refetchConfig();
         }}
       />
+
+      <a
+        href="https://t.me/betinho_assistente_bot"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
+        title="Abrir Telegram"
+      >
+        <Send size={20} />
+        <span className="hidden sm:inline text-sm font-medium">Telegram</span>
+      </a>
     </div>
   );
 }

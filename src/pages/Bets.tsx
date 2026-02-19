@@ -9,7 +9,8 @@ import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
+import { useNavigate } from 'react-router-dom';
 import { MultiSelectFilter } from '../components/ui/multi-select-filter';
 import { 
   RefreshCw, 
@@ -27,11 +28,13 @@ import {
   Settings,
   Search,
   Trash2,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   ChevronDown,
   Plus,
-  BarChart3
+  BarChart3,
+  Send
 } from 'lucide-react';
 import {
   Dialog,
@@ -183,6 +186,7 @@ const BETTING_MARKETS_LIST = [
 type BetRowProps = {
   bet: Bet;
   formatValue: (value: number) => string;
+  formatBetDate: (dateStr: string) => string;
   translateStatus: (status: string) => string;
   onBetTagsChange: (betId: string, newTags: Tag[], currentTagIds: string[]) => Promise<void>;
   onTagsUpdated: () => void;
@@ -195,6 +199,7 @@ type BetRowProps = {
 const BetRow = React.memo(function BetRow({
   bet,
   formatValue,
+  formatBetDate,
   translateStatus,
   onBetTagsChange,
   onTagsUpdated,
@@ -210,7 +215,7 @@ const BetRow = React.memo(function BetRow({
   return (
     <tr className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors">
       <td className="py-1.5 px-1.5 opacity-70">
-        {new Date(bet.bet_date).toLocaleDateString('pt-BR')}
+        {formatBetDate(bet.bet_date)}
       </td>
       <td className="py-1.5 px-1.5 font-medium min-w-0 overflow-hidden">
         <Tooltip>
@@ -345,6 +350,7 @@ type BetCardProps = BetRowProps;
 const BetCard = React.memo(function BetCard({
   bet,
   formatValue,
+  formatBetDate,
   translateStatus,
   onBetTagsChange,
   onTagsUpdated,
@@ -360,7 +366,7 @@ const BetCard = React.memo(function BetCard({
   return (
     <div className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3">
       <div className="flex justify-between items-center">
-        <span className="text-xs opacity-50">{new Date(bet.bet_date).toLocaleDateString('pt-BR')}</span>
+        <span className="text-xs opacity-50">{formatBetDate(bet.bet_date)}</span>
         <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
           bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
           bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
@@ -499,12 +505,14 @@ const BetCard = React.memo(function BetCard({
   );
 });
 
+const DAILY_BET_LIMIT = 3;
+
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
+  const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const location = useLocation();
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
@@ -515,6 +523,7 @@ export default function Bets() {
         return u !== null ? formatUnits(u) : formatCurrency(value);
       }
     : formatCurrency;
+  const [dailyBetCount, setDailyBetCount] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
@@ -619,6 +628,10 @@ export default function Bets() {
     direction: 'desc'  // padrão: mais recente primeiro
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+
   const supabase = useMemo(() => createClient(), []);
   const isMountedRef = useRef(true);
 
@@ -665,6 +678,53 @@ export default function Bets() {
       }
     }
   }, [user?.id, supabase, toast]);
+
+  const getDailyBetCount = useCallback(async (): Promise<number> => {
+    if (!user?.id) return 0;
+
+    const nowUTC = new Date();
+    const gmt3Offset = -3 * 60 * 60 * 1000;
+    const nowGMT3 = new Date(nowUTC.getTime() + gmt3Offset);
+
+    const year = nowGMT3.getUTCFullYear();
+    const month = String(nowGMT3.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(nowGMT3.getUTCDate()).padStart(2, '0');
+    const gmt3DateString = `${year}-${month}-${day}`;
+
+    const startOfDayUTC = new Date(`${gmt3DateString}T03:00:00.000Z`);
+
+    const tomorrowGMT3 = new Date(nowGMT3.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowYear = tomorrowGMT3.getUTCFullYear();
+    const tomorrowMonth = String(tomorrowGMT3.getUTCMonth() + 1).padStart(2, '0');
+    const tomorrowDay = String(tomorrowGMT3.getUTCDate()).padStart(2, '0');
+    const gmt3TomorrowDateString = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
+    const startOfTomorrowUTC = new Date(`${gmt3TomorrowDateString}T03:00:00.000Z`);
+
+    const { count, error } = await supabase
+      .from('bets')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('bet_date', startOfDayUTC.toISOString())
+      .lt('bet_date', startOfTomorrowUTC.toISOString());
+
+    if (error) return 0;
+    return count ?? 0;
+  }, [user?.id, supabase]);
+
+  const fetchDailyBetCount = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const count = await getDailyBetCount();
+      if (isMountedRef.current) {
+        setDailyBetCount(count);
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        setDailyBetCount(0);
+      }
+    }
+  }, [user?.id, getDailyBetCount]);
 
   const calculateStats = useCallback((betsData: Bet[]) => {
     if (!isMountedRef.current) return;
@@ -812,6 +872,19 @@ export default function Bets() {
     const potentialReturn = stakeAmount * odds;
     const updatedAt = new Date().toISOString();
 
+    // Convert yyyy-MM-dd to local midnight ISO so the calendar day is preserved in all timezones
+    const dateOnlyToISO = (dateStr: string) => {
+      if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d).toISOString();
+    };
+    const betDateISO = editModal.formData.bet_date
+      ? (dateOnlyToISO(editModal.formData.bet_date) ?? updatedAt)
+      : updatedAt;
+    const matchDateISO = editModal.formData.match_date
+      ? dateOnlyToISO(editModal.formData.match_date)
+      : null;
+
     const updateData: any = {
       bet_description: editModal.formData.bet_description,
       match_description: editModal.formData.match_description || null,
@@ -821,8 +894,8 @@ export default function Bets() {
       odds: odds,
       stake_amount: stakeAmount,
       potential_return: potentialReturn,
-      bet_date: editModal.formData.bet_date || updatedAt,
-      match_date: editModal.formData.match_date || null,
+      bet_date: betDateISO,
+      match_date: matchDateISO,
       status: editModal.formData.status,
       updated_at: updatedAt
     };
@@ -831,8 +904,8 @@ export default function Bets() {
     const updatedBet: Partial<Bet> = {
       ...editModal.bet,
       ...updateData,
-      bet_date: updateData.bet_date,
-      match_date: updateData.match_date,
+      bet_date: betDateISO,
+      match_date: matchDateISO ?? undefined,
       status: editModal.formData.status
     };
 
@@ -862,6 +935,14 @@ export default function Bets() {
 
   const createBet = async (data: CreateBetFormData): Promise<boolean> => {
     if (!user?.id) return false;
+
+    if (isBetinhoFree) {
+      const currentCount = await getDailyBetCount();
+      if (currentCount >= DAILY_BET_LIMIT) {
+        navigate('/paywall');
+        return false;
+      }
+    }
 
     try {
       const odds = parseFloat(data.odds);
@@ -907,6 +988,7 @@ export default function Bets() {
 
       if (isMountedRef.current) {
         setBets(prev => [betWithTags, ...prev]);
+        setDailyBetCount(prev => (prev ?? 0) + 1);
         toast({ title: 'Sucesso', description: 'Aposta cadastrada com sucesso' });
       }
       return true;
@@ -940,8 +1022,8 @@ export default function Bets() {
         betting_market: bet.betting_market || '',
         odds: bet.odds?.toString() || '',
         stake_amount: bet.stake_amount?.toString() || '',
-        bet_date: bet.bet_date ? new Date(bet.bet_date).toISOString().split('T')[0] : '',
-        match_date: bet.match_date ? new Date(bet.match_date).toISOString().split('T')[0] : '',
+        bet_date: bet.bet_date ? String(bet.bet_date).split('T')[0] : '',
+        match_date: bet.match_date ? String(bet.match_date).split('T')[0] : '',
         status: bet.status || 'pending'
       }
     });
@@ -1019,33 +1101,17 @@ export default function Bets() {
   useEffect(() => {
     isMountedRef.current = true;
     
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (authLoading || !user?.id) return;
-    const checkWhatsappSynced = async () => {
-      const { data } = await supabase
-        .from('users')
-        .select('whatsapp_synced')
-        .eq('id', user.id)
-        .single();
-      if (data?.whatsapp_synced === false) {
-        navigate('/onboarding?product=betinho', { state: { from: location } });
-      }
-    };
-    checkWhatsappSynced();
-  }, [authLoading, user?.id, supabase, navigate, location]);
-
-  useEffect(() => {
     if (user?.id) {
       fetchBets();
+      fetchDailyBetCount();
       fetchReferralCode();
       fetchUserTags();
     }
-  }, [user?.id, fetchBets, fetchReferralCode, fetchUserTags]);
+    
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [user?.id, fetchBets, fetchDailyBetCount, fetchReferralCode, fetchUserTags]);
 
   // Reset filter if selected tags no longer exist
   useEffect(() => {
@@ -1192,10 +1258,18 @@ export default function Bets() {
       let bValue: any;
       
       switch (sortConfig.column) {
-        case 'bet_date':
-          aValue = new Date(a.bet_date).getTime();
-          bValue = new Date(b.bet_date).getTime();
+        case 'bet_date': {
+          const aDatePart = String(a.bet_date || '').split('T')[0];
+          const bDatePart = String(b.bet_date || '').split('T')[0];
+          const dateCmp = aDatePart.localeCompare(bDatePart);
+          if (dateCmp !== 0) {
+            return sortConfig.direction === 'asc' ? dateCmp : -dateCmp;
+          }
+          // Mesmo dia: desempate por created_at (mesma direção da ordenação)
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
           break;
+        }
         case 'sport':
           aValue = (a.sport || '').toLowerCase();
           bValue = (b.sport || '').toLowerCase();
@@ -1260,6 +1334,16 @@ export default function Bets() {
     });
   }, [filteredBets, sortConfig]);
 
+  // Pagination: slice sortedBets for current page
+  const totalPages = Math.max(1, Math.ceil(sortedBets.length / pageSize));
+  const paginatedBets = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedBets.slice(start, start + pageSize);
+  }, [sortedBets, currentPage, pageSize]);
+
+  const paginationStartIndex = sortedBets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const paginationEndIndex = Math.min(currentPage * pageSize, sortedBets.length);
+
   const filteredSportsList = useMemo(() => {
     if (!isSportQueryTouched) {
       return SPORTS_LIST;
@@ -1302,12 +1386,12 @@ export default function Bets() {
   }, [isSportDropdownOpen, filteredSportsList.length]);
 
   useEffect(() => {
-    if (!isSportDropdownOpen || sportHighlightIndex < 0) return;
+    if (!editModal.isOpen || !isSportDropdownOpen || sportHighlightIndex < 0) return;
     const currentItem = sportItemRefs.current[sportHighlightIndex];
     if (currentItem?.scrollIntoView) {
       currentItem.scrollIntoView({ block: 'nearest' });
     }
-  }, [isSportDropdownOpen, sportHighlightIndex]);
+  }, [editModal.isOpen, isSportDropdownOpen, sportHighlightIndex]);
 
   useEffect(() => {
     if (!isLeagueDropdownOpen || filteredLeaguesList.length === 0) {
@@ -1324,12 +1408,12 @@ export default function Bets() {
   }, [isLeagueDropdownOpen, filteredLeaguesList.length]);
 
   useEffect(() => {
-    if (!isLeagueDropdownOpen || leagueHighlightIndex < 0) return;
+    if (!editModal.isOpen || !isLeagueDropdownOpen || leagueHighlightIndex < 0) return;
     const currentItem = leagueItemRefs.current[leagueHighlightIndex];
     if (currentItem?.scrollIntoView) {
       currentItem.scrollIntoView({ block: 'nearest' });
     }
-  }, [isLeagueDropdownOpen, leagueHighlightIndex]);
+  }, [editModal.isOpen, isLeagueDropdownOpen, leagueHighlightIndex]);
 
   useEffect(() => {
     if (!isBettingMarketDropdownOpen || filteredBettingMarketsList.length === 0) {
@@ -1345,18 +1429,23 @@ export default function Bets() {
   }, [isBettingMarketDropdownOpen, filteredBettingMarketsList.length]);
 
   useEffect(() => {
-    if (!isBettingMarketDropdownOpen || bettingMarketHighlightIndex < 0) return;
+    if (!editModal.isOpen || !isBettingMarketDropdownOpen || bettingMarketHighlightIndex < 0) return;
     const currentItem = bettingMarketItemRefs.current[bettingMarketHighlightIndex];
     if (currentItem?.scrollIntoView) {
       currentItem.scrollIntoView({ block: 'nearest' });
     }
-  }, [isBettingMarketDropdownOpen, bettingMarketHighlightIndex]);
+  }, [editModal.isOpen, isBettingMarketDropdownOpen, bettingMarketHighlightIndex]);
 
   useEffect(() => {
     if (isMountedRef.current) {
       calculateStats(filteredBets);
     }
   }, [filteredBets, calculateStats]);
+
+  // Reset to page 1 when filters, sort, or page size change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, sortConfig, pageSize]);
 
   // Handle sort
   const handleSort = (column: SortColumn) => {
@@ -1417,6 +1506,14 @@ export default function Bets() {
     return format(date, 'yyyy-MM-dd');
   };
 
+  /** Format bet_date for display using only the date part (avoids timezone shift). */
+  const formatBetDateForDisplay = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const datePart = String(dateStr).split('T')[0];
+    const date = parse(datePart, 'yyyy-MM-dd', new Date());
+    return isValid(date) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : '';
+  };
+
   // Sortable Header Component
   const SortableHeader = ({ column, label, align = 'left', className: extraClassName }: { column: SortColumn; label: string; align?: 'left' | 'right' | 'center'; className?: string }) => {
     const isActive = sortConfig.column === column;
@@ -1442,11 +1539,12 @@ export default function Bets() {
   };
 
   const desktopRows = useMemo(() => {
-    return sortedBets.map((bet) => (
+    return paginatedBets.map((bet) => (
       <BetRow
         key={bet.id}
         bet={bet}
         formatValue={formatValue}
+        formatBetDate={formatBetDateForDisplay}
         translateStatus={translateStatus}
         onBetTagsChange={handleBetTagsChange}
         onTagsUpdated={fetchUserTags}
@@ -1456,14 +1554,15 @@ export default function Bets() {
         deleteBet={deleteBet}
       />
     ));
-  }, [sortedBets, formatValue, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   const mobileCards = useMemo(() => {
-    return sortedBets.map((bet) => (
+    return paginatedBets.map((bet) => (
       <BetCard
         key={bet.id}
         bet={bet}
         formatValue={formatValue}
+        formatBetDate={formatBetDateForDisplay}
         translateStatus={translateStatus}
         onBetTagsChange={handleBetTagsChange}
         onTagsUpdated={fetchUserTags}
@@ -1473,7 +1572,11 @@ export default function Bets() {
         deleteBet={deleteBet}
       />
     ));
-  }, [sortedBets, formatValue, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  }, [totalPages]);
 
   if (authLoading) {
     return (
@@ -1821,13 +1924,23 @@ export default function Bets() {
             <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => {
+                if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
+                  navigate('/paywall');
+                  return;
+                }
+                setIsCreateModalOpen(true);
+              }}
                 className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 NOVA APOSTA
               </button>
-              <span className="text-[10px] opacity-50">MOSTRANDO {sortedBets.length} APOSTAS</span>
+              {isBetinhoFree && dailyBetCount !== null && (
+                <span className="text-[10px] opacity-50">
+                  {dailyBetCount}/{DAILY_BET_LIMIT} apostas hoje
+                </span>
+              )}
             </div>
           </div>
           
@@ -1871,6 +1984,50 @@ export default function Bets() {
               {/* Mobile Stacked View */}
               <div className="md:hidden space-y-4">
                 {mobileCards}
+              </div>
+
+              {/* Pagination footer */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-terminal-border-subtle">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-terminal-text opacity-70">Mostrando</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="w-[70px] h-8 text-xs terminal-button border-terminal-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-terminal-dark-gray border-terminal-border">
+                      <SelectItem value="15">15</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-[10px] text-terminal-text opacity-70">
+                    de {sortedBets.length} apostas
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="terminal-button h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-[10px] text-terminal-text opacity-70 min-w-[4rem] text-center">
+                    {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="terminal-button h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </>
           )}
@@ -1957,6 +2114,9 @@ export default function Bets() {
             setIsBettingMarketDropdownOpen(false);
             setIsBettingMarketQueryTouched(false);
             setBettingMarketHighlightIndex(-1);
+            sportItemRefs.current = [];
+            leagueItemRefs.current = [];
+            bettingMarketItemRefs.current = [];
           }
         }
       }>
@@ -2423,6 +2583,17 @@ export default function Bets() {
           referralCode={referralCode}
         />
       )}
+
+      <a
+        href="https://t.me/betinho_assistente_bot"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
+        title="Abrir Telegram"
+      >
+        <Send size={20} />
+        <span className="hidden sm:inline text-sm font-medium">Telegram</span>
+      </a>
     </div>
   );
 }
