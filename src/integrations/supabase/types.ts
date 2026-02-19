@@ -257,6 +257,53 @@ export type Database = {
           }
         ]
       }
+      capital_movements: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          amount: number
+          movement_date: string
+          description: string | null
+          source: string
+          affects_balance: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          amount: number
+          movement_date?: string
+          description?: string | null
+          source?: string
+          affects_balance?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          amount?: number
+          movement_date?: string
+          description?: string | null
+          source?: string
+          affects_balance?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capital_movements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
