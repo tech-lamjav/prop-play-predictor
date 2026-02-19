@@ -1,5 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 
+function normalizeAssetBaseName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
+}
+
 /**
  * Get the public URL for a team logo from Supabase storage
  * @param teamName - Full team name (e.g., "Los Angeles Lakers", "New Orleans Pelicans")
@@ -38,7 +48,9 @@ export function getTeamLogoUrlWithFallback(
 
 /**
  * Get the public URL for a player photo from Supabase storage
- * Photos are organized by team folders: ui_images/players/{team_name}/{player_name}.{ext}
+ * Supports both:
+ * - New flat format: ui_images/players/{normalized_player_name}.{ext}
+ * - Legacy team format: ui_images/players/{team_name}/{player_name}.{ext}
  * @param playerName - Full player name (e.g., "LeBron James", "Stephen Curry")
  * @param teamName - Full team name (e.g., "Los Angeles Lakers")
  * @param extensions - Array of possible file extensions to try (default: ['avif', 'webp', 'png', 'jpg', 'jpeg'])
@@ -49,39 +61,82 @@ export function getPlayerPhotoUrl(
   teamName: string,
   extensions: string[] = ['avif', 'webp', 'png', 'jpg', 'jpeg']
 ): string {
-  if (!playerName || !teamName) return '';
-  
-  // Try the first extension (we'll rely on the component's onError to handle missing files)
-  // Photos are stored as: players/{team_name}/{player_name}.{ext}
-  const fileName = `${playerName}.${extensions[0]}`;
-  
-  const { data } = supabase.storage
-    .from('ui_images')
-    .getPublicUrl(`players/${teamName}/${fileName}`);
-  
-  return data.publicUrl;
+  if (!playerName || !teamName || extensions.length === 0) return '';
+
+  // Return the first candidate. Consumers should call tryNextPlayerPhotoUrl on onError.
+  const urls = getPlayerPhotoUrls(playerName, teamName, extensions);
+  return urls[0] || '';
 }
 
 /**
  * Get all possible player photo URLs to try different extensions
- * Photos are organized by team folders: ui_images/players/{team_name}/{player_name}.{ext}
+ * Supports both:
+ * - New flat format: ui_images/players/{normalized_player_name}.{ext}
+ * - Legacy team format: ui_images/players/{team_name}/{player_name}.{ext}
  * @param playerName - Full player name
  * @param teamName - Full team name
  * @returns Array of possible URLs to try
  */
 export function getPlayerPhotoUrls(
   playerName: string,
-  teamName: string
+  teamName: string,
+  extensions: string[] = ['avif', 'webp', 'png', 'jpg', 'jpeg']
 ): string[] {
-  if (!playerName || !teamName) return [];
-  
-  const extensions = ['avif', 'webp', 'png', 'jpg', 'jpeg'];
-  
-  return extensions.map(ext => {
-    const fileName = `${playerName}.${ext}`;
-    const { data } = supabase.storage
-      .from('ui_images')
-      .getPublicUrl(`players/${teamName}/${fileName}`);
-    return data.publicUrl;
-  });
+  if (!playerName) return [];
+
+  const normalizedName = normalizeAssetBaseName(playerName);
+  const baseNames = Array.from(new Set([normalizedName, playerName].filter(Boolean)));
+  const extList = Array.from(new Set(extensions.map((ext) => ext.toLowerCase())));
+  const urls: string[] = [];
+
+  // New preferred format: flat players folder.
+  for (const baseName of baseNames) {
+    for (const ext of extList) {
+      const fileName = `${baseName}.${ext}`;
+      const { data } = supabase.storage
+        .from('ui_images')
+        .getPublicUrl(`players/${fileName}`);
+      urls.push(data.publicUrl);
+    }
+  }
+
+  // Legacy fallback format with team folder.
+  if (teamName) {
+    for (const baseName of baseNames) {
+      for (const ext of extList) {
+        const fileName = `${baseName}.${ext}`;
+        const { data } = supabase.storage
+          .from('ui_images')
+          .getPublicUrl(`players/${teamName}/${fileName}`);
+        urls.push(data.publicUrl);
+      }
+    }
+  }
+
+  return Array.from(new Set(urls));
+}
+
+/**
+ * Try next available player photo URL when current src fails.
+ * Usage: call inside <img onError>, and fallback to initials only when this returns false.
+ */
+export function tryNextPlayerPhotoUrl(
+  target: HTMLImageElement,
+  playerName: string,
+  teamName: string,
+  extensions: string[] = ['avif', 'webp', 'png', 'jpg', 'jpeg']
+): boolean {
+  const urls = getPlayerPhotoUrls(playerName, teamName, extensions);
+  if (urls.length === 0) return false;
+
+  const currentIndex = Number(target.dataset.playerPhotoIndex ?? '0');
+  const nextIndex = currentIndex + 1;
+
+  if (nextIndex >= urls.length) {
+    return false;
+  }
+
+  target.dataset.playerPhotoIndex = String(nextIndex);
+  target.src = urls[nextIndex];
+  return true;
 }

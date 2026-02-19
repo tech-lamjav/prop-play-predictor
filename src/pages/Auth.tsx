@@ -73,22 +73,11 @@ const Auth = () => {
           title: "Success",
           description: "Welcome back!",
         });
-        // Check if user needs onboarding
-        const { data: userData } = await supabase
-          .from('users')
-          .select('whatsapp_synced')
-          .eq('id', user?.id)
-          .single();
-        
-        if (!userData?.whatsapp_synced) {
-          navigate("/onboarding");
+        const from = (location.state as { from?: { pathname?: string; search?: string } })?.from;
+        if (from?.pathname && from.pathname.startsWith("/") && !from.pathname.startsWith("//")) {
+          navigate(from.pathname + (from.search || ""));
         } else {
-          const from = (location.state as { from?: { pathname?: string; search?: string } })?.from;
-          if (from?.pathname && from.pathname.startsWith("/") && !from.pathname.startsWith("//")) {
-            navigate(from.pathname + (from.search || ""));
-          } else {
-            navigate("/bets");
-          }
+          navigate("/home-games");
         }
       }
     } catch (error) {
@@ -226,7 +215,7 @@ const Auth = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold text-foreground">PropAnalyzer</span>
+            <span className="text-xl font-bold text-foreground">Smartbetting</span>
           </div>
           <LanguageToggle />
         </div>

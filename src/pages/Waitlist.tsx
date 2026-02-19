@@ -73,7 +73,7 @@ const Waitlist = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-foreground">Smart Betting</span>
+              <span className="text-xl font-bold text-foreground">Smartbetting</span>
             </div>
             <LanguageToggle />
           </div>
@@ -123,7 +123,7 @@ const Waitlist = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold text-foreground">Smart Betting</span>
+            <span className="text-xl font-bold text-foreground">Smartbetting</span>
           </div>
           <LanguageToggle />
         </div>
@@ -134,7 +134,7 @@ const Waitlist = () => {
               Entre na lista de espera
             </CardTitle>
             <p className="text-muted-foreground text-center">
-              Seja um dos primeiros a ter acesso ao Smart Betting e receba um desconto especial no lançamento.
+              Seja um dos primeiros a ter acesso ao Smartbetting e receba um desconto especial no lançamento.
             </p>
           </CardHeader>
           <CardContent>

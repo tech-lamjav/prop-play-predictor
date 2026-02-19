@@ -1,7 +1,7 @@
 import React from 'react';
 import { Player } from '@/services/nba-data.service';
 import { Star, TrendingUp, TrendingDown } from 'lucide-react';
-import { getTeamLogoUrl, getPlayerPhotoUrl } from '@/utils/team-logos';
+import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -64,9 +64,13 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
               alt={player.player_name}
               className="w-full h-full object-cover"
               loading="lazy"
+              data-player-photo-index="0"
               onError={(e) => {
-                // Fallback to initials if photo fails to load
                 const target = e.target as HTMLImageElement;
+                const hasNext = tryNextPlayerPhotoUrl(target, player.player_name, player.team_name);
+                if (hasNext) return;
+
+                // Fallback to initials only after all extensions fail
                 target.style.display = 'none';
                 const parent = target.parentElement;
                 if (parent) {
