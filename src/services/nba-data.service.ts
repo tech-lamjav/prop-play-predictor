@@ -126,6 +126,7 @@ export interface GamePlayerStats {
 export interface Game {
   game_id: number;
   game_date: string;
+  game_datetime_brasilia: string | null;
   home_team_id: number;
   home_team_name: string;
   home_team_abbreviation: string;

@@ -54,6 +54,12 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
     return location.pathname === path;
   };
 
+  const activeModuleName = analysisItems.some((i) => isActive(i.href))
+    ? 'Análises'
+    : betinhoModuleItems.some((i) => isActive(i.href))
+    ? 'Betinho'
+    : null;
+
   const handleNavigation = (href: string) => {
     navigate(href);
     setIsMobileMenuOpen(false);
@@ -205,44 +211,88 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
             )}
 
             {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden text-terminal-text hover:text-terminal-green h-8 w-8 p-0"
+            <button
+              className="md:hidden flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-terminal-dark-gray transition-colors text-terminal-text hover:text-terminal-green"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
+              {activeModuleName && !isMobileMenuOpen && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide opacity-70">
+                  {activeModuleName}
+                </span>
+              )}
               {isMobileMenuOpen ? (
                 <X className="w-4 h-4" />
               ) : (
                 <Menu className="w-4 h-4" />
               )}
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-terminal-border-subtle py-2">
-            <div className="flex flex-col gap-1">
-              {[...analysisItems, ...betinhoModuleItems].map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Button
-                    key={item.name}
-                    variant="ghost"
-                    onClick={() => handleNavigation(item.href)}
-                    className={`w-full justify-start h-10 ${
-                      active 
-                        ? 'bg-terminal-green/10 text-terminal-green' 
-                        : 'text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 mr-3" />
-                    <span className="text-sm">{item.name}</span>
-                  </Button>
-                );
-              })}
+          <div className="md:hidden border-t border-terminal-border-subtle py-3">
+            <div className="flex flex-col gap-4">
+
+              {/* Seção Análises */}
+              <div>
+                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-terminal-text opacity-50">
+                  Análises
+                </p>
+                <div className="flex flex-col gap-1">
+                  {analysisItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <Button
+                        key={item.name}
+                        variant="ghost"
+                        onClick={() => handleNavigation(item.href)}
+                        className={`w-full justify-start h-10 ${
+                          active
+                            ? 'bg-terminal-green/10 text-terminal-green'
+                            : 'text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 mr-3" />
+                        <span className="text-sm">{item.name}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Divisor */}
+              <div className="border-t border-terminal-border-subtle" />
+
+              {/* Seção Betinho */}
+              <div>
+                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-terminal-text opacity-50">
+                  Betinho
+                </p>
+                <div className="flex flex-col gap-1">
+                  {betinhoModuleItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <Button
+                        key={item.name}
+                        variant="ghost"
+                        onClick={() => handleNavigation(item.href)}
+                        className={`w-full justify-start h-10 ${
+                          active
+                            ? 'bg-terminal-green/10 text-terminal-green'
+                            : 'text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 mr-3" />
+                        <span className="text-sm">{item.name}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
             </div>
           </div>
         )}

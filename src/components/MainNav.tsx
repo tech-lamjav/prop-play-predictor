@@ -46,6 +46,12 @@ export default function MainNav({ className }: MainNavProps) {
     return location.pathname === path;
   };
 
+  const activeModuleName = analysisItems.some((i) => isActive(i.href))
+    ? 'Análises'
+    : betinhoModuleItems.some((i) => isActive(i.href))
+    ? 'Betinho'
+    : null;
+
   const handleNavigation = (href: string) => {
     navigate(href);
     setIsMobileMenuOpen(false);
@@ -145,46 +151,86 @@ export default function MainNav({ className }: MainNavProps) {
             )}
 
             {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
+            <button
+              className="md:hidden flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-accent transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
+              {activeModuleName && !isMobileMenuOpen && (
+                <span className="text-xs font-medium text-muted-foreground">
+                  {activeModuleName}
+                </span>
+              )}
               {isMobileMenuOpen ? (
                 <X className="w-5 h-5" />
               ) : (
                 <Menu className="w-5 h-5" />
               )}
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-background">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {[...analysisItems, ...betinhoModuleItems].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Button
-                    key={item.name}
-                    variant={isActive(item.href) ? "default" : "ghost"}
-                    onClick={() => handleNavigation(item.href)}
-                    className={`w-full justify-start flex items-center space-x-3 ${
-                      isActive(item.href) 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <div className="text-left">
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-xs opacity-70">{item.href}</div>
-                    </div>
-                  </Button>
-                );
-              })}
+            <div className="px-2 pt-3 pb-3 space-y-4">
+
+              {/* Seção Análises */}
+              <div>
+                <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Análises
+                </p>
+                <div className="space-y-1">
+                  {analysisItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Button
+                        key={item.name}
+                        variant={isActive(item.href) ? "default" : "ghost"}
+                        onClick={() => handleNavigation(item.href)}
+                        className={`w-full justify-start flex items-center space-x-3 ${
+                          isActive(item.href)
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span className="font-medium">{item.name}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Divisor */}
+              <div className="border-t border-border" />
+
+              {/* Seção Betinho */}
+              <div>
+                <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Betinho
+                </p>
+                <div className="space-y-1">
+                  {betinhoModuleItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Button
+                        key={item.name}
+                        variant={isActive(item.href) ? "default" : "ghost"}
+                        onClick={() => handleNavigation(item.href)}
+                        className={`w-full justify-start flex items-center space-x-3 ${
+                          isActive(item.href)
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span className="font-medium">{item.name}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
             </div>
           </div>
         )}
