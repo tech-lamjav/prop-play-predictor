@@ -55,12 +55,41 @@ serve(async (req) => {
     
     // Helper function to determine which subscription field to update
     const getSubscriptionField = (productType: string | undefined): string => {
-      // Default to 'betinho' if productType is not specified (backward compatibility)
       const product = (productType || 'betinho').toLowerCase();
       if (product === 'analytics' || product === 'platform') {
         return 'analytics_subscription_status';
       }
       return 'betinho_subscription_status';
+    };
+
+    // Helper to build product-specific metadata update (period_end, cancel_at, etc.)
+    const getProductMetadataUpdate = (
+      productType: string | undefined,
+      subscription: Stripe.Subscription
+    ): Record<string, unknown> => {
+      const product = (productType || 'betinho').toLowerCase();
+      const prefix =
+        product === 'analytics' || product === 'platform' ? 'analytics_subscription' : 'betinho_subscription';
+      const update: Record<string, unknown> = {};
+      update[`${prefix}_period_end`] = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
+      update[`${prefix}_cancel_at`] = subscription.cancel_at
+        ? new Date(subscription.cancel_at * 1000).toISOString()
+        : null;
+      update[`${prefix}_cancel_at_period_end`] = subscription.cancel_at_period_end ?? false;
+      return update;
+    };
+
+    const getProductMetadataClear = (productType: string | undefined): Record<string, unknown> => {
+      const product = (productType || 'betinho').toLowerCase();
+      const prefix =
+        product === 'analytics' || product === 'platform' ? 'analytics_subscription' : 'betinho_subscription';
+      return {
+        [`${prefix}_period_end`]: null,
+        [`${prefix}_cancel_at`]: null,
+        [`${prefix}_cancel_at_period_end`]: false,
+      };
     };
 
     switch (event.type) {
@@ -112,17 +141,12 @@ serve(async (req) => {
         
         if (userId) {
           const status = subscription.status === 'active' ? 'premium' : 'free';
-          const updateData: Record<string, unknown> = {};
-          updateData[subscriptionField] = status;
-          updateData.stripe_subscription_id = subscription.id;
-          updateData.subscription_product_type = productType || 'betinho';
-          updateData.subscription_period_end = subscription.current_period_end
-            ? new Date(subscription.current_period_end * 1000).toISOString()
-            : null;
-          updateData.subscription_cancel_at = subscription.cancel_at
-            ? new Date(subscription.cancel_at * 1000).toISOString()
-            : null;
-          updateData.subscription_cancel_at_period_end = subscription.cancel_at_period_end ?? false;
+          const updateData: Record<string, unknown> = {
+            [subscriptionField]: status,
+            stripe_subscription_id: subscription.id,
+            subscription_product_type: productType || 'betinho',
+            ...getProductMetadataUpdate(productType, subscription),
+          };
           
           const { error } = await supabase
             .from('users')
@@ -148,8 +172,10 @@ serve(async (req) => {
         
         if (userId) {
           console.log(`Deleting subscription for user: ${userId}, productType: ${productType}`);
-          const updateData: Record<string, unknown> = {};
-          updateData[subscriptionField] = 'free';
+          const updateData: Record<string, unknown> = {
+            [subscriptionField]: 'free',
+            ...getProductMetadataClear(productType),
+          };
           const { data: userRow } = await supabase
             .from('users')
             .select('stripe_subscription_id')
@@ -157,9 +183,6 @@ serve(async (req) => {
             .single();
           if (userRow?.stripe_subscription_id === subscription.id) {
             updateData.stripe_subscription_id = null;
-            updateData.subscription_period_end = null;
-            updateData.subscription_cancel_at = null;
-            updateData.subscription_cancel_at_period_end = false;
             updateData.subscription_product_type = null;
           }
           
