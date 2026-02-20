@@ -1540,6 +1540,26 @@ serve(async (req) => {
       document_mime: updateMessage?.document?.mime_type
     })
 
+    // Handle /start force_contact (explicit resync flow from Settings)
+    if (text.startsWith("/start")) {
+      const parts = text.split(/\s+/)
+      const param = parts[1]
+      if (param === "force_contact") {
+        await sendContactRequest(chatId)
+        const telegramUserId = fromUser?.id ? String(fromUser.id) : undefined
+        await trackEvent(
+          "telegram_start_force_contact",
+          { chat_id: String(chatId), telegram_user_id: telegramUserId, channel: "telegram" },
+          telegramUserId || "unknown",
+          traceId
+        ).catch(() => {})
+        return new Response(
+          JSON.stringify({ success: true, message: "Contact requested via /start" }),
+          { headers: { "Content-Type": "application/json" }, status: 200 }
+        )
+      }
+    }
+
     // Handle contact sync first
     if (updateMessage.contact) {
       const contactPhone = updateMessage.contact.phone_number

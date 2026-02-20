@@ -27,6 +27,7 @@ import ComoUsar from "./pages/ComoUsar";
 import Games from "./pages/Games";
 import Home from "./pages/Home";
 import GameDetail from "./pages/GameDetail";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -91,6 +92,11 @@ const App = () => (
           <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
           <Route path="/paywall-platform" element={<PaywallPlatform />} />
           <Route path="/como-usar" element={<ComoUsar />} />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

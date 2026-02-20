@@ -119,7 +119,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
               </>
             )}
             <DropdownMenuItem 
-              onClick={() => navigate('/onboarding')}
+              onClick={() => navigate('/settings')}
               className="text-terminal-text hover:bg-terminal-gray focus:bg-terminal-gray cursor-pointer"
             >
               <Settings className="mr-2 h-4 w-4" />

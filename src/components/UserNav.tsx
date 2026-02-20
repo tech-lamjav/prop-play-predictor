@@ -65,7 +65,7 @@ export default function UserNav({ className }: UserNavProps) {
             <User className="mr-2 h-4 w-4" />
             <span>Dashboard</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/onboarding?product=betinho')}>
+          <DropdownMenuItem onClick={() => navigate('/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configurações</span>
           </DropdownMenuItem>
