@@ -7,8 +7,7 @@ import { Label } from '../components/ui/label';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import UserNav from '../components/UserNav';
-import { useUserProfile } from '../hooks/use-user-profile';
-import { useSubscriptionDetails } from '../hooks/use-subscription-details';
+import { useSettingsData } from '../hooks/use-settings-data';
 import { useToast } from '../hooks/use-toast';
 import { stripeService } from '../services/stripe.service';
 import { User, CreditCard, ArrowLeft, Send, ExternalLink } from 'lucide-react';
@@ -61,8 +60,7 @@ function formatDate(iso: string | null): string {
 export default function Settings() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { profile, isLoading, isSaving, error, updateProfile } = useUserProfile();
-  const { details: subscriptionDetails, isLoading: subscriptionLoading } = useSubscriptionDetails();
+  const { profile, subscription, isLoading, isSaving, error, updateProfile } = useSettingsData();
 
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -124,14 +122,6 @@ export default function Settings() {
       setPortalLoading(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -237,7 +227,7 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label>Conta criada em</Label>
                 <Input
-                  value={profile ? formatCreatedAt(profile.created_at) : '—'}
+                  value={isLoading ? 'Carregando...' : (profile ? formatCreatedAt(profile.created_at) : '—')}
                   readOnly
                   disabled
                   className="bg-muted"
@@ -267,31 +257,55 @@ export default function Settings() {
             <CardDescription>Gerencie seu plano e pagamentos</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {subscriptionLoading ? (
+            {isLoading ? (
               <p className="text-sm text-muted-foreground">Carregando...</p>
             ) : (
               <>
-                <div className="space-y-2">
+                {/* Betinho */}
+                <div className="space-y-2 rounded-lg border p-4">
+                  <h4 className="font-medium text-sm">Betinho</h4>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Plano</span>
                     <span className="font-medium">
-                      {subscriptionDetails?.status === 'premium' ? 'Premium' : 'Free'}
+                      {subscription?.betinho.status === 'premium' ? 'Premium' : 'Free'}
                     </span>
                   </div>
-                  {subscriptionDetails?.periodEnd && (
+                  {subscription?.betinho.periodEnd && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Próxima cobrança</span>
-                      <span className="text-sm">{formatDate(subscriptionDetails.periodEnd)}</span>
+                      <span className="text-sm">{formatDate(subscription.betinho.periodEnd)}</span>
                     </div>
                   )}
-                  {subscriptionDetails?.cancelAtPeriodEnd && subscriptionDetails?.cancelAt && (
+                  {subscription?.betinho.cancelAtPeriodEnd && subscription?.betinho.cancelAt && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Cancela em</span>
-                      <span className="text-sm text-amber-600">{formatDate(subscriptionDetails.cancelAt)}</span>
+                      <span className="text-sm text-amber-600">{formatDate(subscription.betinho.cancelAt)}</span>
                     </div>
                   )}
                 </div>
-                {(subscriptionDetails?.hasStripeCustomer || subscriptionDetails?.status === 'premium') ? (
+                {/* Plataforma */}
+                <div className="space-y-2 rounded-lg border p-4">
+                  <h4 className="font-medium text-sm">Plataforma</h4>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Plano</span>
+                    <span className="font-medium">
+                      {subscription?.analytics.status === 'premium' ? 'Premium' : 'Free'}
+                    </span>
+                  </div>
+                  {subscription?.analytics.periodEnd && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Próxima cobrança</span>
+                      <span className="text-sm">{formatDate(subscription.analytics.periodEnd)}</span>
+                    </div>
+                  )}
+                  {subscription?.analytics.cancelAtPeriodEnd && subscription?.analytics.cancelAt && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Cancela em</span>
+                      <span className="text-sm text-amber-600">{formatDate(subscription.analytics.cancelAt)}</span>
+                    </div>
+                  )}
+                </div>
+                {(subscription?.hasStripeCustomer || subscription?.betinho.status === 'premium' || subscription?.analytics.status === 'premium') ? (
                   <div className="pt-2">
                     <Button
                       variant="default"
