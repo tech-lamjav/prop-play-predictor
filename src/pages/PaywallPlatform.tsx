@@ -56,32 +56,41 @@ export default function PaywallPlatform() {
 
   // Tratamento de retorno do Stripe Checkout
   useEffect(() => {
-    if (success && sessionId) {
+    if (success && sessionId && user?.id) {
       toast({
-        title: "Pagamento realizado com sucesso!",
-        description: "Sua assinatura premium foi ativada. Recarregue a página para ver as mudanças.",
+        title: "Pagamento realizado!",
+        description: "Verificando sua assinatura...",
         variant: "default",
       });
-      
-      // Recarregar status após alguns segundos (dar tempo para o webhook processar)
-      setTimeout(() => {
-        if (user?.id) {
-          supabase
-            .from('users')
-            .select('analytics_subscription_status')
-            .eq('id', user.id)
-            .single()
-            .then(({ data }) => {
-              if (data) {
-                const status = (data as any)?.analytics_subscription_status;
-                setSubscriptionStatus(status === 'premium' ? 'premium' : 'free');
-                if (status === 'premium') {
-                  navigate('/nba-players');
-                }
-              }
+
+      let cancelled = false;
+
+      const verify = async (attempt: number) => {
+        if (cancelled) return;
+        try {
+          const result = await stripeService.verifySession(sessionId);
+          if (result.verified) {
+            setSubscriptionStatus('premium');
+            toast({
+              title: "Assinatura ativada!",
+              description: "Seu plano premium está ativo. Redirecionando...",
+              variant: "default",
             });
+            setTimeout(() => navigate('/nba-players'), 1000);
+            return;
+          }
+        } catch (err) {
+          console.error('Error verifying session:', err);
         }
-      }, 3000);
+
+        if (!cancelled && attempt < 5) {
+          setTimeout(() => verify(attempt + 1), 2000);
+        }
+      };
+
+      verify(0);
+
+      return () => { cancelled = true; };
     }
 
     if (canceled) {
@@ -91,7 +100,7 @@ export default function PaywallPlatform() {
         variant: "default",
       });
     }
-  }, [success, canceled, sessionId, user?.id, supabase, navigate]);
+  }, [success, canceled, sessionId, user?.id, navigate]);
 
   const handleStripeCheckout = async () => {
     // Se ainda está carregando a autenticação, aguarde

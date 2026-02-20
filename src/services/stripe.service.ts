@@ -74,6 +74,67 @@ export class StripeService {
   async redirectToCheckout(checkoutUrl: string): Promise<void> {
     window.location.href = checkoutUrl;
   }
+
+  async verifySession(sessionId: string): Promise<{ verified: boolean; status: string }> {
+    const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
+
+    if (!session || sessionError) {
+      throw new Error('User not authenticated. Please log in first.');
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/stripe-verify-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: supabaseKey,
+      },
+      body: JSON.stringify({ sessionId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `Failed to verify session: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async createCustomerPortalSession(): Promise<string> {
+    const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
+
+    if (!session || sessionError) {
+      throw new Error('User not authenticated. Please log in first.');
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/stripe-customer-portal`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: supabaseKey,
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `Failed to create portal session: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (!data?.url) {
+      throw new Error('Invalid response from portal session creation');
+    }
+
+    return data.url;
+  }
 }
 
 export const stripeService = StripeService.getInstance();

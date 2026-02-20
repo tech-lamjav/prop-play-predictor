@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
+import { createClient } from "npm:@supabase/supabase-js@2";
+import Stripe from "npm:stripe@14.21.0";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -112,10 +112,19 @@ serve(async (req) => {
         
         if (userId) {
           const status = subscription.status === 'active' ? 'premium' : 'free';
-          const updateData: Record<string, string> = {};
+          const updateData: Record<string, unknown> = {};
           updateData[subscriptionField] = status;
+          updateData.stripe_subscription_id = subscription.id;
+          updateData.subscription_product_type = productType || 'betinho';
+          updateData.subscription_period_end = subscription.current_period_end
+            ? new Date(subscription.current_period_end * 1000).toISOString()
+            : null;
+          updateData.subscription_cancel_at = subscription.cancel_at
+            ? new Date(subscription.cancel_at * 1000).toISOString()
+            : null;
+          updateData.subscription_cancel_at_period_end = subscription.cancel_at_period_end ?? false;
           
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from('users')
             .update(updateData)
             .eq('id', userId);
@@ -139,10 +148,22 @@ serve(async (req) => {
         
         if (userId) {
           console.log(`Deleting subscription for user: ${userId}, productType: ${productType}`);
-          const updateData: Record<string, string> = {};
+          const updateData: Record<string, unknown> = {};
           updateData[subscriptionField] = 'free';
+          const { data: userRow } = await supabase
+            .from('users')
+            .select('stripe_subscription_id')
+            .eq('id', userId)
+            .single();
+          if (userRow?.stripe_subscription_id === subscription.id) {
+            updateData.stripe_subscription_id = null;
+            updateData.subscription_period_end = null;
+            updateData.subscription_cancel_at = null;
+            updateData.subscription_cancel_at_period_end = false;
+            updateData.subscription_product_type = null;
+          }
           
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from('users')
             .update(updateData)
             .eq('id', userId);
