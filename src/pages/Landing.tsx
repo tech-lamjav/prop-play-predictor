@@ -78,7 +78,7 @@ const Landing = () => {
             <LanguageToggle />
             <Button 
               variant="outline" 
-              onClick={() => navigate("/home-games")} 
+              onClick={() => navigate("/auth")}
               className="text-sm sm:text-base px-3 sm:px-4 py-2"
             >
               Entrar
