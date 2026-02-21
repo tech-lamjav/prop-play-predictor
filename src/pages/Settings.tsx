@@ -285,7 +285,7 @@ export default function Settings() {
                 </div>
                 {/* Plataforma */}
                 <div className="space-y-2 rounded-lg border p-4">
-                  <h4 className="font-medium text-sm">Plataforma</h4>
+                  <h4 className="font-medium text-sm">Plataforma de Análise NBA</h4>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Plano</span>
                     <span className="font-medium">
