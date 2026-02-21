@@ -175,7 +175,8 @@ BEGIN
     FROM bigquery.dim_teams t
     ORDER BY t.team_abbreviation, t.loaded_at DESC NULLS LAST
   )
-  SELECT g.game_id, g.game_date, g.game_datetime_brasilia, g.home_team_id, g.home_team_name, g.home_team_abbreviation,
+  -- game_datetime_brasilia pode não existir em prod; usa NULL como fallback
+  SELECT g.game_id, g.game_date, NULL::timestamp as game_datetime_brasilia, g.home_team_id, g.home_team_name, g.home_team_abbreviation,
     g.home_team_score, g.visitor_team_id, g.visitor_team_name, g.visitor_team_abbreviation,
     g.visitor_team_score, g.winner_team_id, g.loaded_at, g.home_team_is_b2b_game,
     g.visitor_team_is_b2b_game, g.home_team_is_next_game, g.visitor_team_is_next_game,
@@ -187,7 +188,7 @@ BEGIN
   WHERE (p_game_date IS NULL OR g.game_date = p_game_date)
     AND (p_team_abbreviation IS NULL OR LOWER(g.home_team_abbreviation) = LOWER(p_team_abbreviation)
       OR LOWER(g.visitor_team_abbreviation) = LOWER(p_team_abbreviation))
-  ORDER BY g.game_datetime_brasilia ASC NULLS LAST, g.home_team_name ASC;
+  ORDER BY g.game_date ASC NULLS LAST, g.home_team_name ASC;
 END; $$;
 
 -- =====================
