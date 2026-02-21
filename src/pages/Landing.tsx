@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,7 @@ const MOCK_GAMES = [
 const Landing = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const dashboardPath = getFreePlayerDashboardPath();
   const firstFreePlayerName = FREE_PLAYERS[0];
   const [selectedStat, setSelectedStat] = useState('PTS');
@@ -76,12 +78,12 @@ const Landing = () => {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <LanguageToggle />
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/auth")}
+            <Button
+              variant="outline"
+              onClick={() => navigate(user ? "/onboarding" : "/auth")}
               className="text-sm sm:text-base px-3 sm:px-4 py-2"
             >
-              Entrar
+              {user ? "Acessar" : "Entrar"}
             </Button>
             <Button 
               onClick={() => navigate("/auth")} 
