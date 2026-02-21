@@ -109,6 +109,9 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   const totalProfit = currentBankroll - (initialBankroll || 0);
   const profitPercentage = initialBankroll ? (totalProfit / initialBankroll) * 100 : 0;
 
+  const formatBRL = (value: number) =>
+    value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <div className="terminal-container p-4 mb-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -148,7 +151,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-terminal-text">
-                      R$ {initialBankroll?.toFixed(2) || '0.00'}
+                      R$ {initialBankroll != null ? formatBRL(initialBankroll) : '0,00'}
                     </span>
                     <button
                       type="button"
@@ -167,14 +170,14 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
           <div className="flex flex-col">
             <span className="text-[10px] uppercase opacity-50">{readOnly ? 'Lucro no período' : 'Banca Atual'}</span>
             <span className={`font-mono font-bold ${totalProfit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
-              R$ {currentBankroll.toFixed(2)}
+              R$ {formatBRL(currentBankroll)}
             </span>
           </div>
 
           <div className="flex flex-col text-right">
             <span className="text-[10px] uppercase opacity-50">Lucro</span>
             <span className={`font-mono text-xs ${totalProfit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
-              {totalProfit >= 0 ? '+' : ''}{totalProfit.toFixed(2)}
+              {totalProfit >= 0 ? '+' : ''}{formatBRL(totalProfit)}
               {!readOnly && initialBankroll ? ` (${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(1)}%)` : ''}
             </span>
           </div>
@@ -204,8 +207,9 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
               tick={{ fill: 'var(--terminal-text)', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(value) => `R$${value}`}
-              domain={['auto', 'auto']}
+              tickFormatter={(value) => `R$${formatBRL(value)}`}
+              domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.05)]}
+              allowDataOverflow={false}
             />
             <Tooltip 
               contentStyle={{ 
@@ -215,7 +219,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                 color: '#fff'
               }}
               itemStyle={{ color: '#00d4ff' }}
-              formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Banca']}
+              formatter={(value: number) => [`R$ ${formatBRL(value)}`, 'Banca']}
               labelFormatter={(label, payload) => {
                 if (payload && payload.length > 0) {
                   return payload[0].payload.fullDate;
