@@ -86,10 +86,6 @@ export default function Onboarding() {
             email: userData.email,
             whatsappNumber: ''
           });
-          
-          if (userData.whatsapp_synced) {
-            navigate('/bets');
-          }
         }
       } else {
         navigate('/auth');
