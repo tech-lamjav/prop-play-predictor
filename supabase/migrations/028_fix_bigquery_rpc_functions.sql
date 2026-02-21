@@ -94,9 +94,10 @@ BEGIN
 END; $$;
 
 -- =====================
--- get_player_game_stats
+-- get_player_game_stats (DROP necessário: adiciona coluna line_most_recent)
 -- =====================
-CREATE OR REPLACE FUNCTION public.get_player_game_stats(p_player_id bigint, p_limit int DEFAULT 15)
+DROP FUNCTION IF EXISTS public.get_player_game_stats(bigint, int);
+CREATE FUNCTION public.get_player_game_stats(p_player_id bigint, p_limit int DEFAULT 15)
 RETURNS TABLE (player_id bigint, game_date date, game_id bigint, stat_type text,
   stat_value float8, "line" float8, line_most_recent float8, is_b2b_game boolean, stat_vs_line text,
   played_against text, home_away text, is_played text)
@@ -156,9 +157,10 @@ BEGIN
 END; $$;
 
 -- =====================
--- get_games
+-- get_games (DROP necessário: adiciona colunas home_team_last_five, visitor_team_last_five)
 -- =====================
-CREATE OR REPLACE FUNCTION public.get_games(p_game_date date DEFAULT NULL, p_team_abbreviation text DEFAULT NULL)
+DROP FUNCTION IF EXISTS public.get_games(date, text);
+CREATE FUNCTION public.get_games(p_game_date date DEFAULT NULL, p_team_abbreviation text DEFAULT NULL)
 RETURNS TABLE (game_id bigint, game_date date, game_datetime_brasilia timestamp, home_team_id bigint, home_team_name text,
   home_team_abbreviation text, home_team_score float8, visitor_team_id bigint, visitor_team_name text,
   visitor_team_abbreviation text, visitor_team_score float8, winner_team_id bigint, loaded_at timestamp,
