@@ -42,6 +42,7 @@ export default function Onboarding() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
+  const [whatsappSynced, setWhatsappSynced] = useState(false);
 
   const steps = [
     {
@@ -86,10 +87,7 @@ export default function Onboarding() {
             email: userData.email,
             whatsappNumber: ''
           });
-          
-          if (userData.whatsapp_synced) {
-            navigate('/bets');
-          }
+          setWhatsappSynced(!!userData.whatsapp_synced);
         }
       } else {
         navigate('/auth');
@@ -199,13 +197,15 @@ export default function Onboarding() {
           </button>
           <button
             type="button"
-            onClick={() => setCurrentStep(1)}
+            onClick={() => whatsappSynced ? navigate('/bets') : setCurrentStep(1)}
             className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
           >
             <Send className="w-8 h-8 text-terminal-green" />
-            <span className="font-semibold text-terminal-green">Configurar Betinho (Telegram)</span>
+            <span className="font-semibold text-terminal-green">
+              {whatsappSynced ? 'Acessar Betinho' : 'Configurar Betinho (Telegram)'}
+            </span>
             <span className="text-sm text-terminal-text opacity-80 font-normal">
-              Registrar apostas via bot no Telegram
+              {whatsappSynced ? 'Ir para suas apostas' : 'Registrar apostas via bot no Telegram'}
             </span>
           </button>
         </div>

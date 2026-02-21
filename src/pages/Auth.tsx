@@ -77,7 +77,7 @@ const Auth = () => {
         if (from?.pathname && from.pathname.startsWith("/") && !from.pathname.startsWith("//")) {
           navigate(from.pathname + (from.search || ""));
         } else {
-          navigate("/home-games");
+          navigate("/onboarding");
         }
       }
     } catch (error) {
