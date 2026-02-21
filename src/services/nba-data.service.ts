@@ -7,7 +7,7 @@ const ALL_PLAYERS_CACHE_TTL_MS = 60 * 1000;
 async function withRetry<T>(
   fn: () => Promise<T>,
   retries = 3,
-  delay = 1000
+  delay = 1500
 ): Promise<T> {
   let lastError: Error | null = null;
   

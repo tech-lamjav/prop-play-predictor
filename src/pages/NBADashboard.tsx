@@ -97,27 +97,8 @@ export default function NBADashboard() {
       setPlayer(playerData);
       setPlayerLookupDone(true);
 
-      // Preferred path: single bundle RPC (fewer round-trips, faster TTFD)
-      try {
-        const bundle = await nbaDataService.getPlayerDashboardBundle(playerData.player_id, 40);
-        if (bundle) {
-          setPlayer(bundle.player || playerData);
-          setGameStats(bundle.game_stats || []);
-          setPropPlayers(bundle.prop_players || []);
-          setTeamData(bundle.team || null);
-          setTeammates(bundle.teammates || []);
-          setShootingZones(bundle.shooting_zones || null);
-          setLoading(false);
-          setSidebarLoading(false);
-          setShootingZonesLoading(false);
-          return;
-        }
-      } catch (bundleError) {
-        // Keep dashboard resilient across environments while bundle is rolling out.
-        console.warn('Bundle RPC failed, falling back to existing RPC flow.', bundleError);
-      }
-
-      // Fallback path: existing progressive RPC flow
+      // Staggered parallel RPC calls — avoids overwhelming the DB on cold start
+      // Group 1: core data (immediate)
       void (async () => {
         try {
           const coreResults = await Promise.allSettled([
@@ -141,7 +122,9 @@ export default function NBADashboard() {
         }
       })();
 
+      // Group 2: sidebar data (slight delay to reduce concurrent connections)
       void (async () => {
+        await new Promise(r => setTimeout(r, 300));
         try {
           const sideResults = await Promise.allSettled([
             nbaDataService.getTeamPlayers(playerData.team_id),
@@ -164,7 +147,9 @@ export default function NBADashboard() {
         }
       })();
 
+      // Group 3: shooting zones (slight delay)
       void (async () => {
+        await new Promise(r => setTimeout(r, 600));
         try {
           const zones = await nbaDataService.getPlayerShootingZones(playerData.player_id);
           setShootingZones(zones);
