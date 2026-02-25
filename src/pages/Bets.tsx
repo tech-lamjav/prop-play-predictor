@@ -311,6 +311,10 @@ const BetRow = React.memo(function BetRow({
                     <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
                     <span>1/2 Red</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer">
+                    <X className="w-4 h-4 opacity-70" />
+                    <span>Anulada</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <button
@@ -472,6 +476,10 @@ const BetCard = React.memo(function BetCard({
                 <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
                   <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
                   <span>1/2 Red</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer">
+                  <X className="w-4 h-4 opacity-70" />
+                  <span>Anulada</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
