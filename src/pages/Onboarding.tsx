@@ -10,16 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import UserNav from '../components/UserNav';
 import AnalyticsNav from '../components/AnalyticsNav';
 import {
-  User,
   CheckCircle,
   ArrowRight,
   ArrowLeft,
   Smartphone,
   Shield,
   BarChart3,
-  Zap,
-  Target,
-  TrendingUp,
   Send,
   Gamepad2
 } from 'lucide-react';
@@ -34,8 +30,6 @@ export default function Onboarding() {
 
   const [currentStep, setCurrentStep] = useState(isBetinhoOnly ? 1 : 0);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
     whatsappNumber: '',
     countryCode: '+55' // Default to Brazil
   });
@@ -44,29 +38,37 @@ export default function Onboarding() {
   const [userId, setUserId] = useState<string | null>(null);
   const [whatsappSynced, setWhatsappSynced] = useState(false);
 
+  // Steps 1 (number) and 2 (telegram) — name/email já vêm do cadastro
   const steps = [
     {
       id: 1,
-      title: 'Informações Pessoais',
-      description: 'Vamos começar com seus dados básicos',
-      icon: User
-    },
-    {
-      id: 2,
-      title: 'Configuração Telegram',
-      description: 'Conecte seu número ao bot do Telegram',
+      title: 'Número para o Betinho',
+      description: 'Confirme ou altere seu número para conectar ao bot no Telegram',
       icon: Send
     },
     {
-      id: 3,
+      id: 2,
       title: 'Finalização',
       description: 'Conecte com o bot no Telegram',
       icon: CheckCircle
     }
   ];
 
-  const progress = currentStep === 0 ? 0 : (currentStep / steps.length) * 100;
+  const progress = currentStep === 0 ? 0 : (currentStep / 2) * 100;
   const showChoiceStep = currentStep === 0;
+
+  // Parse stored whatsapp_number into country code + local number for pre-fill
+  const parseStoredPhone = (stored: string | null): { countryCode: string; number: string } => {
+    if (!stored) return { countryCode: '+55', number: '' };
+    const digits = stored.replace(/\D/g, '');
+    const codes = ['55', '1', '54', '56', '57', '351', '34', '39'];
+    for (const c of codes) {
+      if (digits.startsWith(c)) {
+        return { countryCode: `+${c}`, number: digits.slice(c.length) };
+      }
+    }
+    return { countryCode: '+55', number: digits };
+  };
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -74,18 +76,18 @@ export default function Onboarding() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        // Check if user already completed onboarding
+        // Check if user already completed onboarding (include whatsapp_number for pre-fill)
         const { data: userData } = await supabase
           .from('users')
-          .select('name, email, whatsapp_synced')
+          .select('name, email, whatsapp_number, whatsapp_synced')
           .eq('id', user.id)
           .single();
         
         if (userData?.name && userData?.email) {
+          const { countryCode, number } = parseStoredPhone(userData.whatsapp_number ?? null);
           setFormData({
-            name: userData.name,
-            email: userData.email,
-            whatsappNumber: ''
+            whatsappNumber: number,
+            countryCode,
           });
           setWhatsappSynced(!!userData.whatsapp_synced);
         }
@@ -107,47 +109,13 @@ export default function Onboarding() {
         throw new Error('Usuário não autenticado');
       }
 
-      // Update user information
-      const { error } = await supabase
-        .from('users')
-        .update({
-          name: formData.name,
-          email: formData.email
-        })
-        .eq('id', userId);
-
-      if (error) {
-        throw error;
-      }
-
-      setCurrentStep(2);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar informações');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStep2Submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      if (!userId) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      // Validate phone number (mantém o mesmo campo do backend)
       const cleanNumber = formData.whatsappNumber.replace(/\D/g, '');
       if (cleanNumber.length < 8) {
         throw new Error('Número de telefone inválido');
       }
 
-      // Combine country code + number
       const fullNumber = formData.countryCode.replace(/\D/g, '') + cleanNumber;
 
-      // Update user with phone number (campo existente)
       const { error } = await supabase
         .from('users')
         .update({ whatsapp_number: fullNumber })
@@ -157,9 +125,9 @@ export default function Onboarding() {
         throw error;
       }
 
-      setCurrentStep(3);
+      setCurrentStep(2);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar número do Telegram');
+      setError(err instanceof Error ? err.message : 'Erro ao salvar número');
     } finally {
       setIsLoading(false);
     }
@@ -216,70 +184,18 @@ export default function Onboarding() {
   const renderStep1 = () => (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-          <User className="w-6 h-6 text-primary" />
+        <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+          <Send className="w-6 h-6 text-blue-600" />
         </div>
-        <CardTitle>Informações Pessoais</CardTitle>
+        <CardTitle>Número para o Betinho</CardTitle>
         <CardDescription>
-          Vamos começar com seus dados básicos
+          Confirme ou altere seu número. Este número será usado para conectar ao bot no Telegram.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleStep1Submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome Completo</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Seu nome completo"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              required
-            />
-          </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Salvando...' : 'Continuar'}
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  );
-
-  const renderStep2 = () => (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-          <Send className="w-6 h-6 text-blue-600" />
-        </div>
-        <CardTitle>Configure seu Telegram</CardTitle>
-        <CardDescription>
-          Conecte seu número ao bot do Telegram
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleStep2Submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp">Número do Telegram</Label>
+            <Label htmlFor="whatsapp">Telefone</Label>
             <div className="flex gap-2">
               <Select
                 value={formData.countryCode}
@@ -327,7 +243,7 @@ export default function Onboarding() {
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => setCurrentStep(1)}
+              onClick={() => setCurrentStep(0)}
               className="flex-1"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -343,7 +259,7 @@ export default function Onboarding() {
     </Card>
   );
 
-  const renderStep3 = () => (
+  const renderStep2 = () => (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -378,7 +294,7 @@ export default function Onboarding() {
         <div className="flex space-x-2">
           <Button 
             variant="outline" 
-            onClick={() => setCurrentStep(2)}
+            onClick={() => setCurrentStep(1)}
             className="flex-1"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -455,7 +371,7 @@ export default function Onboarding() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-foreground">
-              Passo {currentStep} de {steps.length}
+              Passo {currentStep} de 2
             </span>
             <span className="text-sm text-muted-foreground">
               {Math.round(progress)}% concluído
@@ -495,7 +411,6 @@ export default function Onboarding() {
         <div className="flex justify-center">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
         </div>
 
         {/* Features Preview */}

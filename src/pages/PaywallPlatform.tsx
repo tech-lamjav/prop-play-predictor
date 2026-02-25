@@ -139,9 +139,9 @@ export default function PaywallPlatform() {
   };
 
   const handleUpgrade = () => {
-    // Open WhatsApp with pre-filled message for upgrade
-    const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting";
-    const whatsappUrl = `https://wa.me/554391482828?text=${encodeURIComponent(message)}`;
+    // Open WhatsApp with pre-filled message for upgrade (Plataforma de Análise)
+    const message = "Oi, gostaria de fazer upgrade do meu plano na Plataforma de Análise";
+    const whatsappUrl = `https://wa.me/5511952136845?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');
