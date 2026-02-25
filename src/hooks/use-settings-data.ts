@@ -47,48 +47,72 @@ export function useSettingsData() {
       return;
     }
 
+    const fullSelect =
+      'name, email, whatsapp_number, created_at, betinho_subscription_status, analytics_subscription_status, stripe_customer_id, betinho_subscription_period_end, analytics_subscription_period_end, betinho_subscription_cancel_at, analytics_subscription_cancel_at, betinho_subscription_cancel_at_period_end, analytics_subscription_cancel_at_period_end';
+    const fallbackSelect =
+      'name, email, whatsapp_number, created_at, betinho_subscription_status, analytics_subscription_status, stripe_customer_id';
+
+    const parseRow = (row: Record<string, unknown>, hasMetadata: boolean) => {
+      setProfile({
+        name: (row.name as string) ?? null,
+        email: (row.email as string) ?? '',
+        whatsapp_number: (row.whatsapp_number as string) ?? null,
+        created_at: (row.created_at as string) ?? '',
+      });
+
+      const betinhoStatus = (row.betinho_subscription_status as string) === 'premium' ? 'premium' : 'free';
+      const analyticsStatus = (row.analytics_subscription_status as string) === 'premium' ? 'premium' : 'free';
+
+      setSubscription({
+        betinho: {
+          status: betinhoStatus,
+          periodEnd: hasMetadata ? ((row.betinho_subscription_period_end as string) ?? null) : null,
+          cancelAt: hasMetadata ? ((row.betinho_subscription_cancel_at as string) ?? null) : null,
+          cancelAtPeriodEnd: hasMetadata ? ((row.betinho_subscription_cancel_at_period_end as boolean) ?? false) : false,
+        },
+        analytics: {
+          status: analyticsStatus,
+          periodEnd: hasMetadata ? ((row.analytics_subscription_period_end as string) ?? null) : null,
+          cancelAt: hasMetadata ? ((row.analytics_subscription_cancel_at as string) ?? null) : null,
+          cancelAtPeriodEnd: hasMetadata ? ((row.analytics_subscription_cancel_at_period_end as boolean) ?? false) : false,
+        },
+        hasStripeCustomer: !!(row.stripe_customer_id as string),
+      });
+    };
+
     try {
       setError(null);
       const { data, error: fetchError } = await supabase
         .from('users')
-        .select(
-          'name, email, whatsapp_number, created_at, betinho_subscription_status, analytics_subscription_status, stripe_customer_id, betinho_subscription_period_end, analytics_subscription_period_end, betinho_subscription_cancel_at, analytics_subscription_cancel_at, betinho_subscription_cancel_at_period_end, analytics_subscription_cancel_at_period_end'
-        )
+        .select(fullSelect)
         .eq('id', user.id)
         .single();
 
       if (fetchError) {
+        // Column does not exist (42703) - migration 027 not applied; retry with fallback
+        if (fetchError.code === '42703') {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('users')
+            .select(fallbackSelect)
+            .eq('id', user.id)
+            .single();
+
+          if (fallbackError) {
+            throw fallbackError;
+          }
+          if (fallbackData) {
+            parseRow(fallbackData as Record<string, unknown>, false);
+          } else {
+            setProfile(null);
+            setSubscription(null);
+          }
+          return;
+        }
         throw fetchError;
       }
 
-      const row = data as Record<string, unknown>;
-
       if (data) {
-        setProfile({
-          name: (row.name as string) ?? null,
-          email: (row.email as string) ?? '',
-          whatsapp_number: (row.whatsapp_number as string) ?? null,
-          created_at: (row.created_at as string) ?? '',
-        });
-
-        const betinhoStatus = (row.betinho_subscription_status as string) === 'premium' ? 'premium' : 'free';
-        const analyticsStatus = (row.analytics_subscription_status as string) === 'premium' ? 'premium' : 'free';
-
-        setSubscription({
-          betinho: {
-            status: betinhoStatus,
-            periodEnd: (row.betinho_subscription_period_end as string) ?? null,
-            cancelAt: (row.betinho_subscription_cancel_at as string) ?? null,
-            cancelAtPeriodEnd: (row.betinho_subscription_cancel_at_period_end as boolean) ?? false,
-          },
-          analytics: {
-            status: analyticsStatus,
-            periodEnd: (row.analytics_subscription_period_end as string) ?? null,
-            cancelAt: (row.analytics_subscription_cancel_at as string) ?? null,
-            cancelAtPeriodEnd: (row.analytics_subscription_cancel_at_period_end as boolean) ?? false,
-          },
-          hasStripeCustomer: !!(row.stripe_customer_id as string),
-        });
+        parseRow(data as Record<string, unknown>, true);
       } else {
         setProfile(null);
         setSubscription(null);

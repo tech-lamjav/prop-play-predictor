@@ -69,25 +69,25 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
           <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
             <Send className="w-6 h-6 text-green-600" />
           </div>
-          <CardTitle>Configure seu Telegram</CardTitle>
+          <CardTitle>Número para o Betinho</CardTitle>
           <CardDescription>
-            Para receber notificações e enviar apostas via Telegram
+            Este número será usado para conectar ao bot no Telegram e enviar apostas.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleWhatsAppNumberSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="whatsapp">Número do Telegram</Label>
+              <Label htmlFor="whatsapp">Número para o Betinho</Label>
               <Input
                 id="whatsapp"
                 type="tel"
                 placeholder="(11) 99999-9999"
                 value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
+                onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))}
                 required
               />
               <p className="text-sm text-gray-500">
-                Inclua o código do país (ex: +55 para Brasil)
+                Inclua o código do país (ex: +55 para Brasil). Você pode colar o número.
               </p>
             </div>
 
@@ -159,9 +159,9 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
           <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
             <CheckCircle className="w-6 h-6 text-green-600" />
           </div>
-          <CardTitle>Telegram configurado!</CardTitle>
+          <CardTitle>Betinho configurado!</CardTitle>
           <CardDescription>
-            Sua conta foi sincronizada com sucesso
+            Sua conta foi sincronizada com o bot no Telegram.
           </CardDescription>
         </CardHeader>
         <CardContent>

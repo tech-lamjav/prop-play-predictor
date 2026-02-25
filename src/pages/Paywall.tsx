@@ -147,8 +147,8 @@ export default function Paywall() {
   };
 
   const handleUpgrade = () => {
-    // Open WhatsApp with pre-filled message for upgrade
-    const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting";
+    // Open WhatsApp with pre-filled message for upgrade (Betinho)
+    const message = "Oi, gostaria de fazer upgrade do meu plano Betinho (registro de apostas)";
     const whatsappUrl = `https://wa.me/5511952136845?text=${encodeURIComponent(message)}`;
     
     // Open WhatsApp with pre-filled message

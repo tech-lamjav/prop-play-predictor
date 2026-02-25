@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart3 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -24,6 +25,8 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [phoneCountryCode, setPhoneCountryCode] = useState("+55");
+  const [phoneNumber, setPhoneNumber] = useState("");
   
   const supabase = createClient();
 
@@ -103,6 +106,16 @@ const Auth = () => {
       return;
     }
 
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 8) {
+      toast({
+        title: "Error",
+        description: "Informe um telefone válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -122,11 +135,13 @@ const Auth = () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const normalizedReferralCode = referralCode.trim() ? referralCode.toUpperCase().trim() : null;
+          const whatsappNumber = phoneCountryCode.replace(/\D/g, '') + cleanPhone;
           const userData: any = {
             id: user.id,
             email: user.email!,
             name: name,
-            referred_by: normalizedReferralCode
+            referred_by: normalizedReferralCode,
+            whatsapp_number: whatsappNumber,
           };
 
           // Create user record in our users table
@@ -307,6 +322,41 @@ const Auth = () => {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-phone">Telefone</Label>
+                    <div className="flex gap-2">
+                      <Select
+                        value={phoneCountryCode}
+                        onValueChange={setPhoneCountryCode}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="+55">🇧🇷 +55</SelectItem>
+                          <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                          <SelectItem value="+54">🇦🇷 +54</SelectItem>
+                          <SelectItem value="+56">🇨🇱 +56</SelectItem>
+                          <SelectItem value="+57">🇨🇴 +57</SelectItem>
+                          <SelectItem value="+351">🇵🇹 +351</SelectItem>
+                          <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                          <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        id="signup-phone"
+                        type="tel"
+                        placeholder="(11) 99999-9999"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                        className="flex-1"
+                        required
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Será usado para conectar ao bot no Telegram
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="referral-code">Código do amigo (opcional)</Label>
