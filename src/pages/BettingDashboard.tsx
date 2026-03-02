@@ -12,6 +12,7 @@ import { ProfitBySportChart } from '@/components/bets/ProfitBySportChart';
 import { ProfitByMarketChart } from '@/components/bets/ProfitByMarketChart';
 import { ProfitByLeagueChart } from '@/components/bets/ProfitByLeagueChart';
 import { ProfitByTagChart, type BetWithTags } from '@/components/bets/ProfitByTagChart';
+import { telegramBotUrl } from '@/config/environment';
 import {
   getDateRangeForPreset,
   filterBetsByDateRange,
@@ -361,7 +362,7 @@ export default function BettingDashboard() {
       />
 
       <a
-        href="https://t.me/betinho_assistente_bot"
+        href={telegramBotUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"

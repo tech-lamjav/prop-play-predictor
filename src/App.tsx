@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
+import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import ComoUsar from "./pages/ComoUsar";
 import Games from "./pages/Games";
 import Home from "./pages/Home";
@@ -37,6 +38,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <EnvironmentBanner />
         <PostHogPageView />
         <Routes>
           <Route path="/" element={<Landing />} />

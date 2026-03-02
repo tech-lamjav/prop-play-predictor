@@ -20,6 +20,7 @@ import {
   Gamepad2
 } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
+import { telegramBotUrl } from '../config/environment';
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -134,8 +135,7 @@ export default function Onboarding() {
   };
 
   const handleTelegramOpen = () => {
-    const telegramUrl = 'https://t.me/betinho_assistente_bot';
-    window.open(telegramUrl, '_blank');
+    window.open(telegramBotUrl, '_blank');
   };
 
   const handleComplete = () => {

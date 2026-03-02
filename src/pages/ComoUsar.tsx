@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 
 const ComoUsar = () => {
   const navigate = useNavigate();
-  const telegramLink = "https://t.me/betinho_assistente_bot";
 
   const steps = [
     "Crie sua conta e faça login no app (signup).",
