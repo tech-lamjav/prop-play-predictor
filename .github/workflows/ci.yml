@@ -9,10 +9,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: npm
+
       - run: npm ci
+
       - run: npm run lint
+
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL_STAGING }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY_STAGING }}
+          VITE_GOOGLE_CLOUD_PROJECT_ID: placeholder
+          VITE_GOOGLE_CLOUD_STORAGE_BUCKET: placeholder
+          VITE_GOOGLE_CLOUD_API_KEY: placeholder
+          VITE_STRIPE_PUBLISHABLE_KEY: placeholder
+          VITE_STRIPE_PRICE_ID_BETINHO: placeholder
+          VITE_STRIPE_PRICE_ID_PLATFORM: placeholder

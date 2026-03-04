@@ -1,21 +1,21 @@
-import { isDevelopment, isStaging } from '@/config/environment';
+import { isDevelopment, isStaging } from "@/config/environment";
 
-/**
- * Visual banner indicating the current environment. Only shown in dev/staging, never in production.
- */
 export function EnvironmentBanner() {
-  if (!isDevelopment && !isStaging) return null;
+  if (isDevelopment) {
+    return (
+      <div className="w-full bg-yellow-400 text-yellow-900 text-center text-xs font-semibold py-1 z-50">
+        DEV — ambiente local
+      </div>
+    );
+  }
 
-  const label = isDevelopment ? 'DEV' : 'STAGING';
-  const bgColor = isDevelopment ? 'bg-amber-500' : 'bg-blue-600';
+  if (isStaging) {
+    return (
+      <div className="w-full bg-orange-500 text-white text-center text-xs font-semibold py-1 z-50">
+        STAGING — não usar dados reais
+      </div>
+    );
+  }
 
-  return (
-    <div
-      className={`${bgColor} text-white text-center text-xs font-medium py-1 px-2`}
-      role="status"
-      aria-label={`Environment: ${label}`}
-    >
-      {label}
-    </div>
-  );
+  return null;
 }

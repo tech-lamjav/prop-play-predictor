@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserIcon, ArrowLeft, Users, LogOut, Settings, BarChart3, Send } from 'lucide-react';
+import { telegramBotUrl } from '@/config/environment';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import {

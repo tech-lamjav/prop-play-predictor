@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { telegramBotUrl } from '@/config/environment';
 import { useAuth } from '@/hooks/use-auth';
 import { useBets } from '@/hooks/use-bets';
 import { useUserUnit } from '@/hooks/use-user-unit';

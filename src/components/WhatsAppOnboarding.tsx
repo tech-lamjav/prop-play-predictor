@@ -6,7 +6,7 @@ import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { CheckCircle, Smartphone, AlertCircle, Send } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
-import { telegramBotUrl } from '../config/environment';
+import { telegramBotUrl } from '@/config/environment';
 
 interface WhatsAppOnboardingProps {
   userId: string;

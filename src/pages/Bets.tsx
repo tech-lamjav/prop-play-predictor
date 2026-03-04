@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { telegramBotUrl } from '@/config/environment';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
 import { BetsHeader } from '../components/bets/BetsHeader';

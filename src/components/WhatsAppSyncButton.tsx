@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from './ui/button';
 import { MessageCircle, CheckCircle, AlertCircle, Send } from 'lucide-react';
 import { useWhatsAppSync } from '../hooks/use-whatsapp-sync';
-import { telegramBotUrl } from '../config/environment';
+import { telegramBotUrl } from '@/config/environment';
 
 interface WhatsAppSyncButtonProps {
   userId: string;
