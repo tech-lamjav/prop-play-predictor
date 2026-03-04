@@ -21,7 +21,6 @@ import {
   Gamepad2
 } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
-import { telegramBotUrl } from '../config/environment';
 
 export default function Onboarding() {
   const navigate = useNavigate();

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { telegramBotUrl } from '@/config/environment';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
 import { BetsHeader } from '../components/bets/BetsHeader';
@@ -193,6 +192,7 @@ type BetRowProps = {
   translateStatus: (status: string) => string;
   onBetTagsChange: (betId: string, newTags: Tag[], currentTagIds: string[]) => Promise<void>;
   onTagsUpdated: () => void;
+  availableTags: Tag[];
   updateBetStatus: (betId: string, newStatus: string) => void;
   openCashoutModal: (bet: Bet) => void;
   openEditModal: (bet: Bet) => void;
@@ -206,6 +206,7 @@ const BetRow = React.memo(function BetRow({
   translateStatus,
   onBetTagsChange,
   onTagsUpdated,
+  availableTags,
   updateBetStatus,
   openCashoutModal,
   openEditModal,
@@ -249,6 +250,7 @@ const BetRow = React.memo(function BetRow({
           selectedTags={bet.tags || []}
           onTagsChange={handleTagsChange}
           onTagsUpdated={onTagsUpdated}
+          availableTags={availableTags}
         />
       </td>
       <td className="py-1.5 px-1.5 opacity-70">{bet.sport}</td>
@@ -361,6 +363,7 @@ const BetCard = React.memo(function BetCard({
   translateStatus,
   onBetTagsChange,
   onTagsUpdated,
+  availableTags,
   updateBetStatus,
   openCashoutModal,
   openEditModal,
@@ -420,6 +423,7 @@ const BetCard = React.memo(function BetCard({
             selectedTags={bet.tags || []}
             onTagsChange={handleTagsChange}
             onTagsUpdated={onTagsUpdated}
+            availableTags={availableTags}
           />
         </div>
       </div>
@@ -1087,6 +1091,14 @@ export default function Bets() {
       if (isMountedRef.current) {
         const tags = Array.isArray(data) ? (data as unknown as Tag[]) : [];
         setUserTags(tags);
+        // Sync tag colors across all bets so color changes reflect everywhere immediately.
+        setBets(prev => prev.map(bet => ({
+          ...bet,
+          tags: (bet.tags || []).map(bt => {
+            const updated = tags.find(t => t.id === bt.id);
+            return updated ? { ...bt, color: updated.color, name: updated.name } : bt;
+          })
+        })));
       }
     } catch (err) {
       if (isMountedRef.current) {
@@ -1560,13 +1572,14 @@ export default function Bets() {
         translateStatus={translateStatus}
         onBetTagsChange={handleBetTagsChange}
         onTagsUpdated={fetchUserTags}
+        availableTags={userTags}
         updateBetStatus={updateBetStatus}
         openCashoutModal={openCashoutModal}
         openEditModal={openEditModal}
         deleteBet={deleteBet}
       />
     ));
-  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   const mobileCards = useMemo(() => {
     return paginatedBets.map((bet) => (
@@ -1578,13 +1591,14 @@ export default function Bets() {
         translateStatus={translateStatus}
         onBetTagsChange={handleBetTagsChange}
         onTagsUpdated={fetchUserTags}
+        availableTags={userTags}
         updateBetStatus={updateBetStatus}
         openCashoutModal={openCashoutModal}
         openEditModal={openEditModal}
         deleteBet={deleteBet}
       />
     ));
-  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));

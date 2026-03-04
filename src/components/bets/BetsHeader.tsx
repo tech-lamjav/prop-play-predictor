@@ -12,7 +12,6 @@ import {
 } from '../ui/dropdown-menu';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import { telegramBotUrl } from '../../config/environment';
 
 interface BetsHeaderProps {
   title?: string;
