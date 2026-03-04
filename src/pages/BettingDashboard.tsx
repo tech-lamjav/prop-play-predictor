@@ -13,7 +13,6 @@ import { ProfitBySportChart } from '@/components/bets/ProfitBySportChart';
 import { ProfitByMarketChart } from '@/components/bets/ProfitByMarketChart';
 import { ProfitByLeagueChart } from '@/components/bets/ProfitByLeagueChart';
 import { ProfitByTagChart, type BetWithTags } from '@/components/bets/ProfitByTagChart';
-import { telegramBotUrl } from '@/config/environment';
 import {
   getDateRangeForPreset,
   filterBetsByDateRange,
