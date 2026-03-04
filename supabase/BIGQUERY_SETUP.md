@@ -57,6 +57,15 @@ SELECT * FROM public.get_all_players() LIMIT 3;
 
 ## Troubleshooting
 
+### "function big_query_fdw_handler() does not exist" (Supabase hosted/staging)
+Esse erro ocorre quando o handler do BigQuery não está disponível (ex: Supabase Free, PostgreSQL antigo). As migrations 002, 004 e 024 foram ajustadas para serem resilientes — elas continuam sem falhar e o app sobe, mas as funcionalidades de análise NBA ficam indisponíveis.
+
+**Para habilitar o BigQuery no Supabase hosted:**
+1. **Database > Extensions**: habilite a extensão `wrappers`
+2. **Project Settings > Infrastructure**: faça upgrade do PostgreSQL para a versão mais recente
+3. Reexecute `npx supabase db push`
+4. Configure o BigQuery manualmente (server, foreign tables) conforme os passos deste guia
+
 ### "foreign-data wrapper bigquery_wrapper does not exist"
 Rode o PASSO 1 do setup_bigquery_local.sql
 

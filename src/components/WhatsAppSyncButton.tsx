@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from './ui/button';
 import { MessageCircle, CheckCircle, AlertCircle, Send } from 'lucide-react';
 import { useWhatsAppSync } from '../hooks/use-whatsapp-sync';
+import { telegramBotUrl } from '@/config/environment';
 
 interface WhatsAppSyncButtonProps {
   userId: string;
@@ -21,8 +22,7 @@ export default function WhatsAppSyncButton({
   const { isSynced, isLoading, error, syncWhatsApp } = useWhatsAppSync(userId);
 
   const handleSync = () => {
-    const telegramUrl = 'https://t.me/betinho_assistente_bot';
-    window.open(telegramUrl, '_blank');
+    window.open(telegramBotUrl, '_blank');
     alert('No Telegram, toque em Start (/start) e depois em “Enviar meu número”.');
   };
 

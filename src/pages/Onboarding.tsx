@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { telegramBotUrl } from '@/config/environment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -20,6 +21,7 @@ import {
   Gamepad2
 } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
+import { telegramBotUrl } from '../config/environment';
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -134,8 +136,7 @@ export default function Onboarding() {
   };
 
   const handleTelegramOpen = () => {
-    const telegramUrl = 'https://t.me/betinho_assistente_bot';
-    window.open(telegramUrl, '_blank');
+    window.open(telegramBotUrl, '_blank');
   };
 
   const handleComplete = () => {
