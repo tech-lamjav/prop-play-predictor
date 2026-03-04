@@ -79,7 +79,12 @@ export function getEnvironmentInfo() {
 
 // Development helpers
 export const isDevelopment = config.app.environment === 'development';
+export const isStaging = config.app.environment === 'staging';
 export const isProduction = config.app.environment === 'production';
+
+// Telegram bot URL (varies by environment)
+export const telegramBotUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || 'betinho_assistente_bot';
+export const telegramBotUrl = `https://t.me/${telegramBotUsername}`;
 
 // Feature flags
 export const canUseRealTimeUpdates = config.features.enableRealTimeUpdates;

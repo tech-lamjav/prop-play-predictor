@@ -28,6 +28,7 @@ import Games from "./pages/Games";
 import Home from "./pages/Home";
 import GameDetail from "./pages/GameDetail";
 import Settings from "./pages/Settings";
+import { EnvironmentBanner } from "./components/EnvironmentBanner";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <EnvironmentBanner />
         <PostHogPageView />
         <Routes>
           <Route path="/" element={<Landing />} />

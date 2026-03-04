@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { telegramBotUrl } from '@/config/environment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -216,7 +217,7 @@ export default function Settings() {
                   type="button"
                   variant="outline"
                   onClick={() =>
-                    window.open('https://t.me/betinho_assistente_bot?start=force_contact', '_blank')
+                    window.open(`${telegramBotUrl}?start=force_contact`, '_blank')
                   }
                 >
                   <Send className="w-4 h-4 mr-2" />

@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { telegramBotUrl } from '@/config/environment';
 import { useAuth } from '@/hooks/use-auth';
 import { useBets } from '@/hooks/use-bets';
 import { useUserUnit } from '@/hooks/use-user-unit';
@@ -361,7 +362,7 @@ export default function BettingDashboard() {
       />
 
       <a
-        href="https://t.me/betinho_assistente_bot"
+        href={telegramBotUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
