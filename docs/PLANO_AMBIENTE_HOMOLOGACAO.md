@@ -18,7 +18,7 @@ feature/task-XXX → PR para develop → merge → Vercel staging
                                                     ↓ (QA aprova)
                                           PR develop → main → Vercel produção
 ```
-a
+b
 ---
 
 ## Etapa 1: Criar arquivos de variáveis de ambiente por modo Vite
