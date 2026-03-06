@@ -7,6 +7,7 @@ import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
 import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
+import { ShareLinkModal } from '@/components/bets/ShareLinkModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements } from '@/hooks/use-capital-movements';
@@ -35,7 +36,8 @@ import {
   ChevronDown,
   Plus,
   BarChart3,
-  Send
+  Send,
+  Share2
 } from 'lucide-react';
 import { telegramBotUrl } from '../config/environment';
 import {
@@ -541,6 +543,7 @@ export default function Bets() {
     : formatCurrency;
   const [dailyBetCount, setDailyBetCount] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -1949,6 +1952,14 @@ export default function Bets() {
             <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
+            >
+              <Share2 className="w-4 h-4" />
+              COMPARTILHAR
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
                   navigate('/paywall');
@@ -2590,6 +2601,13 @@ export default function Bets() {
         bettingMarketsList={BETTING_MARKETS_LIST}
         userTags={userTags}
         onTagsUpdated={fetchUserTags}
+      />
+
+      <ShareLinkModal
+        open={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
+        filters={filters}
+        userTags={userTags}
       />
 
       <UnitConfigurationModal 
