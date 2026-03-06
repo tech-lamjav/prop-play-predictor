@@ -24,19 +24,25 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    let userId: string | null = null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      userId = payload.sub || null;
+    } catch {
+      // invalid token format
+    }
 
-    if (authError || !user) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
+        JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
     const { filters } = body;
@@ -53,7 +59,7 @@ serve(async (req) => {
     const { data: row, error: insertError } = await supabase
       .from('share_links')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         filters_snapshot: filters,
       })
       .select('id')
