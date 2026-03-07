@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserIcon, ArrowLeft, Users, LogOut, Settings, BarChart3, Send } from 'lucide-react';
+import { UserIcon, ArrowLeft, Users, LogOut, Settings, BarChart3, Send, Share2 } from 'lucide-react';
 import { telegramBotUrl } from '@/config/environment';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
@@ -15,6 +15,7 @@ import { Switch } from '../ui/switch';
 
 interface BetsHeaderProps {
   title?: string;
+  onShareClick?: () => void;
   onReferralClick?: () => void;
   showUnitsView?: boolean;
   onShowUnitsViewChange?: (checked: boolean) => void;
@@ -24,6 +25,7 @@ interface BetsHeaderProps {
 
 export const BetsHeader: React.FC<BetsHeaderProps> = ({
   title = "STATIX BETS",
+  onShareClick,
   onReferralClick,
   showUnitsView = false,
   onShowUnitsViewChange,
@@ -91,14 +93,15 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
             <span className="hidden sm:inline">UNIDADES</span>
           </button>
         )}
-        {onReferralClick && (
-          <button 
-            onClick={onReferralClick}
+        {onShareClick && (
+          <button
+            type="button"
+            onClick={onShareClick}
             className="terminal-button px-1.5 md:px-3 py-1.5 md:py-2 text-xs md:text-sm font-medium flex items-center border-terminal-border hover:border-terminal-green transition-colors"
-            title="Indique um amigo"
+            title="Compartilhar"
           >
-            <Users size={16} className="mr-1.5 md:mr-2" />
-            <span className="hidden sm:inline">Indique um amigo</span>
+            <Share2 size={16} className="mr-1.5 md:mr-2" />
+            <span className="hidden sm:inline">COMPARTILHAR</span>
           </button>
         )}
         <DropdownMenu>
@@ -133,6 +136,15 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
               <Send className="mr-2 h-4 w-4" />
               <span>Abrir Telegram</span>
             </DropdownMenuItem>
+            {onReferralClick && (
+              <DropdownMenuItem
+                onClick={onReferralClick}
+                className="text-terminal-text hover:bg-terminal-gray focus:bg-terminal-gray cursor-pointer"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                <span>Indique um amigo</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator className="bg-terminal-border-subtle" />
             <DropdownMenuItem 
               onClick={handleSignOut}
