@@ -36,8 +36,7 @@ import {
   ChevronDown,
   Plus,
   BarChart3,
-  Send,
-  Share2
+  Send
 } from 'lucide-react';
 import { telegramBotUrl } from '../config/environment';
 import {
@@ -1629,6 +1628,7 @@ export default function Bets() {
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
       <BetsHeader
+        onShareClick={() => setIsShareModalOpen(true)}
         onReferralClick={() => setReferralModalOpen(true)}
         showUnitsView={showUnitsView}
         onShowUnitsViewChange={setShowUnitsView}
@@ -1950,14 +1950,6 @@ export default function Bets() {
           <div className="flex justify-between items-center mb-3">
             <h3 className="section-title">APOSTAS RECENTES</h3>
             <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsShareModalOpen(true)}
-              className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-border hover:border-terminal-green transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-              COMPARTILHAR
-            </button>
             <button
               type="button"
               onClick={() => {
