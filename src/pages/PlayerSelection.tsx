@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Star, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, Star, ChevronDown, ChevronRight, ChevronLeft, Trophy } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { nbaDataService, Player } from '@/services/nba-data.service';
 import { getTeamLogoUrl } from '@/utils/team-logos';
 import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-status';
@@ -19,6 +27,8 @@ export default function PlayerSelection() {
   const [error, setError] = useState<string | null>(null);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [pendingTeamFilter, setPendingTeamFilter] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
 
   // Load players
   useEffect(() => {
@@ -141,6 +151,22 @@ export default function PlayerSelection() {
     .filter(p => (p.rating_stars || 0) > 0)
     .sort((a, b) => (b.rating_stars || 0) - (a.rating_stars || 0))
     .slice(0, 10);
+
+  // Pagination: applied to sortedTeams
+  const totalPages = Math.max(1, Math.ceil(sortedTeams.length / pageSize));
+  const paginatedTeams = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedTeams.slice(start, start + pageSize);
+  }, [sortedTeams, currentPage, pageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, teamFilter, pageSize]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  }, [totalPages]);
 
   const scrollToTeam = (teamName: string) => {
     const element = document.getElementById(`team-${teamName}`);
@@ -314,7 +340,7 @@ export default function PlayerSelection() {
                     </div>
                   ))}
                 </>
-              ) : sortedTeams.map((teamName) => (
+              ) : paginatedTeams.map((teamName) => (
                 <div key={teamName} id={`team-${teamName}`} className="terminal-container rounded overflow-hidden scroll-mt-24">
                   <button 
                     onClick={() => toggleTeam(teamName)}
@@ -372,6 +398,53 @@ export default function PlayerSelection() {
                 </div>
               )}
             </div>
+
+            {/* Pagination footer */}
+            {!isLoading && sortedTeams.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-terminal-border-subtle">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-terminal-text opacity-70">Mostrando</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="w-[70px] h-8 text-xs terminal-button border-terminal-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-terminal-dark-gray border-terminal-border">
+                      <SelectItem value="15">15</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-[10px] text-terminal-text opacity-70">
+                    de {sortedTeams.length} times ({filteredPlayers.length} jogadores)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="terminal-button h-8 w-8 p-0"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-[10px] text-terminal-text opacity-70 min-w-[4rem] text-center">
+                    {currentPage} de {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="terminal-button h-8 w-8 p-0"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       </div>
