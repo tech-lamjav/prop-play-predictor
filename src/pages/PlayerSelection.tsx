@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Star, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
 import { nbaDataService, Player } from '@/services/nba-data.service';
 import { getTeamLogoUrl } from '@/utils/team-logos';
@@ -151,19 +152,6 @@ export default function PlayerSelection() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <AuthenticatedLayout>
-        <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green mx-auto"></div>
-            <p className="mt-4 text-terminal-text font-mono">LOADING SYSTEM...</p>
-          </div>
-        </div>
-      </AuthenticatedLayout>
-    );
-  }
-
   if (error) {
     return (
       <AuthenticatedLayout>
@@ -214,15 +202,30 @@ export default function PlayerSelection() {
         <div className="container mx-auto px-4 py-6 space-y-8">
           
           {/* Best Players Section */}
-          {!searchTerm && !teamFilter && bestPlayers.length > 0 && (
+          {!searchTerm && !teamFilter && (bestPlayers.length > 0 || isLoading) && (
             <section>
               <div className="flex items-center space-x-2 mb-4 border-b border-terminal-border-subtle pb-2">
                 <Star className="w-4 h-4 text-terminal-green" />
                 <h2 className="section-title text-sm">TOP RATED PLAYERS</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {bestPlayers.map((player) => (
+                {isLoading ? (
+                  <>
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div key={`skel-top-${i}`} className="terminal-button p-3 rounded">
+                        <div className="flex justify-between items-start mb-2">
+                          <Skeleton className="h-4 w-28 bg-terminal-gray" />
+                          <Skeleton className="h-4 w-10 bg-terminal-gray" />
+                        </div>
+                        <div className="flex justify-between items-end">
+                          <Skeleton className="h-3 w-16 bg-terminal-gray" />
+                          <Skeleton className="h-3 w-12 bg-terminal-gray" />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : bestPlayers.map((player) => (
                   <div 
                     key={`best-${player.player_id}`}
                     onClick={() => handlePlayerSelect(player.player_id)}
@@ -253,7 +256,7 @@ export default function PlayerSelection() {
           )}
 
           {/* Team Logos Navigation */}
-          {!searchTerm && !teamFilter && (
+          {!isLoading && !searchTerm && !teamFilter && (
             <section className="py-4 overflow-x-auto scrollbar-hide">
               <div className="flex space-x-4 min-w-max px-2">
                 {sortedTeams.map((teamName) => {
@@ -297,7 +300,21 @@ export default function PlayerSelection() {
             </div>
 
             <div className="space-y-4">
-              {sortedTeams.map((teamName) => (
+              {isLoading ? (
+                <>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={`skel-team-${i}`} className="terminal-container rounded overflow-hidden">
+                      <div className="p-3 bg-terminal-gray border-b border-terminal-border-subtle">
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="h-4 w-4 bg-terminal-dark-gray rounded" />
+                          <Skeleton className="h-4 w-48 bg-terminal-dark-gray" />
+                          <Skeleton className="h-4 w-8 bg-terminal-dark-gray rounded" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : sortedTeams.map((teamName) => (
                 <div key={teamName} id={`team-${teamName}`} className="terminal-container rounded overflow-hidden scroll-mt-24">
                   <button 
                     onClick={() => toggleTeam(teamName)}
@@ -349,7 +366,7 @@ export default function PlayerSelection() {
                 </div>
               ))}
 
-              {sortedTeams.length === 0 && (
+              {!isLoading && sortedTeams.length === 0 && (
                 <div className="text-center py-12 text-terminal-text opacity-50 font-mono">
                   NO DATA FOUND MATCHING QUERY
                 </div>
