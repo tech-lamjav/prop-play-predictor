@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserIcon, ArrowLeft, Users, LogOut, Settings, BarChart3, Send } from 'lucide-react';
+import { telegramBotUrl } from '@/config/environment';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import {
@@ -126,7 +127,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
               <span>Configurações</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => window.open('https://t.me/betinho_assistente_bot', '_blank')}
+              onClick={() => window.open(telegramBotUrl, '_blank')}
               className="text-terminal-text hover:bg-terminal-gray focus:bg-terminal-gray cursor-pointer"
             >
               <Send className="mr-2 h-4 w-4" />

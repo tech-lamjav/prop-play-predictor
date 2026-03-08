@@ -16,6 +16,8 @@ interface TagSelectorProps {
   onTagsChange: (tags: Tag[]) => void;
   className?: string;
   onTagsUpdated?: () => void;
+  /** When provided, skips internal fetch and uses this list as the tag source. */
+  availableTags?: Tag[];
 }
 
 const TAG_COLORS = [
@@ -27,6 +29,14 @@ const TAG_COLORS = [
   '#fb923c', // orange
   '#ec4899', // pink
   '#14b8a6', // teal
+  '#84cc16', // lime
+  '#6366f1', // indigo
+  '#f43f5e', // rose
+  '#f59e0b', // amber
+  '#0ea5e9', // sky
+  '#10b981', // emerald
+  '#64748b', // slate
+  '#d946ef', // fuchsia
 ];
 
 export const TagSelector: React.FC<TagSelectorProps> = ({
@@ -34,20 +44,26 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
   selectedTags,
   onTagsChange,
   className = '',
-  onTagsUpdated
+  onTagsUpdated,
+  availableTags: controlledTags,
 }) => {
   const { user } = useAuth();
   const supabase = createClient();
-  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [internalTags, setInternalTags] = useState<Tag[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedColor, setSelectedColor] = useState(TAG_COLORS[0]);
+  const [editingColorTagId, setEditingColorTagId] = useState<string | null>(null);
+
+  // When controlledTags prop is provided by the parent, skip internal fetch.
+  const allTags = controlledTags ?? internalTags;
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !controlledTags) {
       fetchUserTags();
     }
-  }, [user?.id]);
+  }, [user?.id, controlledTags]);
 
   const fetchUserTags = async () => {
     if (!user?.id) return;
@@ -59,7 +75,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
       .order('name');
 
     if (!error && data) {
-      setAllTags(data);
+      setInternalTags(data);
     }
   };
 
@@ -68,21 +84,18 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
 
     setIsCreating(true);
 
-    const colorIndex = allTags.length % TAG_COLORS.length;
-    const color = TAG_COLORS[colorIndex];
-
     const { data, error } = await supabase
       .from('tags')
       .insert({
         user_id: user.id,
         name: newTagName.trim(),
-        color: color
+        color: selectedColor
       })
       .select()
       .single();
 
     if (!error && data) {
-      setAllTags([...allTags, data]);
+      setInternalTags(prev => [...prev, data]);
       setNewTagName('');
       handleTagToggle(data);
       onTagsUpdated?.();
@@ -98,8 +111,24 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
       .eq('id', tagId);
 
     if (!error) {
-      setAllTags(allTags.filter(t => t.id !== tagId));
+      setInternalTags(prev => prev.filter(t => t.id !== tagId));
       onTagsChange(selectedTags.filter(t => t.id !== tagId));
+      onTagsUpdated?.();
+    }
+  };
+
+  const updateTagColor = async (tagId: string, newColor: string) => {
+    const { data, error } = await supabase
+      .from('tags')
+      .update({ color: newColor })
+      .eq('id', tagId)
+      .select()
+      .single();
+
+    if (!error && data) {
+      setInternalTags(prev => prev.map(t => t.id === tagId ? { ...t, color: newColor } : t));
+      onTagsChange(selectedTags.map(t => t.id === tagId ? { ...t, color: newColor } : t));
+      setEditingColorTagId(null);
       onTagsUpdated?.();
     }
   };
@@ -124,28 +153,68 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
       {/* Selected Tags Display */}
       <div className="flex flex-wrap gap-2 mb-2">
         {selectedTags.map(tag => (
-          <span
-            key={tag.id}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
-            style={{
-              backgroundColor: `${tag.color}20`,
-              color: tag.color,
-              border: `1px solid ${tag.color}40`
-            }}
-          >
-            {tag.name}
-            <button
-              type="button"
-              onClick={() => handleTagToggle(tag)}
-              className="hover:opacity-70"
+          <Popover key={tag.id}>
+            <span
+              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
+              style={{
+                backgroundColor: `${tag.color}20`,
+                color: tag.color,
+                border: `1px solid ${tag.color}40`
+              }}
             >
-              <X className="w-3 h-3" />
-            </button>
-          </span>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Alterar cor da tag ${tag.name}`}
+                  className="hover:opacity-70 cursor-pointer"
+                >
+                  {tag.name}
+                </button>
+              </PopoverTrigger>
+              <button
+                type="button"
+                onClick={() => handleTagToggle(tag)}
+                className="hover:opacity-70"
+                aria-label={`Remover tag ${tag.name}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+            <PopoverContent
+              align="start"
+              sideOffset={4}
+              className="w-auto p-2 bg-terminal-dark-gray border-terminal-border text-terminal-text shadow-lg rounded"
+            >
+              <p className="text-xs opacity-50 uppercase mb-2">Cor da tag</p>
+              <div className="flex flex-wrap gap-1.5 max-w-[168px]">
+                {TAG_COLORS.map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => updateTagColor(tag.id, color)}
+                    aria-label={`Definir cor ${color} para ${tag.name}`}
+                    className={`w-5 h-5 rounded-full border-2 transition-all ${
+                      tag.color === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         ))}
 
         {selectedTags.length < 10 && (
-          <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <Popover
+            open={isOpen}
+            onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) {
+                setSelectedColor(TAG_COLORS[0]);
+                setEditingColorTagId(null);
+              }
+            }}
+          >
             <PopoverTrigger asChild>
               <button
                 type="button"
@@ -187,6 +256,20 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {TAG_COLORS.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setSelectedColor(color)}
+                      aria-label={`Cor ${color}`}
+                      className={`w-5 h-5 rounded-full border-2 transition-all ${
+                        selectedColor === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* Available Tags */}
@@ -195,28 +278,53 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                   <div className="text-xs opacity-50 uppercase mb-2">Selecionar</div>
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {availableTags.map(tag => (
-                      <div
-                        key={tag.id}
-                        className="flex items-center justify-between p-1 hover:bg-terminal-black rounded group"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleTagToggle(tag)}
-                          className="flex-1 text-left flex items-center gap-2"
-                        >
-                          <span
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: tag.color }}
-                          />
-                          <span className="text-xs">{tag.name}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteTag(tag.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-terminal-red transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                      <div key={tag.id} className="space-y-1">
+                        <div className="flex items-center justify-between p-1 hover:bg-terminal-black rounded group">
+                          <div className="flex-1 flex items-center gap-2 min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingColorTagId(prev => prev === tag.id ? null : tag.id);
+                              }}
+                              aria-label={`Alterar cor da tag ${tag.name}`}
+                              className={`w-3 h-3 rounded-full flex-shrink-0 border-2 transition-all ${
+                                editingColorTagId === tag.id ? 'border-white scale-110' : 'border-transparent'
+                              }`}
+                              style={{ backgroundColor: tag.color }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleTagToggle(tag)}
+                              className="flex-1 text-left text-xs truncate"
+                            >
+                              {tag.name}
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => deleteTag(tag.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-terminal-red transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                        {editingColorTagId === tag.id && (
+                          <div className="flex flex-wrap gap-1.5 pl-5 py-1">
+                            {TAG_COLORS.map(color => (
+                              <button
+                                key={color}
+                                type="button"
+                                onClick={() => updateTagColor(tag.id, color)}
+                                aria-label={`Definir cor ${color} para ${tag.name}`}
+                                className={`w-5 h-5 rounded-full border-2 transition-all ${
+                                  tag.color === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                                }`}
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

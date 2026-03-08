@@ -11,6 +11,7 @@ import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
+import { EnvironmentBanner } from "./components/EnvironmentBanner";
 
 // Lazy-loaded pages (not critical for first paint)
 const Betinho = React.lazy(() => import("./pages/Betinho"));
@@ -46,6 +47,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <EnvironmentBanner />
         <PostHogPageView />
         <Suspense fallback={<LazyFallback />}>
           <Routes>

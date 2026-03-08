@@ -6,6 +6,7 @@ import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { CheckCircle, Smartphone, AlertCircle, Send } from 'lucide-react';
 import { createClient } from '../integrations/supabase/client';
+import { telegramBotUrl } from '@/config/environment';
 
 interface WhatsAppOnboardingProps {
   userId: string;
@@ -52,8 +53,7 @@ export default function WhatsAppOnboarding({ userId, onComplete }: WhatsAppOnboa
   };
 
   const handleTelegramOpen = () => {
-    const telegramUrl = 'https://t.me/betinho_assistente_bot';
-    window.open(telegramUrl, '_blank');
+    window.open(telegramBotUrl, '_blank');
     setSuccess(true);
     setStep(3);
   };

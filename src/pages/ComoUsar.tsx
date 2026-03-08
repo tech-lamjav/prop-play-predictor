@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, MessageCircle, Send, Camera, AlertCircle, BookOpen, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { telegramBotUrl } from "@/config/environment";
 
 const ComoUsar = () => {
   const navigate = useNavigate();
-  const telegramLink = "https://t.me/betinho_assistente_bot";
+  const telegramLink = telegramBotUrl;
 
   const steps = [
     "Crie sua conta e faça login no app (signup).",
