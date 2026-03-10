@@ -86,7 +86,9 @@ export function filterBetsByDateRange(
 
 export function statsForDateRange(bets: Bet[]): PeriodStats {
   const totalBets = bets.length;
-  const totalStaked = bets.reduce((sum, bet) => sum + bet.stake_amount, 0);
+  const totalStaked = bets
+    .filter((b) => b.status !== 'void')
+    .reduce((sum, bet) => sum + bet.stake_amount, 0);
 
   const wonBets = bets.filter((b) => b.status === 'won');
   const lostBets = bets.filter((b) => b.status === 'lost');
