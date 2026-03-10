@@ -268,7 +268,9 @@ const BetRow = React.memo(function BetRow({
             ? formatValue((bet.stake_amount + bet.potential_return) / 2)
             : bet.status === 'half_lost'
               ? formatValue(bet.stake_amount / 2)
-              : formatValue(bet.potential_return)}
+              : bet.status === 'void'
+                ? formatValue(bet.stake_amount)
+                : formatValue(bet.potential_return)}
       </td>
       <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
         <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
@@ -448,7 +450,9 @@ const BetCard = React.memo(function BetCard({
                 ? formatValue((bet.stake_amount + bet.potential_return) / 2)
                 : bet.status === 'half_lost'
                   ? formatValue(bet.stake_amount / 2)
-                  : formatValue(bet.potential_return)}
+                  : bet.status === 'void'
+                    ? formatValue(bet.stake_amount)
+                    : formatValue(bet.potential_return)}
           </div>
         </div>
       </div>
@@ -746,7 +750,9 @@ export default function Bets() {
     if (!isMountedRef.current) return;
     
     const totalBets = betsData.length;
-    const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
+    const totalStaked = betsData
+      .filter(bet => bet.status !== 'void')
+      .reduce((sum, bet) => sum + bet.stake_amount, 0);
     
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
