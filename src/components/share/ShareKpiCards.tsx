@@ -28,7 +28,7 @@ export const ShareKpiCards: React.FC<ShareKpiCardsProps> = ({ bets }) => {
       positive: stats.roi >= 0,
     },
     {
-      title: 'Win Rate',
+      title: 'Taxa de Acerto',
       value: stats.winRate,
       format: (v: number) => `${v.toFixed(1)}%`,
       icon: Target,
