@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { UserPlus } from 'lucide-react';
 
 interface ShareLayoutProps {
   ownerName: string;
@@ -37,16 +38,26 @@ export const ShareLayout: React.FC<ShareLayoutProps> = ({
     <div className="min-h-screen bg-terminal-black text-terminal-text">
       <header className="border-b border-terminal-border bg-terminal-dark-gray">
         <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <h1 className="text-lg font-semibold text-terminal-green">
-              Apostas de {ownerName}
-            </h1>
-            <Badge
-              variant="secondary"
-              className="bg-terminal-gray/50 border-terminal-border text-terminal-text text-xs"
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold text-terminal-green">
+                Apostas de {ownerName}
+              </h1>
+              <Badge
+                variant="secondary"
+                className="bg-terminal-gray/50 border-terminal-border text-terminal-text text-xs"
+              >
+                Visão compartilhada — somente leitura
+              </Badge>
+            </div>
+
+            <a
+              href="/betinho"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black transition-colors rounded"
             >
-              Visão compartilhada — somente leitura
-            </Badge>
+              <UserPlus className="w-3.5 h-3.5" />
+              Criar conta grátis
+            </a>
           </div>
           {filterChips.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
