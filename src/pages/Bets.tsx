@@ -7,6 +7,7 @@ import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
 import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
+import { ShareLinkModal } from '@/components/bets/ShareLinkModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements } from '@/hooks/use-capital-movements';
@@ -268,7 +269,9 @@ const BetRow = React.memo(function BetRow({
             ? formatValue((bet.stake_amount + bet.potential_return) / 2)
             : bet.status === 'half_lost'
               ? formatValue(bet.stake_amount / 2)
-              : formatValue(bet.potential_return)}
+              : bet.status === 'void'
+                ? formatValue(bet.stake_amount)
+                : formatValue(bet.potential_return)}
       </td>
       <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
         <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
@@ -448,7 +451,9 @@ const BetCard = React.memo(function BetCard({
                 ? formatValue((bet.stake_amount + bet.potential_return) / 2)
                 : bet.status === 'half_lost'
                   ? formatValue(bet.stake_amount / 2)
-                  : formatValue(bet.potential_return)}
+                  : bet.status === 'void'
+                    ? formatValue(bet.stake_amount)
+                    : formatValue(bet.potential_return)}
           </div>
         </div>
       </div>
@@ -541,6 +546,7 @@ export default function Bets() {
     : formatCurrency;
   const [dailyBetCount, setDailyBetCount] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -746,13 +752,22 @@ export default function Bets() {
     if (!isMountedRef.current) return;
     
     const totalBets = betsData.length;
-    const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
+    const totalStaked = betsData
+      .filter(bet => bet.status !== 'void')
+      .reduce((sum, bet) => sum + bet.stake_amount, 0);
     
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
     const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
     const halfWonBets = betsData.filter(bet => bet.status === 'half_won');
     const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
+
+    const settledStaked =
+      wonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      cashoutBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      halfWonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      halfLostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
@@ -764,13 +779,13 @@ export default function Bets() {
     const winEquiv = wonBets.length + cashoutBets.length + halfWonBets.length * 0.5;
     const lossEquiv = lostBets.length + halfLostBets.length * 0.5;
     const winRate = settledCount > 0 ? (winEquiv / (winEquiv + lossEquiv)) * 100 : 0;
-    const profit = totalEarnings - totalStaked;
+    const profit = totalEarnings - settledStaked;
     const averageStake = totalBets > 0 ? totalStaked / totalBets : 0;
     
     const totalOdds = betsData.reduce((sum, bet) => sum + bet.odds, 0);
     const averageOdd = totalBets > 0 ? totalOdds / totalBets : 0;
     
-    const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
+    const roi = settledStaked > 0 ? (profit / settledStaked) * 100 : 0;
 
     if (isMountedRef.current) {
       setStats({
@@ -1245,12 +1260,14 @@ export default function Bets() {
       
       // Filter by date range
       if (filters.dateFrom) {
-        if (new Date(bet.bet_date) < new Date(filters.dateFrom)) return false;
+        const [fy, fm, fd] = filters.dateFrom.split('-').map(Number);
+        const fromDate = new Date(fy, fm - 1, fd, 0, 0, 0, 0);
+        if (new Date(bet.bet_date) < fromDate) return false;
       }
       if (filters.dateTo) {
-        const filterDate = new Date(filters.dateTo);
-        filterDate.setHours(23, 59, 59, 999);
-        if (new Date(bet.bet_date) > filterDate) return false;
+        const [ty, tm, td] = filters.dateTo.split('-').map(Number);
+        const toDate = new Date(ty, tm - 1, td, 23, 59, 59, 999);
+        if (new Date(bet.bet_date) > toDate) return false;
       }
       
       // Filter by search query
@@ -1626,6 +1643,7 @@ export default function Bets() {
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
       <BetsHeader
+        onShareClick={() => setIsShareModalOpen(true)}
         onReferralClick={() => setReferralModalOpen(true)}
         showUnitsView={showUnitsView}
         onShowUnitsViewChange={setShowUnitsView}
@@ -2590,6 +2608,13 @@ export default function Bets() {
         bettingMarketsList={BETTING_MARKETS_LIST}
         userTags={userTags}
         onTagsUpdated={fetchUserTags}
+      />
+
+      <ShareLinkModal
+        open={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
+        filters={filters}
+        userTags={userTags}
       />
 
       <UnitConfigurationModal 
