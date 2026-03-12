@@ -96,6 +96,13 @@ export function statsForDateRange(bets: Bet[]): PeriodStats {
   const halfWonBets = bets.filter((b) => b.status === 'half_won');
   const halfLostBets = bets.filter((b) => b.status === 'half_lost');
 
+  const settledStaked =
+    wonBets.reduce((s, b) => s + b.stake_amount, 0) +
+    lostBets.reduce((s, b) => s + b.stake_amount, 0) +
+    cashoutBets.reduce((s, b) => s + b.stake_amount, 0) +
+    halfWonBets.reduce((s, b) => s + b.stake_amount, 0) +
+    halfLostBets.reduce((s, b) => s + b.stake_amount, 0);
+
   const totalReturn =
     wonBets.reduce((s, b) => s + b.potential_return, 0) +
     cashoutBets.reduce((s, b) => s + (b.cashout_amount ?? 0), 0) +
@@ -106,8 +113,8 @@ export function statsForDateRange(bets: Bet[]): PeriodStats {
   const lossEquiv = lostBets.length + halfLostBets.length * 0.5;
   const settledCount = winEquiv + lossEquiv;
   const winRate = settledCount > 0 ? (winEquiv / settledCount) * 100 : 0;
-  const profit = totalReturn - totalStaked;
-  const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
+  const profit = totalReturn - settledStaked;
+  const roi = settledStaked > 0 ? (profit / settledStaked) * 100 : 0;
   const averageStake = totalBets > 0 ? totalStaked / totalBets : 0;
   const totalOdds = bets.reduce((s, b) => s + b.odds, 0);
   const averageOdd = totalBets > 0 ? totalOdds / totalBets : 0;

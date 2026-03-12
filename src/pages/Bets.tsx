@@ -761,6 +761,13 @@ export default function Bets() {
     const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
     const halfWonBets = betsData.filter(bet => bet.status === 'half_won');
     const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
+
+    const settledStaked =
+      wonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      cashoutBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      halfWonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      halfLostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
@@ -772,13 +779,13 @@ export default function Bets() {
     const winEquiv = wonBets.length + cashoutBets.length + halfWonBets.length * 0.5;
     const lossEquiv = lostBets.length + halfLostBets.length * 0.5;
     const winRate = settledCount > 0 ? (winEquiv / (winEquiv + lossEquiv)) * 100 : 0;
-    const profit = totalEarnings - totalStaked;
+    const profit = totalEarnings - settledStaked;
     const averageStake = totalBets > 0 ? totalStaked / totalBets : 0;
     
     const totalOdds = betsData.reduce((sum, bet) => sum + bet.odds, 0);
     const averageOdd = totalBets > 0 ? totalOdds / totalBets : 0;
     
-    const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
+    const roi = settledStaked > 0 ? (profit / settledStaked) * 100 : 0;
 
     if (isMountedRef.current) {
       setStats({
