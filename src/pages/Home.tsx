@@ -7,6 +7,7 @@ import { useSubscription } from '@/hooks/use-subscription';
 import { useAuth } from '@/hooks/use-auth';
 import { isFreePlayer } from '@/config/freemium';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-status';
 
@@ -79,16 +80,7 @@ export default function Home() {
   const freePlayers = filteredPlayers.filter(p => isFreePlayer(p.player_name));
   const premiumPlayers = filteredPlayers.filter(p => !isFreePlayer(p.player_name));
 
-  if (isLoading || subscriptionLoading) {
-    return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green mx-auto"></div>
-          <p className="mt-4 text-terminal-text font-mono">LOADING SYSTEM...</p>
-        </div>
-      </div>
-    );
-  }
+  const dataLoading = isLoading || subscriptionLoading;
 
   if (error) {
     return (
@@ -148,23 +140,39 @@ export default function Home() {
 
       <div className="container mx-auto px-4 py-8 space-y-12">
         {/* Free Players Section */}
-        {freePlayers.length > 0 && (
+        {(freePlayers.length > 0 || dataLoading) && (
           <section>
             <div className="text-center mb-6">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Star className="w-5 h-5 text-terminal-green" />
                 <h2 className="section-title text-base md:text-lg">JOGADORES GRATUITOS</h2>
-                <span className="text-xs bg-terminal-green/20 text-terminal-green px-2 py-1 rounded border border-terminal-green/30">
-                  {freePlayers.length}
-                </span>
+                {!dataLoading && (
+                  <span className="text-xs bg-terminal-green/20 text-terminal-green px-2 py-1 rounded border border-terminal-green/30">
+                    {freePlayers.length}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-terminal-text opacity-60">
                 Experimente grátis e veja o poder das análises avançadas
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
-              {freePlayers.map((player) => (
+              {dataLoading ? (
+                <>
+                  {[1, 2].map((i) => (
+                    <div key={`skel-free-${i}`} className="terminal-button p-6 rounded-lg border-2 border-terminal-green/10">
+                      <Skeleton className="h-5 w-40 bg-terminal-gray mb-3" />
+                      <Skeleton className="h-3 w-24 bg-terminal-gray mb-4" />
+                      <Skeleton className="h-6 w-16 bg-terminal-gray mb-4" />
+                      <div className="flex justify-between pt-4 border-t border-terminal-border-subtle">
+                        <Skeleton className="h-6 w-12 bg-terminal-gray" />
+                        <Skeleton className="h-4 w-20 bg-terminal-gray" />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : freePlayers.map((player) => (
                 <div 
                   key={`free-${player.player_id}`}
                   onClick={() => handlePlayerSelect(player.player_id)}
@@ -278,7 +286,7 @@ export default function Home() {
         )}
 
         {/* Premium Players Preview Section */}
-        {premiumPlayers.length > 0 && (
+        {(premiumPlayers.length > 0 || dataLoading) && (
           <section>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div className="flex items-center gap-2">
@@ -286,11 +294,13 @@ export default function Home() {
                 <h2 className="section-title text-base md:text-lg">
                   {isPremium ? 'TODOS OS JOGADORES' : 'PREVIEW - JOGADORES PREMIUM'}
                 </h2>
-                <span className="text-xs bg-terminal-yellow/20 text-terminal-yellow px-2 py-1 rounded border border-terminal-yellow/30">
-                  {premiumPlayers.length}
-                </span>
+                {!dataLoading && (
+                  <span className="text-xs bg-terminal-yellow/20 text-terminal-yellow px-2 py-1 rounded border border-terminal-yellow/30">
+                    {premiumPlayers.length}
+                  </span>
+                )}
               </div>
-              
+
               {/* Search Bar */}
               <div className="relative max-w-md md:max-w-xs w-full">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-terminal-text opacity-50 h-4 w-4" />
@@ -298,13 +308,24 @@ export default function Home() {
                   placeholder="BUSCAR JOGADORES..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={dataLoading}
                   className="terminal-input pl-10 h-10 text-sm w-full"
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-              {premiumPlayers.slice(0, isPremium ? premiumPlayers.length : 12).map((player) => {
+              {dataLoading ? (
+                <>
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div key={`skel-prem-${i}`} className="terminal-button p-3 md:p-4 rounded">
+                      <Skeleton className="h-4 w-24 bg-terminal-gray mb-2" />
+                      <Skeleton className="h-3 w-16 bg-terminal-gray mb-3" />
+                      <Skeleton className="h-5 w-12 bg-terminal-gray" />
+                    </div>
+                  ))}
+                </>
+              ) : premiumPlayers.slice(0, isPremium ? premiumPlayers.length : 12).map((player) => {
                 const canAccess = isPremium || isFreePlayer(player.player_name);
                 const slug = player.player_name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
                 const handleClick = () => {
@@ -370,7 +391,7 @@ export default function Home() {
               })}
             </div>
 
-            {!isPremium && premiumPlayers.length > 12 && (
+            {!dataLoading && !isPremium && premiumPlayers.length > 12 && (
               <div className="text-center mt-8">
                 <Button
                   onClick={() => navigate('/paywall-platform')}
@@ -384,7 +405,7 @@ export default function Home() {
           </section>
         )}
 
-        {filteredPlayers.length === 0 && (
+        {!dataLoading && filteredPlayers.length === 0 && (
           <div className="text-center py-12 text-terminal-text opacity-50 font-mono">
             <p className="text-sm mb-2">NENHUM JOGADOR ENCONTRADO</p>
             <p className="text-xs opacity-60">Tente buscar com outros termos</p>

@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { nbaDataService, Game } from '@/services/nba-data.service';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw, Lock, Zap, BarChart3, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useToast } from '@/hooks/use-toast';
@@ -104,20 +105,41 @@ const LastResults: React.FC<{ results: string; teamAbbr: string }> = ({ results,
   );
 };
 
+// Cache: date → games list (persists across navigations)
+const gamesCache = new Map<string, Game[]>();
+// Remember the last resolved date so revisits are instant
+let lastResolvedDate: string | null = null;
+
 export default function Games() {
   const navigate = useNavigate();
   const { isPremium } = useSubscription();
   const { toast } = useToast();
-  const [games, setGames] = useState<Game[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [games, setGames] = useState<Game[]>(() => {
+    if (lastResolvedDate && gamesCache.has(lastResolvedDate)) {
+      return gamesCache.get(lastResolvedDate)!;
+    }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(!lastResolvedDate);
   const [error, setError] = useState<string | null>(null);
-  
-  // Default to today's date in Sao Paulo timezone (GMT-3)
+
   const today = getSaoPauloTodayISO();
-  const [filters, setFilters] = useState<Filters>({ date: today, teamAbbreviation: '' });
+  const [filters, setFilters] = useState<Filters>({
+    date: lastResolvedDate || today,
+    teamAbbreviation: '',
+  });
   const [currentPage, setCurrentPage] = useState(1);
+  const hasMounted = useRef(false);
 
   const loadGames = async () => {
+    const cacheKey = `${filters.date}|${filters.teamAbbreviation}`;
+    const cached = gamesCache.get(cacheKey);
+    if (cached) {
+      setGames(cached);
+      setCurrentPage(1);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -128,7 +150,8 @@ export default function Games() {
       });
 
       setGames(data);
-      setCurrentPage(1); // Reset to first page on new load
+      gamesCache.set(cacheKey, data);
+      setCurrentPage(1);
     } catch (err) {
       console.error('Error loading games', err);
       setError('Não foi possível carregar os jogos.');
@@ -137,8 +160,14 @@ export default function Games() {
     }
   };
 
-  // Initial load: show today's games, or the next date that has games (up to 14 days ahead)
+  // Initial load: use cache or find first date with games
   useEffect(() => {
+    // Skip if we already have cached data from initialization
+    if (lastResolvedDate && games.length > 0) {
+      hasMounted.current = true;
+      return;
+    }
+
     let cancelled = false;
     const maxDaysAhead = 14;
 
@@ -159,6 +188,8 @@ export default function Games() {
         setGames(data);
         setFilters((prev) => ({ ...prev, date: dateToUse }));
         setCurrentPage(1);
+        lastResolvedDate = dateToUse;
+        gamesCache.set(dateToUse, data);
       } catch (err) {
         if (!cancelled) {
           console.error('Error loading games', err);
@@ -347,9 +378,26 @@ export default function Games() {
               </div>
 
               {isLoading ? (
-            <div className="bg-terminal-dark-gray border border-terminal-border-subtle p-6 rounded text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-terminal-green mx-auto mb-2"></div>
-              <p className="text-terminal-text text-sm">Carregando jogos...</p>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={`skel-game-${i}`} className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-1">
+                      <Skeleton className="w-8 h-8 rounded-full bg-terminal-gray" />
+                      <Skeleton className="h-4 w-28 bg-terminal-gray" />
+                    </div>
+                    <Skeleton className="h-3 w-16 bg-terminal-gray mx-2" />
+                    <div className="flex items-center gap-2 flex-1 justify-end">
+                      <Skeleton className="h-4 w-28 bg-terminal-gray" />
+                      <Skeleton className="w-8 h-8 rounded-full bg-terminal-gray" />
+                    </div>
+                  </div>
+                  <div className="flex justify-between mt-2 pt-2 border-t border-terminal-border-subtle">
+                    <Skeleton className="h-3 w-16 bg-terminal-gray" />
+                    <Skeleton className="h-3 w-16 bg-terminal-gray" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredGames.length === 0 ? (
             <div className="bg-terminal-dark-gray border border-terminal-border-subtle p-6 rounded text-center text-terminal-text opacity-60">

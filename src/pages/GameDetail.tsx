@@ -26,21 +26,33 @@ const formatGameDateSaoPaulo = (dateString: string): string => {
   });
 };
 
+// Cache per gameId
+interface GameDetailCache {
+  game: Game;
+  homePlayers: TeamPlayer[];
+  visitorPlayers: TeamPlayer[];
+  homeTeam: Team | null;
+  visitorTeam: Team | null;
+}
+const gameDetailCache = new Map<string, GameDetailCache>();
+
 export default function GameDetail() {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [game, setGame] = useState<Game | null>(null);
-  const [homePlayers, setHomePlayers] = useState<TeamPlayer[]>([]);
-  const [visitorPlayers, setVisitorPlayers] = useState<TeamPlayer[]>([]);
-  const [homeTeam, setHomeTeam] = useState<Team | null>(null);
-  const [visitorTeam, setVisitorTeam] = useState<Team | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const initCache = gameId ? gameDetailCache.get(gameId) : undefined;
+  const [game, setGame] = useState<Game | null>(initCache?.game ?? null);
+  const [homePlayers, setHomePlayers] = useState<TeamPlayer[]>(initCache?.homePlayers ?? []);
+  const [visitorPlayers, setVisitorPlayers] = useState<TeamPlayer[]>(initCache?.visitorPlayers ?? []);
+  const [homeTeam, setHomeTeam] = useState<Team | null>(initCache?.homeTeam ?? null);
+  const [visitorTeam, setVisitorTeam] = useState<Team | null>(initCache?.visitorTeam ?? null);
+  const [isLoading, setIsLoading] = useState(!initCache);
+  const hasLoaded = React.useRef(false);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !hasLoaded.current) {
       loadGameData();
     }
   }, [gameId, authLoading, user]);
@@ -60,8 +72,23 @@ export default function GameDetail() {
   const loadGameData = async () => {
     if (!gameId) return;
 
+    // Cache hit
+    const cached = gameDetailCache.get(gameId);
+    if (cached) {
+      setGame(cached.game);
+      setHomePlayers(cached.homePlayers);
+      setVisitorPlayers(cached.visitorPlayers);
+      setHomeTeam(cached.homeTeam);
+      setVisitorTeam(cached.visitorTeam);
+      setIsLoading(false);
+      hasLoaded.current = true;
+      return;
+    }
+
     try {
       setIsLoading(true);
+
+      // 1. Find the game
       const games = await nbaDataService.getGames();
       const foundGame = games.find(g => g.game_id === parseInt(gameId));
 
@@ -77,18 +104,39 @@ export default function GameDetail() {
 
       setGame(foundGame);
 
-      // Load players and team data for both teams
-      const [homePlayersData, visitorPlayersData, homeTeamData, visitorTeamData] = await Promise.all([
-        nbaDataService.getTeamPlayers(foundGame.home_team_id),
-        nbaDataService.getTeamPlayers(foundGame.visitor_team_id),
-        nbaDataService.getTeamById(foundGame.home_team_id),
-        nbaDataService.getTeamById(foundGame.visitor_team_id),
-      ]);
+      // 2. Home team data
+      let loadedHomePlayers: TeamPlayer[] = [];
+      let loadedHomeTeam: Team | null = null;
+      try {
+        const [hp, ht] = await Promise.allSettled([
+          nbaDataService.getTeamPlayers(foundGame.home_team_id),
+          nbaDataService.getTeamById(foundGame.home_team_id),
+        ]);
+        if (hp.status === 'fulfilled') { loadedHomePlayers = hp.value; setHomePlayers(hp.value); }
+        if (ht.status === 'fulfilled') { loadedHomeTeam = ht.value; setHomeTeam(ht.value); }
+      } catch (e) { console.error('Error loading home team:', e); }
 
-      setHomePlayers(homePlayersData);
-      setVisitorPlayers(visitorPlayersData);
-      setHomeTeam(homeTeamData);
-      setVisitorTeam(visitorTeamData);
+      // 3. Visitor team data
+      let loadedVisitorPlayers: TeamPlayer[] = [];
+      let loadedVisitorTeam: Team | null = null;
+      try {
+        const [vp, vt] = await Promise.allSettled([
+          nbaDataService.getTeamPlayers(foundGame.visitor_team_id),
+          nbaDataService.getTeamById(foundGame.visitor_team_id),
+        ]);
+        if (vp.status === 'fulfilled') { loadedVisitorPlayers = vp.value; setVisitorPlayers(vp.value); }
+        if (vt.status === 'fulfilled') { loadedVisitorTeam = vt.value; setVisitorTeam(vt.value); }
+      } catch (e) { console.error('Error loading visitor team:', e); }
+
+      // Save to cache
+      gameDetailCache.set(gameId, {
+        game: foundGame,
+        homePlayers: loadedHomePlayers,
+        visitorPlayers: loadedVisitorPlayers,
+        homeTeam: loadedHomeTeam,
+        visitorTeam: loadedVisitorTeam,
+      });
+      hasLoaded.current = true;
     } catch (error) {
       console.error('Error loading game data:', error);
       toast({
