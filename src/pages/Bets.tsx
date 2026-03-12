@@ -1254,12 +1254,14 @@ export default function Bets() {
       
       // Filter by date range
       if (filters.dateFrom) {
-        if (new Date(bet.bet_date) < new Date(filters.dateFrom)) return false;
+        const [fy, fm, fd] = filters.dateFrom.split('-').map(Number);
+        const fromDate = new Date(fy, fm - 1, fd, 0, 0, 0, 0);
+        if (new Date(bet.bet_date) < fromDate) return false;
       }
       if (filters.dateTo) {
-        const filterDate = new Date(filters.dateTo);
-        filterDate.setHours(23, 59, 59, 999);
-        if (new Date(bet.bet_date) > filterDate) return false;
+        const [ty, tm, td] = filters.dateTo.split('-').map(Number);
+        const toDate = new Date(ty, tm - 1, td, 23, 59, 59, 999);
+        if (new Date(bet.bet_date) > toDate) return false;
       }
       
       // Filter by search query
