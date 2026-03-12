@@ -145,7 +145,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
           <div className="space-y-1.5">
             <p className="text-xs font-bold text-terminal-text opacity-70 uppercase">Período</p>
             <div className="flex gap-2">
-              <Popover open={isDateFromOpen} onOpenChange={setIsDateFromOpen}>
+              <Popover open={isDateFromOpen} onOpenChange={setIsDateFromOpen} modal>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="flex-1 terminal-input text-xs justify-start h-auto py-1.5">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5" />
@@ -168,7 +168,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                 </PopoverContent>
               </Popover>
 
-              <Popover open={isDateToOpen} onOpenChange={setIsDateToOpen}>
+              <Popover open={isDateToOpen} onOpenChange={setIsDateToOpen} modal>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="flex-1 terminal-input text-xs justify-start h-auto py-1.5">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5" />
