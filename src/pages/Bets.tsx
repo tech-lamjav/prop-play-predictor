@@ -198,6 +198,8 @@ type BetRowProps = {
   openCashoutModal: (bet: Bet) => void;
   openEditModal: (bet: Bet) => void;
   deleteBet: (betId: string) => void;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
 };
 
 const BetRow = React.memo(function BetRow({
@@ -212,6 +214,8 @@ const BetRow = React.memo(function BetRow({
   openCashoutModal,
   openEditModal,
   deleteBet,
+  isSelected,
+  onToggleSelect,
 }: BetRowProps) {
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
@@ -219,6 +223,14 @@ const BetRow = React.memo(function BetRow({
 
   return (
     <tr className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors">
+      <td className="py-1.5 px-1.5 w-8">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelect(bet.id)}
+          className="w-3.5 h-3.5 accent-terminal-green cursor-pointer"
+        />
+      </td>
       <td className="py-1.5 px-1.5 opacity-70">
         {formatBetDate(bet.bet_date)}
       </td>
@@ -371,6 +383,8 @@ const BetCard = React.memo(function BetCard({
   openCashoutModal,
   openEditModal,
   deleteBet,
+  isSelected,
+  onToggleSelect,
 }: BetCardProps) {
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
@@ -379,7 +393,15 @@ const BetCard = React.memo(function BetCard({
   return (
     <div className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3">
       <div className="flex justify-between items-center">
-        <span className="text-xs opacity-50">{formatBetDate(bet.bet_date)}</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(bet.id)}
+            className="w-3.5 h-3.5 accent-terminal-green cursor-pointer shrink-0"
+          />
+          <span className="text-xs opacity-50">{formatBetDate(bet.bet_date)}</span>
+        </div>
         <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
           bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
           bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
@@ -653,6 +675,9 @@ export default function Bets() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
+
+  // Bulk selection state
+  const [selectedBetIds, setSelectedBetIds] = useState<Set<string>>(new Set());
 
   const supabase = useMemo(() => createClient(), []);
   const isMountedRef = useRef(true);
@@ -1385,6 +1410,66 @@ export default function Bets() {
   const paginationStartIndex = sortedBets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const paginationEndIndex = Math.min(currentPage * pageSize, sortedBets.length);
 
+  const toggleSelectBet = useCallback((betId: string) => {
+    setSelectedBetIds(prev => {
+      const next = new Set(prev);
+      if (next.has(betId)) next.delete(betId); else next.add(betId);
+      return next;
+    });
+  }, []);
+
+  const isAllPageSelected = paginatedBets.length > 0 &&
+    paginatedBets.every(b => selectedBetIds.has(b.id));
+  const isPageIndeterminate = paginatedBets.some(b => selectedBetIds.has(b.id)) && !isAllPageSelected;
+
+  const toggleSelectAllPage = useCallback(() => {
+    const pageIds = paginatedBets.map(b => b.id);
+    setSelectedBetIds(prev => {
+      const next = new Set(prev);
+      if (pageIds.every(id => next.has(id))) {
+        pageIds.forEach(id => next.delete(id));
+      } else {
+        pageIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  }, [paginatedBets]);
+
+  const selectAllFiltered = useCallback(() => {
+    setSelectedBetIds(new Set(filteredBets.map(b => b.id)));
+  }, [filteredBets]);
+
+  const clearSelection = useCallback(() => setSelectedBetIds(new Set()), []);
+
+  const bulkUpdateStatus = useCallback(async (status: string) => {
+    const ids = Array.from(selectedBetIds);
+    setBets(prev => prev.map(b => ids.includes(b.id) ? { ...b, status: status as Bet['status'] } : b));
+    try {
+      const { error } = await supabase.from('bets').update({ status }).in('id', ids);
+      if (error) throw error;
+      toast({ title: 'Sucesso', description: `${ids.length} apostas atualizadas` });
+      clearSelection();
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao atualizar apostas', variant: 'destructive' });
+      fetchBets();
+    }
+  }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
+
+  const bulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedBetIds);
+    if (!window.confirm(`Excluir ${ids.length} apostas selecionadas?`)) return;
+    setBets(prev => prev.filter(b => !ids.includes(b.id)));
+    try {
+      const { error } = await supabase.from('bets').delete().in('id', ids);
+      if (error) throw error;
+      toast({ title: 'Sucesso', description: `${ids.length} apostas excluídas` });
+      clearSelection();
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao excluir apostas', variant: 'destructive' });
+      fetchBets();
+    }
+  }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
+
   const filteredSportsList = useMemo(() => {
     if (!isSportQueryTouched) {
       return SPORTS_LIST;
@@ -1483,9 +1568,10 @@ export default function Bets() {
     }
   }, [filteredBets, calculateStats]);
 
-  // Reset to page 1 when filters, sort, or page size change
+  // Reset to page 1 and clear selection when filters, sort, or page size change
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedBetIds(new Set());
   }, [filters, sortConfig, pageSize]);
 
   // Handle sort
@@ -1519,6 +1605,7 @@ export default function Bets() {
       dateTo: '',
       selectedTags: []
     });
+    setSelectedBetIds(new Set());
   };
 
   // Helper to translate status
@@ -1594,9 +1681,11 @@ export default function Bets() {
         openCashoutModal={openCashoutModal}
         openEditModal={openEditModal}
         deleteBet={deleteBet}
+        isSelected={selectedBetIds.has(bet.id)}
+        onToggleSelect={toggleSelectBet}
       />
     ));
-  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet, selectedBetIds, toggleSelectBet]);
 
   const mobileCards = useMemo(() => {
     return paginatedBets.map((bet) => (
@@ -1613,13 +1702,16 @@ export default function Bets() {
         openCashoutModal={openCashoutModal}
         openEditModal={openEditModal}
         deleteBet={deleteBet}
+        isSelected={selectedBetIds.has(bet.id)}
+        onToggleSelect={toggleSelectBet}
       />
     ));
-  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet, selectedBetIds, toggleSelectBet]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  }, [totalPages]);
+    clearSelection();
+  }, [totalPages, clearSelection]);
 
   if (authLoading) {
     return (
@@ -2000,11 +2092,62 @@ export default function Bets() {
             </div>
           ) : (
             <>
+              {selectedBetIds.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mb-3 p-3 bg-terminal-dark-gray border border-terminal-green/30 rounded">
+                  <span className="text-xs text-terminal-green font-bold">
+                    {selectedBetIds.size} aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+                  </span>
+                  {filteredBets.length > paginatedBets.length && (
+                    <button type="button" onClick={selectAllFiltered}
+                      className="text-xs text-terminal-blue underline hover:no-underline">
+                      Selecionar todas as {filteredBets.length} apostas do filtro
+                    </button>
+                  )}
+                  <div className="flex-1" />
+                  <button type="button" onClick={() => bulkUpdateStatus('won')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5" /> GANHOU
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('lost')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingDown className="w-3.5 h-3.5" /> PERDEU
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('half_won')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 opacity-70" /> 1/2 GREEN
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingDown className="w-3.5 h-3.5 opacity-70" /> 1/2 RED
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('void')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                    <X className="w-3.5 h-3.5" /> ANULADA
+                  </button>
+                  <button type="button" onClick={bulkDelete}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" /> EXCLUIR
+                  </button>
+                  <button type="button" onClick={clearSelection}
+                    className="p-1.5 border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
               {/* Desktop Table View - table-auto para min-width das células (RETORNO/STATUS/AÇÕES) serem respeitados */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-xs min-w-[960px] table-auto">
                   <thead>
                     <tr className="border-b border-terminal-border-subtle">
+                      <th className="py-1.5 px-1.5 w-8">
+                        <input
+                          type="checkbox"
+                          checked={isAllPageSelected}
+                          ref={el => { if (el) el.indeterminate = isPageIndeterminate; }}
+                          onChange={toggleSelectAllPage}
+                          className="w-3.5 h-3.5 accent-terminal-green cursor-pointer"
+                        />
+                      </th>
                       <SortableHeader column="bet_date" label="DATA" />
                       <th className="text-left py-1.5 px-1.5 data-label">DESCRIÇÃO</th>
                       <th className="text-left py-1.5 px-1.5 data-label">TAGS</th>
