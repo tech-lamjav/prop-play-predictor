@@ -7,6 +7,7 @@ import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
 import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
+import { ShareLinkModal } from '@/components/bets/ShareLinkModal';
 import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements } from '@/hooks/use-capital-movements';
@@ -197,6 +198,8 @@ type BetRowProps = {
   openCashoutModal: (bet: Bet) => void;
   openEditModal: (bet: Bet) => void;
   deleteBet: (betId: string) => void;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
 };
 
 const BetRow = React.memo(function BetRow({
@@ -211,6 +214,8 @@ const BetRow = React.memo(function BetRow({
   openCashoutModal,
   openEditModal,
   deleteBet,
+  isSelected,
+  onToggleSelect,
 }: BetRowProps) {
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
@@ -218,6 +223,14 @@ const BetRow = React.memo(function BetRow({
 
   return (
     <tr className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors">
+      <td className="py-1.5 px-1.5 w-8">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelect(bet.id)}
+          className="w-3.5 h-3.5 accent-terminal-green cursor-pointer"
+        />
+      </td>
       <td className="py-1.5 px-1.5 opacity-70">
         {formatBetDate(bet.bet_date)}
       </td>
@@ -268,7 +281,9 @@ const BetRow = React.memo(function BetRow({
             ? formatValue((bet.stake_amount + bet.potential_return) / 2)
             : bet.status === 'half_lost'
               ? formatValue(bet.stake_amount / 2)
-              : formatValue(bet.potential_return)}
+              : bet.status === 'void'
+                ? formatValue(bet.stake_amount)
+                : formatValue(bet.potential_return)}
       </td>
       <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
         <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
@@ -368,6 +383,8 @@ const BetCard = React.memo(function BetCard({
   openCashoutModal,
   openEditModal,
   deleteBet,
+  isSelected,
+  onToggleSelect,
 }: BetCardProps) {
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
@@ -376,7 +393,15 @@ const BetCard = React.memo(function BetCard({
   return (
     <div className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3">
       <div className="flex justify-between items-center">
-        <span className="text-xs opacity-50">{formatBetDate(bet.bet_date)}</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(bet.id)}
+            className="w-3.5 h-3.5 accent-terminal-green cursor-pointer shrink-0"
+          />
+          <span className="text-xs opacity-50">{formatBetDate(bet.bet_date)}</span>
+        </div>
         <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
           bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
           bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
@@ -448,7 +473,9 @@ const BetCard = React.memo(function BetCard({
                 ? formatValue((bet.stake_amount + bet.potential_return) / 2)
                 : bet.status === 'half_lost'
                   ? formatValue(bet.stake_amount / 2)
-                  : formatValue(bet.potential_return)}
+                  : bet.status === 'void'
+                    ? formatValue(bet.stake_amount)
+                    : formatValue(bet.potential_return)}
           </div>
         </div>
       </div>
@@ -541,6 +568,7 @@ export default function Bets() {
     : formatCurrency;
   const [dailyBetCount, setDailyBetCount] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -648,6 +676,9 @@ export default function Bets() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
+  // Bulk selection state
+  const [selectedBetIds, setSelectedBetIds] = useState<Set<string>>(new Set());
+
   const supabase = useMemo(() => createClient(), []);
   const isMountedRef = useRef(true);
 
@@ -746,13 +777,22 @@ export default function Bets() {
     if (!isMountedRef.current) return;
     
     const totalBets = betsData.length;
-    const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
+    const totalStaked = betsData
+      .filter(bet => bet.status !== 'void')
+      .reduce((sum, bet) => sum + bet.stake_amount, 0);
     
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
     const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
     const halfWonBets = betsData.filter(bet => bet.status === 'half_won');
     const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
+
+    const settledStaked =
+      wonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      cashoutBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      halfWonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      halfLostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
@@ -764,13 +804,13 @@ export default function Bets() {
     const winEquiv = wonBets.length + cashoutBets.length + halfWonBets.length * 0.5;
     const lossEquiv = lostBets.length + halfLostBets.length * 0.5;
     const winRate = settledCount > 0 ? (winEquiv / (winEquiv + lossEquiv)) * 100 : 0;
-    const profit = totalEarnings - totalStaked;
+    const profit = totalEarnings - settledStaked;
     const averageStake = totalBets > 0 ? totalStaked / totalBets : 0;
     
     const totalOdds = betsData.reduce((sum, bet) => sum + bet.odds, 0);
     const averageOdd = totalBets > 0 ? totalOdds / totalBets : 0;
     
-    const roi = totalStaked > 0 ? (profit / totalStaked) * 100 : 0;
+    const roi = settledStaked > 0 ? (profit / settledStaked) * 100 : 0;
 
     if (isMountedRef.current) {
       setStats({
@@ -1245,12 +1285,14 @@ export default function Bets() {
       
       // Filter by date range
       if (filters.dateFrom) {
-        if (new Date(bet.bet_date) < new Date(filters.dateFrom)) return false;
+        const [fy, fm, fd] = filters.dateFrom.split('-').map(Number);
+        const fromDate = new Date(fy, fm - 1, fd, 0, 0, 0, 0);
+        if (new Date(bet.bet_date) < fromDate) return false;
       }
       if (filters.dateTo) {
-        const filterDate = new Date(filters.dateTo);
-        filterDate.setHours(23, 59, 59, 999);
-        if (new Date(bet.bet_date) > filterDate) return false;
+        const [ty, tm, td] = filters.dateTo.split('-').map(Number);
+        const toDate = new Date(ty, tm - 1, td, 23, 59, 59, 999);
+        if (new Date(bet.bet_date) > toDate) return false;
       }
       
       // Filter by search query
@@ -1368,6 +1410,66 @@ export default function Bets() {
   const paginationStartIndex = sortedBets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const paginationEndIndex = Math.min(currentPage * pageSize, sortedBets.length);
 
+  const toggleSelectBet = useCallback((betId: string) => {
+    setSelectedBetIds(prev => {
+      const next = new Set(prev);
+      if (next.has(betId)) next.delete(betId); else next.add(betId);
+      return next;
+    });
+  }, []);
+
+  const isAllPageSelected = paginatedBets.length > 0 &&
+    paginatedBets.every(b => selectedBetIds.has(b.id));
+  const isPageIndeterminate = paginatedBets.some(b => selectedBetIds.has(b.id)) && !isAllPageSelected;
+
+  const toggleSelectAllPage = useCallback(() => {
+    const pageIds = paginatedBets.map(b => b.id);
+    setSelectedBetIds(prev => {
+      const next = new Set(prev);
+      if (pageIds.every(id => next.has(id))) {
+        pageIds.forEach(id => next.delete(id));
+      } else {
+        pageIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  }, [paginatedBets]);
+
+  const selectAllFiltered = useCallback(() => {
+    setSelectedBetIds(new Set(filteredBets.map(b => b.id)));
+  }, [filteredBets]);
+
+  const clearSelection = useCallback(() => setSelectedBetIds(new Set()), []);
+
+  const bulkUpdateStatus = useCallback(async (status: string) => {
+    const ids = Array.from(selectedBetIds);
+    setBets(prev => prev.map(b => ids.includes(b.id) ? { ...b, status: status as Bet['status'] } : b));
+    try {
+      const { error } = await supabase.from('bets').update({ status }).in('id', ids);
+      if (error) throw error;
+      toast({ title: 'Sucesso', description: `${ids.length} apostas atualizadas` });
+      clearSelection();
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao atualizar apostas', variant: 'destructive' });
+      fetchBets();
+    }
+  }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
+
+  const bulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedBetIds);
+    if (!window.confirm(`Excluir ${ids.length} apostas selecionadas?`)) return;
+    setBets(prev => prev.filter(b => !ids.includes(b.id)));
+    try {
+      const { error } = await supabase.from('bets').delete().in('id', ids);
+      if (error) throw error;
+      toast({ title: 'Sucesso', description: `${ids.length} apostas excluídas` });
+      clearSelection();
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao excluir apostas', variant: 'destructive' });
+      fetchBets();
+    }
+  }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
+
   const filteredSportsList = useMemo(() => {
     if (!isSportQueryTouched) {
       return SPORTS_LIST;
@@ -1466,9 +1568,10 @@ export default function Bets() {
     }
   }, [filteredBets, calculateStats]);
 
-  // Reset to page 1 when filters, sort, or page size change
+  // Reset to page 1 and clear selection when filters, sort, or page size change
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedBetIds(new Set());
   }, [filters, sortConfig, pageSize]);
 
   // Handle sort
@@ -1502,6 +1605,7 @@ export default function Bets() {
       dateTo: '',
       selectedTags: []
     });
+    setSelectedBetIds(new Set());
   };
 
   // Helper to translate status
@@ -1577,9 +1681,11 @@ export default function Bets() {
         openCashoutModal={openCashoutModal}
         openEditModal={openEditModal}
         deleteBet={deleteBet}
+        isSelected={selectedBetIds.has(bet.id)}
+        onToggleSelect={toggleSelectBet}
       />
     ));
-  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet, selectedBetIds, toggleSelectBet]);
 
   const mobileCards = useMemo(() => {
     return paginatedBets.map((bet) => (
@@ -1596,13 +1702,16 @@ export default function Bets() {
         openCashoutModal={openCashoutModal}
         openEditModal={openEditModal}
         deleteBet={deleteBet}
+        isSelected={selectedBetIds.has(bet.id)}
+        onToggleSelect={toggleSelectBet}
       />
     ));
-  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet]);
+  }, [paginatedBets, formatValue, formatBetDateForDisplay, translateStatus, handleBetTagsChange, fetchUserTags, userTags, updateBetStatus, openCashoutModal, openEditModal, deleteBet, selectedBetIds, toggleSelectBet]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-  }, [totalPages]);
+    clearSelection();
+  }, [totalPages, clearSelection]);
 
   if (authLoading) {
     return (
@@ -1626,6 +1735,7 @@ export default function Bets() {
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
       <BetsHeader
+        onShareClick={() => setIsShareModalOpen(true)}
         onReferralClick={() => setReferralModalOpen(true)}
         showUnitsView={showUnitsView}
         onShowUnitsViewChange={setShowUnitsView}
@@ -1982,11 +2092,62 @@ export default function Bets() {
             </div>
           ) : (
             <>
+              {selectedBetIds.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mb-3 p-3 bg-terminal-dark-gray border border-terminal-green/30 rounded">
+                  <span className="text-xs text-terminal-green font-bold">
+                    {selectedBetIds.size} aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+                  </span>
+                  {filteredBets.length > paginatedBets.length && (
+                    <button type="button" onClick={selectAllFiltered}
+                      className="text-xs text-terminal-blue underline hover:no-underline">
+                      Selecionar todas as {filteredBets.length} apostas do filtro
+                    </button>
+                  )}
+                  <div className="flex-1" />
+                  <button type="button" onClick={() => bulkUpdateStatus('won')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5" /> GANHOU
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('lost')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingDown className="w-3.5 h-3.5" /> PERDEU
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('half_won')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 opacity-70" /> 1/2 GREEN
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <TrendingDown className="w-3.5 h-3.5 opacity-70" /> 1/2 RED
+                  </button>
+                  <button type="button" onClick={() => bulkUpdateStatus('void')}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                    <X className="w-3.5 h-3.5" /> ANULADA
+                  </button>
+                  <button type="button" onClick={bulkDelete}
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" /> EXCLUIR
+                  </button>
+                  <button type="button" onClick={clearSelection}
+                    className="p-1.5 border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
               {/* Desktop Table View - table-auto para min-width das células (RETORNO/STATUS/AÇÕES) serem respeitados */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-xs min-w-[960px] table-auto">
                   <thead>
                     <tr className="border-b border-terminal-border-subtle">
+                      <th className="py-1.5 px-1.5 w-8">
+                        <input
+                          type="checkbox"
+                          checked={isAllPageSelected}
+                          ref={el => { if (el) el.indeterminate = isPageIndeterminate; }}
+                          onChange={toggleSelectAllPage}
+                          className="w-3.5 h-3.5 accent-terminal-green cursor-pointer"
+                        />
+                      </th>
                       <SortableHeader column="bet_date" label="DATA" />
                       <th className="text-left py-1.5 px-1.5 data-label">DESCRIÇÃO</th>
                       <th className="text-left py-1.5 px-1.5 data-label">TAGS</th>
@@ -2590,6 +2751,13 @@ export default function Bets() {
         bettingMarketsList={BETTING_MARKETS_LIST}
         userTags={userTags}
         onTagsUpdated={fetchUserTags}
+      />
+
+      <ShareLinkModal
+        open={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
+        filters={filters}
+        userTags={userTags}
       />
 
       <UnitConfigurationModal 

@@ -33,6 +33,7 @@ const Games = React.lazy(() => import("./pages/Games"));
 const GameDetail = React.lazy(() => import("./pages/GameDetail"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const WeeklyReport = React.lazy(() => import("./pages/WeeklyReport"));
+const SharePage = React.lazy(() => import("./pages/SharePage"));
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,7 @@ const App = () => (
                 <WeeklyReport />
               </ProtectedRoute>
             } />
+            <Route path="/share/:token" element={<SharePage />} />
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
