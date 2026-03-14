@@ -1,14 +1,15 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { 
-  BarChart3, 
-  Target, 
-  TrendingUp, 
-  Users, 
+import {
+  BarChart3,
+  Target,
+  TrendingUp,
+  Users,
   ChevronDown,
   Menu,
-  X
+  X,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import UserNav from './UserNav';
@@ -35,6 +36,7 @@ export default function MainNav({ className }: MainNavProps) {
     { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
     { name: 'Jogos', href: '/home-games', icon: TrendingUp },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
+    { name: 'Relatório', href: '/weekly-report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
