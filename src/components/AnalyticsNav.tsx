@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { 
-  BarChart3, 
-  Calendar, 
+import {
+  BarChart3,
+  Calendar,
   Users,
   Menu,
   X,
@@ -11,7 +11,8 @@ import {
   Zap,
   ChevronLeft,
   ChevronDown,
-  Target
+  Target,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
@@ -43,6 +44,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
     { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
     { name: 'Jogos', href: '/home-games', icon: Calendar },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
+    { name: 'Relatório', href: '/weekly-report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
