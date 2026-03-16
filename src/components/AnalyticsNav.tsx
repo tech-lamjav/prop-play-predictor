@@ -44,7 +44,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
     { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
     { name: 'Jogos', href: '/home-games', icon: Calendar },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
-    { name: 'Relatório', href: '/weekly-report', icon: FileText },
+    { name: 'Relatório', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [

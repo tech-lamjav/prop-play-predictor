@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 
 const BUCKET = 'reports';
-const FILE_PATH = 'weekly-report.pdf';
+const FILE_PATH = 'report.pdf';
 // Signed URL valid for 1 hour
 const SIGNED_URL_EXPIRY = 3600;
 
@@ -45,7 +45,7 @@ export default function WeeklyReport() {
         <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
           <div>
-            <h1 className="text-lg sm:text-2xl font-bold text-foreground">Relatório Semanal</h1>
+            <h1 className="text-lg sm:text-2xl font-bold text-foreground">Relatório</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Atualizado periodicamente pela equipe Smartbetting
             </p>
@@ -78,7 +78,7 @@ export default function WeeklyReport() {
           <div className="rounded-lg border border-border overflow-hidden bg-white">
             <iframe
               src={pdfUrl}
-              title="Relatório Semanal"
+              title="Relatório"
               className="w-full"
               style={{ height: 'calc(100vh - 160px)', minHeight: '400px' }}
             />

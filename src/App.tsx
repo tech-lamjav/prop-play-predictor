@@ -32,7 +32,7 @@ const ComoUsar = React.lazy(() => import("./pages/ComoUsar"));
 const Games = React.lazy(() => import("./pages/Games"));
 const GameDetail = React.lazy(() => import("./pages/GameDetail"));
 const Settings = React.lazy(() => import("./pages/Settings"));
-const WeeklyReport = React.lazy(() => import("./pages/WeeklyReport"));
+const Report = React.lazy(() => import("./pages/Report"));
 const SharePage = React.lazy(() => import("./pages/SharePage"));
 
 const queryClient = new QueryClient();
@@ -106,9 +106,9 @@ const App = () => (
             <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
             <Route path="/paywall-platform" element={<PaywallPlatform />} />
             <Route path="/como-usar" element={<ComoUsar />} />
-            <Route path="/weekly-report" element={
+            <Route path="/report" element={
               <ProtectedRoute>
-                <WeeklyReport />
+                <Report />
               </ProtectedRoute>
             } />
             <Route path="/share/:token" element={<SharePage />} />
