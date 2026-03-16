@@ -36,7 +36,7 @@ export default function MainNav({ className }: MainNavProps) {
     { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
     { name: 'Jogos', href: '/home-games', icon: TrendingUp },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
-    { name: 'Relatório', href: '/weekly-report', icon: FileText },
+    { name: 'Relatório', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
