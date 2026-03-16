@@ -422,7 +422,7 @@ export default function Games() {
                   return (
                     <div 
                       key={game.game_id} 
-                      onClick={() => navigate(`/game/${game.game_id}`)}
+                      onClick={() => navigate(`/game/${game.game_id}?date=${game.game_date}`)}
                       className={`bg-terminal-dark-gray border rounded-lg p-3 hover:border-terminal-green/50 transition-all cursor-pointer ${
                         finished ? 'border-terminal-border-subtle' : 'border-terminal-border-subtle'
                       }`}
