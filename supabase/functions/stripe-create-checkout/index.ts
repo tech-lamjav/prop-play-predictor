@@ -106,7 +106,7 @@ serve(async (req) => {
     console.log('Product Type resolved:', finalProductType);
 
     // Use SITE_URL for frontend redirects, fallback to SUPABASE_URL for local dev
-    const SITE_URL = Deno.env.get('SITE_URL') || Deno.env.get('SUPABASE_URL') || 'http://localhost:8080';
+    const SITE_URL = Deno.env.get('SITE_URL') || Deno.env.get('APP_BASE_URL') || 'http://localhost:8080';
     console.log('Using SITE_URL:', SITE_URL);
 
     // Criar ou buscar customer no Stripe (necessário para Accounts V2)
