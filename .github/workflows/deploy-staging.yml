@@ -29,10 +29,10 @@ jobs:
       - name: Deploy Edge Functions (staging)
         run: |
           supabase functions deploy injury-insights
-          supabase functions deploy stripe-create-checkout
-          supabase functions deploy stripe-customer-portal
-          supabase functions deploy stripe-verify-session
-          supabase functions deploy stripe-webhook
+          supabase functions deploy stripe-create-checkout --no-verify-jwt
+          supabase functions deploy stripe-customer-portal --no-verify-jwt
+          supabase functions deploy stripe-verify-session --no-verify-jwt
+          supabase functions deploy stripe-webhook --no-verify-jwt
           supabase functions deploy telegram-webhook --no-verify-jwt
           supabase functions deploy whatsapp-webhook --no-verify-jwt
           supabase functions deploy share-create --no-verify-jwt
