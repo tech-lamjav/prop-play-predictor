@@ -29,8 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { UnitConfigurationModal } from '@/components/UnitConfigurationModal';
-import { BarChart3, ChevronRight, DollarSign, Target, Download, Send, AlertCircle } from 'lucide-react';
+import { BarChart3, ChevronRight, DollarSign, Target, Download, Send, AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const PERIOD_OPTIONS: { value: DateRangePreset; label: string }[] = [
   { value: '7', label: 'Últimos 7 dias' },
@@ -39,6 +43,7 @@ const PERIOD_OPTIONS: { value: DateRangePreset; label: string }[] = [
   { value: 'month', label: 'Este mês' },
   { value: 'ytd', label: 'Este ano (YTD)' },
   { value: 'all', label: 'Período total' },
+  { value: 'custom', label: 'Personalizado' },
 ];
 
 export default function BettingDashboard() {
@@ -50,6 +55,10 @@ export default function BettingDashboard() {
   const chartHeight = isMobile ? 200 : 280;
   const bankrollChartHeight = isMobile ? 200 : 300;
   const [period, setPeriod] = useState<DateRangePreset>('30');
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
+  const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
+  const [fromPopoverOpen, setFromPopoverOpen] = useState(false);
+  const [toPopoverOpen, setToPopoverOpen] = useState(false);
   const [showUnitsView, setShowUnitsView] = useState(false);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [betsWithTags, setBetsWithTags] = useState<BetWithTags[]>([]);
@@ -76,7 +85,19 @@ export default function BettingDashboard() {
     ).then(setBetsWithTags);
   }, [bets]);
 
-  const { from, to } = useMemo(() => getDateRangeForPreset(period), [period]);
+  const { from, to } = useMemo(() => {
+    if (period === 'custom' && customFrom && customTo) {
+      const fromDate = new Date(customFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      const toDate = new Date(customTo);
+      toDate.setHours(23, 59, 59, 999);
+      return { from: fromDate.toISOString(), to: toDate.toISOString() };
+    }
+    if (period === 'custom') {
+      return getDateRangeForPreset('all');
+    }
+    return getDateRangeForPreset(period);
+  }, [period, customFrom, customTo]);
   const currentBets = useMemo(
     () => filterBetsByDateRange(bets, from, to),
     [bets, from, to]
@@ -90,7 +111,7 @@ export default function BettingDashboard() {
     [betsWithTags, from, to]
   );
 
-  const showTrend = period !== 'all';
+  const showTrend = period !== 'all' && !(period === 'custom' && (!customFrom || !customTo));
   const { from: prevFrom, to: prevTo } = useMemo(
     () => (showTrend ? previousPeriod(from, to) : { from, to }),
     [showTrend, from, to]
@@ -188,6 +209,63 @@ export default function BettingDashboard() {
                 ))}
               </SelectContent>
             </Select>
+            {period === 'custom' && (
+              <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
+                <Popover open={fromPopoverOpen} onOpenChange={setFromPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="terminal-button px-3 py-2 text-sm flex items-center gap-2 w-full sm:w-[160px] border-terminal-border"
+                    >
+                      <CalendarIcon className="w-4 h-4 opacity-60" />
+                      <span className={customFrom ? '' : 'opacity-50'}>
+                        {customFrom ? format(customFrom, 'dd/MM/yyyy', { locale: ptBR }) : 'De'}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                    <CalendarComponent
+                      mode="single"
+                      selected={customFrom}
+                      onSelect={(date) => {
+                        setCustomFrom(date);
+                        setFromPopoverOpen(false);
+                        setToPopoverOpen(true);
+                      }}
+                      disabled={(date) => (customTo ? date > customTo : false)}
+                      initialFocus
+                      className="bg-terminal-dark-gray"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover open={toPopoverOpen} onOpenChange={setToPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="terminal-button px-3 py-2 text-sm flex items-center gap-2 w-full sm:w-[160px] border-terminal-border"
+                    >
+                      <CalendarIcon className="w-4 h-4 opacity-60" />
+                      <span className={customTo ? '' : 'opacity-50'}>
+                        {customTo ? format(customTo, 'dd/MM/yyyy', { locale: ptBR }) : 'Até'}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                    <CalendarComponent
+                      mode="single"
+                      selected={customTo}
+                      onSelect={(date) => {
+                        setCustomTo(date);
+                        setToPopoverOpen(false);
+                      }}
+                      disabled={(date) => (customFrom ? date < customFrom : false)}
+                      initialFocus
+                      className="bg-terminal-dark-gray"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
         </div>
 
