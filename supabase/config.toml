@@ -4,6 +4,16 @@ project_id = "lavclmlvvfzkblrstojd"
 # Expose both public and bigquery schemas via PostgREST
 schemas = ["public", "graphql_public", "bigquery"]
 
+[functions.stripe-create-checkout]
+# Função faz sua própria validação de JWT via supabase.auth.getUser()
+verify_jwt = false
+
+[functions.stripe-verify-session]
+verify_jwt = false
+
+[functions.stripe-customer-portal]
+verify_jwt = false
+
 [functions.stripe-webhook]
 # Desabilita verificação JWT para webhooks do Stripe
 # Webhooks do Stripe usam assinatura própria (stripe-signature) ao invés de JWT
