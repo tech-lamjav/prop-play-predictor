@@ -88,8 +88,10 @@ export default function GameDetail() {
     try {
       setIsLoading(true);
 
-      // 1. Find the game
-      const games = await nbaDataService.getGames();
+      // 1. Find the game — use date from query param to narrow the search
+      const searchParams = new URLSearchParams(location.search);
+      const gameDate = searchParams.get('date') || undefined;
+      const games = await nbaDataService.getGames({ gameDate });
       const foundGame = games.find(g => g.game_id === parseInt(gameId));
 
       if (!foundGame) {
