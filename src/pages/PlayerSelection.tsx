@@ -169,13 +169,25 @@ export default function PlayerSelection() {
   }, [totalPages]);
 
   const scrollToTeam = (teamName: string) => {
-    const element = document.getElementById(`team-${teamName}`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      if (!expandedTeams.has(teamName)) {
-        toggleTeam(teamName);
+    // Find which page the team is on and navigate there first
+    const teamIndex = sortedTeams.indexOf(teamName);
+    if (teamIndex !== -1) {
+      const targetPage = Math.floor(teamIndex / pageSize) + 1;
+      if (targetPage !== currentPage) {
+        setCurrentPage(targetPage);
       }
     }
+
+    // Wait for re-render then scroll
+    setTimeout(() => {
+      const element = document.getElementById(`team-${teamName}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+        if (!expandedTeams.has(teamName)) {
+          toggleTeam(teamName);
+        }
+      }
+    }, 50);
   };
 
   if (error) {
