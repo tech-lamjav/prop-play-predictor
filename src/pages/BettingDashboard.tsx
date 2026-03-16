@@ -57,6 +57,8 @@ export default function BettingDashboard() {
   const [period, setPeriod] = useState<DateRangePreset>('30');
   const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
   const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
+  const [fromPopoverOpen, setFromPopoverOpen] = useState(false);
+  const [toPopoverOpen, setToPopoverOpen] = useState(false);
   const [showUnitsView, setShowUnitsView] = useState(false);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [betsWithTags, setBetsWithTags] = useState<BetWithTags[]>([]);
@@ -209,7 +211,7 @@ export default function BettingDashboard() {
             </Select>
             {period === 'custom' && (
               <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
-                <Popover>
+                <Popover open={fromPopoverOpen} onOpenChange={setFromPopoverOpen}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
@@ -225,14 +227,18 @@ export default function BettingDashboard() {
                     <CalendarComponent
                       mode="single"
                       selected={customFrom}
-                      onSelect={setCustomFrom}
+                      onSelect={(date) => {
+                        setCustomFrom(date);
+                        setFromPopoverOpen(false);
+                        setToPopoverOpen(true);
+                      }}
                       disabled={(date) => (customTo ? date > customTo : false)}
                       initialFocus
                       className="bg-terminal-dark-gray"
                     />
                   </PopoverContent>
                 </Popover>
-                <Popover>
+                <Popover open={toPopoverOpen} onOpenChange={setToPopoverOpen}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
@@ -248,7 +254,10 @@ export default function BettingDashboard() {
                     <CalendarComponent
                       mode="single"
                       selected={customTo}
-                      onSelect={setCustomTo}
+                      onSelect={(date) => {
+                        setCustomTo(date);
+                        setToPopoverOpen(false);
+                      }}
                       disabled={(date) => (customFrom ? date < customFrom : false)}
                       initialFocus
                       className="bg-terminal-dark-gray"
