@@ -228,7 +228,7 @@ const BetRow = React.memo(function BetRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(bet.id)}
-          className="w-3.5 h-3.5 accent-terminal-green cursor-pointer"
+          className="w-3 h-3 accent-terminal-green cursor-pointer opacity-60 checked:opacity-100"
         />
       </td>
       <td className="py-1.5 px-1.5 opacity-70">
@@ -1455,6 +1455,22 @@ export default function Bets() {
     }
   }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
 
+  const bulkAddTag = useCallback(async (tag: Tag) => {
+    const ids = Array.from(selectedBetIds);
+    setBets(prev => prev.map(b =>
+      ids.includes(b.id) && !b.tags?.some(t => t.id === tag.id)
+        ? { ...b, tags: [...(b.tags || []), tag] } as Bet
+        : b
+    ));
+    try {
+      await Promise.all(ids.map(betId => supabase.rpc('add_tag_to_bet', { p_bet_id: betId, p_tag_id: tag.id })));
+      toast({ title: 'Sucesso', description: `Tag "${tag.name}" adicionada a ${ids.length} apostas` });
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao adicionar tag', variant: 'destructive' });
+      fetchBets();
+    }
+  }, [selectedBetIds, supabase, toast, fetchBets]);
+
   const bulkDelete = useCallback(async () => {
     const ids = Array.from(selectedBetIds);
     if (!window.confirm(`Excluir ${ids.length} apostas selecionadas?`)) return;
@@ -2092,60 +2108,18 @@ export default function Bets() {
             </div>
           ) : (
             <>
-              {selectedBetIds.size > 0 && (
-                <div className="flex flex-wrap items-center gap-2 mb-3 p-3 bg-terminal-dark-gray border border-terminal-green/30 rounded">
-                  <span className="text-xs text-terminal-green font-bold">
-                    {selectedBetIds.size} aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
-                  </span>
-                  {filteredBets.length > paginatedBets.length && (
-                    <button type="button" onClick={selectAllFiltered}
-                      className="text-xs text-terminal-blue underline hover:no-underline">
-                      Selecionar todas as {filteredBets.length} apostas do filtro
-                    </button>
-                  )}
-                  <div className="flex-1" />
-                  <button type="button" onClick={() => bulkUpdateStatus('won')}
-                    className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5" /> GANHOU
-                  </button>
-                  <button type="button" onClick={() => bulkUpdateStatus('lost')}
-                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                    <TrendingDown className="w-3.5 h-3.5" /> PERDEU
-                  </button>
-                  <button type="button" onClick={() => bulkUpdateStatus('half_won')}
-                    className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 opacity-70" /> 1/2 GREEN
-                  </button>
-                  <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
-                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                    <TrendingDown className="w-3.5 h-3.5 opacity-70" /> 1/2 RED
-                  </button>
-                  <button type="button" onClick={() => bulkUpdateStatus('void')}
-                    className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
-                    <X className="w-3.5 h-3.5" /> ANULADA
-                  </button>
-                  <button type="button" onClick={bulkDelete}
-                    className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                    <Trash2 className="w-3.5 h-3.5" /> EXCLUIR
-                  </button>
-                  <button type="button" onClick={clearSelection}
-                    className="p-1.5 border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
               {/* Desktop Table View - table-auto para min-width das células (RETORNO/STATUS/AÇÕES) serem respeitados */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-xs min-w-[960px] table-auto">
                   <thead>
                     <tr className="border-b border-terminal-border-subtle">
-                      <th className="py-1.5 px-1.5 w-8">
+                      <th className="py-1.5 px-1.5 w-8 text-left">
                         <input
                           type="checkbox"
                           checked={isAllPageSelected}
                           ref={el => { if (el) el.indeterminate = isPageIndeterminate; }}
                           onChange={toggleSelectAllPage}
-                          className="w-3.5 h-3.5 accent-terminal-green cursor-pointer"
+                          className="w-3 h-3 accent-terminal-green cursor-pointer opacity-60 checked:opacity-100"
                         />
                       </th>
                       <SortableHeader column="bet_date" label="DATA" />
@@ -2220,10 +2194,73 @@ export default function Bets() {
         </div>
       </main>
 
-      {/* Keep existing Modals but wrap them or style them if possible. 
-          For now, using the existing Shadcn dialogs is fine as they are overlays.
-          I will just ensure they are rendered.
-      */}
+      {/* Bulk Action Bar - fixed at bottom like ClickUp */}
+      {selectedBetIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-3 pb-3 pointer-events-none">
+        <div className="container flex items-center gap-2 px-4 py-3 bg-terminal-dark-gray border border-white/10 rounded-lg shadow-lg pointer-events-auto">
+          <span className="text-xs text-terminal-green font-bold whitespace-nowrap">
+            {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+          </span>
+          <button type="button" onClick={clearSelection}
+            className="text-xs text-terminal-text/50 hover:text-terminal-text transition-colors">
+            ×
+          </button>
+          {filteredBets.length > paginatedBets.length && (
+            <button type="button" onClick={selectAllFiltered}
+              className="text-xs text-terminal-blue underline hover:no-underline whitespace-nowrap">
+              Selecionar todas as {filteredBets.length}
+            </button>
+          )}
+          <div className="flex-1" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button"
+                className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> TAG
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-1 bg-terminal-dark-gray border-terminal-border" align="start" side="top">
+              {userTags.length === 0 ? (
+                <p className="text-xs text-terminal-text/50 p-2">Nenhuma tag criada</p>
+              ) : (
+                userTags.map(tag => (
+                  <button key={tag.id} type="button"
+                    onClick={() => bulkAddTag(tag)}
+                    className="w-full text-left px-2 py-1.5 text-xs hover:bg-terminal-gray rounded flex items-center gap-2 transition-colors">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                    {tag.name}
+                  </button>
+                ))
+              )}
+            </PopoverContent>
+          </Popover>
+          <button type="button" onClick={() => bulkUpdateStatus('won')}
+            className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5" /> GANHOU
+          </button>
+          <button type="button" onClick={() => bulkUpdateStatus('lost')}
+            className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+            <TrendingDown className="w-3.5 h-3.5" /> PERDEU
+          </button>
+          <button type="button" onClick={() => bulkUpdateStatus('half_won')}
+            className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 opacity-70" /> 1/2 GREEN
+          </button>
+          <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
+            className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+            <TrendingDown className="w-3.5 h-3.5 opacity-70" /> 1/2 RED
+          </button>
+          <button type="button" onClick={() => bulkUpdateStatus('void')}
+            className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+            <X className="w-3.5 h-3.5" /> ANULADA
+          </button>
+          <button type="button" onClick={bulkDelete}
+            className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+            <Trash2 className="w-3.5 h-3.5" /> EXCLUIR
+          </button>
+        </div>
+        </div>
+      )}
       
       {/* Cashout Modal */}
       <Dialog open={cashoutModal.isOpen} onOpenChange={(open) => 
