@@ -11,7 +11,7 @@ export interface PeriodStats {
   averageOdd: number;
 }
 
-export type DateRangePreset = '7' | '30' | '90' | 'month' | 'ytd' | 'all';
+export type DateRangePreset = '7' | '30' | '90' | 'month' | 'ytd' | 'all' | 'custom';
 
 /** Returns [start, end] as ISO date strings (start at 00:00, end at 23:59:59 is implied by next-day exclusive if needed). */
 export function getDateRangeForPreset(
@@ -50,6 +50,10 @@ export function getDateRangeForPreset(
     }
     case 'all': {
       from.setTime(0);
+      return { from: from.toISOString(), to: to.toISOString() };
+    }
+    case 'custom': {
+      from.setHours(0, 0, 0, 0);
       return { from: from.toISOString(), to: to.toISOString() };
     }
     default:
