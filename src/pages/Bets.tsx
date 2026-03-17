@@ -59,6 +59,11 @@ import {
   PopoverTrigger,
 } from '../components/ui/popover';
 import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '../components/ui/sheet';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -1040,7 +1045,7 @@ export default function Bets() {
       }
 
       const { data: tags } = await supabase.rpc('get_bet_tags', { p_bet_id: newBet.id });
-      const betWithTags = { ...newBet, tags: tags ?? [] };
+      const betWithTags = { ...newBet, tags: tags ?? [] } as Bet;
 
       if (isMountedRef.current) {
         setBets(prev => [betWithTags, ...prev]);
@@ -2071,7 +2076,19 @@ export default function Bets() {
         {/* Bets Table */}
         <div className="terminal-container p-4">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="section-title">APOSTAS RECENTES</h3>
+            <div className="flex flex-col gap-1">
+              <h3 className="section-title">APOSTAS RECENTES</h3>
+              <label className="md:hidden flex items-center gap-1.5 cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  checked={isAllPageSelected}
+                  ref={el => { if (el) el.indeterminate = isPageIndeterminate; }}
+                  onChange={toggleSelectAllPage}
+                  className="w-3 h-3 accent-terminal-green cursor-pointer opacity-60 checked:opacity-100"
+                />
+                <span className="text-[10px] text-terminal-text/50 uppercase tracking-wider">Selecionar todos</span>
+              </label>
+            </div>
             <div className="flex items-center gap-3">
             <button
               type="button"
@@ -2197,68 +2214,138 @@ export default function Bets() {
       {/* Bulk Action Bar - fixed at bottom like ClickUp */}
       {selectedBetIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-3 pb-3 pointer-events-none">
-        <div className="container flex items-center gap-2 px-4 py-3 bg-terminal-dark-gray border border-white/10 rounded-lg shadow-lg pointer-events-auto">
-          <span className="text-xs text-terminal-green font-bold whitespace-nowrap">
-            {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
-          </span>
-          <button type="button" onClick={clearSelection}
-            className="text-xs text-terminal-text/50 hover:text-terminal-text transition-colors">
-            ×
-          </button>
-          {filteredBets.length > paginatedBets.length && (
-            <button type="button" onClick={selectAllFiltered}
-              className="text-xs text-terminal-blue underline hover:no-underline whitespace-nowrap">
-              Selecionar todas as {filteredBets.length}
+          <div className="container flex items-center gap-2 px-4 py-3 bg-terminal-dark-gray border border-white/10 rounded-lg shadow-lg pointer-events-auto">
+            <span className="text-xs text-terminal-green font-bold whitespace-nowrap">
+              {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+            </span>
+            <button type="button" onClick={clearSelection}
+              className="text-xs text-terminal-text/50 hover:text-terminal-text transition-colors">
+              ×
             </button>
-          )}
-          <div className="flex-1" />
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button"
-                className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
-                <Plus className="w-3.5 h-3.5" /> TAG
+            {filteredBets.length > paginatedBets.length && (
+              <button type="button" onClick={selectAllFiltered}
+                className="hidden md:inline text-xs text-terminal-blue underline hover:no-underline whitespace-nowrap">
+                Selecionar todas as {filteredBets.length}
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-1 bg-terminal-dark-gray border-terminal-border" align="start" side="top">
-              {userTags.length === 0 ? (
-                <p className="text-xs text-terminal-text/50 p-2">Nenhuma tag criada</p>
-              ) : (
-                userTags.map(tag => (
-                  <button key={tag.id} type="button"
-                    onClick={() => bulkAddTag(tag)}
-                    className="w-full text-left px-2 py-1.5 text-xs hover:bg-terminal-gray rounded flex items-center gap-2 transition-colors">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
-                    {tag.name}
+            )}
+            <div className="flex-1" />
+
+            {/* Mobile: single "Ações" button opening a bottom sheet */}
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <button type="button"
+                    className="px-4 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green rounded transition-colors flex items-center gap-1.5">
+                    <ChevronUp className="w-3.5 h-3.5" /> Ações
                   </button>
-                ))
-              )}
-            </PopoverContent>
-          </Popover>
-          <button type="button" onClick={() => bulkUpdateStatus('won')}
-            className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5" /> GANHOU
-          </button>
-          <button type="button" onClick={() => bulkUpdateStatus('lost')}
-            className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-            <TrendingDown className="w-3.5 h-3.5" /> PERDEU
-          </button>
-          <button type="button" onClick={() => bulkUpdateStatus('half_won')}
-            className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 opacity-70" /> 1/2 GREEN
-          </button>
-          <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
-            className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-            <TrendingDown className="w-3.5 h-3.5 opacity-70" /> 1/2 RED
-          </button>
-          <button type="button" onClick={() => bulkUpdateStatus('void')}
-            className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
-            <X className="w-3.5 h-3.5" /> ANULADA
-          </button>
-          <button type="button" onClick={bulkDelete}
-            className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-            <Trash2 className="w-3.5 h-3.5" /> EXCLUIR
-          </button>
-        </div>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="bg-terminal-dark-gray border-t border-white/10 px-4 pb-8 pt-4 rounded-t-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-terminal-text/50">
+                      {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+                    </p>
+                    {filteredBets.length > paginatedBets.length && (
+                      <button type="button" onClick={selectAllFiltered}
+                        className="text-xs text-terminal-blue underline hover:no-underline">
+                        Selecionar todas as {filteredBets.length}
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => bulkUpdateStatus('won')}
+                      className="py-3 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
+                      <TrendingUp className="w-4 h-4" /> GANHOU
+                    </button>
+                    <button type="button" onClick={() => bulkUpdateStatus('lost')}
+                      className="py-3 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
+                      <TrendingDown className="w-4 h-4" /> PERDEU
+                    </button>
+                    <button type="button" onClick={() => bulkUpdateStatus('half_won')}
+                      className="py-3 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
+                      <TrendingUp className="w-4 h-4 opacity-70" /> 1/2 GREEN
+                    </button>
+                    <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
+                      className="py-3 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
+                      <TrendingDown className="w-4 h-4 opacity-70" /> 1/2 RED
+                    </button>
+                    <button type="button" onClick={() => bulkUpdateStatus('void')}
+                      className="py-3 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center justify-center gap-2">
+                      <X className="w-4 h-4" /> ANULADA
+                    </button>
+                    <button type="button" onClick={bulkDelete}
+                      className="py-3 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
+                      <Trash2 className="w-4 h-4" /> EXCLUIR
+                    </button>
+                  </div>
+                  {userTags.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs text-terminal-text/50 mb-2">Adicionar tag</p>
+                      <div className="flex flex-wrap gap-2">
+                        {userTags.map(tag => (
+                          <button key={tag.id} type="button"
+                            onClick={() => bulkAddTag(tag)}
+                            className="px-3 py-1.5 text-xs border border-terminal-border hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                            {tag.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </SheetContent>
+              </Sheet>
+            </div>
+
+            {/* Desktop: inline buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button"
+                    className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5" /> TAG
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-1 bg-terminal-dark-gray border-terminal-border" align="start" side="top">
+                  {userTags.length === 0 ? (
+                    <p className="text-xs text-terminal-text/50 p-2">Nenhuma tag criada</p>
+                  ) : (
+                    userTags.map(tag => (
+                      <button key={tag.id} type="button"
+                        onClick={() => bulkAddTag(tag)}
+                        className="w-full text-left px-2 py-1.5 text-xs hover:bg-terminal-gray rounded flex items-center gap-2 transition-colors">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
+                        {tag.name}
+                      </button>
+                    ))
+                  )}
+                </PopoverContent>
+              </Popover>
+              <button type="button" onClick={() => bulkUpdateStatus('won')}
+                className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5" /> GANHOU
+              </button>
+              <button type="button" onClick={() => bulkUpdateStatus('lost')}
+                className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                <TrendingDown className="w-3.5 h-3.5" /> PERDEU
+              </button>
+              <button type="button" onClick={() => bulkUpdateStatus('half_won')}
+                className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 opacity-70" /> 1/2 GREEN
+              </button>
+              <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
+                className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                <TrendingDown className="w-3.5 h-3.5 opacity-70" /> 1/2 RED
+              </button>
+              <button type="button" onClick={() => bulkUpdateStatus('void')}
+                className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                <X className="w-3.5 h-3.5" /> ANULADA
+              </button>
+              <button type="button" onClick={bulkDelete}
+                className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
+                <Trash2 className="w-3.5 h-3.5" /> EXCLUIR
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
@@ -2818,7 +2905,7 @@ export default function Bets() {
         href={telegramBotUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
+        className={`fixed right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105 ${selectedBetIds.size > 0 ? 'bottom-20' : 'bottom-6'}`}
         title="Abrir Telegram"
       >
         <Send size={20} />
