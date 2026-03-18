@@ -27,6 +27,7 @@ export interface CreateBetFormData {
   bet_date: string;
   match_date: string;
   selectedTagIds: string[];
+  is_credit_bet: boolean;
 }
 
 interface CreateBetModalProps {
@@ -51,6 +52,7 @@ const getDefaultFormData = (): CreateBetFormData => ({
   bet_date: new Date().toISOString().split('T')[0],
   match_date: '',
   selectedTagIds: [],
+  is_credit_bet: false,
 });
 
 const parseDateString = (dateString: string): Date | undefined => {
@@ -64,11 +66,11 @@ const formatDateToString = (date: Date | undefined): string => {
   return format(date, 'yyyy-MM-dd');
 };
 
-type CreateBetFormState = Omit<CreateBetFormData, 'selectedTagIds'> & { selectedTags: CreateBetTag[] };
+type CreateBetFormState = Omit<CreateBetFormData, 'selectedTagIds'> & { selectedTags: CreateBetTag[]; is_credit_bet: boolean };
 
 const getDefaultFormState = (): CreateBetFormState => {
   const { selectedTagIds: _, ...rest } = getDefaultFormData();
-  return { ...rest, selectedTags: [] };
+  return { ...rest, selectedTags: [], is_credit_bet: false };
 };
 
 export const CreateBetModal: React.FC<CreateBetModalProps> = ({
@@ -234,7 +236,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-terminal-green">
+          <DialogTitle className="flex items-center gap-2 text-terminal-blue">
             <Plus className="w-4 h-4" />
             NOVA APOSTA
           </DialogTitle>
@@ -600,6 +602,33 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               />
             </div>
           </div>
+
+          {/* Credit bet toggle + return preview */}
+          <div className="flex items-center gap-3">
+            <p className="text-xs uppercase opacity-70 tracking-wide">Crédito de apostas</p>
+            <button
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, is_credit_bet: !prev.is_credit_bet }))}
+              style={{ backgroundColor: formData.is_credit_bet ? 'var(--terminal-green)' : '#3d4a5c' }}
+              className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
+            >
+              <span style={{ transform: formData.is_credit_bet ? 'translateX(22px)' : 'translateX(2px)' }} className="absolute top-0.5 left-0 w-4 h-4 bg-white rounded-full shadow transition-transform" />
+            </button>
+          </div>
+          {formData.odds && formData.stake_amount && (
+            <p className="text-xs text-terminal-text/60">
+              Retorno potencial:{' '}
+              <span className="text-terminal-green font-bold">
+                {(() => {
+                  const odds = parseFloat(formData.odds);
+                  const stake = parseFloat(formData.stake_amount);
+                  if (isNaN(odds) || isNaN(stake)) return '—';
+                  const ret = formData.is_credit_bet ? stake * (odds - 1) : stake * odds;
+                  return `R$ ${ret.toFixed(2)}`;
+                })()}
+              </span>
+            </p>
+          )}
 
           <div className="space-y-2">
             <Label className="text-xs uppercase opacity-70">Data da Aposta</Label>

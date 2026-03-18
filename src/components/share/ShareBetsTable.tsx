@@ -82,7 +82,7 @@ export const ShareBetsTable: React.FC<ShareBetsTableProps> = ({ bets }) => {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-terminal-green">Apostas</h2>
+      <h2 className="text-sm font-semibold text-terminal-blue">Apostas</h2>
       <div className="rounded-md border border-terminal-border overflow-hidden">
         <Table>
           <TableHeader>

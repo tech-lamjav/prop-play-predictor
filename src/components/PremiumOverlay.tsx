@@ -32,11 +32,11 @@ export function PremiumOverlay({ onUnlock, className = '' }: PremiumOverlayProps
       onClick={(e) => e.stopPropagation()}
     >
       <div className="text-center p-4 space-y-4">
-        <div className="w-16 h-16 bg-terminal-green/20 border-2 border-terminal-green rounded-full flex items-center justify-center mx-auto">
-          <Lock className="w-8 h-8 text-terminal-green" />
+        <div className="w-16 h-16 bg-terminal-blue/20 border-2 border-terminal-blue rounded-full flex items-center justify-center mx-auto">
+          <Lock className="w-8 h-8 text-terminal-blue" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-terminal-green mb-2">CONTEÚDO PREMIUM</h3>
+          <h3 className="text-lg font-bold text-terminal-blue mb-2">CONTEÚDO PREMIUM</h3>
           <p className="text-sm text-terminal-text opacity-70 mb-4">
             Assine o plano premium para acessar análises completas deste jogador
           </p>

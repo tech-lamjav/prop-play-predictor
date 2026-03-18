@@ -216,11 +216,11 @@ export default function PlayerSelection() {
         <header className="terminal-header p-4 sticky top-0 z-10">
           <div className="container mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-terminal-green/20 border border-terminal-green rounded flex items-center justify-center">
-                <Trophy className="w-4 h-4 text-terminal-green" />
+              <div className="w-8 h-8 bg-terminal-blue/20 border border-terminal-blue rounded flex items-center justify-center">
+                <Trophy className="w-4 h-4 text-terminal-blue" />
               </div>
               <div>
-                <h1 className="text-lg font-bold tracking-wider text-terminal-green">PLAYER DATABASE</h1>
+                <h1 className="text-lg font-bold tracking-wider text-terminal-blue">PLAYER DATABASE</h1>
                 <p className="text-[10px] text-terminal-text opacity-60">SECURE CONNECTION ESTABLISHED</p>
               </div>
             </div>

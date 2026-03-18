@@ -99,7 +99,7 @@ export const ShareBreakdownCharts: React.FC<ShareBreakdownChartsProps> = ({ bets
       {charts.map(({ data, title }) => (
         <Card key={title} className="bg-terminal-dark-gray border-terminal-border">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-terminal-green">
+            <CardTitle className="text-sm font-medium text-terminal-blue">
               {title}
             </CardTitle>
           </CardHeader>
