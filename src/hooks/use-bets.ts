@@ -24,6 +24,7 @@ export interface Bet {
   cashout_date?: string;
   cashout_odds?: number;
   is_cashout?: boolean;
+  is_credit_bet?: boolean;
   channel?: string;
 }
 
@@ -46,8 +47,9 @@ export function useBets(userId: string) {
 
   const calculateStats = useCallback((betsData: Bet[]) => {
     const totalBets = betsData.length;
-    const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
-    
+    const stakeForBet = (bet: Bet) => (bet.is_credit_bet ? 0 : bet.stake_amount);
+    const totalStaked = betsData.reduce((sum, bet) => sum + stakeForBet(bet), 0);
+
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
     const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
@@ -55,11 +57,11 @@ export function useBets(userId: string) {
     const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
 
     const settledStaked =
-      wonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      cashoutBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      halfWonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      halfLostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
+      wonBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      lostBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      cashoutBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      halfWonBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      halfLostBets.reduce((sum, bet) => sum + stakeForBet(bet), 0);
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);

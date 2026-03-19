@@ -218,7 +218,14 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
         {/* Potential Return */}
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Retorno Potencial:</span>
+            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              Retorno Potencial:
+              {bet.is_credit_bet && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200">
+                  CRÉDITO
+                </Badge>
+              )}
+            </span>
             <span className="text-lg font-bold text-green-600">
               {formatCurrency(bet.potential_return)}
             </span>

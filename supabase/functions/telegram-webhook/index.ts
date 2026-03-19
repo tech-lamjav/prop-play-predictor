@@ -94,9 +94,10 @@ const BETTING_INFO_SCHEMA = {
     stake_amount: { type: "number", minimum: 0 },
     bet_date: { type: "string" },
     odds_are_individual: { type: "boolean" },
-    betting_market: { type: "string" }
+    betting_market: { type: "string" },
+    is_credit_bet: { type: "boolean" }
   },
-  required: ["bet_type", "sport", "matches", "stake_amount", "bet_date", "odds_are_individual", "league", "betting_market"],
+  required: ["bet_type", "sport", "matches", "stake_amount", "bet_date", "odds_are_individual", "league", "betting_market", "is_credit_bet"],
   additionalProperties: false
 }
 
@@ -260,6 +261,7 @@ async function sendConfirmationMessageTelegram(
     odds: number
     stake_amount: number
     potential_return: number
+    is_credit_bet?: boolean
   }
 ): Promise<void> {
   const betTypeText: Record<string, string> = {
@@ -280,7 +282,7 @@ async function sendConfirmationMessageTelegram(
     `• *Aposta:* ${betDetails.bet_description}`,
     `• *Odds:* ${betDetails.odds}`,
     `• *Valor:* R$ ${betDetails.stake_amount.toFixed(2)}`,
-    `• *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}`,
+    `• *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}${betDetails.is_credit_bet ? ' (Crédito)' : ''}`,
     "",
     "✅ Sua aposta foi salva no dashboard e você pode acompanhar o resultado em tempo real!",
     "",
@@ -913,8 +915,11 @@ SCHEMA:
   }],
   stake_amount: number,
   bet_date: string,
-  odds_are_individual: boolean
-}`
+  odds_are_individual: boolean,
+  is_credit_bet: boolean
+}
+
+- "is_credit_bet": true se a aposta foi feita com CRÉDITO DE APOSTAS (free bet). Sinais: "credito de apostas", "aposta gratis", "free bet", "bonus bet", ou indicadores visuais de credito no print. Caso contrário, false (obrigatório).`
 
     const messages = [{ role: "user" as const, content: prompt }]
 
@@ -1268,7 +1273,8 @@ async function processMessage(
           bet_description: validatedMatches.length === 1 ? validatedMatches[0]?.bet_description : validatedMatches.map((m, i) => `${m.description} - ${m.bet_description}`).join(" • "),
           odds: calculatedOdds,
           stake_amount: stakeAmount,
-          potential_return: stakeAmount * calculatedOdds,
+          potential_return: (bettingInfo.is_credit_bet ? stakeAmount * (calculatedOdds - 1) : stakeAmount * calculatedOdds),
+          is_credit_bet: bettingInfo.is_credit_bet ?? false,
           bet_date: currentDate,
           match_date: validatedMatches[0]?.match_date || null,
           raw_input: content,

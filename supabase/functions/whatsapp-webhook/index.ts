@@ -124,9 +124,12 @@ const BETTING_INFO_SCHEMA = {
     },
     odds_are_individual: {
       type: "boolean"
+    },
+    is_credit_bet: {
+      type: "boolean"
     }
   },
-  required: ["bet_type", "sport", "matches", "stake_amount", "bet_date", "odds_are_individual", "league"],
+  required: ["bet_type", "sport", "matches", "stake_amount", "bet_date", "odds_are_individual", "league", "is_credit_bet"],
   additionalProperties: false
 }
 
@@ -1291,7 +1294,8 @@ async function processMessage(supabase: any, messageId: string, content: string,
             : validatedMatches.map((m, i) => `${m.description} - ${m.bet_description}`).join(' • '),
           odds: calculatedOdds,
           stake_amount: stakeAmount, // Default to 0 if not identified
-          potential_return: stakeAmount * calculatedOdds,
+          potential_return: (bettingInfo.is_credit_bet ? stakeAmount * (calculatedOdds - 1) : stakeAmount * calculatedOdds),
+          is_credit_bet: bettingInfo.is_credit_bet ?? false,
           bet_date: currentDate, // Always use current timestamp
           match_date: validatedMatches[0]?.match_date || null,
           raw_input: content,
@@ -1527,6 +1531,7 @@ CAMPOS OBRIGATÓRIOS (deve sempre preencher):
 - "stake_amount": valor apostado em número (obrigatório)
 - "bet_date": data da aposta em ISO string (use hoje se não especificado)
 - "odds_are_individual": true se odds são individuais e precisam multiplicar, false se já combinadas (obrigatório)
+- "is_credit_bet": true se a aposta foi feita com CRÉDITO DE APOSTAS (free bet). Sinais: "credito de apostas", "aposta gratis", "free bet", "bonus bet", ou indicadores visuais de credito no print. Caso contrário, false (obrigatório)
 
 IMPORTANTE - AGRUPAMENTO DE JOGADORES:
 - SEMPRE agrupe jogadores do MESMO JOGO em uma única perna
@@ -1792,7 +1797,7 @@ async function sendConfirmationMessage(supabase: any, userId: string, betId: str
     // Get bet details for confirmation message
     const { data: betDetails } = await supabase
       .from('bets')
-      .select('bet_type, sport, match_description, bet_description, odds, stake_amount, potential_return, league')
+      .select('bet_type, sport, match_description, bet_description, odds, stake_amount, potential_return, league, is_credit_bet')
       .eq('id', betId)
       .single()
 
@@ -1820,7 +1825,7 @@ async function sendConfirmationMessage(supabase: any, userId: string, betId: str
 • *Aposta:* ${betDetails.bet_description}
 • *Odds:* ${betDetails.odds}
 • *Valor:* R$ ${betDetails.stake_amount.toFixed(2)}
-• *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}
+• *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}${betDetails.is_credit_bet ? ' (Crédito)' : ''}
 
 ✅ Sua aposta foi salva no dashboard e você pode acompanhar o resultado em tempo real!
 

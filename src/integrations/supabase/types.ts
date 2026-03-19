@@ -1,3 +1,4 @@
+Connecting to db 5432
 export type Json =
   | string
   | number
@@ -145,6 +146,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_cashout: boolean | null
+          is_credit_bet: boolean
           league: string | null
           match_date: string | null
           match_description: string | null
@@ -171,6 +173,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_cashout?: boolean | null
+          is_credit_bet?: boolean
           league?: string | null
           match_date?: string | null
           match_description?: string | null
@@ -197,6 +200,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_cashout?: boolean | null
+          is_credit_bet?: boolean
           league?: string | null
           match_date?: string | null
           match_description?: string | null
@@ -1139,3 +1143,5 @@ export const Constants = {
   },
 } as const
 
+A new version of Supabase CLI is available: v2.78.1 (currently installed v2.67.1)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TagSelector } from '@/components/bets/TagSelector';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
 
 export interface CreateBetTag {
   id: string;
@@ -24,6 +25,7 @@ export interface CreateBetFormData {
   betting_market: string;
   odds: string;
   stake_amount: string;
+  is_credit_bet: boolean;
   bet_date: string;
   match_date: string;
   selectedTagIds: string[];
@@ -48,6 +50,7 @@ const getDefaultFormData = (): CreateBetFormData => ({
   betting_market: '',
   odds: '',
   stake_amount: '',
+  is_credit_bet: false,
   bet_date: new Date().toISOString().split('T')[0],
   match_date: '',
   selectedTagIds: [],
@@ -600,6 +603,36 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               />
             </div>
           </div>
+
+          <div className="flex items-center justify-between rounded border border-terminal-border p-3 bg-terminal-black">
+            <Label htmlFor="create-credit-bet" className="text-sm cursor-pointer">
+              Aposta de crédito
+            </Label>
+            <Switch
+              id="create-credit-bet"
+              checked={formData.is_credit_bet}
+              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_credit_bet: checked }))}
+            />
+          </div>
+
+          {formData.odds && formData.stake_amount && (
+            <div className="rounded border border-terminal-border p-3 bg-terminal-black">
+              <span className="text-xs uppercase opacity-70">Retorno potencial: </span>
+              <span className="font-medium">
+                R${' '}
+                {(() => {
+                  const odds = parseFloat(formData.odds);
+                  const stake = parseFloat(formData.stake_amount);
+                  if (isNaN(odds) || isNaN(stake)) return '0,00';
+                  const ret = formData.is_credit_bet ? stake * (odds - 1) : stake * odds;
+                  return ret.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                })()}
+              </span>
+              {formData.is_credit_bet && (
+                <span className="ml-2 text-xs opacity-70">(apenas lucro líquido)</span>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label className="text-xs uppercase opacity-70">Data da Aposta</Label>

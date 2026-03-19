@@ -74,6 +74,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
+import { Switch } from '../components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
 import { useToast } from '../hooks/use-toast';
 import { format, parse, isValid, isBefore } from 'date-fns';
@@ -108,6 +109,7 @@ interface Bet {
   cashout_date?: string;
   cashout_odds?: number;
   is_cashout?: boolean;
+  is_credit_bet?: boolean;
   channel?: string;
   tags?: Tag[];
 }
@@ -275,7 +277,14 @@ const BetRow = React.memo(function BetRow({
       <td className="py-1.5 px-1.5 opacity-70">{bet.league || '-'}</td>
       <td className="py-1.5 px-1.5 opacity-70">{bet.betting_market || '-'}</td>
       <td className="text-right py-1.5 px-1.5">{formatValue(bet.stake_amount)}</td>
-      <td className="text-right py-1.5 px-1.5 text-terminal-blue">{bet.odds.toFixed(2)}</td>
+      <td className="text-right py-1.5 px-1.5 text-terminal-blue">
+        {bet.odds.toFixed(2)}
+        {bet.is_credit_bet && (
+          <span className="ml-1 inline-block px-1 py-0.5 text-[9px] uppercase font-bold text-terminal-blue/80 bg-terminal-blue/10 rounded">
+            CR
+          </span>
+        )}
+      </td>
       <td className={`text-right py-1.5 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap ${
         bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' :
         bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-70'
@@ -464,7 +473,14 @@ const BetCard = React.memo(function BetCard({
         </div>
         <div className="text-center border-l border-terminal-border-subtle">
           <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
-          <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
+          <div className="text-sm text-terminal-blue flex items-center justify-center gap-1">
+            {bet.odds.toFixed(2)}
+            {bet.is_credit_bet && (
+              <span className="px-1 py-0.5 text-[9px] uppercase font-bold text-terminal-blue/80 bg-terminal-blue/10 rounded">
+                CR
+              </span>
+            )}
+          </div>
         </div>
         <div className="text-center border-l border-terminal-border-subtle">
           <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
@@ -611,6 +627,7 @@ export default function Bets() {
       betting_market: string;
       odds: string;
       stake_amount: string;
+      is_credit_bet: boolean;
       bet_date: string;
       match_date: string;
       status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
@@ -626,6 +643,7 @@ export default function Bets() {
       betting_market: '',
       odds: '',
       stake_amount: '',
+      is_credit_bet: false,
       bet_date: '',
       match_date: '',
       status: 'pending'
@@ -780,12 +798,13 @@ export default function Bets() {
 
   const calculateStats = useCallback((betsData: Bet[]) => {
     if (!isMountedRef.current) return;
-    
+
+    const stakeForBet = (bet: Bet) => (bet.is_credit_bet ? 0 : bet.stake_amount);
     const totalBets = betsData.length;
     const totalStaked = betsData
       .filter(bet => bet.status !== 'void')
-      .reduce((sum, bet) => sum + bet.stake_amount, 0);
-    
+      .reduce((sum, bet) => sum + stakeForBet(bet), 0);
+
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
     const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
@@ -793,11 +812,11 @@ export default function Bets() {
     const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
 
     const settledStaked =
-      wonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      cashoutBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      halfWonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      halfLostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
+      wonBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      lostBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      cashoutBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      halfWonBets.reduce((sum, bet) => sum + stakeForBet(bet), 0) +
+      halfLostBets.reduce((sum, bet) => sum + stakeForBet(bet), 0);
     
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
@@ -930,7 +949,8 @@ export default function Bets() {
 
     const odds = parseFloat(editModal.formData.odds);
     const stakeAmount = parseFloat(editModal.formData.stake_amount);
-    const potentialReturn = stakeAmount * odds;
+    const isCreditBet = editModal.formData.is_credit_bet;
+    const potentialReturn = isCreditBet ? stakeAmount * (odds - 1) : stakeAmount * odds;
     const updatedAt = new Date().toISOString();
 
     // Convert yyyy-MM-dd to local midnight ISO so the calendar day is preserved in all timezones
@@ -955,6 +975,7 @@ export default function Bets() {
       odds: odds,
       stake_amount: stakeAmount,
       potential_return: potentialReturn,
+      is_credit_bet: isCreditBet,
       bet_date: betDateISO,
       match_date: matchDateISO,
       status: editModal.formData.status,
@@ -1011,7 +1032,8 @@ export default function Bets() {
       if (isNaN(odds) || isNaN(stakeAmount)) {
         throw new Error('Valores inválidos');
       }
-      const potentialReturn = stakeAmount * odds;
+      const isCreditBet = data.is_credit_bet ?? false;
+      const potentialReturn = isCreditBet ? stakeAmount * (odds - 1) : stakeAmount * odds;
 
       const { data: newBet, error } = await supabase
         .from('bets')
@@ -1026,6 +1048,7 @@ export default function Bets() {
           odds: odds,
           stake_amount: stakeAmount,
           potential_return: potentialReturn,
+          is_credit_bet: isCreditBet,
           bet_date: data.bet_date || new Date().toISOString(),
           match_date: data.match_date || null,
           status: 'pending',
@@ -1083,6 +1106,7 @@ export default function Bets() {
         betting_market: bet.betting_market || '',
         odds: bet.odds?.toString() || '',
         stake_amount: bet.stake_amount?.toString() || '',
+        is_credit_bet: bet.is_credit_bet ?? false,
         bet_date: bet.bet_date ? String(bet.bet_date).split('T')[0] : '',
         match_date: bet.match_date ? String(bet.match_date).split('T')[0] : '',
         status: bet.status || 'pending'
@@ -2787,6 +2811,17 @@ export default function Bets() {
                     className="bg-terminal-black border-terminal-border text-terminal-text"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded border border-terminal-border p-3 bg-terminal-black">
+                <Label htmlFor="edit-credit-bet" className="text-sm cursor-pointer">
+                  Aposta de crédito
+                </Label>
+                <Switch
+                  id="edit-credit-bet"
+                  checked={editModal.formData.is_credit_bet}
+                  onCheckedChange={(checked) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, is_credit_bet: checked } }))}
+                />
               </div>
 
               <div className="space-y-2">
