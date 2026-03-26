@@ -505,6 +505,7 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           email: string
+          has_report_access: boolean | null
           id: string
           name: string | null
           referral_code: string | null
@@ -543,6 +544,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           email: string
+          has_report_access?: boolean | null
           id?: string
           name?: string | null
           referral_code?: string | null
@@ -581,6 +583,7 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           email?: string
+          has_report_access?: boolean | null
           id?: string
           name?: string | null
           referral_code?: string | null
