@@ -212,6 +212,7 @@ All colors MUST be HSL.
 .terminal-container {
   background-color: var(--terminal-dark-gray);
   border: 1px solid var(--terminal-border-subtle);
+  border-radius: 0.5rem;
 }
 
 .terminal-button {
