@@ -120,7 +120,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-terminal-green">
+          <DialogTitle className="flex items-center gap-2 text-terminal-blue">
             <Users className="w-5 h-5" />
             Indique um amigo
           </DialogTitle>

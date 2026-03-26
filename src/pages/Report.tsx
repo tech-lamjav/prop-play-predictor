@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FileText, Loader2, AlertCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { FileText, Loader2, AlertCircle, Calendar as CalendarIcon, Lock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { useReportAccess } from '@/hooks/use-report-access';
 
 const BUCKET = 'reports';
 const SIGNED_URL_EXPIRY = 3600;
@@ -41,6 +43,8 @@ interface ReportEntry {
 }
 
 export default function WeeklyReport() {
+  const { hasAccess, isLoading: accessLoading } = useReportAccess();
+  const navigate = useNavigate();
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -153,6 +157,42 @@ export default function WeeklyReport() {
   };
 
   const isLoading = loading || loadingPdf;
+
+  if (accessLoading) {
+    return (
+      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
+        <AnalyticsNav />
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-terminal-green" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
+        <AnalyticsNav />
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
+          <div className="w-16 h-16 bg-terminal-yellow/10 border border-terminal-yellow/30 rounded-full flex items-center justify-center">
+            <Lock className="w-8 h-8 text-terminal-yellow" />
+          </div>
+          <h2 className="text-lg font-bold text-terminal-yellow tracking-wider">
+            ACESSO RESTRITO
+          </h2>
+          <p className="text-terminal-text opacity-60 text-sm max-w-md">
+            Os relatórios estão disponíveis para assinantes premium e novos usuários em período de teste.
+          </p>
+          <Button
+            onClick={() => navigate('/paywall')}
+            className="mt-2 bg-terminal-green text-terminal-black hover:bg-terminal-green/90 font-bold tracking-wider"
+          >
+            VER PLANOS
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">

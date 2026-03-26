@@ -300,7 +300,7 @@ const Landing = () => {
                     { title: 'Backcourt', fga: '0.1', fgm: '0.0', pct: '0.0%' },
                   ].map((z) => (
                     <div key={z.title} className="p-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-sm">
-                      <div className="text-xs font-bold text-terminal-green mb-2">{z.title}</div>
+                      <div className="text-xs font-bold text-terminal-blue mb-2">{z.title}</div>
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex flex-col">
                           <span className="opacity-60">FGA</span>

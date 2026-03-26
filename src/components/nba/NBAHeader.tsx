@@ -21,7 +21,7 @@ export const NBAHeader: React.FC<NBAHeaderProps> = ({ playerName }) => {
             BACK
           </button>
         )}
-        <span className="text-base font-semibold mr-6 text-terminal-green tracking-wide">
+        <span className="text-base font-semibold mr-6 text-terminal-blue tracking-wide">
           Smartbetting
         </span>
         <div className="hidden sm:flex space-x-2">

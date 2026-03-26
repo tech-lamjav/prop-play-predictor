@@ -145,7 +145,7 @@ export default function Onboarding() {
   const renderStep0 = () => (
     <div className="max-w-md mx-auto">
       <div className="terminal-container p-6 rounded-lg">
-        <h2 className="section-title text-base md:text-lg text-center mb-2 text-terminal-green">
+        <h2 className="section-title text-base md:text-lg text-center mb-2 text-terminal-blue">
           O que você quer fazer primeiro?
         </h2>
         <p className="text-center text-sm text-terminal-text opacity-70 mb-6">

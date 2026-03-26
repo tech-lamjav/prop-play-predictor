@@ -97,6 +97,7 @@ interface Bet {
   odds: number;
   stake_amount: number;
   potential_return: number;
+  is_credit_bet?: boolean;
   status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
   bet_date: string;
   match_date?: string;
@@ -271,15 +272,9 @@ const BetRow = React.memo(function BetRow({
           availableTags={availableTags}
         />
       </td>
-      <td className="py-1.5 px-1.5 opacity-70">{bet.sport}</td>
-      <td className="py-1.5 px-1.5 opacity-70">{bet.league || '-'}</td>
-      <td className="py-1.5 px-1.5 opacity-70">{bet.betting_market || '-'}</td>
       <td className="text-right py-1.5 px-1.5">{formatValue(bet.stake_amount)}</td>
       <td className="text-right py-1.5 px-1.5 text-terminal-blue">{bet.odds.toFixed(2)}</td>
-      <td className={`text-right py-1.5 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap ${
-        bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' :
-        bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-70'
-      }`}>
+      <td className="text-right py-1.5 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap opacity-70">
         {bet.is_cashout && bet.cashout_amount
           ? formatValue(bet.cashout_amount)
           : bet.status === 'half_won'
@@ -289,6 +284,24 @@ const BetRow = React.memo(function BetRow({
               : bet.status === 'void'
                 ? formatValue(bet.stake_amount)
                 : formatValue(bet.potential_return)}
+      </td>
+      <td className={`text-right py-1.5 px-1.5 min-w-[5.5rem] font-medium ${
+        bet.status === 'won' || bet.status === 'half_won' || (bet.is_cashout && bet.cashout_amount && bet.cashout_amount > bet.stake_amount) ? 'text-terminal-green' :
+        bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-40'
+      }`}>
+        {bet.status === 'pending'
+          ? '—'
+          : bet.is_cashout && bet.cashout_amount
+            ? formatValue(bet.cashout_amount - bet.stake_amount)
+            : bet.status === 'won'
+              ? formatValue(bet.potential_return - bet.stake_amount)
+              : bet.status === 'lost'
+                ? formatValue(-bet.stake_amount)
+                : bet.status === 'half_won'
+                  ? formatValue((bet.potential_return - bet.stake_amount) / 2)
+                  : bet.status === 'half_lost'
+                    ? formatValue(-bet.stake_amount / 2)
+                    : '—'}
       </td>
       <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
         <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
@@ -303,6 +316,9 @@ const BetRow = React.memo(function BetRow({
           {translateStatus(bet.status)}
         </span>
       </td>
+      <td className="py-1.5 px-1.5 opacity-70">{bet.sport}</td>
+      <td className="py-1.5 px-1.5 opacity-70">{bet.league || '-'}</td>
+      <td className="py-1.5 px-1.5 opacity-70">{bet.betting_market || '-'}</td>
       <td className="py-1.5 px-1.5 min-w-[11rem]">
         <div className="flex flex-row items-center gap-1.5 justify-end flex-nowrap">
           {bet.status === 'pending' && (
@@ -466,23 +482,32 @@ const BetCard = React.memo(function BetCard({
           <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
           <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
         </div>
-        <div className="text-center border-l border-terminal-border-subtle">
-          <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
-          <div className={`text-sm ${
-            bet.status === 'won' || bet.status === 'half_won' ? 'text-terminal-green' :
-            bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-70'
-          }`}>
-            {bet.is_cashout && bet.cashout_amount
-              ? formatValue(bet.cashout_amount)
-              : bet.status === 'half_won'
-                ? formatValue((bet.stake_amount + bet.potential_return) / 2)
-                : bet.status === 'half_lost'
-                  ? formatValue(bet.stake_amount / 2)
-                  : bet.status === 'void'
-                    ? formatValue(bet.stake_amount)
-                    : formatValue(bet.potential_return)}
+        {bet.status === 'pending' ? (
+          <div className="text-center border-l border-terminal-border-subtle">
+            <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
+            <div className="text-sm opacity-70">{formatValue(bet.potential_return)}</div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center border-l border-terminal-border-subtle">
+            <div className="text-[10px] opacity-50 uppercase mb-0.5">Lucro</div>
+            <div className={`text-sm font-medium ${
+              bet.status === 'won' || bet.status === 'half_won' || (bet.is_cashout && bet.cashout_amount && bet.cashout_amount > bet.stake_amount) ? 'text-terminal-green' :
+              bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-50'
+            }`}>
+              {bet.is_cashout && bet.cashout_amount
+                ? formatValue(bet.cashout_amount - bet.stake_amount)
+                : bet.status === 'won'
+                  ? formatValue(bet.potential_return - bet.stake_amount)
+                  : bet.status === 'lost'
+                    ? formatValue(-bet.stake_amount)
+                    : bet.status === 'half_won'
+                      ? formatValue((bet.potential_return - bet.stake_amount) / 2)
+                      : bet.status === 'half_lost'
+                        ? formatValue(-bet.stake_amount / 2)
+                        : '—'}
+            </div>
+          </div>
+        )}
       </div>
       <div className="pt-2">
         {bet.status === 'pending' ? (
@@ -558,7 +583,7 @@ export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
-  const { movements: capitalMovements } = useCapitalMovements(user?.id);
+  const { movements: capitalMovements, addMovement } = useCapitalMovements(user?.id);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [bets, setBets] = useState<Bet[]>([]);
@@ -588,6 +613,10 @@ export default function Bets() {
   });
   
   // Modals state
+  const [capitalModal, setCapitalModal] = useState<{ isOpen: boolean; type: 'deposit' | 'withdrawal'; amount: string; description: string }>({
+    isOpen: false, type: 'deposit', amount: '', description: ''
+  });
+
   const [cashoutModal, setCashoutModal] = useState<{
     isOpen: boolean;
     bet: Bet | null;
@@ -614,6 +643,7 @@ export default function Bets() {
       bet_date: string;
       match_date: string;
       status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
+      is_credit_bet: boolean;
     };
   }>({
     isOpen: false,
@@ -628,7 +658,8 @@ export default function Bets() {
       stake_amount: '',
       bet_date: '',
       match_date: '',
-      status: 'pending'
+      status: 'pending',
+      is_credit_bet: false
     }
   });
   const [isEditDatePopoverOpen, setIsEditDatePopoverOpen] = useState(false);
@@ -667,7 +698,7 @@ export default function Bets() {
 
   // Sort state
   type SortDirection = 'asc' | 'desc';
-  type SortColumn = 'bet_date' | 'sport' | 'league' | 'betting_market' | 'stake_amount' | 'odds' | 'return' | 'status' | null;
+  type SortColumn = 'bet_date' | 'sport' | 'league' | 'betting_market' | 'stake_amount' | 'odds' | 'return' | 'profit' | 'status' | null;
   
   const [sortConfig, setSortConfig] = useState<{
     column: SortColumn;
@@ -930,7 +961,8 @@ export default function Bets() {
 
     const odds = parseFloat(editModal.formData.odds);
     const stakeAmount = parseFloat(editModal.formData.stake_amount);
-    const potentialReturn = stakeAmount * odds;
+    const isCreditBet = editModal.formData.is_credit_bet;
+    const potentialReturn = isCreditBet ? stakeAmount * (odds - 1) : stakeAmount * odds;
     const updatedAt = new Date().toISOString();
 
     // Convert yyyy-MM-dd to local midnight ISO so the calendar day is preserved in all timezones
@@ -955,6 +987,7 @@ export default function Bets() {
       odds: odds,
       stake_amount: stakeAmount,
       potential_return: potentialReturn,
+      is_credit_bet: isCreditBet,
       bet_date: betDateISO,
       match_date: matchDateISO,
       status: editModal.formData.status,
@@ -1011,7 +1044,8 @@ export default function Bets() {
       if (isNaN(odds) || isNaN(stakeAmount)) {
         throw new Error('Valores inválidos');
       }
-      const potentialReturn = stakeAmount * odds;
+      const isCreditBet = data.is_credit_bet ?? false;
+      const potentialReturn = isCreditBet ? stakeAmount * (odds - 1) : stakeAmount * odds;
 
       const { data: newBet, error } = await supabase
         .from('bets')
@@ -1026,6 +1060,7 @@ export default function Bets() {
           odds: odds,
           stake_amount: stakeAmount,
           potential_return: potentialReturn,
+          is_credit_bet: isCreditBet,
           bet_date: data.bet_date || new Date().toISOString(),
           match_date: data.match_date || null,
           status: 'pending',
@@ -1085,7 +1120,8 @@ export default function Bets() {
         stake_amount: bet.stake_amount?.toString() || '',
         bet_date: bet.bet_date ? String(bet.bet_date).split('T')[0] : '',
         match_date: bet.match_date ? String(bet.match_date).split('T')[0] : '',
-        status: bet.status || 'pending'
+        status: bet.status || 'pending',
+        is_credit_bet: bet.is_credit_bet ?? false
       }
     });
     setIsSportDropdownOpen(false);
@@ -1377,6 +1413,20 @@ export default function Bets() {
                 ? b.stake_amount / 2 
                 : (b.potential_return || 0);
           break;
+        case 'profit': {
+          const getProfit = (bet: Bet) => {
+            if (bet.status === 'pending') return 0;
+            if (bet.is_cashout && bet.cashout_amount) return bet.cashout_amount - bet.stake_amount;
+            if (bet.status === 'won') return bet.potential_return - bet.stake_amount;
+            if (bet.status === 'lost') return -bet.stake_amount;
+            if (bet.status === 'half_won') return (bet.potential_return - bet.stake_amount) / 2;
+            if (bet.status === 'half_lost') return -bet.stake_amount / 2;
+            return 0;
+          };
+          aValue = getProfit(a);
+          bValue = getProfit(b);
+          break;
+        }
         case 'status':
           // Ordem customizada: pending, won, lost, half_won, half_lost, cashout, void
           const statusOrder: Record<string, number> = {
@@ -1766,67 +1816,62 @@ export default function Bets() {
       
       <main className="container mx-auto px-3 py-4">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <BetStatsCard 
-            label="TOTAL APOSTAS" 
-            value={stats.totalBets}
-            valueColor="text-terminal-text"
-          />
-          <BetStatsCard 
-            label="TAXA DE ACERTO" 
-            value={`${stats.winRate.toFixed(1)}%`}
-            trend={
-              stats.winRate > 50
-                ? 'up'
-                : stats.winRate < 50
-                  ? 'down'
-                  : undefined
-            }
-          />
-          <BetStatsCard 
-            label="LUCRO" 
-            value={formatValue(stats.profit)}
-            valueColor={stats.profit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}
-            trend={
-              stats.profit > 0
-                ? 'up'
-                : stats.profit < 0
-                  ? 'down'
-                  : undefined
-            }
-          />
-          <BetStatsCard 
-            label="ROI" 
-            value={`${stats.roi.toFixed(1)}%`}
-            valueColor={stats.roi >= 0 ? 'text-terminal-green' : 'text-terminal-red'}
-            trend={
-              stats.roi > 0
-                ? 'up'
-                : stats.roi < 0
-                  ? 'down'
-                  : undefined
-            }
-          />
-          <BetStatsCard 
-            label="TOTAL APOSTADO" 
-            value={formatValue(stats.totalStaked)}
-            valueColor="text-terminal-text"
-          />
-          <BetStatsCard 
-            label="RETORNO TOTAL" 
-            value={formatValue(stats.totalReturn)}
-            valueColor="text-terminal-green"
-          />
-          <BetStatsCard 
-            label="MÉDIA APOSTA" 
-            value={formatValue(stats.averageStake)}
-            valueColor="text-terminal-text"
-          />
-          <BetStatsCard 
-            label="MÉDIA ODDS" 
-            value={stats.averageOdd.toFixed(2)}
-            valueColor="text-terminal-blue"
-          />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          {/* ROI - card grande */}
+          <div className="terminal-container p-4 md:p-5 flex flex-col items-center justify-center">
+            <div className="data-label text-[10px] md:text-xs mb-2 text-center">ROI</div>
+            <div className={`text-2xl md:text-4xl font-bold ${stats.roi >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
+              {stats.roi.toFixed(1)}%
+            </div>
+          </div>
+
+          {/* Lucro Líquido - card grande */}
+          <div className="terminal-container p-4 md:p-5 flex flex-col items-center justify-center">
+            <div className="data-label text-[10px] md:text-xs mb-2 text-center">Lucro Líquido</div>
+            <div className={`text-2xl md:text-4xl font-bold ${stats.profit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
+              {formatValue(stats.profit)}
+            </div>
+          </div>
+
+          {/* Total Apostado + Retorno Bruto */}
+          <div className="terminal-container p-3 md:p-4 flex flex-col justify-center gap-0">
+            <div className="pb-2.5 text-center">
+              <div className="data-label text-[10px] mb-1">Total Apostado</div>
+              <div className="text-base md:text-lg font-bold text-terminal-text">{formatValue(stats.totalStaked)}</div>
+            </div>
+            <div className="border-t border-terminal-border pt-2.5 text-center">
+              <div className="data-label text-[10px] mb-1">Retorno Bruto</div>
+              <div className="text-base md:text-lg font-bold text-terminal-text">{formatValue(stats.totalReturn)}</div>
+            </div>
+          </div>
+
+          {/* Total Apostas + Taxa de Acerto */}
+          <div className="terminal-container p-3 md:p-4 flex flex-col justify-center gap-0">
+            <div className="pb-2.5 text-center">
+              <div className="data-label text-[10px] mb-1">Total Apostas</div>
+              <div className="text-base md:text-lg font-bold text-terminal-text">{stats.totalBets}</div>
+            </div>
+            <div className="border-t border-terminal-border pt-2.5 text-center">
+              <div className="data-label text-[10px] mb-1">Taxa de Acerto</div>
+              <div className={`text-base md:text-lg font-bold ${stats.winRate >= 50 ? 'text-terminal-green' : 'text-terminal-red'}`}>
+                {stats.winRate.toFixed(1)}%
+              </div>
+            </div>
+          </div>
+
+          {/* Valor Médio + Odd Média */}
+          <div className="terminal-container p-3 md:p-4 flex flex-row md:flex-col items-stretch justify-center gap-0 col-span-2 md:col-span-1">
+            <div className="flex-1 text-center flex flex-col justify-center md:pb-2.5">
+              <div className="data-label text-[10px] mb-1">Valor Médio das Apostas</div>
+              <div className="text-base md:text-lg font-bold text-terminal-text">{formatValue(stats.averageStake)}</div>
+            </div>
+            <div className="w-px self-stretch md:hidden mx-3" style={{ backgroundColor: 'var(--terminal-border)' }} />
+            <div className="hidden md:block border-t border-terminal-border my-0 md:pt-2.5" />
+            <div className="flex-1 text-center flex flex-col justify-center md:pt-2.5">
+              <div className="data-label text-[10px] mb-1">Odd Média</div>
+              <div className="text-base md:text-lg font-bold text-terminal-text">{stats.averageOdd.toFixed(2)}</div>
+            </div>
+          </div>
         </div>
 
         <BankrollEvolutionChart 
@@ -1850,60 +1895,15 @@ export default function Bets() {
               divisor: currentDivisor
             });
           }}
+          onAporte={() => setCapitalModal({ isOpen: true, type: 'deposit', amount: '', description: '' })}
+          onResgate={() => setCapitalModal({ isOpen: true, type: 'withdrawal', amount: '', description: '' })}
+          onNavigateCashFlow={() => navigate('/bankroll')}
+          onNavigateDashboard={() => navigate('/betting-dashboard')}
         />
 
-        {/* Dashboard + Cash Flow Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <button
-            type="button"
-            onClick={() => navigate('/betting-dashboard')}
-            className="w-full terminal-container p-4 flex items-center justify-between hover:bg-terminal-dark-gray/50 transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded bg-terminal-green/10 flex items-center justify-center group-hover:bg-terminal-green/20 transition-colors">
-                <BarChart3 className="w-5 h-5 text-terminal-green" />
-              </div>
-              <div className="text-left">
-                <div className="font-bold text-sm text-terminal-green">DASHBOARD</div>
-                <div className="text-xs opacity-60">KPIs e gráficos por período</div>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-terminal-green opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/bankroll')}
-            className="w-full terminal-container p-4 flex items-center justify-between hover:bg-terminal-dark-gray/50 transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                <DollarSign className="w-5 h-5 text-blue-400" />
-              </div>
-              <div className="text-left">
-                <div className="font-bold text-sm text-blue-400">FLUXO DE CAIXA</div>
-                <div className="text-xs opacity-60">Histórico detalhado de transações</div>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-blue-400 opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-          </button>
-        </div>
-
         {/* Filters Bar */}
-        <div className="terminal-container p-3 mb-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-          <div className="flex flex-col gap-3 w-full">
-            {/* Primeira linha: Filtros principais */}
-            <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3 w-full">
-              <div className="relative col-span-2 md:w-auto md:min-w-[200px]">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-terminal-text opacity-50" />
-                <input 
-                  type="text" 
-                  placeholder="BUSCAR APOSTAS..." 
-                  className="terminal-input w-full pl-8 pr-3 py-1.5 text-xs rounded-sm"
-                  value={filters.searchQuery}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-                />
-              </div>
-              
+        <div className="terminal-container p-3 mb-4">
+          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 items-center">
               <MultiSelectFilter
                 label="STATUS"
                 placeholder="TODOS STATUS"
@@ -1934,48 +1934,6 @@ export default function Bets() {
                 onChange={(values) => setFilters(prev => ({ ...prev, sport: values }))}
               />
 
-              <MultiSelectFilter
-                label="LIGAS"
-                placeholder="TODAS LIGAS"
-                options={[
-                  ...uniqueLeagues.map(league => ({
-                    value: league,
-                    label: league.toUpperCase()
-                  })),
-                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
-                ]}
-                selected={filters.league}
-                onChange={(values) => setFilters(prev => ({ ...prev, league: values }))}
-              />
-
-              <MultiSelectFilter
-                label="MERCADOS"
-                placeholder="TODOS MERCADOS"
-                options={[
-                  ...uniqueBettingMarkets.map(market => ({
-                    value: market,
-                    label: market.toUpperCase()
-                  })),
-                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
-                ]}
-                selected={filters.betting_market}
-                onChange={(values) => setFilters(prev => ({ ...prev, betting_market: values }))}
-              />
-
-              <MultiSelectFilter
-                label="TAGS"
-                placeholder="TODAS AS TAGS"
-                options={userTags.map(tag => ({
-                  value: tag.id,
-                  label: tag.name.toUpperCase()
-                }))}
-                selected={filters.selectedTags}
-                onChange={(values) => setFilters(prev => ({ ...prev, selectedTags: values }))}
-              />
-            </div>
-
-            {/* Segunda linha: Filtros de data */}
-            <div className="flex gap-3">
               <Popover open={isFilterDateFromOpen} onOpenChange={setIsFilterDateFromOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -2039,9 +1997,9 @@ export default function Bets() {
                       if (fromDate && date && isBefore(date, fromDate)) {
                         return;
                       }
-                      setFilters(prev => ({ 
-                        ...prev, 
-                        dateTo: formatDateToString(date) 
+                      setFilters(prev => ({
+                        ...prev,
+                        dateTo: formatDateToString(date)
                       }));
                       setIsFilterDateToOpen(false);
                     }}
@@ -2050,26 +2008,65 @@ export default function Bets() {
                   />
                 </PopoverContent>
               </Popover>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button 
-              type="button"
-              onClick={clearAllFilters}
-              className="terminal-button px-4 py-2.5 text-sm flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-red hover:text-terminal-red transition-colors min-h-[40px]"
-            >
-              <X className="w-4 h-4 shrink-0" />
-              <span>LIMPAR FILTROS</span>
-            </button>
-            <button 
-              type="button"
-              onClick={fetchBets}
-              className="terminal-button px-4 py-2.5 text-sm flex items-center justify-center gap-2 border-terminal-border hover:border-terminal-green transition-colors min-h-[40px]"
-            >
-              <RefreshCw className={`w-4 h-4 shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>ATUALIZAR</span>
-            </button>
+              <MultiSelectFilter
+                label="LIGAS"
+                placeholder="TODAS LIGAS"
+                options={[
+                  ...uniqueLeagues.map(league => ({
+                    value: league,
+                    label: league.toUpperCase()
+                  })),
+                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                ]}
+                selected={filters.league}
+                onChange={(values) => setFilters(prev => ({ ...prev, league: values }))}
+              />
+
+              <MultiSelectFilter
+                label="MERCADOS"
+                placeholder="TODOS MERCADOS"
+                options={[
+                  ...uniqueBettingMarkets.map(market => ({
+                    value: market,
+                    label: market.toUpperCase()
+                  })),
+                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                ]}
+                selected={filters.betting_market}
+                onChange={(values) => setFilters(prev => ({ ...prev, betting_market: values }))}
+              />
+
+              <MultiSelectFilter
+                label="TAGS"
+                placeholder="TODAS AS TAGS"
+                options={userTags.map(tag => ({
+                  value: tag.id,
+                  label: tag.name.toUpperCase()
+                }))}
+                selected={filters.selectedTags}
+                onChange={(values) => setFilters(prev => ({ ...prev, selectedTags: values }))}
+              />
+
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="terminal-input px-3 py-1.5 text-xs flex items-center justify-center gap-1.5 border border-terminal-border hover:border-terminal-red hover:text-terminal-red transition-colors rounded-sm whitespace-nowrap"
+              >
+                <X className="w-3.5 h-3.5 shrink-0" />
+                <span>Limpar Filtros</span>
+              </button>
+
+              <div className="relative col-span-2 md:w-auto md:min-w-[120px] md:max-w-[140px]">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-terminal-text opacity-50" />
+                <input
+                  type="text"
+                  placeholder="Buscar aposta..."
+                  className="terminal-input w-full pl-8 pr-3 py-1.5 text-xs rounded-sm"
+                  value={filters.searchQuery}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+                />
+              </div>
           </div>
         </div>
 
@@ -2090,6 +2087,13 @@ export default function Bets() {
               </label>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={fetchBets}
+                className="terminal-button px-3 py-2 text-sm flex items-center justify-center gap-1.5 border-terminal-border hover:border-terminal-green transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
             <button
               type="button"
               onClick={() => {
@@ -2142,13 +2146,14 @@ export default function Bets() {
                       <SortableHeader column="bet_date" label="DATA" />
                       <th className="text-left py-1.5 px-1.5 data-label">DESCRIÇÃO</th>
                       <th className="text-left py-1.5 px-1.5 data-label">TAGS</th>
-                      <SortableHeader column="sport" label="ESPORTE" />
-                      <SortableHeader column="league" label="LIGA" />
-                      <SortableHeader column="betting_market" label="MERCADO" />
                       <SortableHeader column="stake_amount" label="VALOR" align="right" />
                       <SortableHeader column="odds" label="ODDS" align="right" />
                       <SortableHeader column="return" label="RETORNO" align="right" className="min-w-[5.5rem]" />
+                      <SortableHeader column="profit" label="LUCRO" align="right" className="min-w-[5.5rem]" />
                       <SortableHeader column="status" label="STATUS" align="center" className="min-w-[5rem]" />
+                      <SortableHeader column="sport" label="ESPORTE" />
+                      <SortableHeader column="league" label="LIGA" />
+                      <SortableHeader column="betting_market" label="MERCADO" />
                       <th className="text-right py-1.5 px-1.5 data-label min-w-[11rem]">AÇÕES</th>
                     </tr>
                   </thead>
@@ -2215,19 +2220,15 @@ export default function Bets() {
       {selectedBetIds.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-3 pb-3 pointer-events-none">
           <div className="container flex items-center gap-2 px-4 py-3 bg-terminal-dark-gray border border-white/10 rounded-lg shadow-lg pointer-events-auto">
-            <span className="text-xs text-terminal-green font-bold whitespace-nowrap">
-              {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
-            </span>
-            <button type="button" onClick={clearSelection}
-              className="text-xs text-terminal-text/50 hover:text-terminal-text transition-colors">
-              ×
-            </button>
-            {filteredBets.length > paginatedBets.length && (
-              <button type="button" onClick={selectAllFiltered}
-                className="hidden md:inline text-xs text-terminal-blue underline hover:no-underline whitespace-nowrap">
-                Selecionar todas as {filteredBets.length}
+            <div className="flex items-center gap-1.5 border border-white/15 rounded px-2 py-1">
+              <span className="text-xs text-terminal-green font-bold whitespace-nowrap">
+                {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+              </span>
+              <button type="button" onClick={clearSelection}
+                className="text-xs text-terminal-text/50 hover:text-terminal-text transition-colors leading-none">
+                ×
               </button>
-            )}
+            </div>
             <div className="flex-1" />
 
             {/* Mobile: single "Ações" button opening a bottom sheet */}
@@ -2240,17 +2241,9 @@ export default function Bets() {
                   </button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="bg-terminal-dark-gray border-t border-white/10 px-4 pb-8 pt-4 rounded-t-xl">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs text-terminal-text/50">
-                      {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
-                    </p>
-                    {filteredBets.length > paginatedBets.length && (
-                      <button type="button" onClick={selectAllFiltered}
-                        className="text-xs text-terminal-blue underline hover:no-underline">
-                        Selecionar todas as {filteredBets.length}
-                      </button>
-                    )}
-                  </div>
+                  <p className="text-xs text-terminal-text/50 mb-3 pr-8">
+                    {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => bulkUpdateStatus('won')}
                       className="py-3 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
@@ -2406,6 +2399,65 @@ export default function Bets() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Capital Movement Modal (Aporte/Resgate) */}
+      <Dialog open={capitalModal.isOpen} onOpenChange={(open) => setCapitalModal(prev => ({ ...prev, isOpen: open }))}>
+        <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-terminal-blue">
+              {capitalModal.type === 'deposit' ? 'APORTE' : 'RESGATE'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs uppercase opacity-70">Valor</Label>
+              <Input
+                type="number"
+                value={capitalModal.amount}
+                onChange={(e) => setCapitalModal(prev => ({ ...prev, amount: e.target.value }))}
+                placeholder="0.00"
+                className="bg-terminal-black border-terminal-border text-terminal-text"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs uppercase opacity-70">Descrição (opcional)</Label>
+              <Input
+                value={capitalModal.description}
+                onChange={(e) => setCapitalModal(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Ex: Depósito via PIX"
+                className="bg-terminal-black border-terminal-border text-terminal-text"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={() => setCapitalModal(prev => ({ ...prev, isOpen: false }))}
+                variant="outline"
+                className="flex-1 border-terminal-border hover:bg-terminal-gray text-terminal-text"
+              >
+                CANCELAR
+              </Button>
+              <Button
+                onClick={async () => {
+                  const amount = parseFloat(capitalModal.amount);
+                  if (isNaN(amount) || amount <= 0) return;
+                  await addMovement({
+                    type: capitalModal.type,
+                    amount,
+                    description: capitalModal.description || undefined,
+                    affects_balance: true,
+                  });
+                  setCapitalModal({ isOpen: false, type: 'deposit', amount: '', description: '' });
+                  toast({ title: 'Sucesso', description: capitalModal.type === 'deposit' ? 'Aporte registrado' : 'Resgate registrado' });
+                }}
+                disabled={!capitalModal.amount || parseFloat(capitalModal.amount) <= 0}
+                className="flex-1 bg-terminal-blue hover:bg-blue-600 text-white"
+              >
+                CONFIRMAR
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -2789,6 +2841,18 @@ export default function Bets() {
                 </div>
               </div>
 
+              <div className="flex items-center gap-3">
+                <Label className="text-xs uppercase opacity-70">Crédito de apostas</Label>
+                <button
+                  type="button"
+                  onClick={() => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, is_credit_bet: !prev.formData.is_credit_bet } }))}
+                  style={{ backgroundColor: editModal.formData.is_credit_bet ? 'var(--terminal-green)' : '#3d4a5c' }}
+                  className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
+                >
+                  <span style={{ transform: editModal.formData.is_credit_bet ? 'translateX(22px)' : 'translateX(2px)' }} className="absolute top-0.5 left-0 w-4 h-4 bg-white rounded-full shadow transition-transform" />
+                </button>
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs uppercase opacity-70">Data da Aposta</Label>
                 <Popover open={isEditDatePopoverOpen} onOpenChange={setIsEditDatePopoverOpen} modal>
@@ -2809,12 +2873,12 @@ export default function Bets() {
                       mode="single"
                       selected={parseDateString(editModal.formData.bet_date) || undefined}
                       onSelect={(date) => {
-                        setEditModal(prev => ({ 
-                          ...prev, 
-                          formData: { 
-                            ...prev.formData, 
-                            bet_date: formatDateToString(date) 
-                          } 
+                        setEditModal(prev => ({
+                          ...prev,
+                          formData: {
+                            ...prev.formData,
+                            bet_date: formatDateToString(date)
+                          }
                         }));
                         setIsEditDatePopoverOpen(false);
                       }}
@@ -2827,8 +2891,8 @@ export default function Bets() {
 
               <div className="space-y-2">
                 <Label className="text-xs uppercase opacity-70">Status</Label>
-                <Select 
-                  value={editModal.formData.status} 
+                <Select
+                  value={editModal.formData.status}
                   onValueChange={(value: any) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, status: value } }))}
                 >
                   <SelectTrigger className="bg-terminal-black border-terminal-border text-terminal-text">

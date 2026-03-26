@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import AnalyticsNav from '@/components/AnalyticsNav';
+import AuthenticatedLayout from '../components/AuthenticatedLayout';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -192,13 +192,12 @@ export default function PlayerSelection() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav />
-        <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 56px)' }}>
+      <AuthenticatedLayout>
+        <div className="min-h-screen bg-terminal-black flex items-center justify-center">
           <div className="text-center">
             <div className="text-terminal-red text-xl mb-4">⚠️ SYSTEM ERROR</div>
             <p className="text-terminal-text mb-4 font-mono">{error}</p>
-            <button
+            <button 
               onClick={() => window.location.reload()}
               className="terminal-button px-4 py-2 rounded"
             >
@@ -206,26 +205,40 @@ export default function PlayerSelection() {
             </button>
           </div>
         </div>
-      </div>
+      </AuthenticatedLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-      <AnalyticsNav />
-
-      <div className="container mx-auto px-4 py-6 space-y-8">
-          {/* Search Bar */}
-          <div className="relative max-w-md w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-terminal-text opacity-50 h-4 w-4" />
-            <Input
-              placeholder="BUSCAR JOGADORES..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="terminal-input pl-10 h-10 text-sm w-full"
-            />
+    <AuthenticatedLayout>
+      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
+        {/* Header */}
+        <header className="terminal-header p-4 sticky top-0 z-10">
+          <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-terminal-blue/20 border border-terminal-blue rounded flex items-center justify-center">
+                <Trophy className="w-4 h-4 text-terminal-blue" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold tracking-wider text-terminal-blue">PLAYER DATABASE</h1>
+                <p className="text-[10px] text-terminal-text opacity-60">SECURE CONNECTION ESTABLISHED</p>
+              </div>
+            </div>
+            
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-terminal-text opacity-50 h-4 w-4" />
+              <Input
+                placeholder="SEARCH DATABASE..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="terminal-input pl-10 h-9 text-xs w-full"
+              />
+            </div>
           </div>
+        </header>
 
+        <div className="container mx-auto px-4 py-6 space-y-8">
+          
           {/* Best Players Section */}
           {!searchTerm && !teamFilter && (bestPlayers.length > 0 || isLoading) && (
             <section>
@@ -447,6 +460,6 @@ export default function PlayerSelection() {
           </section>
         </div>
       </div>
+    </AuthenticatedLayout>
   );
 }
-

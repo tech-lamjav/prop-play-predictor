@@ -57,11 +57,11 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
             <button
               key={player.player_id}
               onClick={() => handlePlayerClick(player.player_name)}
-              className="w-full text-left p-2 rounded border border-terminal-green/20 hover:border-terminal-green/50 hover:bg-terminal-green/5 transition-all group"
+              className="w-full text-left p-2 rounded border border-terminal-blue/20 hover:border-terminal-blue/50 hover:bg-terminal-blue/5 transition-all group"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-terminal-green group-hover:text-terminal-green-bright truncate">
+                  <div className="text-sm font-medium text-terminal-blue group-hover:text-terminal-blue truncate">
                     {player.player_name}
                   </div>
                   <div className="text-xs opacity-70 flex items-center gap-2">

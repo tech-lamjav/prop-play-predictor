@@ -62,7 +62,7 @@ export const ShareBankrollChart: React.FC<ShareBankrollChartProps> = ({ bets }) 
   return (
     <Card className="bg-terminal-dark-gray border-terminal-border">
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-terminal-green">
+        <CardTitle className="text-sm font-medium text-terminal-blue">
           Evolução do saldo acumulado
         </CardTitle>
       </CardHeader>

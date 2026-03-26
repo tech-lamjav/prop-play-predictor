@@ -151,11 +151,11 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
   return (
     <div className={`relative ${className}`}>
       {/* Selected Tags Display */}
-      <div className="flex flex-wrap gap-2 mb-2">
+      <div className="flex flex-wrap gap-1 items-center">
         {selectedTags.map(tag => (
           <Popover key={tag.id}>
             <span
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium"
               style={{
                 backgroundColor: `${tag.color}20`,
                 color: tag.color,
@@ -218,10 +218,10 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs border border-terminal-border hover:border-terminal-blue transition-colors"
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] border border-terminal-border hover:border-terminal-blue transition-colors opacity-60 hover:opacity-100"
               >
-                <Plus className="w-3 h-3" />
-                <span>Adicionar Tag</span>
+                <Plus className="w-2.5 h-2.5" />
+                <span>Tag</span>
               </button>
             </PopoverTrigger>
             <PopoverContent
