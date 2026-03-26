@@ -78,7 +78,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate(backTo || '/home-players')}
-                className="text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray -ml-2"
+                className="text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray -ml-2"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 <span className="text-xs">Voltar</span>
@@ -88,11 +88,11 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                 className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => navigate('/home-players')}
               >
-                <div className="w-8 h-8 bg-terminal-green/20 border border-terminal-green/50 rounded flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-terminal-green" />
+                <div className="w-8 h-8 bg-terminal-blue/20 border border-terminal-blue/50 rounded flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-terminal-blue" />
                 </div>
                 <div className="hidden sm:block">
-                  <span className="text-sm font-bold text-terminal-green tracking-wide">Smartbetting</span>
+                  <span className="text-sm font-bold text-terminal-blue tracking-wide">Smartbetting</span>
                 </div>
               </div>
             )}
@@ -113,7 +113,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray"
+                  className="flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray"
                 >
                   <span className="text-xs font-semibold uppercase tracking-wide">Análises</span>
                   <ChevronDown className="w-3 h-3 opacity-70" />
@@ -130,8 +130,8 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                     <DropdownMenuItem
                       key={item.href}
                       onClick={() => handleNavigation(item.href)}
-                      className={`cursor-pointer focus:bg-terminal-gray/40 focus:text-terminal-green ${
-                        isActive(item.href) ? 'text-terminal-green' : ''
+                      className={`cursor-pointer focus:bg-terminal-gray/40 focus:text-terminal-blue ${
+                        isActive(item.href) ? 'text-terminal-blue' : ''
                       }`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
@@ -147,7 +147,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray"
+                  className="flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray"
                 >
                   <span className="text-xs font-semibold uppercase tracking-wide">Betinho</span>
                   <ChevronDown className="w-3 h-3 opacity-70" />
@@ -164,8 +164,8 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                     <DropdownMenuItem
                       key={item.href}
                       onClick={() => handleNavigation(item.href)}
-                      className={`cursor-pointer focus:bg-terminal-gray/40 focus:text-terminal-green ${
-                        isActive(item.href) ? 'text-terminal-green' : ''
+                      className={`cursor-pointer focus:bg-terminal-gray/40 focus:text-terminal-blue ${
+                        isActive(item.href) ? 'text-terminal-blue' : ''
                       }`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
@@ -181,9 +181,9 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
           <div className="flex items-center gap-2">
             {/* Premium Badge */}
             {user && isPremium && (
-              <div className="hidden sm:flex items-center gap-1 bg-terminal-green/10 border border-terminal-green/30 px-2 py-1 rounded">
-                <Zap className="w-3 h-3 text-terminal-green" />
-                <span className="text-[10px] text-terminal-green font-bold">PREMIUM</span>
+              <div className="hidden sm:flex items-center gap-1 bg-terminal-blue/10 border border-terminal-blue/30 px-2 py-1 rounded">
+                <Zap className="w-3 h-3 text-terminal-blue" />
+                <span className="text-[10px] text-terminal-blue font-bold">PREMIUM</span>
               </div>
             )}
 
@@ -196,7 +196,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate('/auth')}
-                  className="text-terminal-text hover:text-terminal-green text-xs h-8"
+                  className="text-terminal-text hover:text-terminal-blue text-xs h-8"
                 >
                   <LogIn className="w-3 h-3 mr-1" />
                   Entrar
@@ -214,7 +214,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
 
             {/* Mobile menu button */}
             <button
-              className="md:hidden flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-terminal-dark-gray transition-colors text-terminal-text hover:text-terminal-green"
+              className="md:hidden flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-terminal-dark-gray transition-colors text-terminal-text hover:text-terminal-blue"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {activeModuleName && !isMobileMenuOpen && (
@@ -252,8 +252,8 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                         onClick={() => handleNavigation(item.href)}
                         className={`w-full justify-start h-10 ${
                           active
-                            ? 'bg-terminal-green/10 text-terminal-green'
-                            : 'text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray'
+                            ? 'bg-terminal-blue/10 text-terminal-blue'
+                            : 'text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray'
                         }`}
                       >
                         <Icon className="w-4 h-4 mr-3" />
@@ -283,8 +283,8 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                         onClick={() => handleNavigation(item.href)}
                         className={`w-full justify-start h-10 ${
                           active
-                            ? 'bg-terminal-green/10 text-terminal-green'
-                            : 'text-terminal-text hover:text-terminal-green hover:bg-terminal-dark-gray'
+                            ? 'bg-terminal-blue/10 text-terminal-blue'
+                            : 'text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray'
                         }`}
                       >
                         <Icon className="w-4 h-4 mr-3" />

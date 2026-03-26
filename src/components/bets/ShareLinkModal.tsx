@@ -117,7 +117,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-terminal-green flex items-center gap-2">
+          <DialogTitle className="text-terminal-blue flex items-center gap-2">
             <Link2 className="w-5 h-5" />
             Compartilhar apostas
           </DialogTitle>

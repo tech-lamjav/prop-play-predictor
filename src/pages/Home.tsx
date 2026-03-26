@@ -109,11 +109,11 @@ export default function Home() {
           <div className="max-w-4xl mx-auto">
             {/* Title and Badge */}
             <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-terminal-green/20 border border-terminal-green rounded-lg flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-terminal-green" />
+              <div className="w-12 h-12 bg-terminal-blue/20 border border-terminal-blue rounded-lg flex items-center justify-center">
+                <Trophy className="w-6 h-6 text-terminal-blue" />
               </div>
               <div className="text-center">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-terminal-green mb-1">
+                <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-terminal-blue mb-1">
                   NBA ANALYTICS
                 </h1>
                 <div className="flex items-center justify-center gap-2">
@@ -132,7 +132,7 @@ export default function Home() {
             {/* Value Proposition */}
             <p className="text-center text-sm md:text-base text-terminal-text opacity-80 mb-6 max-w-2xl mx-auto">
               Análises avançadas de dados para suas apostas na NBA. 
-              <span className="text-terminal-green font-semibold"> Baseado em evidências, não em palpites.</span>
+              <span className="text-terminal-blue font-semibold"> Baseado em evidências, não em palpites.</span>
             </p>
           </div>
         </div>
@@ -225,10 +225,10 @@ export default function Home() {
           <section className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-6 md:p-8">
             <div className="max-w-3xl mx-auto">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-terminal-green/20 border-2 border-terminal-green rounded-full mb-4">
-                  <Zap className="w-8 h-8 text-terminal-green" />
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-terminal-blue/20 border-2 border-terminal-blue rounded-full mb-4">
+                  <Zap className="w-8 h-8 text-terminal-blue" />
                 </div>
-                <h2 className="text-xl md:text-2xl font-bold text-terminal-green mb-2">
+                <h2 className="text-xl md:text-2xl font-bold text-terminal-blue mb-2">
                   Desbloqueie Análises Avançadas
                 </h2>
                 <p className="text-sm text-terminal-text opacity-70">

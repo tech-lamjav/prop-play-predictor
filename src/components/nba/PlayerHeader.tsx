@@ -58,7 +58,7 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
       <div className="flex items-start gap-4">
         {/* Player Avatar */}
         <div className="flex-shrink-0">
-          <div className="w-20 h-20 rounded-lg bg-terminal-gray border-2 border-terminal-green flex items-center justify-center overflow-hidden">
+          <div className="w-20 h-20 rounded-lg bg-terminal-gray border-2 border-terminal-blue flex items-center justify-center overflow-hidden">
             <img 
               src={getPlayerPhotoUrl(player.player_name, player.team_name)}
               alt={player.player_name}
@@ -74,7 +74,7 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
                 target.style.display = 'none';
                 const parent = target.parentElement;
                 if (parent) {
-                  parent.innerHTML = `<span class="text-2xl font-bold text-terminal-green">${initials}</span>`;
+                  parent.innerHTML = `<span class="text-2xl font-bold text-terminal-blue">${initials}</span>`;
                 }
               }}
             />
@@ -85,7 +85,7 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
         <div className="flex-1">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h2 className="text-2xl font-bold text-terminal-green mb-1">
+              <h2 className="text-2xl font-bold text-terminal-blue mb-1">
                 {player.player_name}
               </h2>
               <div className="flex items-center gap-3 text-sm">
@@ -117,7 +117,7 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
             {player.rating_stars > 0 && (
               <div className="flex items-center gap-1 bg-terminal-dark-gray px-3 py-1.5 rounded border border-terminal-border-subtle">
                 <Star className="w-4 h-4 text-terminal-yellow fill-current" />
-                <span className="text-sm font-bold text-terminal-green">
+                <span className="text-sm font-bold text-terminal-blue">
                   {player.rating_stars}
                 </span>
               </div>
