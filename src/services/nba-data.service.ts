@@ -96,6 +96,8 @@ export interface Team {
   team_injury_report_time_brasilia: string;
   next_game_injury_report_time_brasilia: string;
   loaded_at: string;
+  next_opponent_wins: number | null;
+  next_opponent_losses: number | null;
 }
 
 export interface TeamPlayer {

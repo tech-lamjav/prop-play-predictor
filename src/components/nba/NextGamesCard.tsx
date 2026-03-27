@@ -8,51 +8,44 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface NextGamesCardProps {
   team?: Team;
   isLoading?: boolean;
+  isTeamB2B?: boolean;
+  isOpponentB2B?: boolean;
+  nextGameTime?: string | null;
 }
 
-export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading }) => {
+export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, isTeamB2B = false, isOpponentB2B = false, nextGameTime }) => {
   if (isLoading) {
     return (
       <div className="terminal-container p-4">
         <h3 className="section-title mb-3">NEXT GAME</h3>
-        <div className="space-y-3">
-          <Skeleton className="h-32 w-full bg-terminal-gray" />
-          <div className="grid grid-cols-2 gap-2">
-            <Skeleton className="h-16 w-full bg-terminal-gray" />
-            <Skeleton className="h-16 w-full bg-terminal-gray" />
-          </div>
+        <div className="space-y-2">
+          <Skeleton className="h-24 w-full bg-terminal-gray" />
+          <Skeleton className="h-10 w-full bg-terminal-gray" />
+          <Skeleton className="h-10 w-full bg-terminal-gray" />
         </div>
       </div>
     );
   }
 
   if (!team) return null;
-  const getRecordColor = (lastFive: string) => {
-    if (!lastFive) return 'opacity-50';
-    const wins = (lastFive.match(/W/g) || []).length;
-    if (wins >= 4) return 'text-terminal-blue';
-    if (wins >= 2) return 'text-terminal-yellow';
-    return 'text-terminal-red';
-  };
 
-  const formatLastFive = (lastFive: string) => {
-    if (!lastFive) return 'N/A';
-    return lastFive.split('').join(' ');
-  };
-
+  // index 0 = jogo mais antigo, último index = mais recente
+  // opacidade cresce da esquerda para a direita
   const renderLastFiveWithColors = (lastFive: string | null) => {
     if (!lastFive) return <span className="opacity-50">N/A</span>;
-    
+    const chars = lastFive.split('');
+    const total = chars.length;
     return (
-      <div className="flex items-center justify-center gap-1">
-        {lastFive.split('').map((result, index) => {
+      <div className="flex items-center gap-0.5">
+        {chars.map((result, index) => {
           const isWin = result === 'V' || result === 'W';
+          // opacity: oldest=40% → newest=100%
+          const opacityValue = total <= 1 ? 1 : 0.4 + (index / (total - 1)) * 0.6;
           return (
             <span
               key={index}
-              className={`text-xs font-medium ${
-                isWin ? 'text-terminal-green' : 'text-terminal-red'
-              }`}
+              className={`text-xs font-medium ${isWin ? 'text-terminal-green' : 'text-terminal-red'}`}
+              style={{ opacity: opacityValue }}
             >
               {result}
             </span>
@@ -62,36 +55,42 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading })
     );
   };
 
-  const calculateRecordFromLastFive = (lastFive: string | null): { wins: number; losses: number } => {
-    if (!lastFive) return { wins: 0, losses: 0 };
-    const wins = (lastFive.match(/W/g) || []).length;
-    const losses = (lastFive.match(/L/g) || []).length;
-    return { wins, losses };
-  };
-
   return (
     <div className="terminal-container p-4">
-      <h3 className="section-title mb-3">NEXT GAME</h3>
-      
-      <div className="space-y-3">
+      <h3 className="section-title mb-2">NEXT GAME</h3>
+
+      <div className="space-y-2">
         {/* Matchup */}
-        <div className="p-3 rounded bg-terminal-blue/5 border border-terminal-blue/20">
+        <div className="p-2.5 rounded bg-terminal-blue/5 border border-terminal-blue/20">
+          {/* Top row: home/away + time */}
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-terminal-blue" />
-              <span className="text-xs data-label">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3 h-3 text-terminal-blue" />
+              <span className="text-[10px] data-label">
                 {team.is_next_game_home ? 'HOME' : 'AWAY'}
               </span>
             </div>
-            <Calendar className="w-4 h-4 opacity-50" />
+            <div className="flex items-center gap-1.5">
+              {nextGameTime && (
+                <span className="text-[10px] font-semibold text-terminal-green">{nextGameTime}</span>
+              )}
+              <Calendar className="w-3 h-3 opacity-40" />
+            </div>
           </div>
-          
-          <div className="flex items-center justify-center gap-6 py-2">
+
+          {isTeamB2B && isOpponentB2B && (
+            <div className="text-center text-[9px] bg-terminal-yellow/10 text-terminal-yellow border border-terminal-yellow/20 rounded px-2 py-0.5 mb-2">
+              ⚠ BOTH TEAMS B2B
+            </div>
+          )}
+
+          {/* Teams row */}
+          <div className="flex items-center justify-center gap-4 relative">
             {/* Current Team */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 relative">
-                <img 
-                  src={getTeamLogoUrl(team.team_name)} 
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 relative">
+                <img
+                  src={getTeamLogoUrl(team.team_name)}
                   alt={team.team_name}
                   className="w-full h-full object-contain"
                   loading="lazy"
@@ -101,24 +100,26 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading })
                     const parent = target.parentElement;
                     if (parent) {
                       parent.innerHTML = `<span class="text-xs font-bold text-terminal-text">${team.team_abbreviation}</span>`;
-                      parent.className = "w-12 h-12 flex items-center justify-center bg-terminal-gray rounded-full border border-terminal-border-subtle";
+                      parent.className = "w-10 h-10 flex items-center justify-center bg-terminal-gray rounded-full border border-terminal-border-subtle";
                     }
                   }}
                 />
               </div>
-              <span className="text-xs font-bold text-terminal-text">{team.team_abbreviation}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-terminal-text">{team.team_abbreviation}</span>
+                {isTeamB2B && (
+                  <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 py-0.5 rounded leading-none">B2B</span>
+                )}
+              </div>
             </div>
 
-            {/* VS */}
-            <div className="flex flex-col items-center">
-              <span className="text-xl font-black text-terminal-blue italic">VS</span>
-            </div>
+            <span className="text-lg font-black text-terminal-blue italic">VS</span>
 
             {/* Opponent Team */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 relative">
-                <img 
-                  src={getTeamLogoUrl(team.next_opponent_name)} 
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 relative">
+                <img
+                  src={getTeamLogoUrl(team.next_opponent_name)}
                   alt={team.next_opponent_name}
                   className="w-full h-full object-contain"
                   loading="lazy"
@@ -128,96 +129,76 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading })
                     const parent = target.parentElement;
                     if (parent) {
                       parent.innerHTML = `<span class="text-xs font-bold text-terminal-text">${team.next_opponent_abbreviation}</span>`;
-                      parent.className = "w-12 h-12 flex items-center justify-center bg-terminal-gray rounded-full border border-terminal-border-subtle";
+                      parent.className = "w-10 h-10 flex items-center justify-center bg-terminal-gray rounded-full border border-terminal-border-subtle";
                     }
                   }}
                 />
               </div>
-              <span className="text-xs font-bold text-terminal-text">{team.next_opponent_abbreviation}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-terminal-text">{team.next_opponent_abbreviation}</span>
+                {isOpponentB2B && (
+                  <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 py-0.5 rounded leading-none">B2B</span>
+                )}
+              </div>
             </div>
           </div>
-          
-          <div className="text-xs text-center mt-2 opacity-50">
-            {team.next_opponent_name}
-          </div>
+
+          {/* Injury Report — canto inferior esquerdo do card, apenas em B2B */}
+          {(isTeamB2B || isOpponentB2B) && team.next_game_injury_report_time_brasilia && (
+            <div className="mt-2 text-[9px] opacity-50">
+              <span className="data-label">INJURY REPORT:</span> {team.next_game_injury_report_time_brasilia}
+            </div>
+          )}
         </div>
 
-        {/* Team Stats */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-2 rounded bg-black/20 text-center">
-            <div className="data-label text-xs mb-1">YOUR TEAM</div>
-            <div className="text-sm font-medium">
-              {team.wins}-{team.losses}
-            </div>
-            <div className="mt-1">
-              {renderLastFiveWithColors(team.team_last_five_games)}
-            </div>
-          </div>
-          
-          <div className="p-2 rounded bg-black/20 text-center">
-            <div className="data-label text-xs mb-1">OPPONENT</div>
-            {team.next_opponent_team_last_five_games ? (
+        {/* Records + Last 5 + Rankings — one compact row per team */}
+        <div className="space-y-1 text-xs">
+          {/* Player's team */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-terminal-text w-7 shrink-0">{team.team_abbreviation}</span>
+            <span className="opacity-60 shrink-0">{team.wins}-{team.losses}</span>
+            <span className="opacity-30">·</span>
+            {renderLastFiveWithColors(team.team_last_five_games)}
+            {(team.team_offensive_rating_rank || team.team_defensive_rating_rank) && (
               <>
-                {(() => {
-                  const record = calculateRecordFromLastFive(team.next_opponent_team_last_five_games);
-                  return (
-                    <div className="text-sm font-medium opacity-70">
-                      {record.wins}-{record.losses}
-                    </div>
-                  );
-                })()}
-                <div className="mt-1">
-                  {renderLastFiveWithColors(team.next_opponent_team_last_five_games)}
-                </div>
+                <span className="opacity-30">·</span>
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                  <TrendingUp className="w-3 h-3 text-terminal-blue shrink-0" />
+                  <span className="font-medium">#{team.team_offensive_rating_rank || '—'}</span>
+                </span>
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                  <TrendingDown className="w-3 h-3 text-terminal-red shrink-0" />
+                  <span className="font-medium">#{team.team_defensive_rating_rank || '—'}</span>
+                </span>
               </>
-            ) : (
+            )}
+          </div>
+          {/* Opponent */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-terminal-text w-7 shrink-0">{team.next_opponent_abbreviation}</span>
+            <span className="opacity-60 shrink-0">
+              {team.next_opponent_wins != null && team.next_opponent_losses != null
+                ? `${team.next_opponent_wins}-${team.next_opponent_losses}`
+                : 'N/A'}
+            </span>
+            <span className="opacity-30">·</span>
+            {renderLastFiveWithColors(team.next_opponent_team_last_five_games)}
+            {(team.next_opponent_team_offensive_rating_rank || team.next_opponent_team_defensive_rating_rank) && (
               <>
-                <div className="text-sm font-medium opacity-70">N/A</div>
-                <div className="text-xs mt-1 opacity-50">Last 5</div>
+                <span className="opacity-30">·</span>
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                  <TrendingUp className="w-3 h-3 opacity-60 shrink-0" />
+                  <span className="font-medium opacity-80">#{team.next_opponent_team_offensive_rating_rank || '—'}</span>
+                </span>
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                  <TrendingDown className="w-3 h-3 opacity-60 shrink-0" />
+                  <span className="font-medium opacity-80">#{team.next_opponent_team_defensive_rating_rank || '—'}</span>
+                </span>
               </>
             )}
           </div>
         </div>
 
-        {/* Rankings Comparison */}
-        {(team.team_rating_rank || team.next_opponent_team_rating_rank) && (
-          <div className="space-y-2">
-            <div className="data-label text-xs text-center">TEAM RANKINGS</div>
-            
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="flex items-center justify-center gap-1">
-                <TrendingUp className="w-3 h-3 text-terminal-blue" />
-                <span className="opacity-70">Off:</span>
-                <span className="font-medium">#{team.team_offensive_rating_rank || 'N/A'}</span>
-              </div>
-              <div className="flex items-center justify-center gap-1">
-                <TrendingDown className="w-3 h-3 text-terminal-red" />
-                <span className="opacity-70">Def:</span>
-                <span className="font-medium">#{team.team_defensive_rating_rank || 'N/A'}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs opacity-60">
-              <div className="flex items-center justify-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                <span className="opacity-70">Opp Off:</span>
-                <span className="font-medium">#{team.next_opponent_team_offensive_rating_rank || 'N/A'}</span>
-              </div>
-              <div className="flex items-center justify-center gap-1">
-                <TrendingDown className="w-3 h-3" />
-                <span className="opacity-70">Opp Def:</span>
-                <span className="font-medium">#{team.next_opponent_team_defensive_rating_rank || 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Injury Report Time */}
-        {team.next_game_injury_report_time_brasilia && (
-          <div className="text-xs opacity-50 pt-2 border-t border-terminal-blue/10">
-            <span className="data-label">INJURY REPORT:</span> {team.next_game_injury_report_time_brasilia}
-          </div>
-        )}
       </div>
     </div>
   );
