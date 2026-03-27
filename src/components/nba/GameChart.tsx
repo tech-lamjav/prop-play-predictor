@@ -1,13 +1,40 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, Tooltip } from 'recharts';
-import { GamePlayerStats } from '@/services/nba-data.service';
-import { RotateCcw } from 'lucide-react';
+import { GamePlayerStats, TeamPlayer } from '@/services/nba-data.service';
+import { RotateCcw, Info, Globe, Home, Plane, Users, X, ChevronDown, Star } from 'lucide-react';
+import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
+import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
+
+const gameOptions: Array<{ value: number | 'all'; label: string }> = [
+  { value: 5, label: 'Last 5' },
+  { value: 10, label: 'Last 10' },
+  { value: 15, label: 'Last 15' },
+  { value: 'all', label: 'All' },
+];
+
+const locationOptions: Array<{ value: 'all' | 'home' | 'away'; icon: React.ReactNode }> = [
+  { value: 'all', icon: <Globe className="w-3 h-3" /> },
+  { value: 'home', icon: <Home className="w-3 h-3" /> },
+  { value: 'away', icon: <Plane className="w-3 h-3" /> },
+];
 
 interface GameChartProps {
   gameStats: GamePlayerStats[];
   statType?: string;
   currentLine?: number | null;
   seasonAvg?: number;
+  lastNGames: number | 'all';
+  homeAway: 'all' | 'home' | 'away';
+  onLastNGamesChange: (value: number | 'all') => void;
+  onHomeAwayChange: (value: 'all' | 'home' | 'away') => void;
+  totalGamesAvailable: number;
+  teammates?: TeamPlayer[];
+  currentPlayerId?: number;
+  teamName?: string;
+  teammateFilter: TeammateFilter;
+  onTeammateFilterChange: (filter: TeammateFilter) => void;
+  teammateFilterLoading?: boolean;
 }
 
 interface ChartDataPoint {
@@ -79,11 +106,27 @@ const CustomXAxisTick = (props: any) => {
   );
 };
 
-export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Points', currentLine, seasonAvg }) => {
+export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Points', currentLine, seasonAvg, lastNGames, homeAway, onLastNGamesChange, onHomeAwayChange, totalGamesAvailable, teammates = [], currentPlayerId, teamName = '', teammateFilter, onTeammateFilterChange, teammateFilterLoading }) => {
   const [adjustedLine, setAdjustedLine] = useState<number | null>(currentLine ?? null);
   const [isDragging, setIsDragging] = useState(false);
+  const [teammateOpen, setTeammateOpen] = useState(false);
+  const teammateDropdownRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartBoundsRef = useRef<{ top: number; bottom: number; minY: number; maxY: number } | null>(null);
+
+  // Close teammate dropdown on outside click
+  useEffect(() => {
+    if (!teammateOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (teammateDropdownRef.current && !teammateDropdownRef.current.contains(e.target as Node)) {
+        setTeammateOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [teammateOpen]);
+
+  const availableTeammates = teammates.filter(t => Number(t.player_id) !== Number(currentPlayerId));
   
   useEffect(() => {
     setAdjustedLine(currentLine ?? null);
@@ -118,51 +161,54 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
   const yAxisMax = Math.ceil(maxValue * 1.15);
   const yAxisMin = 0;
 
-  // Handler para início do drag
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (adjustedLine === null || !chartContainerRef.current) return;
-    
-    const container = chartContainerRef.current;
-    const rect = container.getBoundingClientRect();
-    
-    // Área do gráfico (aproximada - margins do Recharts)
-    const chartTop = rect.top + 5; // margin top
-    const chartBottom = rect.bottom - 80; // margin bottom + footer
-    
-    chartBoundsRef.current = {
-      top: chartTop,
-      bottom: chartBottom,
+  // Shared helper: compute chart bounds and check proximity to line
+  const computeChartBounds = useCallback(() => {
+    if (!chartContainerRef.current) return null;
+    const rect = chartContainerRef.current.getBoundingClientRect();
+    return {
+      top: rect.top + 5,
+      bottom: rect.bottom - 80,
       minY: yAxisMin,
-      maxY: yAxisMax
+      maxY: yAxisMax,
     };
-    
-    // Verificar se clicou perto da linha (tolerância de 15px)
-    const chartHeight = chartBottom - chartTop;
-    const lineYPosition = chartTop + chartHeight * (1 - (adjustedLine - yAxisMin) / (yAxisMax - yAxisMin));
-    
-    if (Math.abs(e.clientY - lineYPosition) < 15) {
+  }, [yAxisMin, yAxisMax]);
+
+  const isNearLine = useCallback((clientY: number, bounds: { top: number; bottom: number; minY: number; maxY: number }, tolerance: number) => {
+    if (adjustedLine === null) return false;
+    const chartHeight = bounds.bottom - bounds.top;
+    const lineYPosition = bounds.top + chartHeight * (1 - (adjustedLine - bounds.minY) / (bounds.maxY - bounds.minY));
+    return Math.abs(clientY - lineYPosition) < tolerance;
+  }, [adjustedLine]);
+
+  const applyDragPosition = useCallback((clientY: number) => {
+    if (!chartBoundsRef.current) return;
+    const { top, bottom, minY, maxY } = chartBoundsRef.current;
+    const chartHeight = bottom - top;
+    const relativeY = Math.max(0, Math.min(1, (clientY - top) / chartHeight));
+    const newValue = maxY - relativeY * (maxY - minY);
+    const roundedValue = Math.round(newValue * 2) / 2;
+    setAdjustedLine(Math.max(0.5, roundedValue));
+  }, []);
+
+  // Handler para início do drag (mouse)
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (adjustedLine === null) return;
+    const bounds = computeChartBounds();
+    if (!bounds) return;
+    chartBoundsRef.current = bounds;
+    if (isNearLine(e.clientY, bounds, 15)) {
       setIsDragging(true);
       e.preventDefault();
     }
-  }, [adjustedLine, yAxisMin, yAxisMax]);
+  }, [adjustedLine, computeChartBounds, isNearLine]);
 
-  // Handler para movimento do drag
+  // Handler para movimento do drag (mouse)
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !chartBoundsRef.current) return;
-    
-    const { top, bottom, minY, maxY } = chartBoundsRef.current;
-    const chartHeight = bottom - top;
-    
-    // Calcular valor Y baseado na posição do mouse
-    const relativeY = Math.max(0, Math.min(1, (e.clientY - top) / chartHeight));
-    const newValue = maxY - relativeY * (maxY - minY);
-    
-    // Arredondar para 0.5
-    const roundedValue = Math.round(newValue * 2) / 2;
-    setAdjustedLine(Math.max(0.5, roundedValue));
-  }, [isDragging]);
+    if (!isDragging) return;
+    applyDragPosition(e.clientY);
+  }, [isDragging, applyDragPosition]);
 
-  // Handler para fim do drag
+  // Handler para fim do drag (mouse)
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
@@ -173,6 +219,45 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
       setIsDragging(false);
     }
   }, [isDragging]);
+
+  // Handler para início do drag (touch)
+  // No mobile não exige toque próximo à linha — qualquer toque no gráfico inicia o drag
+  // e já posiciona a linha onde o dedo tocou (sem offset inicial)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (adjustedLine === null) return;
+    const bounds = computeChartBounds();
+    if (!bounds) return;
+    chartBoundsRef.current = bounds;
+    setIsDragging(true);
+    // Move a linha imediatamente para onde o dedo tocou
+    const touch = e.touches[0];
+    const { top, bottom, minY, maxY } = bounds;
+    const chartHeight = bottom - top;
+    const relativeY = Math.max(0, Math.min(1, (touch.clientY - top) / chartHeight));
+    const newValue = maxY - relativeY * (maxY - minY);
+    const roundedValue = Math.round(newValue * 2) / 2;
+    setAdjustedLine(Math.max(0.5, roundedValue));
+  }, [adjustedLine, computeChartBounds]);
+
+  // Handler para fim do drag (touch)
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // touchmove precisa ser não-passivo para chamar preventDefault() e bloquear scroll
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      applyDragPosition(e.touches[0].clientY);
+    };
+
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => container.removeEventListener('touchmove', onTouchMove);
+  }, [isDragging, applyDragPosition]);
 
   const handleReset = () => {
     setAdjustedLine(currentLine ?? null);
@@ -193,16 +278,179 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
 
   return (
     <div className="terminal-container p-4 mb-3">
-      <div className="flex items-center justify-between mb-3">
+      {/* Row 1: title + hit rate */}
+      <div className="flex items-center justify-between mb-2">
         <h3 className="section-title">PERFORMANCE GRAPH</h3>
-        
-        {/* Valor da linha e botão reset */}
+        {hitRate && (
+          <span className={`text-sm font-bold ${parseFloat(hitRate.percentage) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+            HIT RATE: {hitRate.percentage}% <span className="text-xs font-normal opacity-70">({hitRate.hits}/{hitRate.total})</span>
+          </span>
+        )}
+      </div>
+
+      {/* Row 2: filters + LINE */}
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        {/* Games filter */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex gap-1">
+            {gameOptions.map((opt) => {
+              const isDisabled = typeof opt.value === 'number' && opt.value > totalGamesAvailable;
+              const isActive = lastNGames === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => !isDisabled && onLastNGamesChange(opt.value)}
+                  disabled={isDisabled}
+                  className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
+                    isActive
+                      ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
+                      : isDisabled
+                      ? 'border-terminal-green/10 text-terminal-text/30 cursor-not-allowed'
+                      : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="h-4 w-px bg-terminal-green/20 mx-0.5" />
+          <div className="flex gap-1">
+            {locationOptions.map((opt) => {
+              const isActive = homeAway === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => onHomeAwayChange(opt.value)}
+                  title={opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}
+                  className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
+                    isActive
+                      ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
+                      : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                  }`}
+                >
+                  {opt.icon}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Teammate filter */}
+          {availableTeammates.length > 0 && (
+            <>
+              <div className="h-4 w-px bg-terminal-green/20 mx-0.5" />
+              <div className="relative" ref={teammateDropdownRef}>
+                {teammateFilter ? (
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${
+                      teammateFilter.mode === 'with'
+                        ? 'bg-terminal-green/15 border-terminal-green/50 text-terminal-green'
+                        : 'bg-terminal-red/15 border-terminal-red/50 text-terminal-red'
+                    }`}>
+                      {teammateFilter.mode === 'with' ? 'COM' : 'SEM'} {teammateFilter.playerName.split(' ').pop()}
+                    </span>
+                    <button
+                      onClick={() => onTeammateFilterChange(null)}
+                      className="w-5 h-5 flex items-center justify-center rounded border border-white/20 text-white/40 hover:text-white/80 hover:border-white/40 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setTeammateOpen(v => !v)}
+                    disabled={teammateFilterLoading}
+                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5 transition-all disabled:opacity-40"
+                  >
+                    <Users className="w-3 h-3" />
+                    <span>Companheiro</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${teammateOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
+
+                {teammateOpen && (
+                  <div className="absolute top-full left-0 mt-1 z-50 bg-terminal-dark-gray border border-terminal-border-subtle rounded shadow-lg min-w-[280px] max-h-[260px] overflow-y-auto
+                    [&::-webkit-scrollbar]:w-1
+                    [&::-webkit-scrollbar-track]:bg-transparent
+                    [&::-webkit-scrollbar-thumb]:bg-white/20
+                    [&::-webkit-scrollbar-thumb]:rounded-full
+                    [&::-webkit-scrollbar-thumb:hover]:bg-white/40">
+                    {availableTeammates.map(t => {
+                      const photoUrl = getPlayerPhotoUrl(t.player_name, teamName);
+                      const initials = t.player_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                      return (
+                        <div key={t.player_id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-terminal-gray/40 border-b border-terminal-border-subtle/30 last:border-0">
+                          <div className="w-7 h-7 rounded-full overflow-hidden bg-terminal-gray border border-terminal-border-subtle shrink-0 flex items-center justify-center">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={t.player_name}
+                                data-player-photo-index="0"
+                                className="w-full h-full object-cover object-top"
+                                onError={(e) => {
+                                  const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, t.player_name, teamName);
+                                  if (!didTry) {
+                                    const el = e.target as HTMLImageElement;
+                                    el.style.display = 'none';
+                                    const parent = el.parentElement;
+                                    if (parent) parent.innerHTML = `<span class="text-[9px] font-bold text-terminal-text opacity-60">${initials}</span>`;
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span className="text-[9px] font-bold text-terminal-text opacity-60">{initials}</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs font-medium text-terminal-text truncate">{t.player_name}</span>
+                              {t.rating_stars > 0 && Array.from({ length: t.rating_stars }).map((_, i) => (
+                                <Star key={i} className="w-2.5 h-2.5 fill-terminal-yellow text-terminal-yellow shrink-0" />
+                              ))}
+                            </div>
+                            <div className="text-[10px] opacity-50 flex items-center gap-1">
+                              <span>{t.position}</span>
+                              {t.current_status && t.current_status.toLowerCase() !== 'active' && (
+                                <span className="text-terminal-red">{t.current_status}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'with' }); setTeammateOpen(false); }}
+                              className="px-2 py-0.5 text-[10px] rounded border border-terminal-green/40 text-terminal-green hover:bg-terminal-green/15 transition-colors">
+                              COM
+                            </button>
+                            <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'without' }); setTeammateOpen(false); }}
+                              className="px-2 py-0.5 text-[10px] rounded border border-terminal-red/40 text-terminal-red hover:bg-terminal-red/15 transition-colors">
+                              SEM
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* LINE + tooltip + reset */}
         {adjustedLine !== null && (
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-sm text-white">
-              LINE: {adjustedLine.toFixed(1)}
-            </span>
-            
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-sm text-white">LINE: {adjustedLine.toFixed(1)}</span>
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help text-white/40 hover:text-white/70 transition-colors">
+                    <Info className="w-3.5 h-3.5" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs max-w-[180px] text-center">
+                  ↕ Arraste a linha para simular diferentes cenários
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
             {isLineModified && (
               <button
                 onClick={handleReset}
@@ -216,22 +464,16 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
         )}
       </div>
 
-      {/* Hint para arrastar */}
-      {adjustedLine !== null && (
-        <div className="mb-2 text-[10px] text-white/50 flex items-center gap-1">
-          <span>↕</span>
-          <span>Arraste a linha para simular diferentes cenários</span>
-        </div>
-      )}
-
-      <div 
+      <div
         ref={chartContainerRef}
         className={`h-64 ${isDragging ? 'cursor-grabbing' : adjustedLine !== null ? 'cursor-grab' : ''}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
-        style={{ userSelect: 'none' }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{ userSelect: 'none', touchAction: 'pan-x' }}
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart 
@@ -298,41 +540,33 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
         </ResponsiveContainer>
       </div>
       
-      <div className="mt-2 text-xs flex justify-between">
-        <span className="opacity-60">LAST {chartData.length} GAMES</span>
-        <div className="flex gap-4">
-          {hitRate && (
-            <span className={`font-bold ${parseFloat(hitRate.percentage) >= 50 ? 'text-green-500' : 'text-red-500'}`}>
-              HIT RATE: {hitRate.percentage}% ({hitRate.hits}/{hitRate.total})
-            </span>
+      {/* Footer */}
+      <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px]">
+        {/* Legenda */}
+        <div className="flex items-center gap-3">
+          <span className="opacity-40">LAST {chartData.length}</span>
+          {adjustedLine !== null && (
+            <>
+              <span className="flex items-center gap-1 text-green-500">
+                <span className="w-2 h-2 rounded-sm bg-green-500 shrink-0" /> OVER
+              </span>
+              <span className="flex items-center gap-1 text-red-500">
+                <span className="w-2 h-2 rounded-sm bg-red-500 shrink-0" /> UNDER
+              </span>
+              <span className="flex items-center gap-1 opacity-60">
+                <span className="w-4 h-0.5 bg-white shrink-0" /> LINE
+              </span>
+            </>
           )}
-          <span className="font-medium opacity-60">AVG: {average}</span>
+        </div>
+        {/* Médias */}
+        <div className="flex items-center gap-3 opacity-50">
+          <span>AVG <span className="font-medium text-terminal-text opacity-100">{average}</span></span>
           {seasonAvg !== undefined && seasonAvg !== null && (
-            <span className="font-medium opacity-60">Média temporada: {Number(seasonAvg).toFixed(1)}</span>
+            <span>Season <span className="font-medium text-terminal-text opacity-100">{Number(seasonAvg).toFixed(1)}</span></span>
           )}
         </div>
       </div>
-      
-      {adjustedLine !== null && (
-        <div className="mt-2 text-[10px] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 text-green-500">
-              <span className="w-2 h-2 rounded-sm bg-green-500"></span> OVER
-            </span>
-            <span className="flex items-center gap-1 text-red-500">
-              <span className="w-2 h-2 rounded-sm bg-red-500"></span> UNDER
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-4 h-0.5 bg-white"></span> LINE
-            </span>
-          </div>
-          {currentLine !== null && (
-            <span className="opacity-50">
-              Linha do mercado: {currentLine.toFixed(1)}
-            </span>
-          )}
-        </div>
-      )}
     </div>
   );
 };
