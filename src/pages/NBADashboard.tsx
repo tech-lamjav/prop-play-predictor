@@ -4,7 +4,6 @@ import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, 
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
-import { StatTypeSelector } from '@/components/nba/StatTypeSelector';
 import { PlayerHeader } from '@/components/nba/PlayerHeader';
 import { PropInsightsCard } from '@/components/nba/PropInsightsCard';
 import { TeammatesCard } from '@/components/nba/TeammatesCard';
@@ -67,6 +66,8 @@ export default function NBADashboard() {
   const [teammateFilter, setTeammateFilter] = useState<TeammateFilter>(null);
   const [teammateGameIds, setTeammateGameIds] = useState<Set<number> | null>(null);
   const [teammateFilterLoading, setTeammateFilterLoading] = useState(false);
+  const [b2bOnly, setB2bOnly] = useState(false);
+  const [h2hOnly, setH2hOnly] = useState(false);
 
   useEffect(() => {
     loadPlayer();
@@ -167,9 +168,9 @@ export default function NBADashboard() {
       } catch (e) { console.error('Error loading game stats:', e); }
       setStatsLoading(false);
 
-      // 3. Prop insights
+      // 3. Prop insights — busca nas linhas dos LÍDERES que apontam este jogador como backup
       try {
-        loadedProps = await nbaDataService.getPlayerProps(playerData.player_id);
+        loadedProps = await nbaDataService.getPlayerTriggerInsights(playerData.player_name);
         setPropPlayers(loadedProps);
       } catch (e) { console.error('Error loading props:', e); }
       setPropsLoading(false);
@@ -279,6 +280,34 @@ export default function NBADashboard() {
     };
   }, [gameStats]);
 
+  // Ref to scroll chart into view when insight is clicked
+  const chartRef = React.useRef<HTMLDivElement>(null);
+
+  const handleInsightClick = (statType: string, triggerPlayerName: string) => {
+    // 1. Switch stat type to the insight's stat
+    setSelectedStatType(statType);
+
+    // 2. Find the trigger player in teammates and set "SEM" filter
+    const triggerTeammate = teammates.find(
+      t => t.player_name.toLowerCase() === triggerPlayerName.toLowerCase()
+    );
+    if (triggerTeammate) {
+      handleTeammateFilterChange({
+        playerId: triggerTeammate.player_id,
+        playerName: triggerTeammate.player_name,
+        mode: 'without',
+      });
+    }
+
+    // 3. Reset other filters to show clean view
+    setLastNGames(15);
+    setHomeAway('all');
+    setB2bOnly(false);
+    setH2hOnly(false);
+
+    // No scroll — keep user's current position
+  };
+
   const handleTeammateFilterChange = async (filter: TeammateFilter) => {
     setTeammateFilter(filter);
     if (!filter) {
@@ -322,13 +351,26 @@ export default function NBADashboard() {
       );
     }
 
+    // Apply B2B filter
+    if (b2bOnly) {
+      filtered = filtered.filter(g => g.is_b2b_game);
+    }
+
+    // Apply H2H filter (games against next opponent)
+    if (h2hOnly && teamData?.next_opponent_abbreviation) {
+      const opp = teamData.next_opponent_abbreviation.toUpperCase();
+      filtered = filtered.filter(g =>
+        g.played_against?.toUpperCase().replace('@', '').includes(opp)
+      );
+    }
+
     // Apply last N games filter
     if (lastNGames !== 'all') {
       filtered = filtered.slice(0, lastNGames);
     }
 
     return filtered;
-  }, [gameStats, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds]);
+  }, [gameStats, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds, b2bOnly, h2hOnly, teamData]);
 
   // Get current betting line for selected stat type
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -388,6 +430,7 @@ export default function NBADashboard() {
               propPlayers={propPlayers}
               playerName={player?.player_name || ''}
               isLoading={propsLoading}
+              onInsightClick={handleInsightClick}
             />
 
             {/* Teammates */}
@@ -400,15 +443,8 @@ export default function NBADashboard() {
           </div>
 
           {/* Main Content Area */}
-          <div className="lg:col-span-2">
-            {/* Stat Type Selector */}
-            <StatTypeSelector
-              availableStats={[]}
-              selectedStat={selectedStatType}
-              onStatChange={setSelectedStatType}
-            />
-            
-            {/* Game Chart */}
+          <div className="lg:col-span-2" ref={chartRef}>
+            {/* Game Chart (stat tabs integrated inside) */}
             {statsLoading ? (
               <Skeleton className="h-[400px] w-full bg-terminal-gray mb-6" />
             ) : (
@@ -428,29 +464,35 @@ export default function NBADashboard() {
                 teammateFilter={teammateFilter}
                 onTeammateFilterChange={handleTeammateFilterChange}
                 teammateFilterLoading={teammateFilterLoading}
+                selectedStatType={selectedStatType}
+                onStatTypeChange={setSelectedStatType}
+                b2bOnly={b2bOnly}
+                onB2BChange={setB2bOnly}
+                h2hOnly={h2hOnly}
+                onH2HChange={setH2hOnly}
+                nextOpponent={teamData?.next_opponent_abbreviation || undefined}
               />
             )}
 
-            {/* Comparison Table */}
-            {statsLoading ? (
-              <Skeleton className="h-[300px] w-full bg-terminal-gray" />
-            ) : (
-              <ComparisonTable
-                gameStats={filteredGameStats}
+            {/* Recent Games + Shooting Zones side by side */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+              {statsLoading ? (
+                <Skeleton className="h-[300px] w-full bg-terminal-gray" />
+              ) : (
+                <ComparisonTable
+                  gameStats={filteredGameStats}
+                  playerName={player?.player_name || ''}
+                />
+              )}
+              <ShootingZonesCard
+                data={shootingZones}
+                isLoading={shootingZonesLoading}
                 playerName={player?.player_name || ''}
               />
-            )}
+            </div>
           </div>
         </div>
       </main>
-      
-      <section className="container mx-auto px-3 pb-6">
-        <ShootingZonesCard
-          data={shootingZones}
-          isLoading={shootingZonesLoading}
-          playerName={player?.player_name || ''}
-        />
-      </section>
 
       <footer className="terminal-header p-3 mt-6">
         <div className="container mx-auto flex justify-between items-center text-[10px]">

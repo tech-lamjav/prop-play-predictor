@@ -12,7 +12,22 @@ interface StatTypeSelectorProps {
   onStatChange: (statId: string) => void;
 }
 
-const STAT_TYPES_BASIC: StatType[] = [
+const STAT_LABELS: Record<string, string> = {
+  player_points: 'Pontos',
+  player_assists: 'Assistências',
+  player_rebounds: 'Rebotes',
+  player_threes: '3 Pontos',
+  player_steals: 'Roubos',
+  player_blocks: 'Bloqueios',
+  player_turnovers: 'Turnovers',
+  player_points_assists: 'Pts + Ast',
+  player_points_rebounds: 'Pts + Reb',
+  player_rebounds_assists: 'Reb + Ast',
+  player_points_rebounds_assists: 'PRA',
+  player_double_double: 'Double-Double',
+};
+
+export const STAT_TYPES_BASIC: StatType[] = [
   { id: 'player_points', label: 'PTS', description: 'Points' },
   { id: 'player_assists', label: 'AST', description: 'Assists' },
   { id: 'player_rebounds', label: 'REB', description: 'Rebounds' },
@@ -22,7 +37,7 @@ const STAT_TYPES_BASIC: StatType[] = [
   { id: 'player_turnovers', label: 'TO', description: 'Turnovers' },
 ];
 
-const STAT_TYPES_COMBOS: StatType[] = [
+export const STAT_TYPES_COMBOS: StatType[] = [
   { id: 'player_points_assists', label: 'P+A', description: 'Points + Assists' },
   { id: 'player_points_rebounds', label: 'P+R', description: 'Points + Rebounds' },
   { id: 'player_rebounds_assists', label: 'R+A', description: 'Rebounds + Assists' },
@@ -53,12 +68,12 @@ export const StatTypeSelector: React.FC<StatTypeSelectorProps> = ({
         onClick={() => onStatChange(stat.id)}
         className={`terminal-button px-3 py-1.5 text-center transition-all ${
           isSelected
-            ? 'bg-terminal-blue text-terminal-black border-terminal-blue'
-            : 'hover:border-terminal-blue/50'
+            ? 'border-terminal-blue text-terminal-blue bg-terminal-blue/10'
+            : 'opacity-50 hover:opacity-80 hover:border-terminal-blue/40'
         }`}
         title={stat.description}
       >
-        <div className="text-xs font-bold">{stat.label}</div>
+        <div className="text-xs font-bold leading-none">{stat.label}</div>
       </button>
     );
   };

@@ -17,7 +17,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
   if (isLoading) {
     return (
       <div className="terminal-container p-4">
-        <h3 className="section-title mb-3">NEXT GAME</h3>
+        <h3 className="section-title mb-3">PRÓXIMO JOGO</h3>
         <div className="space-y-2">
           <Skeleton className="h-24 w-full bg-terminal-gray" />
           <Skeleton className="h-10 w-full bg-terminal-gray" />
@@ -57,7 +57,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
 
   return (
     <div className="terminal-container p-4">
-      <h3 className="section-title mb-2">NEXT GAME</h3>
+      <h3 className="section-title mb-2">PRÓXIMO JOGO</h3>
 
       <div className="space-y-2">
         {/* Matchup */}
@@ -67,7 +67,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3 h-3 text-terminal-blue" />
               <span className="text-[10px] data-label">
-                {team.is_next_game_home ? 'HOME' : 'AWAY'}
+                {team.is_next_game_home ? 'CASA' : 'FORA'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -80,7 +80,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
 
           {isTeamB2B && isOpponentB2B && (
             <div className="text-center text-[9px] bg-terminal-yellow/10 text-terminal-yellow border border-terminal-yellow/20 rounded px-2 py-0.5 mb-2">
-              ⚠ BOTH TEAMS B2B
+              ⚠ AMBOS TIMES B2B
             </div>
           )}
 
@@ -146,7 +146,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
           {/* Injury Report — canto inferior esquerdo do card, apenas em B2B */}
           {(isTeamB2B || isOpponentB2B) && team.next_game_injury_report_time_brasilia && (
             <div className="mt-2 text-[9px] opacity-50">
-              <span className="data-label">INJURY REPORT:</span> {team.next_game_injury_report_time_brasilia}
+              <span className="data-label">INJURY REPORT:</span>{' '}{team.next_game_injury_report_time_brasilia}
             </div>
           )}
         </div>
@@ -162,13 +162,13 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
             {(team.team_offensive_rating_rank || team.team_defensive_rating_rank) && (
               <>
                 <span className="opacity-30">·</span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking ofensivo">
                   <TrendingUp className="w-3 h-3 text-terminal-blue shrink-0" />
-                  <span className="font-medium">#{team.team_offensive_rating_rank || '—'}</span>
+                  <span className="font-medium"><span className="opacity-50">OFF</span> #{team.team_offensive_rating_rank || '—'}</span>
                 </span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking defensivo">
                   <TrendingDown className="w-3 h-3 text-terminal-red shrink-0" />
-                  <span className="font-medium">#{team.team_defensive_rating_rank || '—'}</span>
+                  <span className="font-medium"><span className="opacity-50">DEF</span> #{team.team_defensive_rating_rank || '—'}</span>
                 </span>
               </>
             )}
@@ -186,13 +186,13 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
             {(team.next_opponent_team_offensive_rating_rank || team.next_opponent_team_defensive_rating_rank) && (
               <>
                 <span className="opacity-30">·</span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking ofensivo">
                   <TrendingUp className="w-3 h-3 opacity-60 shrink-0" />
-                  <span className="font-medium opacity-80">#{team.next_opponent_team_offensive_rating_rank || '—'}</span>
+                  <span className="font-medium opacity-80"><span className="opacity-50">OFF</span> #{team.next_opponent_team_offensive_rating_rank || '—'}</span>
                 </span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0">
+                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking defensivo">
                   <TrendingDown className="w-3 h-3 opacity-60 shrink-0" />
-                  <span className="font-medium opacity-80">#{team.next_opponent_team_defensive_rating_rank || '—'}</span>
+                  <span className="font-medium opacity-80"><span className="opacity-50">DEF</span> #{team.next_opponent_team_defensive_rating_rank || '—'}</span>
                 </span>
               </>
             )}

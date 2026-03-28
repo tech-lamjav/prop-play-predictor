@@ -5,12 +5,13 @@ import { RotateCcw, Info, Globe, Home, Plane, Users, X, ChevronDown, Star } from
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
+import { STAT_TYPES_BASIC, STAT_TYPES_COMBOS } from '@/components/nba/StatTypeSelector';
 
 const gameOptions: Array<{ value: number | 'all'; label: string }> = [
-  { value: 5, label: 'Last 5' },
-  { value: 10, label: 'Last 10' },
-  { value: 15, label: 'Last 15' },
-  { value: 'all', label: 'All' },
+  { value: 5, label: 'Últ. 5' },
+  { value: 10, label: 'Últ. 10' },
+  { value: 15, label: 'Últ. 15' },
+  { value: 'all', label: 'Todos' },
 ];
 
 const locationOptions: Array<{ value: 'all' | 'home' | 'away'; icon: React.ReactNode }> = [
@@ -21,7 +22,6 @@ const locationOptions: Array<{ value: 'all' | 'home' | 'away'; icon: React.React
 
 interface GameChartProps {
   gameStats: GamePlayerStats[];
-  statType?: string;
   currentLine?: number | null;
   seasonAvg?: number;
   lastNGames: number | 'all';
@@ -35,6 +35,13 @@ interface GameChartProps {
   teammateFilter: TeammateFilter;
   onTeammateFilterChange: (filter: TeammateFilter) => void;
   teammateFilterLoading?: boolean;
+  selectedStatType: string;
+  onStatTypeChange: (statId: string) => void;
+  b2bOnly: boolean;
+  onB2BChange: (v: boolean) => void;
+  h2hOnly: boolean;
+  onH2HChange: (v: boolean) => void;
+  nextOpponent?: string;
 }
 
 interface ChartDataPoint {
@@ -45,30 +52,64 @@ interface ChartDataPoint {
   isOver: boolean;
   line: number;
   statVsLine: string;
+  homeAway: string;
+  isB2B: boolean;
+  playerScore: number | null;
+  oppScore: number | null;
+  gameWon: boolean | null;
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload as ChartDataPoint;
+    const hasScore = data.playerScore !== null && data.oppScore !== null;
+    const margin = hasScore ? Math.abs((data.playerScore ?? 0) - (data.oppScore ?? 0)) : null;
+    const isOver = data.line > 0 ? data.value > data.line : null;
+    const statDisplay = data.value % 1 === 0 ? String(data.value) : data.value.toFixed(1);
+
     return (
-      <div className="bg-terminal-dark-gray border border-terminal-border-subtle rounded p-2 shadow-lg">
-        <p className="text-xs font-bold text-terminal-text mb-1">{data.opponent}</p>
-        <p className="text-[10px] text-terminal-text opacity-70 mb-1">{data.date}</p>
-        <p className="text-xs text-terminal-green">
-          Stat: <span className="font-bold">{data.value.toFixed(1)}</span>
-        </p>
-        {data.line > 0 && (
-          <>
-            <p className="text-xs text-terminal-text opacity-70">
-              Line: <span className="font-medium">{data.line.toFixed(1)}</span>
-            </p>
-            <p className={`text-xs font-medium ${
-              data.statVsLine === 'Over' ? 'text-green-500' : 'text-red-500'
-            }`}>
-              {data.statVsLine}
-            </p>
-          </>
+      <div className="bg-[#0d1b2e] border border-white/12 rounded-lg shadow-2xl p-3 w-44">
+        {/* Opponent + result row */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold text-terminal-text">
+            {data.opponent}
+          </span>
+          <div className="flex items-center gap-1">
+            {data.isB2B && (
+              <span className="text-[9px] px-1 py-px rounded bg-terminal-yellow/20 text-terminal-yellow font-bold">B2B</span>
+            )}
+            {hasScore && data.gameWon !== null && (
+              <span className={`text-[9px] px-1 py-px rounded font-bold ${data.gameWon ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {data.gameWon ? 'W' : 'L'}+{margin}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Score */}
+        {hasScore && (
+          <div className="text-[10px] text-terminal-text/40 mb-2">
+            {data.playerScore} – {data.oppScore}
+          </div>
         )}
+
+        {/* Stat + line side by side */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[9px] text-terminal-text/40 uppercase mb-0.5">Estatística</div>
+            <div className="text-xl font-bold text-terminal-green leading-none">{statDisplay}</div>
+          </div>
+          {data.line > 0 && (
+            <div className="text-right">
+              <div className="text-[9px] text-terminal-text/40 mb-0.5">Linha {data.line.toFixed(1)}</div>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isOver ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {isOver ? 'ACIMA' : 'ABAIXO'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="text-[9px] text-terminal-text/25 mt-2">{data.date}</div>
       </div>
     );
   }
@@ -106,7 +147,7 @@ const CustomXAxisTick = (props: any) => {
   );
 };
 
-export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Points', currentLine, seasonAvg, lastNGames, homeAway, onLastNGamesChange, onHomeAwayChange, totalGamesAvailable, teammates = [], currentPlayerId, teamName = '', teammateFilter, onTeammateFilterChange, teammateFilterLoading }) => {
+export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, seasonAvg, lastNGames, homeAway, onLastNGamesChange, onHomeAwayChange, totalGamesAvailable, teammates = [], currentPlayerId, teamName = '', teammateFilter, onTeammateFilterChange, teammateFilterLoading, selectedStatType, onStatTypeChange, b2bOnly, onB2BChange, h2hOnly, onH2HChange, nextOpponent }) => {
   const [adjustedLine, setAdjustedLine] = useState<number | null>(currentLine ?? null);
   const [isDragging, setIsDragging] = useState(false);
   const [teammateOpen, setTeammateOpen] = useState(false);
@@ -138,10 +179,15 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
       game: `G${index + 1}`,
       value: game.stat_value ?? 0,
       opponent: game.played_against,
-      date: new Date(game.game_date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
+      date: new Date(game.game_date).toLocaleDateString('pt-BR', { month: 'numeric', day: 'numeric' }),
       isOver: game.stat_vs_line === 'Over',
       line: game.line ?? 0,
       statVsLine: game.stat_vs_line || '',
+      homeAway: game.home_away || '',
+      isB2B: game.is_b2b_game ?? false,
+      playerScore: game.player_team_score ?? null,
+      oppScore: game.opponent_score ?? null,
+      gameWon: game.game_won ?? null,
     }));
 
   const average = chartData.length > 0
@@ -266,9 +312,9 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
   if (chartData.length === 0) {
     return (
       <div className="terminal-container p-4 mb-3">
-        <h3 className="section-title mb-3">PERFORMANCE GRAPH</h3>
-        <div className="h-64 flex items-center justify-center text-terminal-text opacity-50">
-          <p>No game data available</p>
+        <h3 className="section-title mb-3">GRÁFICO DE DESEMPENHO</h3>
+        <div className="h-72 flex items-center justify-center text-terminal-text opacity-50">
+          <p>Nenhum dado de jogo disponível</p>
         </div>
       </div>
     );
@@ -278,20 +324,53 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
 
   return (
     <div className="terminal-container p-4 mb-3">
+      {/* Stat type tabs */}
+      <div className="overflow-x-auto -mx-4 px-4 border-b border-white/10 mb-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex items-end min-w-max gap-0">
+          {STAT_TYPES_BASIC.map(stat => (
+            <button
+              key={stat.id}
+              onClick={() => onStatTypeChange(stat.id)}
+              className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
+                selectedStatType === stat.id
+                  ? 'border-terminal-blue text-terminal-blue'
+                  : 'border-transparent text-terminal-text/40 hover:text-terminal-text/70'
+              }`}
+            >
+              {stat.label}
+            </button>
+          ))}
+          <div className="w-px h-4 bg-white/10 mx-2 self-center mb-0.5 -mb-px" />
+          {STAT_TYPES_COMBOS.map(stat => (
+            <button
+              key={stat.id}
+              onClick={() => onStatTypeChange(stat.id)}
+              className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
+                selectedStatType === stat.id
+                  ? 'border-terminal-blue text-terminal-blue'
+                  : 'border-transparent text-terminal-text/40 hover:text-terminal-text/70'
+              }`}
+            >
+              {stat.label}
+            </button>
+          ))}
+        </div>
+      </div>
       {/* Row 1: title + hit rate */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className="section-title">PERFORMANCE GRAPH</h3>
+        <h3 className="section-title">GRÁFICO DE DESEMPENHO</h3>
         {hitRate && (
           <span className={`text-sm font-bold ${parseFloat(hitRate.percentage) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-            HIT RATE: {hitRate.percentage}% <span className="text-xs font-normal opacity-70">({hitRate.hits}/{hitRate.total})</span>
+            TAXA DE ACERTO: {hitRate.percentage}% <span className="text-xs font-normal opacity-70">({hitRate.hits}/{hitRate.total})</span>
           </span>
         )}
       </div>
 
-      {/* Row 2: filters + LINE */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        {/* Games filter */}
-        <div className="flex items-center gap-1.5">
+      {/* Filters — two rows */}
+      {/* Filters: single row on desktop, wraps on mobile */}
+      <div className="relative flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Last N */}
           <div className="flex gap-1">
             {gameOptions.map((opt) => {
               const isDisabled = typeof opt.value === 'number' && opt.value > totalGamesAvailable;
@@ -301,7 +380,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
                   key={opt.value}
                   onClick={() => !isDisabled && onLastNGamesChange(opt.value)}
                   disabled={isDisabled}
-                  className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
+                  className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all whitespace-nowrap ${
                     isActive
                       ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
                       : isDisabled
@@ -314,7 +393,10 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
               );
             })}
           </div>
-          <div className="h-4 w-px bg-terminal-green/20 mx-0.5" />
+
+          <div className="h-4 w-px bg-terminal-green/20" />
+
+          {/* Home/Away */}
           <div className="flex gap-1">
             {locationOptions.map((opt) => {
               const isActive = homeAway === opt.value;
@@ -322,7 +404,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
                 <button
                   key={opt.value}
                   onClick={() => onHomeAwayChange(opt.value)}
-                  title={opt.value.charAt(0).toUpperCase() + opt.value.slice(1)}
+                  title={opt.value === 'all' ? 'Todos' : opt.value === 'home' ? 'Casa' : 'Fora'}
                   className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
                     isActive
                       ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
@@ -335,11 +417,94 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
             })}
           </div>
 
+          <div className="h-4 w-px bg-terminal-green/20" />
+
+          {/* B2B */}
+          <button
+            onClick={() => onB2BChange(!b2bOnly)}
+            title="Apenas jogos back-to-back"
+            className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
+              b2bOnly
+                ? 'bg-terminal-yellow/20 border-terminal-yellow text-terminal-yellow'
+                : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+            }`}
+          >
+            B2B
+          </button>
+
+          {/* H2H */}
+          {nextOpponent && (
+            <button
+              onClick={() => onH2HChange(!h2hOnly)}
+              title={`Histórico contra ${nextOpponent}`}
+              className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
+                h2hOnly
+                  ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
+                  : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+              }`}
+            >
+              vs {nextOpponent}
+            </button>
+          )}
+
+          <div className="h-4 w-px bg-terminal-green/20" />
+
           {/* Teammate filter */}
-          {availableTeammates.length > 0 && (
-            <>
-              <div className="h-4 w-px bg-terminal-green/20 mx-0.5" />
+          {availableTeammates.length > 0 && (() => {
+            const TeammateRow = ({ t }: { t: typeof availableTeammates[0] }) => {
+              const photoUrl = getPlayerPhotoUrl(t.player_name, teamName);
+              const initials = t.player_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-terminal-gray/40 border-b border-terminal-border-subtle/30 last:border-0">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-terminal-gray border border-terminal-border-subtle shrink-0 flex items-center justify-center">
+                    {photoUrl ? (
+                      <img src={photoUrl} alt={t.player_name} data-player-photo-index="0"
+                        className="w-full h-full object-cover object-top"
+                        onError={(e) => {
+                          const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, t.player_name, teamName);
+                          if (!didTry) {
+                            const el = e.target as HTMLImageElement;
+                            el.style.display = 'none';
+                            const parent = el.parentElement;
+                            if (parent) parent.innerHTML = `<span class="text-[9px] font-bold text-terminal-text opacity-60">${initials}</span>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-[9px] font-bold text-terminal-text opacity-60">{initials}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-medium text-terminal-text truncate">{t.player_name}</span>
+                      {t.rating_stars > 0 && Array.from({ length: t.rating_stars }).map((_, i) => (
+                        <Star key={i} className="w-2.5 h-2.5 fill-terminal-yellow text-terminal-yellow shrink-0" />
+                      ))}
+                    </div>
+                    <div className="text-[10px] opacity-50 flex items-center gap-1">
+                      <span>{t.position}</span>
+                      {t.current_status && t.current_status.toLowerCase() !== 'active' && (
+                        <span className="text-terminal-red">{t.current_status}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'with' }); setTeammateOpen(false); }}
+                      className="px-2.5 py-1 text-[11px] rounded border border-terminal-green/40 text-terminal-green hover:bg-terminal-green/15 transition-colors">
+                      COM
+                    </button>
+                    <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'without' }); setTeammateOpen(false); }}
+                      className="px-2.5 py-1 text-[11px] rounded border border-terminal-red/40 text-terminal-red hover:bg-terminal-red/15 transition-colors">
+                      SEM
+                    </button>
+                  </div>
+                </div>
+              );
+            };
+
+            return (
               <div className="relative" ref={teammateDropdownRef}>
+                {/* Button / active badge */}
                 {teammateFilter ? (
                   <div className="flex items-center gap-1">
                     <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${
@@ -349,19 +514,14 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
                     }`}>
                       {teammateFilter.mode === 'with' ? 'COM' : 'SEM'} {teammateFilter.playerName.split(' ').pop()}
                     </span>
-                    <button
-                      onClick={() => onTeammateFilterChange(null)}
-                      className="w-5 h-5 flex items-center justify-center rounded border border-white/20 text-white/40 hover:text-white/80 hover:border-white/40 transition-colors"
-                    >
+                    <button onClick={() => onTeammateFilterChange(null)}
+                      className="w-5 h-5 flex items-center justify-center rounded border border-white/20 text-white/40 hover:text-white/80 hover:border-white/40 transition-colors">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setTeammateOpen(v => !v)}
-                    disabled={teammateFilterLoading}
-                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5 transition-all disabled:opacity-40"
-                  >
+                  <button onClick={() => setTeammateOpen(v => !v)} disabled={teammateFilterLoading}
+                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5 transition-all disabled:opacity-40">
                     <Users className="w-3 h-3" />
                     <span>Companheiro</span>
                     <ChevronDown className={`w-3 h-3 transition-transform ${teammateOpen ? 'rotate-180' : ''}`} />
@@ -369,76 +529,39 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
                 )}
 
                 {teammateOpen && (
-                  <div className="absolute top-full left-0 mt-1 z-50 bg-terminal-dark-gray border border-terminal-border-subtle rounded shadow-lg min-w-[280px] max-h-[260px] overflow-y-auto
-                    [&::-webkit-scrollbar]:w-1
-                    [&::-webkit-scrollbar-track]:bg-transparent
-                    [&::-webkit-scrollbar-thumb]:bg-white/20
-                    [&::-webkit-scrollbar-thumb]:rounded-full
-                    [&::-webkit-scrollbar-thumb:hover]:bg-white/40">
-                    {availableTeammates.map(t => {
-                      const photoUrl = getPlayerPhotoUrl(t.player_name, teamName);
-                      const initials = t.player_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                      return (
-                        <div key={t.player_id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-terminal-gray/40 border-b border-terminal-border-subtle/30 last:border-0">
-                          <div className="w-7 h-7 rounded-full overflow-hidden bg-terminal-gray border border-terminal-border-subtle shrink-0 flex items-center justify-center">
-                            {photoUrl ? (
-                              <img
-                                src={photoUrl}
-                                alt={t.player_name}
-                                data-player-photo-index="0"
-                                className="w-full h-full object-cover object-top"
-                                onError={(e) => {
-                                  const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, t.player_name, teamName);
-                                  if (!didTry) {
-                                    const el = e.target as HTMLImageElement;
-                                    el.style.display = 'none';
-                                    const parent = el.parentElement;
-                                    if (parent) parent.innerHTML = `<span class="text-[9px] font-bold text-terminal-text opacity-60">${initials}</span>`;
-                                  }
-                                }}
-                              />
-                            ) : (
-                              <span className="text-[9px] font-bold text-terminal-text opacity-60">{initials}</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs font-medium text-terminal-text truncate">{t.player_name}</span>
-                              {t.rating_stars > 0 && Array.from({ length: t.rating_stars }).map((_, i) => (
-                                <Star key={i} className="w-2.5 h-2.5 fill-terminal-yellow text-terminal-yellow shrink-0" />
-                              ))}
-                            </div>
-                            <div className="text-[10px] opacity-50 flex items-center gap-1">
-                              <span>{t.position}</span>
-                              {t.current_status && t.current_status.toLowerCase() !== 'active' && (
-                                <span className="text-terminal-red">{t.current_status}</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-1 shrink-0">
-                            <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'with' }); setTeammateOpen(false); }}
-                              className="px-2 py-0.5 text-[10px] rounded border border-terminal-green/40 text-terminal-green hover:bg-terminal-green/15 transition-colors">
-                              COM
-                            </button>
-                            <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'without' }); setTeammateOpen(false); }}
-                              className="px-2 py-0.5 text-[10px] rounded border border-terminal-red/40 text-terminal-red hover:bg-terminal-red/15 transition-colors">
-                              SEM
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <>
+                    {/* Mobile: backdrop + centered modal */}
+                    <div className="sm:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setTeammateOpen(false)} />
+                    <div className="sm:hidden fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-terminal-dark-gray border border-terminal-border-subtle rounded-xl shadow-2xl overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border-subtle/30">
+                        <span className="text-[11px] font-bold text-terminal-text uppercase tracking-wider">Filtrar por companheiro</span>
+                        <button onClick={() => setTeammateOpen(false)} className="text-white/40 hover:text-white/80 transition-colors">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="max-h-[60vh] overflow-y-auto">
+                        {availableTeammates.map(t => <TeammateRow key={t.player_id} t={t} />)}
+                      </div>
+                    </div>
+
+                    {/* Desktop: dropdown */}
+                    <div className="hidden sm:block absolute top-full right-0 mt-1 z-50 bg-terminal-dark-gray border border-terminal-border-subtle rounded shadow-lg min-w-[280px] max-h-[260px] overflow-y-auto
+                      [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent
+                      [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full
+                      [&::-webkit-scrollbar-thumb:hover]:bg-white/40">
+                      {availableTeammates.map(t => <TeammateRow key={t.player_id} t={t} />)}
+                    </div>
+                  </>
                 )}
               </div>
-            </>
-          )}
+            );
+          })()}
         </div>
 
-        {/* LINE + tooltip + reset */}
+        {/* LINE — hidden on mobile */}
         {adjustedLine !== null && (
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-sm text-white">LINE: {adjustedLine.toFixed(1)}</span>
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+            <span className="font-bold text-sm text-white">LINHA: {adjustedLine.toFixed(1)}</span>
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
@@ -466,7 +589,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
 
       <div
         ref={chartContainerRef}
-        className={`h-64 ${isDragging ? 'cursor-grabbing' : adjustedLine !== null ? 'cursor-grab' : ''}`}
+        className={`h-72 ${isDragging ? 'cursor-grabbing' : adjustedLine !== null ? 'cursor-grab' : ''}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -482,7 +605,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
               top: 5,
               right: 30,
               left: -20,
-              bottom: 30
+              bottom: 5
             }}
           >
             <CartesianGrid 
@@ -544,7 +667,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
       <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px]">
         {/* Legenda */}
         <div className="flex items-center gap-3">
-          <span className="opacity-40">LAST {chartData.length}</span>
+          <span className="opacity-40">ÚLT. {chartData.length}</span>
           {adjustedLine !== null && (
             <>
               <span className="flex items-center gap-1 text-green-500">
@@ -554,16 +677,16 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, statType = 'Poi
                 <span className="w-2 h-2 rounded-sm bg-red-500 shrink-0" /> UNDER
               </span>
               <span className="flex items-center gap-1 opacity-60">
-                <span className="w-4 h-0.5 bg-white shrink-0" /> LINE
+                <span className="w-4 h-0.5 bg-white shrink-0" /> LINHA
               </span>
             </>
           )}
         </div>
         {/* Médias */}
         <div className="flex items-center gap-3 opacity-50">
-          <span>AVG <span className="font-medium text-terminal-text opacity-100">{average}</span></span>
+          <span>Média <span className="font-medium text-terminal-text opacity-100">{average}</span></span>
           {seasonAvg !== undefined && seasonAvg !== null && (
-            <span>Season <span className="font-medium text-terminal-text opacity-100">{Number(seasonAvg).toFixed(1)}</span></span>
+            <span>Média da Temporada <span className="font-medium text-terminal-text opacity-100">{Number(seasonAvg).toFixed(1)}</span></span>
           )}
         </div>
       </div>

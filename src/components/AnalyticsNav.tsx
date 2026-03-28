@@ -73,7 +73,13 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
         <div className="flex justify-between items-center h-14">
           {/* Left side - Logo or Back button */}
           <div className="flex items-center gap-3">
-            {showBack ? (
+            <div
+              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => navigate('/home-players')}
+            >
+              <img src="/logo.png" alt="Smartbetting" className="h-8 w-auto" />
+            </div>
+            {showBack && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -83,18 +89,6 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 <span className="text-xs">Voltar</span>
               </Button>
-            ) : (
-              <div 
-                className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => navigate('/home-players')}
-              >
-                <div className="w-8 h-8 bg-terminal-green/20 border border-terminal-green/50 rounded flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-terminal-green" />
-                </div>
-                <div className="hidden sm:block">
-                  <span className="text-sm font-bold text-terminal-green tracking-wide">Smartbetting</span>
-                </div>
-              </div>
             )}
 
             {/* Title (for dashboard pages) */}

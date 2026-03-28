@@ -4,7 +4,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { nbaDataService, Game } from '@/services/nba-data.service';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Zap, BarChart3, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, AlertCircle } from 'lucide-react';
+import { Zap, BarChart3, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, AlertCircle, FileText } from 'lucide-react';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { useSubscription } from '@/hooks/use-subscription';
 import { FreePropCard } from '@/components/nba/FreePropCard';
@@ -105,8 +105,8 @@ const LastResults: React.FC<{ results: string; teamAbbr: string }> = ({ results 
   );
 };
 
-// Cache: date → games list (persists across navigations)
-const gamesCache = new Map<string, Game[]>();
+// Cache: date → games list (persists across navigations, shared with GameDetail)
+export const gamesCache = new Map<string, Game[]>();
 let lastResolvedDate: string | null = null;
 
 export default function Games() {
@@ -295,6 +295,19 @@ export default function Games() {
               </div>
             </div>
             <span className="text-[10px] text-terminal-yellow/60 font-mono group-hover:text-terminal-yellow transition-colors">→</span>
+          </button>
+          <button
+            onClick={() => navigate('/report')}
+            className="w-full flex items-center justify-between gap-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg px-3 py-3 hover:border-terminal-green/40 transition-all group"
+          >
+            <div className="flex items-center gap-2.5">
+              <FileText className="w-4 h-4 text-terminal-green flex-shrink-0" />
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-semibold text-terminal-green font-mono leading-tight">Relatório do Dia</span>
+                <span className="text-[11px] text-terminal-text/40 font-mono leading-tight">veja as melhores props</span>
+              </div>
+            </div>
+            <span className="text-[10px] text-terminal-green/60 font-mono group-hover:text-terminal-green transition-colors">→</span>
           </button>
         </div>
 
@@ -644,12 +657,31 @@ export default function Games() {
                   <span className="text-sm font-semibold text-terminal-yellow font-mono leading-tight">
                     Injury Report
                   </span>
-                  <span className="text-[9px] text-terminal-text/40 font-mono leading-tight">
+                  <span className="text-[11px] text-terminal-text/40 font-mono leading-tight">
                     lesões dos jogos de hoje
                   </span>
                 </div>
               </div>
               <span className="text-[10px] text-terminal-yellow/60 font-mono group-hover:text-terminal-yellow transition-colors">→</span>
+            </button>
+
+            {/* Reports button */}
+            <button
+              onClick={() => navigate('/report')}
+              className="w-full flex items-center justify-between gap-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg px-3 py-3 hover:border-terminal-green/40 transition-all group"
+            >
+              <div className="flex items-center gap-2.5">
+                <FileText className="w-4 h-4 text-terminal-green flex-shrink-0" />
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-semibold text-terminal-green font-mono leading-tight">
+                    Relatório do Dia
+                  </span>
+                  <span className="text-[11px] text-terminal-text/40 font-mono leading-tight">
+                    veja as melhores props
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] text-terminal-green/60 font-mono group-hover:text-terminal-green transition-colors">→</span>
             </button>
 
           </div>

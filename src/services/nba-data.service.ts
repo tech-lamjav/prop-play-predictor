@@ -123,6 +123,9 @@ export interface GamePlayerStats {
   played_against: string;
   home_away: string;
   is_played: string;
+  player_team_score: number | null;
+  opponent_score: number | null;
+  game_won: boolean | null;
 }
 
 export interface Game {
@@ -261,7 +264,17 @@ export const nbaDataService = {
     return withRetry(async () => {
       const { data, error } = await supabaseClient
         .rpc('get_player_props', { p_player_id: playerId });
-      
+
+      if (error) throw error;
+      return (data || []) as PropPlayer[];
+    });
+  },
+
+  async getPlayerTriggerInsights(playerName: string): Promise<PropPlayer[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_trigger_insights', { p_player_name: playerName });
+
       if (error) throw error;
       return (data || []) as PropPlayer[];
     });
