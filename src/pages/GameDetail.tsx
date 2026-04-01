@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
-import { nbaDataService, Game, TeamPlayer, Team } from '@/services/nba-data.service';
+import { nbaDataService, Game, TeamPlayer, Team, BoxScorePlayer, B2BBoxScorePlayer } from '@/services/nba-data.service';
 import { gamesCache } from '@/pages/Games';
 import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-status';
@@ -10,6 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 
 const SAO_PAULO_TIMEZONE = 'America/Sao_Paulo';
+
+const formatPct = (val: number | null): string => {
+  if (val == null || val === 0) return '—';
+  const pct = val * 100;
+  return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
+};
 
 const formatGameDateSaoPaulo = (dateString: string): string => {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
@@ -32,6 +38,7 @@ interface GameDetailCache {
   visitorPlayers: TeamPlayer[];
   homeTeam: Team | null;
   visitorTeam: Team | null;
+  b2bData?: { home: B2BBoxScorePlayer[]; visitor: B2BBoxScorePlayer[] };
 }
 const gameDetailCache = new Map<string, GameDetailCache>();
 
@@ -49,6 +56,15 @@ export default function GameDetail() {
   const [visitorTeam, setVisitorTeam] = useState<Team | null>(initCache?.visitorTeam ?? null);
   const [isLoadingGame, setIsLoadingGame] = useState(!initCache);
   const [isLoadingTeams, setIsLoadingTeams] = useState(!initCache);
+  const [boxScore, setBoxScore] = useState<BoxScorePlayer[]>([]);
+  const [isLoadingBoxScore, setIsLoadingBoxScore] = useState(false);
+  const [activeTab, setActiveTab] = useState<'lineups' | 'boxscore' | 'b2b'>(initCache?.game?.winner_team_id != null ? 'boxscore' : 'lineups');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'desc' | 'asc' }>({ key: 'points', direction: 'desc' });
+  const [boxScoreView, setBoxScoreView] = useState<'all' | 'home' | 'visitor'>('all');
+  const [detailedView, setDetailedView] = useState(() => window.innerWidth >= 768);
+  const [b2bData, setB2bData] = useState<{ home: B2BBoxScorePlayer[]; visitor: B2BBoxScorePlayer[] }>(initCache?.b2bData ?? { home: [], visitor: [] });
+  const [isLoadingB2B, setIsLoadingB2B] = useState(false);
+  const [b2bLoaded, setB2bLoaded] = useState(!!initCache?.b2bData);
   const hasLoaded = React.useRef(false);
 
   useEffect(() => {
@@ -56,6 +72,83 @@ export default function GameDetail() {
       loadGameData();
     }
   }, [gameId, authLoading, user]);
+
+  // Load box score when tab is activated (fallback if preload didn't finish)
+  useEffect(() => {
+    if (activeTab === 'boxscore' && game && game.winner_team_id !== null && boxScore.length === 0 && !isLoadingBoxScore) {
+      setIsLoadingBoxScore(true);
+      nbaDataService.getGameBoxScore(game.game_id)
+        .then(data => { if (boxScore.length === 0) setBoxScore(data); })
+        .catch(err => console.error('Error loading box score:', err))
+        .finally(() => setIsLoadingBoxScore(false));
+    }
+  }, [activeTab, game]);
+
+  // Load B2B data when tab is activated (lazy loading with cache)
+  useEffect(() => {
+    if (activeTab === 'b2b' && game && !isLoadingB2B) {
+      const hasCache = b2bLoaded;
+      // Skip if already loaded and not a background refresh
+      if (hasCache) {
+        // Background refresh: reload silently without showing loading state
+        const freshData: { home: B2BBoxScorePlayer[]; visitor: B2BBoxScorePlayer[] } = { home: [], visitor: [] };
+        const promises: Promise<void>[] = [];
+        if (game.home_team_is_b2b_game) {
+          promises.push(
+            nbaDataService.getB2BPreviousGameBoxScore(game.game_id, game.home_team_id)
+              .then(data => { freshData.home = data; })
+              .catch(() => {})
+          );
+        }
+        if (game.visitor_team_is_b2b_game) {
+          promises.push(
+            nbaDataService.getB2BPreviousGameBoxScore(game.game_id, game.visitor_team_id)
+              .then(data => { freshData.visitor = data; })
+              .catch(() => {})
+          );
+        }
+        Promise.all(promises).then(() => {
+          setB2bData(freshData);
+          if (gameId) {
+            const cached = gameDetailCache.get(gameId);
+            if (cached) gameDetailCache.set(gameId, { ...cached, b2bData: freshData });
+          }
+        });
+        return;
+      }
+
+      // First load: show loading state
+      setIsLoadingB2B(true);
+      const newData: { home: B2BBoxScorePlayer[]; visitor: B2BBoxScorePlayer[] } = { home: [], visitor: [] };
+      const promises: Promise<void>[] = [];
+
+      if (game.home_team_is_b2b_game) {
+        promises.push(
+          nbaDataService.getB2BPreviousGameBoxScore(game.game_id, game.home_team_id)
+            .then(data => { newData.home = data; })
+            .catch(err => console.error('Error loading home B2B data:', err))
+        );
+      }
+      if (game.visitor_team_is_b2b_game) {
+        promises.push(
+          nbaDataService.getB2BPreviousGameBoxScore(game.game_id, game.visitor_team_id)
+            .then(data => { newData.visitor = data; })
+            .catch(err => console.error('Error loading visitor B2B data:', err))
+        );
+      }
+
+      Promise.all(promises).finally(() => {
+        setB2bData(newData);
+        setIsLoadingB2B(false);
+        setB2bLoaded(true);
+        // Save to cache
+        if (gameId) {
+          const cached = gameDetailCache.get(gameId);
+          if (cached) gameDetailCache.set(gameId, { ...cached, b2bData: newData });
+        }
+      });
+    }
+  }, [activeTab, game]);
 
   // PLG freemium: detalhe do jogo exige login (deslogado redireciona para /auth)
   if (authLoading) {
@@ -118,31 +211,26 @@ export default function GameDetail() {
       }
 
       setGame(foundGame);
+      if (foundGame.winner_team_id != null) setActiveTab('boxscore');
       setIsLoadingGame(false);
 
-      // 2. Home team data
+      // 2. Load BOTH teams in parallel (was sequential before)
       let loadedHomePlayers: TeamPlayer[] = [];
       let loadedHomeTeam: Team | null = null;
-      try {
-        const [hp, ht] = await Promise.allSettled([
-          nbaDataService.getTeamPlayers(foundGame.home_team_id),
-          nbaDataService.getTeamById(foundGame.home_team_id),
-        ]);
-        if (hp.status === 'fulfilled') { loadedHomePlayers = hp.value; setHomePlayers(hp.value); }
-        if (ht.status === 'fulfilled') { loadedHomeTeam = ht.value; setHomeTeam(ht.value); }
-      } catch (e) { console.error('Error loading home team:', e); }
-
-      // 3. Visitor team data
       let loadedVisitorPlayers: TeamPlayer[] = [];
       let loadedVisitorTeam: Team | null = null;
-      try {
-        const [vp, vt] = await Promise.allSettled([
-          nbaDataService.getTeamPlayers(foundGame.visitor_team_id),
-          nbaDataService.getTeamById(foundGame.visitor_team_id),
-        ]);
-        if (vp.status === 'fulfilled') { loadedVisitorPlayers = vp.value; setVisitorPlayers(vp.value); }
-        if (vt.status === 'fulfilled') { loadedVisitorTeam = vt.value; setVisitorTeam(vt.value); }
-      } catch (e) { console.error('Error loading visitor team:', e); }
+
+      const [hp, ht, vp, vt] = await Promise.allSettled([
+        nbaDataService.getTeamPlayers(foundGame.home_team_id),
+        nbaDataService.getTeamById(foundGame.home_team_id),
+        nbaDataService.getTeamPlayers(foundGame.visitor_team_id),
+        nbaDataService.getTeamById(foundGame.visitor_team_id),
+      ]);
+
+      if (hp.status === 'fulfilled') { loadedHomePlayers = hp.value; setHomePlayers(hp.value); }
+      if (ht.status === 'fulfilled') { loadedHomeTeam = ht.value; setHomeTeam(ht.value); }
+      if (vp.status === 'fulfilled') { loadedVisitorPlayers = vp.value; setVisitorPlayers(vp.value); }
+      if (vt.status === 'fulfilled') { loadedVisitorTeam = vt.value; setVisitorTeam(vt.value); }
 
       // Save to cache
       gameDetailCache.set(gameId, {
@@ -153,6 +241,44 @@ export default function GameDetail() {
         visitorTeam: loadedVisitorTeam,
       });
       hasLoaded.current = true;
+
+      // 3. Background preload: Box Score (finished games) and B2B data
+      const isB2BGame = foundGame.home_team_is_b2b_game || foundGame.visitor_team_is_b2b_game;
+      const isFinished = foundGame.winner_team_id != null;
+
+      if (isFinished) {
+        nbaDataService.getGameBoxScore(foundGame.game_id)
+          .then(data => {
+            setBoxScore(data);
+            setIsLoadingBoxScore(false);
+          })
+          .catch(err => console.error('Error preloading box score:', err));
+      }
+
+      if (isB2BGame && !isFinished) {
+        const b2b: { home: B2BBoxScorePlayer[]; visitor: B2BBoxScorePlayer[] } = { home: [], visitor: [] };
+        const b2bPromises: Promise<void>[] = [];
+        if (foundGame.home_team_is_b2b_game) {
+          b2bPromises.push(
+            nbaDataService.getB2BPreviousGameBoxScore(foundGame.game_id, foundGame.home_team_id)
+              .then(data => { b2b.home = data; })
+              .catch(err => console.error('Error preloading home B2B:', err))
+          );
+        }
+        if (foundGame.visitor_team_is_b2b_game) {
+          b2bPromises.push(
+            nbaDataService.getB2BPreviousGameBoxScore(foundGame.game_id, foundGame.visitor_team_id)
+              .then(data => { b2b.visitor = data; })
+              .catch(err => console.error('Error preloading visitor B2B:', err))
+          );
+        }
+        Promise.all(b2bPromises).then(() => {
+          setB2bData(b2b);
+          setB2bLoaded(true);
+          const c = gameDetailCache.get(gameId);
+          if (c) gameDetailCache.set(gameId, { ...c, b2bData: b2b });
+        });
+      }
     } catch (error) {
       console.error('Error loading game data:', error);
       toast({
@@ -241,6 +367,273 @@ export default function GameDetail() {
   const sortedHomePlayers = [...homePlayers].sort(sortPlayers);
   const sortedVisitorPlayers = [...visitorPlayers].sort(sortPlayers);
 
+  const renderLineupTable = (players: TeamPlayer[], teamAbbr: string, teamName: string) => (
+    <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+      <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
+        <span className="text-xs font-bold text-terminal-text">{teamAbbr}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-terminal-border-subtle">
+              <th className="text-left py-2 px-2 text-[10px] font-medium text-terminal-text opacity-60">Jogador</th>
+              <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">POS</th>
+              <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map((player) => (
+              <tr key={player.player_id} className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors">
+                <td className="py-2 px-2">
+                  <Link
+                    to={getPlayerHref(player.player_name)}
+                    className="flex items-center gap-2 cursor-pointer hover:text-terminal-green transition-colors"
+                  >
+                    <div className="w-6 h-6 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0 relative overflow-hidden">
+                      <img
+                        src={getPlayerPhotoUrl(player.player_name, teamName)}
+                        alt={player.player_name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        data-player-photo-index="0"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          const hasNext = tryNextPlayerPhotoUrl(target, player.player_name, teamName);
+                          if (hasNext) return;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const initials = player.player_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                            parent.innerHTML = `<span class="text-[8px] font-bold text-terminal-text">${initials}</span>`;
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-terminal-text truncate">{player.player_name}</div>
+                      {player.rating_stars > 0 && (
+                        <div className="text-[9px] text-terminal-yellow opacity-70">{'★'.repeat(Math.min(player.rating_stars, 5))}</div>
+                      )}
+                    </div>
+                  </Link>
+                </td>
+                <td className="py-2 px-1 text-center text-xs text-terminal-text opacity-60">{player.position || '—'}</td>
+                <td className="py-2 px-1 text-center">
+                  {(() => {
+                    const injuryStyle = getInjuryStatusStyle(player.current_status);
+                    return (
+                      <span className={`text-[9px] px-1 py-0.5 rounded border whitespace-nowrap ${injuryStyle.textClass} ${injuryStyle.borderClass} ${injuryStyle.bgClass}`}>
+                        {getInjuryStatusLabel(player.current_status)}
+                      </span>
+                    );
+                  })()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const handleSort = (key: string) => {
+    setSortConfig(prev =>
+      prev.key === key
+        ? { key, direction: prev.direction === 'desc' ? 'asc' : 'desc' }
+        : { key, direction: 'desc' }
+    );
+  };
+
+  const sortBoxScorePlayers = (players: BoxScorePlayer[]) => {
+    const { key, direction } = sortConfig;
+    const fieldMap: Record<string, keyof BoxScorePlayer> = {
+      points: 'points', rebounds: 'rebounds', assists: 'assists',
+      minutes: 'minutes', threes: 'threes', steals: 'steals',
+      blocks: 'blocks', turnovers: 'turnovers',
+      offensive_rebounds: 'offensive_rebounds', defensive_rebounds: 'defensive_rebounds',
+      fg_pct: 'fg_pct', ft_pct: 'ft_pct',
+    };
+    const field = fieldMap[key];
+    if (!field) return players;
+    return [...players].sort((a, b) => {
+      const va = (a[field] as number) ?? -1;
+      const vb = (b[field] as number) ?? -1;
+      return direction === 'desc' ? vb - va : va - vb;
+    });
+  };
+
+  const getPlayerTeamName = (player: BoxScorePlayer) =>
+    player.home_away === 'Casa' ? game?.home_team_name ?? '' : game?.visitor_team_name ?? '';
+
+  const compactColumns = [
+    { key: 'points', label: 'PTS', tooltip: 'Points' },
+    { key: 'rebounds', label: 'REB', tooltip: 'Total Rebounds' },
+    { key: 'assists', label: 'AST', tooltip: 'Assists' },
+  ];
+
+  const detailedColumns = [
+    { key: 'points', label: 'PTS', tooltip: 'Points' },
+    { key: 'rebounds', label: 'REB', tooltip: 'Total Rebounds' },
+    { key: 'offensive_rebounds', label: 'OREB', tooltip: 'Offensive Rebounds' },
+    { key: 'defensive_rebounds', label: 'DREB', tooltip: 'Defensive Rebounds' },
+    { key: 'assists', label: 'AST', tooltip: 'Assists' },
+    { key: 'fg_pct', label: 'FG%', tooltip: 'Field Goal Percentage' },
+    { key: 'ft_pct', label: 'FT%', tooltip: 'Free Throw Percentage' },
+    { key: 'minutes', label: 'MIN', tooltip: 'Minutes Played' },
+    { key: 'threes', label: '3PM', tooltip: '3-Point Field Goals Made' },
+    { key: 'steals', label: 'STL', tooltip: 'Steals' },
+    { key: 'blocks', label: 'BLK', tooltip: 'Blocks' },
+    { key: 'turnovers', label: 'TO', tooltip: 'Turnovers' },
+  ];
+
+  const activeColumns = detailedView ? detailedColumns : compactColumns;
+
+  const statWeightClass: Record<string, string> = {
+    points: 'font-bold',
+    rebounds: 'font-semibold',
+    assists: 'font-semibold',
+    offensive_rebounds: 'opacity-80',
+    defensive_rebounds: 'opacity-80',
+    fg_pct: 'opacity-80',
+    ft_pct: 'opacity-80',
+    minutes: 'opacity-60',
+    threes: 'opacity-80',
+    steals: 'opacity-80',
+    blocks: 'opacity-80',
+    turnovers: 'opacity-60',
+  };
+
+  const renderBoxScoreRow = (player: BoxScorePlayer, teamName: string, idx: number) => (
+    <tr
+      key={player.player_id}
+      className={`border-b border-terminal-border-subtle/30 hover:bg-terminal-gray/30 active:bg-terminal-gray/40 transition-colors ${idx % 2 === 1 ? 'bg-terminal-gray/10' : ''}`}
+    >
+      <td className={`py-2 px-1 text-center w-8 bg-terminal-dark-gray ${detailedView ? '' : 'sticky left-0 z-20'}`}>
+        <img
+          src={getTeamLogoUrl(teamName)}
+          alt=""
+          className="w-4 h-4 object-contain inline-block"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      </td>
+      <td className={`py-2 px-2 bg-terminal-dark-gray ${detailedView ? '' : 'sticky left-8 z-20 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-3 after:-mr-3 after:bg-gradient-to-r after:from-terminal-dark-gray/80 after:to-transparent after:pointer-events-none'}`}>
+        <Link
+          to={getPlayerHref(player.player_name)}
+          className="flex items-center gap-2 cursor-pointer hover:text-terminal-green transition-colors"
+        >
+          {!detailedView && (
+            <div className="w-6 h-6 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0 relative overflow-hidden">
+              <img
+                src={getPlayerPhotoUrl(player.player_name, teamName)}
+                alt={player.player_name}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                data-player-photo-index="0"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  const hasNext = tryNextPlayerPhotoUrl(target, player.player_name, teamName);
+                  if (hasNext) return;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    const initials = player.player_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                    parent.innerHTML = `<span class="text-[8px] font-bold text-terminal-text">${initials}</span>`;
+                  }
+                }}
+              />
+            </div>
+          )}
+          <span className={`font-medium text-terminal-text truncate ${detailedView ? 'text-[11px]' : 'text-xs'}`}>{player.player_name}</span>
+        </Link>
+      </td>
+      {activeColumns.map(col => {
+        const val = (player as unknown as Record<string, number | null>)[col.key];
+        let display: string;
+        if (val == null) {
+          display = '—';
+        } else if (col.key === 'minutes') {
+          display = `${Math.round(val)}'`;
+        } else if (col.key === 'fg_pct' || col.key === 'ft_pct') {
+          display = formatPct(val);
+        } else {
+          display = String(val);
+        }
+        return (
+          <td key={col.key} className={`py-2 px-1 sm:px-2 text-center text-xs tabular-nums ${sortConfig.key === col.key ? 'text-terminal-green font-bold' : `text-terminal-text ${statWeightClass[col.key] || ''}`}`}>
+            {display}
+          </td>
+        );
+      })}
+      {detailedView && (
+        <td className="py-2 px-1 sm:px-2 text-center text-[11px] text-terminal-text opacity-50">
+          {player.player_position || '—'}
+        </td>
+      )}
+    </tr>
+  );
+
+  const renderBoxScoreTableHeader = () => (
+    <thead>
+      <tr className="border-b border-terminal-border-subtle bg-terminal-gray">
+        <th className={`w-8 bg-terminal-gray ${detailedView ? '' : 'sticky left-0 z-20'}`}></th>
+        <th className={`text-left py-3 px-2 text-[11px] font-medium text-terminal-text opacity-70 bg-terminal-gray ${detailedView ? 'min-w-[100px]' : 'sticky left-8 z-20 min-w-[140px] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-3 after:-mr-3 after:bg-gradient-to-r after:from-terminal-gray after:to-transparent after:pointer-events-none'}`}>Jogador</th>
+        {activeColumns.map(col => {
+          const isActive = sortConfig.key === col.key;
+          return (
+            <th
+              key={col.key}
+              className={`text-center py-3 px-1 sm:px-2 text-[11px] font-medium min-w-[36px] sm:min-w-[40px] cursor-pointer select-none transition-colors active:bg-terminal-light-gray ${isActive ? 'text-terminal-green' : 'text-terminal-text opacity-70 hover:opacity-100'}`}
+              onClick={() => handleSort(col.key)}
+              aria-sort={isActive ? (sortConfig.direction === 'desc' ? 'descending' : 'ascending') : 'none'}
+              aria-label={`Ordenar por ${col.label}`}
+              title={col.tooltip}
+              role="columnheader"
+            >
+              {col.label}
+              {isActive && (
+                <span className="ml-0.5 text-[8px]">{sortConfig.direction === 'desc' ? '▼' : '▲'}</span>
+              )}
+            </th>
+          );
+        })}
+        {detailedView && (
+          <th className="text-center py-3 px-1 sm:px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]">POS</th>
+        )}
+      </tr>
+    </thead>
+  );
+
+
+  const renderTableWrapper = (children: React.ReactNode) => (
+    <div className="border border-terminal-border-subtle rounded-lg overflow-hidden relative">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          {renderBoxScoreTableHeader()}
+          <tbody>{children}</tbody>
+        </table>
+      </div>
+      {detailedView && (
+        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-terminal-dark-gray/90 to-transparent pointer-events-none flex items-center justify-center">
+          <span className="text-terminal-text opacity-40 text-xs">▸</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderBoxScoreTable = (players: BoxScorePlayer[], teamName: string) => {
+    const sortedPlayers = sortBoxScorePlayers(players);
+    return renderTableWrapper(
+      sortedPlayers.map((player, idx) => renderBoxScoreRow(player, teamName, idx))
+    );
+  };
+
+  const renderCombinedBoxScore = () => {
+    const sortedPlayers = sortBoxScorePlayers(boxScore);
+    return renderTableWrapper(
+      sortedPlayers.map((player, idx) => renderBoxScoreRow(player, getPlayerTeamName(player), idx))
+    );
+  };
+
   if (isLoadingGame) {
     return (
       <div className="min-h-screen bg-terminal-black text-terminal-text">
@@ -266,7 +659,7 @@ export default function GameDetail() {
         {/* Layout: left = header + injury (compact), right = lineup */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Left column: game header + injury report */}
-          <div className="lg:col-span-6 xl:col-span-5 space-y-4">
+          <div className="lg:col-span-5 xl:col-span-5 space-y-4">
         {/* Game Header - Compact */}
         <div className="terminal-container p-4 md:p-5">
           {/* Main Matchup Row */}
@@ -337,7 +730,7 @@ export default function GameDetail() {
               {game.home_team_is_b2b_game && game.visitor_team_is_b2b_game && (
                 <div className="mt-2">
                   <span className="text-[10px] bg-terminal-yellow/20 text-terminal-yellow px-2 py-1 rounded">
-                    Both B2B
+                    Ambos B2B
                   </span>
                 </div>
               )}
@@ -427,15 +820,15 @@ export default function GameDetail() {
                 <div className="flex justify-center">
                   {renderLastFiveWithColors(homeLastFive)}
                 </div>
-                <div className="text-[10px] text-terminal-text opacity-50 self-center">LAST 5</div>
+                <div className="text-[10px] text-terminal-text opacity-50 self-center">ÚLT. 5</div>
                 <div className="flex justify-center">
                   {renderLastFiveWithColors(visitorLastFive)}
                 </div>
               </div>
               {isB2B && injuryReportTime && (
-                <div className="mt-2 pt-2 border-t border-terminal-border-subtle/50 text-center">
-                  <div className="text-[10px] text-terminal-text opacity-60">INJURY REPORT (GMT-3)</div>
-                  <div className="text-xs text-terminal-yellow">{injuryReportTime}</div>
+                <div className="mt-2 pt-2 border-t border-terminal-border-subtle/50 text-center" title="Horário previsto para atualização do relatório de lesões da NBA. Fique atento para mudanças de status dos jogadores antes do jogo.">
+                  <div className="text-xs text-terminal-text opacity-70">Injury Report sai às</div>
+                  <div className="text-sm text-terminal-yellow font-semibold">{injuryReportTime} <span className="text-[11px] opacity-60 font-normal">(horário de Brasília)</span></div>
                 </div>
               )}
             </div>
@@ -505,180 +898,362 @@ export default function GameDetail() {
         )}
           </div>
 
-          {/* Right column: Lineups - two tables side by side */}
-          <div className="lg:col-span-6 xl:col-span-7">
-        <div className="terminal-container p-4">
-          <h3 className="text-sm font-bold text-terminal-text mb-4">Lineups</h3>
-          {isLoadingTeams ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[0, 1].map((i) => (
-                <div key={i} className="border border-terminal-border-subtle rounded-lg overflow-hidden">
-                  <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
-                    <Skeleton className="h-4 w-10 bg-terminal-gray" />
-                  </div>
-                  <div className="p-2 space-y-2">
-                    {Array.from({ length: 8 }).map((_, j) => (
-                      <Skeleton key={j} className="h-8 w-full bg-terminal-gray/60" />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Home team lineup - sorted by position then rating */}
-            <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
-              <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
-                <span className="text-xs font-bold text-terminal-text">{game.home_team_abbreviation}</span>
+          {/* Right column: Tabs (Lineups / Box Score) */}
+          <div className="lg:col-span-7 xl:col-span-7">
+            <div className="terminal-container p-4">
+              {/* Tabs */}
+              <div className="flex items-center gap-1 mb-4 border-b border-terminal-border-subtle pb-2">
+                <button
+                  onClick={() => setActiveTab('lineups')}
+                  className={`px-4 min-h-[44px] text-xs font-bold rounded-t transition-colors active:opacity-70 ${
+                    activeTab === 'lineups'
+                      ? 'text-terminal-green border-b-2 border-terminal-green'
+                      : 'text-terminal-text opacity-50 hover:opacity-80'
+                  }`}
+                >
+                  Escalações
+                </button>
+                {isGameFinished && (
+                  <button
+                    onClick={() => setActiveTab('boxscore')}
+                    className={`px-4 min-h-[44px] text-xs font-bold rounded-t transition-colors active:opacity-70 ${
+                      activeTab === 'boxscore'
+                        ? 'text-terminal-green border-b-2 border-terminal-green'
+                        : 'text-terminal-text opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    Estatísticas
+                  </button>
+                )}
+                {!isGameFinished && isB2B && (
+                  <button
+                    onClick={() => setActiveTab('b2b')}
+                    className={`px-4 min-h-[44px] text-xs font-bold rounded-t transition-colors active:opacity-70 ${
+                      activeTab === 'b2b'
+                        ? 'text-terminal-green border-b-2 border-terminal-green'
+                        : 'text-terminal-text opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    Performance B2B
+                  </button>
+                )}
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-terminal-border-subtle">
-                      <th className="text-left py-2 px-2 text-[10px] font-medium text-terminal-text opacity-60">Player</th>
-                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">POS</th>
-                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedHomePlayers.map((homePlayer) => (
-                      <tr
-                        key={homePlayer.player_id}
-                        className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors"
+
+              {/* Tab: Lineups */}
+              {activeTab === 'lineups' && (
+                <>
+                  {isLoadingTeams ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[0, 1].map((i) => (
+                        <div key={i} className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+                          <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
+                            <Skeleton className="h-4 w-10 bg-terminal-gray" />
+                          </div>
+                          <div className="p-2 space-y-2">
+                            {Array.from({ length: 8 }).map((_, j) => (
+                              <Skeleton key={j} className="h-8 w-full bg-terminal-gray/60" />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Home team lineup */}
+                      {renderLineupTable(sortedHomePlayers, game.home_team_abbreviation, game.home_team_name)}
+                      {/* Visitor team lineup */}
+                      {renderLineupTable(sortedVisitorPlayers, game.visitor_team_abbreviation, game.visitor_team_name)}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Tab: Box Score */}
+              {activeTab === 'boxscore' && (
+                <>
+                  {isLoadingBoxScore ? (
+                    <div className="space-y-4">
+                      {[0, 1].map((i) => (
+                        <div key={i} className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+                          <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
+                            <Skeleton className="h-4 w-20 bg-terminal-gray" />
+                          </div>
+                          <div className="p-2 space-y-2">
+                            {Array.from({ length: 6 }).map((_, j) => (
+                              <Skeleton key={j} className="h-8 w-full bg-terminal-gray/60" />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : boxScore.length === 0 ? (
+                    <div className="text-center py-8 text-terminal-text opacity-50 text-sm">
+                      Box score indisponivel para este jogo
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Controls: Team selector + Detailed view toggle */}
+                      <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-1 w-fit">
+                        <button
+                          onClick={() => setBoxScoreView('all')}
+                          aria-label={`Ver todos os jogadores (${game.home_team_abbreviation} + ${game.visitor_team_abbreviation})`}
+                          aria-pressed={boxScoreView === 'all'}
+                          className={`flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'all' ? 'bg-terminal-green/20 text-terminal-green border border-terminal-green/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
+                        >
+                          <img src={getTeamLogoUrl(game.home_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          <span>+</span>
+                          <img src={getTeamLogoUrl(game.visitor_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        </button>
+                        <button
+                          onClick={() => setBoxScoreView('home')}
+                          aria-label={`Ver jogadores do ${game.home_team_abbreviation}`}
+                          aria-pressed={boxScoreView === 'home'}
+                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'home' ? 'bg-terminal-green/20 text-terminal-green border border-terminal-green/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
+                        >
+                          <img src={getTeamLogoUrl(game.home_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        </button>
+                        <button
+                          onClick={() => setBoxScoreView('visitor')}
+                          aria-label={`Ver jogadores do ${game.visitor_team_abbreviation}`}
+                          aria-pressed={boxScoreView === 'visitor'}
+                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'visitor' ? 'bg-terminal-green/20 text-terminal-green border border-terminal-green/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
+                        >
+                          <img src={getTeamLogoUrl(game.visitor_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        </button>
+                      </div>
+
+                      {/* Detailed view toggle — mobile only */}
+                      <button
+                        onClick={() => setDetailedView(!detailedView)}
+                        className={`md:hidden flex items-center gap-2 min-h-[44px] px-2 rounded-lg border transition-colors ${detailedView ? 'bg-terminal-green/15 border-terminal-green/30' : 'bg-terminal-dark-gray border-terminal-border-subtle hover:bg-terminal-gray/30'}`}
+                        aria-label={detailedView ? 'Mudar para visão compacta' : 'Mudar para visão detalhada'}
                       >
-                        <td className="py-2 px-2">
-                          <Link
-                            to={getPlayerHref(homePlayer.player_name)}
-                            className="flex items-center gap-2 cursor-pointer hover:text-terminal-green transition-colors"
-                          >
-                            <div className="w-6 h-6 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0 relative overflow-hidden">
-                              <img
-                                src={getPlayerPhotoUrl(homePlayer.player_name, game.home_team_name)}
-                                alt={homePlayer.player_name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                data-player-photo-index="0"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  const hasNext = tryNextPlayerPhotoUrl(target, homePlayer.player_name, game.home_team_name);
-                                  if (hasNext) return;
-                                  target.style.display = 'none';
-                                  const parent = target.parentElement;
-                                  if (parent) {
-                                    const initials = homePlayer.player_name
-                                      .split(' ')
-                                      .map(n => n[0])
-                                      .join('')
-                                      .toUpperCase()
-                                      .slice(0, 2);
-                                    parent.innerHTML = `<span class="text-[8px] font-bold text-terminal-text">${initials}</span>`;
-                                  }
-                                }}
-                              />
+                        <span className={`text-[11px] ${detailedView ? 'text-terminal-green' : 'text-terminal-text opacity-60'}`}>Detalhado</span>
+                        <div className={`relative w-10 h-[22px] rounded-full transition-colors border ${detailedView ? 'bg-terminal-green border-terminal-green' : 'bg-terminal-gray border-terminal-border-subtle'}`}>
+                          <div className={`absolute top-[2px] w-4 h-4 rounded-full shadow-sm transition-transform ${detailedView ? 'translate-x-[22px]' : 'translate-x-[3px]'} bg-white`} />
+                        </div>
+                      </button>
+                      </div>
+
+                      {boxScoreView === 'all' ? (
+                        renderCombinedBoxScore()
+                      ) : boxScoreView === 'home' ? (
+                        renderBoxScoreTable(
+                          boxScore.filter(p => p.home_away === 'Casa'),
+                          game.home_team_name
+                        )
+                      ) : (
+                        renderBoxScoreTable(
+                          boxScore.filter(p => p.home_away === 'Fora'),
+                          game.visitor_team_name
+                        )
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Tab: Performance B2B */}
+              {activeTab === 'b2b' && (
+                <>
+                  {isLoadingB2B ? (
+                    <div className="space-y-4">
+                      {[0, 1].map((i) => (
+                        <div key={i} className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+                          <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
+                            <Skeleton className="h-4 w-24 bg-terminal-gray" />
+                          </div>
+                          <div className="p-2 space-y-2">
+                            {Array.from({ length: 5 }).map((_, j) => (
+                              <Skeleton key={j} className="h-10 w-full bg-terminal-gray/60" />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Context info icon */}
+                      <div className="flex justify-end">
+                        <span
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-terminal-border-subtle text-[10px] text-terminal-text opacity-50 hover:opacity-100 hover:border-terminal-yellow hover:text-terminal-yellow cursor-help transition-all"
+                          title="Jogadores com rating ★★ ou superior que atuaram no jogo anterior. Fique atento a minutagens altas — fadiga impacta diretamente a performance em back-to-back."
+                        >
+                          i
+                        </span>
+                      </div>
+
+                      <div className="grid gap-4 grid-cols-1">
+                        {/* Home team B2B */}
+                        {game.home_team_is_b2b_game && (
+                          <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+                            <div className="bg-terminal-gray px-3 py-2 border-b border-terminal-border-subtle flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <img src={getTeamLogoUrl(game.home_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                <span className="text-xs font-bold text-terminal-text">{game.home_team_abbreviation}</span>
+                                <span className="text-[9px] bg-terminal-yellow/20 text-terminal-yellow px-1.5 py-0.5 rounded font-medium">B2B</span>
+                              </div>
+                              {b2bData.home.length > 0 && (() => {
+                                const p = b2bData.home[0];
+                                const won = (p.previous_team_score ?? 0) > (p.previous_opponent_score ?? 0);
+                                const location = p.previous_home_away === 'Casa' ? 'em casa' : 'fora de casa';
+                                const dateStr = new Date(p.previous_game_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                                return (
+                                  <span className={`text-[10px] ${won ? 'text-green-400' : 'text-terminal-red'}`}>
+                                    {won ? 'Venceu' : 'Perdeu'} {p.previous_opponent} {p.previous_team_score}-{p.previous_opponent_score} ({location}) • {dateStr}
+                                  </span>
+                                );
+                              })()}
                             </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-medium text-terminal-text truncate">{homePlayer.player_name}</div>
-                              {homePlayer.rating_stars > 0 && (
-                                <div className="text-[9px] text-terminal-yellow opacity-70">{'★'.repeat(Math.min(homePlayer.rating_stars, 5))}</div>
-                              )}
+                            {b2bData.home.length === 0 ? (
+                              <div className="text-center py-6 text-terminal-text opacity-50 text-xs">
+                                Dados do jogo anterior indisponíveis
+                              </div>
+                            ) : (
+                              <div className="overflow-x-auto">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b border-terminal-border-subtle bg-terminal-gray/50">
+                                      <th className="text-left py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[130px]">Jogador</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[40px]" title="Minutos jogados">MIN</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Pontos">PTS</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Rebotes totais">REB</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Assistências">AST</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de arremessos de quadra">FG%</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de lances livres">FT%</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {b2bData.home.map((player, idx) => {
+                                      const highMinutes = (player.minutes ?? 0) > 35;
+                                      const injured = homeInjuredPlayers.find(p => p.player_name === player.player_name);
+                                      return (
+                                        <tr key={player.player_id} className={`border-b border-terminal-border-subtle/30 ${idx % 2 === 1 ? 'bg-terminal-gray/10' : ''}`}>
+                                          <td className="py-2 px-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className={`text-[10px] min-w-[24px] ${player.rating_stars > 0 ? 'text-terminal-yellow' : 'text-terminal-text opacity-20'}`} title={player.rating_stars > 0 ? `Rating: ${player.rating_stars} estrela${player.rating_stars > 1 ? 's' : ''} — potencial de impacto no prop` : 'Sem rating'}>
+                                                {player.rating_stars > 0 ? '★'.repeat(player.rating_stars) : '—'}
+                                              </span>
+                                              <Link to={getPlayerHref(player.player_name)} className="text-xs font-medium text-terminal-text hover:text-terminal-green transition-colors truncate">
+                                                {player.player_name}
+                                              </Link>
+                                              {injured && (() => {
+                                                const style = getInjuryStatusStyle(injured.current_status);
+                                                return (
+                                                  <span className={`text-[8px] px-1 py-0.5 rounded ${style.textClass} ${style.bgClass} whitespace-nowrap`}>
+                                                    {getInjuryStatusLabel(injured.current_status)}
+                                                  </span>
+                                                );
+                                              })()}
+                                            </div>
+                                          </td>
+                                          <td className={`py-2 px-2 text-center text-xs tabular-nums font-bold ${highMinutes ? 'text-terminal-red' : 'text-terminal-text'}`}>
+                                            {player.minutes != null ? Math.round(player.minutes) : '—'}
+                                            {highMinutes && <span className="ml-0.5 text-[8px]">⚠</span>}
+                                          </td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text font-semibold">{player.points ?? '—'}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text">{player.rebounds ?? '—'}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text">{player.assists ?? '—'}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.fg_pct)}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.ft_pct)}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Visitor team B2B */}
+                        {game.visitor_team_is_b2b_game && (
+                          <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+                            <div className="bg-terminal-gray px-3 py-2 border-b border-terminal-border-subtle flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <img src={getTeamLogoUrl(game.visitor_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                <span className="text-xs font-bold text-terminal-text">{game.visitor_team_abbreviation}</span>
+                                <span className="text-[9px] bg-terminal-yellow/20 text-terminal-yellow px-1.5 py-0.5 rounded font-medium">B2B</span>
+                              </div>
+                              {b2bData.visitor.length > 0 && (() => {
+                                const p = b2bData.visitor[0];
+                                const won = (p.previous_team_score ?? 0) > (p.previous_opponent_score ?? 0);
+                                const location = p.previous_home_away === 'Casa' ? 'em casa' : 'fora de casa';
+                                const dateStr = new Date(p.previous_game_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                                return (
+                                  <span className={`text-[10px] ${won ? 'text-green-400' : 'text-terminal-red'}`}>
+                                    {won ? 'Venceu' : 'Perdeu'} {p.previous_opponent} {p.previous_team_score}-{p.previous_opponent_score} ({location}) • {dateStr}
+                                  </span>
+                                );
+                              })()}
                             </div>
-                          </Link>
-                        </td>
-                        <td className="py-2 px-1 text-center text-xs text-terminal-text opacity-60">{homePlayer.position || '—'}</td>
-                        <td className="py-2 px-1 text-center">
-                          {(() => {
-                            const injuryStyle = getInjuryStatusStyle(homePlayer.current_status);
-                            return (
-                              <span className={`text-[9px] px-1 py-0.5 rounded border whitespace-nowrap ${injuryStyle.textClass} ${injuryStyle.borderClass} ${injuryStyle.bgClass}`}>
-                                {getInjuryStatusLabel(homePlayer.current_status)}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            {b2bData.visitor.length === 0 ? (
+                              <div className="text-center py-6 text-terminal-text opacity-50 text-xs">
+                                Dados do jogo anterior indisponíveis
+                              </div>
+                            ) : (
+                              <div className="overflow-x-auto">
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b border-terminal-border-subtle bg-terminal-gray/50">
+                                      <th className="text-left py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[130px]">Jogador</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[40px]" title="Minutos jogados">MIN</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Pontos">PTS</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Rebotes totais">REB</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Assistências">AST</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de arremessos de quadra">FG%</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de lances livres">FT%</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {b2bData.visitor.map((player, idx) => {
+                                      const highMinutes = (player.minutes ?? 0) > 35;
+                                      const injured = visitorInjuredPlayers.find(p => p.player_name === player.player_name);
+                                      return (
+                                        <tr key={player.player_id} className={`border-b border-terminal-border-subtle/30 ${idx % 2 === 1 ? 'bg-terminal-gray/10' : ''}`}>
+                                          <td className="py-2 px-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className={`text-[10px] min-w-[24px] ${player.rating_stars > 0 ? 'text-terminal-yellow' : 'text-terminal-text opacity-20'}`} title={player.rating_stars > 0 ? `Rating: ${player.rating_stars} estrela${player.rating_stars > 1 ? 's' : ''} — potencial de impacto no prop` : 'Sem rating'}>
+                                                {player.rating_stars > 0 ? '★'.repeat(player.rating_stars) : '—'}
+                                              </span>
+                                              <Link to={getPlayerHref(player.player_name)} className="text-xs font-medium text-terminal-text hover:text-terminal-green transition-colors truncate">
+                                                {player.player_name}
+                                              </Link>
+                                              {injured && (() => {
+                                                const style = getInjuryStatusStyle(injured.current_status);
+                                                return (
+                                                  <span className={`text-[8px] px-1 py-0.5 rounded ${style.textClass} ${style.bgClass} whitespace-nowrap`}>
+                                                    {getInjuryStatusLabel(injured.current_status)}
+                                                  </span>
+                                                );
+                                              })()}
+                                            </div>
+                                          </td>
+                                          <td className={`py-2 px-2 text-center text-xs tabular-nums font-bold ${highMinutes ? 'text-terminal-red' : 'text-terminal-text'}`}>
+                                            {player.minutes != null ? Math.round(player.minutes) : '—'}
+                                            {highMinutes && <span className="ml-0.5 text-[8px]">⚠</span>}
+                                          </td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text font-semibold">{player.points ?? '—'}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text">{player.rebounds ?? '—'}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text">{player.assists ?? '—'}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.fg_pct)}</td>
+                                          <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.ft_pct)}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            {/* Visitor team lineup */}
-            <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
-              <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
-                <span className="text-xs font-bold text-terminal-text">{game.visitor_team_abbreviation}</span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-terminal-border-subtle">
-                      <th className="text-left py-2 px-2 text-[10px] font-medium text-terminal-text opacity-60">Player</th>
-                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">POS</th>
-                      <th className="text-center py-2 px-1 text-[10px] font-medium text-terminal-text opacity-60">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedVisitorPlayers.map((visitorPlayer) => (
-                      <tr
-                        key={visitorPlayer.player_id}
-                        className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors"
-                      >
-                        <td className="py-2 px-2">
-                          <Link
-                            to={getPlayerHref(visitorPlayer.player_name)}
-                            className="flex items-center gap-2 cursor-pointer hover:text-terminal-green transition-colors"
-                          >
-                            <div className="w-6 h-6 bg-terminal-gray rounded-full flex items-center justify-center border border-terminal-border-subtle flex-shrink-0 relative overflow-hidden">
-                              <img
-                                src={getPlayerPhotoUrl(visitorPlayer.player_name, game.visitor_team_name)}
-                                alt={visitorPlayer.player_name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                data-player-photo-index="0"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  const hasNext = tryNextPlayerPhotoUrl(target, visitorPlayer.player_name, game.visitor_team_name);
-                                  if (hasNext) return;
-                                  target.style.display = 'none';
-                                  const parent = target.parentElement;
-                                  if (parent) {
-                                    const initials = visitorPlayer.player_name
-                                      .split(' ')
-                                      .map(n => n[0])
-                                      .join('')
-                                      .toUpperCase()
-                                      .slice(0, 2);
-                                    parent.innerHTML = `<span class="text-[8px] font-bold text-terminal-text">${initials}</span>`;
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-medium text-terminal-text truncate">{visitorPlayer.player_name}</div>
-                              {visitorPlayer.rating_stars > 0 && (
-                                <div className="text-[9px] text-terminal-yellow opacity-70">{'★'.repeat(Math.min(visitorPlayer.rating_stars, 5))}</div>
-                              )}
-                            </div>
-                          </Link>
-                        </td>
-                        <td className="py-2 px-1 text-center text-xs text-terminal-text opacity-60">{visitorPlayer.position || '—'}</td>
-                        <td className="py-2 px-1 text-center">
-                          {(() => {
-                            const injuryStyle = getInjuryStatusStyle(visitorPlayer.current_status);
-                            return (
-                              <span className={`text-[9px] px-1 py-0.5 rounded border whitespace-nowrap ${injuryStyle.textClass} ${injuryStyle.borderClass} ${injuryStyle.bgClass}`}>
-                                {getInjuryStatusLabel(visitorPlayer.current_status)}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          )}
-        </div>
           </div>
         </div>
       </main>
