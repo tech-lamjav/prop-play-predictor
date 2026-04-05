@@ -2,13 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { nbaDataService, Game, TeamPlayer, Team } from '@/services/nba-data.service';
+import { gamesCache } from '@/pages/Games';
 import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { getInjuryStatusStyle, getInjuryStatusLabel } from '@/utils/injury-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const SAO_PAULO_TIMEZONE = 'America/Sao_Paulo';
 
@@ -48,7 +47,8 @@ export default function GameDetail() {
   const [visitorPlayers, setVisitorPlayers] = useState<TeamPlayer[]>(initCache?.visitorPlayers ?? []);
   const [homeTeam, setHomeTeam] = useState<Team | null>(initCache?.homeTeam ?? null);
   const [visitorTeam, setVisitorTeam] = useState<Team | null>(initCache?.visitorTeam ?? null);
-  const [isLoading, setIsLoading] = useState(!initCache);
+  const [isLoadingGame, setIsLoadingGame] = useState(!initCache);
+  const [isLoadingTeams, setIsLoadingTeams] = useState(!initCache);
   const hasLoaded = React.useRef(false);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function GameDetail() {
   const loadGameData = async () => {
     if (!gameId) return;
 
-    // Cache hit
+    // Cache hit (full detail)
     const cached = gameDetailCache.get(gameId);
     if (cached) {
       setGame(cached.game);
@@ -80,19 +80,32 @@ export default function GameDetail() {
       setVisitorPlayers(cached.visitorPlayers);
       setHomeTeam(cached.homeTeam);
       setVisitorTeam(cached.visitorTeam);
-      setIsLoading(false);
+      setIsLoadingGame(false);
+      setIsLoadingTeams(false);
       hasLoaded.current = true;
       return;
     }
 
     try {
-      setIsLoading(true);
+      setIsLoadingGame(true);
+      setIsLoadingTeams(true);
 
-      // 1. Find the game — use date from query param to narrow the search
+      // 1. Find the game — check gamesCache first, then fetch
       const searchParams = new URLSearchParams(location.search);
       const gameDate = searchParams.get('date') || undefined;
-      const games = await nbaDataService.getGames({ gameDate });
-      const foundGame = games.find(g => g.game_id === parseInt(gameId));
+
+      let foundGame: Game | undefined;
+      if (gameDate) {
+        const cachedGames = gamesCache.get(gameDate);
+        if (cachedGames) {
+          foundGame = cachedGames.find(g => g.game_id === parseInt(gameId));
+        }
+      }
+
+      if (!foundGame) {
+        const games = await nbaDataService.getGames({ gameDate });
+        foundGame = games.find(g => g.game_id === parseInt(gameId));
+      }
 
       if (!foundGame) {
         toast({
@@ -105,6 +118,7 @@ export default function GameDetail() {
       }
 
       setGame(foundGame);
+      setIsLoadingGame(false);
 
       // 2. Home team data
       let loadedHomePlayers: TeamPlayer[] = [];
@@ -147,7 +161,8 @@ export default function GameDetail() {
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingGame(false);
+      setIsLoadingTeams(false);
     }
   };
 
@@ -167,19 +182,25 @@ export default function GameDetail() {
   // Helper function to render last five games with colors
   const renderLastFiveWithColors = (lastFive: string | null) => {
     if (!lastFive) return <span className="opacity-50">N/A</span>;
-    
+
+    const results = lastFive.replace(/\s/g, '').slice(0, 5).split('').reverse();
+    const opacities = ['opacity-20', 'opacity-40', 'opacity-60', 'opacity-80', 'opacity-100'];
+
     return (
-      <div className="flex items-center gap-1">
-        {lastFive.split('').map((result, index) => {
+      <div className="flex items-center gap-0.5">
+        {results.map((result, idx) => {
           const isWin = result === 'V' || result === 'W';
           return (
             <span
-              key={index}
-              className={`text-xs font-medium ${
-                isWin ? 'text-terminal-green' : 'text-terminal-red'
+              key={idx}
+              title={isWin ? 'Vitória' : 'Derrota'}
+              className={`w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded cursor-default ${opacities[idx] ?? 'opacity-100'} ${
+                isWin
+                  ? 'bg-green-500/20 text-green-500 border border-green-500/30'
+                  : 'bg-red-500/20 text-red-500 border border-red-500/30'
               }`}
             >
-              {result}
+              {isWin ? 'V' : 'D'}
             </span>
           );
         })}
@@ -205,42 +226,22 @@ export default function GameDetail() {
   const homeInjuredPlayers = homePlayers.filter(p => !isActiveStatus(p.current_status));
   const visitorInjuredPlayers = visitorPlayers.filter(p => !isActiveStatus(p.current_status));
 
-  // Group players by position, sorted by rating_stars (desc) within each group
-  const groupPlayersByPosition = (players: TeamPlayer[]) => {
-    const grouped: { [key: string]: TeamPlayer[] } = {};
-    players.forEach(player => {
-      const pos = player.position || 'N/A';
-      if (!grouped[pos]) grouped[pos] = [];
-      grouped[pos].push(player);
-    });
-    // Sort each position group by rating (highest first)
-    Object.keys(grouped).forEach(pos => {
-      grouped[pos].sort((a, b) => (b.rating_stars ?? 0) - (a.rating_stars ?? 0));
-    });
-    return grouped;
+  // Sort: stars desc → position order → name asc
+  const positionOrder = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'G-F', 'F-C', 'N/A'];
+  const sortPlayers = (a: TeamPlayer, b: TeamPlayer) => {
+    const starsDiff = (b.rating_stars ?? 0) - (a.rating_stars ?? 0);
+    if (starsDiff !== 0) return starsDiff;
+    const aPosIdx = positionOrder.indexOf(a.position || 'N/A');
+    const bPosIdx = positionOrder.indexOf(b.position || 'N/A');
+    const posDiff = (aPosIdx === -1 ? 999 : aPosIdx) - (bPosIdx === -1 ? 999 : bPosIdx);
+    if (posDiff !== 0) return posDiff;
+    return a.player_name.localeCompare(b.player_name);
   };
 
-  const homePlayersByPos = groupPlayersByPosition(homePlayers);
-  const visitorPlayersByPos = groupPlayersByPosition(visitorPlayers);
-  
-  // Get all unique positions
-  const allPositions = Array.from(new Set([
-    ...Object.keys(homePlayersByPos),
-    ...Object.keys(visitorPlayersByPos)
-  ])).sort();
+  const sortedHomePlayers = [...homePlayers].sort(sortPlayers);
+  const sortedVisitorPlayers = [...visitorPlayers].sort(sortPlayers);
 
-  // Position order for display (starters first)
-  const positionOrder = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'G-F', 'F-C', 'N/A'];
-  const sortedPositions = allPositions.sort((a, b) => {
-    const aIndex = positionOrder.indexOf(a);
-    const bIndex = positionOrder.indexOf(b);
-    if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    return aIndex - bIndex;
-  });
-
-  if (isLoading) {
+  if (isLoadingGame) {
     return (
       <div className="min-h-screen bg-terminal-black text-terminal-text">
         <AnalyticsNav />
@@ -262,18 +263,6 @@ export default function GameDetail() {
       <AnalyticsNav showBack backTo="/home-games" title="Game Details" />
       
       <main className="container mx-auto px-4 py-4">
-        {/* Back Button */}
-        <div className="mb-4">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/home-games')}
-            className="terminal-button"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Games
-          </Button>
-        </div>
-
         {/* Layout: left = header + injury (compact), right = lineup */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Left column: game header + injury report */}
@@ -303,13 +292,6 @@ export default function GameDetail() {
                 <div className="text-lg font-bold text-terminal-green mb-1">
                   {game.home_team_name}
                 </div>
-                {isGameFinished && (
-                  <div className={`text-2xl font-bold mb-1 ${
-                    game.winner_team_id === game.home_team_id ? 'text-terminal-green' : 'opacity-60'
-                  }`}>
-                    {game.home_team_score}
-                  </div>
-                )}
                 {homeTeam && (
                   <>
                     <div className="text-xs text-terminal-text opacity-80">
@@ -341,8 +323,17 @@ export default function GameDetail() {
                 <div className="text-2xl font-black text-terminal-blue italic mb-2">VS</div>
               )}
               <div className="text-xs text-terminal-text opacity-60">
-                {formatGameDateSaoPaulo(game.game_date)} (GMT-3)
+                {formatGameDateSaoPaulo(game.game_date)}
               </div>
+              {game.game_datetime_brasilia && !isGameFinished && (
+                <div className="text-sm font-bold text-terminal-green mt-0.5">
+                  {new Date(game.game_datetime_brasilia).toLocaleTimeString('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </div>
+              )}
               {game.home_team_is_b2b_game && game.visitor_team_is_b2b_game && (
                 <div className="mt-2">
                   <span className="text-[10px] bg-terminal-yellow/20 text-terminal-yellow px-2 py-1 rounded">
@@ -358,13 +349,6 @@ export default function GameDetail() {
                 <div className="text-lg font-bold text-terminal-text mb-1">
                   {game.visitor_team_name}
                 </div>
-                {isGameFinished && (
-                  <div className={`text-2xl font-bold mb-1 ${
-                    game.winner_team_id === game.visitor_team_id ? 'text-terminal-green' : 'opacity-60'
-                  }`}>
-                    {game.visitor_team_score}
-                  </div>
-                )}
                 {visitorTeam && (
                   <>
                     <div className="text-xs text-terminal-text opacity-80">
@@ -458,8 +442,8 @@ export default function GameDetail() {
           )}
         </div>
 
-        {/* Injury Report - below header on the left (only for B2B games) */}
-        {isB2B && (homeInjuredPlayers.length > 0 || visitorInjuredPlayers.length > 0) && (
+        {/* Injury Report - below header on the left (only for upcoming games) */}
+        {!isGameFinished && (homeInjuredPlayers.length > 0 || visitorInjuredPlayers.length > 0) && (
           <div className="terminal-container px-3 py-3">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-bold text-terminal-text">Injury Report</span>
@@ -525,6 +509,22 @@ export default function GameDetail() {
           <div className="lg:col-span-6 xl:col-span-7">
         <div className="terminal-container p-4">
           <h3 className="text-sm font-bold text-terminal-text mb-4">Lineups</h3>
+          {isLoadingTeams ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[0, 1].map((i) => (
+                <div key={i} className="border border-terminal-border-subtle rounded-lg overflow-hidden">
+                  <div className="bg-terminal-gray/20 px-3 py-2 border-b border-terminal-border-subtle">
+                    <Skeleton className="h-4 w-10 bg-terminal-gray" />
+                  </div>
+                  <div className="p-2 space-y-2">
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <Skeleton key={j} className="h-8 w-full bg-terminal-gray/60" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Home team lineup - sorted by position then rating */}
             <div className="border border-terminal-border-subtle rounded-lg overflow-hidden">
@@ -541,7 +541,7 @@ export default function GameDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedPositions.flatMap((pos) => (homePlayersByPos[pos] || []).map((homePlayer) => (
+                    {sortedHomePlayers.map((homePlayer) => (
                       <tr
                         key={homePlayer.player_id}
                         className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors"
@@ -596,7 +596,7 @@ export default function GameDetail() {
                           })()}
                         </td>
                       </tr>
-                    )))}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -616,7 +616,7 @@ export default function GameDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedPositions.flatMap((pos) => (visitorPlayersByPos[pos] || []).map((visitorPlayer) => (
+                    {sortedVisitorPlayers.map((visitorPlayer) => (
                       <tr
                         key={visitorPlayer.player_id}
                         className="border-b border-terminal-border-subtle/50 hover:bg-terminal-gray/10 transition-colors"
@@ -671,12 +671,13 @@ export default function GameDetail() {
                           })()}
                         </td>
                       </tr>
-                    )))}
+                    ))}
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
+          )}
         </div>
           </div>
         </div>

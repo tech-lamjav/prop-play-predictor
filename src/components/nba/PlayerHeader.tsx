@@ -128,19 +128,19 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
           {seasonAverages && (
             <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-terminal-border-subtle">
               <div>
-                <div className="data-label mb-1">POINTS</div>
+                <div className="data-label mb-1">PTS</div>
                 <div className="text-lg font-bold text-terminal-text">
                   {seasonAverages.points.toFixed(1)}
                 </div>
               </div>
               <div>
-                <div className="data-label mb-1">ASSISTS</div>
+                <div className="data-label mb-1">AST</div>
                 <div className="text-lg font-bold text-terminal-text">
                   {seasonAverages.assists.toFixed(1)}
                 </div>
               </div>
               <div>
-                <div className="data-label mb-1">REBOUNDS</div>
+                <div className="data-label mb-1">REB</div>
                 <div className="text-lg font-bold text-terminal-text">
                   {seasonAverages.rebounds.toFixed(1)}
                 </div>
@@ -150,8 +150,8 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
 
           {/* Additional Info */}
           <div className="flex items-center gap-4 mt-3 text-xs opacity-60">
-            <span>AGE: {player.age}</span>
-            <span>TEAM: {player.team_abbreviation}</span>
+            <span>IDADE: {player.age}</span>
+            <span>TIME: {player.team_abbreviation}</span>
             {player.last_game_text && <span>{player.last_game_text}</span>}
           </div>
         </div>
