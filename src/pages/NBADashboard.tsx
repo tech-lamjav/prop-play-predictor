@@ -78,12 +78,8 @@ export default function NBADashboard() {
 
   // PLG freemium: deslogado só acessa jogadores FREE_PLAYERS; outros → login
   const isFree = player ? isFreePlayer(player.player_name) : false;
-  if (!authLoading && !user && player && !isFree) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
-  }
 
   // Logado mas não premium: jogador não grátis → paywall
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (!subscriptionLoading && user && player && !isPremium && !isFree) {
       const playerFullName = player.player_name;
@@ -97,6 +93,96 @@ export default function NBADashboard() {
       }, 2000);
     }
   }, [player, user, isPremium, isFree, subscriptionLoading, navigate, toast]);
+
+  // Calculate season averages from all game stats
+  const seasonAverages = React.useMemo(() => {
+    const pointsGames = gameStats.filter(g => g.stat_type === 'player_points');
+    const assistsGames = gameStats.filter(g => g.stat_type === 'player_assists');
+    const reboundsGames = gameStats.filter(g => g.stat_type === 'player_rebounds');
+
+    return {
+      points: pointsGames.length > 0
+        ? pointsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / pointsGames.length
+        : 0,
+      assists: assistsGames.length > 0
+        ? assistsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / assistsGames.length
+        : 0,
+      rebounds: reboundsGames.length > 0
+        ? reboundsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / reboundsGames.length
+        : 0,
+    };
+  }, [gameStats]);
+
+  // Ref to scroll chart into view when insight is clicked
+  const chartRef = React.useRef<HTMLDivElement>(null);
+
+  // Filter game stats based on selected filters
+  const filteredGameStats = useMemo(() => {
+    let filtered = gameStats.filter(g => g.stat_type === selectedStatType);
+
+    // Apply home/away filter
+    if (homeAway !== 'all') {
+      filtered = filtered.filter(g => {
+        const location = g.home_away?.toLowerCase();
+        if (homeAway === 'home') {
+          return location === 'home' || location === 'h' || location === 'casa';
+        }
+        return location === 'away' || location === 'a' || location === 'fora';
+      });
+    }
+
+    // Apply teammate filter (multi-select)
+    if (teammateFilter && teammateFilter.length > 0 && teammateGameIds) {
+      for (const tf of teammateFilter) {
+        const ids = teammateGameIds.get(tf.playerId);
+        if (!ids) continue;
+        filtered = filtered.filter(g =>
+          tf.mode === 'with'
+            ? ids.has(Number(g.game_id))
+            : !ids.has(Number(g.game_id))
+        );
+      }
+    }
+
+    // Apply B2B filter
+    if (b2bOnly) {
+      filtered = filtered.filter(g => g.is_b2b_game);
+    }
+
+    // Apply H2H filter (games against next opponent)
+    if (h2hOnly && teamData?.next_opponent_abbreviation) {
+      const opp = teamData.next_opponent_abbreviation.toUpperCase();
+      filtered = filtered.filter(g =>
+        g.played_against?.toUpperCase().replace('@', '').includes(opp)
+      );
+    }
+
+    // Apply last N games filter
+    if (lastNGames !== 'all') {
+      filtered = filtered.slice(0, lastNGames);
+    }
+
+    return filtered;
+  }, [gameStats, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds, b2bOnly, h2hOnly, teamData]);
+
+  // Get current betting line for selected stat type
+  const currentLine = useMemo(() => {
+    // Get the most recent game's line_most_recent for the selected stat type
+    const statsForType = gameStats.filter(g => g.stat_type === selectedStatType);
+    if (statsForType.length === 0) return null;
+
+    // Sort by date descending and get the first one's line_most_recent
+    const sortedStats = [...statsForType].sort((a, b) =>
+      new Date(b.game_date).getTime() - new Date(a.game_date).getTime()
+    );
+
+    return sortedStats[0]?.line_most_recent ?? null;
+  }, [gameStats, selectedStatType]);
+
+  // Early returns (after all hooks)
+  if (!authLoading && !user && player && !isFree) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
 
   const loadPlayer = async () => {
     if (!playerName) return;
@@ -285,30 +371,6 @@ export default function NBADashboard() {
     }
   };
 
-  // Calculate season averages from all game stats
-  // Must be before conditional returns to comply with Rules of Hooks
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const seasonAverages = React.useMemo(() => {
-    const pointsGames = gameStats.filter(g => g.stat_type === 'player_points');
-    const assistsGames = gameStats.filter(g => g.stat_type === 'player_assists');
-    const reboundsGames = gameStats.filter(g => g.stat_type === 'player_rebounds');
-
-    return {
-      points: pointsGames.length > 0 
-        ? pointsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / pointsGames.length 
-        : 0,
-      assists: assistsGames.length > 0 
-        ? assistsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / assistsGames.length 
-        : 0,
-      rebounds: reboundsGames.length > 0 
-        ? reboundsGames.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / reboundsGames.length 
-        : 0,
-    };
-  }, [gameStats]);
-
-  // Ref to scroll chart into view when insight is clicked
-  const chartRef = React.useRef<HTMLDivElement>(null);
-
   const handleInsightClick = (statType: string, triggerPlayerName: string) => {
     // 1. Switch stat type to the insight's stat
     setSelectedStatType(statType);
@@ -374,71 +436,6 @@ export default function NBADashboard() {
       setTeammateFilterLoading(false);
     }
   };
-
-  // Filter game stats based on selected filters
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const filteredGameStats = useMemo(() => {
-    let filtered = gameStats.filter(g => g.stat_type === selectedStatType);
-
-    // Apply home/away filter
-    if (homeAway !== 'all') {
-      filtered = filtered.filter(g => {
-        const location = g.home_away?.toLowerCase();
-        if (homeAway === 'home') {
-          return location === 'home' || location === 'h' || location === 'casa';
-        }
-        return location === 'away' || location === 'a' || location === 'fora';
-      });
-    }
-
-    // Apply teammate filter (multi-select)
-    if (teammateFilter && teammateFilter.length > 0 && teammateGameIds) {
-      for (const tf of teammateFilter) {
-        const ids = teammateGameIds.get(tf.playerId);
-        if (!ids) continue;
-        filtered = filtered.filter(g =>
-          tf.mode === 'with'
-            ? ids.has(Number(g.game_id))
-            : !ids.has(Number(g.game_id))
-        );
-      }
-    }
-
-    // Apply B2B filter
-    if (b2bOnly) {
-      filtered = filtered.filter(g => g.is_b2b_game);
-    }
-
-    // Apply H2H filter (games against next opponent)
-    if (h2hOnly && teamData?.next_opponent_abbreviation) {
-      const opp = teamData.next_opponent_abbreviation.toUpperCase();
-      filtered = filtered.filter(g =>
-        g.played_against?.toUpperCase().replace('@', '').includes(opp)
-      );
-    }
-
-    // Apply last N games filter
-    if (lastNGames !== 'all') {
-      filtered = filtered.slice(0, lastNGames);
-    }
-
-    return filtered;
-  }, [gameStats, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds, b2bOnly, h2hOnly, teamData]);
-
-  // Get current betting line for selected stat type
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLine = useMemo(() => {
-    // Get the most recent game's line_most_recent for the selected stat type
-    const statsForType = gameStats.filter(g => g.stat_type === selectedStatType);
-    if (statsForType.length === 0) return null;
-    
-    // Sort by date descending and get the first one's line_most_recent
-    const sortedStats = [...statsForType].sort((a, b) => 
-      new Date(b.game_date).getTime() - new Date(a.game_date).getTime()
-    );
-    
-    return sortedStats[0]?.line_most_recent ?? null;
-  }, [gameStats, selectedStatType]);
 
   if (!player && playerLookupDone) {
     return (
