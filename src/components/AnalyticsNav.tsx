@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronDown,
   Target,
-  FileText
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
@@ -42,6 +43,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
 
   const analysisItems = [
     { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
+    { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
     { name: 'Jogos', href: '/home-games', icon: Calendar },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
     { name: 'Relatório', href: '/report', icon: FileText },

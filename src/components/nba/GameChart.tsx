@@ -489,11 +489,21 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'with' }); setTeammateOpen(false); }}
+                    <button onClick={() => {
+                      const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'with' as const };
+                      const current = teammateFilter ?? [];
+                      const filtered = current.filter(f => f.playerId !== t.player_id);
+                      onTeammateFilterChange([...filtered, entry]);
+                    }}
                       className="px-2.5 py-1 text-[11px] rounded border border-terminal-green/40 text-terminal-green hover:bg-terminal-green/15 transition-colors">
                       COM
                     </button>
-                    <button onClick={() => { onTeammateFilterChange({ playerId: t.player_id, playerName: t.player_name, mode: 'without' }); setTeammateOpen(false); }}
+                    <button onClick={() => {
+                      const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'without' as const };
+                      const current = teammateFilter ?? [];
+                      const filtered = current.filter(f => f.playerId !== t.player_id);
+                      onTeammateFilterChange([...filtered, entry]);
+                    }}
                       className="px-2.5 py-1 text-[11px] rounded border border-terminal-red/40 text-terminal-red hover:bg-terminal-red/15 transition-colors">
                       SEM
                     </button>
@@ -504,29 +514,33 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
 
             return (
               <div className="relative" ref={teammateDropdownRef}>
-                {/* Button / active badge */}
-                {teammateFilter ? (
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${
-                      teammateFilter.mode === 'with'
-                        ? 'bg-terminal-green/15 border-terminal-green/50 text-terminal-green'
-                        : 'bg-terminal-red/15 border-terminal-red/50 text-terminal-red'
-                    }`}>
-                      {teammateFilter.mode === 'with' ? 'COM' : 'SEM'} {teammateFilter.playerName.split(' ').pop()}
-                    </span>
-                    <button onClick={() => onTeammateFilterChange(null)}
-                      className="w-5 h-5 flex items-center justify-center rounded border border-white/20 text-white/40 hover:text-white/80 hover:border-white/40 transition-colors">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ) : (
+                {/* Active filter badges + add button */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  {teammateFilter && teammateFilter.length > 0 && teammateFilter.map(f => (
+                    <div key={f.playerId} className="flex items-center gap-0.5">
+                      <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${
+                        f.mode === 'with'
+                          ? 'bg-terminal-green/15 border-terminal-green/50 text-terminal-green'
+                          : 'bg-terminal-red/15 border-terminal-red/50 text-terminal-red'
+                      }`}>
+                        {f.mode === 'with' ? 'COM' : 'SEM'} {f.playerName.split(' ').pop()}
+                      </span>
+                      <button onClick={() => {
+                        const updated = teammateFilter.filter(tf => tf.playerId !== f.playerId);
+                        onTeammateFilterChange(updated.length > 0 ? updated : null);
+                      }}
+                        className="w-4 h-4 flex items-center justify-center rounded border border-white/20 text-white/40 hover:text-white/80 hover:border-white/40 transition-colors">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
                   <button onClick={() => setTeammateOpen(v => !v)} disabled={teammateFilterLoading}
                     className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5 transition-all disabled:opacity-40">
                     <Users className="w-3 h-3" />
-                    <span>Companheiro</span>
+                    <span>{teammateFilter && teammateFilter.length > 0 ? '+' : 'Companheiro'}</span>
                     <ChevronDown className={`w-3 h-3 transition-transform ${teammateOpen ? 'rotate-180' : ''}`} />
                   </button>
-                )}
+                </div>
 
                 {teammateOpen && (
                   <>
@@ -587,9 +601,17 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
         )}
       </div>
 
+      <div className="relative">
+      {teammateFilterLoading && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+          <span className="text-sm font-semibold text-terminal-text bg-terminal-dark-gray px-4 py-2 rounded-lg border border-terminal-border-subtle animate-pulse shadow-lg">
+            Recalculando...
+          </span>
+        </div>
+      )}
       <div
         ref={chartContainerRef}
-        className={`h-72 ${isDragging ? 'cursor-grabbing' : adjustedLine !== null ? 'cursor-grab' : ''}`}
+        className={`h-72 ${isDragging ? 'cursor-grabbing' : adjustedLine !== null ? 'cursor-grab' : ''} ${teammateFilterLoading ? 'opacity-30' : ''} transition-opacity duration-200`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -599,8 +621,8 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
         style={{ userSelect: 'none', touchAction: 'pan-x' }}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart 
-            data={chartData} 
+          <BarChart
+            data={chartData}
             margin={{
               top: 5,
               right: 30,
@@ -662,7 +684,8 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
           </BarChart>
         </ResponsiveContainer>
       </div>
-      
+      </div>
+
       {/* Footer */}
       <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px]">
         {/* Legenda */}

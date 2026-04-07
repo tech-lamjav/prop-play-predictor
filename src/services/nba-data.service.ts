@@ -68,6 +68,7 @@ export interface PropPlayer {
   next_player_stats_when_leader_out: number;
   next_player_stats_normal: number;
   loaded_at: string;
+  leader_injury_status: string | null;
 }
 
 export interface Team {
@@ -189,6 +190,89 @@ export interface PlayerDashboardBundle {
   shooting_zones: PlayerShootingZones | null;
 }
 
+export interface BoxScorePlayer {
+  player_id: number;
+  player_name: string;
+  player_position: string;
+  home_away: string;
+  minutes: number | null;
+  points: number | null;
+  rebounds: number | null;
+  assists: number | null;
+  blocks: number | null;
+  steals: number | null;
+  threes: number | null;
+  turnovers: number | null;
+  offensive_rebounds: number | null;
+  defensive_rebounds: number | null;
+  fg_pct: number | null;
+  ft_pct: number | null;
+  plus_minus: number | null;
+}
+
+export interface B2BBoxScorePlayer {
+  player_id: number;
+  player_name: string;
+  player_position: string;
+  rating_stars: number;
+  minutes: number | null;
+  points: number | null;
+  rebounds: number | null;
+  assists: number | null;
+  fg_pct: number | null;
+  ft_pct: number | null;
+  plus_minus: number | null;
+  previous_game_id: number;
+  previous_game_date: string;
+  previous_opponent: string;
+  previous_team_score: number | null;
+  previous_opponent_score: number | null;
+  previous_home_away: string;
+}
+
+export interface DailyOpportunity {
+  game_id: number;
+  game_date: string;
+  game_time: string | null;
+  home_team_abbr: string;
+  visitor_team_abbr: string;
+  trigger_player_id: number;
+  trigger_name: string;
+  trigger_status: string;
+  trigger_team_abbr: string;
+  trigger_team_id: number;
+  trigger_days_out: number | null;
+  trigger_freshness: string | null;
+  trigger_participation_pct: number | null;
+  is_b2b: boolean;
+  fatigue_level: string | null;
+  backup_player_id: number | null;
+  backup_player_name: string;
+  stat_type: string;
+  avg_com: number;
+  avg_sem: number;
+  stddev_sem: number | null;
+  cv_sem: number | null;
+  gap: number;
+  gap_pct: number;
+  jogos_com: number | null;
+  jogos_sem: number | null;
+  line_value: number | null;
+  gap_vs_line: number | null;
+  gap_vs_line_pct: number | null;
+  signal: string | null;
+  score: number | null;
+  score_base: number | null;
+  score_label: string | null;
+  opponent_abbr: string | null;
+  opponent_def_rank: number | null;
+  opponent_off_rank: number | null;
+  is_home: boolean;
+  rating_stars: number;
+  spread: number | null;
+  blowout_deflator: number | null;
+}
+
 export const nbaDataService = {
   async getAllPlayers(): Promise<Player[]> {
     if (allPlayersCache && Date.now() < allPlayersCache.expiresAt) {
@@ -283,11 +367,11 @@ export const nbaDataService = {
   async getPlayerGameStats(playerId: number, limit = 15): Promise<GamePlayerStats[]> {
     return withRetry(async () => {
       const { data, error } = await supabaseClient
-        .rpc('get_player_game_stats', { 
+        .rpc('get_player_game_stats', {
           p_player_id: playerId,
-          p_limit: limit 
+          p_limit: limit
         });
-      
+
       if (error) throw error;
       return (data || []) as GamePlayerStats[];
     });
@@ -366,6 +450,38 @@ export const nbaDataService = {
         teammates: (payload.teammates ?? []) as TeamPlayer[],
         shooting_zones: (payload.shooting_zones ?? null) as PlayerShootingZones | null,
       };
+    });
+  },
+
+  async getGameBoxScore(gameId: number): Promise<BoxScorePlayer[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_game_box_score', {
+        p_game_id: gameId,
+      });
+      if (error) throw error;
+      return (data || []) as BoxScorePlayer[];
+    });
+  },
+
+  async getB2BPreviousGameBoxScore(gameId: number, teamId: number): Promise<B2BBoxScorePlayer[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_b2b_previous_game_box_score', {
+        p_game_id: gameId,
+        p_team_id: teamId,
+      });
+      if (error) throw error;
+      return (data || []) as B2BBoxScorePlayer[];
+    });
+  },
+
+  async getDailyOpportunities(gameDate?: string): Promise<DailyOpportunity[]> {
+    return withRetry(async () => {
+      const params: Record<string, string> = {};
+      if (gameDate) params.p_game_date = gameDate;
+
+      const { data, error } = await supabaseClient.rpc('get_daily_opportunities', params);
+      if (error) throw error;
+      return (data || []) as DailyOpportunity[];
     });
   },
 };
