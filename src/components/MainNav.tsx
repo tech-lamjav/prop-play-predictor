@@ -34,6 +34,7 @@ export default function MainNav({ className }: MainNavProps) {
 
   const analysisItems = [
     { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
+    { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
     { name: 'Jogos', href: '/home-games', icon: TrendingUp },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
     { name: 'Relatório', href: '/report', icon: FileText },

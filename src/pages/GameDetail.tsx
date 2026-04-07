@@ -1122,6 +1122,7 @@ export default function GameDetail() {
                                       <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Assistências">AST</th>
                                       <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de arremessos de quadra">FG%</th>
                                       <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de lances livres">FT%</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Plus/Minus — impacto no placar quando em quadra">+/-</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1157,6 +1158,9 @@ export default function GameDetail() {
                                           <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text">{player.assists ?? '—'}</td>
                                           <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.fg_pct)}</td>
                                           <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.ft_pct)}</td>
+                                          <td className={`py-2 px-2 text-center text-xs tabular-nums ${(player.plus_minus ?? 0) > 0 ? 'text-green-400' : (player.plus_minus ?? 0) < 0 ? 'text-terminal-red' : 'text-terminal-text opacity-50'}`}>
+                                            {player.plus_minus != null ? (player.plus_minus > 0 ? `+${player.plus_minus}` : player.plus_minus) : '—'}
+                                          </td>
                                         </tr>
                                       );
                                     })}
@@ -1204,6 +1208,7 @@ export default function GameDetail() {
                                       <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Assistências">AST</th>
                                       <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de arremessos de quadra">FG%</th>
                                       <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Aproveitamento de lances livres">FT%</th>
+                                      <th className="text-center py-2 px-2 text-[11px] font-medium text-terminal-text opacity-70 min-w-[36px]" title="Plus/Minus — impacto no placar quando em quadra">+/-</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1239,6 +1244,9 @@ export default function GameDetail() {
                                           <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text">{player.assists ?? '—'}</td>
                                           <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.fg_pct)}</td>
                                           <td className="py-2 px-2 text-center text-xs tabular-nums text-terminal-text opacity-80">{formatPct(player.ft_pct)}</td>
+                                          <td className={`py-2 px-2 text-center text-xs tabular-nums ${(player.plus_minus ?? 0) > 0 ? 'text-green-400' : (player.plus_minus ?? 0) < 0 ? 'text-terminal-red' : 'text-terminal-text opacity-50'}`}>
+                                            {player.plus_minus != null ? (player.plus_minus > 0 ? `+${player.plus_minus}` : player.plus_minus) : '—'}
+                                          </td>
                                         </tr>
                                       );
                                     })}

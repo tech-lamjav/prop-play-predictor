@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
+import Picks from "./pages/Picks";
 import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
@@ -55,6 +56,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/home-players" element={<Home />} />
+            <Route path="/oportunidades" element={<Picks />} />
             <Route path="/betinho" element={<Betinho />} />
             <Route path="/auth" element={
               <ProtectedRoute requireAuth={false}>

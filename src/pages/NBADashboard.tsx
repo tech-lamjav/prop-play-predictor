@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones } from '@/services/nba-data.service';
+import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
@@ -54,17 +54,20 @@ export default function NBADashboard() {
   const [nextGameTime, setNextGameTime] = useState<string | null>(initCache?.nextGameTime ?? null);
   const [statsLoading, setStatsLoading] = useState(!initCache);
   const [propsLoading, setPropsLoading] = useState(!initCache);
+  const [dailyOpps, setDailyOpps] = useState<DailyOpportunity[]>([]);
   const [teammatesLoading, setTeammatesLoading] = useState(!initCache);
   const [teamLoading, setTeamLoading] = useState(!initCache);
   const [shootingZonesLoading, setShootingZonesLoading] = useState(!initCache);
   const [playerLookupDone, setPlayerLookupDone] = useState(!!initCache);
   const initialStat = searchParams.get('stat');
+  const initialTrigger = searchParams.get('trigger');
   const statFromUrl = initialStat && VALID_STAT_TYPES.includes(initialStat) ? initialStat : 'player_points';
   const [selectedStatType, setSelectedStatType] = useState<string>(statFromUrl);
+  const [pendingTriggerFilter, setPendingTriggerFilter] = useState<string | null>(initialTrigger);
   const [lastNGames, setLastNGames] = useState<number | 'all'>(15);
   const [homeAway, setHomeAway] = useState<'all' | 'home' | 'away'>('all');
   const [teammateFilter, setTeammateFilter] = useState<TeammateFilter>(null);
-  const [teammateGameIds, setTeammateGameIds] = useState<Set<number> | null>(null);
+  const [teammateGameIds, setTeammateGameIds] = useState<Map<number, Set<number>> | null>(null);
   const [teammateFilterLoading, setTeammateFilterLoading] = useState(false);
   const [b2bOnly, setB2bOnly] = useState(false);
   const [h2hOnly, setH2hOnly] = useState(false);
@@ -175,10 +178,33 @@ export default function NBADashboard() {
       } catch (e) { console.error('Error loading props:', e); }
       setPropsLoading(false);
 
+      // 3.5. Daily opportunities for this player (same data as Picks page)
+      try {
+        const allOpps = await nbaDataService.getDailyOpportunities();
+        const playerOpps = allOpps.filter(o => o.backup_player_name === playerData.player_name);
+        setDailyOpps(playerOpps);
+      } catch (e) { console.error('Error loading daily opportunities:', e); }
+
       // 4. Teammates
       try {
         loadedTeammates = await nbaDataService.getTeamPlayers(playerData.team_id);
         setTeammates(loadedTeammates);
+
+        // Auto-apply trigger filter from URL (e.g., from Picks page "Analisar" button)
+        if (pendingTriggerFilter) {
+          const triggerTeammate = loadedTeammates.find(
+            t => t.player_name.toLowerCase() === pendingTriggerFilter.toLowerCase()
+          );
+          if (triggerTeammate) {
+            handleTeammateFilterChange([{
+              playerId: triggerTeammate.player_id,
+              playerName: triggerTeammate.player_name,
+              mode: 'without',
+            }]);
+            setLastNGames('all');
+          }
+          setPendingTriggerFilter(null);
+        }
       } catch (e) { console.error('Error loading teammates:', e); }
       setTeammatesLoading(false);
 
@@ -292,15 +318,15 @@ export default function NBADashboard() {
       t => t.player_name.toLowerCase() === triggerPlayerName.toLowerCase()
     );
     if (triggerTeammate) {
-      handleTeammateFilterChange({
+      handleTeammateFilterChange([{
         playerId: triggerTeammate.player_id,
         playerName: triggerTeammate.player_name,
         mode: 'without',
-      });
+      }]);
     }
 
-    // 3. Reset other filters to show clean view
-    setLastNGames(15);
+    // 3. Reset other filters to show clean view (all games for full season comparison)
+    setLastNGames('all');
     setHomeAway('all');
     setB2bOnly(false);
     setH2hOnly(false);
@@ -310,14 +336,37 @@ export default function NBADashboard() {
 
   const handleTeammateFilterChange = async (filter: TeammateFilter) => {
     setTeammateFilter(filter);
-    if (!filter) {
+    if (!filter || filter.length === 0) {
       setTeammateGameIds(null);
       return;
     }
     setTeammateFilterLoading(true);
     try {
-      const stats = await nbaDataService.getPlayerGameStats(filter.playerId, 250);
-      setTeammateGameIds(new Set(stats.map(g => g.game_id)));
+      // Load game_ids for each teammate in parallel
+      const map = new Map<number, Set<number>>();
+      const existing = teammateGameIds ?? new Map<number, Set<number>>();
+
+      // Only load data for new teammates (reuse cached)
+      const toLoad = filter.filter(f => !existing.has(f.playerId));
+      const results = await Promise.all(
+        toLoad.map(async f => {
+          const stats = await nbaDataService.getPlayerGameStats(f.playerId, 250);
+          return { playerId: f.playerId, gameIds: new Set(stats.map(g => Number(g.game_id))) };
+        })
+      );
+
+      // Build map: keep existing + add new
+      for (const f of filter) {
+        const cached = existing.get(f.playerId);
+        if (cached) {
+          map.set(f.playerId, cached);
+        }
+      }
+      for (const r of results) {
+        map.set(r.playerId, r.gameIds);
+      }
+
+      setTeammateGameIds(map);
     } catch (e) {
       console.error('Error loading teammate stats:', e);
       setTeammateGameIds(null);
@@ -342,13 +391,17 @@ export default function NBADashboard() {
       });
     }
 
-    // Apply teammate filter
-    if (teammateFilter && teammateGameIds) {
-      filtered = filtered.filter(g =>
-        teammateFilter.mode === 'with'
-          ? teammateGameIds.has(g.game_id)
-          : !teammateGameIds.has(g.game_id)
-      );
+    // Apply teammate filter (multi-select)
+    if (teammateFilter && teammateFilter.length > 0 && teammateGameIds) {
+      for (const tf of teammateFilter) {
+        const ids = teammateGameIds.get(tf.playerId);
+        if (!ids) continue;
+        filtered = filtered.filter(g =>
+          tf.mode === 'with'
+            ? ids.has(Number(g.game_id))
+            : !ids.has(Number(g.game_id))
+        );
+      }
     }
 
     // Apply B2B filter
@@ -425,13 +478,78 @@ export default function NBADashboard() {
               nextGameTime={nextGameTime}
             />
 
-            {/* Prop Insights */}
-            <PropInsightsCard
-              propPlayers={propPlayers}
-              playerName={player?.player_name || ''}
-              isLoading={propsLoading}
-              onInsightClick={handleInsightClick}
-            />
+            {/* Oportunidades do Dia (mesma fonte dos Picks) ou fallback para Insights */}
+            {dailyOpps.length > 0 ? (
+              <div className="terminal-container p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-bold text-terminal-green uppercase tracking-widest">
+                    Oportunidades do Dia
+                  </span>
+                  <span className="text-[9px] opacity-40">mesma análise da tela de Picks</span>
+                </div>
+                <div className="space-y-2">
+                  {dailyOpps.map((opp, i) => {
+                    const triggerLastName = opp.trigger_name.split(' ').pop();
+                    const statusBadge = opp.trigger_status.toLowerCase().includes('out') ? { text: 'OUT', cls: 'bg-terminal-red/20 text-terminal-red border-terminal-red/30' }
+                      : opp.trigger_status.toLowerCase().includes('doubtful') ? { text: 'DTD', cls: 'bg-orange-400/20 text-orange-400 border-orange-400/30' }
+                      : { text: 'Q', cls: 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30' };
+                    const statLabel = { player_points: 'Pontos', player_assists: 'Assistências', player_rebounds: 'Rebotes', player_points_rebounds_assists: 'PRA', player_threes: '3 Pontos', player_steals: 'Roubos', player_blocks: 'Bloqueios' }[opp.stat_type] || opp.stat_type;
+                    const isClickable = !!handleInsightClick;
+
+                    return (
+                      <button
+                        key={i}
+                        className={`w-full text-left bg-terminal-dark-gray rounded border border-terminal-green/20 p-3 transition-all ${
+                          isClickable ? 'hover:border-terminal-green/50 hover:bg-terminal-green/5 cursor-pointer' : 'cursor-default'
+                        }`}
+                        onClick={() => handleInsightClick?.(opp.stat_type, opp.trigger_name)}
+                      >
+                        {/* Header: stat + trigger + score */}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-terminal-text uppercase">{statLabel}</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>
+                              SEM {triggerLastName} ({statusBadge.text})
+                            </span>
+                          </div>
+                          <span className={`text-sm font-black tabular-nums ${
+                            (opp.score ?? 0) >= 80 ? 'text-terminal-green' : (opp.score ?? 0) >= 70 ? 'text-terminal-yellow' : 'text-orange-400'
+                          }`}>
+                            {opp.score}
+                          </span>
+                        </div>
+
+                        {/* Numbers */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm opacity-50">{opp.avg_com?.toFixed(1)}</span>
+                          <span className="text-xs opacity-30">→</span>
+                          <span className="text-lg font-bold text-terminal-green leading-none">{opp.avg_sem?.toFixed(1)}</span>
+                          {opp.gap_pct > 0 && (
+                            <span className="text-[11px] font-semibold text-terminal-green bg-terminal-green/10 px-1.5 py-0.5 rounded">
+                              +{opp.gap_pct?.toFixed(1)}%
+                            </span>
+                          )}
+                          {opp.line_value && (
+                            <span className="text-[11px] opacity-40 ml-auto">Linha: {opp.line_value?.toFixed(1)}</span>
+                          )}
+                        </div>
+
+                        <div className="text-[9px] opacity-40 mt-1">
+                          com {triggerLastName} → sem {triggerLastName} • Clique para filtrar o gráfico
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <PropInsightsCard
+                propPlayers={propPlayers}
+                playerName={player?.player_name || ''}
+                isLoading={propsLoading}
+                onInsightClick={handleInsightClick}
+              />
+            )}
 
             {/* Teammates */}
             <TeammatesCard
