@@ -35,6 +35,8 @@ const GameDetail = React.lazy(() => import("./pages/GameDetail"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 const Report = React.lazy(() => import("./pages/Report"));
 const SharePage = React.lazy(() => import("./pages/SharePage"));
+const Analise360List = React.lazy(() => import("./pages/Analise360List"));
+const Analise360Detail = React.lazy(() => import("./pages/Analise360Detail"));
 
 const queryClient = new QueryClient();
 
@@ -111,6 +113,20 @@ const App = () => (
             <Route path="/report" element={
               <ProtectedRoute>
                 <Report />
+              </ProtectedRoute>
+            } />
+            <Route path="/analise-360" element={
+              <ProtectedRoute>
+                <PremiumRoute redirectTo="/paywall-platform">
+                  <Analise360List />
+                </PremiumRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/analise-360/:triggerPlayerId" element={
+              <ProtectedRoute>
+                <PremiumRoute redirectTo="/paywall-platform">
+                  <Analise360Detail />
+                </PremiumRoute>
               </ProtectedRoute>
             } />
             <Route path="/share/:token" element={<SharePage />} />
