@@ -90,8 +90,10 @@ export default function Picks() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Free users see blurred data
-  const blur = !isPremium ? 'blur-sm select-none pointer-events-none' : '';
+  // Free users: top 2 opportunities visible, rest blurred
+  const FREE_VISIBLE_COUNT = 2;
+  const isRowFree = (idx: number) => isPremium || idx < FREE_VISIBLE_COUNT;
+  const getBlur = (idx: number) => isRowFree(idx) ? '' : 'blur-sm select-none pointer-events-none';
 
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>('score');
@@ -218,6 +220,21 @@ export default function Picks() {
   const highConfidence = filtered.filter(o => (o.score ?? 0) >= 80).length;
   const gamesCount = new Set(filtered.map(o => o.game_id)).size;
 
+  // Map each opportunity to its global index (for consistent free/blur across views)
+  const globalIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    filtered.forEach((opp, idx) => {
+      const key = `${opp.trigger_player_id}-${opp.backup_player_id}-${opp.stat_type}`;
+      map.set(key, idx);
+    });
+    return map;
+  }, [filtered]);
+
+  const getGlobalIndex = (opp: DailyOpportunity) => {
+    const key = `${opp.trigger_player_id}-${opp.backup_player_id}-${opp.stat_type}`;
+    return globalIndexMap.get(key) ?? 999;
+  };
+
   const InfoTip = ({ text }: { text: string }) => (
     <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-terminal-gray border border-terminal-border-subtle text-[9px] font-bold text-terminal-text opacity-60 hover:opacity-100 hover:bg-terminal-green/20 hover:border-terminal-green hover:text-terminal-green cursor-help transition-all ml-1 shrink-0" title={text}>i</span>
   );
@@ -227,13 +244,15 @@ export default function Picks() {
     const statusBadge = getTriggerStatusBadge(opp.trigger_status);
     const triggerLastName = opp.trigger_name.split(' ').pop();
     const isHighConf = (opp.score ?? 0) >= 80;
+    const rowBlur = getBlur(idx);
+    const rowFree = isRowFree(idx);
 
     return (
       <tr key={`${opp.trigger_player_id}-${opp.backup_player_id}-${opp.stat_type}-${idx}`}
         className={`border-b border-terminal-border-subtle hover:bg-terminal-light-gray/50 transition-colors ${isHighConf ? 'border-l-2 border-l-terminal-green bg-white/[0.02]' : ''}`}>
         {/* SCORE */}
         <td className="text-center py-2 px-3">
-          <span className={blur}>
+          <span className={rowBlur}>
           {isHighConf ? (
             <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-terminal-green/15 border border-terminal-green/40 text-base font-black tabular-nums text-terminal-green">
               {opp.score}
@@ -256,7 +275,7 @@ export default function Picks() {
             </div>
             {opp.game_time && (
               <div className="text-[9px] opacity-40 mt-0.5">
-                {opp.game_date ? new Date(opp.game_date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : ''} • {opp.game_time}
+                {opp.game_time}h
               </div>
             )}
           </td>
@@ -277,7 +296,7 @@ export default function Picks() {
           </div>
         </td>
         {/* STAT */}
-        <td className="py-2 px-3">
+        <td className={`py-2 px-3 ${rowBlur}`}>
           <span className="text-[10px] bg-terminal-gray border border-terminal-border-subtle px-1.5 py-0.5 rounded cursor-help"
             title={{
               player_points_rebounds_assists: 'Pontos + Rebotes + Assistências',
@@ -290,21 +309,21 @@ export default function Picks() {
           </span>
         </td>
         {/* COM */}
-        <td className={`text-right py-2 px-3 opacity-50 tabular-nums ${blur}`}>{opp.avg_com?.toFixed(1) ?? '—'}</td>
+        <td className={`text-right py-2 px-3 opacity-50 tabular-nums ${rowBlur}`}>{opp.avg_com?.toFixed(1) ?? '—'}</td>
         {/* SEM */}
-        <td className={`text-right py-2 px-3 font-bold text-terminal-green tabular-nums ${blur}`}>{opp.avg_sem?.toFixed(1) ?? '—'}</td>
+        <td className={`text-right py-2 px-3 font-bold text-terminal-green tabular-nums ${rowBlur}`}>{opp.avg_sem?.toFixed(1) ?? '—'}</td>
         {/* GAP% */}
-        <td className={`text-right py-2 px-3 ${blur}`}>
+        <td className={`text-right py-2 px-3 ${rowBlur}`}>
           <span className={`font-bold tabular-nums ${(opp.gap_pct ?? 0) >= 30 ? 'text-orange-400' : (opp.gap_pct ?? 0) >= 15 ? 'text-terminal-green' : 'text-terminal-blue'}`}>
             +{opp.gap_pct?.toFixed(1) ?? '—'}%
           </span>
         </td>
         {/* LINHA */}
-        <td className="text-right py-2 px-3 tabular-nums">
+        <td className={`text-right py-2 px-3 tabular-nums ${rowBlur}`}>
           {opp.line_value ? <span className="font-medium">{opp.line_value?.toFixed(1) ?? '—'}</span> : <span className="opacity-30">—</span>}
         </td>
         {/* vs LINHA */}
-        <td className={`text-right py-2 px-3 tabular-nums ${blur}`}>
+        <td className={`text-right py-2 px-3 tabular-nums ${rowBlur}`}>
           {opp.gap_vs_line_pct != null ? (
             <span className={`font-bold ${opp.gap_vs_line_pct > 10 ? 'text-terminal-green' : opp.gap_vs_line_pct > 0 ? 'text-terminal-blue' : 'text-terminal-red'}`}>
               {opp.gap_vs_line_pct > 0 ? '+' : ''}{opp.gap_vs_line_pct?.toFixed(1) ?? '—'}%
@@ -317,16 +336,17 @@ export default function Picks() {
             const slug = opp.backup_player_name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
             const params = new URLSearchParams({ stat: opp.stat_type, trigger: opp.trigger_name });
             const dashboardHref = `/nba-dashboard/${slug}?${params.toString()}`;
-            const href = isPremium ? dashboardHref : '/paywall-platform';
+            const canAccess = rowFree; // top 2 can access dashboard, rest goes to paywall
+            const href = canAccess ? dashboardHref : '/paywall-platform';
             return (
               <a href={href}
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(isPremium ? dashboardHref : '/paywall-platform');
+                  navigate(canAccess ? dashboardHref : '/paywall-platform');
                 }}
-                title={isPremium ? `Ver ${opp.backup_player_name} — ${STAT_LABELS[opp.stat_type] || opp.stat_type} sem ${opp.trigger_name}` : 'Recurso exclusivo Premium'}
+                title={canAccess ? `Ver ${opp.backup_player_name} — ${STAT_LABELS[opp.stat_type] || opp.stat_type} sem ${opp.trigger_name}` : 'Recurso exclusivo Premium'}
                 className="inline-flex items-center gap-1 px-2 py-1 text-[9px] rounded border border-terminal-green/30 text-terminal-green hover:bg-terminal-green/10 hover:border-terminal-green/60 transition-all">
-                <ExternalLink className="w-3 h-3" /> {isPremium ? 'Analisar' : 'Premium'}
+                <ExternalLink className="w-3 h-3" /> {canAccess ? 'Analisar' : 'Premium'}
               </a>
             );
           })()}
@@ -558,7 +578,7 @@ export default function Picks() {
                     <table className="w-full text-xs">
                       {tableHeaders(false)}
                       <tbody>
-                        {group.opps.map((opp, idx) => renderRow(opp, idx, false))}
+                        {group.opps.map((opp) => renderRow(opp, getGlobalIndex(opp), false))}
                       </tbody>
                     </table>
                   </div>
@@ -585,33 +605,40 @@ export default function Picks() {
                   <ChevronDown className={`w-4 h-4 opacity-40 shrink-0 transition-transform ${collapsedGames.has(gameId) ? '-rotate-90' : ''}`} />
                 </button>
                 {!collapsedGames.has(gameId) && <div className="space-y-2">
-                  {group.opps.map((opp, idx) => {
+                  {group.opps.map((opp) => {
+                    const gIdx = getGlobalIndex(opp);
                     const statusBadge = getTriggerStatusBadge(opp.trigger_status);
                     const triggerLastName = opp.trigger_name.split(' ').pop();
                     const isHighConf = (opp.score ?? 0) >= 80;
                     const statLabel = STAT_LABELS[opp.stat_type] || opp.stat_type;
                     const slug = opp.backup_player_name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
                     const analyzeHref = `/nba-dashboard/${slug}?stat=${opp.stat_type}&trigger=${encodeURIComponent(opp.trigger_name)}`;
+                    const groupBlur = getBlur(gIdx);
+                    const groupCanAccess = isRowFree(gIdx);
 
                     return (
-                      <a key={idx} href={analyzeHref} onClick={(e) => { if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); navigate(analyzeHref); } }}
+                      <a key={`${opp.trigger_player_id}-${opp.backup_player_id}-${opp.stat_type}`}
+                        href={groupCanAccess ? analyzeHref : '/paywall-platform'}
+                        onClick={(e) => { if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); navigate(groupCanAccess ? analyzeHref : '/paywall-platform'); } }}
                         className={`block terminal-container p-3 ${isHighConf ? 'border-terminal-green/30' : ''}`}>
                         <div className="flex items-center gap-3">
                           <PlayerPhoto name={opp.backup_player_name} teamAbbr={opp.trigger_team_abbr} />
                           <div className="flex-1 min-w-0">
                             <span className="font-bold text-terminal-green text-sm truncate block">{opp.backup_player_name}</span>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-xs font-bold bg-terminal-green/10 text-terminal-green border border-terminal-green/30 px-1.5 py-0.5 rounded">{statLabel}</span>
                               <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>SEM {triggerLastName} ({statusBadge.text})</span>
+                              <span className={`text-xs font-bold bg-terminal-green/10 text-terminal-green border border-terminal-green/30 px-1.5 py-0.5 rounded ${groupBlur}`}>{statLabel}</span>
                             </div>
                           </div>
+                          <span className={groupBlur}>
                           {isHighConf ? (
                             <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-terminal-green/15 border border-terminal-green/40 text-base font-black tabular-nums text-terminal-green shrink-0">{opp.score}</span>
                           ) : (
                             <span className={`text-lg font-bold tabular-nums shrink-0 ${getScoreColor(opp.score)}`}>{opp.score ?? '—'}</span>
                           )}
+                          </span>
                         </div>
-                        <div className="mt-2 text-[11px] text-terminal-text opacity-80">
+                        <div className={`mt-2 text-[11px] text-terminal-text opacity-80 ${groupBlur}`}>
                           Com {triggerLastName}: <span className="opacity-60">{opp.avg_com?.toFixed(1) ?? '—'}</span>
                           <span className="mx-1.5 opacity-30">→</span>
                           Sem: <span className="font-bold text-terminal-green">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
@@ -637,6 +664,8 @@ export default function Picks() {
               const statLabel = STAT_LABELS[opp.stat_type] || opp.stat_type;
               const slug = opp.backup_player_name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
               const analyzeHref = `/nba-dashboard/${slug}?stat=${opp.stat_type}&trigger=${encodeURIComponent(opp.trigger_name)}`;
+              const mobileBlur = getBlur(idx);
+              const mobileCanAccess = isRowFree(idx);
 
               return (
                 <div key={idx} className={`terminal-container overflow-hidden ${isHighConf ? 'border-terminal-green/30' : ''}`}>
@@ -651,7 +680,7 @@ export default function Picks() {
                           {opp.is_b2b && <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 rounded">B2B</span>}
                         </div>
                       </div>
-                      <span className={blur}>
+                      <span className={mobileBlur}>
                       {isHighConf ? (
                         <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-terminal-green/15 border border-terminal-green/40 text-lg font-black tabular-nums text-terminal-green shrink-0">
                           {opp.score}
@@ -663,18 +692,18 @@ export default function Picks() {
                       <ChevronDown className={`w-4 h-4 opacity-30 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
 
-                    {/* Row 2: Stat + Trigger context */}
+                    {/* Row 2: Trigger (always visible) + Stat (blurred for non-free) */}
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs font-bold bg-terminal-green/10 text-terminal-green border border-terminal-green/30 px-2 py-0.5 rounded">
-                        {statLabel}
-                      </span>
                       <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>
                         SEM {triggerLastName} ({statusBadge.text})
+                      </span>
+                      <span className={`text-xs font-bold bg-terminal-green/10 text-terminal-green border border-terminal-green/30 px-2 py-0.5 rounded ${mobileBlur}`}>
+                        {statLabel}
                       </span>
                     </div>
 
                     {/* Row 3: Storytelling — readable numbers */}
-                    <div className={`mt-2 text-[11px] text-terminal-text opacity-80 ${blur}`}>
+                    <div className={`mt-2 text-[11px] text-terminal-text opacity-80 ${mobileBlur}`}>
                       <span>Com {triggerLastName}: </span>
                       <span className="opacity-60">{opp.avg_com?.toFixed(1) ?? '—'}</span>
                       <span className="mx-1.5 opacity-30">→</span>
@@ -685,7 +714,7 @@ export default function Picks() {
                       </span>
                     </div>
                     {opp.line_value && (
-                      <div className={`mt-1 text-[11px] opacity-60 ${blur}`}>
+                      <div className={`mt-1 text-[11px] opacity-60 ${mobileBlur}`}>
                         Linha atual: <span className="font-medium text-terminal-text">{opp.line_value?.toFixed(1) ?? '—'}</span>
                         {opp.gap_vs_line_pct != null && (
                           <span className={`ml-1.5 font-bold ${opp.gap_vs_line_pct > 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
@@ -708,10 +737,10 @@ export default function Picks() {
                         </div>
                       )}
 
-                      <a href={analyzeHref}
-                        onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); e.stopPropagation(); navigate(analyzeHref); } }}
+                      <a href={mobileCanAccess ? analyzeHref : '/paywall-platform'}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(mobileCanAccess ? analyzeHref : '/paywall-platform'); }}
                         className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-terminal-green border border-terminal-green/30 rounded hover:bg-terminal-green/10 transition-all">
-                        <ExternalLink className="w-3.5 h-3.5" /> VER ANÁLISE COMPLETA
+                        <ExternalLink className="w-3.5 h-3.5" /> {mobileCanAccess ? 'VER ANÁLISE COMPLETA' : 'ASSINAR PREMIUM'}
                       </a>
                     </div>
                   )}
