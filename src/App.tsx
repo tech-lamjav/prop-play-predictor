@@ -37,6 +37,7 @@ const Report = React.lazy(() => import("./pages/Report"));
 const SharePage = React.lazy(() => import("./pages/SharePage"));
 const Analise360List = React.lazy(() => import("./pages/Analise360List"));
 const Analise360Detail = React.lazy(() => import("./pages/Analise360Detail"));
+const HomeNBA = React.lazy(() => import("./pages/HomeNBA"));
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
         <Suspense fallback={<LazyFallback />}>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/home-nba" element={<HomeNBA />} />
             <Route path="/home-players" element={<Home />} />
             <Route path="/oportunidades" element={<Picks />} />
             <Route path="/betinho" element={<Betinho />} />

@@ -271,7 +271,7 @@ export default function Games() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-      <AnalyticsNav />
+      <AnalyticsNav showBack />
 
       <main className="container mx-auto px-4 py-4">
         {error && (
@@ -298,16 +298,16 @@ export default function Games() {
           </button>
           <button
             onClick={() => navigate('/report')}
-            className="w-full flex items-center justify-between gap-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg px-3 py-3 hover:border-terminal-green/40 transition-all group"
+            className="w-full flex items-center justify-between gap-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg px-3 py-3 hover:border-terminal-blue/40 transition-all group"
           >
             <div className="flex items-center gap-2.5">
-              <FileText className="w-4 h-4 text-terminal-green flex-shrink-0" />
+              <FileText className="w-4 h-4 text-terminal-blue flex-shrink-0" />
               <div className="flex flex-col items-start">
-                <span className="text-sm font-semibold text-terminal-green font-mono leading-tight">Relatório do Dia</span>
+                <span className="text-sm font-semibold text-terminal-blue font-mono leading-tight">Relatório do Dia</span>
                 <span className="text-[11px] text-terminal-text/40 font-mono leading-tight">veja as melhores props</span>
               </div>
             </div>
-            <span className="text-[10px] text-terminal-green/60 font-mono group-hover:text-terminal-green transition-colors">→</span>
+            <span className="text-[10px] text-terminal-blue/60 font-mono group-hover:text-terminal-blue transition-colors">→</span>
           </button>
         </div>
 
@@ -472,7 +472,7 @@ export default function Games() {
                               {dateDisplay}
                             </div>
                             {game.game_datetime_brasilia && !finished && (
-                              <div className="text-[11px] text-terminal-green opacity-100 whitespace-nowrap font-mono">
+                              <div className="text-[11px] text-terminal-blue opacity-100 whitespace-nowrap font-mono">
                                 {new Date(game.game_datetime_brasilia).toLocaleTimeString('pt-BR', {
                                   timeZone: SAO_PAULO_TIMEZONE,
                                   hour: '2-digit',
@@ -668,12 +668,12 @@ export default function Games() {
             {/* Reports button */}
             <button
               onClick={() => navigate('/report')}
-              className="w-full flex items-center justify-between gap-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg px-3 py-3 hover:border-terminal-green/40 transition-all group"
+              className="w-full flex items-center justify-between gap-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg px-3 py-3 hover:border-terminal-blue/40 transition-all group"
             >
               <div className="flex items-center gap-2.5">
-                <FileText className="w-4 h-4 text-terminal-green flex-shrink-0" />
+                <FileText className="w-4 h-4 text-terminal-blue flex-shrink-0" />
                 <div className="flex flex-col items-start">
-                  <span className="text-sm font-semibold text-terminal-green font-mono leading-tight">
+                  <span className="text-sm font-semibold text-terminal-blue font-mono leading-tight">
                     Relatório do Dia
                   </span>
                   <span className="text-[11px] text-terminal-text/40 font-mono leading-tight">
@@ -681,7 +681,7 @@ export default function Games() {
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] text-terminal-green/60 font-mono group-hover:text-terminal-green transition-colors">→</span>
+              <span className="text-[10px] text-terminal-blue/60 font-mono group-hover:text-terminal-blue transition-colors">→</span>
             </button>
 
           </div>
@@ -693,11 +693,11 @@ export default function Games() {
           <section className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-4 mt-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-terminal-green/20 border border-terminal-green rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-terminal-green" />
+                <div className="w-10 h-10 bg-terminal-blue/20 border border-terminal-blue rounded-full flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-terminal-blue" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-terminal-green">
+                  <h2 className="text-sm font-bold text-terminal-blue">
                     Desbloqueie Análises Completas
                   </h2>
                   <p className="text-[10px] text-terminal-text opacity-70">

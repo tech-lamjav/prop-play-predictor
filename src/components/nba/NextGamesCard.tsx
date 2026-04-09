@@ -72,7 +72,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
             </div>
             <div className="flex items-center gap-1.5">
               {nextGameTime && (
-                <span className="text-[10px] font-semibold text-terminal-green">{nextGameTime}</span>
+                <span className="text-[10px] font-semibold text-terminal-blue">{nextGameTime}</span>
               )}
               <Calendar className="w-3 h-3 opacity-40" />
             </div>

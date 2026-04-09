@@ -100,7 +100,7 @@ export function FreePropCard({ layout = 'vertical' }: FreePropCardProps) {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className={`font-bold text-terminal-green truncate ${compact ? 'text-xs' : 'text-sm'}`}>
+            <div className={`font-bold text-terminal-text truncate ${compact ? 'text-xs' : 'text-sm'}`}>
               {opp.backup_player_name}
             </div>
             <div className={`opacity-50 ${compact ? 'text-[10px]' : 'text-xs'}`}>
@@ -117,7 +117,7 @@ export function FreePropCard({ layout = 'vertical' }: FreePropCardProps) {
 
         {/* Row 2: Stat + Trigger badge */}
         <div className="flex items-center gap-2 mb-2">
-          <span className={`font-bold bg-terminal-green/10 text-terminal-green border border-terminal-green/30 px-1.5 py-0.5 rounded ${compact ? 'text-[10px]' : 'text-xs'}`}>
+          <span className={`font-bold bg-terminal-blue/10 text-terminal-blue border border-terminal-blue/30 px-1.5 py-0.5 rounded ${compact ? 'text-[10px]' : 'text-xs'}`}>
             {statLabel}
           </span>
           <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusColor}`}>
@@ -131,8 +131,8 @@ export function FreePropCard({ layout = 'vertical' }: FreePropCardProps) {
           <span className="opacity-60">{opp.avg_com?.toFixed(1)}</span>
           <span className="mx-1 opacity-30">→</span>
           <span className="opacity-50">Sem: </span>
-          <span className="font-bold text-terminal-green">{opp.avg_sem?.toFixed(1)}</span>
-          <span className="ml-1 font-bold text-terminal-green">(+{opp.gap_pct?.toFixed(1)}%)</span>
+          <span className="font-bold text-terminal-text">{opp.avg_sem?.toFixed(1)}</span>
+          <span className="ml-1 font-bold text-terminal-text">(+{opp.gap_pct?.toFixed(1)}%)</span>
         </div>
         {opp.line_value && (
           <div className={`${compact ? 'text-[10px]' : 'text-xs'} opacity-50 mt-0.5`}>

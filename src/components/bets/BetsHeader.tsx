@@ -6,7 +6,9 @@ import { Button } from '../ui/button';
 import {
   BarChart3,
   Calendar,
-  Users,
+  Radar,
+  TrendingUp,
+  ChevronLeft,
   Menu,
   X,
   ChevronDown,
@@ -32,6 +34,7 @@ import { Switch } from '../ui/switch';
 
 interface BetsHeaderProps {
   title?: string;
+  showBack?: boolean;
   onShareClick?: () => void;
   onReferralClick?: () => void;
   showUnitsView?: boolean;
@@ -41,6 +44,7 @@ interface BetsHeaderProps {
 }
 
 export const BetsHeader: React.FC<BetsHeaderProps> = ({
+  showBack,
   onShareClick,
   onReferralClick,
   showUnitsView = false,
@@ -54,15 +58,16 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
+    { name: 'Hoje', href: '/home-nba', icon: BarChart3 },
+    { name: 'Oportunidades', href: '/oportunidades', icon: TrendingUp },
+    { name: 'Análise 360', href: '/analise-360', icon: Radar },
     { name: 'Jogos', href: '/home-games', icon: Calendar },
-    { name: 'Jogadores', href: '/nba-players', icon: Users },
     { name: 'Relatório', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
-    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
     { name: 'Apostas', href: '/bets', icon: Target },
+    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -88,17 +93,25 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-14">
 
-          {/* Left - Logo */}
-          <div
-            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => navigate('/home-players')}
-          >
-            <div className="w-8 h-8 bg-terminal-blue/20 border border-terminal-blue/50 rounded flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-terminal-blue" />
+          {/* Left - Logo + Back */}
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => navigate('/home-nba')}
+            >
+              <img src="/logo.png" alt="Smartbetting" className="h-8 w-auto" />
             </div>
-            <div className="hidden sm:block">
-              <span className="text-sm font-bold text-terminal-blue tracking-wide">Smartbetting</span>
-            </div>
+            {showBack && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray -ml-2"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                <span className="text-xs">Voltar</span>
+              </Button>
+            )}
           </div>
 
           {/* Center - Desktop dropdowns */}

@@ -1806,6 +1806,7 @@ export default function Bets() {
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
       <BetsHeader
+        showBack
         onShareClick={() => setIsShareModalOpen(true)}
         onReferralClick={() => setReferralModalOpen(true)}
         showUnitsView={showUnitsView}

@@ -154,7 +154,7 @@ export default function GameDetail() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-blue" />
       </div>
     );
   }
@@ -559,7 +559,7 @@ export default function GameDetail() {
           display = String(val);
         }
         return (
-          <td key={col.key} className={`py-2 px-1 sm:px-2 text-center text-xs tabular-nums ${sortConfig.key === col.key ? 'text-terminal-green font-bold' : `text-terminal-text ${statWeightClass[col.key] || ''}`}`}>
+          <td key={col.key} className={`py-2 px-1 sm:px-2 text-center text-xs tabular-nums ${sortConfig.key === col.key ? 'text-terminal-blue font-bold' : `text-terminal-text ${statWeightClass[col.key] || ''}`}`}>
             {display}
           </td>
         );
@@ -582,7 +582,7 @@ export default function GameDetail() {
           return (
             <th
               key={col.key}
-              className={`text-center py-3 px-1 sm:px-2 text-[11px] font-medium min-w-[36px] sm:min-w-[40px] cursor-pointer select-none transition-colors active:bg-terminal-light-gray ${isActive ? 'text-terminal-green' : 'text-terminal-text opacity-70 hover:opacity-100'}`}
+              className={`text-center py-3 px-1 sm:px-2 text-[11px] font-medium min-w-[36px] sm:min-w-[40px] cursor-pointer select-none transition-colors active:bg-terminal-light-gray ${isActive ? 'text-terminal-blue' : 'text-terminal-text opacity-70 hover:opacity-100'}`}
               onClick={() => handleSort(col.key)}
               aria-sort={isActive ? (sortConfig.direction === 'desc' ? 'descending' : 'ascending') : 'none'}
               aria-label={`Ordenar por ${col.label}`}
@@ -653,7 +653,7 @@ export default function GameDetail() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text">
-      <AnalyticsNav showBack backTo="/home-games" title="Game Details" />
+      <AnalyticsNav showBack title="Game Details" />
       
       <main className="container mx-auto px-4 py-4">
         {/* Layout: left = header + injury (compact), right = lineup */}
@@ -682,7 +682,7 @@ export default function GameDetail() {
                 />
               </div>
               <div className="flex-1">
-                <div className="text-lg font-bold text-terminal-green mb-1">
+                <div className="text-lg font-bold text-terminal-text mb-1">
                   {game.home_team_name}
                 </div>
                 {homeTeam && (
@@ -719,7 +719,7 @@ export default function GameDetail() {
                 {formatGameDateSaoPaulo(game.game_date)}
               </div>
               {game.game_datetime_brasilia && !isGameFinished && (
-                <div className="text-sm font-bold text-terminal-green mt-0.5">
+                <div className="text-sm font-bold text-terminal-blue mt-0.5">
                   {new Date(game.game_datetime_brasilia).toLocaleTimeString('pt-BR', {
                     timeZone: 'America/Sao_Paulo',
                     hour: '2-digit',
@@ -848,7 +848,7 @@ export default function GameDetail() {
               {/* Home injuries */}
               {homeInjuredPlayers.length > 0 && (
                 <div>
-                  <div className="text-[10px] text-terminal-green opacity-70 mb-1">{game.home_team_abbreviation}</div>
+                  <div className="text-[10px] text-terminal-blue opacity-70 mb-1">{game.home_team_abbreviation}</div>
                   <div className="flex flex-wrap gap-1">
                     {homeInjuredPlayers.map((player) => {
                       const injuryStyle = getInjuryStatusStyle(player.current_status);
@@ -907,7 +907,7 @@ export default function GameDetail() {
                   onClick={() => setActiveTab('lineups')}
                   className={`px-4 min-h-[44px] text-xs font-bold rounded-t transition-colors active:opacity-70 ${
                     activeTab === 'lineups'
-                      ? 'text-terminal-green border-b-2 border-terminal-green'
+                      ? 'text-terminal-blue border-b-2 border-terminal-blue'
                       : 'text-terminal-text opacity-50 hover:opacity-80'
                   }`}
                 >
@@ -918,7 +918,7 @@ export default function GameDetail() {
                     onClick={() => setActiveTab('boxscore')}
                     className={`px-4 min-h-[44px] text-xs font-bold rounded-t transition-colors active:opacity-70 ${
                       activeTab === 'boxscore'
-                        ? 'text-terminal-green border-b-2 border-terminal-green'
+                        ? 'text-terminal-blue border-b-2 border-terminal-blue'
                         : 'text-terminal-text opacity-50 hover:opacity-80'
                     }`}
                   >
@@ -930,7 +930,7 @@ export default function GameDetail() {
                     onClick={() => setActiveTab('b2b')}
                     className={`px-4 min-h-[44px] text-xs font-bold rounded-t transition-colors active:opacity-70 ${
                       activeTab === 'b2b'
-                        ? 'text-terminal-green border-b-2 border-terminal-green'
+                        ? 'text-terminal-blue border-b-2 border-terminal-blue'
                         : 'text-terminal-text opacity-50 hover:opacity-80'
                     }`}
                   >
@@ -999,7 +999,7 @@ export default function GameDetail() {
                           onClick={() => setBoxScoreView('all')}
                           aria-label={`Ver todos os jogadores (${game.home_team_abbreviation} + ${game.visitor_team_abbreviation})`}
                           aria-pressed={boxScoreView === 'all'}
-                          className={`flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'all' ? 'bg-terminal-green/20 text-terminal-green border border-terminal-green/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
+                          className={`flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'all' ? 'bg-terminal-blue/20 text-terminal-blue border border-terminal-blue/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
                         >
                           <img src={getTeamLogoUrl(game.home_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           <span>+</span>
@@ -1009,7 +1009,7 @@ export default function GameDetail() {
                           onClick={() => setBoxScoreView('home')}
                           aria-label={`Ver jogadores do ${game.home_team_abbreviation}`}
                           aria-pressed={boxScoreView === 'home'}
-                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'home' ? 'bg-terminal-green/20 text-terminal-green border border-terminal-green/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
+                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'home' ? 'bg-terminal-blue/20 text-terminal-blue border border-terminal-blue/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
                         >
                           <img src={getTeamLogoUrl(game.home_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                         </button>
@@ -1017,7 +1017,7 @@ export default function GameDetail() {
                           onClick={() => setBoxScoreView('visitor')}
                           aria-label={`Ver jogadores do ${game.visitor_team_abbreviation}`}
                           aria-pressed={boxScoreView === 'visitor'}
-                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'visitor' ? 'bg-terminal-green/20 text-terminal-green border border-terminal-green/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
+                          className={`flex items-center justify-center min-h-[44px] min-w-[44px] px-3 rounded-md text-xs font-medium transition-colors active:scale-95 motion-reduce:transform-none ${boxScoreView === 'visitor' ? 'bg-terminal-blue/20 text-terminal-blue border border-terminal-blue/30' : 'bg-terminal-gray/40 border border-terminal-border-subtle text-terminal-text opacity-70 hover:opacity-100 hover:bg-terminal-gray/60 active:bg-terminal-gray/80'}`}
                         >
                           <img src={getTeamLogoUrl(game.visitor_team_name)} alt="" className="w-5 h-5 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                         </button>
@@ -1026,11 +1026,11 @@ export default function GameDetail() {
                       {/* Detailed view toggle — mobile only */}
                       <button
                         onClick={() => setDetailedView(!detailedView)}
-                        className={`md:hidden flex items-center gap-2 min-h-[44px] px-2 rounded-lg border transition-colors ${detailedView ? 'bg-terminal-green/15 border-terminal-green/30' : 'bg-terminal-dark-gray border-terminal-border-subtle hover:bg-terminal-gray/30'}`}
+                        className={`md:hidden flex items-center gap-2 min-h-[44px] px-2 rounded-lg border transition-colors ${detailedView ? 'bg-terminal-blue/15 border-terminal-blue/30' : 'bg-terminal-dark-gray border-terminal-border-subtle hover:bg-terminal-gray/30'}`}
                         aria-label={detailedView ? 'Mudar para visão compacta' : 'Mudar para visão detalhada'}
                       >
-                        <span className={`text-[11px] ${detailedView ? 'text-terminal-green' : 'text-terminal-text opacity-60'}`}>Detalhado</span>
-                        <div className={`relative w-10 h-[22px] rounded-full transition-colors border ${detailedView ? 'bg-terminal-green border-terminal-green' : 'bg-terminal-gray border-terminal-border-subtle'}`}>
+                        <span className={`text-[11px] ${detailedView ? 'text-terminal-blue' : 'text-terminal-text opacity-60'}`}>Detalhado</span>
+                        <div className={`relative w-10 h-[22px] rounded-full transition-colors border ${detailedView ? 'bg-terminal-blue border-terminal-blue' : 'bg-terminal-gray border-terminal-border-subtle'}`}>
                           <div className={`absolute top-[2px] w-4 h-4 rounded-full shadow-sm transition-transform ${detailedView ? 'translate-x-[22px]' : 'translate-x-[3px]'} bg-white`} />
                         </div>
                       </button>

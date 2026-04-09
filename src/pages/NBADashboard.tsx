@@ -277,7 +277,7 @@ export default function NBADashboard() {
           description: `Could not find player "${playerName.replace(/-/g, ' ')}"`,
           variant: 'destructive',
         });
-        navigate('/home-players');
+        navigate('/home-nba');
         return;
       }
 
@@ -466,9 +466,9 @@ export default function NBADashboard() {
         <Button
           variant="outline"
           className="terminal-button"
-          onClick={() => navigate('/home-players')}
+          onClick={() => navigate(-1)}
         >
-          Voltar ao início
+          Voltar
         </Button>
       </div>
     );
@@ -476,7 +476,7 @@ export default function NBADashboard() {
 
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <AnalyticsNav showBack backTo="/home-players" title={player?.player_name} />
+      <AnalyticsNav showBack title={player?.player_name} />
       <main className="container mx-auto px-3 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Left Sidebar */}
@@ -501,7 +501,7 @@ export default function NBADashboard() {
             {dailyOpps.length > 0 ? (
               <div className="terminal-container p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-bold text-terminal-green uppercase tracking-widest">
+                  <span className="text-[10px] font-bold text-terminal-blue uppercase tracking-widest">
                     Oportunidades do Dia
                   </span>
                   <span className="text-[9px] opacity-40">mesma análise da tela de Picks</span>
@@ -518,8 +518,8 @@ export default function NBADashboard() {
                     return (
                       <button
                         key={i}
-                        className={`w-full text-left bg-terminal-dark-gray rounded border border-terminal-green/20 p-3 transition-all ${
-                          isClickable ? 'hover:border-terminal-green/50 hover:bg-terminal-green/5 cursor-pointer' : 'cursor-default'
+                        className={`w-full text-left bg-terminal-dark-gray rounded border border-terminal-blue/20 p-3 transition-all ${
+                          isClickable ? 'hover:border-terminal-blue/50 hover:bg-terminal-blue/5 cursor-pointer' : 'cursor-default'
                         }`}
                         onClick={() => handleInsightClick?.(opp.stat_type, opp.trigger_name)}
                       >
@@ -542,9 +542,9 @@ export default function NBADashboard() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm opacity-50">{opp.avg_com?.toFixed(1)}</span>
                           <span className="text-xs opacity-30">→</span>
-                          <span className="text-lg font-bold text-terminal-green leading-none">{opp.avg_sem?.toFixed(1)}</span>
+                          <span className="text-lg font-bold text-terminal-text leading-none">{opp.avg_sem?.toFixed(1)}</span>
                           {opp.gap_pct > 0 && (
-                            <span className="text-[11px] font-semibold text-terminal-green bg-terminal-green/10 px-1.5 py-0.5 rounded">
+                            <span className="text-[11px] font-semibold text-terminal-text bg-terminal-text/10 px-1.5 py-0.5 rounded">
                               +{opp.gap_pct?.toFixed(1)}%
                             </span>
                           )}

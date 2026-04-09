@@ -43,17 +43,16 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Home NBA', href: '/home-players', icon: BarChart3 },
-    { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
-    { name: 'Jogos', href: '/home-games', icon: Calendar },
-    { name: 'Jogadores', href: '/nba-players', icon: Users },
+    { name: 'Hoje', href: '/home-nba', icon: BarChart3 },
+    { name: 'Oportunidades', href: '/oportunidades', icon: TrendingUp },
     { name: 'Análise 360', href: '/analise-360', icon: Radar },
+    { name: 'Jogos', href: '/home-games', icon: Calendar },
     { name: 'Relatório', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
-    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
     { name: 'Apostas', href: '/bets', icon: Target },
+    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
   ];
 
   const isActive = (path: string) => {
@@ -79,7 +78,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
           <div className="flex items-center gap-3">
             <div
               className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate('/home-players')}
+              onClick={() => navigate('/home-nba')}
             >
               <img src="/logo.png" alt="Smartbetting" className="h-8 w-auto" />
             </div>
@@ -87,7 +86,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate(backTo || '/home-players')}
+                onClick={() => backTo ? navigate(backTo) : navigate(-1)}
                 className="text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray -ml-2"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
