@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -181,14 +182,15 @@ const Betinho = () => {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text overflow-x-hidden">
+      <Helmet>
+        <title>Betinho — Gestão de Apostas e Controle de Banca no Telegram | Smart Betting</title>
+        <meta name="description" content="Registre apostas com foto do bilhete, controle sua banca e acompanhe sua performance com insights. Gestão de apostas descomplicada no Telegram." />
+      </Helmet>
       {/* Navigation - alinhado ao visual do dashboard (cinza/azul) */}
       <nav className="sticky top-0 z-50 bg-terminal-black/80 backdrop-blur-lg border-b border-terminal-border text-terminal-text">
         <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-terminal-blue/20 border border-terminal-border rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-terminal-blue" />
-            </div>
-            <span className="text-lg sm:text-2xl font-bold text-terminal-text">Smartbetting</span>
+          <div className="flex items-center">
+            <img src="/logo.png" alt="Smart Betting" className="h-10" />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <LanguageToggle />
