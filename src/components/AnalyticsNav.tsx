@@ -13,7 +13,8 @@ import {
   ChevronDown,
   Target,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Radar
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
@@ -46,6 +47,7 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
     { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
     { name: 'Jogos', href: '/home-games', icon: Calendar },
     { name: 'Jogadores', href: '/nba-players', icon: Users },
+    { name: 'Análise 360', href: '/analise-360', icon: Radar },
     { name: 'Relatório', href: '/report', icon: FileText },
   ];
 

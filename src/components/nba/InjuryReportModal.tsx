@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { nbaDataService, Game, Player } from '@/services/nba-data.service';
 import { getTeamLogoUrl } from '@/utils/team-logos';
-import { Loader2, Star } from 'lucide-react';
+import { Loader2, Star, Radar } from 'lucide-react';
 
 const INJURY_STATUSES = ['Probable', 'Questionable', 'Doubtful', 'Out'] as const;
 type InjuryStatus = (typeof INJURY_STATUSES)[number];
@@ -14,7 +15,7 @@ const STATUS_STYLE: Record<InjuryStatus, { headerBg: string; headerText: string;
   Out:          { headerBg: 'bg-[#251515]', headerText: 'text-red-400',     playerText: 'text-red-400'    },
 };
 
-interface InjuredPlayer { name: string; stars: number }
+interface InjuredPlayer { name: string; stars: number; playerId: number }
 
 function normalizeStatus(status: string): InjuryStatus | null {
   const s = (status ?? '').toLowerCase().trim();
@@ -35,6 +36,7 @@ interface Props {
 }
 
 export function InjuryReportModal({ open, onClose, games }: Props) {
+  const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>(playersCache ?? []);
   const [isLoading, setIsLoading] = useState(!playersCache);
 
@@ -65,7 +67,7 @@ export function InjuryReportModal({ open, onClose, games }: Props) {
     }
     const m = teamInjuryData.get(player.team_abbreviation)!;
     if (!m.has(status)) m.set(status, []);
-    m.get(status)!.push({ name: player.player_name, stars: player.rating_stars ?? 0 });
+    m.get(status)!.push({ name: player.player_name, stars: player.rating_stars ?? 0, playerId: player.player_id });
   });
 
   const matchups = games
@@ -168,6 +170,15 @@ export function InjuryReportModal({ open, onClose, games }: Props) {
                                             {player.stars >= 3 && (
                                               <Star className="w-2.5 h-2.5 text-terminal-yellow fill-terminal-yellow inline flex-shrink-0" />
                                             )}
+                                            {player.stars >= 3 && (status === 'Out' || status === 'Doubtful') && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); onClose(); navigate(`/analise-360/${player.playerId}`); }}
+                                                className="ml-0.5 text-terminal-blue/60 hover:text-terminal-blue transition-colors"
+                                                title="Ver Análise 360"
+                                              >
+                                                <Radar className="w-3 h-3" />
+                                              </button>
+                                            )}
                                           </span>
                                         ))}
                                     </div>
@@ -216,7 +227,7 @@ export function InjuryReportModal({ open, onClose, games }: Props) {
                     </tr>
 
                     {matchup.homeHasInjuries && (
-                      <TeamRow team={matchup.home} teamInjuryData={teamInjuryData} isHome bgClass="bg-[#242b35]" />
+                      <TeamRow team={matchup.home} teamInjuryData={teamInjuryData} isHome bgClass="bg-[#242b35]" onNavigate360={(id) => { onClose(); navigate(`/analise-360/${id}`); }} />
                     )}
 
                     {matchup.homeHasInjuries && matchup.visitorHasInjuries && (
@@ -224,7 +235,7 @@ export function InjuryReportModal({ open, onClose, games }: Props) {
                     )}
 
                     {matchup.visitorHasInjuries && (
-                      <TeamRow team={matchup.visitor} teamInjuryData={teamInjuryData} isHome={false} bgClass="bg-[#1e2630]" />
+                      <TeamRow team={matchup.visitor} teamInjuryData={teamInjuryData} isHome={false} bgClass="bg-[#1e2630]" onNavigate360={(id) => { onClose(); navigate(`/analise-360/${id}`); }} />
                     )}
                   </React.Fragment>
                 ))}
@@ -244,11 +255,13 @@ function TeamRow({
   teamInjuryData,
   isHome,
   bgClass,
+  onNavigate360,
 }: {
   team: { abbr: string; name: string };
   teamInjuryData: Map<string, Map<InjuryStatus, InjuredPlayer[]>>;
   isHome: boolean;
   bgClass: string;
+  onNavigate360: (playerId: number) => void;
 }) {
   const teamMap = teamInjuryData.get(team.abbr);
 
@@ -297,6 +310,15 @@ function TeamRow({
                       </span>
                       {player.stars >= 3 && (
                         <Star className="w-2.5 h-2.5 text-terminal-yellow fill-terminal-yellow flex-shrink-0" />
+                      )}
+                      {player.stars >= 3 && (status === 'Out' || status === 'Doubtful') && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onNavigate360(player.playerId); }}
+                          className="text-terminal-blue/60 hover:text-terminal-blue transition-colors"
+                          title="Ver Análise 360"
+                        >
+                          <Radar className="w-3 h-3" />
+                        </button>
                       )}
                     </div>
                   ))}

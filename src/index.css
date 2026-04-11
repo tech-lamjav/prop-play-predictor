@@ -4,6 +4,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mandala satellite entrance animation */
+@keyframes mandala-satellite-enter {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); filter: blur(4px); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.03); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0px); }
+}
+.mandala-satellite-enter {
+  animation: mandala-satellite-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
