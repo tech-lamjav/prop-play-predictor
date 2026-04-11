@@ -63,25 +63,66 @@ export default function NBADashboard() {
   const initialTrigger = searchParams.get('trigger');
   const statFromUrl = initialStat && VALID_STAT_TYPES.includes(initialStat) ? initialStat : 'player_points';
   const [selectedStatType, setSelectedStatType] = useState<string>(statFromUrl);
-  const [pendingTriggerFilter, setPendingTriggerFilter] = useState<string | null>(initialTrigger);
   const [lastNGames, setLastNGames] = useState<number | 'all'>(15);
   const [homeAway, setHomeAway] = useState<'all' | 'home' | 'away'>('all');
   const [teammateFilter, setTeammateFilter] = useState<TeammateFilter>(null);
   const [teammateGameIds, setTeammateGameIds] = useState<Map<number, Set<number>> | null>(null);
-  const [teammateFilterLoading, setTeammateFilterLoading] = useState(false);
+  const [teammateFilterLoading, setTeammateFilterLoading] = useState(!!initialTrigger);
   const [b2bOnly, setB2bOnly] = useState(false);
+
+  // React to URL param changes (stat type only — trigger handled below)
+  useEffect(() => {
+    const urlStat = searchParams.get('stat');
+    if (urlStat && VALID_STAT_TYPES.includes(urlStat)) {
+      setSelectedStatType(urlStat);
+    }
+  }, [searchParams.get('stat')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply trigger filter when teammates are ready + URL has trigger param
+  useEffect(() => {
+    const urlTrigger = searchParams.get('trigger');
+    if (!urlTrigger || teammates.length === 0) return;
+
+    const triggerTeammate = teammates.find(
+      t => t.player_name.toLowerCase() === urlTrigger.toLowerCase()
+    );
+    if (triggerTeammate) {
+      // Only apply if not already filtering for this trigger
+      const alreadyFiltered = teammateFilter?.some(f => f.playerId === triggerTeammate.player_id && f.mode === 'without');
+      if (!alreadyFiltered) {
+        handleTeammateFilterChange([{
+          playerId: triggerTeammate.player_id,
+          playerName: triggerTeammate.player_name,
+          mode: 'without',
+        }]);
+      }
+    }
+  }, [teammates.length, searchParams.get('trigger')]); // eslint-disable-line react-hooks/exhaustive-deps
   const [h2hOnly, setH2hOnly] = useState(false);
 
   useEffect(() => {
     loadPlayer();
   }, [playerName]);
 
-  // PLG freemium: deslogado só acessa jogadores FREE_PLAYERS; outros → login
-  const isFree = player ? isFreePlayer(player.player_name) : false;
-
-  // Logado mas não premium: jogador não grátis → paywall
+  // Load daily opportunities whenever player is identified
   useEffect(() => {
-    if (!subscriptionLoading && user && player && !isPremium && !isFree) {
+    if (!player) return;
+    nbaDataService.getDailyOpportunities()
+      .then(allOpps => {
+        const playerOpps = allOpps.filter(o => o.backup_player_name === player.player_name);
+        setDailyOpps(playerOpps);
+      })
+      .catch(e => console.error('Error loading daily opportunities:', e));
+  }, [player?.player_name]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // PLG freemium: deslogado só acessa jogadores FREE_PLAYERS ou via Picks trial; outros → login
+  const isFree = player ? isFreePlayer(player.player_name) : false;
+  const isPicksTrial = !!initialTrigger; // came from Oportunidades do Dia top 2
+
+  // Logado mas não premium: jogador não grátis e não via Picks trial → paywall
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!subscriptionLoading && user && player && !isPremium && !isFree && !isPicksTrial) {
       const playerFullName = player.player_name;
       toast({
         title: 'Acesso Premium Necessário',
@@ -180,7 +221,7 @@ export default function NBADashboard() {
   }, [gameStats, selectedStatType]);
 
   // Early returns (after all hooks)
-  if (!authLoading && !user && player && !isFree) {
+  if (!authLoading && !user && player && !isFree && !isPicksTrial) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -264,33 +305,14 @@ export default function NBADashboard() {
       } catch (e) { console.error('Error loading props:', e); }
       setPropsLoading(false);
 
-      // 3.5. Daily opportunities for this player (same data as Picks page)
-      try {
-        const allOpps = await nbaDataService.getDailyOpportunities();
-        const playerOpps = allOpps.filter(o => o.backup_player_name === playerData.player_name);
-        setDailyOpps(playerOpps);
-      } catch (e) { console.error('Error loading daily opportunities:', e); }
+      // 3.5. Daily opportunities loaded via separate effect below
 
       // 4. Teammates
       try {
         loadedTeammates = await nbaDataService.getTeamPlayers(playerData.team_id);
         setTeammates(loadedTeammates);
 
-        // Auto-apply trigger filter from URL (e.g., from Picks page "Analisar" button)
-        if (pendingTriggerFilter) {
-          const triggerTeammate = loadedTeammates.find(
-            t => t.player_name.toLowerCase() === pendingTriggerFilter.toLowerCase()
-          );
-          if (triggerTeammate) {
-            handleTeammateFilterChange([{
-              playerId: triggerTeammate.player_id,
-              playerName: triggerTeammate.player_name,
-              mode: 'without',
-            }]);
-            setLastNGames('all');
-          }
-          setPendingTriggerFilter(null);
-        }
+        // Trigger filter applied via separate useEffect when teammates are ready
       } catch (e) { console.error('Error loading teammates:', e); }
       setTeammatesLoading(false);
 
@@ -565,7 +587,6 @@ export default function NBADashboard() {
             ) : (
               <GameChart
                 gameStats={filteredGameStats}
-                statType={selectedStatType}
                 currentLine={currentLine}
                 seasonAvg={(() => { const s = gameStats.filter(g => g.stat_type === selectedStatType); return s.length > 0 ? s.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / s.length : 0; })()}
                 lastNGames={lastNGames}
