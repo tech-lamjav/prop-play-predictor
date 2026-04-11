@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Radar, Star, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Loader2, Radar, Star, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName } from '@/utils/team-logos';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAnalise360Data } from '@/hooks/use-analise360';
@@ -596,18 +596,9 @@ export default function Analise360Detail() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-      <AnalyticsNav />
+      <AnalyticsNav showBack />
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Back */}
-        <button
-          onClick={() => navigate('/analise-360')}
-          className="flex items-center gap-1.5 text-xs text-terminal-text/40 hover:text-terminal-blue mb-5 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Voltar
-        </button>
-
         {isLoading ? (
           <div className="flex items-center justify-center py-20 gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-terminal-green opacity-60" />

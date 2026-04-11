@@ -161,7 +161,7 @@ export default function WeeklyReport() {
   if (accessLoading) {
     return (
       <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav />
+        <AnalyticsNav showBack />
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-terminal-green" />
         </div>
@@ -172,7 +172,7 @@ export default function WeeklyReport() {
   if (!hasAccess) {
     return (
       <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav />
+        <AnalyticsNav showBack />
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
           <div className="w-16 h-16 bg-terminal-yellow/10 border border-terminal-yellow/30 rounded-full flex items-center justify-center">
             <Lock className="w-8 h-8 text-terminal-yellow" />
@@ -196,17 +196,17 @@ export default function WeeklyReport() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-      <AnalyticsNav />
+      <AnalyticsNav showBack />
 
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 bg-terminal-green/20 border border-terminal-green/50 rounded flex items-center justify-center">
-              <FileText className="w-4 h-4 text-terminal-green" />
+            <div className="w-8 h-8 bg-terminal-blue/20 border border-terminal-blue/50 rounded flex items-center justify-center">
+              <FileText className="w-4 h-4 text-terminal-blue" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold tracking-wider text-terminal-green">
+              <h1 className="text-lg sm:text-xl font-bold tracking-wider text-terminal-blue">
                 RELATÓRIO
               </h1>
               <p className="text-[10px] sm:text-xs text-terminal-text opacity-60">

@@ -169,6 +169,7 @@ export default function BettingDashboard() {
   return (
     <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
       <BetsHeader
+        showBack
         showUnitsView={showUnitsView}
         onShowUnitsViewChange={setShowUnitsView}
         onUnitConfigClick={() => setUnitConfigOpen(true)}

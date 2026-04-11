@@ -191,7 +191,7 @@ export default function Bankroll() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text">
-      <BetsHeader />
+      <BetsHeader showBack />
 
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         <div className="flex flex-wrap gap-2 mb-4">

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BarChart3, CheckCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
@@ -72,7 +72,7 @@ const Waitlist = () => {
         <div className="w-full max-w-md space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-8 w-8 text-primary" />
+              <img src="/logo-sem-texto.png" alt="Smart Betting" className="h-8 w-8" />
               <span className="text-xl font-bold text-foreground">Smartbetting</span>
             </div>
             <LanguageToggle />
@@ -84,27 +84,26 @@ const Waitlist = () => {
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
               <CardTitle className="text-2xl text-green-700">
-                Bem-vindo à lista de espera!
+                Você está na lista!
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Obrigado por se inscrever! Você receberá um email em breve com mais informações sobre o lançamento.
+                Obrigado pelo interesse na Plataforma Futebol! Vamos te avisar assim que estiver disponível.
               </p>
-              
+
               <div className="bg-muted/30 rounded-lg p-4 space-y-2">
                 <h3 className="font-semibold text-foreground">O que acontece agora?</h3>
                 <ul className="text-sm text-muted-foreground space-y-1 text-left">
-                  <li>✅ Você está na lista de espera</li>
-                  <li>📧 Receberá atualizações por email</li>
-                  <li>🚀 Acesso prioritário quando lançarmos</li>
-                  <li>💰 Desconto especial para early adopters</li>
+                  <li>Você receberá atualizações por email</li>
+                  <li>Acesso prioritário quando lançarmos</li>
+                  <li>Desconto especial para os primeiros</li>
                 </ul>
               </div>
 
-              <Button 
-                onClick={() => navigate("/")} 
-                variant="outline" 
+              <Button
+                onClick={() => navigate("/")}
+                variant="outline"
                 className="w-full"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -122,7 +121,7 @@ const Waitlist = () => {
       <div className="w-full max-w-md space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BarChart3 className="h-8 w-8 text-primary" />
+            <img src="/logo-sem-texto.png" alt="Smart Betting" className="h-8 w-8" />
             <span className="text-xl font-bold text-foreground">Smartbetting</span>
           </div>
           <LanguageToggle />
@@ -131,10 +130,10 @@ const Waitlist = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl text-center">
-              Entre na lista de espera
+              Plataforma Futebol — Em breve
             </CardTitle>
             <p className="text-muted-foreground text-center">
-              Seja um dos primeiros a ter acesso ao Smartbetting e receba um desconto especial no lançamento.
+              Análises de dados para apostas em futebol. Seja um dos primeiros a ter acesso.
             </p>
           </CardHeader>
           <CardContent>
@@ -175,16 +174,15 @@ const Waitlist = () => {
               </div>
 
               <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-foreground text-sm">🎁 Benefícios da lista de espera:</h3>
+                <h3 className="font-semibold text-foreground text-sm">Benefícios da lista de espera:</h3>
                 <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>✅ Acesso prioritário quando lançarmos</li>
-                  <li>💰 30% de desconto nos primeiros 3 meses</li>
-                  <li>📊 Relatório exclusivo sobre prop bets da NBA</li>
-                  <li>🎯 Webinar gratuito sobre estratégias de apostas</li>
+                  <li>Acesso prioritário no lançamento</li>
+                  <li>Desconto especial para os primeiros</li>
+                  <li>Brasileirão, Copa do Brasil e ligas europeias</li>
                 </ul>
               </div>
 
-              <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90" disabled={loading}>
+              <Button type="submit" className="w-full bg-[#5b9bd5] text-white hover:bg-[#4a8ac4]" disabled={loading}>
                 {loading ? "Enviando..." : "Entrar na lista de espera"}
               </Button>
             </form>

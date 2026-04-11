@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { FREE_PLAYERS } from "@/config/freemium";
+import { Helmet } from "react-helmet-async";
 
 const getFreePlayerDashboardPath = () => {
   const name = FREE_PLAYERS[0];
@@ -67,14 +68,15 @@ const Landing = () => {
   const maxVal = useMemo(() => Math.max(...statData.values) + 3, [statData]);
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <Helmet>
+        <title>Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting</title>
+        <meta name="description" content="Oportunidades diárias de prop bets NBA, reports com insights, injury report e Análise 360°. Tome decisões baseadas em dados, não em palpites." />
+      </Helmet>
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-primary rounded-md flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
+          <div className="flex items-center">
+            <img src="/logo.png" alt="Smart Betting" className="h-10" />
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <LanguageToggle />

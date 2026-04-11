@@ -125,14 +125,14 @@ export default function Analise360List() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-      <AnalyticsNav />
+      <AnalyticsNav showBack />
 
       <div className="max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <Radar className="w-5 h-5 text-terminal-blue" />
-            <h1 className="text-lg font-bold text-terminal-text">Análise 360</h1>
+            <h1 className="text-lg font-bold text-terminal-blue">Análise 360</h1>
           </div>
           <p className="text-xs text-terminal-text/50">
             Veja como lesões reorganizam o time — selecione um jogador para ver o impacto nos companheiros

@@ -292,7 +292,7 @@ export default function Picks() {
         <td className="py-2 px-3">
           <div className="flex items-center gap-2">
             <PlayerPhoto name={opp.backup_player_name} teamAbbr={opp.trigger_team_abbr} />
-            <span className="font-bold text-terminal-green">{opp.backup_player_name}</span>
+            <span className="font-bold text-terminal-text">{opp.backup_player_name}</span>
           </div>
         </td>
         {/* STAT */}
@@ -311,7 +311,7 @@ export default function Picks() {
         {/* COM */}
         <td className={`text-right py-2 px-3 opacity-50 tabular-nums ${rowBlur}`}>{opp.avg_com?.toFixed(1) ?? '—'}</td>
         {/* SEM */}
-        <td className={`text-right py-2 px-3 font-bold text-terminal-green tabular-nums ${rowBlur}`}>{opp.avg_sem?.toFixed(1) ?? '—'}</td>
+        <td className={`text-right py-2 px-3 font-bold text-terminal-text tabular-nums ${rowBlur}`}>{opp.avg_sem?.toFixed(1) ?? '—'}</td>
         {/* GAP% */}
         <td className={`text-right py-2 px-3 ${rowBlur}`}>
           <span className={`font-bold tabular-nums ${(opp.gap_pct ?? 0) >= 30 ? 'text-orange-400' : (opp.gap_pct ?? 0) >= 15 ? 'text-terminal-green' : 'text-terminal-blue'}`}>
@@ -345,7 +345,7 @@ export default function Picks() {
                   navigate(canAccess ? dashboardHref : '/paywall-platform');
                 }}
                 title={canAccess ? `Ver ${opp.backup_player_name} — ${STAT_LABELS[opp.stat_type] || opp.stat_type} sem ${opp.trigger_name}` : 'Recurso exclusivo Premium'}
-                className="inline-flex items-center gap-1 px-2 py-1 text-[9px] rounded border border-terminal-green/30 text-terminal-green hover:bg-terminal-green/10 hover:border-terminal-green/60 transition-all">
+                className="inline-flex items-center gap-1 px-2 py-1 text-[9px] rounded border border-terminal-blue/30 text-terminal-blue hover:bg-terminal-blue/10 hover:border-terminal-blue/60 transition-all">
                 <ExternalLink className="w-3 h-3" /> {canAccess ? 'Analisar' : 'Premium'}
               </a>
             );
@@ -409,7 +409,7 @@ export default function Picks() {
   if (error) {
     return (
       <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav />
+        <AnalyticsNav showBack />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <AlertTriangle className="w-8 h-8 text-terminal-red mx-auto mb-4" />
@@ -425,17 +425,17 @@ export default function Picks() {
 
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-      <AnalyticsNav />
+      <AnalyticsNav showBack />
 
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-terminal-green/20 border border-terminal-green rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-terminal-green" />
+            <div className="w-10 h-10 bg-terminal-blue/20 border border-terminal-blue rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-terminal-blue" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold tracking-wider text-terminal-green">
+              <h1 className="text-xl md:text-2xl font-bold tracking-wider text-terminal-blue">
                 OPORTUNIDADES DO DIA
               </h1>
               <p className="text-[10px] md:text-xs text-terminal-text opacity-50">
@@ -506,11 +506,11 @@ export default function Picks() {
             {/* View mode toggle — same line on desktop, new line on mobile */}
             <div className="hidden md:flex gap-1 ml-auto">
               <button onClick={() => setViewMode('score')}
-                className={`px-2 py-1 text-[10px] rounded border transition-all ${viewMode === 'score' ? 'bg-terminal-green/20 border-terminal-green text-terminal-green' : 'border-terminal-border-subtle text-terminal-text opacity-50 hover:opacity-80'}`}>
+                className={`px-2 py-1 text-[10px] rounded border transition-all ${viewMode === 'score' ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue' : 'border-terminal-border-subtle text-terminal-text opacity-50 hover:opacity-80'}`}>
                 Por Score
               </button>
               <button onClick={() => setViewMode('game')}
-                className={`px-2 py-1 text-[10px] rounded border transition-all flex items-center gap-1 ${viewMode === 'game' ? 'bg-terminal-green/20 border-terminal-green text-terminal-green' : 'border-terminal-border-subtle text-terminal-text opacity-50 hover:opacity-80'}`}>
+                className={`px-2 py-1 text-[10px] rounded border transition-all flex items-center gap-1 ${viewMode === 'game' ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue' : 'border-terminal-border-subtle text-terminal-text opacity-50 hover:opacity-80'}`}>
                 <LayoutList className="w-3 h-3" /> Por Jogo
               </button>
             </div>
@@ -518,11 +518,11 @@ export default function Picks() {
           {/* Mobile: view mode toggle on separate line */}
           <div className="flex gap-1 mt-2 md:hidden">
             <button onClick={() => setViewMode('score')}
-              className={`flex-1 py-1.5 text-[10px] rounded border transition-all text-center ${viewMode === 'score' ? 'bg-terminal-green/20 border-terminal-green text-terminal-green' : 'border-terminal-border-subtle text-terminal-text opacity-50'}`}>
+              className={`flex-1 py-1.5 text-[10px] rounded border transition-all text-center ${viewMode === 'score' ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue' : 'border-terminal-border-subtle text-terminal-text opacity-50'}`}>
               Por Score
             </button>
             <button onClick={() => setViewMode('game')}
-              className={`flex-1 py-1.5 text-[10px] rounded border transition-all text-center flex items-center justify-center gap-1 ${viewMode === 'game' ? 'bg-terminal-green/20 border-terminal-green text-terminal-green' : 'border-terminal-border-subtle text-terminal-text opacity-50'}`}>
+              className={`flex-1 py-1.5 text-[10px] rounded border transition-all text-center flex items-center justify-center gap-1 ${viewMode === 'game' ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue' : 'border-terminal-border-subtle text-terminal-text opacity-50'}`}>
               <LayoutList className="w-3 h-3" /> Por Jogo
             </button>
           </div>
@@ -624,10 +624,10 @@ export default function Picks() {
                         <div className="flex items-center gap-3">
                           <PlayerPhoto name={opp.backup_player_name} teamAbbr={opp.trigger_team_abbr} />
                           <div className="flex-1 min-w-0">
-                            <span className="font-bold text-terminal-green text-sm truncate block">{opp.backup_player_name}</span>
+                            <span className="font-bold text-terminal-text text-sm truncate block">{opp.backup_player_name}</span>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>SEM {triggerLastName} ({statusBadge.text})</span>
-                              <span className={`text-xs font-bold bg-terminal-green/10 text-terminal-green border border-terminal-green/30 px-1.5 py-0.5 rounded ${groupBlur}`}>{statLabel}</span>
+                              <span className={`text-xs font-bold bg-terminal-blue/10 text-terminal-blue border border-terminal-blue/30 px-1.5 py-0.5 rounded ${groupBlur}`}>{statLabel}</span>
                             </div>
                           </div>
                           <span className={groupBlur}>
@@ -674,7 +674,7 @@ export default function Picks() {
                     <div className="flex items-center gap-3">
                       <PlayerPhoto name={opp.backup_player_name} teamAbbr={opp.trigger_team_abbr} />
                       <div className="flex-1 min-w-0">
-                        <span className="font-bold text-terminal-green text-sm truncate block">{opp.backup_player_name}</span>
+                        <span className="font-bold text-terminal-text text-sm truncate block">{opp.backup_player_name}</span>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[10px] opacity-50">{opp.trigger_team_abbr} vs {opp.opponent_abbr}</span>
                           {opp.is_b2b && <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 rounded">B2B</span>}
@@ -697,7 +697,7 @@ export default function Picks() {
                       <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>
                         SEM {triggerLastName} ({statusBadge.text})
                       </span>
-                      <span className={`text-xs font-bold bg-terminal-green/10 text-terminal-green border border-terminal-green/30 px-2 py-0.5 rounded ${mobileBlur}`}>
+                      <span className={`text-xs font-bold bg-terminal-blue/10 text-terminal-blue border border-terminal-blue/30 px-2 py-0.5 rounded ${mobileBlur}`}>
                         {statLabel}
                       </span>
                     </div>
@@ -708,7 +708,7 @@ export default function Picks() {
                       <span className="opacity-60">{opp.avg_com?.toFixed(1) ?? '—'}</span>
                       <span className="mx-1.5 opacity-30">→</span>
                       <span>Sem: </span>
-                      <span className="font-bold text-terminal-green">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
+                      <span className="font-bold text-terminal-text">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
                       <span className={`ml-1.5 font-bold ${(opp.gap_pct ?? 0) >= 30 ? 'text-orange-400' : 'text-terminal-green'}`}>
                         (+{opp.gap_pct?.toFixed(1) ?? '—'}%)
                       </span>
@@ -739,7 +739,7 @@ export default function Picks() {
 
                       <a href={mobileCanAccess ? analyzeHref : '/paywall-platform'}
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(mobileCanAccess ? analyzeHref : '/paywall-platform'); }}
-                        className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-terminal-green border border-terminal-green/30 rounded hover:bg-terminal-green/10 transition-all">
+                        className="flex items-center justify-center gap-1.5 w-full py-2 text-xs font-bold text-terminal-blue border border-terminal-blue/30 rounded hover:bg-terminal-blue/10 transition-all">
                         <ExternalLink className="w-3.5 h-3.5" /> {mobileCanAccess ? 'VER ANÁLISE COMPLETA' : 'ASSINAR PREMIUM'}
                       </a>
                     </div>

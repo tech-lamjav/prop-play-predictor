@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
@@ -13,6 +14,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
+import Footer from "./components/Footer";
 
 // Lazy-loaded pages (not critical for first paint)
 const Betinho = React.lazy(() => import("./pages/Betinho"));
@@ -37,6 +39,7 @@ const Report = React.lazy(() => import("./pages/Report"));
 const SharePage = React.lazy(() => import("./pages/SharePage"));
 const Analise360List = React.lazy(() => import("./pages/Analise360List"));
 const Analise360Detail = React.lazy(() => import("./pages/Analise360Detail"));
+const HomeNBA = React.lazy(() => import("./pages/HomeNBA"));
 
 const queryClient = new QueryClient();
 
@@ -56,9 +59,15 @@ const App = () => (
         <PostHogPageView />
         <Suspense fallback={<LazyFallback />}>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<LandingEcossistema />} />
+            <Route path="/nba" element={<Landing />} />
+            <Route path="/home-nba" element={<HomeNBA />} />
             <Route path="/home-players" element={<Home />} />
-            <Route path="/oportunidades" element={<Picks />} />
+            <Route path="/oportunidades" element={
+              <ProtectedRoute>
+                <Picks />
+              </ProtectedRoute>
+            } />
             <Route path="/betinho" element={<Betinho />} />
             <Route path="/auth" element={
               <ProtectedRoute requireAuth={false}>
@@ -138,6 +147,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Footer />
         </Suspense>
       </BrowserRouter>
     </TooltipProvider>

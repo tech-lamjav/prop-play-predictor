@@ -382,10 +382,10 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
                   disabled={isDisabled}
                   className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all whitespace-nowrap ${
                     isActive
-                      ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
+                      ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
                       : isDisabled
-                      ? 'border-terminal-green/10 text-terminal-text/30 cursor-not-allowed'
-                      : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                      ? 'border-terminal-blue/10 text-terminal-text/30 cursor-not-allowed'
+                      : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
                   }`}
                 >
                   {opt.label}
@@ -394,7 +394,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
             })}
           </div>
 
-          <div className="h-4 w-px bg-terminal-green/20" />
+          <div className="h-4 w-px bg-terminal-blue/20" />
 
           {/* Home/Away */}
           <div className="flex gap-1">
@@ -407,8 +407,8 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
                   title={opt.value === 'all' ? 'Todos' : opt.value === 'home' ? 'Casa' : 'Fora'}
                   className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
                     isActive
-                      ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
-                      : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                      ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
+                      : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
                   }`}
                 >
                   {opt.icon}
@@ -417,7 +417,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
             })}
           </div>
 
-          <div className="h-4 w-px bg-terminal-green/20" />
+          <div className="h-4 w-px bg-terminal-blue/20" />
 
           {/* B2B */}
           <button
@@ -426,7 +426,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
             className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
               b2bOnly
                 ? 'bg-terminal-yellow/20 border-terminal-yellow text-terminal-yellow'
-                : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
             }`}
           >
             B2B
@@ -440,14 +440,14 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
               className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
                 h2hOnly
                   ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
-                  : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                  : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
               }`}
             >
               vs {nextOpponent}
             </button>
           )}
 
-          <div className="h-4 w-px bg-terminal-green/20" />
+          <div className="h-4 w-px bg-terminal-blue/20" />
 
           {/* Teammate filter */}
           {availableTeammates.length > 0 && (() => {
@@ -495,7 +495,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
                       const filtered = current.filter(f => f.playerId !== t.player_id);
                       onTeammateFilterChange([...filtered, entry]);
                     }}
-                      className="px-2.5 py-1 text-[11px] rounded border border-terminal-green/40 text-terminal-green hover:bg-terminal-green/15 transition-colors">
+                      className="px-2.5 py-1 text-[11px] rounded border border-terminal-blue/40 text-terminal-blue hover:bg-terminal-blue/15 transition-colors">
                       COM
                     </button>
                     <button onClick={() => {
@@ -535,7 +535,7 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
                     </div>
                   ))}
                   <button onClick={() => setTeammateOpen(v => !v)} disabled={teammateFilterLoading}
-                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5 transition-all disabled:opacity-40">
+                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5 transition-all disabled:opacity-40">
                     <Users className="w-3 h-3" />
                     <span>{teammateFilter && teammateFilter.length > 0 ? '+' : 'Companheiro'}</span>
                     <ChevronDown className={`w-3 h-3 transition-transform ${teammateOpen ? 'rotate-180' : ''}`} />
