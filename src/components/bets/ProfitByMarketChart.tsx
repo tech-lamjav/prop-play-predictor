@@ -39,7 +39,7 @@ export const ProfitByMarketChart: React.FC<ProfitByMarketChartProps> = ({
 }) => {
   const data = useMemo(() => {
     const settled = bets.filter((b) =>
-      ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(b.status)
+      ['won', 'lost', 'cashout', 'half_won', 'half_lost', 'void'].includes(b.status)
     );
     const byMarket = new Map<string, number>();
     settled.forEach((bet) => {
