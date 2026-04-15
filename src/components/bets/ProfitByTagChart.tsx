@@ -53,7 +53,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
 
   const fullSeries = useMemo(() => {
     const settled = bets.filter((b) =>
-      ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(b.status)
+      ['won', 'lost', 'cashout', 'half_won', 'half_lost', 'void'].includes(b.status)
     );
     const byTag = new Map<string, { profit: number; color?: string }>();
     settled.forEach((bet) => {

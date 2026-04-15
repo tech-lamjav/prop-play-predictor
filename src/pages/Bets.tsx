@@ -813,29 +813,30 @@ export default function Bets() {
     if (!isMountedRef.current) return;
     
     const totalBets = betsData.length;
-    const totalStaked = betsData
-      .filter(bet => bet.status !== 'void')
-      .reduce((sum, bet) => sum + bet.stake_amount, 0);
-    
+    const totalStaked = betsData.reduce((sum, bet) => sum + bet.stake_amount, 0);
+
     const wonBets = betsData.filter(bet => bet.status === 'won');
     const lostBets = betsData.filter(bet => bet.status === 'lost');
     const cashoutBets = betsData.filter(bet => bet.status === 'cashout');
     const halfWonBets = betsData.filter(bet => bet.status === 'half_won');
     const halfLostBets = betsData.filter(bet => bet.status === 'half_lost');
+    const voidBets = betsData.filter(bet => bet.status === 'void');
 
     const settledStaked =
       wonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
       lostBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
       cashoutBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
       halfWonBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
-      halfLostBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
-    
+      halfLostBets.reduce((sum, bet) => sum + bet.stake_amount, 0) +
+      voidBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
+
     const totalReturn = wonBets.reduce((sum, bet) => sum + bet.potential_return, 0);
     const totalCashout = cashoutBets.reduce((sum, bet) => sum + (bet.cashout_amount || 0), 0);
     const totalHalfWon = halfWonBets.reduce((sum, bet) => sum + (bet.stake_amount + bet.potential_return) / 2, 0);
     const totalHalfLost = halfLostBets.reduce((sum, bet) => sum + bet.stake_amount / 2, 0);
-    
-    const totalEarnings = totalReturn + totalCashout + totalHalfWon + totalHalfLost;
+    const totalVoidReturn = voidBets.reduce((sum, bet) => sum + bet.stake_amount, 0);
+
+    const totalEarnings = totalReturn + totalCashout + totalHalfWon + totalHalfLost + totalVoidReturn;
     const settledCount = wonBets.length + lostBets.length + cashoutBets.length + halfWonBets.length + halfLostBets.length;
     const winEquiv = wonBets.length + cashoutBets.length + halfWonBets.length * 0.5;
     const lossEquiv = lostBets.length + halfLostBets.length * 0.5;
