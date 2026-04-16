@@ -40,6 +40,10 @@ const SharePage = React.lazy(() => import("./pages/SharePage"));
 const Analise360List = React.lazy(() => import("./pages/Analise360List"));
 const Analise360Detail = React.lazy(() => import("./pages/Analise360Detail"));
 const HomeNBA = React.lazy(() => import("./pages/HomeNBA"));
+const BolaoHome = React.lazy(() => import("./pages/BolaoHome"));
+const BolaoDetail = React.lazy(() => import("./pages/BolaoDetail"));
+const BolaoPalpites = React.lazy(() => import("./pages/BolaoPalpites"));
+const BolaoJoin = React.lazy(() => import("./pages/BolaoJoin"));
 
 const queryClient = new QueryClient();
 
@@ -142,6 +146,27 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            {/* Bolão Copa do Mundo */}
+            <Route path="/bolao" element={
+              <ProtectedRoute>
+                <BolaoHome />
+              </ProtectedRoute>
+            } />
+            <Route path="/bolao/entrar/:code" element={
+              <ProtectedRoute>
+                <BolaoJoin />
+              </ProtectedRoute>
+            } />
+            <Route path="/bolao/:id" element={
+              <ProtectedRoute>
+                <BolaoDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/bolao/:id/palpites" element={
+              <ProtectedRoute>
+                <BolaoPalpites />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

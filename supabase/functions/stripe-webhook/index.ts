@@ -97,35 +97,103 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
         const productType = session.metadata?.productType;
-        const subscriptionField = getSubscriptionField(productType);
-        
+        // bolaoId may come from metadata (checkout session) or client_reference_id (payment link)
+        const bolaoId = session.metadata?.bolaoId || session.client_reference_id || null;
+
         console.log('[Webhook] Checkout session completed');
         console.log('[Webhook] Session ID:', session.id);
-        console.log('[Webhook] Session metadata:', JSON.stringify(session.metadata));
-        console.log('[Webhook] UserId from metadata:', userId);
-        console.log('[Webhook] ProductType from metadata:', productType);
-        console.log('[Webhook] Updating field:', subscriptionField);
-        
-        if (userId) {
+        console.log('[Webhook] ProductType:', productType);
+        console.log('[Webhook] UserId:', userId);
+        console.log('[Webhook] BolaoId:', bolaoId);
+        console.log('[Webhook] Mode:', session.mode);
+
+        // Bolão premium: one-time payment identified by bolaoId (UUID format)
+        const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+        const isBolaoPayment = (productType === 'bolao_premium' && bolaoId) ||
+          (session.mode === 'payment' && bolaoId && isUuid(bolaoId));
+
+        if (isBolaoPayment && bolaoId) {
+          // Check if bolão already exists (old flow: created before payment)
+          const { data: existingBolao } = await supabase
+            .from('boloes')
+            .select('id')
+            .eq('id', bolaoId)
+            .maybeSingle();
+
+          if (existingBolao) {
+            // Old flow: bolão was created before payment — just upgrade it
+            const { error } = await supabase
+              .from('boloes')
+              .update({ is_premium: true, max_participants: 9999 })
+              .eq('id', bolaoId);
+            if (error) {
+              console.error('[Webhook] Error upgrading bolão to premium:', error);
+            } else {
+              console.log('[Webhook] ✅ Bolão upgraded to premium:', bolaoId);
+            }
+          } else {
+            // New flow: create the bolão now (user paid without prior creation)
+            const bolaoName = session.metadata?.bolaoName || 'Bolão Copa 2026';
+            const bolaoDescription = session.metadata?.bolaoDescription || null;
+            const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+            const { error: createError } = await supabase.from('boloes').insert({
+              id: bolaoId,
+              owner_id: userId || null,
+              name: bolaoName,
+              description: bolaoDescription,
+              invite_code: inviteCode,
+              is_premium: true,
+              max_participants: 9999,
+            });
+
+            if (createError) {
+              console.error('[Webhook] Error creating premium bolão:', createError);
+            } else {
+              console.log('[Webhook] ✅ Premium bolão created:', bolaoId);
+              // Add owner as member
+              if (userId) {
+                await supabase.from('bolao_members').insert({
+                  bolao_id: bolaoId,
+                  user_id: userId,
+                  role: 'owner',
+                });
+              }
+            }
+          }
+
+          // Record the purchase
+          if (userId) {
+            const { error: subError } = await supabase.from('bolao_subscriptions').insert({
+              user_id: userId,
+              bolao_id: bolaoId,
+              type: 'bolao_premium',
+              stripe_session_id: session.id,
+              status: 'active',
+            });
+            if (subError) console.error('[Webhook] Error recording purchase:', subError);
+            else console.log('[Webhook] Purchase recorded for user:', userId);
+          }
+        } else if (userId) {
+          // Subscription product (betinho / analytics)
+          const subscriptionField = getSubscriptionField(productType);
           console.log(`[Webhook] Updating ${subscriptionField} to premium for user:`, userId);
           const updateData: Record<string, string> = {};
           updateData[subscriptionField] = 'premium';
-          
+
           const { data, error } = await supabase
             .from('users')
             .update(updateData)
             .eq('id', userId);
-          
+
           if (error) {
             console.error('[Webhook] Error updating subscription status:', error);
-            console.error('[Webhook] Error details:', JSON.stringify(error));
           } else {
             console.log(`[Webhook] ✅ ${subscriptionField} updated to premium for user:`, userId);
             console.log('[Webhook] Updated data:', JSON.stringify(data));
           }
         } else {
-          console.warn('[Webhook] ⚠️ No userId found in session metadata');
-          console.warn('[Webhook] Full session object:', JSON.stringify(session, null, 2));
+          console.warn('[Webhook] ⚠️ No userId or bolaoId found in session metadata');
         }
         break;
       }

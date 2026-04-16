@@ -14,7 +14,8 @@ import {
   Target,
   FileText,
   TrendingUp,
-  Radar
+  Radar,
+  Trophy,
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
@@ -172,6 +173,20 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                 })}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/bolao')}
+              className={`flex items-center gap-2 px-4 h-9 hover:bg-terminal-dark-gray ${
+                location.pathname.startsWith('/bolao')
+                  ? 'text-terminal-blue'
+                  : 'text-terminal-text hover:text-terminal-blue'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold uppercase tracking-wide">Bolão Copa 2026</span>
+            </Button>
           </div>
 
           {/* Right side - Auth & Premium */}
@@ -259,6 +274,25 @@ export default function AnalyticsNav({ className, showBack, backTo, title }: Ana
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Divisor */}
+              <div className="border-t border-terminal-border-subtle" />
+
+              {/* Bolão Copa */}
+              <div>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleNavigation('/bolao')}
+                  className={`w-full justify-start h-10 ${
+                    location.pathname.startsWith('/bolao')
+                      ? 'bg-terminal-blue/10 text-terminal-blue'
+                      : 'text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray'
+                  }`}
+                >
+                  <Trophy className="w-4 h-4 mr-3" />
+                  <span className="text-sm">Bolão Copa 2026</span>
+                </Button>
               </div>
 
               {/* Divisor */}
