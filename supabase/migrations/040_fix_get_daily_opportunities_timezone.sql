@@ -1,0 +1,15 @@
+-- Migration: fix_get_daily_opportunities_timezone
+-- Bug: WHERE game_date = CURRENT_DATE used UTC from Supabase server.
+-- At 21h+ Brasilia (UTC-3), the server was already "next day", showing
+-- tomorrow's games instead of today's.
+-- Fix: Changed to MIN(game_date) from games without winner_team_id
+-- in a ±1 day window — timezone-safe.
+--
+-- This migration is superseded by 041 which adds loaded_at to the output,
+-- but is kept for historical documentation of the timezone fix.
+--
+-- Applied to staging (kpbjuplcwiyrymafhehz) and production (lavclmlvvfzkblrstojd)
+
+-- (No-op: the full replacement is in 041_replace_get_daily_opportunities_with_loaded_at.sql)
+-- This file documents the intermediate fix that was applied before loaded_at was added.
+-- The timezone-safe logic (MIN game_date from unfinished games) is preserved in 041.
