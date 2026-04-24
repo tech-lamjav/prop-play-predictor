@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, Tooltip } from 'recharts';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, Tooltip, LabelList } from 'recharts';
 import { GamePlayerStats, TeamPlayer } from '@/services/nba-data.service';
-import { RotateCcw, Info, Globe, Home, Plane, Users, X, ChevronDown, Star } from 'lucide-react';
+import { RotateCcw, Info, Globe, Home, Plane, X, ChevronDown, ChevronLeft, ChevronRight, Star, SlidersHorizontal } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
-import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName } from '@/utils/team-logos';
 import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
-import { STAT_TYPES_BASIC, STAT_TYPES_COMBOS } from '@/components/nba/StatTypeSelector';
+import { STAT_TYPES_BASIC, STAT_TYPES_COMBOS, STAT_TYPES_PERIOD } from '@/components/nba/StatTypeSelector';
 
 const gameOptions: Array<{ value: number | 'all'; label: string }> = [
   { value: 5, label: 'Últ. 5' },
@@ -42,6 +43,11 @@ interface GameChartProps {
   h2hOnly: boolean;
   onH2HChange: (v: boolean) => void;
   nextOpponent?: string;
+  selectedSeason?: number | 'current';
+  onSeasonChange?: (season: number | 'current') => void;
+  seasonType?: 'all' | 'regular' | 'playoffs' | 'playin';
+  onSeasonTypeChange?: (type: 'all' | 'regular' | 'playoffs' | 'playin') => void;
+  chartLoading?: boolean;
 }
 
 interface ChartDataPoint {
@@ -69,11 +75,8 @@ const CustomTooltip = ({ active, payload }: any) => {
 
     return (
       <div className="bg-[#0d1b2e] border border-white/12 rounded-lg shadow-2xl p-3 w-44">
-        {/* Opponent + result row */}
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-terminal-text">
-            {data.opponent}
-          </span>
+          <span className="text-xs font-bold text-terminal-text">{data.opponent}</span>
           <div className="flex items-center gap-1">
             {data.isB2B && (
               <span className="text-[9px] px-1 py-px rounded bg-terminal-yellow/20 text-terminal-yellow font-bold">B2B</span>
@@ -85,15 +88,11 @@ const CustomTooltip = ({ active, payload }: any) => {
             )}
           </div>
         </div>
-
-        {/* Score */}
         {hasScore && (
           <div className="text-[10px] text-terminal-text/40 mb-2">
             {data.playerScore} – {data.oppScore}
           </div>
         )}
-
-        {/* Stat + line side by side */}
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[9px] text-terminal-text/40 uppercase mb-0.5">Estatística</div>
@@ -108,7 +107,6 @@ const CustomTooltip = ({ active, payload }: any) => {
             </div>
           )}
         </div>
-
         <div className="text-[9px] text-terminal-text/25 mt-2">{data.date}</div>
       </div>
     );
@@ -119,26 +117,34 @@ const CustomTooltip = ({ active, payload }: any) => {
 const CustomXAxisTick = (props: any) => {
   const { x, y, payload, data } = props;
   const gameData = data.find((d: ChartDataPoint) => d.game === payload.value);
-  
+  const opp = gameData?.opponent ?? '';
+  const abbr = opp.replace('@', '').trim().toUpperCase();
+  const teamName = teamAbbrToName(abbr);
+  const logoUrl = teamName ? getTeamLogoUrl(teamName) : '';
+  const LOGO_SIZE = 20;
+
   return (
     <g transform={`translate(${x},${y})`}>
-      <text 
-        x={0} 
-        y={0} 
-        dy={12} 
-        textAnchor="middle" 
-        fill="#7a9bb5" 
-        fontSize={11} 
-        fontWeight={600}
-      >
-        {gameData?.opponent}
-      </text>
-      <text 
-        x={0} 
-        y={0} 
-        dy={24} 
-        textAnchor="middle" 
-        fill="#8a9585" 
+      {logoUrl ? (
+        <image
+          href={logoUrl}
+          x={-LOGO_SIZE / 2}
+          y={2}
+          width={LOGO_SIZE}
+          height={LOGO_SIZE}
+          preserveAspectRatio="xMidYMid meet"
+        />
+      ) : (
+        <text x={0} y={0} dy={14} textAnchor="middle" fill="#7a9bb5" fontSize={10} fontWeight={600}>
+          {abbr}
+        </text>
+      )}
+      <text
+        x={0}
+        y={0}
+        dy={LOGO_SIZE + 12}
+        textAnchor="middle"
+        fill="#8a9585"
         fontSize={9}
       >
         {gameData?.date}
@@ -147,28 +153,81 @@ const CustomXAxisTick = (props: any) => {
   );
 };
 
-export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, seasonAvg, lastNGames, homeAway, onLastNGamesChange, onHomeAwayChange, totalGamesAvailable, teammates = [], currentPlayerId, teamName = '', teammateFilter, onTeammateFilterChange, teammateFilterLoading, selectedStatType, onStatTypeChange, b2bOnly, onB2BChange, h2hOnly, onH2HChange, nextOpponent }) => {
+export const GameChart: React.FC<GameChartProps> = ({
+  gameStats, currentLine, seasonAvg, lastNGames, homeAway, onLastNGamesChange, onHomeAwayChange,
+  totalGamesAvailable, teammates = [], currentPlayerId, teamName = '', teammateFilter,
+  onTeammateFilterChange, teammateFilterLoading, selectedStatType, onStatTypeChange,
+  b2bOnly, onB2BChange, h2hOnly, onH2HChange, nextOpponent,
+  selectedSeason = 'current', onSeasonChange, seasonType = 'all', onSeasonTypeChange,
+  chartLoading = false,
+}) => {
   const [adjustedLine, setAdjustedLine] = useState<number | null>(currentLine ?? null);
   const [isDragging, setIsDragging] = useState(false);
-  const [teammateOpen, setTeammateOpen] = useState(false);
-  const teammateDropdownRef = useRef<HTMLDivElement>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [tabScrollState, setTabScrollState] = useState<{ canLeft: boolean; canRight: boolean }>({ canLeft: false, canRight: false });
+  const [isMobile, setIsMobile] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartBoundsRef = useRef<{ top: number; bottom: number; minY: number; maxY: number } | null>(null);
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const savedTabsScrollLeft = useRef<number>(0);
 
-  // Close teammate dropdown on outside click
+  // Detect mobile viewport (< md breakpoint = 768px)
   useEffect(() => {
-    if (!teammateOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (teammateDropdownRef.current && !teammateDropdownRef.current.contains(e.target as Node)) {
-        setTeammateOpen(false);
-      }
+    const mql = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+
+  // Update tab scroll state — ResizeObserver covers layout changes (filter panel
+  // toggle, font load, content re-render) that scroll/resize events miss.
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    const updateScroll = () => {
+      savedTabsScrollLeft.current = el.scrollLeft;
+      setTabScrollState({
+        canLeft: el.scrollLeft > 4,
+        canRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+      });
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [teammateOpen]);
+    updateScroll();
+    const ro = new ResizeObserver(updateScroll);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    el.addEventListener('scroll', updateScroll);
+    window.addEventListener('resize', updateScroll);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll', updateScroll);
+      window.removeEventListener('resize', updateScroll);
+    };
+  }, []);
+
+  // Preserve scrollLeft + recompute arrow visibility on every stat/loading change.
+  // Without this, switching stats can cause the browser to reset scroll to 0
+  // and leave the arrows stale (canLeft/canRight not updated).
+  useLayoutEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    if (savedTabsScrollLeft.current > 0 && el.scrollLeft !== savedTabsScrollLeft.current) {
+      el.scrollLeft = savedTabsScrollLeft.current;
+    }
+    setTabScrollState({
+      canLeft: el.scrollLeft > 4,
+      canRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
+    });
+  }, [selectedStatType, chartLoading]);
+
+  const scrollTabs = (dir: 'left' | 'right') => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
+  };
 
   const availableTeammates = teammates.filter(t => Number(t.player_id) !== Number(currentPlayerId));
-  
+
   useEffect(() => {
     setAdjustedLine(currentLine ?? null);
   }, [currentLine]);
@@ -202,21 +261,14 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
       }
     : null;
 
-  // Calcular domain do eixo Y
   const maxValue = Math.max(...chartData.map(d => d.value), adjustedLine || 0);
   const yAxisMax = Math.ceil(maxValue * 1.15);
   const yAxisMin = 0;
 
-  // Shared helper: compute chart bounds and check proximity to line
   const computeChartBounds = useCallback(() => {
     if (!chartContainerRef.current) return null;
     const rect = chartContainerRef.current.getBoundingClientRect();
-    return {
-      top: rect.top + 5,
-      bottom: rect.bottom - 80,
-      minY: yAxisMin,
-      maxY: yAxisMax,
-    };
+    return { top: rect.top + 5, bottom: rect.bottom - 80, minY: yAxisMin, maxY: yAxisMax };
   }, [yAxisMin, yAxisMax]);
 
   const isNearLine = useCallback((clientY: number, bounds: { top: number; bottom: number; minY: number; maxY: number }, tolerance: number) => {
@@ -236,7 +288,6 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
     setAdjustedLine(Math.max(0.5, roundedValue));
   }, []);
 
-  // Handler para início do drag (mouse)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (adjustedLine === null) return;
     const bounds = computeChartBounds();
@@ -248,34 +299,20 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
     }
   }, [adjustedLine, computeChartBounds, isNearLine]);
 
-  // Handler para movimento do drag (mouse)
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging) return;
     applyDragPosition(e.clientY);
   }, [isDragging, applyDragPosition]);
 
-  // Handler para fim do drag (mouse)
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleMouseUp = useCallback(() => { setIsDragging(false); }, []);
+  const handleMouseLeave = useCallback(() => { if (isDragging) setIsDragging(false); }, [isDragging]);
 
-  // Handler para mouse sair da área
-  const handleMouseLeave = useCallback(() => {
-    if (isDragging) {
-      setIsDragging(false);
-    }
-  }, [isDragging]);
-
-  // Handler para início do drag (touch)
-  // No mobile não exige toque próximo à linha — qualquer toque no gráfico inicia o drag
-  // e já posiciona a linha onde o dedo tocou (sem offset inicial)
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (adjustedLine === null) return;
     const bounds = computeChartBounds();
     if (!bounds) return;
     chartBoundsRef.current = bounds;
     setIsDragging(true);
-    // Move a linha imediatamente para onde o dedo tocou
     const touch = e.touches[0];
     const { top, bottom, minY, maxY } = bounds;
     const chartHeight = bottom - top;
@@ -285,36 +322,32 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
     setAdjustedLine(Math.max(0.5, roundedValue));
   }, [adjustedLine, computeChartBounds]);
 
-  // Handler para fim do drag (touch)
-  const handleTouchEnd = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleTouchEnd = useCallback(() => { setIsDragging(false); }, []);
 
-  // touchmove precisa ser não-passivo para chamar preventDefault() e bloquear scroll
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
-
     const onTouchMove = (e: TouchEvent) => {
       if (!isDragging) return;
       e.preventDefault();
       applyDragPosition(e.touches[0].clientY);
     };
-
     container.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => container.removeEventListener('touchmove', onTouchMove);
   }, [isDragging, applyDragPosition]);
 
-  const handleReset = () => {
-    setAdjustedLine(currentLine ?? null);
-  };
+  const handleReset = () => { setAdjustedLine(currentLine ?? null); };
 
   if (chartData.length === 0) {
     return (
       <div className="terminal-container p-4 mb-3">
         <h3 className="section-title mb-3">GRÁFICO DE DESEMPENHO</h3>
         <div className="h-72 flex items-center justify-center text-terminal-text opacity-50">
-          <p>Nenhum dado de jogo disponível</p>
+          {chartLoading ? (
+            <span className="animate-pulse">Carregando...</span>
+          ) : (
+            <p>Nenhum dado de jogo disponível</p>
+          )}
         </div>
       </div>
     );
@@ -322,40 +355,269 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
 
   const isLineModified = currentLine !== null && adjustedLine !== currentLine;
 
-  return (
-    <div className="terminal-container p-4 mb-3">
-      {/* Stat type tabs */}
-      <div className="overflow-x-auto -mx-4 px-4 border-b border-white/10 mb-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <div className="flex items-end min-w-max gap-0">
-          {STAT_TYPES_BASIC.map(stat => (
-            <button
-              key={stat.id}
-              onClick={() => onStatTypeChange(stat.id)}
-              className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
-                selectedStatType === stat.id
-                  ? 'border-terminal-blue text-terminal-blue'
-                  : 'border-transparent text-terminal-text/40 hover:text-terminal-text/70'
-              }`}
-            >
-              {stat.label}
-            </button>
-          ))}
-          <div className="w-px h-4 bg-white/10 mx-2 self-center mb-0.5 -mb-px" />
-          {STAT_TYPES_COMBOS.map(stat => (
-            <button
-              key={stat.id}
-              onClick={() => onStatTypeChange(stat.id)}
-              className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
-                selectedStatType === stat.id
-                  ? 'border-terminal-blue text-terminal-blue'
-                  : 'border-transparent text-terminal-text/40 hover:text-terminal-text/70'
-              }`}
-            >
-              {stat.label}
-            </button>
-          ))}
+  // Filters panel content (shared between inline desktop and mobile sheet)
+  const renderFiltersContent = () => (
+    <div className="space-y-4">
+      {onSeasonChange && (
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-1.5">Temporada</p>
+          <div className="flex gap-1 flex-wrap">
+            {([
+              { value: 'current' as const, label: '25/26' },
+              { value: 2024 as const, label: '24/25' },
+              { value: 2023 as const, label: '23/24' },
+            ]).map(opt => (
+              <button key={String(opt.value)} onClick={() => onSeasonChange(opt.value)}
+                className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
+                  selectedSeason === opt.value
+                    ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
+                    : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
+                }`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-1.5">Últimos jogos</p>
+        <div className="flex gap-1 flex-wrap">
+          {gameOptions.map(opt => {
+            const isDisabled = typeof opt.value === 'number' && opt.value > totalGamesAvailable;
+            const isActive = lastNGames === opt.value;
+            return (
+              <button key={opt.value} onClick={() => !isDisabled && onLastNGamesChange(opt.value)} disabled={isDisabled}
+                className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
+                  isActive
+                    ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
+                    : isDisabled
+                      ? 'border-terminal-blue/10 text-terminal-text/30 cursor-not-allowed'
+                      : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
+                }`}>
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-1.5">Local</p>
+        <div className="flex gap-1">
+          {locationOptions.map(opt => {
+            const isActive = homeAway === opt.value;
+            const label = opt.value === 'all' ? 'Todos' : opt.value === 'home' ? 'Casa' : 'Fora';
+            return (
+              <button key={opt.value} onClick={() => onHomeAwayChange(opt.value)}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border transition-all ${
+                  isActive
+                    ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
+                    : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
+                }`}>
+                {opt.icon}<span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="border-t border-terminal-border-subtle pt-3">
+        <p className="text-[10px] font-bold uppercase tracking-wider opacity-40 mb-2">Avançado</p>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          <button onClick={() => onB2BChange(!b2bOnly)}
+            className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
+              b2bOnly
+                ? 'bg-terminal-yellow/20 border-terminal-yellow text-terminal-yellow'
+                : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
+            }`}>B2B</button>
+          {nextOpponent && (
+            <button onClick={() => onH2HChange(!h2hOnly)}
+              className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
+                h2hOnly
+                  ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
+                  : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
+              }`}>vs {nextOpponent}</button>
+          )}
+        </div>
+
+        {onSeasonTypeChange && selectedSeason !== 'current' && (
+          <div className="mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-1.5">Tipo de temporada</p>
+            <div className="flex gap-1 flex-wrap">
+              {([
+                { value: 'all' as const, label: 'Todos' },
+                { value: 'regular' as const, label: 'Regular' },
+                { value: 'playoffs' as const, label: 'Playoffs' },
+                { value: 'playin' as const, label: 'Play-in' },
+              ]).map(opt => (
+                <button key={opt.value} onClick={() => onSeasonTypeChange(opt.value)}
+                  className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
+                    seasonType === opt.value
+                      ? 'bg-terminal-yellow/20 border-terminal-yellow text-terminal-yellow'
+                      : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
+                  }`}>{opt.label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {availableTeammates.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-1.5">Companheiros</p>
+            <div className="max-h-64 overflow-y-auto minimal-scrollbar border border-terminal-border-subtle rounded">
+              {availableTeammates.map(t => {
+                const active = teammateFilter?.find(tf => tf.playerId === t.player_id);
+                const photoUrl = getPlayerPhotoUrl(t.player_name, teamName);
+                const initials = t.player_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                const rowHighlight = active?.mode === 'with'
+                  ? 'bg-terminal-green/10 border-l-2 border-l-terminal-green'
+                  : active?.mode === 'without'
+                    ? 'bg-terminal-red/10 border-l-2 border-l-terminal-red'
+                    : 'hover:bg-terminal-gray/30';
+                return (
+                  <div key={t.player_id} className={`flex items-center gap-2 px-2 py-1.5 border-b border-terminal-border-subtle/30 last:border-0 transition-colors ${rowHighlight}`}>
+                    <div className="w-7 h-7 rounded-full overflow-hidden bg-terminal-gray border border-terminal-border-subtle shrink-0 flex items-center justify-center">
+                      {photoUrl ? (
+                        <img src={photoUrl} alt={t.player_name}
+                          className="w-full h-full object-cover object-top"
+                          onError={(e) => {
+                            const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, t.player_name, teamName);
+                            if (!didTry) {
+                              const el = e.target as HTMLImageElement;
+                              el.style.display = 'none';
+                              const parent = el.parentElement;
+                              if (parent) parent.innerHTML = `<span class="text-[9px] font-bold opacity-60">${initials}</span>`;
+                            }
+                          }} />
+                      ) : (
+                        <span className="text-[9px] font-bold opacity-60">{initials}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium text-terminal-text truncate">{t.player_name}</span>
+                        {t.rating_stars > 0 && (
+                          <Star className="w-2.5 h-2.5 fill-terminal-yellow text-terminal-yellow shrink-0" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => {
+                        const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'with' as const };
+                        const current = teammateFilter ?? [];
+                        const filtered = current.filter(f => f.playerId !== t.player_id);
+                        onTeammateFilterChange([...filtered, entry]);
+                      }}
+                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                          active?.mode === 'with'
+                            ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
+                            : 'border-terminal-blue/40 text-terminal-blue hover:bg-terminal-blue/10'
+                        }`}>COM</button>
+                      <button onClick={() => {
+                        const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'without' as const };
+                        const current = teammateFilter ?? [];
+                        const filtered = current.filter(f => f.playerId !== t.player_id);
+                        onTeammateFilterChange([...filtered, entry]);
+                      }}
+                        className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
+                          active?.mode === 'without'
+                            ? 'bg-terminal-red/20 border-terminal-red text-terminal-red'
+                            : 'border-terminal-red/40 text-terminal-red hover:bg-terminal-red/10'
+                        }`}>SEM</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const activeFilterCount = (lastNGames !== 15 ? 1 : 0)
+    + (selectedSeason !== 'current' ? 1 : 0)
+    + (homeAway !== 'all' ? 1 : 0)
+    + (b2bOnly ? 1 : 0)
+    + (h2hOnly ? 1 : 0)
+    + (seasonType !== 'all' ? 1 : 0)
+    + (teammateFilter && teammateFilter.length > 0 ? 1 : 0);
+
+  return (
+    <div className="terminal-container p-4 mb-3">
+      {/* Stat type tabs with scroll arrows */}
+      <div className="relative mb-3 border-b border-white/10">
+        {tabScrollState.canLeft && (
+          <button
+            type="button"
+            onClick={() => scrollTabs('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-terminal-dark-gray border border-terminal-border-subtle shadow hover:bg-terminal-gray transition-colors"
+            aria-label="Scroll tabs left"
+          >
+            <ChevronLeft className="w-4 h-4 text-terminal-text" />
+          </button>
+        )}
+        {tabScrollState.canRight && (
+          <button
+            type="button"
+            onClick={() => scrollTabs('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-terminal-dark-gray border border-terminal-border-subtle shadow hover:bg-terminal-gray transition-colors"
+            aria-label="Scroll tabs right"
+          >
+            <ChevronRight className="w-4 h-4 text-terminal-text" />
+          </button>
+        )}
+        <div ref={tabsScrollRef} className="overflow-x-auto -mx-4 px-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex items-end min-w-max gap-0">
+            {STAT_TYPES_BASIC.map(stat => (
+              <button
+                key={stat.id}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onStatTypeChange(stat.id)}
+                className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
+                  selectedStatType === stat.id
+                    ? 'border-terminal-blue text-terminal-blue'
+                    : 'border-transparent text-terminal-text/40 hover:text-terminal-text/70'
+                }`}
+              >
+                {stat.label}
+              </button>
+            ))}
+            <div className="w-px h-4 bg-white/10 mx-2 self-center mb-0.5 -mb-px" />
+            {STAT_TYPES_COMBOS.map(stat => (
+              <button
+                key={stat.id}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onStatTypeChange(stat.id)}
+                className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
+                  selectedStatType === stat.id
+                    ? 'border-terminal-blue text-terminal-blue'
+                    : 'border-transparent text-terminal-text/40 hover:text-terminal-text/70'
+                }`}
+              >
+                {stat.label}
+              </button>
+            ))}
+            <div className="w-px h-4 bg-white/10 mx-2 self-center mb-0.5 -mb-px" />
+            {STAT_TYPES_PERIOD.map(stat => (
+              <button
+                key={stat.id}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onStatTypeChange(stat.id)}
+                className={`px-3 py-2 text-xs font-semibold whitespace-nowrap border-b-2 transition-all -mb-px ${
+                  selectedStatType === stat.id
+                    ? 'border-terminal-yellow text-terminal-yellow'
+                    : 'border-transparent text-terminal-text/40 hover:text-terminal-text/70'
+                }`}
+              >
+                {stat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Row 1: title + hit rate */}
       <div className="flex items-center justify-between mb-2">
         <h3 className="section-title">GRÁFICO DE DESEMPENHO</h3>
@@ -366,215 +628,72 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
         )}
       </div>
 
-      {/* Filters — two rows */}
-      {/* Filters: single row on desktop, wraps on mobile */}
-      <div className="relative flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Last N */}
-          <div className="flex gap-1">
-            {gameOptions.map((opt) => {
-              const isDisabled = typeof opt.value === 'number' && opt.value > totalGamesAvailable;
-              const isActive = lastNGames === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => !isDisabled && onLastNGamesChange(opt.value)}
-                  disabled={isDisabled}
-                  className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all whitespace-nowrap ${
-                    isActive
-                      ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
-                      : isDisabled
-                      ? 'border-terminal-blue/10 text-terminal-text/30 cursor-not-allowed'
-                      : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="h-4 w-px bg-terminal-blue/20" />
-
-          {/* Home/Away */}
-          <div className="flex gap-1">
-            {locationOptions.map((opt) => {
-              const isActive = homeAway === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  onClick={() => onHomeAwayChange(opt.value)}
-                  title={opt.value === 'all' ? 'Todos' : opt.value === 'home' ? 'Casa' : 'Fora'}
-                  className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${
-                    isActive
-                      ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
-                      : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
-                  }`}
-                >
-                  {opt.icon}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="h-4 w-px bg-terminal-blue/20" />
-
-          {/* B2B */}
-          <button
-            onClick={() => onB2BChange(!b2bOnly)}
-            title="Apenas jogos back-to-back"
-            className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
-              b2bOnly
-                ? 'bg-terminal-yellow/20 border-terminal-yellow text-terminal-yellow'
-                : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
-            }`}
-          >
-            B2B
-          </button>
-
-          {/* H2H */}
-          {nextOpponent && (
-            <button
-              onClick={() => onH2HChange(!h2hOnly)}
-              title={`Histórico contra ${nextOpponent}`}
-              className={`px-2 py-0.5 text-[11px] font-medium rounded border transition-all ${
-                h2hOnly
-                  ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
-                  : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
-              }`}
-            >
-              vs {nextOpponent}
-            </button>
+      {/* Filter bar: single Filtros button + teammate chips inline */}
+      <div className="relative mb-3 flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setFiltersOpen(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border transition-all ${
+            filtersOpen || activeFilterCount > 0
+              ? 'bg-terminal-blue/20 border-terminal-blue text-terminal-blue'
+              : 'border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5'
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Filtros
+          {activeFilterCount > 0 && (
+            <span className="bg-terminal-blue text-terminal-bg rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">
+              {activeFilterCount}
+            </span>
           )}
+        </button>
 
-          <div className="h-4 w-px bg-terminal-blue/20" />
-
-          {/* Teammate filter */}
-          {availableTeammates.length > 0 && (() => {
-            const TeammateRow = ({ t }: { t: typeof availableTeammates[0] }) => {
-              const photoUrl = getPlayerPhotoUrl(t.player_name, teamName);
-              const initials = t.player_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-              return (
-                <div className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-terminal-gray/40 border-b border-terminal-border-subtle/30 last:border-0">
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-terminal-gray border border-terminal-border-subtle shrink-0 flex items-center justify-center">
-                    {photoUrl ? (
-                      <img src={photoUrl} alt={t.player_name} data-player-photo-index="0"
-                        className="w-full h-full object-cover object-top"
-                        onError={(e) => {
-                          const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, t.player_name, teamName);
-                          if (!didTry) {
-                            const el = e.target as HTMLImageElement;
-                            el.style.display = 'none';
-                            const parent = el.parentElement;
-                            if (parent) parent.innerHTML = `<span class="text-[9px] font-bold text-terminal-text opacity-60">${initials}</span>`;
-                          }
-                        }}
-                      />
-                    ) : (
-                      <span className="text-[9px] font-bold text-terminal-text opacity-60">{initials}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs font-medium text-terminal-text truncate">{t.player_name}</span>
-                      {t.rating_stars > 0 && Array.from({ length: t.rating_stars }).map((_, i) => (
-                        <Star key={i} className="w-2.5 h-2.5 fill-terminal-yellow text-terminal-yellow shrink-0" />
-                      ))}
-                    </div>
-                    <div className="text-[10px] opacity-50 flex items-center gap-1">
-                      <span>{t.position}</span>
-                      {t.current_status && t.current_status.toLowerCase() !== 'active' && (
-                        <span className="text-terminal-red">{t.current_status}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => {
-                      const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'with' as const };
-                      const current = teammateFilter ?? [];
-                      const filtered = current.filter(f => f.playerId !== t.player_id);
-                      onTeammateFilterChange([...filtered, entry]);
+        {/* Active teammate chips with photo */}
+        {teammateFilter && teammateFilter.map(f => {
+          const photoUrl = getPlayerPhotoUrl(f.playerName, teamName);
+          const initials = f.playerName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+          const isWith = f.mode === 'with';
+          return (
+            <div key={f.playerId}
+              className={`flex items-center gap-1.5 pl-0.5 pr-1.5 py-0.5 rounded-full border ${
+                isWith
+                  ? 'bg-terminal-green/10 border-terminal-green/50'
+                  : 'bg-terminal-red/10 border-terminal-red/50'
+              }`}>
+              <div className="w-6 h-6 rounded-full overflow-hidden bg-terminal-gray border border-white/10 shrink-0 flex items-center justify-center">
+                {photoUrl ? (
+                  <img src={photoUrl} alt={f.playerName}
+                    className="w-full h-full object-cover object-top"
+                    onError={(e) => {
+                      const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, f.playerName, teamName);
+                      if (!didTry) {
+                        const el = e.target as HTMLImageElement;
+                        el.style.display = 'none';
+                        const parent = el.parentElement;
+                        if (parent) parent.innerHTML = `<span class="text-[8px] font-bold opacity-60">${initials}</span>`;
+                      }
                     }}
-                      className="px-2.5 py-1 text-[11px] rounded border border-terminal-blue/40 text-terminal-blue hover:bg-terminal-blue/15 transition-colors">
-                      COM
-                    </button>
-                    <button onClick={() => {
-                      const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'without' as const };
-                      const current = teammateFilter ?? [];
-                      const filtered = current.filter(f => f.playerId !== t.player_id);
-                      onTeammateFilterChange([...filtered, entry]);
-                    }}
-                      className="px-2.5 py-1 text-[11px] rounded border border-terminal-red/40 text-terminal-red hover:bg-terminal-red/15 transition-colors">
-                      SEM
-                    </button>
-                  </div>
-                </div>
-              );
-            };
-
-            return (
-              <div className="relative" ref={teammateDropdownRef}>
-                {/* Active filter badges + add button */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  {teammateFilter && teammateFilter.length > 0 && teammateFilter.map(f => (
-                    <div key={f.playerId} className="flex items-center gap-0.5">
-                      <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${
-                        f.mode === 'with'
-                          ? 'bg-terminal-green/15 border-terminal-green/50 text-terminal-green'
-                          : 'bg-terminal-red/15 border-terminal-red/50 text-terminal-red'
-                      }`}>
-                        {f.mode === 'with' ? 'COM' : 'SEM'} {f.playerName.split(' ').pop()}
-                      </span>
-                      <button onClick={() => {
-                        const updated = teammateFilter.filter(tf => tf.playerId !== f.playerId);
-                        onTeammateFilterChange(updated.length > 0 ? updated : null);
-                      }}
-                        className="w-4 h-4 flex items-center justify-center rounded border border-white/20 text-white/40 hover:text-white/80 hover:border-white/40 transition-colors">
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  ))}
-                  <button onClick={() => setTeammateOpen(v => !v)} disabled={teammateFilterLoading}
-                    className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border border-terminal-blue/30 text-terminal-text hover:border-terminal-blue/50 hover:bg-terminal-blue/5 transition-all disabled:opacity-40">
-                    <Users className="w-3 h-3" />
-                    <span>{teammateFilter && teammateFilter.length > 0 ? '+' : 'Companheiro'}</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${teammateOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-
-                {teammateOpen && (
-                  <>
-                    {/* Mobile: backdrop + centered modal */}
-                    <div className="sm:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setTeammateOpen(false)} />
-                    <div className="sm:hidden fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 bg-terminal-dark-gray border border-terminal-border-subtle rounded-xl shadow-2xl overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border-subtle/30">
-                        <span className="text-[11px] font-bold text-terminal-text uppercase tracking-wider">Filtrar por companheiro</span>
-                        <button onClick={() => setTeammateOpen(false)} className="text-white/40 hover:text-white/80 transition-colors">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="max-h-[60vh] overflow-y-auto">
-                        {availableTeammates.map(t => <TeammateRow key={t.player_id} t={t} />)}
-                      </div>
-                    </div>
-
-                    {/* Desktop: dropdown */}
-                    <div className="hidden sm:block absolute top-full right-0 mt-1 z-50 bg-terminal-dark-gray border border-terminal-border-subtle rounded shadow-lg min-w-[280px] max-h-[260px] overflow-y-auto
-                      [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent
-                      [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full
-                      [&::-webkit-scrollbar-thumb:hover]:bg-white/40">
-                      {availableTeammates.map(t => <TeammateRow key={t.player_id} t={t} />)}
-                    </div>
-                  </>
+                  />
+                ) : (
+                  <span className="text-[8px] font-bold opacity-60">{initials}</span>
                 )}
               </div>
-            );
-          })()}
-        </div>
+              <span className={`text-[11px] font-medium ${isWith ? 'text-terminal-green' : 'text-terminal-red'}`}>
+                {isWith ? 'Com' : 'Sem'}: {f.playerName.split(' ').slice(-1)[0]}
+              </span>
+              <button onClick={() => {
+                const updated = teammateFilter.filter(tf => tf.playerId !== f.playerId);
+                onTeammateFilterChange(updated.length > 0 ? updated : null);
+              }}
+                className="w-4 h-4 flex items-center justify-center rounded hover:bg-white/10 text-white/60 hover:text-white/90 transition-colors">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        })}
 
-        {/* LINE — hidden on mobile */}
+        {/* LINE badge aligned right */}
         {adjustedLine !== null && (
-          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0 ml-auto">
             <span className="font-bold text-sm text-white">LINHA: {adjustedLine.toFixed(1)}</span>
             <TooltipProvider>
               <UITooltip>
@@ -601,94 +720,112 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
         )}
       </div>
 
-      <div className="relative">
-      {teammateFilterLoading && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-          <span className="text-sm font-semibold text-terminal-text bg-terminal-dark-gray px-4 py-2 rounded-lg border border-terminal-border-subtle animate-pulse shadow-lg">
-            Recalculando...
-          </span>
-        </div>
-      )}
-      <div
-        ref={chartContainerRef}
-        className={`h-72 ${isDragging ? 'cursor-grabbing' : adjustedLine !== null ? 'cursor-grab' : ''} ${teammateFilterLoading ? 'opacity-30' : ''} transition-opacity duration-200`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        style={{ userSelect: 'none', touchAction: 'pan-x' }}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{
-              top: 5,
-              right: 30,
-              left: -20,
-              bottom: 5
-            }}
-          >
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="#3a3d3a" 
-              vertical={false} 
-            />
-            <XAxis 
-              dataKey="game" 
-              tick={<CustomXAxisTick data={chartData} />} 
-              axisLine={{
-                stroke: '#3a3d3a'
-              }} 
-              height={50} 
-            />
-            <YAxis 
-              domain={[yAxisMin, yAxisMax]}
-              tick={{
-                fill: '#c5d0c0',
-                fontSize: 11
-              }} 
-              axisLine={{
-                stroke: '#3a3d3a'
-              }} 
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="value" radius={[2, 2, 0, 0]}>
-              {chartData.map((entry, index) => {
-                const isOverLine = adjustedLine !== null ? entry.value > adjustedLine : entry.isOver;
-                return (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={isOverLine ? '#22c55e' : '#ef4444'} 
-                  />
-                );
-              })}
-            </Bar>
-            {adjustedLine !== null && (
-              <ReferenceLine 
-                y={adjustedLine} 
-                stroke={isDragging ? '#ffffff' : isLineModified ? '#e5e5e5' : '#ffffff'}
-                strokeWidth={isDragging ? 3 : 2}
-                style={{ cursor: 'ns-resize' }}
-              >
-                <Label 
-                  value={adjustedLine.toFixed(1)} 
-                  position="right" 
+      {/* Chart + inline filters panel (desktop) */}
+      <div className="relative flex gap-3">
+        {(teammateFilterLoading || chartLoading) && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <span className="text-sm font-semibold text-terminal-text bg-terminal-dark-gray px-4 py-2 rounded-lg border border-terminal-border-subtle animate-pulse shadow-lg">
+              {chartLoading ? 'Carregando...' : 'Recalculando...'}
+            </span>
+          </div>
+        )}
+        <div
+          ref={chartContainerRef}
+          className={`h-72 flex-1 min-w-0 ${isDragging ? 'cursor-grabbing' : adjustedLine !== null ? 'cursor-grab' : ''} ${(teammateFilterLoading || chartLoading) ? 'opacity-30' : ''} transition-opacity duration-200`}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{ userSelect: 'none', touchAction: 'pan-x' }}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#3a3d3a" vertical={false} />
+              <XAxis
+                dataKey="game"
+                tick={<CustomXAxisTick data={chartData} />}
+                axisLine={{ stroke: '#3a3d3a' }}
+                height={50}
+                interval={0}
+              />
+              <YAxis
+                domain={[yAxisMin, yAxisMax]}
+                tick={{ fill: '#c5d0c0', fontSize: 11 }}
+                axisLine={{ stroke: '#3a3d3a' }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="value" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+                {chartData.map((entry, index) => {
+                  const isOverLine = adjustedLine !== null ? entry.value > adjustedLine : entry.isOver;
+                  return (
+                    <Cell key={`cell-${index}`} fill={isOverLine ? '#22c55e' : '#ef4444'} />
+                  );
+                })}
+                <LabelList
+                  dataKey="value"
+                  position="insideBottom"
                   fill="#ffffff"
                   fontSize={11}
                   fontWeight={700}
+                  offset={6}
+                  formatter={(v: any) => (typeof v === 'number' ? v.toLocaleString('pt-BR') : v)}
                 />
-              </ReferenceLine>
-            )}
-          </BarChart>
-        </ResponsiveContainer>
+              </Bar>
+              {adjustedLine !== null && (
+                <ReferenceLine
+                  y={adjustedLine}
+                  stroke={isDragging ? '#ffffff' : isLineModified ? '#e5e5e5' : '#ffffff'}
+                  strokeWidth={isDragging ? 3 : 2}
+                  style={{ cursor: 'ns-resize' }}
+                >
+                  <Label value={adjustedLine.toFixed(1)} position="right" fill="#ffffff" fontSize={11} fontWeight={700} />
+                </ReferenceLine>
+              )}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Inline filters panel — desktop only */}
+        {filtersOpen && (
+          <div className="hidden md:flex w-64 shrink-0 bg-terminal-gray/40 border border-terminal-border rounded-lg max-h-[18rem] flex-col">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-terminal-border-subtle bg-terminal-gray/60 rounded-t-lg shrink-0">
+              <span className="text-xs font-bold uppercase tracking-wider text-terminal-text opacity-70 flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3 h-3" /> Filtros
+              </span>
+              <button onClick={() => setFiltersOpen(false)} className="text-white/40 hover:text-white/80">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto minimal-scrollbar p-3">
+              {renderFiltersContent()}
+            </div>
+          </div>
+        )}
       </div>
-      </div>
+
+      {/* Mobile filters Sheet (bottom drawer) */}
+      <Sheet open={isMobile && filtersOpen} onOpenChange={setFiltersOpen}>
+        <SheetContent
+          side="bottom"
+          className="md:hidden bg-terminal-dark-gray/95 backdrop-blur-sm border-terminal-border max-h-[75vh] p-0 flex flex-col rounded-t-2xl"
+        >
+          <div className="flex justify-center pt-2 pb-1 shrink-0">
+            <div className="w-10 h-1 rounded-full bg-white/20" />
+          </div>
+          <div className="flex items-center gap-2 px-4 pb-3 shrink-0">
+            <SlidersHorizontal className="w-4 h-4 text-terminal-blue" />
+            <span className="text-sm font-bold uppercase tracking-wider text-terminal-text">Filtros</span>
+          </div>
+          <div className="flex-1 overflow-y-auto minimal-scrollbar p-4">
+            {renderFiltersContent()}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Footer */}
       <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px]">
-        {/* Legenda */}
         <div className="flex items-center gap-3">
           <span className="opacity-40">ÚLT. {chartData.length}</span>
           {adjustedLine !== null && (
@@ -705,7 +842,6 @@ export const GameChart: React.FC<GameChartProps> = ({ gameStats, currentLine, se
             </>
           )}
         </div>
-        {/* Médias */}
         <div className="flex items-center gap-3 opacity-50">
           <span>Média <span className="font-medium text-terminal-text opacity-100">{average}</span></span>
           {seasonAvg !== undefined && seasonAvg !== null && (

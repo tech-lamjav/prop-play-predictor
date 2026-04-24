@@ -4,6 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Minimal scrollbar for modals and panels */
+.minimal-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.minimal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.minimal-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 30%);
+  border-radius: 4px;
+}
+.minimal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 45%);
+}
+.minimal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(0 0% 30%) transparent;
+}
+
 /* Mandala satellite entrance animation */
 @keyframes mandala-satellite-enter {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); filter: blur(4px); }
@@ -210,6 +229,24 @@ All colors MUST be HSL.
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 }
 

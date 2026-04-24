@@ -1,6 +1,6 @@
-import React from 'react';
-import { Team } from '@/services/nba-data.service';
-import { Calendar, MapPin, TrendingUp, TrendingDown } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Team, OpponentRankings, TeamPlaytypes } from '@/services/nba-data.service';
+import { Calendar, MapPin, TrendingUp, TrendingDown, Shield, ChevronDown } from 'lucide-react';
 import { getTeamLogoUrl } from '@/utils/team-logos';
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,9 +11,37 @@ interface NextGamesCardProps {
   isTeamB2B?: boolean;
   isOpponentB2B?: boolean;
   nextGameTime?: string | null;
+  opponentRankings?: OpponentRankings | null;
+  opponentPlaytypes?: TeamPlaytypes | null;
+  selectedStatType?: string;
 }
 
-export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, isTeamB2B = false, isOpponentB2B = false, nextGameTime }) => {
+const STAT_TO_OPP: Record<string, { rankKey: keyof OpponentRankings; valueKey: keyof OpponentRankings; label: string; unit: string }> = {
+  player_points:              { rankKey: 'opp_pts_rank',     valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+  player_rebounds:            { rankKey: 'opp_reb_rank',     valueKey: 'opp_reb',     label: 'Rebotes cedidos', unit: 'reb/jogo' },
+  player_assists:             { rankKey: 'opp_ast_rank',     valueKey: 'opp_ast',     label: 'Assists cedidas', unit: 'ast/jogo' },
+  player_threes:              { rankKey: 'opp_fg3_pct_rank', valueKey: 'opp_fg3_pct', label: '3PT% cedido',     unit: '%' },
+  player_steals:              { rankKey: 'opp_stl_rank',     valueKey: 'opp_stl',     label: 'Roubos cedidos',  unit: 'stl/jogo' },
+  player_blocks:              { rankKey: 'opp_blk_rank',     valueKey: 'opp_blk',     label: 'Bloqueios cedidos', unit: 'blk/jogo' },
+  player_points_rebounds:     { rankKey: 'opp_pts_rank',     valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+  player_points_assists:      { rankKey: 'opp_pts_rank',     valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+  player_rebounds_assists:    { rankKey: 'opp_reb_rank',     valueKey: 'opp_reb',     label: 'Rebotes cedidos', unit: 'reb/jogo' },
+  player_points_rebounds_assists: { rankKey: 'opp_pts_rank', valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+};
+
+const DEFAULT_OPP = { rankKey: 'def_rating_rank' as keyof OpponentRankings, valueKey: 'def_rating' as keyof OpponentRankings, label: 'Def Rating', unit: '' };
+
+function getMatchupColor(rank: number) {
+  if (rank >= 21) return { text: 'text-terminal-green', bg: 'bg-terminal-green/10', border: 'border-terminal-green/20', label: 'DEFESA FRACA' };
+  if (rank >= 11) return { text: 'text-terminal-yellow', bg: 'bg-terminal-yellow/10', border: 'border-terminal-yellow/20', label: 'DEFESA MEDIA' };
+  return { text: 'text-terminal-red', bg: 'bg-terminal-red/10', border: 'border-terminal-red/20', label: 'DEFESA FORTE' };
+}
+
+const SPECIAL_TYPES_USED: Record<string, number> = {};
+
+export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, isTeamB2B = false, isOpponentB2B = false, nextGameTime, opponentRankings, opponentPlaytypes, selectedStatType = 'player_points' }) => {
+  const [defenseExpanded, setDefenseExpanded] = useState(false);
+  const [playtypesExpanded, setPlaytypesExpanded] = useState(false);
   if (isLoading) {
     return (
       <div className="terminal-container p-4">
@@ -198,6 +226,114 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
             )}
           </div>
         </div>
+
+        {/* Matchup dinâmico por stat selecionada */}
+        {opponentRankings && (() => {
+          const mapping = STAT_TO_OPP[selectedStatType] || DEFAULT_OPP;
+          const rank = opponentRankings[mapping.rankKey] as number;
+          const value = opponentRankings[mapping.valueKey] as number;
+          if (!rank) return null;
+          const color = getMatchupColor(rank);
+          const formatted = mapping.unit === '%'
+            ? `${(value * 100).toFixed(1)}%`
+            : value.toFixed(1);
+
+          return (
+            <div className={`rounded p-2.5 border ${color.border} ${color.bg}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Shield className={`w-3.5 h-3.5 ${color.text}`} />
+                  <div>
+                    <p className="text-[10px] opacity-50">{team.next_opponent_abbreviation} — {mapping.label}</p>
+                    <p className="text-sm font-bold">
+                      {formatted} <span className="opacity-40 text-xs">{mapping.unit !== '%' ? mapping.unit : ''}</span>
+                      <span className={`ml-2 font-bold ${color.text}`}>#{rank}</span>
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-[9px] font-bold ${color.text}`}>{color.label}</span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Defesa do adversário — colapsável */}
+        {opponentRankings && (
+          <div className="border-t border-terminal-border-subtle pt-2">
+            <button
+              onClick={() => setDefenseExpanded(v => !v)}
+              className="w-full flex items-center justify-between py-1"
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">
+                Defesa de {team.next_opponent_abbreviation}
+              </span>
+              <ChevronDown className={`w-3 h-3 opacity-30 transition-transform ${defenseExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            {defenseExpanded && (
+              <div className="mt-1">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {([
+                    { label: 'Pontos cedidos', value: opponentRankings.opp_pts, rank: opponentRankings.opp_pts_rank },
+                    { label: 'Rebotes cedidos', value: opponentRankings.opp_reb, rank: opponentRankings.opp_reb_rank },
+                    { label: 'Assists cedidas', value: opponentRankings.opp_ast, rank: opponentRankings.opp_ast_rank },
+                    { label: '3PT% cedido', value: opponentRankings.opp_fg3_pct, rank: opponentRankings.opp_fg3_pct_rank, isPct: true },
+                    { label: 'Pts no garrafão', value: opponentRankings.opp_pts_paint, rank: opponentRankings.opp_pts_paint_rank },
+                    { label: 'Rtg defensivo', value: opponentRankings.def_rating, rank: opponentRankings.def_rating_rank },
+                  ] as { label: string; value: number; rank: number; isPct?: boolean }[]).map(item => {
+                    const color = item.rank >= 21 ? 'text-terminal-green' : item.rank >= 11 ? 'text-terminal-yellow' : 'text-terminal-red';
+                    const formatted = item.isPct ? `${(item.value * 100).toFixed(1)}%` : item.value.toFixed(1);
+                    return (
+                      <div key={item.label} className="flex items-center justify-between text-[10px]">
+                        <span className="opacity-50">{item.label}</span>
+                        <span>
+                          {formatted} <span className={`font-bold ${color}`}>#{item.rank}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tipos de jogada do adversário — colapsável */}
+        {opponentPlaytypes && (
+          <div className="border-t border-terminal-border-subtle pt-2">
+            <button
+              onClick={() => setPlaytypesExpanded(v => !v)}
+              className="w-full flex items-center justify-between py-1"
+            >
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">
+                Tipos de jogada de {team.next_opponent_abbreviation}
+              </span>
+              <ChevronDown className={`w-3 h-3 opacity-30 transition-transform ${playtypesExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            {playtypesExpanded && (
+              <div className="mt-1">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {([
+                    { label: 'Isolamento', ppp: opponentPlaytypes.iso_ppp, rank: opponentPlaytypes.iso_ppp_rank },
+                    { label: 'Arremesso aberto', ppp: opponentPlaytypes.spotup_ppp, rank: opponentPlaytypes.spotup_ppp_rank },
+                    { label: 'Pick & Roll (bola)', ppp: opponentPlaytypes.pnr_bh_ppp, rank: opponentPlaytypes.pnr_bh_ppp_rank },
+                    { label: 'Pick & Roll (roll)', ppp: opponentPlaytypes.pnr_rm_ppp, rank: opponentPlaytypes.pnr_rm_ppp_rank },
+                    { label: 'Jogo de costas', ppp: opponentPlaytypes.postup_ppp, rank: opponentPlaytypes.postup_ppp_rank },
+                    { label: 'Transição', ppp: opponentPlaytypes.transition_ppp, rank: opponentPlaytypes.transition_ppp_rank },
+                    { label: 'Entrega de mão', ppp: opponentPlaytypes.handoff_ppp, rank: opponentPlaytypes.handoff_ppp_rank },
+                    { label: 'Corte', ppp: opponentPlaytypes.cut_ppp, rank: opponentPlaytypes.cut_ppp_rank },
+                  ] as { label: string; ppp: number; rank: number }[]).map(item => (
+                    <div key={item.label} className="flex items-center justify-between text-[10px]">
+                      <span className="opacity-50">{item.label}</span>
+                      <span>
+                        {item.ppp.toFixed(2)} <span className="font-bold opacity-70">#{item.rank}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

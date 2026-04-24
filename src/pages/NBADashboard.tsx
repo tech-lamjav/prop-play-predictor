@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity } from '@/services/nba-data.service';
+import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
@@ -69,6 +69,15 @@ export default function NBADashboard() {
   const [teammateGameIds, setTeammateGameIds] = useState<Map<number, Set<number>> | null>(null);
   const [teammateFilterLoading, setTeammateFilterLoading] = useState(!!initialTrigger);
   const [b2bOnly, setB2bOnly] = useState(false);
+  const [gamePeriod, setGamePeriod] = useState<'full' | 'q1' | 'h1'>('full');
+  const [periodStats, setPeriodStats] = useState<GamePlayerStats[]>([]);
+  const [periodStatsLoaded, setPeriodStatsLoaded] = useState(false);
+  const [oppRankings, setOppRankings] = useState<OpponentRankings | null>(null);
+  const [oppPlaytypes, setOppPlaytypes] = useState<TeamPlaytypes | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<number | 'current'>('current');
+  const [seasonType, setSeasonType] = useState<'all' | 'regular' | 'playoffs' | 'playin'>('all');
+  const [historicalStats, setHistoricalStats] = useState<Map<number, GamePlayerStats[]>>(new Map());
+  const [historicalLoading, setHistoricalLoading] = useState(false);
 
   // React to URL param changes (stat type only — trigger handled below)
   useEffect(() => {
@@ -157,9 +166,76 @@ export default function NBADashboard() {
   // Ref to scroll chart into view when insight is clicked
   const chartRef = React.useRef<HTMLDivElement>(null);
 
+  // Lazy-load period stats when user switches to Q1/H1
+  useEffect(() => {
+    if (gamePeriod === 'full' || periodStatsLoaded || !player) return;
+    let cancelled = false;
+    nbaDataService.getPlayerPeriodStats(player.player_id, 100).then(data => {
+      if (!cancelled) {
+        setPeriodStats(data);
+        setPeriodStatsLoaded(true);
+      }
+    }).catch(e => console.error('Error loading period stats:', e));
+    return () => { cancelled = true; };
+  }, [gamePeriod, periodStatsLoaded, player]);
+
+  // Lazy-load historical stats for past seasons
+  useEffect(() => {
+    if (selectedSeason === 'current' || !player) return;
+    if (historicalStats.has(selectedSeason)) return;
+    let cancelled = false;
+    setHistoricalLoading(true);
+    nbaDataService.getPlayerHistoricalStats(player.player_id, selectedSeason).then(data => {
+      if (!cancelled) {
+        setHistoricalStats(prev => {
+          const next = new Map(prev);
+          next.set(selectedSeason, data);
+          return next;
+        });
+        setHistoricalLoading(false);
+      }
+    }).catch(e => {
+      console.error('Error loading historical stats:', e);
+      if (!cancelled) setHistoricalLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [selectedSeason, player, historicalStats]);
+
+  // Reset period to 'full' when switching to past season
+  useEffect(() => {
+    if (selectedSeason !== 'current' && gamePeriod !== 'full') {
+      setGamePeriod('full');
+    }
+  }, [selectedSeason]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync selectedStatType with gamePeriod (Q1/H1 tabs also change period)
+  useEffect(() => {
+    if (selectedStatType.startsWith('player_q1_')) {
+      if (gamePeriod !== 'q1') setGamePeriod('q1');
+    } else if (selectedStatType.startsWith('player_h1_')) {
+      if (gamePeriod !== 'h1') setGamePeriod('h1');
+    } else {
+      if (gamePeriod !== 'full') setGamePeriod('full');
+    }
+  }, [selectedStatType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filter game stats based on selected filters
   const filteredGameStats = useMemo(() => {
-    let filtered = gameStats.filter(g => g.stat_type === selectedStatType);
+    let sourceStats: GamePlayerStats[];
+    if (selectedSeason !== 'current') {
+      sourceStats = historicalStats.get(selectedSeason) || [];
+    } else if (gamePeriod !== 'full') {
+      sourceStats = periodStats;
+    } else {
+      sourceStats = gameStats;
+    }
+
+    let filtered = sourceStats.filter(g => g.stat_type === selectedStatType);
+
+    // Apply season_type filter (historical only)
+    if (selectedSeason !== 'current' && seasonType !== 'all') {
+      filtered = filtered.filter(g => g.season_type === seasonType);
+    }
 
     // Apply home/away filter
     if (homeAway !== 'all') {
@@ -204,21 +280,33 @@ export default function NBADashboard() {
     }
 
     return filtered;
-  }, [gameStats, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds, b2bOnly, h2hOnly, teamData]);
+  }, [gameStats, periodStats, historicalStats, selectedSeason, seasonType, gamePeriod, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds, b2bOnly, h2hOnly, teamData]);
 
   // Get current betting line for selected stat type
+  // For periods/historical without market lines: fallback to player average rounded to .5
   const currentLine = useMemo(() => {
-    // Get the most recent game's line_most_recent for the selected stat type
-    const statsForType = gameStats.filter(g => g.stat_type === selectedStatType);
+    let sourceStats: GamePlayerStats[];
+    if (selectedSeason !== 'current') {
+      sourceStats = historicalStats.get(selectedSeason) || [];
+    } else if (gamePeriod !== 'full') {
+      sourceStats = periodStats;
+    } else {
+      sourceStats = gameStats;
+    }
+    const statsForType = sourceStats.filter(g => g.stat_type === selectedStatType);
     if (statsForType.length === 0) return null;
 
-    // Sort by date descending and get the first one's line_most_recent
+    // Try market line first
     const sortedStats = [...statsForType].sort((a, b) =>
       new Date(b.game_date).getTime() - new Date(a.game_date).getTime()
     );
+    const marketLine = sortedStats[0]?.line_most_recent ?? null;
+    if (marketLine !== null) return marketLine;
 
-    return sortedStats[0]?.line_most_recent ?? null;
-  }, [gameStats, selectedStatType]);
+    // Fallback: player average rounded down to nearest .5
+    const avg = statsForType.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / statsForType.length;
+    return Math.floor(avg) + 0.5;
+  }, [gameStats, periodStats, historicalStats, selectedSeason, gamePeriod, selectedStatType]);
 
   // Early returns (after all hooks)
   if (!authLoading && !user && player && !isFree && !isPicksTrial) {
@@ -249,6 +337,17 @@ export default function NBADashboard() {
       setTeammatesLoading(false);
       setTeamLoading(false);
       setShootingZonesLoading(false);
+
+      // Cache doesn't include opponent rankings/playtypes — fetch in background
+      if (cached.teamData?.next_opponent_id) {
+        nbaDataService.getOpponentRankings(cached.teamData.next_opponent_id)
+          .then(data => setOppRankings(data))
+          .catch(e => console.error('Error loading opponent rankings:', e));
+        nbaDataService.getTeamPlaytypes(cached.teamData.next_opponent_id)
+          .then(data => setOppPlaytypes(data))
+          .catch(e => console.error('Error loading opponent playtypes:', e));
+      }
+
       return;
     }
 
@@ -323,6 +422,16 @@ export default function NBADashboard() {
       try {
         loadedTeam = await nbaDataService.getTeamById(playerData.team_id);
         setTeamData(loadedTeam);
+
+        // Load opponent rankings + playtypes in parallel (non-blocking)
+        if (loadedTeam?.next_opponent_id) {
+          nbaDataService.getOpponentRankings(loadedTeam.next_opponent_id)
+            .then(data => setOppRankings(data))
+            .catch(e => console.error('Error loading opponent rankings:', e));
+          nbaDataService.getTeamPlaytypes(loadedTeam.next_opponent_id)
+            .then(data => setOppPlaytypes(data))
+            .catch(e => console.error('Error loading opponent playtypes:', e));
+        }
 
         if (loadedTeam) {
           const teamId = Number(playerData.team_id);
@@ -495,6 +604,9 @@ export default function NBADashboard() {
               isTeamB2B={isTeamB2B}
               isOpponentB2B={isOpponentB2B}
               nextGameTime={nextGameTime}
+              opponentRankings={oppRankings}
+              opponentPlaytypes={oppPlaytypes}
+              selectedStatType={selectedStatType}
             />
 
             {/* Oportunidades do Dia (mesma fonte dos Picks) ou fallback para Insights */}
@@ -586,14 +698,29 @@ export default function NBADashboard() {
               <Skeleton className="h-[400px] w-full bg-terminal-gray mb-6" />
             ) : (
               <GameChart
+                chartLoading={
+                  (gamePeriod !== 'full' && selectedSeason === 'current' && !periodStatsLoaded)
+                  || (selectedSeason !== 'current' && historicalLoading && !historicalStats.has(selectedSeason))
+                }
                 gameStats={filteredGameStats}
                 currentLine={currentLine}
-                seasonAvg={(() => { const s = gameStats.filter(g => g.stat_type === selectedStatType); return s.length > 0 ? s.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / s.length : 0; })()}
+                seasonAvg={(() => {
+                  const src = selectedSeason !== 'current'
+                    ? (historicalStats.get(selectedSeason) || [])
+                    : (gamePeriod === 'full' ? gameStats : periodStats);
+                  const s = src.filter(g => g.stat_type === selectedStatType && (selectedSeason === 'current' || seasonType === 'all' || g.season_type === seasonType));
+                  return s.length > 0 ? s.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / s.length : 0;
+                })()}
                 lastNGames={lastNGames}
                 homeAway={homeAway}
                 onLastNGamesChange={setLastNGames}
                 onHomeAwayChange={setHomeAway}
-                totalGamesAvailable={gameStats.filter(g => g.stat_type === selectedStatType).length}
+                totalGamesAvailable={(() => {
+                  const src = selectedSeason !== 'current'
+                    ? (historicalStats.get(selectedSeason) || [])
+                    : (gamePeriod === 'full' ? gameStats : periodStats);
+                  return src.filter(g => g.stat_type === selectedStatType && (selectedSeason === 'current' || seasonType === 'all' || g.season_type === seasonType)).length;
+                })()}
                 teammates={teammates}
                 currentPlayerId={player?.player_id || 0}
                 teamName={player?.team_name || ''}
@@ -607,6 +734,10 @@ export default function NBADashboard() {
                 h2hOnly={h2hOnly}
                 onH2HChange={setH2hOnly}
                 nextOpponent={teamData?.next_opponent_abbreviation || undefined}
+                selectedSeason={selectedSeason}
+                onSeasonChange={setSelectedSeason}
+                seasonType={seasonType}
+                onSeasonTypeChange={setSeasonType}
               />
             )}
 
