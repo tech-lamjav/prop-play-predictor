@@ -35,6 +35,8 @@ export interface Bolao {
   scoring_exact: number;
   scoring_result: number;
   scoring_preset: string | null;
+  scoring_weights: Record<string, number> | null;
+  prediction_deadline_mode: 'per_match' | 'per_round' | 'tournament_start';
   custom_color: string | null;
   custom_banner_url: string | null;
   champion_enabled: boolean;
@@ -212,6 +214,7 @@ export const bolaoService = {
   async createBolao(params: {
     name: string;
     description?: string;
+    predictionDeadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
   }): Promise<Bolao> {
     const userId = (await supabase.auth.getUser()).data.user?.id;
     if (!userId) throw new Error('Usuário não autenticado');
@@ -225,6 +228,7 @@ export const bolaoService = {
         name: params.name,
         description: params.description || null,
         invite_code,
+        prediction_deadline_mode: params.predictionDeadlineMode ?? 'per_match',
       })
       .select()
       .single();
@@ -357,49 +361,58 @@ export const bolaoService = {
     match_id: number;
     predicted_home_score: number;
     predicted_away_score: number;
-  }): Promise<BolaoPrediction> {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) throw new Error('Usuário não autenticado');
-
-    const { data, error } = await supabase
-      .from('bolao_predictions')
-      .upsert(
-        {
-          bolao_id: params.bolao_id,
-          user_id: userId,
-          match_id: params.match_id,
-          predicted_home_score: params.predicted_home_score,
-          predicted_away_score: params.predicted_away_score,
-        },
-        { onConflict: 'bolao_id,user_id,match_id' }
-      )
-      .select()
-      .single();
-
+  }): Promise<void> {
+    const { data, error } = await supabase.rpc('submit_bolao_prediction', {
+      p_bolao_id: params.bolao_id,
+      p_match_id: params.match_id,
+      p_predicted_home_score: params.predicted_home_score,
+      p_predicted_away_score: params.predicted_away_score,
+    });
     if (error) throw error;
-    return data as BolaoPrediction;
+    const result = data as { success: boolean; error?: string; deadline?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao salvar palpite');
   },
 
   async upsertPredictionsBatch(
     bolaoId: string,
     predictions: { match_id: number; predicted_home_score: number; predicted_away_score: number }[]
-  ): Promise<void> {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) throw new Error('Usuário não autenticado');
-
-    const rows = predictions.map((p) => ({
-      bolao_id: bolaoId,
-      user_id: userId,
+  ): Promise<{ saved: number; skipped: number }> {
+    const payload = predictions.map((p) => ({
       match_id: p.match_id,
-      predicted_home_score: p.predicted_home_score,
-      predicted_away_score: p.predicted_away_score,
+      home: p.predicted_home_score,
+      away: p.predicted_away_score,
     }));
-
-    const { error } = await supabase
-      .from('bolao_predictions')
-      .upsert(rows, { onConflict: 'bolao_id,user_id,match_id' });
-
+    const { data, error } = await supabase.rpc('batch_submit_bolao_predictions', {
+      p_bolao_id: bolaoId,
+      p_predictions: payload,
+    });
     if (error) throw error;
+    const result = data as { success: boolean; saved: number; skipped: number; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao salvar palpites');
+    return { saved: result.saved, skipped: result.skipped };
+  },
+
+  async updateBolaoDeadlineMode(
+    bolaoId: string,
+    mode: 'per_match' | 'per_round' | 'tournament_start'
+  ): Promise<{ prediction_deadline_mode: string }> {
+    const { data, error } = await supabase.rpc('update_bolao_deadline_mode', {
+      p_bolao_id: bolaoId,
+      p_mode: mode,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; prediction_deadline_mode: string; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao atualizar prazo');
+    return { prediction_deadline_mode: result.prediction_deadline_mode };
+  },
+
+  async getPredictionDeadline(bolaoId: string, matchId: number): Promise<string | null> {
+    const { data, error } = await supabase.rpc('get_prediction_deadline', {
+      p_bolao_id: bolaoId,
+      p_match_id: matchId,
+    });
+    if (error) throw error;
+    return data as string | null;
   },
 
   // --- Special Predictions (Wave 2) ---
@@ -440,18 +453,30 @@ export const bolaoService = {
     bolaoId: string,
     preset: 'standard' | 'classic' | 'weighted_stages' | 'custom',
     scoringResult?: number,
-    scoringExact?: number
-  ): Promise<{ scoring_result: number; scoring_exact: number }> {
+    scoringExact?: number,
+    scoringWeights?: Record<string, number> | null
+  ): Promise<{ scoring_result: number; scoring_exact: number; scoring_weights: Record<string, number> | null }> {
     const { data, error } = await supabase.rpc('update_bolao_scoring', {
       p_bolao_id: bolaoId,
       p_preset: preset,
       p_scoring_result: scoringResult,
       p_scoring_exact: scoringExact,
+      p_scoring_weights: scoringWeights ?? null,
     });
     if (error) throw error;
-    const result = data as { success: boolean; scoring_result: number; scoring_exact: number; error?: string };
+    const result = data as {
+      success: boolean;
+      scoring_result: number;
+      scoring_exact: number;
+      scoring_weights: Record<string, number> | null;
+      error?: string;
+    };
     if (!result.success) throw new Error(result.error || 'Erro ao atualizar pontuação');
-    return { scoring_result: result.scoring_result, scoring_exact: result.scoring_exact };
+    return {
+      scoring_result: result.scoring_result,
+      scoring_exact: result.scoring_exact,
+      scoring_weights: result.scoring_weights,
+    };
   },
 
   // --- Stats + Round Rankings (Wave 3) ---

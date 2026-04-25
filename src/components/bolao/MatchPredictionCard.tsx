@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, Check } from 'lucide-react';
 import type { WcMatch, BolaoPrediction } from '@/services/bolao.service';
-import { isMatchLocked } from '@/hooks/use-bolao';
+import { isMatchLocked, isMatchPredictionLocked, computeMatchDeadline } from '@/hooks/use-bolao';
 
 interface MatchPredictionCardProps {
   match: WcMatch;
   prediction?: BolaoPrediction;
   onSave: (matchId: number, homeScore: number, awayScore: number) => void;
   isSaving?: boolean;
+  // Optional — when passed, deadline is computed from bolão mode instead of kickoff
+  deadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
+  allMatches?: WcMatch[];
+  isClosed?: boolean;
 }
 
 export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
@@ -15,8 +19,16 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   prediction,
   onSave,
   isSaving,
+  deadlineMode,
+  allMatches,
+  isClosed,
 }) => {
-  const locked = isMatchLocked(match);
+  const locked = deadlineMode
+    ? isMatchPredictionLocked(match, deadlineMode, allMatches, !!isClosed)
+    : isMatchLocked(match);
+  const deadline = deadlineMode
+    ? computeMatchDeadline(match, deadlineMode, allMatches)
+    : null;
   const [homeScore, setHomeScore] = useState<string>(
     prediction?.predicted_home_score?.toString() ?? ''
   );
@@ -100,6 +112,18 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
           </span>
         </div>
       </div>
+      {/* Custom deadline indicator — only show when deadline differs from kickoff */}
+      {!match.is_finished && deadline && deadlineMode && deadlineMode !== 'per_match' && (() => {
+        const kickoff = new Date(`${match.match_date}T${match.match_time_brasilia}-03:00`);
+        if (deadline.getTime() === kickoff.getTime()) return null;
+        const d = deadline;
+        const label = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        return (
+          <p className="text-[10px] text-terminal-yellow/80 mb-2">
+            Palpites até {label}
+          </p>
+        );
+      })()}
 
       {/* Match */}
       <div className="flex items-center gap-2">

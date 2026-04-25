@@ -48,8 +48,11 @@ export function useCreateBolao() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: { name: string; description?: string }) =>
-      bolaoService.createBolao(params),
+    mutationFn: (params: {
+      name: string;
+      description?: string;
+      predictionDeadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
+    }) => bolaoService.createBolao(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
     },
@@ -235,7 +238,28 @@ export function useUpdateBolaoScoring() {
       preset: 'standard' | 'classic' | 'weighted_stages' | 'custom';
       scoringResult?: number;
       scoringExact?: number;
-    }) => bolaoService.updateBolaoScoring(params.bolaoId, params.preset, params.scoringResult, params.scoringExact),
+      scoringWeights?: Record<string, number> | null;
+    }) => bolaoService.updateBolaoScoring(
+      params.bolaoId,
+      params.preset,
+      params.scoringResult,
+      params.scoringExact,
+      params.scoringWeights
+    ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['bolao', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
+    },
+  });
+}
+
+export function useUpdateBolaoDeadlineMode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      bolaoId: string;
+      mode: 'per_match' | 'per_round' | 'tournament_start';
+    }) => bolaoService.updateBolaoDeadlineMode(params.bolaoId, params.mode),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bolao', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
@@ -329,4 +353,46 @@ export function isMatchLocked(match: WcMatch): boolean {
   const now = new Date();
   const matchDateTime = new Date(`${match.match_date}T${match.match_time_brasilia}-03:00`);
   return now >= matchDateTime || match.is_finished;
+}
+
+function matchKickoff(m: WcMatch): Date {
+  return new Date(`${m.match_date}T${m.match_time_brasilia}-03:00`);
+}
+
+/**
+ * Computes the prediction deadline for a match given the bolão's mode.
+ * Mirrors the server-side get_prediction_deadline function.
+ */
+export function computeMatchDeadline(
+  match: WcMatch,
+  mode: 'per_match' | 'per_round' | 'tournament_start',
+  allMatches: WcMatch[] | undefined
+): Date {
+  if (mode === 'per_match' || !allMatches || allMatches.length === 0) {
+    return matchKickoff(match);
+  }
+  if (mode === 'per_round') {
+    const stageMatches = allMatches.filter(m => m.stage === match.stage);
+    if (stageMatches.length === 0) return matchKickoff(match);
+    return stageMatches.reduce((min, m) => {
+      const t = matchKickoff(m);
+      return t < min ? t : min;
+    }, matchKickoff(stageMatches[0]));
+  }
+  // tournament_start
+  return allMatches.reduce((min, m) => {
+    const t = matchKickoff(m);
+    return t < min ? t : min;
+  }, matchKickoff(allMatches[0]));
+}
+
+export function isMatchPredictionLocked(
+  match: WcMatch,
+  mode: 'per_match' | 'per_round' | 'tournament_start',
+  allMatches: WcMatch[] | undefined,
+  isClosed: boolean
+): boolean {
+  if (match.is_finished || isClosed) return true;
+  const deadline = computeMatchDeadline(match, mode, allMatches);
+  return new Date() >= deadline;
 }

@@ -155,6 +155,9 @@ const BolaoPalpites: React.FC = () => {
                       prediction={predictionsByMatch.get(match.id)}
                       onSave={handleSave}
                       isSaving={upsertPrediction.isPending}
+                      deadlineMode={bolao?.prediction_deadline_mode ?? 'per_match'}
+                      allMatches={matches}
+                      isClosed={bolao?.is_closed}
                     />
                   ))}
                 </div>

@@ -717,6 +717,8 @@ const BolaoDetail: React.FC = () => {
           scoringPreset={bolao.scoring_preset ?? null}
           scoringResult={bolao.scoring_result}
           scoringExact={bolao.scoring_exact}
+          scoringWeights={bolao.scoring_weights ?? null}
+          predictionDeadlineMode={bolao.prediction_deadline_mode ?? 'per_match'}
           customColor={bolao.custom_color ?? null}
           customBannerUrl={bolao.custom_banner_url ?? null}
           championEnabled={bolao.champion_enabled ?? true}

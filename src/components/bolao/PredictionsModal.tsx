@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  useBolao,
   useWcMatches,
   useBolaoPredictions,
   useUpsertPrediction,
@@ -29,6 +30,7 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
 }) => {
   const [groupFilter, setGroupFilter] = useState<string>('all');
 
+  const { data: bolao } = useBolao(bolaoId);
   const { data: matches, isLoading } = useWcMatches();
   const { data: predictions } = useBolaoPredictions(bolaoId, currentUserId);
   const upsertPrediction = useUpsertPrediction();
@@ -139,6 +141,9 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
                         prediction={predictionsByMatch.get(match.id)}
                         onSave={handleSave}
                         isSaving={upsertPrediction.isPending}
+                        deadlineMode={bolao?.prediction_deadline_mode ?? 'per_match'}
+                        allMatches={matches}
+                        isClosed={bolao?.is_closed}
                       />
                     ))}
                   </div>
