@@ -141,26 +141,30 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
             <span className="w-8 text-center text-sm font-bold">{match.away_score}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1 px-1">
+          <div className="flex items-center gap-1.5 px-1">
             <input
               type="number"
+              inputMode="numeric"
               min="0"
               max="20"
               value={homeScore}
               onChange={(e) => setHomeScore(e.target.value)}
               disabled={locked}
-              className="w-10 h-8 text-center text-sm font-bold bg-terminal-dark-gray border border-terminal-border rounded focus:border-terminal-green focus:outline-none disabled:opacity-40 text-terminal-text"
+              aria-label={`Placar ${match.home_team_code} (mandante)`}
+              className="w-12 h-11 text-center text-base font-bold bg-terminal-dark-gray border border-terminal-border rounded focus:border-terminal-green focus:outline-none focus:ring-1 focus:ring-terminal-green/40 disabled:opacity-40 text-terminal-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               placeholder="-"
             />
             <span className="text-xs opacity-40">x</span>
             <input
               type="number"
+              inputMode="numeric"
               min="0"
               max="20"
               value={awayScore}
               onChange={(e) => setAwayScore(e.target.value)}
               disabled={locked}
-              className="w-10 h-8 text-center text-sm font-bold bg-terminal-dark-gray border border-terminal-border rounded focus:border-terminal-green focus:outline-none disabled:opacity-40 text-terminal-text"
+              aria-label={`Placar ${match.away_team_code} (visitante)`}
+              className="w-12 h-11 text-center text-base font-bold bg-terminal-dark-gray border border-terminal-border rounded focus:border-terminal-green focus:outline-none focus:ring-1 focus:ring-terminal-green/40 disabled:opacity-40 text-terminal-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               placeholder="-"
             />
           </div>

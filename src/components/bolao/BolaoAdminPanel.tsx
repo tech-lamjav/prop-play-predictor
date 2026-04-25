@@ -157,11 +157,14 @@ const NumberStepper: React.FC<NumberStepperProps> = ({
   };
   const canDec = !disabled && value > min;
   const canInc = !disabled && value < max;
-  const btnW = size === 'sm' ? 'w-6' : 'w-7';
-  const btnText = size === 'sm' ? 'text-xs' : 'text-sm';
-  const inputPad = size === 'sm' ? 'py-0.5 text-[11px]' : 'py-1 text-xs';
+  // h-11 (44px) = WCAG touch target minimum. Smaller variants kept for non-primary
+  // contexts but minimum hit area always 44×44 via padding.
+  const containerH = size === 'sm' ? 'h-9' : 'h-11';
+  const btnW = size === 'sm' ? 'w-9' : 'w-11';
+  const btnText = size === 'sm' ? 'text-base' : 'text-lg';
+  const inputText = size === 'sm' ? 'text-xs' : 'text-sm';
   return (
-    <div className={`flex items-stretch rounded border overflow-hidden ${
+    <div className={`flex items-stretch ${containerH} rounded border overflow-hidden ${
       highlight ? 'border-terminal-blue/50' : 'border-terminal-border'
     } ${disabled ? 'opacity-30' : ''} ${className ?? ''}`}>
       <button
@@ -169,7 +172,7 @@ const NumberStepper: React.FC<NumberStepperProps> = ({
         onClick={() => bump(-step)}
         disabled={!canDec}
         aria-label={ariaLabel ? `Diminuir ${ariaLabel}` : 'Diminuir'}
-        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 text-terminal-blue font-bold ${btnText} transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
+        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 active:bg-terminal-blue/30 text-terminal-blue font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
       >
         −
       </button>
@@ -182,19 +185,19 @@ const NumberStepper: React.FC<NumberStepperProps> = ({
         onChange={(e) => handleInput(e.target.value)}
         disabled={disabled}
         aria-label={ariaLabel}
-        className={`flex-1 min-w-0 text-center font-bold bg-terminal-dark-gray ${inputPad} focus:bg-terminal-blue/10 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:cursor-not-allowed ${
+        className={`flex-1 min-w-0 text-center font-bold bg-terminal-dark-gray ${inputText} focus:bg-terminal-blue/10 focus:outline-none focus:ring-1 focus:ring-terminal-blue/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:cursor-not-allowed ${
           highlight ? 'text-terminal-blue' : ''
         }`}
       />
       {suffix && (
-        <span className="flex items-center px-1 text-[10px] opacity-40 bg-terminal-dark-gray">{suffix}</span>
+        <span className="flex items-center px-1.5 text-xs opacity-40 bg-terminal-dark-gray">{suffix}</span>
       )}
       <button
         type="button"
         onClick={() => bump(step)}
         disabled={!canInc}
         aria-label={ariaLabel ? `Aumentar ${ariaLabel}` : 'Aumentar'}
-        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 text-terminal-blue font-bold ${btnText} transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
+        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 active:bg-terminal-blue/30 text-terminal-blue font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
       >
         +
       </button>
@@ -591,11 +594,16 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                       className="w-24"
                     />
                     <span className="text-[9px] opacity-30 w-5">pts</span>
-                    <button onClick={handleToggleChampion} className="shrink-0">
+                    <button
+                      onClick={handleToggleChampion}
+                      aria-label={champEnabled ? 'Desabilitar palpite de campeão' : 'Habilitar palpite de campeão'}
+                      aria-pressed={champEnabled}
+                      className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
+                    >
                       {champEnabled ? (
-                        <ToggleRight className="w-6 h-6 text-terminal-blue" />
+                        <ToggleRight className="w-7 h-7 text-terminal-blue" />
                       ) : (
-                        <ToggleLeft className="w-6 h-6 opacity-30" />
+                        <ToggleLeft className="w-7 h-7 opacity-30" />
                       )}
                     </button>
                   </div>
@@ -646,11 +654,16 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                             className="w-24"
                           />
                           <span className="text-[9px] opacity-30 w-5">pts</span>
-                          <button onClick={() => handleToggleSpecialType(type)} className="shrink-0">
+                          <button
+                            onClick={() => handleToggleSpecialType(type)}
+                            aria-label={specialConfig[type] ? `Desabilitar ${label}` : `Habilitar ${label}`}
+                            aria-pressed={!!specialConfig[type]}
+                            className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
+                          >
                             {specialConfig[type] ? (
-                              <ToggleRight className="w-6 h-6 text-terminal-blue" />
+                              <ToggleRight className="w-7 h-7 text-terminal-blue" />
                             ) : (
-                              <ToggleLeft className="w-6 h-6 opacity-30" />
+                              <ToggleLeft className="w-7 h-7 opacity-30" />
                             )}
                           </button>
                         </div>
@@ -821,7 +834,12 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                       <p className="text-xs font-medium">Multiplicador por fase</p>
                       <p className="text-[10px] opacity-40">Mata-mata vale mais pontos</p>
                     </div>
-                    <button onClick={() => setUseWeighted(!useWeighted)} className="shrink-0">
+                    <button
+                      onClick={() => setUseWeighted(!useWeighted)}
+                      aria-label={useWeighted ? 'Desabilitar multiplicador por fase' : 'Habilitar multiplicador por fase'}
+                      aria-pressed={useWeighted}
+                      className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
+                    >
                       {useWeighted ? (
                         <ToggleRight className="w-7 h-7 text-terminal-blue" />
                       ) : (

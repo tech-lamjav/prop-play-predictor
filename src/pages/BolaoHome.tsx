@@ -17,6 +17,7 @@ import { CreateBolaoModal } from '@/components/bolao/CreateBolaoModal';
 import { CopaGruposModal } from '@/components/bolao/CopaGruposModal';
 import { CopaBracketModal } from '@/components/bolao/CopaBracketModal';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
+import { DeadlineBadge } from '@/components/bolao/DeadlineBadge';
 import { useToast } from '@/hooks/use-toast';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,6 +63,7 @@ const BolaoHome: React.FC = () => {
   const [showGrupos, setShowGrupos] = useState(false);
   const [showBracket, setShowBracket] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
+  const [checkoutRedirecting, setCheckoutRedirecting] = useState(false);
   const [currentUserId, setCurrentUserId] = React.useState<string | undefined>();
 
   React.useEffect(() => {
@@ -137,8 +139,8 @@ const BolaoHome: React.FC = () => {
     if (BOLAO_PRO_PRICE_ID) {
       // Checkout dinâmico: webhook cria o bolão com o UUID pré-gerado
       setShowCreate(false);
+      setCheckoutRedirecting(true);
       const preGeneratedId = crypto.randomUUID();
-      toast({ title: 'Redirecionando para pagamento...', description: 'Bolão Premium criado após confirmação.' });
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('Usuário não autenticado');
@@ -157,6 +159,7 @@ const BolaoHome: React.FC = () => {
         if (error) throw error;
         window.location.href = fnData.url;
       } catch (err: any) {
+        setCheckoutRedirecting(false);
         toast({ title: 'Erro ao iniciar checkout', description: err?.message, variant: 'destructive' });
       }
     } else {
@@ -165,7 +168,7 @@ const BolaoHome: React.FC = () => {
       createBolao.mutate({ name: data.name, description: data.description }, {
         onSuccess: (bolao) => {
           setShowCreate(false);
-          toast({ title: 'Redirecionando para pagamento...', description: 'Aguarde.' });
+          setCheckoutRedirecting(true);
           window.location.href = `${BOLAO_PRO_PAYMENT_LINK}?client_reference_id=${bolao.id}`;
         },
         onError: (err: any) => {
@@ -246,27 +249,28 @@ const BolaoHome: React.FC = () => {
               <div className="flex gap-2 min-w-0">
                 <Button
                   onClick={() => setShowCreate(true)}
-                  size="sm"
-                  className="bg-transparent border border-terminal-blue text-terminal-blue hover:bg-terminal-blue/10 gap-1 shrink-0 h-[38px] px-3"
+                  aria-label="Criar novo bolão"
+                  className="bg-transparent border border-terminal-blue text-terminal-blue hover:bg-terminal-blue/10 gap-1.5 shrink-0 h-11 px-4"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Criar</span>
+                  <Plus className="w-4 h-4" />
+                  <span>Criar</span>
                 </Button>
                 <input
                   type="text"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                  placeholder="Código de convite"
+                  placeholder="Código (ex: ABC12345)"
                   maxLength={8}
-                  className="min-w-0 flex-1 bg-terminal-dark-gray border border-terminal-border rounded px-3 py-2 text-sm font-mono placeholder:opacity-30 focus:outline-none focus:border-terminal-blue transition-colors"
+                  aria-label="Código de convite do bolão"
+                  className="min-w-0 flex-1 bg-terminal-dark-gray border border-terminal-border rounded px-3 h-11 text-sm font-mono placeholder:opacity-30 focus:outline-none focus:border-terminal-blue focus:ring-1 focus:ring-terminal-blue/30 transition-colors"
                 />
                 <Button
                   onClick={handleJoin}
                   disabled={inviteCode.trim().length < 4 || joinBolao.isPending}
                   variant="outline"
-                  size="sm"
-                  className="border-terminal-blue/50 text-terminal-blue hover:bg-terminal-blue/10 gap-1 px-3 h-[38px] shrink-0"
+                  aria-label="Entrar em bolão usando código"
+                  className="border-terminal-blue/50 text-terminal-blue hover:bg-terminal-blue/10 gap-1.5 px-4 h-11 shrink-0"
                 >
                   {joinBolao.isPending ? (
                     'Entrando...'
@@ -325,6 +329,14 @@ const BolaoHome: React.FC = () => {
                               <Trophy className="w-2.5 h-2.5" />
                               Campeão
                             </span>
+                          )}
+                          {!bolao.is_closed && bolao.pending_predictions > 0 && (
+                            <DeadlineBadge
+                              matches={matches}
+                              mode={bolao.prediction_deadline_mode ?? 'per_match'}
+                              isClosed={bolao.is_closed}
+                              variant="compact"
+                            />
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs opacity-50">
@@ -464,6 +476,25 @@ const BolaoHome: React.FC = () => {
       />
       <CopaGruposModal open={showGrupos} onOpenChange={setShowGrupos} />
       <CopaBracketModal open={showBracket} onOpenChange={setShowBracket} />
+
+      {/* Lock overlay durante redirect pra Stripe — previne duplo click */}
+      {checkoutRedirecting && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+          role="alert"
+          aria-live="assertive"
+        >
+          <div className="bg-terminal-bg border border-yellow-500/30 rounded-lg p-6 max-w-sm text-center">
+            <div className="w-12 h-12 mx-auto mb-4 border-3 border-yellow-500/30 border-t-yellow-400 rounded-full animate-spin" />
+            <p className="text-base font-bold text-yellow-300 mb-1">
+              Redirecionando para pagamento
+            </p>
+            <p className="text-xs opacity-60">
+              Aguarde a página da Stripe carregar. Não feche essa janela.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

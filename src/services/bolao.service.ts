@@ -105,6 +105,7 @@ export interface UserBolao {
   pending_predictions: number;
   has_champion_prediction: boolean;
   created_at: string;
+  prediction_deadline_mode: 'per_match' | 'per_round' | 'tournament_start';
 }
 
 export interface ChampionPrediction {

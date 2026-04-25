@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import {
   Trophy,
@@ -11,6 +12,7 @@ import {
   BarChart3,
   Image,
   Settings,
+  Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,6 +32,9 @@ import { SpecialPredictionsSection } from '@/components/bolao/SpecialPredictions
 import { PredictionsModal } from '@/components/bolao/PredictionsModal';
 
 import { BolaoStatsPanel } from '@/components/bolao/BolaoStatsPanel';
+import { DeadlineBadge } from '@/components/bolao/DeadlineBadge';
+import { ShareCallout } from '@/components/bolao/ShareCallout';
+import { PremiumWelcomeModal } from '@/components/bolao/PremiumWelcomeModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { WcMatch, BolaoRankingEntry } from '@/services/bolao.service';
@@ -149,9 +154,14 @@ const BolaoDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('ranking');
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showPremiumWelcome, setShowPremiumWelcome] = useState(false);
+  // Webhook polling state: true = ?success=true detectado mas is_premium ainda false
+  const [awaitingWebhook, setAwaitingWebhook] = useState(false);
+  const [webhookTimedOut, setWebhookTimedOut] = useState(false);
 
   React.useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -171,21 +181,53 @@ const BolaoDetail: React.FC = () => {
   const upsertChampion = useUpsertChampionPrediction();
 
   // ── Handle query params: Stripe success + auto-open settings ──────
+  // Two cases for ?success=true:
+  //   1. Bolão already premium → open welcome modal once
+  //   2. Webhook still pending → enter awaitingWebhook state, poll until premium
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('success') === 'true') {
-      toast({
-        title: 'Bolão Premium ativado!',
-        description: 'Pagamento confirmado. Aproveite os recursos exclusivos.',
-      });
-      setShowAdmin(true);
-      navigate(`/bolao/${id}`, { replace: true });
+      if (bolao && bolao.is_premium) {
+        setShowPremiumWelcome(true);
+        navigate(`/bolao/${id}`, { replace: true });
+      } else if (bolao && !bolao.is_premium) {
+        setAwaitingWebhook(true);
+        // Don't strip ?success=true yet — keep polling until webhook fires
+      }
     }
     if (params.get('settings') === 'true') {
       setShowAdmin(true);
       navigate(`/bolao/${id}`, { replace: true });
     }
-  }, [location.search, id, navigate, toast]);
+  }, [location.search, id, navigate, bolao?.is_premium]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Webhook polling: while awaitingWebhook, refetch bolão every 4s up to 30s.
+  useEffect(() => {
+    if (!awaitingWebhook || !id) return;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 8; // 8 × 4s = 32s window
+
+    const tick = setInterval(() => {
+      attempts++;
+      // Force a refetch via React Query — the bolao prop will reflect new state
+      queryClient.invalidateQueries({ queryKey: ['bolao', id] });
+      if (attempts >= MAX_ATTEMPTS) {
+        clearInterval(tick);
+        setWebhookTimedOut(true);
+      }
+    }, 4000);
+    return () => clearInterval(tick);
+  }, [awaitingWebhook, id, queryClient]);
+
+  // When premium flips to true while awaiting → open welcome modal, clean URL.
+  useEffect(() => {
+    if (awaitingWebhook && bolao?.is_premium) {
+      setAwaitingWebhook(false);
+      setWebhookTimedOut(false);
+      setShowPremiumWelcome(true);
+      navigate(`/bolao/${id}`, { replace: true });
+    }
+  }, [awaitingWebhook, bolao?.is_premium, id, navigate]);
 
   const myChampionPick = useMemo(
     () => championPredictions?.find((p) => p.user_id === currentUserId) ?? null,
@@ -472,19 +514,19 @@ const BolaoDetail: React.FC = () => {
             {currentUserId && currentUserId === bolao.owner_id && (
               <Button
                 variant="ghost"
-                size="sm"
                 onClick={() => setShowAdmin(true)}
-                className="gap-1.5 text-xs opacity-60 hover:opacity-100 h-8"
+                aria-label="Abrir configurações do bolão"
+                className="gap-1.5 text-xs opacity-70 hover:opacity-100 h-11 px-3"
               >
-                <Settings className="w-3.5 h-3.5" />
-                Configurações
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">Configurações</span>
               </Button>
             )}
           </div>
         </div>
 
         {/* ── Info bar ── */}
-        <div className="flex items-center gap-4 mb-5 text-xs opacity-50 flex-wrap">
+        <div className="flex items-center gap-4 mb-3 text-xs opacity-50 flex-wrap">
           <span className="flex items-center gap-1">
             <Users className="w-3 h-3" />
             {ranking?.length || 0} participantes
@@ -501,34 +543,38 @@ const BolaoDetail: React.FC = () => {
           </span>
         </div>
 
-        {/* ── Onboarding (full width, before grid) ── */}
-        {showOnboarding && (
+        {/* ── Deadline badge (próximo prazo de palpite) ── */}
+        {!bolao.is_closed && (
+          <div className="mb-5">
+            <DeadlineBadge
+              matches={matches}
+              mode={bolao.prediction_deadline_mode ?? 'per_match'}
+              isClosed={bolao.is_closed}
+            />
+          </div>
+        )}
+
+        {/* ── Share callout: aparece quando bolão tem ≤ 1 membro ── */}
+        {ranking && ranking.length <= 1 && !bolao.is_closed && (
+          <ShareCallout
+            bolaoId={bolao.id}
+            bolaoName={bolao.name}
+            inviteCode={bolao.invite_code}
+          />
+        )}
+
+        {/* ── Onboarding "Faça palpites" (só pra quem ainda não palpitou) ── */}
+        {showOnboarding && (myPredictions?.length ?? 0) === 0 && (
           <div className="terminal-container p-4 mb-5 border-terminal-blue/30 bg-terminal-blue/5">
-            <p className="text-xs font-bold uppercase tracking-wider text-terminal-blue mb-3">
-              Primeiros passos
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex items-start gap-3 flex-1">
-                <span className="text-[10px] font-bold text-terminal-blue bg-terminal-blue/20 rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  1
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Compartilhe com seus amigos</p>
-                  <p className="text-xs opacity-50">
-                    Envie o código <span className="font-mono text-terminal-blue">{bolao.invite_code}</span> ou o link de convite
-                  </p>
-                </div>
+            <div className="flex items-start gap-3">
+              <div className="bg-terminal-blue/15 border border-terminal-blue/30 rounded-full w-9 h-9 flex items-center justify-center shrink-0">
+                <Target className="w-4 h-4 text-terminal-blue" />
               </div>
-              <div className="flex items-start gap-3 flex-1">
-                <span className="text-[10px] font-bold text-terminal-blue bg-terminal-blue/20 rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  2
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Faça seus palpites</p>
-                  <p className="text-xs opacity-50">
-                    Palpite nos 104 jogos antes de cada partida começar
-                  </p>
-                </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Faça seus palpites</p>
+                <p className="text-xs opacity-60 mt-0.5">
+                  Palpite nos 104 jogos antes de cada partida começar
+                </p>
               </div>
             </div>
           </div>
@@ -540,26 +586,34 @@ const BolaoDetail: React.FC = () => {
           {/* ── Main content ── */}
           <div className="min-w-0">
             {/* Tabs */}
-            <div className="flex gap-1 mb-6 border-b border-terminal-border">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase transition-colors border-b-2 -mb-px ${
-                    activeTab === tab.key
-                      ? 'border-terminal-blue text-terminal-blue'
-                      : 'border-transparent opacity-50 hover:opacity-80'
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              ))}
+            <div role="tablist" aria-label="Seções do bolão" className="flex gap-1 mb-6 border-b border-terminal-border">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`bolao-tab-panel-${tab.key}`}
+                    id={`bolao-tab-${tab.key}`}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-1.5 px-4 h-11 text-xs font-bold uppercase transition-colors border-b-2 -mb-px focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-blue/50 ${
+                      isActive
+                        ? 'border-terminal-blue text-terminal-blue'
+                        : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Tab: Ranking */}
             {activeTab === 'ranking' && (
-              <>
+              <div role="tabpanel" id="bolao-tab-panel-ranking" aria-labelledby="bolao-tab-ranking">
                 {ranking && ranking.length > 1 && (
                   <div className="flex items-center justify-end gap-3 mb-3">
                     <button
@@ -581,12 +635,12 @@ const BolaoDetail: React.FC = () => {
                   </div>
                 )}
                 <BolaoRankingTable ranking={ranking || []} currentUserId={currentUserId} />
-              </>
+              </div>
             )}
 
             {/* Tab: Meus Palpites */}
             {activeTab === 'meus-palpites' && (
-              <div>
+              <div role="tabpanel" id="bolao-tab-panel-meus-palpites" aria-labelledby="bolao-tab-meus-palpites">
                 <p className="text-xs opacity-50 mb-4">
                   {myPredictions?.length || 0} palpites registrados
                 </p>
@@ -650,11 +704,13 @@ const BolaoDetail: React.FC = () => {
 
             {/* Tab: Estatísticas */}
             {activeTab === 'estatisticas' && (
-              <BolaoStatsPanel
-                bolaoId={bolao.id}
-                currentUserId={currentUserId}
-                isPremium={bolao.is_premium}
-              />
+              <div role="tabpanel" id="bolao-tab-panel-estatisticas" aria-labelledby="bolao-tab-estatisticas">
+                <BolaoStatsPanel
+                  bolaoId={bolao.id}
+                  currentUserId={currentUserId}
+                  isPremium={bolao.is_premium}
+                />
+              </div>
             )}
           </div>
 
@@ -730,6 +786,65 @@ const BolaoDetail: React.FC = () => {
           currentUserId={currentUserId}
           ownerUserId={bolao.owner_id}
         />
+      )}
+
+      {/* Premium welcome modal — shown once after successful payment */}
+      <PremiumWelcomeModal
+        open={showPremiumWelcome}
+        onOpenChange={setShowPremiumWelcome}
+        onShare={() => {
+          setShowPremiumWelcome(false);
+          // Scroll to ShareCallout (sticky atop). If no callout (already 2+ members),
+          // scroll to top so user can use the header share button.
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onConfigure={() => {
+          setShowPremiumWelcome(false);
+          setShowAdmin(true);
+        }}
+      />
+
+      {/* Webhook awaiting overlay — paid but is_premium not yet flipped */}
+      {awaitingWebhook && !bolao.is_premium && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
+          role="alert"
+          aria-live="assertive"
+        >
+          <div className="bg-terminal-bg border border-yellow-500/40 rounded-lg p-6 max-w-sm text-center">
+            {webhookTimedOut ? (
+              <>
+                <p className="text-base font-bold text-yellow-300 mb-2">
+                  Pagamento sendo processado
+                </p>
+                <p className="text-sm opacity-70 mb-4">
+                  A confirmação está demorando mais do que o normal.
+                  Você receberá um email assim que for ativado, normalmente em poucos minutos.
+                </p>
+                <Button
+                  onClick={() => {
+                    setAwaitingWebhook(false);
+                    setWebhookTimedOut(false);
+                    navigate(`/bolao/${id}`, { replace: true });
+                  }}
+                  className="w-full bg-terminal-blue text-terminal-bg hover:bg-terminal-blue/90 h-11"
+                >
+                  Continuar usando o bolão
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 mx-auto mb-4 border-3 border-yellow-500/30 border-t-yellow-400 rounded-full animate-spin" />
+                <p className="text-base font-bold text-yellow-300 mb-1">
+                  Confirmando pagamento...
+                </p>
+                <p className="text-xs opacity-60">
+                  Aguarde até 30 segundos para a Stripe confirmar.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

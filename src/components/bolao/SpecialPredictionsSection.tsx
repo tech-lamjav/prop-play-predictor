@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Crown, Lock, ChevronDown, ChevronUp, Check, Search } from 'lucide-react';
+import { Crown, Lock, ChevronDown, ChevronUp, Check, Search, X } from 'lucide-react';
 import {
   useMySpecialPredictions,
   useSpecialSummary,
@@ -112,13 +112,14 @@ const PickPanel: React.FC<PickPanelProps> = ({ type, bolaoId, myPicks, summaryCo
           {/* Search */}
           <div className="px-3 pt-3 pb-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 opacity-40" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />
               <input
-                type="text"
+                type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar seleção..."
-                className="w-full bg-terminal-dark-gray border border-terminal-border rounded px-2 py-1.5 pl-7 text-xs placeholder:opacity-30 focus:outline-none focus:border-terminal-blue transition-colors"
+                aria-label={`Buscar seleção em ${label}`}
+                className="w-full bg-terminal-dark-gray border border-terminal-border rounded px-3 pl-9 h-10 text-sm placeholder:opacity-30 focus:outline-none focus:border-terminal-blue focus:ring-1 focus:ring-terminal-blue/30 transition-colors"
               />
             </div>
           </div>
@@ -133,7 +134,9 @@ const PickPanel: React.FC<PickPanelProps> = ({ type, bolaoId, myPicks, summaryCo
                   key={team.code}
                   onClick={() => handleToggle(team.code)}
                   disabled={toggle.isPending}
-                  className={`relative flex flex-col items-center gap-0.5 p-2 rounded border text-center transition-all ${
+                  aria-label={`${picked ? 'Remover' : 'Escolher'} ${team.name} para ${label}`}
+                  aria-pressed={picked}
+                  className={`relative flex flex-col items-center gap-0.5 p-2 min-h-[60px] rounded border text-center transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-blue/50 ${
                     picked
                       ? 'border-terminal-blue bg-terminal-blue/10 text-terminal-blue'
                       : 'border-terminal-border-subtle hover:border-terminal-border bg-transparent opacity-70 hover:opacity-100'
@@ -144,10 +147,10 @@ const PickPanel: React.FC<PickPanelProps> = ({ type, bolaoId, myPicks, summaryCo
                       <Check className="w-2 h-2 text-terminal-bg" />
                     </div>
                   )}
-                  <span className="font-mono font-bold text-[11px]">{team.code}</span>
-                  <span className="text-[9px] opacity-60 leading-tight text-center line-clamp-1">{team.name}</span>
+                  <span className="font-mono font-bold text-xs">{team.code}</span>
+                  <span className="text-[10px] opacity-60 leading-tight text-center line-clamp-1">{team.name}</span>
                   {count > 0 && totalMembers > 1 && (
-                    <span className="text-[8px] opacity-40 tabular-nums">{count} pick{count !== 1 ? 's' : ''}</span>
+                    <span className="text-[9px] opacity-40 tabular-nums">{count} pick{count !== 1 ? 's' : ''}</span>
                   )}
                 </button>
               );
@@ -158,17 +161,21 @@ const PickPanel: React.FC<PickPanelProps> = ({ type, bolaoId, myPicks, summaryCo
           {myPicks.length > 0 && (
             <div className="px-3 pb-3 border-t border-terminal-border-subtle/50 pt-2">
               <p className="text-[10px] opacity-40 mb-1 uppercase tracking-wider">Meus palpites</p>
-              <div className="flex flex-wrap gap-1">
-                {myPicks.map((code) => (
-                  <button
-                    key={code}
-                    onClick={() => handleToggle(code)}
-                    className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-terminal-blue/50 bg-terminal-blue/10 text-terminal-blue hover:bg-terminal-red/10 hover:border-terminal-red/50 hover:text-terminal-red transition-colors"
-                    title="Clique para remover"
-                  >
-                    {code} ×
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-1.5">
+                {myPicks.map((code) => {
+                  const team = teams.find(t => t.code === code);
+                  return (
+                    <button
+                      key={code}
+                      onClick={() => handleToggle(code)}
+                      aria-label={`Remover ${team?.name ?? code} dos meus palpites`}
+                      className="text-xs font-mono font-bold px-2.5 h-8 rounded border border-terminal-blue/50 bg-terminal-blue/10 text-terminal-blue hover:bg-terminal-red/10 hover:border-terminal-red/50 hover:text-terminal-red focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-red/50 transition-colors flex items-center gap-1"
+                    >
+                      <span>{code}</span>
+                      <X className="w-3 h-3" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

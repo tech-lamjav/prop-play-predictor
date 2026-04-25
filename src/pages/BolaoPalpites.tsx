@@ -90,9 +90,10 @@ const BolaoPalpites: React.FC = () => {
             variant="ghost"
             size="icon"
             onClick={() => navigate(`/bolao/${id}`)}
-            className="h-8 w-8"
+            aria-label="Voltar para o bolão"
+            className="h-11 w-11 shrink-0"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
             <h1 className="text-lg font-bold">Palpites</h1>

@@ -396,3 +396,66 @@ export function isMatchPredictionLocked(
   const deadline = computeMatchDeadline(match, mode, allMatches);
   return new Date() >= deadline;
 }
+
+/**
+ * Returns the next prediction deadline that hasn't passed yet, given the
+ * bolão mode + the user's already-made predictions. Used to show the user
+ * "Próximo palpite fecha em XYZ" outside of an individual match card.
+ *
+ * Returns null if everything is already locked or finished.
+ */
+export function getNextDeadline(
+  mode: 'per_match' | 'per_round' | 'tournament_start',
+  allMatches: WcMatch[] | undefined,
+  isClosed: boolean
+): { match: WcMatch; deadline: Date } | null {
+  if (isClosed || !allMatches || allMatches.length === 0) return null;
+  const now = new Date();
+  // Find every match that's still open and pick the earliest deadline.
+  const candidates = allMatches
+    .filter(m => !m.is_finished)
+    .map(m => ({ match: m, deadline: computeMatchDeadline(m, mode, allMatches) }))
+    .filter(c => c.deadline.getTime() > now.getTime())
+    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+  return candidates[0] ?? null;
+}
+
+/**
+ * Human-friendly relative time formatter. Returns "47min", "2h 15min",
+ * "Hoje 22:00", "23/04 22:00", etc. Suitable for deadline countdown badges.
+ */
+export function formatDeadlineRelative(deadline: Date, now: Date = new Date()): string {
+  const diffMs = deadline.getTime() - now.getTime();
+  if (diffMs <= 0) return 'Encerrado';
+
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 60) return `${diffMin}min`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 12) {
+    const remainingMin = diffMin % 60;
+    return remainingMin > 0 ? `${diffHours}h ${remainingMin}min` : `${diffHours}h`;
+  }
+
+  // Same calendar day → "Hoje 22:00"
+  const sameDay = deadline.toDateString() === now.toDateString();
+  const hh = String(deadline.getHours()).padStart(2, '0');
+  const mm = String(deadline.getMinutes()).padStart(2, '0');
+  if (sameDay) return `Hoje ${hh}:${mm}`;
+
+  // Tomorrow
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (deadline.toDateString() === tomorrow.toDateString()) return `Amanhã ${hh}:${mm}`;
+
+  // Otherwise → "23/04 22:00"
+  const dd = String(deadline.getDate()).padStart(2, '0');
+  const mo = String(deadline.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mo} ${hh}:${mm}`;
+}
+
+/** Returns true if the deadline is < 1 hour away → urgent (red pulse) */
+export function isDeadlineUrgent(deadline: Date, now: Date = new Date()): boolean {
+  const diffMs = deadline.getTime() - now.getTime();
+  return diffMs > 0 && diffMs < 60 * 60_000;
+}

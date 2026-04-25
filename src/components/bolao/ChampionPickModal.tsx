@@ -94,19 +94,22 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
         {/* Search */}
         <div className="px-5 pb-3 shrink-0">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />
             <Input
+              type="search"
               placeholder="Buscar seleção..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs bg-terminal-dark-gray border-terminal-border text-terminal-text"
+              aria-label="Buscar seleção"
+              className="pl-9 h-11 text-sm bg-terminal-dark-gray border-terminal-border text-terminal-text"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-70"
+                aria-label="Limpar busca"
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded opacity-50 hover:opacity-100 hover:bg-terminal-gray/40 transition-colors"
               >
-                <X className="w-3 h-3" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -126,7 +129,9 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
                   <button
                     key={team.code}
                     onClick={() => setSelected(team.code)}
-                    className={`relative flex flex-col items-center gap-1.5 p-2.5 rounded border text-left transition-all ${
+                    aria-label={`Escolher ${team.name} como campeão${isSelected ? ' (selecionado)' : ''}`}
+                    aria-pressed={isSelected}
+                    className={`relative flex flex-col items-center gap-1.5 p-3 min-h-[72px] rounded border text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 ${
                       isSelected
                         ? 'border-yellow-500/60 bg-yellow-500/5'
                         : 'border-terminal-border hover:border-terminal-border-subtle bg-terminal-dark-gray/30'
@@ -172,20 +177,18 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               onClick={() => handleOpen(false)}
-              className="text-terminal-text text-xs"
+              className="text-terminal-text text-sm h-11 px-4"
             >
               Cancelar
             </Button>
             <Button
               type="button"
-              size="sm"
               disabled={!selected || isLoading}
               onClick={handleConfirm}
-              className="bg-yellow-500 text-terminal-bg hover:bg-yellow-500/90 text-xs gap-1.5"
+              className="bg-yellow-500 text-terminal-bg hover:bg-yellow-500/90 text-sm gap-1.5 h-11 px-4 font-bold"
             >
-              <Trophy className="w-3 h-3" />
+              <Trophy className="w-4 h-4" />
               {isLoading ? 'Salvando...' : 'Confirmar'}
             </Button>
           </div>
