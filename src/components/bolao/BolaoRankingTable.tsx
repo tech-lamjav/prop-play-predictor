@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Target, Crosshair } from 'lucide-react';
+import { Trophy, Target, Crosshair, Medal, Award } from 'lucide-react';
 import type { BolaoRankingEntry } from '@/services/bolao.service';
 
 interface BolaoRankingTableProps {
@@ -7,11 +7,21 @@ interface BolaoRankingTableProps {
   currentUserId?: string;
 }
 
-function getRankBadge(rank: number) {
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
-  return `${rank}º`;
+/**
+ * Renders rank badge: top-3 get a medal/trophy icon, others show ordinal.
+ * Colors are tier-specific (gold/silver/bronze) to keep podium hierarchy.
+ */
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) {
+    return <Trophy className="w-5 h-5 text-yellow-400" aria-label="1º lugar" />;
+  }
+  if (rank === 2) {
+    return <Medal className="w-5 h-5 text-slate-300" aria-label="2º lugar" />;
+  }
+  if (rank === 3) {
+    return <Award className="w-5 h-5 text-orange-400" aria-label="3º lugar" />;
+  }
+  return <span className="text-sm font-bold opacity-60">{rank}º</span>;
 }
 
 export const BolaoRankingTable: React.FC<BolaoRankingTableProps> = ({
@@ -54,8 +64,8 @@ export const BolaoRankingTable: React.FC<BolaoRankingTableProps> = ({
                 : 'bg-terminal-dark-gray/30 border border-terminal-border-subtle hover:bg-terminal-dark-gray/50'
             }`}
           >
-            <div className="flex items-center text-sm font-bold">
-              {getRankBadge(Number(entry.rank))}
+            <div className="flex items-center">
+              <RankBadge rank={Number(entry.rank)} />
             </div>
             <div className="flex items-center">
               <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-terminal-green' : ''}`}>

@@ -15,7 +15,12 @@ import {
   ToggleLeft,
   ToggleRight,
   ChevronDown,
+  Check,
+  Crown,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,6 +35,8 @@ import {
   useUpdateBolaoTheme,
   useUploadBolaoLogo,
   useUpdateBolaoSettings,
+  useUpdateBolaoDeadlineMode,
+  useBolaoStats,
 } from '@/hooks/use-bolao';
 import { useToast } from '@/hooks/use-toast';
 import type { BolaoRankingEntry } from '@/services/bolao.service';
@@ -43,6 +50,7 @@ interface BolaoAdminPanelProps {
   scoringPreset: string | null;
   scoringResult: number;
   scoringExact: number;
+  scoringWeights: Record<string, number> | null;
   customColor: string | null;
   customBannerUrl: string | null;
   championEnabled: boolean;
@@ -53,7 +61,14 @@ interface BolaoAdminPanelProps {
   ranking: BolaoRankingEntry[];
   currentUserId: string | undefined;
   ownerUserId: string;
+  predictionDeadlineMode: 'per_match' | 'per_round' | 'tournament_start';
 }
+
+const DEADLINE_MODE_LABELS: Record<string, { label: string; description: string }> = {
+  per_match:        { label: 'Por jogo',     description: 'Até o apito inicial de cada partida' },
+  per_round:        { label: 'Por fase',     description: 'Até o início da primeira partida da fase' },
+  tournament_start: { label: 'Copa inteira', description: 'Até a abertura da Copa' },
+};
 
 // ── Color Theme ────────────────────────────────────────────────────
 const THEME_COLORS: { value: string; label: string; bg: string; border: string }[] = [
@@ -69,10 +84,126 @@ const THEME_COLORS: { value: string; label: string; bg: string; border: string }
 
 // ── Scoring Presets (quick-fill shortcuts) ─────────────────────────
 const SCORING_PRESETS = [
-  { value: 'standard',        label: 'Padrão',        result: 1, exact: 3, weighted: false },
-  { value: 'classic',         label: 'Clássico',       result: 1, exact: 5, weighted: false },
-  { value: 'weighted_stages', label: 'Fases valem +',  result: 1, exact: 3, weighted: true  },
+  {
+    value: 'standard',
+    label: 'Casual',
+    description: 'Simples, sem multiplicador',
+    result: 1,
+    exact: 3,
+    weighted: false,
+  },
+  {
+    value: 'classic',
+    label: 'Clássico',
+    description: 'Placar exato vale mais',
+    result: 1,
+    exact: 5,
+    weighted: false,
+  },
+  {
+    value: 'weighted_stages',
+    label: 'Campeonato',
+    description: 'Mata-mata decide tudo',
+    result: 1,
+    exact: 3,
+    weighted: true,
+  },
 ] as const;
+
+// ── Stage labels + default multipliers ─────────────────────────────
+const STAGE_LABELS: { key: string; label: string; defaultWeight: number }[] = [
+  { key: 'group',       label: 'Grupos',    defaultWeight: 1.0 },
+  { key: 'round_of_32', label: 'R32',       defaultWeight: 1.5 },
+  { key: 'round_of_16', label: 'R16',       defaultWeight: 1.5 },
+  { key: 'quarter',     label: 'Quartas',   defaultWeight: 2.0 },
+  { key: 'semi',        label: 'Semis',     defaultWeight: 3.0 },
+  { key: 'third_place', label: '3º lugar',  defaultWeight: 2.0 },
+  { key: 'final',       label: 'Final',     defaultWeight: 5.0 },
+];
+
+const DEFAULT_WEIGHTS: Record<string, number> = STAGE_LABELS.reduce(
+  (acc, s) => ({ ...acc, [s.key]: s.defaultWeight }),
+  {}
+);
+
+// ── NumberStepper ─────────────────────────────────────────────────
+// Reusable numeric input with −/+ buttons. Snaps to `step`, clamps to [min,max].
+interface NumberStepperProps {
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step?: number;
+  highlight?: boolean;
+  suffix?: string;
+  ariaLabel?: string;
+  className?: string;
+  disabled?: boolean;
+  size?: 'sm' | 'md';
+}
+
+const NumberStepper: React.FC<NumberStepperProps> = ({
+  value, onChange, min, max, step = 1, highlight, suffix, ariaLabel, className, disabled, size = 'md',
+}) => {
+  const bump = (delta: number) => {
+    const next = value + delta;
+    const snapped = step < 1 ? Math.round(next / step) * step : Math.round(next);
+    onChange(Math.min(max, Math.max(min, snapped)));
+  };
+  const handleInput = (raw: string) => {
+    const parsed = parseFloat(raw.replace(',', '.'));
+    if (!Number.isFinite(parsed)) return;
+    onChange(Math.min(max, Math.max(min, parsed)));
+  };
+  const canDec = !disabled && value > min;
+  const canInc = !disabled && value < max;
+  // h-11 (44px) = WCAG touch target minimum. Smaller variants kept for non-primary
+  // contexts but minimum hit area always 44×44 via padding.
+  const containerH = size === 'sm' ? 'h-9' : 'h-11';
+  const btnW = size === 'sm' ? 'w-9' : 'w-11';
+  const btnText = size === 'sm' ? 'text-base' : 'text-lg';
+  const inputText = size === 'sm' ? 'text-xs' : 'text-sm';
+  return (
+    <div className={`flex items-stretch ${containerH} rounded border overflow-hidden ${
+      highlight ? 'border-terminal-blue/50' : 'border-terminal-border'
+    } ${disabled ? 'opacity-30' : ''} ${className ?? ''}`}>
+      <button
+        type="button"
+        onClick={() => bump(-step)}
+        disabled={!canDec}
+        aria-label={ariaLabel ? `Diminuir ${ariaLabel}` : 'Diminuir'}
+        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 active:bg-terminal-blue/30 text-terminal-blue font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
+      >
+        −
+      </button>
+      <input
+        type="number"
+        step={step}
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => handleInput(e.target.value)}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        className={`flex-1 min-w-0 text-center font-bold bg-terminal-dark-gray ${inputText} focus:bg-terminal-blue/10 focus:outline-none focus:ring-1 focus:ring-terminal-blue/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:cursor-not-allowed ${
+          highlight ? 'text-terminal-blue' : ''
+        }`}
+      />
+      {suffix && (
+        <span className="flex items-center px-1.5 text-xs opacity-40 bg-terminal-dark-gray">{suffix}</span>
+      )}
+      <button
+        type="button"
+        onClick={() => bump(step)}
+        disabled={!canInc}
+        aria-label={ariaLabel ? `Aumentar ${ariaLabel}` : 'Aumentar'}
+        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 active:bg-terminal-blue/30 text-terminal-blue font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
+      >
+        +
+      </button>
+    </div>
+  );
+};
 
 const SPECIAL_TYPES: Record<string, string> = {
   finalist: 'Finalistas',
@@ -91,6 +222,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   scoringPreset,
   scoringResult,
   scoringExact,
+  scoringWeights,
   customColor,
   customBannerUrl,
   championEnabled,
@@ -101,14 +233,19 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   ranking,
   currentUserId,
   ownerUserId,
+  predictionDeadlineMode,
 }) => {
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [specialExpanded, setSpecialExpanded] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   // Scoring state
   const [customResult, setCustomResult] = useState(scoringResult);
   const [customExact, setCustomExact] = useState(scoringExact);
   const [useWeighted, setUseWeighted] = useState(scoringPreset === 'weighted_stages');
+  const [customWeights, setCustomWeights] = useState<Record<string, number>>(
+    { ...DEFAULT_WEIGHTS, ...(scoringWeights ?? {}) }
+  );
 
   // Feature toggles state
   const [champEnabled, setChampEnabled] = useState(championEnabled);
@@ -123,6 +260,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const updateTheme = useUpdateBolaoTheme();
   const uploadLogo = useUploadBolaoLogo();
   const updateSettings = useUpdateBolaoSettings();
+  const updateDeadlineMode = useUpdateBolaoDeadlineMode();
+  const { data: bolaoStats } = useBolaoStats(bolaoId, open && currentUserId === ownerUserId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (currentUserId !== ownerUserId) return null;
@@ -162,6 +301,59 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     setCustomResult(preset.result);
     setCustomExact(preset.exact);
     setUseWeighted(preset.weighted);
+    // Reset weights to defaults when applying a preset
+    if (preset.weighted) {
+      setCustomWeights({ ...DEFAULT_WEIGHTS });
+    }
+  };
+
+  const isPresetActive = (preset: typeof SCORING_PRESETS[number]) =>
+    customResult === preset.result
+    && customExact === preset.exact
+    && useWeighted === preset.weighted
+    && (!preset.weighted || STAGE_LABELS.every(s => customWeights[s.key] === s.defaultWeight));
+
+  const handleUpgradeToPremium = async () => {
+    const BOLAO_PRO_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_BOLAO as string | undefined;
+    const BOLAO_PRO_PAYMENT_LINK = 'https://buy.stripe.com/4gMcMXgG43089uVg6zaR20b';
+    setUpgradeLoading(true);
+    try {
+      if (BOLAO_PRO_PRICE_ID) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Usuário não autenticado');
+        const { data: fnData, error } = await supabase.functions.invoke('stripe-create-checkout', {
+          body: {
+            priceId: BOLAO_PRO_PRICE_ID,
+            productType: 'bolao_premium',
+            bolaoId, // upgrade existing bolão
+          },
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (error) throw error;
+        window.location.href = fnData.url;
+      } else {
+        // Fallback payment link with client_reference_id for webhook match
+        window.location.href = `${BOLAO_PRO_PAYMENT_LINK}?client_reference_id=${bolaoId}`;
+      }
+    } catch (err: any) {
+      setUpgradeLoading(false);
+      toast({ title: 'Erro ao iniciar checkout', description: err?.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeadlineModeChange = (mode: 'per_match' | 'per_round' | 'tournament_start') => {
+    if (mode === predictionDeadlineMode) return;
+    updateDeadlineMode.mutate(
+      { bolaoId, mode },
+      {
+        onSuccess: () => {
+          toast({ title: `Prazo atualizado: ${DEADLINE_MODE_LABELS[mode]?.label}` });
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
   };
 
   const handleSaveScoring = () => {
@@ -172,6 +364,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         preset,
         scoringResult: customResult,
         scoringExact: customExact,
+        scoringWeights: useWeighted ? customWeights : null,
       },
       {
         onSuccess: (res) => {
@@ -315,6 +508,65 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
             </Button>
           </div>
 
+          {/* ── Premium Upgrade CTA — only when not premium ── */}
+          {!isPremium && (
+            <div className="rounded-lg border border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center shrink-0">
+                  <Crown className="w-4.5 h-4.5 text-yellow-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-yellow-300 flex items-center gap-1.5">
+                    Desbloqueie o Bolão Premium
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </p>
+                  <p className="text-[11px] opacity-70 mt-0.5">
+                    Pagamento único de <span className="font-bold text-yellow-300">R$ 19,90</span> · sem mensalidade
+                  </p>
+                </div>
+              </div>
+
+              <ul className="mt-3 space-y-1.5 text-[11px]">
+                <li className="flex items-center gap-2">
+                  <Users className="w-3 h-3 text-yellow-400 shrink-0" />
+                  <span>Participantes <span className="font-medium text-yellow-200">ilimitados</span> (free: até 10)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-3 h-3 text-yellow-400 shrink-0" />
+                  <span>Pontuação customizável + multiplicador por fase</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Star className="w-3 h-3 text-yellow-400 shrink-0" />
+                  <span>Palpites especiais (campeão, finalistas, semis...)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Zap className="w-3 h-3 text-yellow-400 shrink-0" />
+                  <span>Fases finais valem até <span className="font-medium text-yellow-200">5×</span> mais</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Palette className="w-3 h-3 text-yellow-400 shrink-0" />
+                  <span>Logo e cor personalizados do bolão</span>
+                </li>
+              </ul>
+
+              <Button
+                size="sm"
+                onClick={handleUpgradeToPremium}
+                disabled={upgradeLoading}
+                className="w-full mt-3 bg-yellow-500 text-terminal-bg hover:bg-yellow-400 font-bold gap-1.5 text-xs h-9"
+              >
+                {upgradeLoading ? (
+                  'Redirecionando...'
+                ) : (
+                  <>
+                    <Crown className="w-3.5 h-3.5" />
+                    Fazer upgrade · R$ 19,90
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
           {/* ── Features do Bolão ── */}
           <div className="border-t border-terminal-border-subtle pt-4">
             <div className="flex items-center gap-2 mb-3">
@@ -331,20 +583,27 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                     <p className="text-xs font-medium">Palpite de Campeão</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <input
-                      type="number"
-                      min={1} max={50}
+                    <NumberStepper
                       value={champPoints}
-                      onChange={(e) => setChampPoints(Number(e.target.value))}
+                      onChange={setChampPoints}
+                      min={1}
+                      max={50}
+                      size="sm"
                       disabled={!champEnabled}
-                      className="w-10 text-center text-[11px] font-bold bg-terminal-dark-gray border border-terminal-border rounded py-0.5 focus:border-terminal-blue focus:outline-none disabled:opacity-20"
+                      ariaLabel="pontos do campeão"
+                      className="w-24"
                     />
                     <span className="text-[9px] opacity-30 w-5">pts</span>
-                    <button onClick={handleToggleChampion} className="shrink-0">
+                    <button
+                      onClick={handleToggleChampion}
+                      aria-label={champEnabled ? 'Desabilitar palpite de campeão' : 'Habilitar palpite de campeão'}
+                      aria-pressed={champEnabled}
+                      className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
+                    >
                       {champEnabled ? (
-                        <ToggleRight className="w-6 h-6 text-terminal-blue" />
+                        <ToggleRight className="w-7 h-7 text-terminal-blue" />
                       ) : (
-                        <ToggleLeft className="w-6 h-6 opacity-30" />
+                        <ToggleLeft className="w-7 h-7 opacity-30" />
                       )}
                     </button>
                   </div>
@@ -384,20 +643,27 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                       <div key={type} className="flex items-center justify-between gap-2 pl-5">
                         <p className="text-[11px] flex-1 min-w-0">{label}</p>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <input
-                            type="number"
-                            min={1} max={50}
-                            value={specialPoints[type] ?? 0}
-                            onChange={(e) => setSpecialPoints({ ...specialPoints, [type]: Number(e.target.value) })}
+                          <NumberStepper
+                            value={specialPoints[type] ?? 1}
+                            onChange={(v) => setSpecialPoints({ ...specialPoints, [type]: v })}
+                            min={1}
+                            max={50}
+                            size="sm"
                             disabled={!specialConfig[type]}
-                            className="w-10 text-center text-[11px] font-bold bg-terminal-dark-gray border border-terminal-border rounded py-0.5 focus:border-terminal-blue focus:outline-none disabled:opacity-20"
+                            ariaLabel={`pontos de ${label}`}
+                            className="w-24"
                           />
                           <span className="text-[9px] opacity-30 w-5">pts</span>
-                          <button onClick={() => handleToggleSpecialType(type)} className="shrink-0">
+                          <button
+                            onClick={() => handleToggleSpecialType(type)}
+                            aria-label={specialConfig[type] ? `Desabilitar ${label}` : `Habilitar ${label}`}
+                            aria-pressed={!!specialConfig[type]}
+                            className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
+                          >
                             {specialConfig[type] ? (
-                              <ToggleRight className="w-6 h-6 text-terminal-blue" />
+                              <ToggleRight className="w-7 h-7 text-terminal-blue" />
                             ) : (
-                              <ToggleLeft className="w-6 h-6 opacity-30" />
+                              <ToggleLeft className="w-7 h-7 opacity-30" />
                             )}
                           </button>
                         </div>
@@ -426,6 +692,55 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
             </div>
           </div>
 
+          {/* ── Prazo de palpites ── */}
+          <div className="border-t border-terminal-border-subtle pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <SlidersHorizontal className="w-3.5 h-3.5 opacity-50" />
+              <p className="text-xs font-bold uppercase tracking-wider opacity-50">Prazo de palpites</p>
+            </div>
+            <div className="space-y-1.5">
+              {(['per_match', 'per_round', 'tournament_start'] as const).map((mode) => {
+                const active = predictionDeadlineMode === mode;
+                const meta = DEADLINE_MODE_LABELS[mode];
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => handleDeadlineModeChange(mode)}
+                    disabled={updateDeadlineMode.isPending}
+                    className={`w-full text-left rounded border p-2.5 transition-all disabled:opacity-60 ${
+                      active
+                        ? 'border-terminal-blue bg-terminal-blue/10'
+                        : 'border-terminal-border-subtle hover:border-terminal-blue/40 bg-terminal-dark-gray/20'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+                        active ? 'border-terminal-blue bg-terminal-blue' : 'border-terminal-border-subtle'
+                      }`}>
+                        {active && <Check className="w-2.5 h-2.5 text-terminal-bg" strokeWidth={3} />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-medium ${active ? 'text-terminal-blue' : ''}`}>
+                          {meta?.label}
+                        </p>
+                        <p className="text-[10px] opacity-50 mt-0.5">{meta?.description}</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {bolaoStats && bolaoStats.total_predictions > 0 && (
+              <div className="mt-2 p-2 rounded border border-terminal-yellow/30 bg-terminal-yellow/5">
+                <p className="text-[10px] text-terminal-yellow/90">
+                  <AlertTriangle className="w-3 h-3 inline mr-1 -mt-0.5" />
+                  Atenção: já existem {bolaoStats.total_predictions} palpite{bolaoStats.total_predictions !== 1 ? 's' : ''} registrado{bolaoStats.total_predictions !== 1 ? 's' : ''}. Mudar o prazo agora pode confundir os participantes.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* ── Pontuação ── */}
           <div className="border-t border-terminal-border-subtle pt-4">
             <div className="flex items-center gap-2 mb-3">
@@ -440,50 +755,76 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
             {isPremium ? (
               <div className="space-y-4">
-                {/* Quick presets */}
+                {/* Quick presets — cards with description and values */}
                 <div>
-                  <p className="text-[10px] opacity-40 mb-2">Presets rápidos</p>
-                  <div className="flex gap-1.5">
-                    {SCORING_PRESETS.map((p) => (
-                      <button
-                        key={p.value}
-                        onClick={() => handleApplyPreset(p)}
-                        className={`px-3 py-1.5 rounded border text-[10px] font-medium transition-all ${
-                          customResult === p.result && customExact === p.exact && useWeighted === p.weighted
-                            ? 'border-terminal-blue bg-terminal-blue/10 text-terminal-blue'
-                            : 'border-terminal-border-subtle opacity-50 hover:opacity-80'
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
+                  <p className="text-[10px] opacity-40 mb-2">Escolha um estilo</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {SCORING_PRESETS.map((p) => {
+                      const active = isPresetActive(p);
+                      return (
+                        <button
+                          key={p.value}
+                          onClick={() => handleApplyPreset(p)}
+                          className={`text-left p-3 rounded border transition-all ${
+                            active
+                              ? 'border-terminal-blue bg-terminal-blue/10'
+                              : 'border-terminal-border-subtle bg-terminal-dark-gray/20 hover:border-terminal-blue/40 hover:bg-terminal-dark-gray/40'
+                          }`}
+                        >
+                          <p className={`text-xs font-bold mb-1 ${active ? 'text-terminal-blue' : ''}`}>
+                            {p.label}
+                          </p>
+                          <p className="text-[10px] opacity-60 mb-2">{p.description}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">
+                              {p.result} pt
+                            </span>
+                            <span className="text-[10px] opacity-30">·</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">
+                              {p.exact} pts
+                            </span>
+                          </div>
+                          {p.weighted && (
+                            <p className="text-[10px] text-terminal-blue/80 mt-2">
+                              Grupos 1× <span className="opacity-40">→</span> Final 5×
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Editable values */}
                 <div className="p-3 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20 space-y-3">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 flex-1">
-                      <label className="text-[10px] opacity-50 shrink-0">Acertar resultado</label>
-                      <input
-                        type="number"
-                        min={1} max={10}
-                        value={customResult}
-                        onChange={(e) => setCustomResult(Number(e.target.value))}
-                        className="w-14 text-center text-sm font-bold bg-terminal-dark-gray border border-terminal-border rounded py-1 focus:border-terminal-blue focus:outline-none"
-                      />
-                      <span className="text-[10px] opacity-30">pts</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] opacity-50">Acertar resultado</label>
+                      <div className="flex items-center gap-2">
+                        <NumberStepper
+                          value={customResult}
+                          onChange={setCustomResult}
+                          min={1}
+                          max={10}
+                          ariaLabel="pontos por acertar resultado"
+                          className="flex-1"
+                        />
+                        <span className="text-[10px] opacity-30 shrink-0">pts</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-1">
-                      <label className="text-[10px] opacity-50 shrink-0">Placar exato</label>
-                      <input
-                        type="number"
-                        min={1} max={20}
-                        value={customExact}
-                        onChange={(e) => setCustomExact(Number(e.target.value))}
-                        className="w-14 text-center text-sm font-bold bg-terminal-dark-gray border border-terminal-border rounded py-1 focus:border-terminal-blue focus:outline-none"
-                      />
-                      <span className="text-[10px] opacity-30">pts</span>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] opacity-50">Placar exato</label>
+                      <div className="flex items-center gap-2">
+                        <NumberStepper
+                          value={customExact}
+                          onChange={setCustomExact}
+                          min={1}
+                          max={20}
+                          ariaLabel="pontos por placar exato"
+                          className="flex-1"
+                        />
+                        <span className="text-[10px] opacity-30 shrink-0">pts</span>
+                      </div>
                     </div>
                   </div>
 
@@ -493,7 +834,12 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                       <p className="text-xs font-medium">Multiplicador por fase</p>
                       <p className="text-[10px] opacity-40">Mata-mata vale mais pontos</p>
                     </div>
-                    <button onClick={() => setUseWeighted(!useWeighted)} className="shrink-0">
+                    <button
+                      onClick={() => setUseWeighted(!useWeighted)}
+                      aria-label={useWeighted ? 'Desabilitar multiplicador por fase' : 'Habilitar multiplicador por fase'}
+                      aria-pressed={useWeighted}
+                      className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
+                    >
                       {useWeighted ? (
                         <ToggleRight className="w-7 h-7 text-terminal-blue" />
                       ) : (
@@ -503,9 +849,40 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                   </div>
 
                   {useWeighted && (
-                    <div className="text-[10px] opacity-50 space-y-0.5 pl-1">
-                      <p>Grupos: 1× · R32/R16: 1.5× · Quartas: 2×</p>
-                      <p>Semis: 3× · 3º lugar: 2× · Final: 5×</p>
+                    <div className="space-y-2 pt-1">
+                      <p className="text-[10px] opacity-50">
+                        Ajuste o peso de cada fase com os botões <span className="font-mono">−</span> / <span className="font-mono">+</span>
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {STAGE_LABELS.map(stage => {
+                          const value = customWeights[stage.key] ?? stage.defaultWeight;
+                          const isCustom = value !== stage.defaultWeight;
+                          return (
+                            <div key={stage.key} className="flex flex-col gap-1">
+                              <label className="text-[9px] opacity-50 uppercase tracking-wider">
+                                {stage.label}
+                              </label>
+                              <NumberStepper
+                                value={value}
+                                onChange={(v) => setCustomWeights(w => ({ ...w, [stage.key]: v }))}
+                                min={0.5}
+                                max={10}
+                                step={0.5}
+                                highlight={isCustom}
+                                suffix="×"
+                                ariaLabel={`peso de ${stage.label}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCustomWeights({ ...DEFAULT_WEIGHTS })}
+                        className="text-[10px] text-terminal-blue/70 hover:text-terminal-blue underline"
+                      >
+                        Resetar para valores padrão
+                      </button>
                     </div>
                   )}
                 </div>
@@ -520,9 +897,32 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 </Button>
               </div>
             ) : (
-              <div className="p-3 rounded border border-terminal-border-subtle bg-terminal-dark-gray/10 opacity-50">
-                <p className="text-xs">Pontuação padrão: {scoringResult}pt resultado / {scoringExact}pts placar exato</p>
-                <p className="text-[10px] opacity-50 mt-1">Personalização disponível no Premium</p>
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-1.5 opacity-50 pointer-events-none">
+                  {SCORING_PRESETS.map(p => (
+                    <div key={p.value} className="p-2 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20">
+                      <p className="text-[10px] font-bold mb-0.5">{p.label}</p>
+                      <p className="text-[9px] opacity-60 leading-tight mb-1">{p.description}</p>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.result}pt</span>
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.exact}pts</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded border border-yellow-500/30 bg-yellow-500/5">
+                  <p className="text-[11px] text-yellow-200/90">
+                    <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
+                    Hoje: {scoringResult}pt resultado · {scoringExact}pts placar
+                  </p>
+                  <button
+                    onClick={handleUpgradeToPremium}
+                    disabled={upgradeLoading}
+                    className="text-[11px] font-bold text-yellow-300 hover:text-yellow-200 whitespace-nowrap disabled:opacity-50"
+                  >
+                    Desbloquear →
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -561,13 +961,28 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 })}
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-1.5 opacity-30 pointer-events-none">
-                {THEME_COLORS.map((c) => (
-                  <div key={c.value} className="flex flex-col items-center gap-1 p-2 rounded border border-terminal-border-subtle">
-                    <div className={`w-6 h-6 rounded border ${c.bg} ${c.border}`} />
-                    <span className="text-[9px] opacity-40">{c.label}</span>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <div className="grid grid-cols-4 gap-1.5 opacity-40 pointer-events-none">
+                  {THEME_COLORS.map((c) => (
+                    <div key={c.value} className="flex flex-col items-center gap-1 p-2 rounded border border-terminal-border-subtle">
+                      <div className={`w-6 h-6 rounded border ${c.bg} ${c.border}`} />
+                      <span className="text-[9px] opacity-40">{c.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded border border-yellow-500/30 bg-yellow-500/5">
+                  <p className="text-[11px] text-yellow-200/90">
+                    <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
+                    8 cores para identificar seu bolão
+                  </p>
+                  <button
+                    onClick={handleUpgradeToPremium}
+                    disabled={upgradeLoading}
+                    className="text-[11px] font-bold text-yellow-300 hover:text-yellow-200 whitespace-nowrap disabled:opacity-50"
+                  >
+                    Desbloquear →
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -623,9 +1038,21 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-2 p-3 rounded border border-dashed border-terminal-border-subtle opacity-30 pointer-events-none">
-                <ImagePlus className="w-3.5 h-3.5" />
-                <span className="text-xs">Upload disponível no Premium</span>
+              <div className="flex items-center justify-between gap-2 p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
+                <div className="flex items-center gap-2">
+                  <ImagePlus className="w-3.5 h-3.5 text-yellow-400/70" />
+                  <p className="text-[11px] text-yellow-200/90">
+                    <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
+                    Logo personalizado do bolão
+                  </p>
+                </div>
+                <button
+                  onClick={handleUpgradeToPremium}
+                  disabled={upgradeLoading}
+                  className="text-[11px] font-bold text-yellow-300 hover:text-yellow-200 whitespace-nowrap disabled:opacity-50"
+                >
+                  Desbloquear →
+                </button>
               </div>
             )}
           </div>
