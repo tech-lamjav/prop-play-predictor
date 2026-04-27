@@ -238,6 +238,11 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [specialExpanded, setSpecialExpanded] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  // When user clicks a deadline mode and there are existing predictions,
+  // we ask for confirmation before applying.
+  const [pendingDeadlineMode, setPendingDeadlineMode] = useState<
+    'per_match' | 'per_round' | 'tournament_start' | null
+  >(null);
 
   // Scoring state
   const [customResult, setCustomResult] = useState(scoringResult);
@@ -341,8 +346,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     }
   };
 
-  const handleDeadlineModeChange = (mode: 'per_match' | 'per_round' | 'tournament_start') => {
-    if (mode === predictionDeadlineMode) return;
+  const applyDeadlineModeChange = (mode: 'per_match' | 'per_round' | 'tournament_start') => {
     updateDeadlineMode.mutate(
       { bolaoId, mode },
       {
@@ -354,6 +358,18 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         },
       }
     );
+  };
+
+  const handleDeadlineModeChange = (mode: 'per_match' | 'per_round' | 'tournament_start') => {
+    if (mode === predictionDeadlineMode) return;
+    // If predictions already exist, confirm before applying — the change can
+    // shift deadlines and lock palpites the user thought were still editable.
+    const hasPredictions = bolaoStats != null && bolaoStats.total_predictions > 0;
+    if (hasPredictions) {
+      setPendingDeadlineMode(mode);
+      return;
+    }
+    applyDeadlineModeChange(mode);
   };
 
   const handleSaveScoring = () => {
@@ -526,28 +542,35 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 </div>
               </div>
 
-              <ul className="mt-3 space-y-1.5 text-[11px]">
-                <li className="flex items-center gap-2">
-                  <Users className="w-3 h-3 text-yellow-400 shrink-0" />
-                  <span>Participantes <span className="font-medium text-yellow-200">ilimitados</span> (free: até 10)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-3 h-3 text-yellow-400 shrink-0" />
-                  <span>Pontuação customizável + multiplicador por fase</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Star className="w-3 h-3 text-yellow-400 shrink-0" />
-                  <span>Palpites especiais (campeão, finalistas, semis...)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Zap className="w-3 h-3 text-yellow-400 shrink-0" />
-                  <span>Fases finais valem até <span className="font-medium text-yellow-200">5×</span> mais</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Palette className="w-3 h-3 text-yellow-400 shrink-0" />
-                  <span>Logo e cor personalizados do bolão</span>
-                </li>
-              </ul>
+              {/* 3 features destaque (cards visuais) + 2 finos abaixo */}
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
+                  <Users className="w-4 h-4 text-yellow-400 mb-1.5" />
+                  <p className="text-xs font-bold text-yellow-200">Participantes ilimitados</p>
+                  <p className="text-[10px] opacity-60 mt-0.5">Free: até 10 pessoas</p>
+                </div>
+                <div className="p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
+                  <Zap className="w-4 h-4 text-yellow-400 mb-1.5" />
+                  <p className="text-xs font-bold text-yellow-200">Final vale 5× mais</p>
+                  <p className="text-[10px] opacity-60 mt-0.5">Multiplicador progressivo por fase</p>
+                </div>
+                <div className="p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
+                  <Star className="w-4 h-4 text-yellow-400 mb-1.5" />
+                  <p className="text-xs font-bold text-yellow-200">Palpites especiais</p>
+                  <p className="text-[10px] opacity-60 mt-0.5">Campeão, finalistas, semis...</p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] opacity-70">
+                <span className="flex items-center gap-1">
+                  <SlidersHorizontal className="w-3 h-3 text-yellow-400/80 shrink-0" />
+                  Pontuação 100% customizável
+                </span>
+                <span className="flex items-center gap-1">
+                  <Palette className="w-3 h-3 text-yellow-400/80 shrink-0" />
+                  Logo e cor próprios
+                </span>
+              </div>
 
               <Button
                 size="sm"
@@ -735,7 +758,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
               <div className="mt-2 p-2 rounded border border-terminal-yellow/30 bg-terminal-yellow/5">
                 <p className="text-[10px] text-terminal-yellow/90">
                   <AlertTriangle className="w-3 h-3 inline mr-1 -mt-0.5" />
-                  Atenção: já existem {bolaoStats.total_predictions} palpite{bolaoStats.total_predictions !== 1 ? 's' : ''} registrado{bolaoStats.total_predictions !== 1 ? 's' : ''}. Mudar o prazo agora pode confundir os participantes.
+                  <span className="font-bold">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'pessoa já fez' : 'pessoas já fizeram'} <span className="font-bold">{bolaoStats.total_predictions}</span> palpite{bolaoStats.total_predictions !== 1 ? 's' : ''}. Mudar o prazo afeta todos eles — pediremos confirmação.
                 </p>
               </div>
             )}
@@ -897,19 +920,70 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-1.5 opacity-50 pointer-events-none">
-                  {SCORING_PRESETS.map(p => (
-                    <div key={p.value} className="p-2 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20">
-                      <p className="text-[10px] font-bold mb-0.5">{p.label}</p>
-                      <p className="text-[9px] opacity-60 leading-tight mb-1">{p.description}</p>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <span className="text-[9px] px-1 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.result}pt</span>
-                        <span className="text-[9px] px-1 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.exact}pts</span>
+              <div className="space-y-3">
+                {/* Preview dos 3 presets que viram disponíveis no Premium */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pointer-events-none">
+                  {SCORING_PRESETS.map(p => {
+                    const isWeighted = p.weighted;
+                    return (
+                      <div
+                        key={p.value}
+                        className={`p-3 rounded border bg-terminal-dark-gray/20 ${
+                          isWeighted ? 'border-yellow-500/30 ring-1 ring-yellow-500/10' : 'border-terminal-border-subtle opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <p className={`text-xs font-bold ${isWeighted ? 'text-yellow-300' : ''}`}>
+                            {p.label}
+                          </p>
+                          {isWeighted && (
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-300 font-bold uppercase">
+                              Top
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] opacity-60 leading-tight mb-2">{p.description}</p>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.result} pt</span>
+                          <span className="text-[10px] opacity-30">·</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.exact} pts</span>
+                        </div>
+                        {/* Progressão visual de multiplicador no preset Campeonato */}
+                        {isWeighted && (
+                          <div className="mt-2 pt-2 border-t border-yellow-500/15">
+                            <p className="text-[9px] uppercase tracking-wider opacity-50 mb-1">Multiplicador por fase</p>
+                            <div className="flex items-end gap-0.5 h-7">
+                              {[
+                                { label: 'Gr', mult: 1, h: '20%' },
+                                { label: 'R16', mult: 1.5, h: '30%' },
+                                { label: 'Q', mult: 2, h: '40%' },
+                                { label: 'S', mult: 3, h: '60%' },
+                                { label: 'F', mult: 5, h: '100%' },
+                              ].map((bar) => (
+                                <div key={bar.label} className="flex-1 flex flex-col items-center gap-0.5">
+                                  <div
+                                    className="w-full rounded-sm bg-yellow-400/60"
+                                    style={{ height: bar.h }}
+                                    title={`${bar.label}: ${bar.mult}x`}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-between mt-0.5">
+                              <span className="text-[8px] opacity-40 font-mono">Grupos 1×</span>
+                              <span className="text-[8px] text-yellow-300 font-mono font-bold">Final 5×</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+
+                <p className="text-[10px] opacity-60 text-center">
+                  Acerto na <span className="text-yellow-300 font-bold">Final vale 5×</span> mais pontos que jogo de grupo
+                </p>
+
                 <div className="flex items-center justify-between gap-2 p-2.5 rounded border border-yellow-500/30 bg-yellow-500/5">
                   <p className="text-[11px] text-yellow-200/90">
                     <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
@@ -1107,6 +1181,65 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      {/* ── Confirmação de mudança de deadline mode (quando há palpites) ── */}
+      <Dialog open={pendingDeadlineMode !== null} onOpenChange={(o) => !o && setPendingDeadlineMode(null)}>
+        <DialogContent className="bg-terminal-bg border-terminal-yellow/40 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-terminal-yellow">
+              <AlertTriangle className="w-5 h-5" />
+              Confirmar mudança de prazo
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-sm space-y-3">
+            <p>
+              Você está mudando o prazo de palpites de{' '}
+              <span className="font-bold">{DEADLINE_MODE_LABELS[predictionDeadlineMode]?.label}</span>{' '}
+              para <span className="font-bold text-terminal-yellow">{pendingDeadlineMode && DEADLINE_MODE_LABELS[pendingDeadlineMode]?.label}</span>.
+            </p>
+            {bolaoStats && (
+              <div className="rounded border border-terminal-yellow/30 bg-terminal-yellow/5 p-3 text-xs">
+                <p className="font-bold mb-1.5">Impacto:</p>
+                <ul className="space-y-1 opacity-90">
+                  <li>
+                    • <span className="font-bold text-terminal-yellow">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'pessoa' : 'pessoas'} {bolaoStats.total_members === 1 ? 'foi afetada' : 'serão afetadas'}
+                  </li>
+                  <li>
+                    • <span className="font-bold text-terminal-yellow">{bolaoStats.total_predictions}</span> {bolaoStats.total_predictions === 1 ? 'palpite' : 'palpites'} {bolaoStats.total_predictions === 1 ? 'foi feito' : 'foram feitos'} no modo atual
+                  </li>
+                  <li>
+                    • Alguns palpites podem ficar fora do novo prazo
+                  </li>
+                </ul>
+              </div>
+            )}
+            <p className="text-xs opacity-60">
+              Avise os participantes antes de confirmar — mudanças no meio do bolão podem gerar confusão.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setPendingDeadlineMode(null)}
+              className="h-11 px-4"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (pendingDeadlineMode) {
+                  applyDeadlineModeChange(pendingDeadlineMode);
+                  setPendingDeadlineMode(null);
+                }
+              }}
+              disabled={updateDeadlineMode.isPending}
+              className="bg-terminal-yellow text-terminal-bg hover:bg-terminal-yellow/90 font-bold h-11 px-4"
+            >
+              Sim, mudar mesmo assim
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

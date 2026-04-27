@@ -294,11 +294,23 @@ const BolaoHome: React.FC = () => {
                 ))}
               </div>
             ) : !boloes || boloes.length === 0 ? (
-              <div className="terminal-container p-8 text-center">
-                <Trophy className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <h2 className="text-base font-bold mb-1">Nenhum bolão ainda</h2>
-                <p className="text-sm opacity-50">
-                  Crie o seu ou peça o código de convite para um amigo
+              <div className="terminal-container p-6 sm:p-8 text-center">
+                <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-terminal-blue/10 border border-terminal-blue/30 flex items-center justify-center">
+                  <Trophy className="w-7 h-7 text-terminal-blue/70" />
+                </div>
+                <h2 className="text-base sm:text-lg font-bold mb-1">Você ainda não tem bolão</h2>
+                <p className="text-sm opacity-60 mb-4">
+                  Crie o seu para chamar a galera ou entre em um existente com o código.
+                </p>
+                <Button
+                  onClick={() => setShowCreate(true)}
+                  className="bg-terminal-blue text-terminal-bg hover:bg-terminal-blue/90 gap-1.5 h-11 px-5 font-bold"
+                >
+                  <Plus className="w-4 h-4" />
+                  Criar meu primeiro bolão
+                </Button>
+                <p className="text-[11px] opacity-40 mt-3">
+                  Ou cole o código de convite no campo acima
                 </p>
               </div>
             ) : (

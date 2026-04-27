@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Lock, Check } from 'lucide-react';
 import type { WcMatch, BolaoPrediction } from '@/services/bolao.service';
 import { isMatchLocked, isMatchPredictionLocked, computeMatchDeadline } from '@/hooks/use-bolao';
+import { readDraft, writeDraft, clearDraft } from '@/components/bolao/useDraftPrediction';
 
 interface MatchPredictionCardProps {
   match: WcMatch;
   prediction?: BolaoPrediction;
   onSave: (matchId: number, homeScore: number, awayScore: number) => void;
   isSaving?: boolean;
+  // Bolão id for localStorage draft key (optional for backward compat)
+  bolaoId?: string;
   // Optional — when passed, deadline is computed from bolão mode instead of kickoff
   deadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
   allMatches?: WcMatch[];
@@ -19,6 +22,7 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   prediction,
   onSave,
   isSaving,
+  bolaoId,
   deadlineMode,
   allMatches,
   isClosed,
@@ -29,20 +33,46 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   const deadline = deadlineMode
     ? computeMatchDeadline(match, deadlineMode, allMatches)
     : null;
-  const [homeScore, setHomeScore] = useState<string>(
-    prediction?.predicted_home_score?.toString() ?? ''
-  );
-  const [awayScore, setAwayScore] = useState<string>(
-    prediction?.predicted_away_score?.toString() ?? ''
-  );
+
+  // Initial values: server prediction first, then localStorage draft as fallback.
+  const initialHome = prediction?.predicted_home_score != null
+    ? prediction.predicted_home_score.toString()
+    : (bolaoId ? readDraft(bolaoId, match.id)?.home ?? '' : '');
+  const initialAway = prediction?.predicted_away_score != null
+    ? prediction.predicted_away_score.toString()
+    : (bolaoId ? readDraft(bolaoId, match.id)?.away ?? '' : '');
+  const [homeScore, setHomeScore] = useState<string>(initialHome);
+  const [awayScore, setAwayScore] = useState<string>(initialAway);
   const [saved, setSaved] = useState(false);
 
+  // Sync from server when prediction arrives (e.g., after upsert success)
   useEffect(() => {
     if (prediction) {
       setHomeScore(prediction.predicted_home_score.toString());
       setAwayScore(prediction.predicted_away_score.toString());
     }
   }, [prediction]);
+
+  // Derived: there's an unsaved draft whenever the current values diverge
+  // from the server (or no server value yet but user typed something).
+  // Don't show "Rascunho" if locked or just-saved.
+  const hasUnsavedDraft = !locked && !saved && (() => {
+    if (homeScore === '' && awayScore === '') return false;
+    if (!prediction) return true; // user typed without ever saving
+    return homeScore !== String(prediction.predicted_home_score)
+      || awayScore !== String(prediction.predicted_away_score);
+  })();
+
+  // Persist draft on every change (skip if locked or matches server)
+  useEffect(() => {
+    if (!bolaoId || locked) return;
+    const matchesServer =
+      prediction != null
+      && homeScore === String(prediction.predicted_home_score)
+      && awayScore === String(prediction.predicted_away_score);
+    if (matchesServer) return;
+    writeDraft(bolaoId, match.id, homeScore, awayScore);
+  }, [bolaoId, match.id, homeScore, awayScore, locked, prediction]);
 
   const hasPrediction = prediction != null;
   const canSave =
@@ -60,8 +90,9 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   const handleSave = () => {
     if (!canSave || !isDirty) return;
     onSave(match.id, Number(homeScore), Number(awayScore));
+    if (bolaoId) clearDraft(bolaoId, match.id);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setTimeout(() => setSaved(false), 2500);
   };
 
   const matchDate = new Date(match.match_date + 'T00:00:00');
@@ -104,6 +135,23 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
             {match.group_name ? `Grupo ${match.group_name}` : match.stage}
           </span>
           {locked && <Lock className="w-3 h-3 opacity-40" />}
+          {hasUnsavedDraft && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-yellow/15 text-terminal-yellow border border-terminal-yellow/30 font-medium"
+              title="Rascunho não salvo — clique em Salvar"
+            >
+              Rascunho
+            </span>
+          )}
+          {saved && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-green/20 text-terminal-green border border-terminal-green/40 font-medium flex items-center gap-1 animate-in fade-in"
+              role="status"
+            >
+              <Check className="w-3 h-3" />
+              Salvo
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {pointsDisplay}

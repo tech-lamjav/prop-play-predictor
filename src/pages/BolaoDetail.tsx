@@ -13,6 +13,7 @@ import {
   Image,
   Settings,
   Target,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -23,6 +24,7 @@ import {
   useBolaoPredictions,
   useChampionPredictions,
   useUpsertChampionPrediction,
+  computeMatchDeadline,
 } from '@/hooks/use-bolao';
 import { BolaoRankingTable } from '@/components/bolao/BolaoRankingTable';
 import { BolaoShareButton } from '@/components/bolao/BolaoShareButton';
@@ -35,6 +37,7 @@ import { BolaoStatsPanel } from '@/components/bolao/BolaoStatsPanel';
 import { DeadlineBadge } from '@/components/bolao/DeadlineBadge';
 import { ShareCallout } from '@/components/bolao/ShareCallout';
 import { PremiumWelcomeModal } from '@/components/bolao/PremiumWelcomeModal';
+import { BolaoBottomNav } from '@/components/bolao/BolaoBottomNav';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { WcMatch, BolaoRankingEntry } from '@/services/bolao.service';
@@ -241,6 +244,11 @@ const BolaoDetail: React.FC = () => {
       { onSuccess: () => setChampionModalOpen(false) }
     );
   };
+
+  const totalAvailableMatches = useMemo(
+    () => matches?.filter(m => !m.is_finished && m.home_team_code !== 'TBD').length ?? 0,
+    [matches]
+  );
 
   const predictionsByMatch = useMemo(
     () => new Map((myPredictions || []).map((p) => [p.match_id, p])),
@@ -465,7 +473,7 @@ const BolaoDetail: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-terminal-bg text-terminal-text">
+    <div className="min-h-screen bg-terminal-bg text-terminal-text pb-20 lg:pb-0">
       <AnalyticsNav />
 
       <div className="max-w-6xl mx-auto px-4 py-6">
@@ -554,6 +562,45 @@ const BolaoDetail: React.FC = () => {
           </div>
         )}
 
+        {/* ── Banner de urgência: palpites pendentes com deadline próximo ── */}
+        {!bolao.is_closed && (() => {
+          if (!matches) return null;
+          const now = Date.now();
+          const sixHours = 6 * 60 * 60 * 1000;
+          const mode = bolao.prediction_deadline_mode ?? 'per_match';
+          // Conta jogos não palpitados cujo deadline cai em <6h
+          const urgentCount = matches.filter(m => {
+            if (m.is_finished || m.home_team_code === 'TBD') return false;
+            if (predictionsByMatch.has(m.id)) return false;
+            const deadline = computeMatchDeadline(m, mode, matches);
+            const ms = deadline.getTime() - now;
+            return ms > 0 && ms < sixHours;
+          }).length;
+          if (urgentCount === 0) return null;
+          return (
+            <div className="mb-5 rounded-lg border border-terminal-yellow/40 bg-terminal-yellow/10 px-4 py-3 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-terminal-yellow shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-terminal-yellow">
+                  {urgentCount === 1
+                    ? '1 palpite fecha nas próximas 6h'
+                    : `${urgentCount} palpites fecham nas próximas 6h`}
+                </p>
+                <p className="text-xs opacity-70 mt-0.5">
+                  Faça antes que perca a chance de pontuar.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPredictionsModalOpen(true)}
+                className="shrink-0 h-9 px-3 rounded-lg bg-terminal-yellow text-terminal-bg font-bold text-xs hover:bg-terminal-yellow/90 transition-colors"
+              >
+                Palpitar agora
+              </button>
+            </div>
+          );
+        })()}
+
         {/* ── Share callout: aparece quando bolão tem ≤ 1 membro ── */}
         {ranking && ranking.length <= 1 && !bolao.is_closed && (
           <ShareCallout
@@ -634,7 +681,15 @@ const BolaoDetail: React.FC = () => {
                     )}
                   </div>
                 )}
-                <BolaoRankingTable ranking={ranking || []} currentUserId={currentUserId} />
+                <BolaoRankingTable
+                  ranking={ranking || []}
+                  currentUserId={currentUserId}
+                  onInviteFriends={() => {
+                    // Scroll to top so user sees the ShareCallout (rendered at the top
+                    // when ranking.length <= 1).
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                />
               </div>
             )}
 
@@ -646,10 +701,21 @@ const BolaoDetail: React.FC = () => {
                 </p>
 
                 {(!myPredictions || myPredictions.length === 0) ? (
-                  <div className="text-center py-10 opacity-40">
-                    <ClipboardList className="w-10 h-10 mx-auto mb-3" />
-                    <p className="text-sm">Nenhum palpite ainda</p>
-                    <p className="text-xs mt-1">Use o botão abaixo para fazer seus palpites</p>
+                  <div className="text-center py-10 px-4">
+                    <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-terminal-blue/10 border border-terminal-blue/30 flex items-center justify-center">
+                      <ClipboardList className="w-7 h-7 text-terminal-blue/70" />
+                    </div>
+                    <p className="text-sm sm:text-base font-bold">Você ainda não palpitou</p>
+                    <p className="text-xs sm:text-sm opacity-60 mt-1 mb-4">
+                      Comece pelos jogos da fase de grupos — são 48 partidas
+                    </p>
+                    <Button
+                      onClick={() => setPredictionsModalOpen(true)}
+                      className="bg-terminal-blue text-terminal-bg hover:bg-terminal-blue/90 gap-1.5 h-11 px-5 font-bold"
+                    >
+                      <Target className="w-4 h-4" />
+                      Fazer meu primeiro palpite
+                    </Button>
                   </div>
                 ) : (
                   Object.entries(matchesByStage).map(([stageName, stageMatches]) => {
@@ -714,14 +780,26 @@ const BolaoDetail: React.FC = () => {
             )}
           </div>
 
-          {/* ── Sidebar ── */}
-          <aside className="space-y-4 mt-6 lg:mt-0 lg:sticky lg:top-6 lg:self-start">
+          {/* ── Sidebar (desktop only — mobile uses bottom sheet) ── */}
+          <aside className="hidden lg:block lg:space-y-4 lg:sticky lg:top-6 lg:self-start">
             {sidebarContent}
           </aside>
         </div>
       </div>
 
-      {/* Fixed bottom CTA removed — fazer palpites is accessible via tab */}
+      {/* ── Mobile bottom navigation (always visible on mobile) ── */}
+      {!bolao.is_closed && (
+        <BolaoBottomNav
+          pendingPredictions={Math.max(0, totalAvailableMatches - (myPredictions?.length ?? 0))}
+          hasChampionPick={!!myChampionPick}
+          championEnabled={bolao.champion_enabled ?? true}
+          specialEnabled={bolao.special_predictions_enabled ?? true}
+          isPremium={bolao.is_premium}
+          onOpenPredictions={() => setPredictionsModalOpen(true)}
+          onOpenChampion={() => setChampionModalOpen(true)}
+          onOpenSpecial={() => setSpecialPredictionsOpen(true)}
+        />
+      )}
 
       {/* Champion pick modal */}
       <ChampionPickModal
