@@ -1,10 +1,12 @@
 import React from 'react';
-import { Trophy, Target, Crosshair, Medal, Award } from 'lucide-react';
+import { Trophy, Target, Crosshair, Medal, Award, Share2 } from 'lucide-react';
 import type { BolaoRankingEntry } from '@/services/bolao.service';
 
 interface BolaoRankingTableProps {
   ranking: BolaoRankingEntry[];
   currentUserId?: string;
+  /** Optional: when set, empty state shows a "Convidar amigos" CTA */
+  onInviteFriends?: () => void;
 }
 
 /**
@@ -27,12 +29,28 @@ function RankBadge({ rank }: { rank: number }) {
 export const BolaoRankingTable: React.FC<BolaoRankingTableProps> = ({
   ranking,
   currentUserId,
+  onInviteFriends,
 }) => {
   if (ranking.length === 0) {
     return (
-      <div className="text-center py-8 opacity-50">
-        <Trophy className="w-10 h-10 mx-auto mb-2 opacity-30" />
-        <p className="text-sm">Nenhum participante ainda</p>
+      <div className="text-center py-10 px-4">
+        <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-terminal-blue/10 border border-terminal-blue/30 flex items-center justify-center">
+          <Trophy className="w-7 h-7 text-terminal-blue/70" />
+        </div>
+        <p className="text-sm sm:text-base font-bold">Sem competição ainda</p>
+        <p className="text-xs sm:text-sm opacity-60 mt-1 mb-4">
+          Convide amigos pra começar a disputa
+        </p>
+        {onInviteFriends && (
+          <button
+            type="button"
+            onClick={onInviteFriends}
+            className="inline-flex items-center gap-1.5 h-11 px-5 rounded-lg border border-terminal-blue/40 bg-terminal-blue/10 text-terminal-blue hover:bg-terminal-blue/20 active:bg-terminal-blue/30 font-bold text-sm transition-colors"
+          >
+            <Share2 className="w-4 h-4" />
+            Convidar amigos
+          </button>
+        )}
       </div>
     );
   }
