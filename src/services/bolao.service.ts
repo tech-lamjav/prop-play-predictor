@@ -407,6 +407,16 @@ export const bolaoService = {
     return { prediction_deadline_mode: result.prediction_deadline_mode };
   },
 
+  async deletePrediction(bolaoId: string, matchId: number): Promise<void> {
+    const { data, error } = await supabase.rpc('delete_bolao_prediction', {
+      p_bolao_id: bolaoId,
+      p_match_id: matchId,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao apagar palpite');
+  },
+
   async getPredictionDeadline(bolaoId: string, matchId: number): Promise<string | null> {
     const { data, error } = await supabase.rpc('get_prediction_deadline', {
       p_bolao_id: bolaoId,

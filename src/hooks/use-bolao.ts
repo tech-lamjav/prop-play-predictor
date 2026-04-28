@@ -122,6 +122,18 @@ export function useUpsertPrediction() {
   });
 }
 
+export function useDeletePrediction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { bolao_id: string; match_id: number }) =>
+      bolaoService.deletePrediction(params.bolao_id, params.match_id),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolao_id] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-ranking', variables.bolao_id] });
+    },
+  });
+}
+
 export function useUpsertPredictionsBatch() {
   const queryClient = useQueryClient();
 

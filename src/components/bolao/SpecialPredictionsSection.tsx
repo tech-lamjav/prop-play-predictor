@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Crown, Lock, ChevronDown, ChevronUp, Check, Search, X } from 'lucide-react';
+import { TeamFlag } from '@/components/bolao/TeamFlag';
+import { useAchievement } from '@/components/bolao/AchievementProvider';
 import {
   useMySpecialPredictions,
   useSpecialSummary,
@@ -51,6 +53,7 @@ const PickPanel: React.FC<PickPanelProps> = ({ type, bolaoId, myPicks, summaryCo
   const [open, setOpen] = useState(false);
   const toggle = useToggleSpecialPrediction();
   const { toast } = useToast();
+  const { unlock } = useAchievement();
 
   const filtered = useMemo(() => {
     if (!search) return teams;
@@ -64,9 +67,17 @@ const PickPanel: React.FC<PickPanelProps> = ({ type, bolaoId, myPicks, summaryCo
       toast({ title: `Máximo de ${max} times para ${label}`, variant: 'destructive' });
       return;
     }
+    // Captura estado antes do save pra detectar primeira pick + finalistas completos
+    const wasFirstAnyPick = myPicks.length === 0;
+    const willCompleteFinalists = type === 'finalist' && !isPicked && myPicks.length + 1 >= max;
+
     toggle.mutate(
       { bolaoId, predictionType: type, teamCode: code },
       {
+        onSuccess: () => {
+          if (wasFirstAnyPick) unlock('first-special-pick', bolaoId);
+          if (willCompleteFinalists) unlock('all-finalists-picked', bolaoId);
+        },
         onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
       }
     );
@@ -147,7 +158,8 @@ const PickPanel: React.FC<PickPanelProps> = ({ type, bolaoId, myPicks, summaryCo
                       <Check className="w-2 h-2 text-terminal-bg" />
                     </div>
                   )}
-                  <span className="font-mono font-bold text-xs">{team.code}</span>
+                  <TeamFlag code={team.code} size="sm" />
+                  <span className="font-mono font-bold text-xs mt-0.5">{team.code}</span>
                   <span className="text-[10px] opacity-60 leading-tight text-center line-clamp-1">{team.name}</span>
                   {count > 0 && totalMembers > 1 && (
                     <span className="text-[9px] opacity-40 tabular-nums">{count} pick{count !== 1 ? 's' : ''}</span>

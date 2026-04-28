@@ -10,8 +10,11 @@ import {
   useWcMatches,
   useBolaoPredictions,
   useUpsertPrediction,
+  useDeletePrediction,
 } from '@/hooks/use-bolao';
 import { PredictionsList } from '@/components/bolao/PredictionsList';
+import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
+import { useAchievement } from '@/components/bolao/AchievementProvider';
 import { useToast } from '@/hooks/use-toast';
 
 interface PredictionsModalProps {
@@ -28,14 +31,18 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
   currentUserId,
 }) => {
   const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [confirmDeleteMatchId, setConfirmDeleteMatchId] = useState<number | null>(null);
 
   const { data: bolao } = useBolao(bolaoId);
   const { data: matches, isLoading } = useWcMatches();
   const { data: predictions } = useBolaoPredictions(bolaoId, currentUserId);
   const upsertPrediction = useUpsertPrediction();
+  const deletePrediction = useDeletePrediction();
   const { toast } = useToast();
+  const { unlock } = useAchievement();
 
   const handleSave = (matchId: number, homeScore: number, awayScore: number) => {
+    const wasFirstPrediction = (predictions?.length ?? 0) === 0;
     upsertPrediction.mutate(
       {
         bolao_id: bolaoId,
@@ -46,12 +53,31 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
       {
         onSuccess: () => {
           toast({ title: 'Palpite salvo', description: `${homeScore} x ${awayScore}` });
+          if (wasFirstPrediction) unlock('first-prediction', bolaoId);
         },
         onError: (err: any) => {
           toast({ title: 'Erro ao salvar palpite', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
         },
       }
     );
+  };
+
+  const handleDeleteRequest = (matchId: number) => {
+    setConfirmDeleteMatchId(matchId);
+  };
+
+  const performDelete = () => {
+    if (confirmDeleteMatchId == null) return;
+    const matchId = confirmDeleteMatchId;
+    deletePrediction.mutate(
+      { bolao_id: bolaoId, match_id: matchId },
+      {
+        onSuccess: () => toast({ title: 'Palpite apagado' }),
+        onError: (err: any) =>
+          toast({ title: 'Erro ao apagar', description: err?.message ?? 'Tente novamente', variant: 'destructive' }),
+      }
+    );
+    setConfirmDeleteMatchId(null);
   };
 
   const totalMatches = matches?.filter((m) => !m.is_finished && m.home_team_code !== 'TBD').length || 0;
@@ -83,12 +109,25 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
             isClosed={bolao?.is_closed}
             deadlineMode={bolao?.prediction_deadline_mode ?? 'per_match'}
             onSave={handleSave}
+            onDelete={handleDeleteRequest}
             variant="modal"
             accentColor="blue"
             groupFilter={groupFilter}
             onGroupFilterChange={setGroupFilter}
           />
         </div>
+
+        {/* Confirmação ao apagar palpite */}
+        <ConfirmDialog
+          open={confirmDeleteMatchId !== null}
+          onOpenChange={(o) => !o && setConfirmDeleteMatchId(null)}
+          title="Apagar este palpite?"
+          description="O palpite vai voltar ao estado vazio (- x -). Você pode palpitar de novo enquanto o prazo estiver aberto."
+          confirmLabel="Apagar"
+          variant="destructive"
+          onConfirm={performDelete}
+          isLoading={deletePrediction.isPending}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Trophy, Search, Check, X } from 'lucide-react';
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TeamFlag } from '@/components/bolao/TeamFlag';
 import type { WcMatch } from '@/services/bolao.service';
 
 interface Team {
@@ -49,6 +50,12 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
 }) => {
   const [selected, setSelected] = useState<string | null>(currentPick);
   const [search, setSearch] = useState('');
+
+  // Sync `selected` quando `currentPick` muda no parent (ex: outro user
+  // altera, ou quando o modal reabre depois de salvar)
+  useEffect(() => {
+    if (open) setSelected(currentPick);
+  }, [open, currentPick]);
 
   const teams = useMemo(() => extractTeams(matches), [matches]);
 
@@ -142,8 +149,7 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
                         <Check className="w-2 h-2 text-terminal-bg" />
                       </div>
                     )}
-                    {/* Flag placeholder */}
-                    <div className="w-8 h-5 rounded-sm bg-terminal-border-subtle/40 border border-terminal-border-subtle/30 shrink-0" />
+                    <TeamFlag code={team.code} size="md" />
                     <div className="text-center w-full">
                       <p
                         className={`text-[11px] font-bold ${isSelected ? 'text-yellow-400' : 'text-terminal-text'}`}

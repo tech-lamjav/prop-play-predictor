@@ -8,9 +8,12 @@ import {
   useWcMatches,
   useBolaoPredictions,
   useUpsertPrediction,
+  useDeletePrediction,
 } from '@/hooks/use-bolao';
 import { PredictionsList } from '@/components/bolao/PredictionsList';
 import { PendingPredictionsSticky } from '@/components/bolao/PendingPredictionsSticky';
+import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
+import { useAchievement } from '@/components/bolao/AchievementProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,15 +35,40 @@ const BolaoPalpites: React.FC = () => {
   const { data: matches, isLoading: loadingMatches } = useWcMatches();
   const { data: predictions } = useBolaoPredictions(id, currentUserId);
   const upsertPrediction = useUpsertPrediction();
+  const deletePrediction = useDeletePrediction();
   const { toast } = useToast();
+  const { unlock } = useAchievement();
+  const [confirmDeleteMatchId, setConfirmDeleteMatchId] = useState<number | null>(null);
 
   const predictionsByMatch = useMemo(
     () => new Map((predictions || []).map((p) => [p.match_id, p])),
     [predictions]
   );
 
+  const handleDeleteRequest = (matchId: number) => {
+    setConfirmDeleteMatchId(matchId);
+  };
+
+  const performDelete = () => {
+    if (!id || confirmDeleteMatchId == null) return;
+    const matchId = confirmDeleteMatchId;
+    deletePrediction.mutate(
+      { bolao_id: id, match_id: matchId },
+      {
+        onSuccess: () => {
+          toast({ title: 'Palpite apagado' });
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro ao apagar', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+        },
+      }
+    );
+    setConfirmDeleteMatchId(null);
+  };
+
   const handleSave = (matchId: number, homeScore: number, awayScore: number) => {
     if (!id) return;
+    const wasFirstPrediction = (predictions?.length ?? 0) === 0;
     upsertPrediction.mutate(
       {
         bolao_id: id,
@@ -51,6 +79,7 @@ const BolaoPalpites: React.FC = () => {
       {
         onSuccess: () => {
           toast({ title: 'Palpite salvo', description: `${homeScore} x ${awayScore}` });
+          if (wasFirstPrediction) unlock('first-prediction', id);
         },
         onError: (err: any) => {
           toast({ title: 'Erro ao salvar palpite', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
@@ -123,6 +152,7 @@ const BolaoPalpites: React.FC = () => {
             isClosed={bolao?.is_closed}
             deadlineMode={bolao?.prediction_deadline_mode ?? 'per_match'}
             onSave={handleSave}
+            onDelete={handleDeleteRequest}
             variant="page"
             accentColor="green"
             groupFilter={groupFilter}
@@ -130,6 +160,18 @@ const BolaoPalpites: React.FC = () => {
           />
         )}
       </div>
+
+      {/* Confirmação ao apagar palpite */}
+      <ConfirmDialog
+        open={confirmDeleteMatchId !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteMatchId(null)}
+        title="Apagar este palpite?"
+        description="O palpite vai voltar ao estado vazio (- x -). Você pode palpitar de novo enquanto o prazo estiver aberto."
+        confirmLabel="Apagar"
+        variant="destructive"
+        onConfirm={performDelete}
+        isLoading={deletePrediction.isPending}
+      />
     </div>
   );
 };
