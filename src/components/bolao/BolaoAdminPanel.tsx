@@ -39,6 +39,7 @@ import {
   useBolaoStats,
 } from '@/hooks/use-bolao';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import type { BolaoRankingEntry } from '@/services/bolao.service';
 
 interface BolaoAdminPanelProps {
@@ -235,7 +236,10 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   ownerUserId,
   predictionDeadlineMode,
 }) => {
-  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  // Soft-removed members: userId → { timer, userName }. Mostrados como
+  // ocultos na lista; após 5s o RPC é executado, com possibilidade de undo.
+  const pendingRemovalsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const [pendingRemovedIds, setPendingRemovedIds] = useState<Set<string>>(new Set());
   const [specialExpanded, setSpecialExpanded] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   // When user clicks a deadline mode and there are existing predictions,
@@ -271,24 +275,61 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
   if (currentUserId !== ownerUserId) return null;
 
+  // Padrão UX moderno (Gmail-style): clique imediato esconde o membro da lista
+  // e mostra toast com botão "Desfazer". Após 5s sem undo, executa o RPC.
   const handleRemove = (userId: string, userName: string) => {
-    if (confirmRemove !== userId) {
-      setConfirmRemove(userId);
-      return;
-    }
-    removeMember.mutate(
-      { bolaoId, userId },
-      {
-        onSuccess: () => {
-          toast({ title: `${userName} removido do bolão` });
-          setConfirmRemove(null);
-        },
-        onError: (err: any) => {
-          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-          setConfirmRemove(null);
-        },
-      }
-    );
+    // Já está em remoção pendente? ignora cliques duplos
+    if (pendingRemovalsRef.current.has(userId)) return;
+
+    setPendingRemovedIds(prev => {
+      const next = new Set(prev);
+      next.add(userId);
+      return next;
+    });
+
+    const undo = () => {
+      const timer = pendingRemovalsRef.current.get(userId);
+      if (timer) clearTimeout(timer);
+      pendingRemovalsRef.current.delete(userId);
+      setPendingRemovedIds(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    };
+
+    const timer = setTimeout(() => {
+      pendingRemovalsRef.current.delete(userId);
+      removeMember.mutate(
+        { bolaoId, userId },
+        {
+          onSuccess: () => {
+            // Mantém escondido (já confirmado server-side)
+          },
+          onError: (err: any) => {
+            // Reverte UI (membro reaparece) + toast de erro
+            setPendingRemovedIds(prev => {
+              const next = new Set(prev);
+              next.delete(userId);
+              return next;
+            });
+            toast({ title: 'Erro ao remover', description: err.message, variant: 'destructive' });
+          },
+        }
+      );
+    }, 5000);
+
+    pendingRemovalsRef.current.set(userId, timer);
+
+    toast({
+      title: `${userName} removido`,
+      description: 'Você pode desfazer em 5s',
+      action: (
+        <ToastAction altText="Desfazer remoção" onClick={undo}>
+          Desfazer
+        </ToastAction>
+      ),
+    });
   };
 
   const handleToggleClose = () => {
@@ -1139,44 +1180,37 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
               <span className="text-[10px] opacity-30 ml-auto">{ranking.length}</span>
             </div>
             <div className="space-y-1.5 max-h-48 overflow-y-auto minimal-scrollbar">
-              {ranking.map((member) => {
-                const isOwner = member.user_id === ownerUserId;
-                const isConfirming = confirmRemove === member.user_id;
-                return (
-                  <div
-                    key={member.user_id}
-                    className="flex items-center gap-3 py-2 px-3 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {member.user_name || member.user_email}
-                      </p>
-                      <p className="text-[10px] opacity-40">
-                        {member.total_points} pts · {member.total_predictions} palpites
-                      </p>
+              {ranking
+                .filter(m => !pendingRemovedIds.has(m.user_id))
+                .map((member) => {
+                  const isOwner = member.user_id === ownerUserId;
+                  return (
+                    <div
+                      key={member.user_id}
+                      className="flex items-center gap-3 py-2 px-3 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {member.user_name || member.user_email}
+                        </p>
+                        <p className="text-[10px] opacity-40">
+                          {member.total_points} pts · {member.total_predictions} palpites
+                        </p>
+                      </div>
+                      {isOwner ? (
+                        <span className="text-[10px] text-terminal-green font-bold shrink-0">Criador</span>
+                      ) : (
+                        <button
+                          onClick={() => handleRemove(member.user_id, member.user_name || member.user_email)}
+                          aria-label={`Remover ${member.user_name || member.user_email} do bolão`}
+                          className="shrink-0 flex items-center gap-1 text-[10px] font-bold transition-colors px-2 h-9 rounded border border-terminal-border opacity-60 hover:opacity-100 hover:border-terminal-red/40 hover:text-terminal-red hover:bg-terminal-red/5"
+                        >
+                          <UserX className="w-3 h-3" /> Remover
+                        </button>
+                      )}
                     </div>
-                    {isOwner ? (
-                      <span className="text-[10px] text-terminal-green font-bold shrink-0">Criador</span>
-                    ) : (
-                      <button
-                        onClick={() => handleRemove(member.user_id, member.user_name || member.user_email)}
-                        disabled={removeMember.isPending}
-                        className={`shrink-0 flex items-center gap-1 text-[10px] font-bold transition-colors px-2 py-1 rounded border ${
-                          isConfirming
-                            ? 'border-terminal-red/60 text-terminal-red bg-terminal-red/10'
-                            : 'border-terminal-border opacity-50 hover:opacity-80 hover:border-terminal-red/40 hover:text-terminal-red'
-                        }`}
-                      >
-                        {isConfirming ? (
-                          <><AlertTriangle className="w-2.5 h-2.5" /> Confirmar</>
-                        ) : (
-                          <><UserX className="w-2.5 h-2.5" /> Remover</>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
         </div>

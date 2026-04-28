@@ -13,6 +13,8 @@ interface PredictionsListProps {
   isClosed?: boolean;
   deadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
   onSave: (matchId: number, homeScore: number, awayScore: number) => void;
+  /** Optional — when present, shows "Apagar palpite" menu in each card */
+  onDelete?: (matchId: number) => void;
   /** "page" = vertical layout pra rota dedicada; "modal" = compactado */
   variant?: 'page' | 'modal';
   /** Cor do filtro ativo — green pra page, blue pra modal */
@@ -36,6 +38,7 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
   isClosed,
   deadlineMode,
   onSave,
+  onDelete,
   variant = 'page',
   accentColor = 'green',
   groupFilter,
@@ -127,6 +130,7 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
                       match={match}
                       prediction={predictionsByMatch.get(match.id)}
                       onSave={onSave}
+                      onDelete={onDelete}
                       isSaving={isSavingPrediction}
                       bolaoId={bolaoId}
                       deadlineMode={deadlineMode}

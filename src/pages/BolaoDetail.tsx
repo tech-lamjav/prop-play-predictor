@@ -14,6 +14,7 @@ import {
   Settings,
   Target,
   AlertCircle,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,6 +25,7 @@ import {
   useBolaoPredictions,
   useChampionPredictions,
   useUpsertChampionPrediction,
+  useLeaveBolao,
   computeMatchDeadline,
 } from '@/hooks/use-bolao';
 import { BolaoRankingTable } from '@/components/bolao/BolaoRankingTable';
@@ -38,6 +40,8 @@ import { DeadlineBadge } from '@/components/bolao/DeadlineBadge';
 import { ShareCallout } from '@/components/bolao/ShareCallout';
 import { PremiumWelcomeModal } from '@/components/bolao/PremiumWelcomeModal';
 import { BolaoBottomNav } from '@/components/bolao/BolaoBottomNav';
+import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
+import { useAchievement } from '@/components/bolao/AchievementProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { WcMatch, BolaoRankingEntry } from '@/services/bolao.service';
@@ -158,10 +162,26 @@ const BolaoDetail: React.FC = () => {
   const location = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const leaveBolao = useLeaveBolao();
+  const { unlock } = useAchievement();
+
+  const handleLeaveBolao = () => {
+    if (!id) return;
+    leaveBolao.mutate(id, {
+      onSuccess: () => {
+        toast({ title: 'Você saiu do bolão' });
+        navigate('/bolao');
+      },
+      onError: (err: any) => {
+        toast({ title: 'Erro ao sair', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+      },
+    });
+  };
   const [activeTab, setActiveTab] = useState<Tab>('ranking');
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [showAdmin, setShowAdmin] = useState(false);
   const [showPremiumWelcome, setShowPremiumWelcome] = useState(false);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   // Webhook polling state: true = ?success=true detectado mas is_premium ainda false
   const [awaitingWebhook, setAwaitingWebhook] = useState(false);
   const [webhookTimedOut, setWebhookTimedOut] = useState(false);
@@ -177,10 +197,10 @@ const BolaoDetail: React.FC = () => {
   const [specialPredictionsOpen, setSpecialPredictionsOpen] = useState(false);
 
   const { data: bolao, isLoading: loadingBolao } = useBolao(id);
-  const { data: ranking } = useBolaoRanking(id);
+  const { data: ranking, isLoading: loadingRanking } = useBolaoRanking(id);
   const { data: matches } = useWcMatches();
   const { data: myPredictions } = useBolaoPredictions(id, currentUserId);
-  const { data: championPredictions } = useChampionPredictions(id);
+  const { data: championPredictions, isLoading: loadingChampions } = useChampionPredictions(id);
   const upsertChampion = useUpsertChampionPrediction();
 
   // ── Handle query params: Stripe success + auto-open settings ──────
@@ -237,11 +257,60 @@ const BolaoDetail: React.FC = () => {
     [championPredictions, currentUserId]
   );
 
+  // Achievement: usuário escolheu campeão (uma vez)
+  useEffect(() => {
+    if (id && myChampionPick) unlock('champion-picked', id);
+  }, [id, myChampionPick, unlock]);
+
+  // Achievement: usuário entrou no top 3 (uma vez)
+  useEffect(() => {
+    if (!id || !ranking || !currentUserId) return;
+    const me = ranking.find(r => r.user_id === currentUserId);
+    if (!me) return;
+    // Só conta pódio quando há concorrência (>=3 membros) e o user está em rank 1-3
+    if (ranking.length >= 3 && me.rank <= 3 && me.total_points > 0) {
+      unlock('reached-podium', id);
+    }
+  }, [id, ranking, currentUserId, unlock]);
+
+  // Achievement: usuário cravou primeiro placar exato (uma vez)
+  // points_earned == scoring_exact significa placar exato (resto é 0 ou scoring_result)
+  useEffect(() => {
+    if (!id || !myPredictions || !bolao) return;
+    const exactScoreHit = myPredictions.some(
+      p => p.points_earned != null && p.points_earned >= bolao.scoring_exact
+    );
+    if (exactScoreHit) unlock('first-exact-score', id);
+  }, [id, myPredictions, bolao, unlock]);
+
+  // Achievement: completou todos os palpites da fase de grupos
+  useEffect(() => {
+    if (!id || !matches || !myPredictions) return;
+    const groupMatches = matches.filter(m => m.stage === 'group' && m.home_team_code !== 'TBD');
+    if (groupMatches.length === 0) return;
+    const palpitatedGroupIds = new Set(
+      myPredictions
+        .filter(p => groupMatches.some(g => g.id === p.match_id))
+        .map(p => p.match_id)
+    );
+    if (palpitatedGroupIds.size >= groupMatches.length) {
+      unlock('all-group-stage-done', id);
+    }
+  }, [id, matches, myPredictions, unlock]);
+
   const handleChampionConfirm = (teamCode: string) => {
     if (!id) return;
     upsertChampion.mutate(
       { bolaoId: id, teamCode },
-      { onSuccess: () => setChampionModalOpen(false) }
+      {
+        onSuccess: () => {
+          setChampionModalOpen(false);
+          toast({ title: 'Palpite de campeão salvo', description: teamCode });
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro ao salvar campeão', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+        },
+      }
     );
   };
 
@@ -346,27 +415,54 @@ const BolaoDetail: React.FC = () => {
   const sidebarContent = (
     <>
       {/* 1. Palpites dos Jogos */}
-      <div className="terminal-container p-4 border-terminal-blue/20 bg-terminal-blue/[0.03]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <ClipboardList className="w-4 h-4 text-terminal-blue shrink-0" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-terminal-blue">
-                Palpites dos Jogos
-              </p>
-              <p className="text-xs opacity-50">
-                {myPredictions?.length || 0} feitos · {matches?.filter((m) => !m.is_finished && m.home_team_code !== 'TBD').length || 0} disponíveis
-              </p>
+      {(() => {
+        const made = myPredictions?.length ?? 0;
+        const total = totalAvailableMatches;
+        const pct = total > 0 ? Math.round((made / total) * 100) : 0;
+        const complete = total > 0 && made >= total;
+        return (
+          <div className="terminal-container p-4 border-terminal-blue/20 bg-terminal-blue/[0.03]">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <ClipboardList className="w-4 h-4 text-terminal-blue shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-terminal-blue">
+                    Palpites dos Jogos
+                  </p>
+                  <p className="text-xs opacity-60">
+                    <span className="font-bold text-terminal-text tabular-nums">{made}</span>
+                    <span className="opacity-60"> / </span>
+                    <span className="opacity-80 tabular-nums">{total}</span>
+                    <span className="opacity-50"> palpites · {pct}%</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPredictionsModalOpen(true)}
+                className="text-[10px] font-bold text-terminal-blue hover:text-terminal-blue/80 shrink-0 border border-terminal-blue/30 rounded px-2 py-1 hover:bg-terminal-blue/10 transition-colors"
+              >
+                {complete ? 'Revisar' : 'Fazer palpites →'}
+              </button>
+            </div>
+            {/* Progress bar — azul a cinza, completa em verde */}
+            <div
+              className="h-1.5 rounded-full bg-terminal-border-subtle overflow-hidden"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${made} de ${total} palpites feitos`}
+            >
+              <div
+                className={`h-full transition-all duration-500 ${
+                  complete ? 'bg-terminal-green' : 'bg-terminal-blue'
+                }`}
+                style={{ width: `${pct}%` }}
+              />
             </div>
           </div>
-          <button
-            onClick={() => setPredictionsModalOpen(true)}
-            className="text-[10px] font-bold text-terminal-blue hover:text-terminal-blue/80 shrink-0 border border-terminal-blue/30 rounded px-2 py-1 hover:bg-terminal-blue/10 transition-colors"
-          >
-            Fazer palpites →
-          </button>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 2. Palpite de Campeão */}
       {(bolao.champion_enabled ?? true) && <div className="terminal-container p-4 border-yellow-500/20 bg-yellow-500/[0.03]">
@@ -399,6 +495,16 @@ const BolaoDetail: React.FC = () => {
             {myChampionPick ? 'Alterar' : 'Escolher →'}
           </button>
         </div>
+
+        {loadingChampions && !championPredictions && (
+          <div className="mt-3 pt-3 border-t border-yellow-500/10">
+            <div className="flex flex-wrap gap-1.5">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-5 w-12 rounded bg-yellow-500/10 animate-pulse" />
+              ))}
+            </div>
+          </div>
+        )}
 
         {championPredictions && championPredictions.length > 0 && (
           <div className="mt-3 pt-3 border-t border-yellow-500/10">
@@ -519,7 +625,7 @@ const BolaoDetail: React.FC = () => {
               inviteCode={bolao.invite_code}
               variant="compact"
             />
-            {currentUserId && currentUserId === bolao.owner_id && (
+            {currentUserId && currentUserId === bolao.owner_id ? (
               <Button
                 variant="ghost"
                 onClick={() => setShowAdmin(true)}
@@ -529,7 +635,18 @@ const BolaoDetail: React.FC = () => {
                 <Settings className="w-4 h-4" />
                 <span className="hidden sm:inline">Configurações</span>
               </Button>
-            )}
+            ) : currentUserId ? (
+              <Button
+                variant="ghost"
+                onClick={() => setConfirmLeaveOpen(true)}
+                aria-label="Sair do bolão"
+                className="gap-1.5 text-xs opacity-50 hover:opacity-100 hover:text-terminal-red h-11 px-3"
+                title="Sair do bolão"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sair</span>
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -539,10 +656,23 @@ const BolaoDetail: React.FC = () => {
             <Users className="w-3 h-3" />
             {ranking?.length || 0} participantes
           </span>
-          <span className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(bolao.invite_code);
+                toast({ title: 'Código copiado', description: bolao.invite_code });
+              } catch {
+                toast({ title: 'Erro ao copiar', variant: 'destructive' });
+              }
+            }}
+            aria-label={`Copiar código de convite ${bolao.invite_code}`}
+            title="Clique para copiar"
+            className="flex items-center gap-1 hover:opacity-100 hover:text-terminal-blue transition-colors cursor-pointer"
+          >
             <Hash className="w-3 h-3" />
-            {bolao.invite_code}
-          </span>
+            <span className="font-mono">{bolao.invite_code}</span>
+          </button>
           <span>
             {bolao.scoring_result} pt resultado / {bolao.scoring_exact} pts placar
             {bolao.scoring_preset === 'weighted_stages' && (
@@ -681,15 +811,23 @@ const BolaoDetail: React.FC = () => {
                     )}
                   </div>
                 )}
-                <BolaoRankingTable
-                  ranking={ranking || []}
-                  currentUserId={currentUserId}
-                  onInviteFriends={() => {
-                    // Scroll to top so user sees the ShareCallout (rendered at the top
-                    // when ranking.length <= 1).
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                />
+                {loadingRanking && !ranking ? (
+                  <div className="space-y-1.5">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-14 rounded bg-terminal-dark-gray/30 animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <BolaoRankingTable
+                    ranking={ranking || []}
+                    currentUserId={currentUserId}
+                    onInviteFriends={() => {
+                      // Scroll to top so user sees the ShareCallout (rendered at the top
+                      // when ranking.length <= 1).
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  />
+                )}
               </div>
             )}
 
@@ -924,6 +1062,30 @@ const BolaoDetail: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Sair do bolão (apenas não-owner) ── */}
+      <ConfirmDialog
+        open={confirmLeaveOpen}
+        onOpenChange={setConfirmLeaveOpen}
+        title="Sair do bolão?"
+        description={
+          <>
+            <p className="mb-2">
+              Você não vai mais aparecer no ranking de <strong>{bolao.name}</strong>.
+            </p>
+            <p className="text-xs opacity-70">
+              Seus palpites já feitos serão removidos. Pra voltar, precisa do código de convite novamente.
+            </p>
+          </>
+        }
+        confirmLabel="Sair do bolão"
+        variant="destructive"
+        onConfirm={() => {
+          handleLeaveBolao();
+          setConfirmLeaveOpen(false);
+        }}
+        isLoading={leaveBolao.isPending}
+      />
     </div>
   );
 };

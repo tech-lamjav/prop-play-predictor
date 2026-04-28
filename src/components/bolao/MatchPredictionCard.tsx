@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Lock, Check, MoreVertical, Trash2 } from 'lucide-react';
 import type { WcMatch, BolaoPrediction } from '@/services/bolao.service';
 import { isMatchLocked, isMatchPredictionLocked, computeMatchDeadline } from '@/hooks/use-bolao';
 import { readDraft, writeDraft, clearDraft } from '@/components/bolao/useDraftPrediction';
@@ -8,6 +8,8 @@ interface MatchPredictionCardProps {
   match: WcMatch;
   prediction?: BolaoPrediction;
   onSave: (matchId: number, homeScore: number, awayScore: number) => void;
+  /** Optional — when present, shows menu with "Apagar palpite" option */
+  onDelete?: (matchId: number) => void;
   isSaving?: boolean;
   // Bolão id for localStorage draft key (optional for backward compat)
   bolaoId?: string;
@@ -21,6 +23,7 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   match,
   prediction,
   onSave,
+  onDelete,
   isSaving,
   bolaoId,
   deadlineMode,
@@ -44,14 +47,43 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   const [homeScore, setHomeScore] = useState<string>(initialHome);
   const [awayScore, setAwayScore] = useState<string>(initialAway);
   const [saved, setSaved] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Sync from server when prediction arrives (e.g., after upsert success)
+  // Close menu on outside click + ESC
   useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  // Sync from server when prediction arrives (after upsert success) OR
+  // when prediction is deleted (clear inputs + draft, volta ao estado vazio).
+  // Track previous prediction via ref pra distinguir "carregou agora" de "foi deletado".
+  const prevPredictionRef = useRef<BolaoPrediction | undefined>(prediction);
+  useEffect(() => {
+    const hadBefore = !!prevPredictionRef.current;
     if (prediction) {
       setHomeScore(prediction.predicted_home_score.toString());
       setAwayScore(prediction.predicted_away_score.toString());
+    } else if (hadBefore) {
+      // Prediction existia e sumiu → foi deletada
+      setHomeScore('');
+      setAwayScore('');
+      if (bolaoId) clearDraft(bolaoId, match.id);
     }
-  }, [prediction]);
+    prevPredictionRef.current = prediction;
+  }, [prediction, bolaoId, match.id]);
 
   // Derived: there's an unsaved draft whenever the current values diverge
   // from the server (or no server value yet but user typed something).
@@ -158,6 +190,39 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
           <span className="text-[10px] opacity-50">
             {dateStr} {timeStr}
           </span>
+          {onDelete && hasPrediction && !locked && !match.is_finished && (
+            <div ref={menuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(v => !v)}
+                aria-label="Mais opções do palpite"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                className="w-8 h-8 flex items-center justify-center rounded text-terminal-text/40 hover:text-terminal-text/90 hover:bg-terminal-gray/30 transition-colors"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-1 z-30 w-44 rounded-lg border border-terminal-border bg-terminal-dark-gray shadow-xl overflow-hidden"
+                >
+                  <button
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onDelete(match.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm text-terminal-red hover:bg-terminal-red/10 focus:bg-terminal-red/10 focus:outline-none transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Apagar palpite
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       {/* Custom deadline indicator — only show when deadline differs from kickoff */}

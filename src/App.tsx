@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AchievementProvider } from "@/components/bolao/AchievementProvider";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
@@ -56,6 +57,7 @@ const LazyFallback = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <AchievementProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
@@ -175,6 +177,7 @@ const App = () => (
           <Footer />
         </Suspense>
       </BrowserRouter>
+      </AchievementProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
