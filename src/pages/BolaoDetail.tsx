@@ -42,6 +42,9 @@ import { PremiumWelcomeModal } from '@/components/bolao/PremiumWelcomeModal';
 import { BolaoBottomNav } from '@/components/bolao/BolaoBottomNav';
 import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
 import { useAchievement } from '@/components/bolao/AchievementProvider';
+import { RankingShareImage } from '@/components/bolao/RankingShareImage';
+import { useRankingShareImage } from '@/components/bolao/useRankingShareImage';
+import { shareTextOrLink, SHARE_MESSAGES } from '@/components/bolao/share-utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { WcMatch, BolaoRankingEntry } from '@/services/bolao.service';
@@ -79,81 +82,9 @@ function buildRankingText(
 }
 
 // ── Ranking share image ────────────────────────────────────────────
-async function generateRankingImageBlob(
-  bolaoName: string,
-  ranking: BolaoRankingEntry[]
-): Promise<Blob> {
-  const top10 = ranking.slice(0, 10);
-  const rowH = 46;
-  const headerH = 76;
-  const footerH = 36;
-  const width = 420;
-  const height = headerH + top10.length * rowH + footerH;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d')!;
-
-  ctx.fillStyle = '#0D1117';
-  ctx.fillRect(0, 0, width, height);
-
-  ctx.fillStyle = '#161B22';
-  ctx.fillRect(0, 0, width, headerH);
-
-  ctx.fillStyle = '#F0A500';
-  ctx.fillRect(20, 20, 36, 36);
-  ctx.fillStyle = '#0D1117';
-  ctx.font = 'bold 22px monospace';
-  ctx.fillText('🏆', 22, 46);
-
-  ctx.fillStyle = '#E6EDF3';
-  ctx.font = 'bold 15px system-ui, sans-serif';
-  ctx.fillText(bolaoName.length > 26 ? bolaoName.slice(0, 26) + '…' : bolaoName, 68, 38);
-  ctx.fillStyle = '#8B949E';
-  ctx.font = '11px system-ui, sans-serif';
-  ctx.fillText('Copa do Mundo 2026', 68, 58);
-
-  const medals = ['🥇', '🥈', '🥉'];
-  top10.forEach((entry, i) => {
-    const y = headerH + i * rowH;
-    if (i % 2 === 0) {
-      ctx.fillStyle = '#161B22';
-      ctx.fillRect(0, y, width, rowH);
-    }
-
-    const rankStr = i < 3 ? medals[i] : `${i + 1}.`;
-    const name = (entry.user_name || entry.user_email.split('@')[0]).slice(0, 22);
-
-    ctx.fillStyle = i === 0 ? '#F0A500' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#E6EDF3';
-    ctx.font = `bold 13px system-ui, sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.fillText(rankStr, 20, y + 28);
-
-    ctx.fillStyle = '#E6EDF3';
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.fillText(name, 52, y + 28);
-
-    ctx.fillStyle = '#58A6FF';
-    ctx.font = 'bold 13px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${entry.total_points} pts`, width - 20, y + 28);
-    ctx.textAlign = 'left';
-  });
-
-  ctx.fillStyle = '#0D1117';
-  ctx.fillRect(0, headerH + top10.length * rowH, width, footerH);
-  ctx.fillStyle = '#8B949E';
-  ctx.font = '10px system-ui, sans-serif';
-  ctx.fillText('smartbetting.app/bolao', 20, headerH + top10.length * rowH + 22);
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error('Canvas toBlob failed'));
-    }, 'image/png');
-  });
-}
+// Ranking image generation moved to RankingShareImage component +
+// useRankingShareImage hook (uses html2canvas, supports Web Share API
+// + Clipboard API com fallback gracioso pra download).
 
 // ── Component ──────────────────────────────────────────────────────
 const BolaoDetail: React.FC = () => {
@@ -348,38 +279,36 @@ const BolaoDetail: React.FC = () => {
   // ── Ranking share: text ────────────────────────────────────────────
   const handleShareRanking = async () => {
     if (!bolao || !ranking) return;
+    const inviteUrl = `${window.location.origin}/bolao/entrar/${bolao.invite_code}`;
     const text = buildRankingText(bolao.name, ranking);
-    if (navigator.share) {
-      try {
-        await navigator.share({ text });
-        return;
-      } catch {
-        // fallback to clipboard
-      }
-    }
-    await navigator.clipboard.writeText(text);
+    const result = await shareTextOrLink({
+      title: `Ranking ${bolao.name}`,
+      text,
+      url: inviteUrl,
+    });
+    if (result.method === 'native-share') return;
+    // fallback path (clipboard) — copia o texto + url
+    await navigator.clipboard.writeText(`${text}\n\nVem disputar: ${inviteUrl}`);
     toast({ title: 'Ranking copiado!', description: 'Cole no WhatsApp ou Telegram.' });
   };
 
-  // ── Ranking share: image (premium) ────────────────────────────────
+  // ── Ranking share: image — html2canvas + Web Share / Clipboard / Download ─
+  const rankingShare = useRankingShareImage({
+    bolaoName: bolao?.name ?? 'Bolão',
+    filenameSlug: bolao?.invite_code,
+  });
+
   const handleShareRankingImage = async () => {
-    if (!bolao || !ranking) return;
-    try {
-      const blob = await generateRankingImageBlob(bolao.name, ranking);
-      const file = new File([blob], `ranking-${bolao.invite_code}.png`, { type: 'image/png' });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${bolao.name} — Ranking` });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast({ title: 'Imagem baixada!' });
-      }
-    } catch {
-      toast({ title: 'Erro ao gerar imagem', variant: 'destructive' });
+    const result = await rankingShare.share();
+    if (result.method === 'native-share') {
+      // Sheet abriu — user escolheu app (WhatsApp/Telegram/Instagram)
+    } else if (result.method === 'download') {
+      toast({
+        title: 'Imagem salva!',
+        description: 'Arraste no chat do WhatsApp ou anexe na conversa',
+      });
+    } else if (result.error && result.error !== 'Cancelado') {
+      toast({ title: 'Erro ao gerar imagem', description: result.error, variant: 'destructive' });
     }
   };
 
@@ -1086,6 +1015,18 @@ const BolaoDetail: React.FC = () => {
         }}
         isLoading={leaveBolao.isPending}
       />
+
+      {/* ── Off-screen render do card do ranking pra captura via html2canvas ── */}
+      {ranking && bolao && (
+        <RankingShareImage
+          ref={rankingShare.captureRef}
+          bolaoName={bolao.name}
+          inviteCode={bolao.invite_code}
+          ranking={ranking}
+          currentUserId={currentUserId}
+          myChampionPick={myChampionPick}
+        />
+      )}
     </div>
   );
 };

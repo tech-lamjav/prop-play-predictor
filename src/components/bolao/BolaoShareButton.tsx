@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Share2, Copy, Check, MessageCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { shareTextOrLink, SHARE_MESSAGES } from '@/components/bolao/share-utils';
 
 interface BolaoShareButtonProps {
   bolaoName: string;
@@ -18,7 +19,7 @@ export const BolaoShareButton: React.FC<BolaoShareButtonProps> = ({
   const ref = useRef<HTMLDivElement>(null);
 
   const inviteUrl = `${window.location.origin}/bolao/entrar/${inviteCode}`;
-  const shareText = `Participe do bolão "${bolaoName}" da Copa do Mundo 2026!\n${inviteUrl}`;
+  const shareText = SHARE_MESSAGES.invite(bolaoName, inviteCode, inviteUrl);
 
   // Close on outside click + ESC
   useEffect(() => {
@@ -68,12 +69,13 @@ export const BolaoShareButton: React.FC<BolaoShareButtonProps> = ({
 
   const handleTelegram = () => {
     window.open(
-      `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent(`Participe do bolão "${bolaoName}" da Copa do Mundo 2026!`)}`,
+      `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent(SHARE_MESSAGES.invite(bolaoName, inviteCode, '').trim())}`,
       '_blank',
       'noopener,noreferrer'
     );
     setOpen(false);
   };
+
 
   const trigger =
     variant === 'icon' ? (

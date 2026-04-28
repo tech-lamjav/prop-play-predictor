@@ -41,6 +41,7 @@ const SharePage = React.lazy(() => import("./pages/SharePage"));
 const Analise360List = React.lazy(() => import("./pages/Analise360List"));
 const Analise360Detail = React.lazy(() => import("./pages/Analise360Detail"));
 const HomeNBA = React.lazy(() => import("./pages/HomeNBA"));
+const BolaoEntry = React.lazy(() => import("./pages/BolaoEntry"));
 const BolaoHome = React.lazy(() => import("./pages/BolaoHome"));
 const BolaoDetail = React.lazy(() => import("./pages/BolaoDetail"));
 const BolaoPalpites = React.lazy(() => import("./pages/BolaoPalpites"));
@@ -151,11 +152,8 @@ const App = () => (
               </ProtectedRoute>
             } />
             {/* Bolão Copa do Mundo */}
-            <Route path="/bolao" element={
-              <ProtectedRoute>
-                <BolaoHome />
-              </ProtectedRoute>
-            } />
+            {/* /bolao = landing publica pra deslogado, dashboard pra logado */}
+            <Route path="/bolao" element={<BolaoEntry />} />
             <Route path="/bolao/entrar/:code" element={
               <ProtectedRoute>
                 <BolaoJoin />
