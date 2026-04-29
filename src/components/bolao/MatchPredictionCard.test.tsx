@@ -80,7 +80,7 @@ describe('MatchPredictionCard — badge "Rascunho"', () => {
       />
     );
 
-    const homeInput = screen.getByLabelText(/Placar BRA/);
+    const homeInput = screen.getByRole('textbox', { name: /Placar BRA/ });
     await user.type(homeInput, '2');
 
     expect(screen.getByText('Rascunho')).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe('MatchPredictionCard — badge "Rascunho"', () => {
     expect(screen.queryByText('Rascunho')).not.toBeInTheDocument();
 
     // User edita o home pra 5 → diverge do server
-    const homeInput = screen.getByLabelText(/Placar BRA/);
+    const homeInput = screen.getByRole('textbox', { name: /Placar BRA/ });
     await user.clear(homeInput);
     await user.type(homeInput, '5');
 
@@ -138,7 +138,7 @@ describe('MatchPredictionCard — badge "Rascunho"', () => {
       />
     );
 
-    const homeInput = screen.getByLabelText(/Placar BRA/);
+    const homeInput = screen.getByRole('textbox', { name: /Placar BRA/ });
 
     // Edita pra 5 → badge aparece
     await user.clear(homeInput);
@@ -175,8 +175,8 @@ describe('MatchPredictionCard — restauração de rascunho', () => {
       />
     );
 
-    expect(screen.getByLabelText(/Placar BRA/)).toHaveValue(4);
-    expect(screen.getByLabelText(/Placar MEX/)).toHaveValue(2);
+    expect(screen.getByRole('textbox', { name: /Placar BRA/ })).toHaveValue('4');
+    expect(screen.getByRole('textbox', { name: /Placar MEX/ })).toHaveValue('2');
     // Como diverge do "vazio" do server, badge "Rascunho" aparece
     expect(screen.getByText('Rascunho')).toBeInTheDocument();
   });
@@ -197,8 +197,8 @@ describe('MatchPredictionCard — restauração de rascunho', () => {
       />
     );
 
-    expect(screen.getByLabelText(/Placar BRA/)).toHaveValue(3);
-    expect(screen.getByLabelText(/Placar MEX/)).toHaveValue(1);
+    expect(screen.getByRole('textbox', { name: /Placar BRA/ })).toHaveValue('3');
+    expect(screen.getByRole('textbox', { name: /Placar MEX/ })).toHaveValue('1');
     expect(screen.queryByText('Rascunho')).not.toBeInTheDocument();
   });
 });

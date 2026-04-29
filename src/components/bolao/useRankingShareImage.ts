@@ -6,6 +6,8 @@ interface UseRankingShareImageOptions {
   bolaoName: string;
   /** Slug do filename (sem extensão) — ex: "ranking-bolao-da-firma" */
   filenameSlug?: string;
+  /** "feed" 1080×1080 (default) | "stories" 1080×1920 */
+  variant?: 'feed' | 'stories';
 }
 
 /**
@@ -19,7 +21,7 @@ interface UseRankingShareImageOptions {
  *   <button onClick={share}>Compartilhar imagem</button>
  */
 export function useRankingShareImage(options: UseRankingShareImageOptions) {
-  const { bolaoName, filenameSlug } = options;
+  const { bolaoName, filenameSlug, variant = 'feed' } = options;
   const [isSharing, setIsSharing] = useState(false);
   const [lastResult, setLastResult] = useState<ShareResult | null>(null);
 
@@ -58,7 +60,7 @@ export function useRankingShareImage(options: UseRankingShareImageOptions) {
       }
 
       const slug = filenameSlug ?? slugify(bolaoName);
-      const filename = `ranking-${slug}.png`;
+      const filename = `ranking-${slug}${variant === 'stories' ? '-stories' : ''}.png`;
 
       const result = await shareImage(blob, {
         filename,

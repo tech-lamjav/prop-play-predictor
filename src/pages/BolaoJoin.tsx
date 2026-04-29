@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Trophy, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useJoinBolao } from '@/hooks/use-bolao';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
 
 const BolaoJoin: React.FC = () => {
   const { code } = useParams<{ code: string }>();
@@ -37,8 +40,31 @@ const BolaoJoin: React.FC = () => {
     });
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // OG image dinâmica gerada pela edge function og-bolao
+  const ogImageUrl = code && SUPABASE_URL
+    ? `${SUPABASE_URL}/functions/v1/og-bolao?invite=${encodeURIComponent(code.toUpperCase())}`
+    : null;
+
   return (
     <div className="min-h-screen bg-terminal-bg text-terminal-text flex items-center justify-center">
+      {/* SEO + OG meta — preview rico em WhatsApp/Telegram/etc quando colam o link */}
+      <Helmet>
+        <title>Entrar no Bolão Copa 2026 | Smart Betting</title>
+        <meta name="description" content="Você foi convidado pra um bolão da Copa 2026. Entre em 1 clique e palpite os 104 jogos." />
+        {ogImageUrl && (
+          <>
+            <meta property="og:image" content={ogImageUrl} />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta property="og:type" content="website" />
+            <meta property="og:title" content="Bolão Copa 2026 — Entre na disputa" />
+            <meta property="og:description" content="104 jogos, palpite de campeão, ranking ao vivo." />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:image" content={ogImageUrl} />
+          </>
+        )}
+      </Helmet>
+
       <div className="max-w-sm w-full mx-4">
         <div className="terminal-container p-8 text-center">
           {status === 'loading' && (

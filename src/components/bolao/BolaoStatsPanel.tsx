@@ -10,9 +10,11 @@ import {
   Flame,
   Crown,
   Lock,
+  User,
 } from 'lucide-react';
 import { useBolaoStats, useBolaoRoundRanking } from '@/hooks/use-bolao';
 import { BolaoRankingTable } from './BolaoRankingTable';
+import { MyBolaoStatsPanel } from './MyBolaoStatsPanel';
 
 const STAGES = [
   { key: 'group',        label: 'Fase de Grupos' },
@@ -22,6 +24,8 @@ const STAGES = [
   { key: 'semi',         label: 'Semifinal' },
   { key: 'final',        label: 'Final' },
 ] as const;
+
+type SubTab = 'geral' | 'voce';
 
 interface Props {
   bolaoId: string;
@@ -65,39 +69,13 @@ function DestaqueBadge({ icon, label, name, value }: {
   );
 }
 
-export const BolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isPremium }) => {
+const GeneralStatsView: React.FC<Props> = ({ bolaoId, currentUserId, isPremium }) => {
   const [activeStage, setActiveStage] = React.useState<string | undefined>(undefined);
-  const { data: stats, isLoading: loadingStats } = useBolaoStats(bolaoId, isPremium);
+  const { data: stats, isLoading: loadingStats } = useBolaoStats(bolaoId);
   const { data: roundRanking, isLoading: loadingRound } = useBolaoRoundRanking(
-    isPremium ? bolaoId : undefined,
+    bolaoId,
     activeStage
   );
-
-  // ── Premium gate ──────────────────────────────────────────────────
-  if (!isPremium) {
-    return (
-      <div className="terminal-container p-8 text-center border-terminal-border-subtle/50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-full border border-yellow-500/30 bg-yellow-500/10 flex items-center justify-center">
-            <Lock className="w-5 h-5 text-yellow-400" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-yellow-400">Estatísticas — Bolão PRO</p>
-            <p className="text-xs opacity-50 mt-1">
-              Acerto geral, ranking por fase e destaques automáticos disponíveis no PRO
-            </p>
-          </div>
-          <div className="flex gap-2 flex-wrap justify-center mt-1">
-            {['% Acerto', 'Top scorer', 'Ranking por fase', 'Destaques'].map((f) => (
-              <span key={f} className="text-[10px] px-2 py-0.5 rounded border border-yellow-500/20 bg-yellow-500/5 text-yellow-400/70">
-                {f}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (loadingStats) {
     return (
@@ -177,8 +155,8 @@ export const BolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isPre
         )}
       </div>
 
-      {/* Destaques automáticos */}
-      {hasDestaques && (
+      {/* Destaques automáticos — Premium only */}
+      {isPremium && hasDestaques && (
         <div>
           <p className="text-[10px] uppercase font-bold tracking-wider opacity-40 mb-3">Destaques</p>
           <div className="space-y-2">
@@ -207,6 +185,15 @@ export const BolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isPre
               />
             )}
           </div>
+        </div>
+      )}
+
+      {!isPremium && hasDestaques && (
+        <div className="p-4 rounded border border-yellow-500/20 bg-yellow-500/5 text-center">
+          <Lock className="w-5 h-5 text-yellow-400/70 mx-auto mb-1.5" />
+          <p className="text-xs text-yellow-400/80">
+            Destaques automáticos (líder, mais exatos, mais engajado) no Bolão PRO
+          </p>
         </div>
       )}
 
@@ -256,6 +243,58 @@ export const BolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isPre
           </>
         )}
       </div>
+    </div>
+  );
+};
+
+export const BolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isPremium }) => {
+  const [subTab, setSubTab] = React.useState<SubTab>('geral');
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-tabs: Geral / Você */}
+      <div role="tablist" className="flex gap-1 border-b border-terminal-border-subtle">
+        <button
+          role="tab"
+          aria-selected={subTab === 'geral'}
+          onClick={() => setSubTab('geral')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
+            subTab === 'geral'
+              ? 'border-terminal-green text-terminal-green'
+              : 'border-transparent opacity-50 hover:opacity-80'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5" />
+          Geral
+        </button>
+        <button
+          role="tab"
+          aria-selected={subTab === 'voce'}
+          onClick={() => setSubTab('voce')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
+            subTab === 'voce'
+              ? 'border-terminal-green text-terminal-green'
+              : 'border-transparent opacity-50 hover:opacity-80'
+          }`}
+        >
+          <User className="w-3.5 h-3.5" />
+          Você
+        </button>
+      </div>
+
+      {subTab === 'geral' ? (
+        <GeneralStatsView
+          bolaoId={bolaoId}
+          currentUserId={currentUserId}
+          isPremium={isPremium}
+        />
+      ) : (
+        <MyBolaoStatsPanel
+          bolaoId={bolaoId}
+          currentUserId={currentUserId}
+          isPremium={isPremium}
+        />
+      )}
     </div>
   );
 };

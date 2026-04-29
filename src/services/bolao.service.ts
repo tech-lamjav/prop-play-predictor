@@ -128,6 +128,19 @@ export interface SpecialSummaryEntry {
   pick_count: number;
 }
 
+export interface BolaoInsight {
+  id: string;
+  match_id: number | null;
+  type: 'rare_correct' | 'exact_score_lonely' | 'majority_wrong' | 'streak_3' | 'streak_5' | string;
+  payload: Record<string, any>;
+  seen: boolean;
+  created_at: string;
+  match_home_team: string | null;
+  match_away_team: string | null;
+  match_home_score: number | null;
+  match_away_score: number | null;
+}
+
 export interface BolaoStats {
   total_members: number;
   total_predictions: number;
@@ -138,6 +151,60 @@ export interface BolaoStats {
   finished_games: number;
   top_team_champion: string | null;
   champion_pick_count: number;
+}
+
+export interface PersonalEvolutionPoint {
+  match_id: number;
+  match_date: string;
+  home: string;
+  away: string;
+  home_score: number | null;
+  away_score: number | null;
+  points: number;
+  cumulative: number;
+}
+
+export interface PersonalPersonalityData {
+  total: number;
+  draws: number;
+  high_scoring: number;
+  low_scoring: number;
+  blowouts: number;
+  tight: number;
+}
+
+export interface PersonalStats {
+  total_points: number;
+  exact_scores: number;
+  correct_results: number;
+  total_predictions: number;
+  finished_with_pred: number;
+  accuracy_pct: number;
+  evolution: PersonalEvolutionPoint[];
+  personality_data: PersonalPersonalityData;
+}
+
+export interface TeamHeatmapEntry {
+  team_code: string;
+  team_name: string;
+  matches_predicted: number;
+  matches_finished: number;
+  exact_scores: number;
+  correct_results: number;
+  total_points: number;
+}
+
+export interface VersusUserStats {
+  user_id: string;
+  total_points: number;
+  exact_scores: number;
+  correct_results: number;
+  total_predictions: number;
+}
+
+export interface VersusStats {
+  me: VersusUserStats | Record<string, never>;
+  opponent: VersusUserStats | Record<string, never>;
 }
 
 export const SPECIAL_PREDICTION_MAX: Record<string, number> = {
@@ -407,6 +474,21 @@ export const bolaoService = {
     return { prediction_deadline_mode: result.prediction_deadline_mode };
   },
 
+  async getBolaoInsights(bolaoId: string, limit = 10): Promise<BolaoInsight[]> {
+    const { data, error } = await supabase.rpc('get_my_bolao_insights', {
+      p_bolao_id: bolaoId,
+      p_limit: limit,
+    });
+    if (error) throw error;
+    return (data || []) as BolaoInsight[];
+  },
+
+  async markInsightsSeen(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const { error } = await supabase.rpc('mark_insights_seen', { p_ids: ids });
+    if (error) throw error;
+  },
+
   async deletePrediction(bolaoId: string, matchId: number): Promise<void> {
     const { data, error } = await supabase.rpc('delete_bolao_prediction', {
       p_bolao_id: bolaoId,
@@ -507,6 +589,35 @@ export const bolaoService = {
     });
     if (error) throw error;
     return (data || []) as BolaoRankingEntry[];
+  },
+
+  // --- Personal stats (Onda 5 — "Você") ---
+
+  async getMyBolaoPersonalStats(bolaoId: string): Promise<PersonalStats | null> {
+    const { data, error } = await supabase.rpc('get_my_bolao_personal_stats', {
+      p_bolao_id: bolaoId,
+    });
+    if (error) throw error;
+    if (!data || (data as any).error) return null;
+    return data as unknown as PersonalStats;
+  },
+
+  async getMyTeamHeatmap(bolaoId: string): Promise<TeamHeatmapEntry[]> {
+    const { data, error } = await supabase.rpc('get_my_team_heatmap', {
+      p_bolao_id: bolaoId,
+    });
+    if (error) throw error;
+    return (data || []) as TeamHeatmapEntry[];
+  },
+
+  async getVersusStats(bolaoId: string, opponentUserId: string): Promise<VersusStats | null> {
+    const { data, error } = await supabase.rpc('get_versus_stats', {
+      p_bolao_id: bolaoId,
+      p_opponent_user_id: opponentUserId,
+    });
+    if (error) throw error;
+    if (!data || (data as any).error) return null;
+    return data as unknown as VersusStats;
   },
 
   async uploadBolaoLogo(bolaoId: string, file: File): Promise<string> {

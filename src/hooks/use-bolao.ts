@@ -303,6 +303,25 @@ export function useUpdateBolaoSettings() {
 // Stats + Round Rankings (Wave 3)
 // =============================================
 
+export function useBolaoInsights(bolaoId: string | undefined) {
+  return useQuery({
+    queryKey: ['bolao-insights', bolaoId],
+    queryFn: () => bolaoService.getBolaoInsights(bolaoId!),
+    enabled: !!bolaoId,
+    staleTime: 60_000, // 1 min — insights são reativos a jogos novos
+  });
+}
+
+export function useMarkInsightsSeen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => bolaoService.markInsightsSeen(ids),
+    onSuccess: (_data, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['bolao-insights'] });
+    },
+  });
+}
+
 export function useBolaoStats(bolaoId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ['bolao-stats', bolaoId],
@@ -317,6 +336,41 @@ export function useBolaoRoundRanking(bolaoId: string | undefined, stage?: string
     queryKey: ['bolao-round-ranking', bolaoId, stage ?? 'all'],
     queryFn: () => bolaoService.getRoundRanking(bolaoId!, stage),
     enabled: !!bolaoId,
+    staleTime: 60 * 1000,
+  });
+}
+
+// =============================================
+// Personal stats (Onda 5 — "Você")
+// =============================================
+
+export function useMyBolaoPersonalStats(bolaoId: string | undefined) {
+  return useQuery({
+    queryKey: ['bolao-personal-stats', bolaoId],
+    queryFn: () => bolaoService.getMyBolaoPersonalStats(bolaoId!),
+    enabled: !!bolaoId,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useMyTeamHeatmap(bolaoId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['bolao-team-heatmap', bolaoId],
+    queryFn: () => bolaoService.getMyTeamHeatmap(bolaoId!),
+    enabled: !!bolaoId && enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useVersusStats(
+  bolaoId: string | undefined,
+  opponentUserId: string | undefined,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ['bolao-versus', bolaoId, opponentUserId],
+    queryFn: () => bolaoService.getVersusStats(bolaoId!, opponentUserId!),
+    enabled: !!bolaoId && !!opponentUserId && enabled,
     staleTime: 60 * 1000,
   });
 }

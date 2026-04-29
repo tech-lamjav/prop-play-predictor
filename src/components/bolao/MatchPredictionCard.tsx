@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Check, MoreVertical, Trash2 } from 'lucide-react';
+import { Lock, Check, MoreVertical, Trash2, Wand2 } from 'lucide-react';
 import type { WcMatch, BolaoPrediction } from '@/services/bolao.service';
 import { isMatchLocked, isMatchPredictionLocked, computeMatchDeadline } from '@/hooks/use-bolao';
 import { readDraft, writeDraft, clearDraft } from '@/components/bolao/useDraftPrediction';
+import { generateQuickPickPredictions } from '@/components/bolao/quick-pick';
+import { ScoreStepper } from '@/components/bolao/ScoreStepper';
+import { TeamFlag } from '@/components/bolao/TeamFlag';
 
 interface MatchPredictionCardProps {
   match: WcMatch;
@@ -17,6 +20,12 @@ interface MatchPredictionCardProps {
   deadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
   allMatches?: WcMatch[];
   isClosed?: boolean;
+  /** When true, shows a sparkles button that auto-fills inputs with a "Realista" suggestion */
+  enableSuggestion?: boolean;
+  /** When true, hide the match date from header (caller already shows it in the section title) */
+  hideMatchDate?: boolean;
+  /** Notify parent of draft state — called whenever the user has unsaved changes (or null when in sync) */
+  onDraftChange?: (matchId: number, draft: { home: string; away: string } | null) => void;
 }
 
 export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
@@ -29,6 +38,9 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   deadlineMode,
   allMatches,
   isClosed,
+  enableSuggestion,
+  hideMatchDate,
+  onDraftChange,
 }) => {
   const locked = deadlineMode
     ? isMatchPredictionLocked(match, deadlineMode, allMatches, !!isClosed)
@@ -95,16 +107,45 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
       || awayScore !== String(prediction.predicted_away_score);
   })();
 
-  // Persist draft on every change (skip if locked or matches server)
+  // Notifica o pai quando draft state muda (pra sticky save bar)
   useEffect(() => {
+    if (!onDraftChange) return;
+    if (hasUnsavedDraft) {
+      onDraftChange(match.id, { home: homeScore, away: awayScore });
+    } else {
+      onDraftChange(match.id, null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsavedDraft, homeScore, awayScore]);
+
+  // Draft é persistido em onChange dos inputs (handleHomeChange/handleAwayChange)
+  // pra evitar race com o effect de sync prediction→state acima.
+
+  const persistDraft = (home: string, away: string) => {
     if (!bolaoId || locked) return;
+    if (home === '' && away === '') {
+      clearDraft(bolaoId, match.id);
+      return;
+    }
     const matchesServer =
       prediction != null
-      && homeScore === String(prediction.predicted_home_score)
-      && awayScore === String(prediction.predicted_away_score);
-    if (matchesServer) return;
-    writeDraft(bolaoId, match.id, homeScore, awayScore);
-  }, [bolaoId, match.id, homeScore, awayScore, locked, prediction]);
+      && home === String(prediction.predicted_home_score)
+      && away === String(prediction.predicted_away_score);
+    if (matchesServer) {
+      clearDraft(bolaoId, match.id);
+      return;
+    }
+    writeDraft(bolaoId, match.id, home, away);
+  };
+
+  const handleHomeChange = (v: string) => {
+    setHomeScore(v);
+    persistDraft(v, awayScore);
+  };
+  const handleAwayChange = (v: string) => {
+    setAwayScore(v);
+    persistDraft(homeScore, v);
+  };
 
   const hasPrediction = prediction != null;
   const canSave =
@@ -125,6 +166,17 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
     if (bolaoId) clearDraft(bolaoId, match.id);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleSuggest = () => {
+    const seed = (bolaoId ?? '').split('').reduce((s, c) => s + c.charCodeAt(0), 0) + match.id;
+    const [generated] = generateQuickPickPredictions([match], 'realist', { seed });
+    if (!generated) return;
+    const h = String(generated.predicted_home_score);
+    const a = String(generated.predicted_away_score);
+    setHomeScore(h);
+    setAwayScore(a);
+    persistDraft(h, a);
   };
 
   const matchDate = new Date(match.match_date + 'T00:00:00');
@@ -163,13 +215,14 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] opacity-50 uppercase">
-            {match.group_name ? `Grupo ${match.group_name}` : match.stage}
-          </span>
+          {/* Mostra fase só pra mata-mata — em grupo, contexto vem do header da seção */}
+          {!match.group_name && (
+            <span className="text-[10px] opacity-50 uppercase">{match.stage}</span>
+          )}
           {locked && <Lock className="w-3 h-3 opacity-40" />}
           {hasUnsavedDraft && (
             <span
-              className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-yellow/15 text-terminal-yellow border border-terminal-yellow/30 font-medium"
+              className="text-[10px] uppercase tracking-wider text-terminal-yellow/80 font-medium"
               title="Rascunho não salvo — clique em Salvar"
             >
               Rascunho
@@ -188,7 +241,7 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
         <div className="flex items-center gap-2">
           {pointsDisplay}
           <span className="text-[10px] opacity-50">
-            {dateStr} {timeStr}
+            {hideMatchDate ? timeStr : `${dateStr} ${timeStr}`}
           </span>
           {onDelete && hasPrediction && !locked && !match.is_finished && (
             <div ref={menuRef} className="relative">
@@ -241,9 +294,9 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
       {/* Match */}
       <div className="flex items-center gap-2">
         {/* Home team */}
-        <div className="flex-1 text-right">
-          <span className="text-sm font-medium">{match.home_team}</span>
-          <span className="text-[10px] opacity-40 ml-1">{match.home_team_code}</span>
+        <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
+          <span className="text-sm font-medium truncate">{match.home_team}</span>
+          <TeamFlag code={match.home_team_code} size="md" />
         </div>
 
         {/* Score inputs or result */}
@@ -254,39 +307,27 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
             <span className="w-8 text-center text-sm font-bold">{match.away_score}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 px-1">
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              max="20"
+          <div className="flex items-center gap-2 px-1">
+            <ScoreStepper
               value={homeScore}
-              onChange={(e) => setHomeScore(e.target.value)}
+              onChange={handleHomeChange}
               disabled={locked}
-              aria-label={`Placar ${match.home_team_code} (mandante)`}
-              className="w-12 h-11 text-center text-base font-bold bg-terminal-dark-gray border border-terminal-border rounded focus:border-terminal-green focus:outline-none focus:ring-1 focus:ring-terminal-green/40 disabled:opacity-40 text-terminal-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              placeholder="-"
+              ariaLabel={`Placar ${match.home_team_code} (mandante)`}
             />
             <span className="text-xs opacity-40">x</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              max="20"
+            <ScoreStepper
               value={awayScore}
-              onChange={(e) => setAwayScore(e.target.value)}
+              onChange={handleAwayChange}
               disabled={locked}
-              aria-label={`Placar ${match.away_team_code} (visitante)`}
-              className="w-12 h-11 text-center text-base font-bold bg-terminal-dark-gray border border-terminal-border rounded focus:border-terminal-green focus:outline-none focus:ring-1 focus:ring-terminal-green/40 disabled:opacity-40 text-terminal-text [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              placeholder="-"
+              ariaLabel={`Placar ${match.away_team_code} (visitante)`}
             />
           </div>
         )}
 
         {/* Away team */}
-        <div className="flex-1">
-          <span className="text-[10px] opacity-40 mr-1">{match.away_team_code}</span>
-          <span className="text-sm font-medium">{match.away_team}</span>
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          <TeamFlag code={match.away_team_code} size="md" />
+          <span className="text-sm font-medium truncate">{match.away_team}</span>
         </div>
       </div>
 
@@ -299,33 +340,38 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
         </div>
       )}
 
-      {/* Save button */}
-      {!locked && !match.is_finished && isDirty && canSave && (
-        <div className="mt-2 flex justify-center">
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-terminal-green/20 text-terminal-green border border-terminal-green/30 rounded hover:bg-terminal-green/30 transition-colors disabled:opacity-50"
-          >
-            {saved ? (
-              <>
-                <Check className="w-3 h-3" /> Salvo
-              </>
-            ) : isSaving ? (
-              'Salvando...'
-            ) : (
-              'Salvar palpite'
-            )}
-          </button>
+      {/* Save button + Sugerir inline */}
+      {!locked && !match.is_finished && (
+        <div className="mt-2 flex justify-center items-center gap-3">
+          {isDirty && canSave && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-terminal-green/20 text-terminal-green border border-terminal-green/30 rounded hover:bg-terminal-green/30 transition-colors disabled:opacity-50"
+            >
+              {saved ? (
+                <>
+                  <Check className="w-3 h-3" /> Salvo
+                </>
+              ) : isSaving ? (
+                'Salvando...'
+              ) : (
+                'Salvar palpite'
+              )}
+            </button>
+          )}
+          {enableSuggestion && homeScore === '' && awayScore === '' && (
+            <button
+              type="button"
+              onClick={handleSuggest}
+              className="flex items-center gap-1 text-[11px] text-terminal-blue/80 hover:text-terminal-blue transition-colors"
+            >
+              <Wand2 className="w-3 h-3" />
+              Sugerir placar
+            </button>
+          )}
         </div>
       )}
-
-      {/* Venue */}
-      <div className="mt-2 text-center">
-        <span className="text-[10px] opacity-30">
-          {match.venue} — {match.city}
-        </span>
-      </div>
     </div>
   );
 };

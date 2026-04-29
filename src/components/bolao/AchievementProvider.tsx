@@ -1,5 +1,8 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Trophy, Target, Medal, Star, Flame, Award } from 'lucide-react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
+import { Trophy, Target, Medal, Star, Flame, Award, Share2 } from 'lucide-react';
+import { AchievementShareImage } from '@/components/bolao/AchievementShareImage';
+import { shareImage } from '@/components/bolao/share-utils';
 
 /**
  * Sistema de conquistas (achievements) estilo Xbox/PlayStation.
@@ -114,28 +117,77 @@ export function useAchievement(): AchievementContextValue {
 // Badge visual — drop-in animation, fixed top-center
 const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
   const Icon = def.icon;
+  const captureRef = useRef<HTMLDivElement | null>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sharing || !captureRef.current) return;
+    setSharing(true);
+    try {
+      const canvas = await html2canvas(captureRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const blob: Blob | null = await new Promise(resolve =>
+        canvas.toBlob(b => resolve(b), 'image/png', 0.95)
+      );
+      if (!blob) return;
+      await shareImage(blob, {
+        filename: `conquista-${def.id}.png`,
+        title: `Conquista: ${def.title}`,
+        text: `${def.title} — ${def.description} 🏆`,
+      });
+    } catch {
+      // ignore — toast já cuida via shareImage fallback
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] pointer-events-none animate-achievement-drop motion-reduce:animate-none"
-    >
-      <div className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-full border border-yellow-500/50 bg-gradient-to-r from-yellow-600/95 via-yellow-500/95 to-yellow-400/95 shadow-2xl shadow-yellow-500/30 backdrop-blur-sm min-w-[280px] max-w-[90vw]">
-        <div className="w-10 h-10 rounded-full bg-terminal-bg/90 border border-yellow-300/40 flex items-center justify-center shrink-0">
-          <Icon className="w-5 h-5 text-yellow-300" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-100/80 leading-tight">
-            Conquista
-          </p>
-          <p className="text-sm font-bold text-terminal-bg leading-tight truncate">
-            {def.title}
-          </p>
-          <p className="text-[11px] text-terminal-bg/80 leading-tight truncate">
-            {def.description}
-          </p>
+    <>
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-achievement-drop motion-reduce:animate-none"
+      >
+        <div className="flex items-center gap-3 pl-2 pr-2 py-2 rounded-full border border-yellow-500/50 bg-gradient-to-r from-yellow-600/95 via-yellow-500/95 to-yellow-400/95 shadow-2xl shadow-yellow-500/30 backdrop-blur-sm min-w-[300px] max-w-[92vw]">
+          <div className="w-10 h-10 rounded-full bg-terminal-bg/90 border border-yellow-300/40 flex items-center justify-center shrink-0">
+            <Icon className="w-5 h-5 text-yellow-300" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-100/80 leading-tight">
+              Conquista
+            </p>
+            <p className="text-sm font-bold text-terminal-bg leading-tight truncate">
+              {def.title}
+            </p>
+            <p className="text-[11px] text-terminal-bg/80 leading-tight truncate">
+              {def.description}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={sharing}
+            aria-label="Compartilhar conquista"
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-terminal-bg/15 hover:bg-terminal-bg/30 active:bg-terminal-bg/40 text-terminal-bg transition-colors disabled:opacity-50"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
-    </div>
+
+      {/* Off-screen render do card 1080×1080 capturável */}
+      <AchievementShareImage
+        ref={captureRef}
+        icon={def.icon}
+        title={def.title}
+        description={def.description}
+      />
+    </>
   );
 };

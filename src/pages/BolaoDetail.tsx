@@ -42,7 +42,9 @@ import { PremiumWelcomeModal } from '@/components/bolao/PremiumWelcomeModal';
 import { BolaoBottomNav } from '@/components/bolao/BolaoBottomNav';
 import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
 import { useAchievement } from '@/components/bolao/AchievementProvider';
+import { InsightsBanner } from '@/components/bolao/InsightsBanner';
 import { RankingShareImage } from '@/components/bolao/RankingShareImage';
+import { RankingShareImageStories } from '@/components/bolao/RankingShareImageStories';
 import { useRankingShareImage } from '@/components/bolao/useRankingShareImage';
 import { shareTextOrLink, SHARE_MESSAGES } from '@/components/bolao/share-utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -292,16 +294,21 @@ const BolaoDetail: React.FC = () => {
     toast({ title: 'Ranking copiado!', description: 'Cole no WhatsApp ou Telegram.' });
   };
 
-  // ── Ranking share: image — html2canvas + Web Share / Clipboard / Download ─
-  const rankingShare = useRankingShareImage({
+  // ── Ranking share: image — feed (1080×1080) e stories (1080×1920) ────
+  const rankingShareFeed = useRankingShareImage({
     bolaoName: bolao?.name ?? 'Bolão',
     filenameSlug: bolao?.invite_code,
+    variant: 'feed',
+  });
+  const rankingShareStories = useRankingShareImage({
+    bolaoName: bolao?.name ?? 'Bolão',
+    filenameSlug: bolao?.invite_code,
+    variant: 'stories',
   });
 
-  const handleShareRankingImage = async () => {
-    const result = await rankingShare.share();
+  const showShareResultToast = (result: Awaited<ReturnType<typeof rankingShareFeed.share>>) => {
     if (result.method === 'native-share') {
-      // Sheet abriu — user escolheu app (WhatsApp/Telegram/Instagram)
+      // Sheet abriu — user escolheu app
     } else if (result.method === 'download') {
       toast({
         title: 'Imagem salva!',
@@ -310,6 +317,14 @@ const BolaoDetail: React.FC = () => {
     } else if (result.error && result.error !== 'Cancelado') {
       toast({ title: 'Erro ao gerar imagem', description: result.error, variant: 'destructive' });
     }
+  };
+
+  const handleShareRankingImage = async () => {
+    showShareResultToast(await rankingShareFeed.share());
+  };
+
+  const handleShareRankingStories = async () => {
+    showShareResultToast(await rankingShareStories.share());
   };
 
   // Theme accent
@@ -579,6 +594,9 @@ const BolaoDetail: React.FC = () => {
           </div>
         </div>
 
+        {/* ── Insights pós-jogo ── */}
+        {id && currentUserId && <InsightsBanner bolaoId={id} />}
+
         {/* ── Info bar ── */}
         <div className="flex items-center gap-4 mb-3 text-xs opacity-50 flex-wrap">
           <span className="flex items-center gap-1">
@@ -721,22 +739,34 @@ const BolaoDetail: React.FC = () => {
             {activeTab === 'ranking' && (
               <div role="tabpanel" id="bolao-tab-panel-ranking" aria-labelledby="bolao-tab-ranking">
                 {ranking && ranking.length > 1 && (
-                  <div className="flex items-center justify-end gap-3 mb-3">
+                  <div className="flex items-center justify-end gap-3 mb-3 flex-wrap">
                     <button
                       onClick={handleShareRanking}
-                      className="flex items-center gap-1.5 text-xs opacity-50 hover:opacity-80 transition-opacity"
+                      aria-label="Compartilhar ranking em texto"
+                      className="flex items-center gap-1.5 text-xs opacity-60 hover:opacity-100 transition-opacity"
                     >
                       <Share2 className="w-3 h-3" />
                       Texto
                     </button>
                     {bolao.is_premium && (
-                      <button
-                        onClick={handleShareRankingImage}
-                        className="flex items-center gap-1.5 text-xs opacity-50 hover:opacity-80 transition-opacity"
-                      >
-                        <Image className="w-3 h-3" />
-                        Imagem
-                      </button>
+                      <>
+                        <button
+                          onClick={handleShareRankingImage}
+                          aria-label="Compartilhar ranking como imagem (formato feed)"
+                          className="flex items-center gap-1.5 text-xs opacity-60 hover:opacity-100 transition-opacity"
+                        >
+                          <Image className="w-3 h-3" />
+                          Imagem
+                        </button>
+                        <button
+                          onClick={handleShareRankingStories}
+                          aria-label="Compartilhar ranking nos Stories (formato vertical)"
+                          className="flex items-center gap-1.5 text-xs opacity-60 hover:opacity-100 transition-opacity"
+                        >
+                          <Image className="w-3 h-3" />
+                          Stories
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -1016,16 +1046,26 @@ const BolaoDetail: React.FC = () => {
         isLoading={leaveBolao.isPending}
       />
 
-      {/* ── Off-screen render do card do ranking pra captura via html2canvas ── */}
+      {/* ── Off-screen render dos cards de ranking pra captura via html2canvas ── */}
       {ranking && bolao && (
-        <RankingShareImage
-          ref={rankingShare.captureRef}
-          bolaoName={bolao.name}
-          inviteCode={bolao.invite_code}
-          ranking={ranking}
-          currentUserId={currentUserId}
-          myChampionPick={myChampionPick}
-        />
+        <>
+          <RankingShareImage
+            ref={rankingShareFeed.captureRef}
+            bolaoName={bolao.name}
+            inviteCode={bolao.invite_code}
+            ranking={ranking}
+            currentUserId={currentUserId}
+            myChampionPick={myChampionPick}
+          />
+          <RankingShareImageStories
+            ref={rankingShareStories.captureRef}
+            bolaoName={bolao.name}
+            inviteCode={bolao.invite_code}
+            ranking={ranking}
+            currentUserId={currentUserId}
+            myChampionPick={myChampionPick}
+          />
+        </>
       )}
     </div>
   );
