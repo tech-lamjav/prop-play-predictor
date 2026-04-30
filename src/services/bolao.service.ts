@@ -338,6 +338,15 @@ export const bolaoService = {
     if (error) throw error;
   },
 
+  async deleteBolao(bolaoId: string): Promise<void> {
+    const { data, error } = await supabase.rpc('delete_bolao', {
+      p_bolao_id: bolaoId,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao excluir bolão');
+  },
+
   // --- Members ---
 
   async getMembers(bolaoId: string): Promise<BolaoMember[]> {

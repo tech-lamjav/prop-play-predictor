@@ -81,6 +81,20 @@ export function useLeaveBolao() {
   });
 }
 
+export function useDeleteBolao() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (bolaoId: string) => bolaoService.deleteBolao(bolaoId),
+    onSuccess: (_data, bolaoId) => {
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
+      queryClient.removeQueries({ queryKey: ['bolao', bolaoId] });
+      queryClient.removeQueries({ queryKey: ['bolao-ranking', bolaoId] });
+      queryClient.removeQueries({ queryKey: ['bolao-predictions', bolaoId] });
+    },
+  });
+}
+
 // =============================================
 // Ranking
 // =============================================

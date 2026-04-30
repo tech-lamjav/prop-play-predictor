@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Settings,
   UserX,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   Target,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import {
   Dialog,
@@ -29,6 +31,7 @@ import {
   useUpdateBolaoSettings,
   useUpdateBolaoDeadlineMode,
   useBolaoStats,
+  useDeleteBolao,
 } from '@/hooks/use-bolao';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -246,11 +249,16 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   useEffect(() => {
     contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
   }, [activeSection]);
+  const navigate = useNavigate();
   const pendingRemovalsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [pendingRemovedIds, setPendingRemovedIds] = useState<Set<string>>(new Set());
   const [pendingDeadlineMode, setPendingDeadlineMode] = useState<
     'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start' | null
   >(null);
+
+  // Delete bolão (zona de perigo) — exige digitar o nome pra confirmar
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // Edição inline do nome do bolão
   const [editingName, setEditingName] = useState(false);
@@ -278,6 +286,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const uploadLogo = useUploadBolaoLogo();
   const updateSettings = useUpdateBolaoSettings();
   const updateDeadlineMode = useUpdateBolaoDeadlineMode();
+  const deleteBolao = useDeleteBolao();
   const { data: bolaoStats } = useBolaoStats(bolaoId, open && currentUserId === ownerUserId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -503,6 +512,32 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     );
   };
 
+  const closeDeleteDialog = () => {
+    setDeleteOpen(false);
+    setDeleteConfirmText('');
+  };
+
+  const handleDeleteBolao = () => {
+    deleteBolao.mutate(bolaoId, {
+      onSuccess: () => {
+        toast({ title: 'Bolão excluído' });
+        closeDeleteDialog();
+        onOpenChange(false);
+        navigate('/bolao');
+      },
+      onError: (err: any) => {
+        toast({
+          title: 'Erro ao excluir',
+          description: err?.message ?? 'Tente novamente',
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+
+  const deleteConfirmMatches =
+    !!bolaoName && deleteConfirmText.trim().toLowerCase() === bolaoName.trim().toLowerCase();
+
   // ─────────────────────────────────────────────────────────────────
   // Sections
   // ─────────────────────────────────────────────────────────────────
@@ -627,6 +662,34 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
           </button>
         </SettingsRow>
       </Card>
+
+      {/* Zona de perigo — delete bolão (irreversível) */}
+      <section className="rounded-rebrand-lg border border-status-danger/40 bg-status-danger/[0.04]">
+        <header className="px-5 pt-4 pb-3 border-b border-status-danger/20">
+          <p className="text-[14px] font-bold tracking-tight text-status-danger leading-tight inline-flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" />
+            Zona de perigo
+          </p>
+          <p className="text-[11px] text-ink-2 mt-0.5">
+            Ações irreversíveis. Faça com cuidado.
+          </p>
+        </header>
+        <div className="px-5">
+          <SettingsRow
+            title="Excluir bolão"
+            sub="Apaga o bolão, todos os palpites e o ranking. Não tem volta."
+          >
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors border border-status-danger/40 text-status-danger bg-white hover:bg-status-danger/[0.08]"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Excluir
+            </button>
+          </SettingsRow>
+        </div>
+      </section>
     </>
   );
 
@@ -1046,6 +1109,70 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         }}
         isLoading={updateDeadlineMode.isPending}
       />
+
+      {/* Excluir bolão — exige digitar o nome pra confirmar */}
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(o) => {
+          if (!o) closeDeleteDialog();
+        }}
+      >
+        <DialogContent className="theme-bolao bg-canvas border border-status-danger/30 w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-md p-5 rounded-rebrand-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display text-[18px] font-bold text-status-danger pr-6">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              Excluir bolão?
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="text-[13px] text-ink-2 leading-relaxed space-y-3 mt-1">
+            <p>
+              Isso vai apagar permanentemente <span className="font-bold text-ink">"{bolaoName}"</span>,
+              todos os palpites e o ranking. <span className="font-bold text-status-danger">Não tem volta.</span>
+            </p>
+            {bolaoStats && (bolaoStats.total_members > 1 || bolaoStats.total_predictions > 0) && (
+              <div className="rounded-rebrand-md border border-status-danger/30 bg-status-danger/[0.06] p-3 text-[12px]">
+                <p className="font-bold mb-1.5 text-ink">Impacto:</p>
+                <ul className="space-y-1 text-ink-2">
+                  <li>• <span className="font-bold text-ink">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'membro' : 'membros'}</li>
+                  <li>• <span className="font-bold text-ink">{bolaoStats.total_predictions}</span> {bolaoStats.total_predictions === 1 ? 'palpite' : 'palpites'} feitos</li>
+                </ul>
+              </div>
+            )}
+            <p className="text-[12px]">
+              Pra confirmar, digite o nome do bolão (<span className="font-bold text-ink">{bolaoName}</span>) abaixo:
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={bolaoName ?? ''}
+              aria-label="Confirmar nome do bolão"
+              autoFocus
+              className="w-full h-10 px-3 rounded-rebrand-md border border-line bg-white text-[13px] text-ink focus:border-status-danger focus:ring-2 focus:ring-status-danger/20 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              type="button"
+              onClick={closeDeleteDialog}
+              disabled={deleteBolao.isPending}
+              className="h-11 px-4 rounded-rebrand-md text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-canvas-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteBolao}
+              disabled={!deleteConfirmMatches || deleteBolao.isPending}
+              className="h-11 px-5 rounded-rebrand-md text-[13px] font-bold text-white shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-status-danger hover:bg-status-danger/90"
+            >
+              {deleteBolao.isPending ? 'Excluindo...' : 'Excluir permanentemente'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

@@ -23,6 +23,21 @@ import { supabase } from '@/integrations/supabase/client';
 
 const COPA_START = new Date('2026-06-11T12:00:00-03:00');
 
+/**
+ * Limite de participantes do plano Free.
+ *
+ * Mantemos uma constante no front por dois motivos:
+ *   1. O DB pode estar com valor stale na coluna `max_participants` se a
+ *      migration 052 ainda não foi aplicada — sem isso o card mostraria
+ *      "N/10" (errado) até o backfill rodar.
+ *   2. Source-of-truth do enforcement continua sendo o RPC `join_bolao_by_code`
+ *      (migration 050). Aqui é só display.
+ *
+ * Se o limite mudar, atualizar AQUI + na migration 050 (enforcement) e
+ * 052 (default da coluna).
+ */
+const FREE_PARTICIPANT_LIMIT = 20;
+
 function daysToCopa() {
   const now = new Date();
   const diff = COPA_START.getTime() - now.getTime();
@@ -451,7 +466,7 @@ const BolaoHome: React.FC = () => {
                         <div className="flex items-center gap-2 text-[12px] text-ink-2 flex-wrap">
                           <span className="inline-flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {b.is_premium ? b.member_count : `${b.member_count}/${b.max_participants}`}
+                            {b.is_premium ? b.member_count : `${b.member_count}/${FREE_PARTICIPANT_LIMIT}`}
                           </span>
                           <span className="font-mono opacity-70">#{b.invite_code}</span>
                           {isCreator && (
