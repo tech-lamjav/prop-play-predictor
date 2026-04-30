@@ -28,6 +28,24 @@ function matchupColor(rank: number | null | undefined): string {
   return '#ef4444';
 }
 
+// Nomes em PT-BR — versao curta pro badge SVG (uppercase, cabe em 64px)
+// e versao longa pro overlay de matchup (mixed case).
+const ZONE_LABELS_SHORT_PT = {
+  restricted_area:     'SOB O ARO',
+  in_the_paint_non_ra: 'GARRAFÃO',
+  mid_range:           'MEIA DIST',
+  corner_3:            '3PT CANTO',
+  above_the_break_3:   '3PT FRONT',
+} as const;
+
+const ZONE_LABELS_LONG_PT = {
+  restricted_area:     'Sob o aro',
+  in_the_paint_non_ra: 'Garrafão',
+  mid_range:           'Meia distância',
+  corner_3:            '3pts do canto',
+  above_the_break_3:   '3pts frontal',
+} as const;
+
 /*
   Court geometry — viewBox "0 0 600 520"
   Basket:    (300, 460)   Baseline: y=500
@@ -248,22 +266,22 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
         {/* ── ZONE BADGES ── */}
 
         {/* Left corner 3 — inside court, left edge safe */}
-        <ZoneBadge x={55} y={410} pct={d.left_corner_3_fg_pct} fga={d.left_corner_3_fga} label="CORNER 3" />
+        <ZoneBadge x={55} y={410} pct={d.left_corner_3_fg_pct} fga={d.left_corner_3_fga} label={ZONE_LABELS_SHORT_PT.corner_3} />
 
         {/* Right corner 3 */}
-        <ZoneBadge x={545} y={410} pct={d.right_corner_3_fg_pct} fga={d.right_corner_3_fga} label="CORNER 3" />
+        <ZoneBadge x={545} y={410} pct={d.right_corner_3_fg_pct} fga={d.right_corner_3_fga} label={ZONE_LABELS_SHORT_PT.corner_3} />
 
         {/* Above the break 3 — center, clearly outside the 3pt arc */}
-        <ZoneBadge x={300} y={80} pct={d.above_the_break_3_fg_pct} fga={d.above_the_break_3_fga} label="ABOVE BREAK" />
+        <ZoneBadge x={300} y={80} pct={d.above_the_break_3_fg_pct} fga={d.above_the_break_3_fga} label={ZONE_LABELS_SHORT_PT.above_the_break_3} />
 
         {/* Mid range — left wing, inside court between paint and 3pt arc */}
-        <ZoneBadge x={132} y={345} pct={d.mid_range_fg_pct} fga={d.mid_range_fga} label="MID RANGE" />
+        <ZoneBadge x={132} y={345} pct={d.mid_range_fg_pct} fga={d.mid_range_fga} label={ZONE_LABELS_SHORT_PT.mid_range} />
 
         {/* Paint non-RA — center of paint, above RA */}
-        <ZoneBadge x={300} y={338} pct={d.in_the_paint_non_ra_fg_pct} fga={d.in_the_paint_non_ra_fga} label="PAINT" />
+        <ZoneBadge x={300} y={338} pct={d.in_the_paint_non_ra_fg_pct} fga={d.in_the_paint_non_ra_fga} label={ZONE_LABELS_SHORT_PT.in_the_paint_non_ra} />
 
         {/* Restricted area — at basket */}
-        <ZoneBadge x={300} y={460} pct={d.restricted_area_fg_pct} fga={d.restricted_area_fga} label="REST. AREA" />
+        <ZoneBadge x={300} y={460} pct={d.restricted_area_fg_pct} fga={d.restricted_area_fga} label={ZONE_LABELS_SHORT_PT.restricted_area} />
 
       </svg>
 
@@ -273,11 +291,11 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
           Defesa forte) usando text + cor + bullet — cor nao eh sozinha. */}
       {oppShootingZones && opponentAbbreviation && (() => {
         const rawZones = [
-          { label: 'Above Break 3', key: 'above_the_break_3' as const,   playerPct: d.above_the_break_3_fg_pct },
-          { label: 'Mid Range',     key: 'mid_range' as const,           playerPct: d.mid_range_fg_pct },
-          { label: 'Corner 3',      key: 'corner_3' as const,            playerPct: (d.left_corner_3_fg_pct + d.right_corner_3_fg_pct) / 2 },
-          { label: 'Paint Non-RA',  key: 'in_the_paint_non_ra' as const, playerPct: d.in_the_paint_non_ra_fg_pct },
-          { label: 'Rest. Area',    key: 'restricted_area' as const,     playerPct: d.restricted_area_fg_pct },
+          { label: ZONE_LABELS_LONG_PT.above_the_break_3,   key: 'above_the_break_3' as const,   playerPct: d.above_the_break_3_fg_pct },
+          { label: ZONE_LABELS_LONG_PT.mid_range,           key: 'mid_range' as const,           playerPct: d.mid_range_fg_pct },
+          { label: ZONE_LABELS_LONG_PT.corner_3,            key: 'corner_3' as const,            playerPct: (d.left_corner_3_fg_pct + d.right_corner_3_fg_pct) / 2 },
+          { label: ZONE_LABELS_LONG_PT.in_the_paint_non_ra, key: 'in_the_paint_non_ra' as const, playerPct: d.in_the_paint_non_ra_fg_pct },
+          { label: ZONE_LABELS_LONG_PT.restricted_area,     key: 'restricted_area' as const,     playerPct: d.restricted_area_fg_pct },
         ];
 
         type Zone = { label: string; key: string; playerPct: number; oppPct: number; rank: number };
