@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes } from '@/services/nba-data.service';
+import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
@@ -74,6 +74,7 @@ export default function NBADashboard() {
   const [periodStatsLoaded, setPeriodStatsLoaded] = useState(false);
   const [oppRankings, setOppRankings] = useState<OpponentRankings | null>(null);
   const [oppPlaytypes, setOppPlaytypes] = useState<TeamPlaytypes | null>(null);
+  const [oppShootingZones, setOppShootingZones] = useState<TeamOppShootingZones | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<number | 'current'>('current');
   const [seasonType, setSeasonType] = useState<'all' | 'regular' | 'playoffs' | 'playin'>('all');
   const [historicalStats, setHistoricalStats] = useState<Map<number, GamePlayerStats[]>>(new Map());
@@ -338,7 +339,7 @@ export default function NBADashboard() {
       setTeamLoading(false);
       setShootingZonesLoading(false);
 
-      // Cache doesn't include opponent rankings/playtypes — fetch in background
+      // Cache doesn't include opponent rankings/playtypes/zones — fetch in background
       if (cached.teamData?.next_opponent_id) {
         nbaDataService.getOpponentRankings(cached.teamData.next_opponent_id)
           .then(data => setOppRankings(data))
@@ -346,6 +347,9 @@ export default function NBADashboard() {
         nbaDataService.getTeamPlaytypes(cached.teamData.next_opponent_id)
           .then(data => setOppPlaytypes(data))
           .catch(e => console.error('Error loading opponent playtypes:', e));
+        nbaDataService.getTeamOppShootingZones(cached.teamData.next_opponent_id)
+          .then(data => setOppShootingZones(data))
+          .catch(e => console.error('Error loading opponent shooting zones:', e));
       }
 
       return;
@@ -423,7 +427,7 @@ export default function NBADashboard() {
         loadedTeam = await nbaDataService.getTeamById(playerData.team_id);
         setTeamData(loadedTeam);
 
-        // Load opponent rankings + playtypes in parallel (non-blocking)
+        // Load opponent rankings + playtypes + zones in parallel (non-blocking)
         if (loadedTeam?.next_opponent_id) {
           nbaDataService.getOpponentRankings(loadedTeam.next_opponent_id)
             .then(data => setOppRankings(data))
@@ -431,6 +435,9 @@ export default function NBADashboard() {
           nbaDataService.getTeamPlaytypes(loadedTeam.next_opponent_id)
             .then(data => setOppPlaytypes(data))
             .catch(e => console.error('Error loading opponent playtypes:', e));
+          nbaDataService.getTeamOppShootingZones(loadedTeam.next_opponent_id)
+            .then(data => setOppShootingZones(data))
+            .catch(e => console.error('Error loading opponent shooting zones:', e));
         }
 
         if (loadedTeam) {
@@ -755,6 +762,8 @@ export default function NBADashboard() {
                 data={shootingZones}
                 isLoading={shootingZonesLoading}
                 playerName={player?.player_name || ''}
+                oppShootingZones={oppShootingZones}
+                opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
               />
             </div>
           </div>

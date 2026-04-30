@@ -139,6 +139,37 @@ export interface OpponentRankings {
   def_rating_rank: number;
 }
 
+/**
+ * Defesa do adversario por zona de arremesso — o que o time CEDE em
+ * cada zona. Usado pra cruzar com o ShootingZonesCard do jogador
+ * (matchup overlay verde/amarelo/vermelho por rank).
+ */
+export interface TeamOppShootingZones {
+  team_id: number;
+  team_name: string;
+  team_abbreviation: string;
+
+  opp_restricted_area_fg_pct: number;
+  opp_restricted_area_fga: number;
+  opp_restricted_area_fg_pct_rank: number;
+
+  opp_in_the_paint_non_ra_fg_pct: number;
+  opp_in_the_paint_non_ra_fga: number;
+  opp_in_the_paint_non_ra_fg_pct_rank: number;
+
+  opp_mid_range_fg_pct: number;
+  opp_mid_range_fga: number;
+  opp_mid_range_fg_pct_rank: number;
+
+  opp_corner_3_fg_pct: number;
+  opp_corner_3_fga: number;
+  opp_corner_3_fg_pct_rank: number;
+
+  opp_above_the_break_3_fg_pct: number;
+  opp_above_the_break_3_fga: number;
+  opp_above_the_break_3_fg_pct_rank: number;
+}
+
 export interface TeamPlaytypes {
   team_id: number;
   team_name: string;
@@ -464,6 +495,15 @@ export const nbaDataService = {
         .rpc('get_team_playtypes', { p_team_id: teamId });
       if (error) throw error;
       return data && data.length > 0 ? data[0] as TeamPlaytypes : null;
+    });
+  },
+
+  async getTeamOppShootingZones(teamId: number): Promise<TeamOppShootingZones | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_team_opp_shooting_zones', { p_team_id: teamId });
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] as TeamOppShootingZones : null;
     });
   },
 

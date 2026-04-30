@@ -1,12 +1,31 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { PlayerShootingZones } from '@/services/nba-data.service';
+import { PlayerShootingZones, TeamOppShootingZones } from '@/services/nba-data.service';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface ShootingZonesCardProps {
   data?: PlayerShootingZones | null;
   isLoading?: boolean;
   playerName?: string;
+  /** Defesa por zona do proximo adversario — pra matchup overlay */
+  oppShootingZones?: TeamOppShootingZones | null;
+  /** Sigla do adversario (PHX, ATL...) — exibida no overlay */
+  opponentAbbreviation?: string | null;
+}
+
+/**
+ * Cor do matchup baseada no rank defensivo do adversario na zona:
+ *   #1-#10  → adversario eh ELITE na zona — ruim pro jogador (vermelho)
+ *   #11-#20 → media (amarelo)
+ *   #21-#30 → adversario CEDE muito na zona — bom pro jogador (verde)
+ *
+ * Mesma escala usada em NextGamesCard.getMatchupColor.
+ */
+function matchupColor(rank: number | null | undefined): string {
+  if (rank == null) return '#4b5563';
+  if (rank >= 21) return '#22c55e';
+  if (rank >= 11) return '#eab308';
+  return '#ef4444';
 }
 
 /*
@@ -50,43 +69,93 @@ interface ZoneBadgeProps {
   pct: number;
   fga: number;
   label?: string;
+  /** Rank defensivo do adversario nessa zona — colore a borda do badge */
+  oppRank?: number | null;
+  /** % cedido pelo adversario nessa zona — exibido na 4a linha */
+  oppPct?: number | null;
+  /** Sigla do adversario (PHX...) — prefixo do "vs PHX" */
+  opponentAbbr?: string | null;
 }
 
-const ZoneBadge: React.FC<ZoneBadgeProps> = ({ x, y, pct, fga, label }) => {
-  const color = badgeColor(pct, fga);
-  const border = badgeBorder(pct, fga);
+const ZoneBadge: React.FC<ZoneBadgeProps> = ({
+  x, y, pct, fga, label, oppRank, oppPct, opponentAbbr,
+}) => {
+  const playerColor = badgeColor(pct, fga);
+  // Border color: se temos matchup, usa cor do matchup. Senao mantem player.
+  const hasMatchup = oppRank != null && oppPct != null && opponentAbbr != null;
+  const border = hasMatchup ? matchupColor(oppRank) : badgeBorder(pct, fga);
   const pctStr = fga >= 0.3 ? `${Math.round(pct * 100)}%` : '—';
   const fgaStr = (Math.round(fga * 10) / 10).toFixed(1);
+  const oppPctStr = hasMatchup ? `${Math.round((oppPct as number) * 100)}%` : '';
+
+  // Box height: 48 sem matchup, 64 com (4a linha de matchup)
+  const boxH = hasMatchup ? 64 : 48;
+  const boxY = y - boxH / 2;
 
   return (
     <g>
       <rect
-        x={x - 32} y={y - 24}
-        width={64} height={48}
+        x={x - 34} y={boxY}
+        width={68} height={boxH}
         rx={7}
         fill="rgba(2,6,18,0.92)"
         stroke={border}
         strokeWidth={1.8}
       />
       {label && (
-        <text x={x} y={y - 10} textAnchor="middle" fontSize={10} fill="#6b7280" fontWeight="600" letterSpacing="0.5">
+        <text x={x} y={boxY + 12} textAnchor="middle" fontSize={9} fill="#6b7280" fontWeight="600" letterSpacing="0.5">
           {label}
         </text>
       )}
-      <text x={x} y={y + (label ? 6 : 2)} textAnchor="middle" fontSize={17} fontWeight="bold" fill={color}>
+      {/* Player FG% (mantem cor do skill do jogador) */}
+      <text x={x} y={boxY + 28} textAnchor="middle" fontSize={16} fontWeight="bold" fill={playerColor}>
         {pctStr}
       </text>
-      <text x={x} y={y + (label ? 20 : 16)} textAnchor="middle" fontSize={11} fill="#4b5563">
+      {/* Player FGA */}
+      <text x={x} y={boxY + 41} textAnchor="middle" fontSize={10} fill="#4b5563">
         {fgaStr} fg/g
       </text>
+      {/* Matchup line: "vs PHX 48% #5" */}
+      {hasMatchup && (
+        <>
+          {/* Linha divisoria sutil */}
+          <line
+            x1={x - 28} y1={boxY + 46}
+            x2={x + 28} y2={boxY + 46}
+            stroke="#1e293b" strokeWidth={1}
+          />
+          <text x={x} y={boxY + 58} textAnchor="middle" fontSize={9} fontWeight="600" fill={matchupColor(oppRank)}>
+            vs {opponentAbbr} {oppPctStr} #{oppRank}
+          </text>
+        </>
+      )}
     </g>
   );
 };
+
+// Mapping zone-key → opp data (pct + rank). Centraliza pra cada ZoneBadge
+// pegar oppPct/oppRank do que cede o adversario na zona correspondente.
+function oppForZone(
+  opp: TeamOppShootingZones | null | undefined,
+  zone: 'restricted_area' | 'in_the_paint_non_ra' | 'mid_range' | 'corner_3' | 'above_the_break_3'
+): { pct: number | null; rank: number | null } {
+  if (!opp) return { pct: null, rank: null };
+  const map = {
+    restricted_area:     { pct: opp.opp_restricted_area_fg_pct,     rank: opp.opp_restricted_area_fg_pct_rank },
+    in_the_paint_non_ra: { pct: opp.opp_in_the_paint_non_ra_fg_pct, rank: opp.opp_in_the_paint_non_ra_fg_pct_rank },
+    mid_range:           { pct: opp.opp_mid_range_fg_pct,           rank: opp.opp_mid_range_fg_pct_rank },
+    corner_3:            { pct: opp.opp_corner_3_fg_pct,            rank: opp.opp_corner_3_fg_pct_rank },
+    above_the_break_3:   { pct: opp.opp_above_the_break_3_fg_pct,   rank: opp.opp_above_the_break_3_fg_pct_rank },
+  };
+  return map[zone];
+}
 
 export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
   data,
   isLoading = false,
   playerName = '',
+  oppShootingZones,
+  opponentAbbreviation,
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -209,23 +278,47 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
 
         {/* ── ZONE BADGES ── */}
 
-        {/* Left corner 3 — inside court, left edge safe */}
-        <ZoneBadge x={55} y={410} pct={d.left_corner_3_fg_pct} fga={d.left_corner_3_fga} label="CORNER 3" />
+        {/* Left corner 3 — usa opp_corner_3 (combinado) — BQ nao separa left/right na defesa */}
+        <ZoneBadge x={55} y={410} pct={d.left_corner_3_fg_pct} fga={d.left_corner_3_fga} label="CORNER 3"
+          oppRank={oppForZone(oppShootingZones, 'corner_3').rank}
+          oppPct={oppForZone(oppShootingZones, 'corner_3').pct}
+          opponentAbbr={opponentAbbreviation}
+        />
 
-        {/* Right corner 3 */}
-        <ZoneBadge x={545} y={410} pct={d.right_corner_3_fg_pct} fga={d.right_corner_3_fga} label="CORNER 3" />
+        {/* Right corner 3 — mesmo opp_corner_3 (combinado) */}
+        <ZoneBadge x={545} y={410} pct={d.right_corner_3_fg_pct} fga={d.right_corner_3_fga} label="CORNER 3"
+          oppRank={oppForZone(oppShootingZones, 'corner_3').rank}
+          oppPct={oppForZone(oppShootingZones, 'corner_3').pct}
+          opponentAbbr={opponentAbbreviation}
+        />
 
-        {/* Above the break 3 — center, clearly outside the 3pt arc */}
-        <ZoneBadge x={300} y={80} pct={d.above_the_break_3_fg_pct} fga={d.above_the_break_3_fga} label="ABOVE BREAK" />
+        {/* Above the break 3 */}
+        <ZoneBadge x={300} y={80} pct={d.above_the_break_3_fg_pct} fga={d.above_the_break_3_fga} label="ABOVE BREAK"
+          oppRank={oppForZone(oppShootingZones, 'above_the_break_3').rank}
+          oppPct={oppForZone(oppShootingZones, 'above_the_break_3').pct}
+          opponentAbbr={opponentAbbreviation}
+        />
 
-        {/* Mid range — left wing, inside court between paint and 3pt arc */}
-        <ZoneBadge x={132} y={345} pct={d.mid_range_fg_pct} fga={d.mid_range_fga} label="MID RANGE" />
+        {/* Mid range */}
+        <ZoneBadge x={132} y={345} pct={d.mid_range_fg_pct} fga={d.mid_range_fga} label="MID RANGE"
+          oppRank={oppForZone(oppShootingZones, 'mid_range').rank}
+          oppPct={oppForZone(oppShootingZones, 'mid_range').pct}
+          opponentAbbr={opponentAbbreviation}
+        />
 
-        {/* Paint non-RA — center of paint, above RA */}
-        <ZoneBadge x={300} y={338} pct={d.in_the_paint_non_ra_fg_pct} fga={d.in_the_paint_non_ra_fga} label="PAINT" />
+        {/* Paint non-RA */}
+        <ZoneBadge x={300} y={338} pct={d.in_the_paint_non_ra_fg_pct} fga={d.in_the_paint_non_ra_fga} label="PAINT"
+          oppRank={oppForZone(oppShootingZones, 'in_the_paint_non_ra').rank}
+          oppPct={oppForZone(oppShootingZones, 'in_the_paint_non_ra').pct}
+          opponentAbbr={opponentAbbreviation}
+        />
 
-        {/* Restricted area — at basket */}
-        <ZoneBadge x={300} y={460} pct={d.restricted_area_fg_pct} fga={d.restricted_area_fga} label="REST. AREA" />
+        {/* Restricted area */}
+        <ZoneBadge x={300} y={460} pct={d.restricted_area_fg_pct} fga={d.restricted_area_fga} label="REST. AREA"
+          oppRank={oppForZone(oppShootingZones, 'restricted_area').rank}
+          oppPct={oppForZone(oppShootingZones, 'restricted_area').pct}
+          opponentAbbr={opponentAbbreviation}
+        />
 
       </svg>
 
