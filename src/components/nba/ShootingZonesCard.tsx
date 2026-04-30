@@ -302,22 +302,23 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
           const c = matchupColor(z.rank);
           return (
             <div key={z.key} className="flex items-center gap-2 py-1 text-[11px]">
-              {/* Rank badge — anchor visual */}
+              {/* Rank com denominador (#27/30) — escala fica obvia */}
               <span
-                className="px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums shrink-0 min-w-[34px] text-center"
+                className="px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums shrink-0 min-w-[44px] text-center"
                 style={{ color: c, backgroundColor: `${c}1f`, border: `1px solid ${c}55` }}
               >
-                #{z.rank}
+                #{z.rank}/30
               </span>
               {/* Zona */}
               <span className="flex-1 min-w-0 truncate text-terminal-text/80">{z.label}</span>
-              {/* Opp cede X% — destaque */}
-              <span className="font-semibold tabular-nums shrink-0" style={{ color: c }}>
+              {/* Opp cede — labelado explicito */}
+              <span className="opacity-50 shrink-0 text-[10px]">cede</span>
+              <span className="font-semibold tabular-nums shrink-0 w-9 text-right" style={{ color: c }}>
                 {Math.round(z.oppPct * 100)}%
               </span>
-              {/* Player FG% — contexto secundario */}
-              <span className="opacity-30 shrink-0 text-[10px] hidden xs:inline">você</span>
-              <span className="opacity-45 tabular-nums shrink-0 w-9 text-right">
+              {/* Player — labelado explicito */}
+              <span className="opacity-30 shrink-0 text-[10px]">·  você</span>
+              <span className="opacity-50 tabular-nums shrink-0 w-9 text-right">
                 {Math.round(z.playerPct * 100)}%
               </span>
             </div>
@@ -335,13 +336,21 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
             <div className="mb-3 last:mb-0">
               <div className="flex items-center gap-1.5 mb-1">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
-                <span className="text-[10px] opacity-30">{sub}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: dotColor }}>
+                  {label}
+                </span>
+                <span className="text-[10px] opacity-50">— {sub}</span>
               </div>
               {items.map(renderRow)}
             </div>
           );
         };
+
+        // Action label do headline depende do rank do melhor matchup
+        const headlineAction =
+          best.rank >= 21 ? 'Atacar aqui' :
+          best.rank >= 11 ? 'Melhor zona disponível' :
+          'Defesa elite em todas zonas';
 
         return (
           <div className="mt-3 pt-3 border-t border-terminal-border-subtle">
@@ -349,34 +358,47 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
               Matchup vs {opponentAbbreviation}
             </div>
 
-            {/* Headline: melhor zona pra atacar (= mais favoravel) */}
+            {/* Headline: melhor zona pra atacar (= mais favoravel)
+                Linguagem natural: "DEN cede X% (defesa #N de 30)" em vez
+                de string compactada que exige decoder mental. */}
             <div
-              className="mb-3 p-2.5 rounded border-l-2"
+              className="mb-3 p-3 rounded border-l-2"
               style={{
                 borderLeftColor: bestColor,
                 backgroundColor: `${bestColor}0d`,
               }}
             >
-              <div className="flex items-center gap-1.5 mb-1">
+              <div className="flex items-center gap-1.5 mb-1.5">
                 <Target className="w-3 h-3" style={{ color: bestColor }} />
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">
-                  Melhor matchup
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: bestColor }}>
+                  {headlineAction}
                 </span>
               </div>
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-[14px] font-bold leading-none" style={{ color: bestColor }}>
-                  {best.label}
+              <div className="text-[15px] font-bold mb-1" style={{ color: bestColor }}>
+                {best.label}
+              </div>
+              <div className="text-[11px] opacity-70 leading-relaxed">
+                {opponentAbbreviation} cede{' '}
+                <span className="font-semibold text-terminal-text">
+                  {Math.round(best.oppPct * 100)}%
+                </span>{' '}
+                nessa zona — defesa{' '}
+                <span className="font-semibold text-terminal-text">
+                  #{best.rank} de 30
                 </span>
-                <span className="text-[11px] opacity-60 leading-none">
-                  {opponentAbbreviation} #{best.rank} cede {Math.round(best.oppPct * 100)}% · você {Math.round(best.playerPct * 100)}%
-                </span>
+                . Você acerta{' '}
+                <span className="font-semibold text-terminal-text">
+                  {Math.round(best.playerPct * 100)}%
+                </span>{' '}
+                aí.
               </div>
             </div>
 
-            {/* Grupos por qualidade — so renderiza grupos com items */}
-            {renderGroup(favoraveis, '#22c55e', 'Favorável',     'rank 21–30')}
-            {renderGroup(neutros,    '#eab308', 'Neutro',        'rank 11–20')}
-            {renderGroup(fortes,     '#ef4444', 'Defesa forte',  'rank 1–10')}
+            {/* Grupos por qualidade — so renderiza grupos com items.
+                Labels acionaveis (verbos) em vez de adjetivos. */}
+            {renderGroup(favoraveis, '#22c55e', 'Atacar', 'DEN é vulnerável (rank 21–30)')}
+            {renderGroup(neutros,    '#eab308', 'Neutro', 'rank na média (11–20)')}
+            {renderGroup(fortes,     '#ef4444', 'Evitar', 'DEN é elite (rank 1–10)')}
           </div>
         );
       })()}
