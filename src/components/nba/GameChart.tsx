@@ -48,6 +48,10 @@ interface GameChartProps {
   seasonType?: 'all' | 'regular' | 'playoffs' | 'playin';
   onSeasonTypeChange?: (type: 'all' | 'regular' | 'playoffs' | 'playin') => void;
   chartLoading?: boolean;
+  /** Potential assists per game (season). Mostrado no footer quando stat = assists. */
+  potentialAstSeason?: number | null;
+  /** Rank do potential_ast na liga (1-N). Mostrado entre parens. */
+  potentialAstSeasonRank?: number | null;
 }
 
 interface ChartDataPoint {
@@ -160,6 +164,7 @@ export const GameChart: React.FC<GameChartProps> = ({
   b2bOnly, onB2BChange, h2hOnly, onH2HChange, nextOpponent,
   selectedSeason = 'current', onSeasonChange, seasonType = 'all', onSeasonTypeChange,
   chartLoading = false,
+  potentialAstSeason = null, potentialAstSeasonRank = null,
 }) => {
   const [adjustedLine, setAdjustedLine] = useState<number | null>(currentLine ?? null);
   const [isDragging, setIsDragging] = useState(false);
@@ -842,10 +847,24 @@ export const GameChart: React.FC<GameChartProps> = ({
             </>
           )}
         </div>
-        <div className="flex items-center gap-3 opacity-50">
+        <div className="flex items-center gap-3 opacity-50 flex-wrap">
           <span>Média <span className="font-medium text-terminal-text opacity-100">{average}</span></span>
           {seasonAvg !== undefined && seasonAvg !== null && (
             <span>Média da Temporada <span className="font-medium text-terminal-text opacity-100">{Number(seasonAvg).toFixed(1)}</span></span>
+          )}
+          {/* Potential assists (season) — só faz sentido na aba de Assistências.
+              balldontlie nao expoe potential_ast game-by-game, entao mostramos
+              a media da temporada como info complementar. */}
+          {selectedStatType === 'player_assists' && potentialAstSeason != null && (
+            <span title="Passes que viraram chances de cesta — independe de o teammate ter convertido. Métrica balldontlie tier season.">
+              Potential Ast (season){' '}
+              <span className="font-medium text-terminal-text opacity-100">
+                {potentialAstSeason.toFixed(1)}
+              </span>
+              {potentialAstSeasonRank != null && (
+                <span className="opacity-70"> · #{potentialAstSeasonRank}</span>
+              )}
+            </span>
           )}
         </div>
       </div>

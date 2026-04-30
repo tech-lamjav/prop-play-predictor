@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones } from '@/services/nba-data.service';
+import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones, PlayerPassingSeason } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
@@ -75,6 +75,7 @@ export default function NBADashboard() {
   const [oppRankings, setOppRankings] = useState<OpponentRankings | null>(null);
   const [oppPlaytypes, setOppPlaytypes] = useState<TeamPlaytypes | null>(null);
   const [oppShootingZones, setOppShootingZones] = useState<TeamOppShootingZones | null>(null);
+  const [passingSeason, setPassingSeason] = useState<PlayerPassingSeason | null>(null);
   const [selectedSeason, setSelectedSeason] = useState<number | 'current'>('current');
   const [seasonType, setSeasonType] = useState<'all' | 'regular' | 'playoffs' | 'playin'>('all');
   const [historicalStats, setHistoricalStats] = useState<Map<number, GamePlayerStats[]>>(new Map());
@@ -352,6 +353,13 @@ export default function NBADashboard() {
           .catch(e => console.error('Error loading opponent shooting zones:', e));
       }
 
+      // Passing season profile — tambem nao vem do cache
+      if (cached.player?.player_id) {
+        nbaDataService.getPlayerPassingSeason(cached.player.player_id)
+          .then(data => setPassingSeason(data))
+          .catch(e => console.error('Error loading passing season:', e));
+      }
+
       return;
     }
 
@@ -386,6 +394,11 @@ export default function NBADashboard() {
 
       setPlayer(playerData);
       setPlayerLookupDone(true);
+
+      // Passing season (perfil de playmaking) — non-blocking, paralelo
+      nbaDataService.getPlayerPassingSeason(playerData.player_id)
+        .then(data => setPassingSeason(data))
+        .catch(e => console.error('Error loading passing season:', e));
 
       // Each call sequential — component appears as soon as its data arrives
       let loadedStats: GamePlayerStats[] = [];
@@ -745,6 +758,8 @@ export default function NBADashboard() {
                 onSeasonChange={setSelectedSeason}
                 seasonType={seasonType}
                 onSeasonTypeChange={setSeasonType}
+                potentialAstSeason={passingSeason?.potential_ast ?? null}
+                potentialAstSeasonRank={passingSeason?.potential_ast_rank ?? null}
               />
             )}
 

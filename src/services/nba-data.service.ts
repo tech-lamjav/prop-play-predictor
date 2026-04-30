@@ -140,6 +140,24 @@ export interface OpponentRankings {
 }
 
 /**
+ * Perfil de passing/playmaking do jogador na temporada.
+ * balldontlie nao expoe potential_ast game-by-game — so season — entao
+ * usamos esse perfil como info complementar no grafico de assistencias.
+ */
+export interface PlayerPassingSeason {
+  player_id: number;
+  season: number;
+  games_played: number;
+  ast: number;
+  potential_ast: number;
+  potential_ast_rank: number;
+  passes_made: number;
+  secondary_ast: number;
+  ft_ast: number;
+  ast_to_pass_pct: number;
+}
+
+/**
  * Defesa do adversario por zona de arremesso — o que o time CEDE em
  * cada zona. Usado pra cruzar com o ShootingZonesCard do jogador
  * (matchup overlay verde/amarelo/vermelho por rank).
@@ -504,6 +522,15 @@ export const nbaDataService = {
         .rpc('get_team_opp_shooting_zones', { p_team_id: teamId });
       if (error) throw error;
       return data && data.length > 0 ? data[0] as TeamOppShootingZones : null;
+    });
+  },
+
+  async getPlayerPassingSeason(playerId: number): Promise<PlayerPassingSeason | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_passing_season', { p_player_id: playerId });
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] as PlayerPassingSeason : null;
     });
   },
 
