@@ -1,7 +1,7 @@
 /**
  * Testes dos helpers puros de deadline.
  * Funções testadas:
- *  - computeMatchDeadline (3 modos: per_match | per_round | tournament_start)
+ *  - computeMatchDeadline (5 modos: per_match | per_day | per_round | per_stage | tournament_start)
  *  - getNextDeadline (escolhe o próximo prazo válido)
  *  - formatDeadlineRelative (rotulagem em português)
  *  - isDeadlineUrgent (<1h pulsante)
@@ -52,7 +52,7 @@ describe('computeMatchDeadline', () => {
     expect(deadline.toISOString()).toBe('2026-06-15T19:00:00.000Z');
   });
 
-  it('per_round → retorna kickoff do PRIMEIRO jogo da MESMA fase', () => {
+  it('per_stage → retorna kickoff do PRIMEIRO jogo da MESMA fase', () => {
     const target  = fakeMatch({ id: 3, stage: 'group', match_date: '2026-06-15', match_time_brasilia: '16:00:00' });
     const earlier = fakeMatch({ id: 1, stage: 'group', match_date: '2026-06-11', match_time_brasilia: '13:00:00' });
     const later   = fakeMatch({ id: 2, stage: 'group', match_date: '2026-06-12', match_time_brasilia: '16:00:00' });
@@ -60,8 +60,46 @@ describe('computeMatchDeadline', () => {
     const otherStage = fakeMatch({ id: 99, stage: 'final', match_date: '2026-06-10', match_time_brasilia: '10:00:00' });
     const all = [target, earlier, later, otherStage];
 
-    const deadline = computeMatchDeadline(target, 'per_round', all);
+    const deadline = computeMatchDeadline(target, 'per_stage', all);
     expect(deadline.toISOString()).toBe('2026-06-11T16:00:00.000Z'); // 13h Brasília = 16h UTC
+  });
+
+  it('per_day → retorna kickoff do PRIMEIRO jogo do MESMO dia', () => {
+    const target = fakeMatch({ id: 3, match_date: '2026-06-12', match_time_brasilia: '20:00:00' });
+    const sameDayEarlier = fakeMatch({ id: 1, match_date: '2026-06-12', match_time_brasilia: '13:00:00' });
+    const otherDay = fakeMatch({ id: 99, match_date: '2026-06-11', match_time_brasilia: '10:00:00' });
+    const all = [target, sameDayEarlier, otherDay];
+
+    const deadline = computeMatchDeadline(target, 'per_day', all);
+    expect(deadline.toISOString()).toBe('2026-06-12T16:00:00.000Z'); // 13h Brasília = 16h UTC
+  });
+
+  it('per_round (group) → retorna kickoff do PRIMEIRO jogo da rodada (R1/R2/R3)', () => {
+    // Grupo A: 6 jogos. R1 = primeiros 2 (cronológicos), R2 = 3-4, R3 = 5-6
+    const a1 = fakeMatch({ id: 1, stage: 'group', group_name: 'A', match_date: '2026-06-11', match_time_brasilia: '13:00:00' });
+    const a2 = fakeMatch({ id: 2, stage: 'group', group_name: 'A', match_date: '2026-06-11', match_time_brasilia: '16:00:00' });
+    const a3 = fakeMatch({ id: 3, stage: 'group', group_name: 'A', match_date: '2026-06-15', match_time_brasilia: '13:00:00' });
+    const a4 = fakeMatch({ id: 4, stage: 'group', group_name: 'A', match_date: '2026-06-15', match_time_brasilia: '16:00:00' });
+    // Grupo B: também 6 jogos, com R1 começando antes do A
+    const b1 = fakeMatch({ id: 11, stage: 'group', group_name: 'B', match_date: '2026-06-10', match_time_brasilia: '20:00:00' });
+    const b2 = fakeMatch({ id: 12, stage: 'group', group_name: 'B', match_date: '2026-06-11', match_time_brasilia: '10:00:00' });
+    const b3 = fakeMatch({ id: 13, stage: 'group', group_name: 'B', match_date: '2026-06-15', match_time_brasilia: '10:00:00' });
+    const b4 = fakeMatch({ id: 14, stage: 'group', group_name: 'B', match_date: '2026-06-15', match_time_brasilia: '20:00:00' });
+    const all = [a1, a2, a3, a4, b1, b2, b3, b4];
+
+    // a3 é R2 do grupo A. Deadline = primeiro kickoff da R2 (incluindo b3 do grupo B = 10h)
+    const deadline = computeMatchDeadline(a3, 'per_round', all);
+    expect(deadline.toISOString()).toBe('2026-06-15T13:00:00.000Z'); // 10h Brasília = 13h UTC
+  });
+
+  it('per_round (knockout) → cada stage é uma rodada própria', () => {
+    const oitavas1 = fakeMatch({ id: 73, stage: 'round_of_32', match_date: '2026-06-27', match_time_brasilia: '13:00:00' });
+    const oitavas2 = fakeMatch({ id: 74, stage: 'round_of_32', match_date: '2026-06-27', match_time_brasilia: '16:00:00' });
+    const quartas = fakeMatch({ id: 89, stage: 'quarter', match_date: '2026-07-08', match_time_brasilia: '13:00:00' });
+    const all = [oitavas1, oitavas2, quartas];
+
+    const deadline = computeMatchDeadline(oitavas2, 'per_round', all);
+    expect(deadline.toISOString()).toBe('2026-06-27T16:00:00.000Z'); // 13h Brasília = 16h UTC
   });
 
   it('tournament_start → retorna kickoff do PRIMEIRO jogo de toda a Copa', () => {
@@ -211,10 +249,10 @@ describe('isMatchPredictionLocked', () => {
     expect(isMatchPredictionLocked(m, 'per_match', [m], false)).toBe(false);
   });
 
-  it('per_round: bloqueia mesmo um jogo futuro se o 1º da fase já começou', () => {
-    const past   = fakeMatch({ id: 1, stage: 'group', match_date: '2026-06-11', match_time_brasilia: '13:00:00', is_finished: true });
-    const future = fakeMatch({ id: 2, stage: 'group', match_date: '2026-06-15', match_time_brasilia: '16:00:00' });
-    expect(isMatchPredictionLocked(future, 'per_round', [past, future], false)).toBe(true);
+  it('per_stage: bloqueia mesmo um jogo futuro se o 1º da fase já começou', () => {
+    const past   = fakeMatch({ id: 1, stage: 'group', group_name: 'A', match_date: '2026-06-11', match_time_brasilia: '13:00:00', is_finished: true });
+    const future = fakeMatch({ id: 2, stage: 'group', group_name: 'A', match_date: '2026-06-15', match_time_brasilia: '16:00:00' });
+    expect(isMatchPredictionLocked(future, 'per_stage', [past, future], false)).toBe(true);
   });
 
   it('tournament_start: bloqueia tudo se a Copa já começou', () => {

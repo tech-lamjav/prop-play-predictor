@@ -18,20 +18,12 @@ export const PalpitesProgress: React.FC<PalpitesProgressProps> = ({ done, total,
   const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
   const isComplete = total > 0 && done >= total;
 
-  // Cor escala: cinza → amarelo → azul → verde conforme progresso
+  // Cor escala: ink-3 → amber → forest conforme progresso
   const colorClass =
-    pct >= 80 ? 'text-terminal-green'
-    : pct >= 50 ? 'text-terminal-blue'
-    : pct >= 20 ? 'text-terminal-yellow'
-    : 'text-terminal-text/60';
-
-  // bg-terminal-* classes não existem no CSS, só as text-terminal-*. Usamos
-  // a CSS var inline.
-  const barColorVar =
-    pct >= 80 ? 'var(--terminal-green)'
-    : pct >= 50 ? 'var(--terminal-blue)'
-    : pct >= 20 ? 'var(--terminal-yellow)'
-    : 'var(--terminal-text)';
+    pct >= 80 ? 'text-forest'
+    : pct >= 50 ? 'text-forest'
+    : pct >= 20 ? 'text-amber-2'
+    : 'text-ink-3';
 
   return (
     <div
@@ -46,16 +38,15 @@ export const PalpitesProgress: React.FC<PalpitesProgressProps> = ({ done, total,
         <span className={`${variant === 'modal' ? 'text-lg' : 'text-xl'} font-bold leading-none ${colorClass}`}>
           {done}
         </span>
-        <span className="text-xs opacity-50 font-medium">/ {total}</span>
-        <span className="text-[10px] opacity-50 ml-1">{pct}%</span>
-        {isComplete && <span className="text-xs ml-0.5">✓</span>}
+        <span className="text-[12px] text-ink-2 font-medium">/ {total}</span>
+        <span className="text-[10px] text-ink-3 ml-1">{pct}%</span>
+        {isComplete && <span className="text-[12px] ml-0.5 text-forest" aria-hidden="true">✓</span>}
       </div>
-      <div className="w-full h-2 rounded-full bg-black/50 border border-terminal-border-subtle overflow-hidden">
+      <div className="w-full h-2 rounded-full bg-canvas-2 overflow-hidden">
         <div
-          className="h-full transition-all duration-500 ease-out"
+          className={`h-full transition-all duration-500 ease-out ${pct >= 20 && pct < 50 ? 'bg-amber' : pct < 20 ? 'bg-ink-3' : 'bg-forest'}`}
           style={{
             width: done > 0 ? `max(4px, ${pct}%)` : '0%',
-            backgroundColor: barColorVar,
           }}
         />
       </div>

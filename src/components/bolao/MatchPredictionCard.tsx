@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Check, MoreVertical, Trash2, Wand2 } from 'lucide-react';
+import { Lock, Check, MoreVertical, Trash2, Wand2, Loader2 } from 'lucide-react';
 import type { WcMatch, BolaoPrediction } from '@/services/bolao.service';
 import { isMatchLocked, isMatchPredictionLocked, computeMatchDeadline } from '@/hooks/use-bolao';
 import { readDraft, writeDraft, clearDraft } from '@/components/bolao/useDraftPrediction';
@@ -11,36 +11,47 @@ interface MatchPredictionCardProps {
   match: WcMatch;
   prediction?: BolaoPrediction;
   onSave: (matchId: number, homeScore: number, awayScore: number) => void;
-  /** Optional — when present, shows menu with "Apagar palpite" option */
   onDelete?: (matchId: number) => void;
-  isSaving?: boolean;
-  // Bolão id for localStorage draft key (optional for backward compat)
   bolaoId?: string;
-  // Optional — when passed, deadline is computed from bolão mode instead of kickoff
-  deadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
+  deadlineMode?: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
   allMatches?: WcMatch[];
   isClosed?: boolean;
-  /** When true, shows a sparkles button that auto-fills inputs with a "Realista" suggestion */
   enableSuggestion?: boolean;
-  /** When true, hide the match date from header (caller already shows it in the section title) */
   hideMatchDate?: boolean;
-  /** Notify parent of draft state — called whenever the user has unsaved changes (or null when in sync) */
-  onDraftChange?: (matchId: number, draft: { home: string; away: string } | null) => void;
 }
 
+type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved';
+
+const AUTOSAVE_DEBOUNCE_MS = 500;
+const SAVING_VISIBLE_MS = 1000;
+const SAVED_VISIBLE_MS = 1500;
+
+/**
+ * Linha compacta de palpite — 1 linha por jogo.
+ * Layout: hora · time-A · bandeira-A · input × input · bandeira-B · time-B · status
+ *
+ * Em mobile, os botões +/− do ScoreStepper aparecem (tap rápido).
+ * Em desktop, os botões somem (sm:hidden) — só o input editável.
+ *
+ * Status à direita:
+ *  - Locked: ícone Lock
+ *  - Editando: "Editando..." (cinza, durante debounce)
+ *  - Salvando: spinner + "Salvando"
+ *  - Salvo: ✓ verde + "Salvo agora"
+ *  - Sem palpite + enableSuggestion: link "Sugerir"
+ *  - Idle com palpite: nada (linha verde sutil indica)
+ */
 export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   match,
   prediction,
   onSave,
   onDelete,
-  isSaving,
   bolaoId,
   deadlineMode,
   allMatches,
   isClosed,
   enableSuggestion,
   hideMatchDate,
-  onDraftChange,
 }) => {
   const locked = deadlineMode
     ? isMatchPredictionLocked(match, deadlineMode, allMatches, !!isClosed)
@@ -49,7 +60,6 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
     ? computeMatchDeadline(match, deadlineMode, allMatches)
     : null;
 
-  // Initial values: server prediction first, then localStorage draft as fallback.
   const initialHome = prediction?.predicted_home_score != null
     ? prediction.predicted_home_score.toString()
     : (bolaoId ? readDraft(bolaoId, match.id)?.home ?? '' : '');
@@ -58,11 +68,22 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
     : (bolaoId ? readDraft(bolaoId, match.id)?.away ?? '' : '');
   const [homeScore, setHomeScore] = useState<string>(initialHome);
   const [awayScore, setAwayScore] = useState<string>(initialAway);
-  const [saved, setSaved] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click + ESC
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (!menuOpen) return;
     const onClick = (e: MouseEvent) => {
@@ -79,9 +100,6 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
     };
   }, [menuOpen]);
 
-  // Sync from server when prediction arrives (after upsert success) OR
-  // when prediction is deleted (clear inputs + draft, volta ao estado vazio).
-  // Track previous prediction via ref pra distinguir "carregou agora" de "foi deletado".
   const prevPredictionRef = useRef<BolaoPrediction | undefined>(prediction);
   useEffect(() => {
     const hadBefore = !!prevPredictionRef.current;
@@ -89,37 +107,12 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
       setHomeScore(prediction.predicted_home_score.toString());
       setAwayScore(prediction.predicted_away_score.toString());
     } else if (hadBefore) {
-      // Prediction existia e sumiu → foi deletada
       setHomeScore('');
       setAwayScore('');
       if (bolaoId) clearDraft(bolaoId, match.id);
     }
     prevPredictionRef.current = prediction;
   }, [prediction, bolaoId, match.id]);
-
-  // Derived: there's an unsaved draft whenever the current values diverge
-  // from the server (or no server value yet but user typed something).
-  // Don't show "Rascunho" if locked or just-saved.
-  const hasUnsavedDraft = !locked && !saved && (() => {
-    if (homeScore === '' && awayScore === '') return false;
-    if (!prediction) return true; // user typed without ever saving
-    return homeScore !== String(prediction.predicted_home_score)
-      || awayScore !== String(prediction.predicted_away_score);
-  })();
-
-  // Notifica o pai quando draft state muda (pra sticky save bar)
-  useEffect(() => {
-    if (!onDraftChange) return;
-    if (hasUnsavedDraft) {
-      onDraftChange(match.id, { home: homeScore, away: awayScore });
-    } else {
-      onDraftChange(match.id, null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasUnsavedDraft, homeScore, awayScore]);
-
-  // Draft é persistido em onChange dos inputs (handleHomeChange/handleAwayChange)
-  // pra evitar race com o effect de sync prediction→state acima.
 
   const persistDraft = (home: string, away: string) => {
     if (!bolaoId || locked) return;
@@ -138,34 +131,53 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
     writeDraft(bolaoId, match.id, home, away);
   };
 
+  const triggerAutosave = (h: string, a: string) => {
+    if (locked || match.is_finished || isClosed) return;
+    if (h === '' || a === '') {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setSaveStatus('idle');
+      return;
+    }
+    const homeNum = Number(h);
+    const awayNum = Number(a);
+    if (Number.isNaN(homeNum) || Number.isNaN(awayNum)) return;
+    if (homeNum < 0 || awayNum < 0 || homeNum > 20 || awayNum > 20) return;
+    if (
+      prediction &&
+      homeNum === prediction.predicted_home_score &&
+      awayNum === prediction.predicted_away_score
+    ) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setSaveStatus('idle');
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (savingTimerRef.current) clearTimeout(savingTimerRef.current);
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    setSaveStatus('pending');
+
+    debounceRef.current = setTimeout(() => {
+      setSaveStatus('saving');
+      onSave(match.id, homeNum, awayNum);
+      savingTimerRef.current = setTimeout(() => {
+        setSaveStatus((s) => (s === 'saving' ? 'saved' : s));
+        savedTimerRef.current = setTimeout(() => {
+          setSaveStatus((s) => (s === 'saved' ? 'idle' : s));
+        }, SAVED_VISIBLE_MS);
+      }, SAVING_VISIBLE_MS);
+    }, AUTOSAVE_DEBOUNCE_MS);
+  };
+
   const handleHomeChange = (v: string) => {
     setHomeScore(v);
     persistDraft(v, awayScore);
+    triggerAutosave(v, awayScore);
   };
   const handleAwayChange = (v: string) => {
     setAwayScore(v);
     persistDraft(homeScore, v);
-  };
-
-  const hasPrediction = prediction != null;
-  const canSave =
-    !locked &&
-    homeScore !== '' &&
-    awayScore !== '' &&
-    Number(homeScore) >= 0 &&
-    Number(awayScore) >= 0;
-
-  const isDirty =
-    !hasPrediction ||
-    homeScore !== prediction?.predicted_home_score.toString() ||
-    awayScore !== prediction?.predicted_away_score.toString();
-
-  const handleSave = () => {
-    if (!canSave || !isDirty) return;
-    onSave(match.id, Number(homeScore), Number(awayScore));
-    if (bolaoId) clearDraft(bolaoId, match.id);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    triggerAutosave(homeScore, v);
   };
 
   const handleSuggest = () => {
@@ -177,6 +189,7 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
     setHomeScore(h);
     setAwayScore(a);
     persistDraft(h, a);
+    triggerAutosave(h, a);
   };
 
   const matchDate = new Date(match.match_date + 'T00:00:00');
@@ -186,192 +199,204 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   });
   const timeStr = match.match_time_brasilia.slice(0, 5);
 
-  // Points display for finished matches
-  const pointsDisplay =
-    match.is_finished && prediction?.points_earned != null ? (
-      <span
-        className={`text-xs font-bold px-2 py-0.5 rounded ${
-          prediction.points_earned > 0
-            ? 'bg-terminal-green/20 text-terminal-green'
-            : 'bg-terminal-dark-gray text-terminal-text/50'
-        }`}
-      >
-        {prediction.points_earned > 0 ? `+${prediction.points_earned} pts` : '0 pts'}
-      </span>
-    ) : null;
+  const hasPrediction = prediction != null;
+  const hasInputs = homeScore !== '' && awayScore !== '';
+
+  // Status à direita (1 elemento por vez)
+  const statusContent = (() => {
+    if (locked) {
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] text-ink-3">
+          <Lock className="w-3 h-3" />
+          Encerrado
+        </span>
+      );
+    }
+    if (saveStatus === 'pending') {
+      return <span className="text-[11px] text-ink-3">Editando...</span>;
+    }
+    if (saveStatus === 'saving') {
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] text-ink-2">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Salvando
+        </span>
+      );
+    }
+    if (saveStatus === 'saved') {
+      return (
+        <span
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-status-success animate-in fade-in"
+          role="status"
+        >
+          <Check className="w-3 h-3" strokeWidth={3} />
+          Salvo agora
+        </span>
+      );
+    }
+    if (match.is_finished && prediction?.points_earned != null) {
+      return (
+        <span
+          className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+            prediction.points_earned > 0
+              ? 'bg-status-success/15 text-status-success'
+              : 'bg-canvas-2 text-ink-3'
+          }`}
+        >
+          {prediction.points_earned > 0 ? `+${prediction.points_earned} pts` : '0 pts'}
+        </span>
+      );
+    }
+    if (!hasInputs && enableSuggestion) {
+      return (
+        <button
+          type="button"
+          onClick={handleSuggest}
+          className="inline-flex items-center gap-1 text-[11px] text-forest hover:text-forest-2 transition-colors"
+        >
+          <Wand2 className="w-3 h-3" />
+          Sugerir
+        </button>
+      );
+    }
+    return null;
+  })();
+
+  /** Render do stepper ou placar finalizado (reusado em ambos os times). */
+  const renderScoreSlot = (
+    score: string,
+    onChange: (v: string) => void,
+    finalScore: number | null | undefined,
+    teamCode: string,
+    teamSide: 'mandante' | 'visitante'
+  ) => {
+    if (match.is_finished) {
+      return (
+        <span className="w-12 h-11 flex items-center justify-center text-[18px] font-bold text-ink tabular-nums bg-canvas-2 rounded-rebrand-md">
+          {finalScore}
+        </span>
+      );
+    }
+    return (
+      <ScoreStepper
+        value={score}
+        onChange={onChange}
+        disabled={locked}
+        ariaLabel={`Placar ${teamCode} (${teamSide})`}
+      />
+    );
+  };
 
   return (
     <div
-      className={`border rounded p-3 transition-colors ${
+      className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 transition-colors ${
         match.is_finished
-          ? 'border-terminal-border-subtle bg-terminal-dark-gray/20 opacity-80'
+          ? 'opacity-60'
           : locked
-          ? 'border-terminal-border-subtle bg-terminal-dark-gray/10 opacity-60'
-          : hasPrediction
-          ? 'border-terminal-green/30 bg-terminal-green/5'
-          : 'border-terminal-border hover:border-terminal-border/80'
+            ? 'opacity-60'
+            : hasPrediction
+              ? 'bg-forest/[0.04]'
+              : 'hover:bg-canvas-2/40'
       }`}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          {/* Mostra fase só pra mata-mata — em grupo, contexto vem do header da seção */}
-          {!match.group_name && (
-            <span className="text-[10px] opacity-50 uppercase">{match.stage}</span>
-          )}
-          {locked && <Lock className="w-3 h-3 opacity-40" />}
-          {hasUnsavedDraft && (
-            <span
-              className="text-[10px] uppercase tracking-wider text-terminal-yellow/80 font-medium"
-              title="Rascunho não salvo — clique em Salvar"
-            >
-              Rascunho
-            </span>
-          )}
-          {saved && (
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-green/20 text-terminal-green border border-terminal-green/40 font-medium flex items-center gap-1 animate-in fade-in"
-              role="status"
-            >
-              <Check className="w-3 h-3" />
-              Salvo
-            </span>
-          )}
+      {/* Mobile-only header: hora/data + status (sugerir/salvo) */}
+      <div className="flex sm:hidden items-center justify-between min-w-0">
+        <div className="text-[11px] tabular-nums leading-tight min-w-0">
+          <span className="font-medium text-ink">{timeStr}</span>
+          {!hideMatchDate && <span className="text-[10px] text-ink-3 ml-1.5">{dateStr}</span>}
         </div>
-        <div className="flex items-center gap-2">
-          {pointsDisplay}
-          <span className="text-[10px] opacity-50">
-            {hideMatchDate ? timeStr : `${dateStr} ${timeStr}`}
-          </span>
-          {onDelete && hasPrediction && !locked && !match.is_finished && (
-            <div ref={menuRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setMenuOpen(v => !v)}
-                aria-label="Mais opções do palpite"
-                aria-expanded={menuOpen}
-                aria-haspopup="menu"
-                className="w-8 h-8 flex items-center justify-center rounded text-terminal-text/40 hover:text-terminal-text/90 hover:bg-terminal-gray/30 transition-colors"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
-              {menuOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-full mt-1 z-30 w-44 rounded-lg border border-terminal-border bg-terminal-dark-gray shadow-xl overflow-hidden"
-                >
-                  <button
-                    role="menuitem"
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onDelete(match.id);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm text-terminal-red hover:bg-terminal-red/10 focus:bg-terminal-red/10 focus:outline-none transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Apagar palpite
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <div className="shrink-0">{statusContent}</div>
       </div>
-      {/* Custom deadline indicator — only show when deadline differs from kickoff */}
-      {!match.is_finished && deadline && deadlineMode && deadlineMode !== 'per_match' && (() => {
-        const kickoff = new Date(`${match.match_date}T${match.match_time_brasilia}-03:00`);
-        if (deadline.getTime() === kickoff.getTime()) return null;
-        const d = deadline;
-        const label = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        return (
-          <p className="text-[10px] text-terminal-yellow/80 mb-2">
-            Palpites até {label}
-          </p>
-        );
-      })()}
 
-      {/* Match */}
-      <div className="flex items-center gap-2">
-        {/* Home team */}
-        <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
-          <span className="text-sm font-medium truncate">{match.home_team}</span>
-          <TeamFlag code={match.home_team_code} size="md" />
+      {/* Mobile: layout vertical estilo "score card" — cada time numa linha
+          com seu próprio placar à direita. × cinza no meio indica o confronto. */}
+      <div className="flex sm:hidden flex-col mt-1">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <TeamFlag code={match.home_team_code} size="md" />
+            <span className="text-[13px] font-medium text-ink truncate">{match.home_team}</span>
+          </div>
+          <div className="shrink-0">
+            {renderScoreSlot(homeScore, handleHomeChange, match.home_score, match.home_team_code, 'mandante')}
+          </div>
         </div>
-
-        {/* Score inputs or result */}
-        {match.is_finished ? (
-          <div className="flex items-center gap-1 px-2">
-            <span className="w-8 text-center text-sm font-bold">{match.home_score}</span>
-            <span className="text-xs opacity-40">x</span>
-            <span className="w-8 text-center text-sm font-bold">{match.away_score}</span>
+        <div className="text-center text-[12px] text-ink-3 font-medium leading-none my-1.5" aria-hidden="true">
+          ×
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <TeamFlag code={match.away_team_code} size="md" />
+            <span className="text-[13px] font-medium text-ink truncate">{match.away_team}</span>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 px-1">
-            <ScoreStepper
-              value={homeScore}
-              onChange={handleHomeChange}
-              disabled={locked}
-              ariaLabel={`Placar ${match.home_team_code} (mandante)`}
-            />
-            <span className="text-xs opacity-40">x</span>
-            <ScoreStepper
-              value={awayScore}
-              onChange={handleAwayChange}
-              disabled={locked}
-              ariaLabel={`Placar ${match.away_team_code} (visitante)`}
-            />
+          <div className="shrink-0">
+            {renderScoreSlot(awayScore, handleAwayChange, match.away_score, match.away_team_code, 'visitante')}
           </div>
-        )}
-
-        {/* Away team */}
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <TeamFlag code={match.away_team_code} size="md" />
-          <span className="text-sm font-medium truncate">{match.away_team}</span>
         </div>
       </div>
 
-      {/* Prediction display for finished matches */}
-      {match.is_finished && hasPrediction && (
-        <div className="mt-2 text-center">
-          <span className="text-[10px] opacity-50">
-            Seu palpite: {prediction.predicted_home_score} x {prediction.predicted_away_score}
-          </span>
-        </div>
-      )}
+      {/* Desktop layout — 1 linha: hora · time A · scores · time B · status */}
+      <div className="hidden sm:block w-16 shrink-0 text-[11px] text-ink-2 tabular-nums leading-tight">
+        <div className="font-medium text-ink">{timeStr}</div>
+        {!hideMatchDate && <div className="text-[10px] text-ink-3">{dateStr}</div>}
+      </div>
 
-      {/* Save button + Sugerir inline */}
-      {!locked && !match.is_finished && (
-        <div className="mt-2 flex justify-center items-center gap-3">
-          {isDirty && canSave && (
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-1 px-3 py-1 text-xs font-medium bg-terminal-green/20 text-terminal-green border border-terminal-green/30 rounded hover:bg-terminal-green/30 transition-colors disabled:opacity-50"
-            >
-              {saved ? (
-                <>
-                  <Check className="w-3 h-3" /> Salvo
-                </>
-              ) : isSaving ? (
-                'Salvando...'
-              ) : (
-                'Salvar palpite'
-              )}
-            </button>
-          )}
-          {enableSuggestion && homeScore === '' && awayScore === '' && (
+      <div className="hidden sm:flex flex-1 items-center justify-end gap-2 min-w-0">
+        <span className="text-[13px] text-ink truncate">{match.home_team}</span>
+        <TeamFlag code={match.home_team_code} size="sm" />
+        <span className="text-[10px] font-mono text-ink-3 tabular-nums w-7">
+          {match.home_team_code}
+        </span>
+      </div>
+
+      <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+        {renderScoreSlot(homeScore, handleHomeChange, match.home_score, match.home_team_code, 'mandante')}
+        <span className="text-[14px] text-ink-3 font-medium px-0.5">×</span>
+        {renderScoreSlot(awayScore, handleAwayChange, match.away_score, match.away_team_code, 'visitante')}
+      </div>
+
+      <div className="hidden sm:flex flex-1 items-center gap-2 min-w-0">
+        <span className="text-[10px] font-mono text-ink-3 tabular-nums w-7 text-right">
+          {match.away_team_code}
+        </span>
+        <TeamFlag code={match.away_team_code} size="sm" />
+        <span className="text-[13px] text-ink truncate">{match.away_team}</span>
+      </div>
+
+      <div className="hidden sm:flex w-32 shrink-0 items-center justify-end gap-2 text-right">
+        {statusContent}
+        {onDelete && hasPrediction && !locked && !match.is_finished && (
+          <div ref={menuRef} className="relative">
             <button
               type="button"
-              onClick={handleSuggest}
-              className="flex items-center gap-1 text-[11px] text-terminal-blue/80 hover:text-terminal-blue transition-colors"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Mais opções"
+              aria-expanded={menuOpen}
+              className="w-7 h-7 flex items-center justify-center rounded-rebrand-sm text-ink-3 hover:text-ink hover:bg-canvas-2 transition-colors"
             >
-              <Wand2 className="w-3 h-3" />
-              Sugerir placar
+              <MoreVertical className="w-4 h-4" />
             </button>
-          )}
-        </div>
-      )}
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full mt-1 z-30 w-44 rounded-rebrand-md border border-line bg-white shadow-md overflow-hidden"
+              >
+                <button
+                  role="menuitem"
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete(match.id);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-[13px] text-status-danger hover:bg-status-danger/5 focus:bg-status-danger/5 focus:outline-none transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Apagar palpite
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

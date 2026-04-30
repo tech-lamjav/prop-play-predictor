@@ -50,32 +50,34 @@ export const PendingPredictionsSticky: React.FC<PendingPredictionsStickyProps> =
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     // Brief flash to draw attention to the target card
-    el.classList.add('ring-2', 'ring-terminal-blue/60');
+    el.classList.add('ring-2', 'ring-forest/50');
     setTimeout(() => {
-      el.classList.remove('ring-2', 'ring-terminal-blue/60');
+      el.classList.remove('ring-2', 'ring-forest/50');
     }, 1500);
   };
 
   return (
     <div
-      className="fixed top-0 inset-x-0 z-30 bg-terminal-bg/95 backdrop-blur-sm border-b border-terminal-border-subtle shadow-md"
+      className="theme-bolao fixed top-0 inset-x-0 z-30 bg-white/95 backdrop-blur-sm border-b border-line shadow-sm"
       role="status"
       aria-live="polite"
     >
-      <div className="max-w-2xl mx-auto px-4 py-2 flex items-center gap-3">
+      <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <p className="text-xs font-semibold">
-              <span className="text-terminal-blue">{pending}</span>{' '}
-              <span className="opacity-70">{pending === 1 ? 'palpite faltando' : 'palpites faltando'}</span>
+            <p className="text-[12px] font-semibold text-ink">
+              <span className="text-forest">{pending}</span>{' '}
+              <span className="text-ink-2 font-medium">
+                {pending === 1 ? 'palpite faltando' : 'palpites faltando'}
+              </span>
             </p>
-            <span className="text-[10px] opacity-50 tabular-nums shrink-0">
+            <span className="text-[10px] text-ink-3 tabular-nums shrink-0">
               {totalDone}/{totalAvailable} ({pct}%)
             </span>
           </div>
-          <div className="h-1 rounded-full bg-terminal-border-subtle overflow-hidden">
+          <div className="h-1 rounded-full bg-canvas-2 overflow-hidden">
             <div
-              className="h-full bg-terminal-blue transition-all duration-300"
+              className="h-full bg-forest transition-all duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -85,7 +87,7 @@ export const PendingPredictionsSticky: React.FC<PendingPredictionsStickyProps> =
             type="button"
             onClick={handleNext}
             aria-label="Ir para o próximo jogo sem palpite"
-            className="shrink-0 flex items-center gap-1.5 h-9 px-3 rounded-lg border border-terminal-blue/40 bg-terminal-blue/10 text-terminal-blue hover:bg-terminal-blue/20 active:bg-terminal-blue/30 text-xs font-bold transition-colors"
+            className="shrink-0 flex items-center gap-1.5 h-9 px-3 rounded-rebrand-md bg-forest text-white hover:bg-forest-2 text-[12px] font-bold transition-colors"
           >
             <ArrowDown className="w-3.5 h-3.5" />
             Próximo

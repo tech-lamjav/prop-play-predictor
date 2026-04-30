@@ -108,12 +108,35 @@ export async function shareTextOrLink(options: {
 }
 
 /**
+ * Salva uma imagem (PNG blob) como download direto, sem passar por sheet
+ * de compartilhamento. Usado pelo botão "Baixar".
+ */
+export async function downloadImage(blob: Blob, filename: string): Promise<ShareResult> {
+  try {
+    const typedBlob = blob.type === 'image/png' ? blob : new Blob([blob], { type: 'image/png' });
+    const url = URL.createObjectURL(typedBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return { success: true, method: 'download' };
+  } catch (err: any) {
+    return { success: false, method: 'error', error: err?.message ?? 'Erro ao salvar imagem' };
+  }
+}
+
+/**
  * Mensagens contextuais por situação. Usadas pra o WhatsApp link
  * adaptar ao contexto (criar vs convidar vs ranking).
  */
 export const SHARE_MESSAGES = {
-  invite: (bolaoName: string, inviteCode: string, inviteUrl: string) =>
-    `Bora pro bolão "${bolaoName}" da Copa 2026? 🇧🇷⚽\n\nCódigo: ${inviteCode}\n${inviteUrl}`,
+  // Mensagem genérica sem nome do bolão pra evitar repetição (ex: "bolão
+  // Bolão da firma" caso o user tenha posto "bolão" no próprio nome).
+  invite: (_bolaoName: string, inviteCode: string, inviteUrl: string) =>
+    `Pra entrar no bolão da Copa 2026:\n${inviteUrl}\n\nCódigo: ${inviteCode}`,
 
   rankingPosition: (bolaoName: string, rank: number, totalMembers: number, points: number) =>
     rank === 1
@@ -122,6 +145,13 @@ export const SHARE_MESSAGES = {
         ? `Tô no top ${rank} do bolão "${bolaoName}" — ${points} pts. Vem disputar!`
         : `Tô em ${rank}º de ${totalMembers} no bolão "${bolaoName}". Vem participar!`,
 
-  rankingImage: (bolaoName: string) =>
-    `Olha como tá o ranking do bolão "${bolaoName}" 👀`,
+  /**
+   * Texto da imagem do ranking compartilhada via WhatsApp.
+   * "Vem acompanhar" porque o bolão já tá rolando — convite a olhar o
+   * andamento. Link aponta direto pro bolão (não pro convite/entrar).
+   */
+  rankingImage: (bolaoName: string, bolaoUrl?: string) =>
+    bolaoUrl
+      ? `Olha como tá o ranking do bolão "${bolaoName}" 👀\n\nVem acompanhar: ${bolaoUrl}`
+      : `Olha como tá o ranking do bolão "${bolaoName}" 👀`,
 };

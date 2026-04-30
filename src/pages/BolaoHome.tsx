@@ -5,9 +5,9 @@ import {
   Plus,
   Users,
   ChevronRight,
-  Hash,
-  ArrowRight,
-  Zap,
+  ChevronLeft,
+  Clock,
+  Check,
   LayoutGrid,
   GitBranch,
 } from 'lucide-react';
@@ -17,40 +17,33 @@ import { CreateBolaoModal } from '@/components/bolao/CreateBolaoModal';
 import { CopaGruposModal } from '@/components/bolao/CopaGruposModal';
 import { CopaBracketModal } from '@/components/bolao/CopaBracketModal';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
-import { DeadlineBadge } from '@/components/bolao/DeadlineBadge';
 import { useToast } from '@/hooks/use-toast';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { supabase } from '@/integrations/supabase/client';
 
 const COPA_START = new Date('2026-06-11T12:00:00-03:00');
 
-function CopaCountdown() {
+function daysToCopa() {
   const now = new Date();
   const diff = COPA_START.getTime() - now.getTime();
-  const days = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  if (days === 0) return <span className="text-terminal-blue font-bold text-xl">Hoje!</span>;
-  return (
-    <div className="flex items-baseline gap-1">
-      <span className="text-terminal-blue font-bold text-xl">{days}</span>
-      <span className="text-xs opacity-50">dias</span>
-    </div>
-  );
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-function RankLabel({ rank, memberCount }: { rank: number; memberCount: number }) {
-  if (memberCount <= 1) return null;
-  const label = `${rank}º lugar`;
-  const color =
-    rank === 1
-      ? 'text-yellow-400'
-      : rank === 2
-      ? 'text-slate-300'
-      : rank === 3
-      ? 'text-orange-400'
-      : 'opacity-40';
-  return <span className={`text-[10px] font-bold ${color}`}>{label}</span>;
+function formatDeadline(matches: any[] | undefined, bolao: any) {
+  if (!matches) return null;
+  // Próximo jogo aberto
+  const next = matches
+    .filter((m) => !m.is_finished && m.home_team_code !== 'TBD')
+    .sort(
+      (a, b) =>
+        a.match_date.localeCompare(b.match_date) ||
+        a.match_time_brasilia.localeCompare(b.match_time_brasilia)
+    )[0];
+  if (!next) return null;
+  const d = new Date(next.match_date + 'T00:00:00');
+  const day = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  return `${day} ${next.match_time_brasilia.slice(0, 5)}`;
 }
-
 
 const BolaoHome: React.FC = () => {
   const navigate = useNavigate();
@@ -67,82 +60,122 @@ const BolaoHome: React.FC = () => {
   const [currentUserId, setCurrentUserId] = React.useState<string | undefined>();
 
   React.useEffect(() => {
-    import('@/integrations/supabase/client').then(({ supabase }) => {
-      supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
-    });
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
   }, []);
 
-  // Group stage matches organised by matchday (Rodada 1/2/3), sorted chronologically.
-  // Group letter is shown as a label on each row instead of a section header.
-  const matchesByRound = useMemo(() => {
-    if (!matches) return {} as Record<string, NonNullable<typeof matches>>;
+  // Próxima abertura (jogo de abertura) pra mostrar no card lateral
+  const openingMatch = useMemo(() => {
+    if (!matches) return null;
+    return matches
+      .filter((m) => m.home_team_code !== 'TBD')
+      .sort(
+        (a, b) =>
+          a.match_date.localeCompare(b.match_date) ||
+          a.match_time_brasilia.localeCompare(b.match_time_brasilia)
+      )[0];
+  }, [matches]);
 
-    const byGroup: Record<string, NonNullable<typeof matches>> = {};
+  // Lista de fases pra navegação por setas: Rodada 1/2/3 + mata-mata
+  const phases = useMemo(() => {
+    if (!matches) return [] as { id: string; label: string; subLabel: string; matches: typeof matches }[];
+
+    const byDateTime = (a: any, b: any) =>
+      a.match_date.localeCompare(b.match_date) ||
+      a.match_time_brasilia.localeCompare(b.match_time_brasilia);
+
+    // Group stage: divide em rodada 1/2/3 (cada grupo tem 6 jogos = 3 rodadas de 2)
+    const byGroup: Record<string, typeof matches> = {};
     matches
-      .filter((m) => m.group_name && m.home_team_code !== 'TBD')
+      .filter((m) => m.stage === 'group' && m.home_team_code !== 'TBD')
       .forEach((m) => {
         const g = m.group_name!;
         if (!byGroup[g]) byGroup[g] = [];
         byGroup[g].push(m);
       });
-    Object.values(byGroup).forEach((gm) =>
-      gm.sort(
-        (a, b) =>
-          a.match_date.localeCompare(b.match_date) ||
-          a.match_time_brasilia.localeCompare(b.match_time_brasilia)
-      )
-    );
+    Object.values(byGroup).forEach((gm) => gm.sort(byDateTime));
 
-    const rounds: Record<string, NonNullable<typeof matches>> = {
-      'Rodada 1': [],
-      'Rodada 2': [],
-      'Rodada 3': [],
-    };
+    const round1: typeof matches = [];
+    const round2: typeof matches = [];
+    const round3: typeof matches = [];
     Object.values(byGroup).forEach((gm) => {
       gm.forEach((m, idx) => {
-        const key = idx < 2 ? 'Rodada 1' : idx < 4 ? 'Rodada 2' : 'Rodada 3';
-        rounds[key].push(m);
+        if (idx < 2) round1.push(m);
+        else if (idx < 4) round2.push(m);
+        else round3.push(m);
       });
     });
-    // Sort each round chronologically
-    Object.values(rounds).forEach((rm) =>
-      rm.sort(
-        (a, b) =>
-          a.match_date.localeCompare(b.match_date) ||
-          a.match_time_brasilia.localeCompare(b.match_time_brasilia)
-      )
-    );
-    return rounds;
+    [round1, round2, round3].forEach((rm) => rm.sort(byDateTime));
+
+    // Knockout phases (só inclui se já tiver jogos)
+    const byStage: Record<string, typeof matches> = {};
+    matches
+      .filter((m) => m.stage !== 'group')
+      .forEach((m) => {
+        if (!byStage[m.stage]) byStage[m.stage] = [];
+        byStage[m.stage].push(m);
+      });
+    Object.values(byStage).forEach((rm) => rm.sort(byDateTime));
+
+    const knockoutLabels: Record<string, { label: string; subLabel: string }> = {
+      round_of_32: { label: 'Oitavas (32)', subLabel: '27 a 30 de junho' },
+      round_of_16: { label: '16 Avos', subLabel: '03 a 05 de julho' },
+      quarter: { label: 'Quartas', subLabel: '08 a 11 de julho' },
+      semi: { label: 'Semifinal', subLabel: '14 a 15 de julho' },
+      third_place: { label: '3º lugar', subLabel: '18 de julho' },
+      final: { label: 'Final', subLabel: '19 de julho' },
+    };
+
+    const list: { id: string; label: string; subLabel: string; matches: typeof matches }[] = [
+      { id: 'r1', label: 'Rodada 1', subLabel: '11 a 14 de junho', matches: round1 },
+      { id: 'r2', label: 'Rodada 2', subLabel: '15 a 18 de junho', matches: round2 },
+      { id: 'r3', label: 'Rodada 3', subLabel: '19 a 25 de junho', matches: round3 },
+    ];
+    ['round_of_32', 'round_of_16', 'quarter', 'semi', 'third_place', 'final'].forEach((stage) => {
+      const ms = byStage[stage] || [];
+      if (ms.length > 0) {
+        list.push({ id: stage, ...knockoutLabels[stage], matches: ms });
+      }
+    });
+
+    return list.filter((p) => p.matches.length > 0);
   }, [matches]);
 
-  // Stripe: dynamic checkout (preferred) or static payment link (fallback)
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  // Reset índice se a lista de fases mudar (matches carregando)
+  React.useEffect(() => {
+    if (phaseIndex >= phases.length && phases.length > 0) setPhaseIndex(0);
+  }, [phases.length, phaseIndex]);
+  const currentPhase = phases[phaseIndex];
+
   const BOLAO_PRO_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_BOLAO as string | undefined;
   const BOLAO_PRO_PAYMENT_LINK = 'https://buy.stripe.com/4gMcMXgG43089uVg6zaR20b';
 
   const handleCreate = async (data: { name: string; description?: string; plan: 'free' | 'pro' }) => {
     if (data.plan === 'free') {
-      // Free: cria imediatamente e navega
-      createBolao.mutate({ name: data.name, description: data.description }, {
-        onSuccess: (bolao) => {
-          setShowCreate(false);
-          toast({ title: 'Bolão criado!', description: `Código: ${bolao.invite_code}` });
-          navigate(`/bolao/${bolao.id}?settings=true`);
-        },
-        onError: (err: any) => {
-          toast({ title: 'Erro ao criar', description: err.message, variant: 'destructive' });
-        },
-      });
+      createBolao.mutate(
+        { name: data.name, description: data.description },
+        {
+          onSuccess: (bolao) => {
+            setShowCreate(false);
+            toast({ title: 'Bolão criado!', description: `Código: ${bolao.invite_code}` });
+            navigate(`/bolao/${bolao.id}?settings=true`);
+          },
+          onError: (err: any) => {
+            toast({ title: 'Erro ao criar', description: err.message, variant: 'destructive' });
+          },
+        }
+      );
       return;
     }
 
-    // Premium — bolão só é criado APÓS confirmação do pagamento no webhook
     if (BOLAO_PRO_PRICE_ID) {
-      // Checkout dinâmico: webhook cria o bolão com o UUID pré-gerado
       setShowCreate(false);
       setCheckoutRedirecting(true);
       const preGeneratedId = crypto.randomUUID();
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!session) throw new Error('Usuário não autenticado');
         const { data: fnData, error } = await supabase.functions.invoke('stripe-create-checkout', {
           body: {
@@ -152,9 +185,7 @@ const BolaoHome: React.FC = () => {
             bolaoName: data.name,
             bolaoDescription: data.description || null,
           },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
         if (error) throw error;
         window.location.href = fnData.url;
@@ -163,18 +194,19 @@ const BolaoHome: React.FC = () => {
         toast({ title: 'Erro ao iniciar checkout', description: err?.message, variant: 'destructive' });
       }
     } else {
-      // Fallback sem Price ID: cria o bolão e redireciona para payment link estático
-      // O webhook upgrada via client_reference_id
-      createBolao.mutate({ name: data.name, description: data.description }, {
-        onSuccess: (bolao) => {
-          setShowCreate(false);
-          setCheckoutRedirecting(true);
-          window.location.href = `${BOLAO_PRO_PAYMENT_LINK}?client_reference_id=${bolao.id}`;
-        },
-        onError: (err: any) => {
-          toast({ title: 'Erro ao criar bolão', description: err.message, variant: 'destructive' });
-        },
-      });
+      createBolao.mutate(
+        { name: data.name, description: data.description },
+        {
+          onSuccess: (bolao) => {
+            setShowCreate(false);
+            setCheckoutRedirecting(true);
+            window.location.href = `${BOLAO_PRO_PAYMENT_LINK}?client_reference_id=${bolao.id}`;
+          },
+          onError: (err: any) => {
+            toast({ title: 'Erro ao criar bolão', description: err.message, variant: 'destructive' });
+          },
+        }
+      );
     }
   };
 
@@ -196,287 +228,421 @@ const BolaoHome: React.FC = () => {
     });
   };
 
+  const days = daysToCopa();
+  const empty = !isLoading && (!boloes || boloes.length === 0);
+
   return (
-    <div className="min-h-screen bg-terminal-bg text-terminal-text">
+    <>
       <AnalyticsNav />
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
-
-        {/* Copa 2026 Hero — full width */}
-        <div className="terminal-container p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <Trophy className="w-5 h-5 text-terminal-blue shrink-0" />
-                <h1 className="text-lg font-bold leading-tight">Bolão Copa do Mundo 2026</h1>
-              </div>
-              <p className="text-xs opacity-40 mb-4">EUA · México · Canadá — 48 seleções, 104 jogos</p>
-
-              <div className="flex items-center gap-5">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider opacity-40 mb-0.5">Copa começa em</p>
-                  <CopaCountdown />
-                </div>
-                <div className="w-px h-8 bg-terminal-border-subtle" />
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider opacity-40 mb-0.5">Jogos</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-terminal-blue font-bold text-xl">104</span>
-                  </div>
-                </div>
-                <div className="w-px h-8 bg-terminal-border-subtle" />
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider opacity-40 mb-0.5">Grupos</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-terminal-blue font-bold text-xl">12</span>
-                  </div>
-                </div>
-              </div>
+      <div className="max-w-[1120px] mx-auto px-4 sm:px-6 py-8">
+        {/* ═══ HERO — chamada + dois CTAs ═══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-8">
+          {/* Hero forest */}
+          <div className="lg:col-span-7 bg-forest text-white rounded-rebrand-xl p-7 relative overflow-hidden">
+            <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber/10 pointer-events-none" />
+            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold opacity-60 mb-2">
+              Copa do Mundo 2026
             </div>
-          </div>
-        </div>
-
-        {/* Main two-column grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 items-start">
-
-          {/* LEFT COLUMN */}
-          <div className="space-y-4">
-
-            {/* Criar / Entrar — unified card */}
-            <div className="terminal-container p-4">
-              <p className="text-[10px] uppercase tracking-wider opacity-40 mb-3">Meus Bolões</p>
-
-              {/* Criar + Entrar — same row */}
-              <div className="flex gap-2 min-w-0">
-                <Button
-                  onClick={() => setShowCreate(true)}
-                  aria-label="Criar novo bolão"
-                  className="bg-transparent border border-terminal-blue text-terminal-blue hover:bg-terminal-blue/10 gap-1.5 shrink-0 h-11 px-4"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Criar</span>
-                </Button>
+            <h1 className="font-display text-[40px] sm:text-[48px] leading-[1.05] font-extrabold mb-2">
+              {days > 0 ? (
+                <>
+                  Faltam <span className="text-amber">{days} dias</span>.<br />
+                  Já tá no bolão de quem?
+                </>
+              ) : (
+                <>A Copa começou.<br />Bora palpitar?</>
+              )}
+            </h1>
+            <p className="text-[13px] opacity-75 mb-5 max-w-[460px] leading-relaxed">
+              Crie um do zero pra galera ou entre no de um amigo com o código. EUA · México · Canadá · 48 seleções · 104 jogos.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="amber"
+                size="lg"
+                onClick={() => setShowCreate(true)}
+                className="rounded-rebrand-md gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                Criar bolão
+              </Button>
+              <span className="opacity-40 text-[12px] mx-1">ou</span>
+              <div className="flex items-center gap-1 bg-white/10 border border-white/20 rounded-rebrand-md p-1">
                 <input
-                  type="text"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                  placeholder="Código (ex: ABC12345)"
+                  placeholder="Código (ex: ABC123)"
                   maxLength={8}
-                  aria-label="Código de convite do bolão"
-                  className="min-w-0 flex-1 bg-terminal-dark-gray border border-terminal-border rounded px-3 h-11 text-sm font-mono placeholder:opacity-30 focus:outline-none focus:border-terminal-blue focus:ring-1 focus:ring-terminal-blue/30 transition-colors"
+                  className="bg-transparent px-3 h-9 text-[13px] text-white placeholder:text-white/40 focus:outline-none w-[160px] sm:w-[180px] font-mono"
                 />
-                <Button
+                <button
                   onClick={handleJoin}
                   disabled={inviteCode.trim().length < 4 || joinBolao.isPending}
-                  variant="outline"
-                  aria-label="Entrar em bolão usando código"
-                  className="border-terminal-blue/50 text-terminal-blue hover:bg-terminal-blue/10 gap-1.5 px-4 h-11 shrink-0"
+                  className="h-9 px-3 text-[12px] font-semibold bg-white/15 hover:bg-white/25 text-white rounded inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  {joinBolao.isPending ? (
-                    'Entrando...'
-                  ) : (
-                    <>
-                      <span className="hidden sm:inline">Entrar</span> <ArrowRight className="w-3.5 h-3.5" />
-                    </>
-                  )}
-                </Button>
+                  {joinBolao.isPending ? '...' : <>Entrar <ChevronRight className="w-3 h-3" /></>}
+                </button>
               </div>
             </div>
+          </div>
 
-            {/* Bolões list */}
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-24 rounded border border-terminal-border animate-pulse bg-terminal-dark-gray/30"
-                  />
-                ))}
-              </div>
-            ) : !boloes || boloes.length === 0 ? (
-              <div className="terminal-container p-6 sm:p-8 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-terminal-blue/10 border border-terminal-blue/30 flex items-center justify-center">
-                  <Trophy className="w-7 h-7 text-terminal-blue/70" />
+          {/* Card stats da Copa */}
+          <div className="lg:col-span-5 bg-white border border-line rounded-rebrand-xl p-6">
+            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2 mb-3">
+              A Copa em números
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <div className="font-display text-[28px] font-bold leading-none tabular-nums text-amber-2">
+                  {days}
                 </div>
-                <h2 className="text-base sm:text-lg font-bold mb-1">Você ainda não tem bolão</h2>
-                <p className="text-sm opacity-60 mb-4">
-                  Crie o seu para chamar a galera ou entre em um existente com o código.
-                </p>
-                <Button
-                  onClick={() => setShowCreate(true)}
-                  className="bg-terminal-blue text-terminal-bg hover:bg-terminal-blue/90 gap-1.5 h-11 px-5 font-bold"
-                >
-                  <Plus className="w-4 h-4" />
-                  Criar meu primeiro bolão
-                </Button>
-                <p className="text-[11px] opacity-40 mt-3">
-                  Ou cole o código de convite no campo acima
-                </p>
+                <div className="text-[11px] text-ink-2 leading-tight mt-1.5">
+                  {days === 1 ? 'dia pra começar' : 'dias pra começar'}
+                </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {boloes.map((bolao) => (
-                  <button
-                    key={bolao.id}
-                    onClick={() => navigate(`/bolao/${bolao.id}`)}
-                    className="w-full text-left terminal-container p-4 hover:border-terminal-blue/30 transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                          <h3 className="font-bold text-sm truncate">{bolao.name}</h3>
-                          {bolao.is_premium && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-bold shrink-0">
-                              PREMIUM
-                            </span>
-                          )}
-                          {bolao.pending_predictions > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-terminal-blue/15 text-terminal-blue rounded font-bold shrink-0 flex items-center gap-0.5">
-                              <Zap className="w-2.5 h-2.5" />
-                              {bolao.pending_predictions} pendentes
-                            </span>
-                          )}
-                          {!bolao.has_champion_prediction && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-yellow-500/10 text-yellow-400 rounded font-bold shrink-0 flex items-center gap-0.5">
-                              <Trophy className="w-2.5 h-2.5" />
-                              Campeão
-                            </span>
-                          )}
-                          {!bolao.is_closed && bolao.pending_predictions > 0 && (
-                            <DeadlineBadge
-                              matches={matches}
-                              mode={bolao.prediction_deadline_mode ?? 'per_match'}
-                              isClosed={bolao.is_closed}
-                              variant="compact"
-                            />
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs opacity-50">
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {bolao.is_premium
-                              ? bolao.member_count
-                              : `${bolao.member_count}/${bolao.max_participants}`}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Hash className="w-3 h-3" />
-                            {bolao.invite_code}
-                          </span>
-                          {bolao.owner_id === currentUserId && (
-                            <span className="text-terminal-green">Criador</span>
-                          )}
-                          {bolao.is_closed && (
-                            <span className="text-terminal-red opacity-80">Fechado</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-right">
-                          <RankLabel rank={bolao.user_rank} memberCount={bolao.member_count} />
-                          <div className="text-xl font-bold text-terminal-blue leading-tight">
-                            {bolao.user_points}
-                          </div>
-                          <div className="text-[10px] opacity-40">pontos</div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 opacity-30 group-hover:opacity-70 transition-opacity" />
-                      </div>
-                    </div>
-                  </button>
-                ))}
+              <div>
+                <div className="font-display text-[28px] font-bold leading-none tabular-nums text-ink">
+                  104
+                </div>
+                <div className="text-[11px] text-ink-2 leading-tight mt-1.5">jogos no torneio</div>
+              </div>
+              <div>
+                <div className="font-display text-[28px] font-bold leading-none tabular-nums text-ink">
+                  12
+                </div>
+                <div className="text-[11px] text-ink-2 leading-tight mt-1.5">grupos · 48 seleções</div>
+              </div>
+            </div>
+            {openingMatch && (
+              <div className="mt-4 pt-4 border-t border-line">
+                <div className="text-[11px] text-ink-2 mb-1.5">Abertura</div>
+                <div className="flex items-center gap-2 text-[13px]">
+                  <TeamFlag code={openingMatch.home_team_code} size="md" />
+                  <span className="font-medium">{openingMatch.home_team}</span>
+                  <span className="text-ink-3">×</span>
+                  <span className="font-medium">{openingMatch.away_team}</span>
+                  <TeamFlag code={openingMatch.away_team_code} size="md" />
+                  <span className="ml-auto text-[11px] tabular-nums text-ink-2">
+                    {openingMatch.match_date.slice(8, 10)}/{openingMatch.match_date.slice(5, 7)} ·{' '}
+                    {openingMatch.match_time_brasilia.slice(0, 5)}
+                  </span>
+                </div>
               </div>
             )}
           </div>
+        </div>
 
-          {/* RIGHT COLUMN — Copa Info */}
-          <div className="terminal-container p-4 lg:sticky lg:top-20">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[10px] uppercase tracking-wider opacity-40 font-bold">Tabela de Jogos</p>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => setShowGrupos(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-terminal-border text-xs hover:border-terminal-blue/50 hover:text-terminal-blue transition-colors"
+        {/* ═══ MEUS BOLÕES ═══ */}
+        <div className="mb-8">
+          <div className="flex items-baseline gap-2 mb-4">
+            <h2 className="font-display text-[24px] font-bold">Meus bolões</h2>
+            {!empty && boloes && (
+              <span className="text-[12px] tabular-nums text-ink-2">
+                · {boloes.length} ativo{boloes.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-[180px] rounded-rebrand-xl border border-line animate-pulse bg-canvas-2"
+                />
+              ))}
+            </div>
+          ) : empty ? (
+            // ESTADO VAZIO — 2 cards-tutorial
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white border border-line rounded-rebrand-xl p-6">
+                <div className="w-12 h-12 rounded-rebrand-md bg-canvas-2 border border-forest/20 grid place-items-center text-forest mb-3">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <h3 className="font-display text-[20px] font-bold mb-1.5 text-ink">Crie um do zero</h3>
+                <p className="text-[13px] text-ink-2 leading-relaxed mb-4">
+                  Você é o dono. Define a pontuação, convida a galera, customiza com banner. Free pra até 20 pessoas, Premium pra ranking ilimitado e palpites especiais.
+                </p>
+                <Button
+                  variant="forest"
+                  onClick={() => setShowCreate(true)}
+                  className="rounded-rebrand-md gap-1.5"
                 >
-                  <LayoutGrid className="w-3 h-3" />
-                  Grupos
-                </button>
-                <button
-                  onClick={() => setShowBracket(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-terminal-border text-xs hover:border-terminal-blue/50 hover:text-terminal-blue transition-colors"
-                >
-                  <GitBranch className="w-3 h-3" />
-                  Mata-mata
-                </button>
+                  Criar agora <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="bg-white border border-line rounded-rebrand-xl p-6">
+                <div className="w-12 h-12 rounded-rebrand-md bg-amber/10 border border-amber/30 grid place-items-center text-amber-2 mb-3">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h3 className="font-display text-[20px] font-bold mb-1.5 text-ink">Entre num bolão</h3>
+                <p className="text-[13px] text-ink-2 leading-relaxed mb-4">
+                  Pediu o código pro amigo? Cola aqui. Você entra direto, vê o ranking e começa a palpitar.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                    placeholder="Código (ex: ABC123)"
+                    maxLength={8}
+                    className="flex-1 h-10 px-3 text-[13px] font-mono border border-line rounded-rebrand-md focus:outline-none focus:border-forest text-ink placeholder:text-ink-3"
+                  />
+                  <Button
+                    variant="amber"
+                    onClick={handleJoin}
+                    disabled={inviteCode.trim().length < 4 || joinBolao.isPending}
+                    className="rounded-rebrand-md"
+                  >
+                    Entrar
+                  </Button>
+                </div>
               </div>
             </div>
+          ) : (
+            // COM BOLÕES — cards grandes
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {boloes!.map((b) => {
+                const total = (b.user_predictions ?? 0) + (b.pending_predictions ?? 0);
+                const pct = total > 0 ? Math.round(((b.user_predictions ?? 0) / total) * 100) : 0;
+                const podio = b.user_rank > 0 && b.user_rank <= 3 && b.member_count > 1;
+                const medalha = b.user_rank === 1 ? '🥇' : b.user_rank === 2 ? '🥈' : b.user_rank === 3 ? '🥉' : null;
+                const isCreator = b.owner_id === currentUserId;
+                const allDone = pct === 100;
+                const proxPrazo = formatDeadline(matches, b);
+                const colorTone = b.is_premium ? 'amber' : 'forest';
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => navigate(`/bolao/${b.id}`)}
+                    className="bg-white border border-line rounded-rebrand-xl p-5 text-left hover:border-forest/40 hover:shadow-sm transition-all group"
+                  >
+                    {/* Header: avatar + nome + posição */}
+                    <div className="flex items-start gap-3 mb-4">
+                      <div
+                        className={`w-12 h-12 rounded-rebrand-md grid place-items-center shrink-0 overflow-hidden ${
+                          colorTone === 'amber'
+                            ? 'bg-amber/10 border border-amber/30 text-amber-2'
+                            : 'bg-canvas-2 border border-forest/20 text-forest'
+                        }`}
+                      >
+                        {b.custom_banner_url ? (
+                          <img
+                            src={b.custom_banner_url}
+                            alt=""
+                            className="w-full h-full object-contain p-0.5"
+                          />
+                        ) : (
+                          <Trophy className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                          <h3 className="font-display text-[20px] font-bold leading-tight truncate text-ink">
+                            {b.name}
+                          </h3>
+                          {b.is_premium && (
+                            <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber/15 text-amber-2 border border-amber/30">
+                              PREMIUM
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-[12px] text-ink-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {b.is_premium ? b.member_count : `${b.member_count}/${b.max_participants}`}
+                          </span>
+                          <span className="font-mono opacity-70">#{b.invite_code}</span>
+                          {isCreator && (
+                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-canvas-2 text-ink-2 border border-line">
+                              dono
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Posição */}
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] uppercase tracking-wider text-ink-2 mb-0.5">posição</div>
+                        <div
+                          className={`font-display text-[22px] font-bold leading-none tabular-nums inline-flex items-center gap-1 ${
+                            podio ? 'text-forest' : 'text-ink'
+                          }`}
+                        >
+                          {medalha && <span className="text-[20px]">{medalha}</span>}
+                          {b.member_count > 1 ? `${b.user_rank}º` : '—'}
+                        </div>
+                        <div className="text-[11px] tabular-nums text-ink-2 mt-0.5">
+                          de {b.member_count}
+                        </div>
+                      </div>
+                    </div>
 
-            {/* Match schedule grouped by matchday → group */}
-            {/* Column header */}
-            <div className="flex items-center gap-1.5 pr-3 pb-2 border-b border-terminal-border-subtle mb-2">
-              <span className="text-[9px] uppercase opacity-30 w-[76px] shrink-0">Data</span>
-              <span className="text-[9px] uppercase opacity-30 w-[68px] shrink-0 text-right">Casa</span>
-              <span className="text-[9px] uppercase opacity-30 w-9 shrink-0 text-center"></span>
-              <span className="text-[9px] uppercase opacity-30 w-[68px] shrink-0">Fora</span>
-              <span className="ml-auto text-[9px] uppercase opacity-30 shrink-0">Gr</span>
-            </div>
-
-            <div className="overflow-y-auto max-h-[500px] pr-3 scrollbar-thin">
-              {Object.keys(matchesByRound).length === 0 ? (
-                <div className="text-center py-6 opacity-30 text-sm">Carregando...</div>
-              ) : (
-                Object.entries(matchesByRound).map(([roundName, roundMatches], roundIdx) => (
-                  <div key={roundName}>
-                    {/* Rodada divider */}
-                    {roundIdx > 0 && (
-                      <div className="flex items-center gap-2 my-3">
-                        <div className="flex-1 h-px bg-terminal-border-subtle" />
+                    {/* Progress de palpites */}
+                    {total > 0 && (
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-2">
+                            Seus palpites
+                          </span>
+                          <span className="text-[12px] tabular-nums">
+                            <span className="font-semibold">{b.user_predictions}</span>
+                            <span className="text-ink-2">
+                              /{total} · {pct}%
+                            </span>
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-canvas-2 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-forest transition-all duration-500"
+                            style={{ width: `${pct}%`, opacity: pct === 100 ? 1 : 0.7 }}
+                          />
+                        </div>
                       </div>
                     )}
-                    <p className="text-[10px] uppercase font-bold tracking-wider text-terminal-blue mb-1.5">
-                      {roundName}
-                    </p>
-                    <div className="space-y-0.5">
-                      {roundMatches.map((m) => {
-                        const dateStr = new Date(m.match_date + 'T00:00:00').toLocaleDateString(
-                          'pt-BR', { day: '2-digit', month: '2-digit' }
-                        );
-                        const timeStr = m.match_time_brasilia.slice(0, 5);
-                        return (
-                          <div
-                            key={m.id}
-                            className={`flex items-center gap-1.5 py-0.5 ${m.is_finished ? 'opacity-50' : ''}`}
-                          >
-                            <span className="opacity-40 tabular-nums text-[10px] shrink-0 w-[76px]">
-                              {dateStr} {timeStr}
-                            </span>
-                            <div className="flex items-center justify-end gap-1 w-[68px] shrink-0">
-                              <span className="font-mono font-bold text-[11px]">{m.home_team_code}</span>
-                              <TeamFlag code={m.home_team_code} />
-                            </div>
-                            {m.is_finished ? (
-                              <span className="font-bold text-[11px] w-9 text-center shrink-0">
-                                {m.home_score}x{m.away_score}
-                              </span>
-                            ) : (
-                              <span className="opacity-30 w-9 text-center shrink-0 text-[11px]">×</span>
-                            )}
-                            <div className="flex items-center gap-1 w-[68px] shrink-0">
-                              <TeamFlag code={m.away_team_code} />
-                              <span className="font-mono font-bold text-[11px]">{m.away_team_code}</span>
-                            </div>
-                            <span className="ml-auto text-[9px] font-bold opacity-30 shrink-0">
-                              {m.group_name}
-                            </span>
-                          </div>
-                        );
-                      })}
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-3 border-t border-line">
+                      <div className="flex items-center gap-1 text-[12px]">
+                        {allDone ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-status-success" />
+                            <span className="text-status-success font-medium">Tudo palpitado</span>
+                          </>
+                        ) : proxPrazo ? (
+                          <>
+                            <Clock className="w-3.5 h-3.5 text-status-warning" />
+                            <span className="text-ink-2">próx prazo</span>
+                            <span className="font-medium tabular-nums text-ink">{proxPrazo}</span>
+                          </>
+                        ) : (
+                          <span className="text-ink-2">Aguardando jogos</span>
+                        )}
+                      </div>
+                      <span className="text-ink-2 group-hover:text-forest transition-colors text-[12px] inline-flex items-center gap-0.5">
+                        Abrir <ChevronRight className="w-3.5 h-3.5" />
+                      </span>
                     </div>
-                  </div>
-                ))
-              )}
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
+
+        {/* ═══ TABELA DA COPA — collapse, secundária ═══ */}
+        <details className="bg-white border border-line rounded-rebrand-xl overflow-hidden">
+          <summary className="px-5 py-4 cursor-pointer list-none flex items-center justify-between hover:bg-canvas-2 transition-colors">
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <Trophy className="w-4 h-4 text-forest" />
+                <span className="font-display text-[18px] font-bold text-ink">Tabela da Copa</span>
+              </div>
+              <div className="text-[12px] text-ink-2">104 jogos · 12 grupos · do dia 11/06 ao 19/07</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowGrupos(true);
+                }}
+                className="h-8 px-2.5 text-[12px] font-medium text-ink-2 hover:text-ink border border-line rounded-rebrand-sm inline-flex items-center gap-1"
+              >
+                <LayoutGrid className="w-3 h-3" />
+                Grupos
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowBracket(true);
+                }}
+                className="h-8 px-2.5 text-[12px] font-medium text-ink-2 hover:text-ink border border-line rounded-rebrand-sm inline-flex items-center gap-1"
+              >
+                <GitBranch className="w-3 h-3" />
+                Mata-mata
+              </button>
+              <ChevronRight className="w-4 h-4 text-ink-2 ml-1" />
+            </div>
+          </summary>
+          <div className="border-t border-line">
+            {currentPhase ? (
+              <>
+                {/* Header da fase com setas de navegação */}
+                <div className="px-3 py-2.5 bg-canvas-2 border-b border-line flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhaseIndex((i) => Math.max(0, i - 1))}
+                    disabled={phaseIndex === 0}
+                    aria-label="Rodada anterior"
+                    className="w-9 h-9 grid place-items-center rounded-rebrand-sm text-forest hover:bg-forest/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="flex-1 text-center min-w-0">
+                    <div className="text-[11px] uppercase tracking-wider font-semibold text-forest">
+                      {currentPhase.label}
+                    </div>
+                    {currentPhase.subLabel && (
+                      <div className="text-[11px] text-ink-2 mt-0.5">{currentPhase.subLabel}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] tabular-nums text-ink-2 shrink-0">
+                      {phaseIndex + 1}/{phases.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPhaseIndex((i) => Math.min(phases.length - 1, i + 1))}
+                      disabled={phaseIndex === phases.length - 1}
+                      aria-label="Próxima rodada"
+                      className="w-9 h-9 grid place-items-center rounded-rebrand-sm text-forest hover:bg-forest/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lista de jogos da fase atual */}
+                <div className="divide-y divide-line">
+                  {currentPhase.matches.map((m) => {
+                    const dateStr = `${m.match_date.slice(8, 10)}/${m.match_date.slice(5, 7)}`;
+                    const timeStr = m.match_time_brasilia.slice(0, 5);
+                    return (
+                      <div
+                        key={m.id}
+                        className="px-5 py-2 grid grid-cols-[80px_1fr_auto_60px_auto_1fr_30px] gap-3 items-center text-[13px] hover:bg-canvas-2/50"
+                      >
+                        <div className="text-[11px] tabular-nums text-ink-2">
+                          <span className="font-medium text-ink">{dateStr}</span> {timeStr}
+                        </div>
+                        <div className="text-right font-medium text-ink truncate">
+                          {m.home_team}
+                        </div>
+                        <TeamFlag code={m.home_team_code} size="md" />
+                        {m.is_finished ? (
+                          <span className="text-center font-semibold tabular-nums text-ink">
+                            {m.home_score}×{m.away_score}
+                          </span>
+                        ) : (
+                          <span className="text-center text-ink-3">×</span>
+                        )}
+                        <TeamFlag code={m.away_team_code} size="md" />
+                        <div className="font-medium text-ink truncate">{m.away_team}</div>
+                        <span className="text-[10px] font-bold text-ink-2 text-right">
+                          {m.group_name || ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="px-5 py-8 text-center text-ink-2 text-[12px]">
+                Carregando jogos…
+              </div>
+            )}
+          </div>
+        </details>
       </div>
 
       {/* Modals */}
@@ -489,25 +655,23 @@ const BolaoHome: React.FC = () => {
       <CopaGruposModal open={showGrupos} onOpenChange={setShowGrupos} />
       <CopaBracketModal open={showBracket} onOpenChange={setShowBracket} />
 
-      {/* Lock overlay durante redirect pra Stripe — previne duplo click */}
+      {/* Lock overlay durante redirect pra Stripe */}
       {checkoutRedirecting && (
         <div
-          className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+          className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
           role="alert"
           aria-live="assertive"
         >
-          <div className="bg-terminal-bg border border-yellow-500/30 rounded-lg p-6 max-w-sm text-center">
-            <div className="w-12 h-12 mx-auto mb-4 border-3 border-yellow-500/30 border-t-yellow-400 rounded-full animate-spin" />
-            <p className="text-base font-bold text-yellow-300 mb-1">
-              Redirecionando para pagamento
-            </p>
-            <p className="text-xs opacity-60">
+          <div className="bg-white border border-amber/40 rounded-rebrand-xl p-6 max-w-sm text-center">
+            <div className="w-12 h-12 mx-auto mb-4 border-[3px] border-amber/30 border-t-amber rounded-full animate-spin" />
+            <p className="text-[15px] font-bold text-amber-2 mb-1">Redirecionando para pagamento</p>
+            <p className="text-[12px] text-ink-2">
               Aguarde a página da Stripe carregar. Não feche essa janela.
             </p>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

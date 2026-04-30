@@ -64,24 +64,25 @@ export const ShareCallout: React.FC<ShareCalloutProps> = ({ bolaoId, bolaoName, 
   };
 
   return (
-    <div className="relative rounded-lg border border-terminal-border bg-terminal-dark-gray/30 p-4 sm:p-5 mb-5">
+    <div className="relative rounded-rebrand-lg border border-amber/40 bg-amber/[0.10] p-4 sm:p-5 mb-5">
       <button
+        type="button"
         onClick={handleDismiss}
         aria-label="Dispensar aviso de compartilhamento"
-        className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded text-terminal-text/40 hover:text-terminal-text/80 hover:bg-terminal-gray/30 transition-colors"
+        className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-rebrand-sm text-ink-3 hover:text-ink hover:bg-canvas-2 transition-colors"
       >
         <X className="w-4 h-4" />
       </button>
 
       <div className="flex items-start gap-3 mb-3 pr-8">
-        <div className="w-10 h-10 rounded-full bg-terminal-blue/15 border border-terminal-blue/30 flex items-center justify-center shrink-0">
-          <PartyPopper className="w-5 h-5 text-terminal-blue" />
+        <div className="w-10 h-10 rounded-rebrand-md bg-amber text-white flex items-center justify-center shrink-0">
+          <PartyPopper className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm sm:text-base font-bold text-terminal-text">
+          <p className="text-[14px] sm:text-[15px] font-bold text-ink">
             Bolão criado! Agora chame os amigos
           </p>
-          <p className="text-xs sm:text-sm text-terminal-text/60 mt-0.5">
+          <p className="text-[12px] sm:text-[13px] text-ink-2 mt-0.5">
             Sem competição não tem graça. Mande o link em 1 clique:
           </p>
         </div>
@@ -89,14 +90,15 @@ export const ShareCallout: React.FC<ShareCalloutProps> = ({ bolaoId, bolaoName, 
 
       <div className="flex flex-wrap gap-2">
         <button
+          type="button"
           onClick={handleCopy}
           aria-label="Copiar link de convite do bolão"
-          className="flex items-center gap-2 h-11 px-4 rounded-lg border border-terminal-blue/40 bg-terminal-blue/10 text-terminal-blue hover:bg-terminal-blue/20 active:bg-terminal-blue/30 font-medium text-sm transition-colors flex-1 sm:flex-none justify-center"
+          className="flex items-center gap-2 h-11 px-4 rounded-rebrand-md border border-line bg-white text-ink hover:border-line-2 hover:bg-canvas-2 font-semibold text-[13px] transition-colors flex-1 sm:flex-none justify-center"
         >
           {copied ? (
             <>
-              <Check className="w-4 h-4" />
-              <span>Copiado!</span>
+              <Check className="w-4 h-4 text-status-success" />
+              <span className="text-status-success">Copiado!</span>
             </>
           ) : (
             <>
@@ -106,25 +108,27 @@ export const ShareCallout: React.FC<ShareCalloutProps> = ({ bolaoId, bolaoName, 
           )}
         </button>
         <button
+          type="button"
           onClick={handleWhatsApp}
           aria-label="Compartilhar bolão no WhatsApp"
-          className="flex items-center gap-2 h-11 px-4 rounded-lg border border-[#25D366]/40 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 active:bg-[#25D366]/30 font-medium text-sm transition-colors flex-1 sm:flex-none justify-center"
+          className="flex items-center gap-2 h-11 px-4 rounded-rebrand-md bg-[#25D366] text-white hover:bg-[#1da851] active:bg-[#19944a] font-semibold text-[13px] transition-colors flex-1 sm:flex-none justify-center shadow-sm"
         >
           <MessageCircle className="w-4 h-4" />
           <span>WhatsApp</span>
         </button>
         <button
+          type="button"
           onClick={handleTelegram}
           aria-label="Compartilhar bolão no Telegram"
-          className="flex items-center gap-2 h-11 px-4 rounded-lg border border-[#229ED9]/40 bg-[#229ED9]/10 text-[#229ED9] hover:bg-[#229ED9]/20 active:bg-[#229ED9]/30 font-medium text-sm transition-colors flex-1 sm:flex-none justify-center"
+          className="flex items-center gap-2 h-11 px-4 rounded-rebrand-md bg-[#229ED9] text-white hover:bg-[#1c87b8] active:bg-[#176d96] font-semibold text-[13px] transition-colors flex-1 sm:flex-none justify-center shadow-sm"
         >
           <Send className="w-4 h-4" />
           <span>Telegram</span>
         </button>
       </div>
 
-      <p className="text-[11px] opacity-50 mt-3">
-        Código: <span className="font-mono font-bold text-terminal-text">{inviteCode}</span>
+      <p className="text-[11px] text-ink-3 mt-3">
+        Código: <span className="font-mono font-bold text-ink">{inviteCode}</span>
       </p>
     </div>
   );

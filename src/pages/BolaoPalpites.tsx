@@ -17,7 +17,8 @@ import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
 import { useAchievement } from '@/components/bolao/AchievementProvider';
 import { QuickPickInline } from '@/components/bolao/QuickPickInline';
 import { PalpitesProgress } from '@/components/bolao/PalpitesProgress';
-import { generateQuickPickPredictions, type QuickPickPersona } from '@/components/bolao/quick-pick';
+import type { QuickPickApplyOpts } from '@/components/bolao/quick-pick';
+import { resolveQuickPickPayload } from '@/components/bolao/quick-pick-resolver';
 import { useQuickPickUndo } from '@/components/bolao/useQuickPickUndo';
 import { ToastAction } from '@/components/ui/toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,7 +47,6 @@ const BolaoPalpites: React.FC = () => {
   const { toast } = useToast();
   const { unlock } = useAchievement();
   const [confirmDeleteMatchId, setConfirmDeleteMatchId] = useState<number | null>(null);
-  const [justSavedCount, setJustSavedCount] = useState(0);
   const quickPickUndo = useQuickPickUndo(id ?? '', predictions);
 
   const predictionsByMatch = useMemo(
@@ -58,40 +58,34 @@ const BolaoPalpites: React.FC = () => {
     setConfirmDeleteMatchId(matchId);
   };
 
-  const handleSaveBatch = (
-    payload: { match_id: number; predicted_home_score: number; predicted_away_score: number }[]
-  ) => {
-    if (!id) return;
-    upsertPredictionsBatch.mutate(
-      { bolaoId: id, predictions: payload },
-      {
-        onSuccess: (res) => {
-          setJustSavedCount(res.saved);
-          setTimeout(() => setJustSavedCount(0), 1200);
-          if (res.skipped > 0) {
-            toast({
-              title: `${res.saved} salvo${res.saved !== 1 ? 's' : ''}, ${res.skipped} pulado${res.skipped !== 1 ? 's' : ''}`,
-              description: 'Os pulados estavam com prazo encerrado.',
-            });
-          }
-          if ((predictions?.length ?? 0) === 0 && res.saved > 0) {
-            unlock('first-prediction', id);
-          }
-        },
-        onError: (err: any) => {
-          toast({ title: 'Erro ao salvar', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
-        },
-      }
-    );
-  };
-
-  const applyQuickPick = (persona: QuickPickPersona) => {
+  const applyQuickPick = async (opts: QuickPickApplyOpts) => {
     if (!id || !matches) return;
-    // Seed determinístico baseado no bolaoId pra rng reproduzível
-    const seed = id.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
-    const generated = generateQuickPickPredictions(matches, persona, { seed });
+    let generated;
+    try {
+      generated = await resolveQuickPickPayload(opts, {
+        matches,
+        existingPredictions: predictions,
+        destBolaoId: id,
+        userId: currentUserId,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao buscar palpites',
+        description: err?.message ?? 'Tente novamente',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (generated.length === 0) {
-      toast({ title: 'Nada pra preencher', description: 'Todos os jogos já foram finalizados ou estão sem times definidos.' });
+      toast({
+        title: 'Nada pra preencher',
+        description:
+          opts.kind === 'copy'
+            ? 'O bolão escolhido não tem palpites pra copiar nesses jogos.'
+            : opts.mode === 'pendentes'
+              ? 'Todos os jogos já têm palpite. Use "Substituir todos" se quiser refazer.'
+              : 'Todos os jogos já foram finalizados ou estão sem times definidos.',
+      });
       return;
     }
     quickPickUndo.captureSnapshot();
@@ -99,13 +93,15 @@ const BolaoPalpites: React.FC = () => {
       { bolaoId: id, predictions: generated },
       {
         onSuccess: (res) => {
+          const sourceLabel =
+            opts.kind === 'copy' ? ` (de "${opts.sourceBolaoName}")` : '';
           toast({
-            title: `${res.saved} palpites preenchidos!`,
+            title: `${res.saved} palpites preenchidos!${sourceLabel}`,
             description: res.skipped > 0
               ? `Edite os que quiser. ${res.skipped} jogos foram pulados (prazo encerrado ou sem times).`
               : 'Edite os que quiser na lista abaixo.',
             action: (
-              <ToastAction altText="Desfazer Quick Pick" onClick={() => quickPickUndo.undo(generated)}>
+              <ToastAction altText="Desfazer Quick Pick" onClick={() => quickPickUndo.undo(generated!)}>
                 Desfazer
               </ToastAction>
             ),
@@ -138,6 +134,9 @@ const BolaoPalpites: React.FC = () => {
     setConfirmDeleteMatchId(null);
   };
 
+  /**
+   * Salva 1 palpite. Sem toast de sucesso (autosave silencioso) — só erro.
+   */
   const handleSave = (matchId: number, homeScore: number, awayScore: number) => {
     if (!id) return;
     const wasFirstPrediction = (predictions?.length ?? 0) === 0;
@@ -150,11 +149,14 @@ const BolaoPalpites: React.FC = () => {
       },
       {
         onSuccess: () => {
-          toast({ title: 'Palpite salvo', description: `${homeScore} x ${awayScore}` });
           if (wasFirstPrediction) unlock('first-prediction', id);
         },
         onError: (err: any) => {
-          toast({ title: 'Erro ao salvar palpite', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+          toast({
+            title: 'Erro ao salvar palpite',
+            description: err?.message ?? 'Tente novamente',
+            variant: 'destructive',
+          });
         },
       }
     );
@@ -182,7 +184,7 @@ const BolaoPalpites: React.FC = () => {
   }, [filteredMatchesForNext, predictionsByMatch]);
 
   return (
-    <div className="min-h-screen bg-terminal-bg text-terminal-text">
+    <div className="bg-canvas min-h-screen flex flex-col">
       <AnalyticsNav />
       {!bolao?.is_closed && (
         <PendingPredictionsSticky
@@ -191,30 +193,30 @@ const BolaoPalpites: React.FC = () => {
           nextMatchId={nextPendingMatchId}
         />
       )}
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 w-full flex-1">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             onClick={() => navigate(`/bolao/${id}`)}
             aria-label="Voltar para o bolão"
-            className="h-11 w-11 shrink-0"
+            className="w-11 h-11 rounded-rebrand-md hover:bg-canvas-2 text-ink-2 hover:text-ink flex items-center justify-center transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-lg font-bold">Palpites</h1>
-            <p className="text-xs opacity-50">{bolao?.name}</p>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-[20px] font-bold text-ink leading-tight">Palpites</h1>
+            <p className="text-[12px] text-ink-2 truncate">{bolao?.name}</p>
           </div>
           <PalpitesProgress done={totalPredictions} total={totalMatches} variant="page" />
         </div>
 
-        {/* Quick Pick — 3 botões inline (clica = aplica direto) */}
-        {!bolao?.is_closed && totalMatches > 0 && totalPredictions < totalMatches * 0.5 && (
+        {/* Quick Pick — 4 personas + copiar de outro bolão */}
+        {!bolao?.is_closed && totalMatches > 0 && totalPredictions < totalMatches && id && (
           <QuickPickInline
             remaining={totalMatches - totalPredictions}
             alreadyFilled={totalPredictions}
+            currentBolaoId={id}
             onApply={applyQuickPick}
             isApplying={upsertPredictionsBatch.isPending}
           />
@@ -227,7 +229,6 @@ const BolaoPalpites: React.FC = () => {
             matches={matches}
             predictions={predictions}
             isLoadingMatches={loadingMatches}
-            isSavingPrediction={upsertPrediction.isPending}
             isClosed={bolao?.is_closed}
             deadlineMode={bolao?.prediction_deadline_mode ?? 'per_match'}
             onSave={handleSave}
@@ -237,9 +238,6 @@ const BolaoPalpites: React.FC = () => {
             groupFilter={groupFilter}
             onGroupFilterChange={setGroupFilter}
             enableSuggestion
-            onSaveBatch={handleSaveBatch}
-            isSavingBatch={upsertPredictionsBatch.isPending}
-            justSavedCount={justSavedCount}
           />
         )}
       </div>

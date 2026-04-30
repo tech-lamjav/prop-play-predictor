@@ -11,6 +11,9 @@ interface AchievementShareImageProps {
 /**
  * Card 1080×1080 capturável pra compartilhar uma conquista desbloqueada.
  * Renderizado off-screen, capturado via html2canvas.
+ *
+ * Estética: forest deep + amber dourado (paleta "Direção A"). Forest escuro
+ * dá contraste forte no feed do WhatsApp/Stories sem quebrar a identidade.
  */
 export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShareImageProps>(
   ({ icon: Icon, title, description, bolaoName }, ref) => {
@@ -19,9 +22,9 @@ export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShare
         ref={ref}
         className="absolute -left-[9999px] top-0 w-[1080px] h-[1080px] flex flex-col items-center justify-center p-20 overflow-hidden"
         style={{
-          background: 'radial-gradient(circle at 50% 35%, rgba(250,204,21,0.18) 0%, transparent 60%), linear-gradient(180deg, #050a14 0%, #0f1a2e 50%, #0a1628 100%)',
+          background: 'radial-gradient(circle at 50% 35%, rgba(212,160,23,0.20) 0%, transparent 55%), linear-gradient(180deg, #0a3d2e 0%, #0f5238 55%, #0a3d2e 100%)',
           fontFamily: '"Inter", system-ui, sans-serif',
-          color: '#e8eef0',
+          color: '#f6f7f5',
         }}
       >
         {/* Logo Smart Betting top */}
@@ -29,12 +32,12 @@ export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShare
           <img
             src="/logo-sem-texto.png"
             alt="Smart Betting"
-            className="w-12 h-12 object-contain opacity-90"
+            className="w-12 h-12 object-contain opacity-95"
             crossOrigin="anonymous"
           />
           <span
-            className="text-base font-bold uppercase opacity-80"
-            style={{ letterSpacing: '0.2em', lineHeight: 1.5 }}
+            className="text-base font-bold uppercase"
+            style={{ letterSpacing: '0.2em', lineHeight: 1.5, color: '#f6f7f5', opacity: 0.9 }}
           >
             smartbetting
           </span>
@@ -42,8 +45,8 @@ export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShare
 
         {/* Etiqueta CONQUISTA */}
         <p
-          className="text-sm font-bold uppercase text-yellow-400 mb-4"
-          style={{ letterSpacing: '0.5em', lineHeight: 1.6 }}
+          className="text-sm font-bold uppercase mb-4"
+          style={{ letterSpacing: '0.5em', lineHeight: 1.6, color: '#d4a017' }}
         >
           Conquista desbloqueada
         </p>
@@ -52,11 +55,16 @@ export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShare
         <div
           className="relative mb-8"
           style={{
-            filter: 'drop-shadow(0 0 60px rgba(250, 204, 21, 0.5))',
+            filter: 'drop-shadow(0 0 60px rgba(212, 160, 23, 0.55))',
           }}
         >
-          <div className="w-48 h-48 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 flex items-center justify-center">
-            <Icon className="w-24 h-24 text-terminal-bg" strokeWidth={2.5} />
+          <div
+            className="w-48 h-48 rounded-full flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #d4a017 0%, #b8870f 100%)',
+            }}
+          >
+            <Icon className="w-24 h-24" strokeWidth={2.5} style={{ color: '#0a3d2e' }} />
           </div>
         </div>
 
@@ -67,6 +75,8 @@ export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShare
             lineHeight: 1.15,
             paddingBottom: '12px',
             wordBreak: 'break-word',
+            color: '#f6f7f5',
+            letterSpacing: '-0.02em',
           }}
         >
           {title}
@@ -74,8 +84,8 @@ export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShare
 
         {/* Descrição */}
         <p
-          className="text-3xl font-medium text-center opacity-80 mb-12 max-w-[850px]"
-          style={{ lineHeight: 1.4, paddingBottom: '6px' }}
+          className="text-3xl font-medium text-center mb-12 max-w-[850px]"
+          style={{ lineHeight: 1.4, paddingBottom: '6px', color: '#f6f7f5', opacity: 0.85 }}
         >
           {description}
         </p>
@@ -83,18 +93,24 @@ export const AchievementShareImage = forwardRef<HTMLDivElement, AchievementShare
         {/* Bolão context */}
         {bolaoName && (
           <p
-            className="text-xl opacity-60 text-center"
-            style={{ lineHeight: 1.5, paddingBottom: '4px' }}
+            className="text-xl text-center"
+            style={{ lineHeight: 1.5, paddingBottom: '4px', color: '#f6f7f5', opacity: 0.7 }}
           >
-            no <span className="font-bold text-terminal-text">{bolaoName}</span>
+            no <span className="font-bold" style={{ color: '#d4a017', opacity: 1 }}>{bolaoName}</span>
           </p>
         )}
 
         {/* Footer URL */}
         <div className="absolute bottom-12 left-0 right-0 flex justify-center">
           <p
-            className="text-base font-bold opacity-70"
-            style={{ fontFamily: 'monospace', letterSpacing: '0.1em', lineHeight: 1.5 }}
+            className="text-base font-bold"
+            style={{
+              fontFamily: 'monospace',
+              letterSpacing: '0.1em',
+              lineHeight: 1.5,
+              color: '#f6f7f5',
+              opacity: 0.7,
+            }}
           >
             smartbetting.app/bolao
           </p>

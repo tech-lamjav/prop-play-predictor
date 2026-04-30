@@ -51,7 +51,7 @@ export function useCreateBolao() {
     mutationFn: (params: {
       name: string;
       description?: string;
-      predictionDeadlineMode?: 'per_match' | 'per_round' | 'tournament_start';
+      predictionDeadlineMode?: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
     }) => bolaoService.createBolao(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
@@ -118,6 +118,8 @@ export function useUpsertPrediction() {
     }) => bolaoService.upsertPrediction(params),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolao_id] });
+      // user_predictions/pending_predictions na home dependem disso
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
     },
   });
 }
@@ -130,6 +132,7 @@ export function useDeletePrediction() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolao_id] });
       queryClient.invalidateQueries({ queryKey: ['bolao-ranking', variables.bolao_id] });
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
     },
   });
 }
@@ -145,6 +148,7 @@ export function useUpsertPredictionsBatch() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['bolao-ranking', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
     },
   });
 }
@@ -217,6 +221,18 @@ export function useMySpecialPredictions(bolaoId: string | undefined) {
   });
 }
 
+export function useUserSpecialPredictions(
+  bolaoId: string | undefined,
+  userId: string | undefined
+) {
+  return useQuery({
+    queryKey: ['special-predictions-user', bolaoId, userId],
+    queryFn: () => bolaoService.getUserSpecialPredictions(bolaoId!, userId!),
+    enabled: !!bolaoId && !!userId,
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useSpecialSummary(bolaoId: string | undefined) {
   return useQuery({
     queryKey: ['special-summary', bolaoId],
@@ -270,7 +286,7 @@ export function useUpdateBolaoDeadlineMode() {
   return useMutation({
     mutationFn: (params: {
       bolaoId: string;
-      mode: 'per_match' | 'per_round' | 'tournament_start';
+      mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
     }) => bolaoService.updateBolaoDeadlineMode(params.bolaoId, params.mode),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bolao', variables.bolaoId] });
@@ -285,6 +301,7 @@ export function useUpdateBolaoSettings() {
     mutationFn: (params: {
       bolaoId: string;
       settings: {
+        name?: string;
         champion_enabled?: boolean;
         special_predictions_enabled?: boolean;
         special_predictions_config?: Record<string, boolean>;
@@ -427,34 +444,98 @@ function matchKickoff(m: WcMatch): Date {
 
 /**
  * Computes the prediction deadline for a match given the bolão's mode.
- * Mirrors the server-side get_prediction_deadline function.
+ * Mirrors the server-side get_prediction_deadline function (SQL).
+ *
+ *   per_match  — kickoff do próprio jogo
+ *   per_day    — primeiro kickoff do dia do jogo
+ *   per_round  — group: rodada R1/R2/R3 (primeiro kickoff da rodada);
+ *                knockout: primeiro kickoff do stage (cada eliminatória
+ *                = uma rodada própria)
+ *   per_stage  — group: primeiro kickoff de toda a fase de grupos
+ *                (todos os 72 jogos colapsam num só prazo);
+ *                knockout: primeiro kickoff do stage
+ *   tournament_start — primeiro kickoff da Copa (legado)
  */
 export function computeMatchDeadline(
   match: WcMatch,
-  mode: 'per_match' | 'per_round' | 'tournament_start',
+  mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start',
   allMatches: WcMatch[] | undefined
 ): Date {
   if (mode === 'per_match' || !allMatches || allMatches.length === 0) {
     return matchKickoff(match);
   }
-  if (mode === 'per_round') {
-    const stageMatches = allMatches.filter(m => m.stage === match.stage);
-    if (stageMatches.length === 0) return matchKickoff(match);
-    return stageMatches.reduce((min, m) => {
+
+  const minKickoff = (matches: WcMatch[]) =>
+    matches.reduce((min, m) => {
       const t = matchKickoff(m);
       return t < min ? t : min;
-    }, matchKickoff(stageMatches[0]));
+    }, matchKickoff(matches[0]));
+
+  if (mode === 'per_day') {
+    const sameDay = allMatches.filter((m) => m.match_date === match.match_date);
+    if (sameDay.length === 0) return matchKickoff(match);
+    return minKickoff(sameDay);
   }
-  // tournament_start
-  return allMatches.reduce((min, m) => {
-    const t = matchKickoff(m);
-    return t < min ? t : min;
-  }, matchKickoff(allMatches[0]));
+
+  if (mode === 'per_round') {
+    if (match.stage !== 'group') {
+      // Knockout: cada stage = rodada própria
+      const stageMatches = allMatches.filter((m) => m.stage === match.stage);
+      if (stageMatches.length === 0) return matchKickoff(match);
+      return minKickoff(stageMatches);
+    }
+    // Group stage: identifica a rodada (R1/R2/R3) baseado no índice
+    // cronológico do match dentro do seu grupo.
+    const sameGroupSorted = allMatches
+      .filter((m) => m.stage === 'group' && m.group_name === match.group_name)
+      .sort(
+        (a, b) =>
+          a.match_date.localeCompare(b.match_date) ||
+          a.match_time_brasilia.localeCompare(b.match_time_brasilia)
+      );
+    const idx = sameGroupSorted.findIndex((m) => m.id === match.id);
+    if (idx < 0) return matchKickoff(match);
+    const roundNum = idx < 2 ? 1 : idx < 4 ? 2 : 3;
+
+    // Pega todos os matches da rodada — em todos os grupos, mesma posição
+    // cronológica relativa (1-2 → R1, 3-4 → R2, 5-6 → R3)
+    const groupedByGroup: Record<string, WcMatch[]> = {};
+    for (const m of allMatches) {
+      if (m.stage !== 'group' || !m.group_name) continue;
+      if (!groupedByGroup[m.group_name]) groupedByGroup[m.group_name] = [];
+      groupedByGroup[m.group_name].push(m);
+    }
+    Object.values(groupedByGroup).forEach((arr) =>
+      arr.sort(
+        (a, b) =>
+          a.match_date.localeCompare(b.match_date) ||
+          a.match_time_brasilia.localeCompare(b.match_time_brasilia)
+      )
+    );
+    const roundMatches: WcMatch[] = [];
+    for (const arr of Object.values(groupedByGroup)) {
+      arr.forEach((m, i) => {
+        const r = i < 2 ? 1 : i < 4 ? 2 : 3;
+        if (r === roundNum) roundMatches.push(m);
+      });
+    }
+    if (roundMatches.length === 0) return matchKickoff(match);
+    return minKickoff(roundMatches);
+  }
+
+  if (mode === 'per_stage') {
+    const stageMatches = allMatches.filter((m) => m.stage === match.stage);
+    if (stageMatches.length === 0) return matchKickoff(match);
+    return minKickoff(stageMatches);
+  }
+
+  // tournament_start (legado): primeiro kickoff da Copa
+  return minKickoff(allMatches);
 }
 
 export function isMatchPredictionLocked(
   match: WcMatch,
-  mode: 'per_match' | 'per_round' | 'tournament_start',
+  mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start',
   allMatches: WcMatch[] | undefined,
   isClosed: boolean
 ): boolean {
@@ -471,7 +552,7 @@ export function isMatchPredictionLocked(
  * Returns null if everything is already locked or finished.
  */
 export function getNextDeadline(
-  mode: 'per_match' | 'per_round' | 'tournament_start',
+  mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start',
   allMatches: WcMatch[] | undefined,
   isClosed: boolean
 ): { match: WcMatch; deadline: Date } | null {

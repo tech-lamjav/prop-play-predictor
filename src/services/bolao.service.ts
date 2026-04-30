@@ -36,7 +36,7 @@ export interface Bolao {
   scoring_result: number;
   scoring_preset: string | null;
   scoring_weights: Record<string, number> | null;
-  prediction_deadline_mode: 'per_match' | 'per_round' | 'tournament_start';
+  prediction_deadline_mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
   custom_color: string | null;
   custom_banner_url: string | null;
   champion_enabled: boolean;
@@ -105,7 +105,8 @@ export interface UserBolao {
   pending_predictions: number;
   has_champion_prediction: boolean;
   created_at: string;
-  prediction_deadline_mode: 'per_match' | 'per_round' | 'tournament_start';
+  prediction_deadline_mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
+  custom_banner_url: string | null;
 }
 
 export interface ChampionPrediction {
@@ -518,6 +519,24 @@ export const bolaoService = {
     return (data || []) as SpecialPrediction[];
   },
 
+  async getUserSpecialPredictions(
+    bolaoId: string,
+    userId: string
+  ): Promise<SpecialPrediction[]> {
+    // Query direta na tabela em vez de RPC (RPC com SECURITY DEFINER exigiria
+    // migration manual). Funciona se a RLS permite membros lerem palpites
+    // uns dos outros — que é o caso, já que `get_bolao_special_summary`
+    // agrega tudo da mesma tabela.
+    const { data, error } = await supabase
+      .from('bolao_special_predictions')
+      .select('prediction_type, predicted_team_code, points_earned')
+      .eq('bolao_id', bolaoId)
+      .eq('user_id', userId)
+      .order('prediction_type');
+    if (error) throw error;
+    return (data || []) as SpecialPrediction[];
+  },
+
   async getSpecialSummary(bolaoId: string): Promise<SpecialSummaryEntry[]> {
     const { data, error } = await supabase.rpc('get_bolao_special_summary', {
       p_bolao_id: bolaoId,
@@ -652,6 +671,7 @@ export const bolaoService = {
   async updateBolaoSettings(
     bolaoId: string,
     settings: {
+      name?: string;
       champion_enabled?: boolean;
       special_predictions_enabled?: boolean;
       special_predictions_config?: Record<string, boolean>;

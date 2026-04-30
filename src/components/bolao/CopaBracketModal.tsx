@@ -71,18 +71,18 @@ function BracketMatchCard({
 
   return (
     <div
-      className={`absolute rounded border text-[10px] leading-tight overflow-hidden ${
+      className={`absolute rounded-rebrand-sm border text-[10px] leading-tight overflow-hidden ${
         match.is_finished
-          ? 'border-terminal-border bg-terminal-dark-gray/40'
+          ? 'border-line bg-canvas-2'
           : isTbd
-          ? 'border-terminal-border-subtle/40 bg-terminal-dark-gray/15'
-          : 'border-terminal-border bg-terminal-dark-gray/20'
+          ? 'border-line/60 bg-white/60'
+          : 'border-line bg-white'
       }`}
       style={{ ...style, width: CARD_W, height: CARD_H }}
     >
       <div
         className={`flex items-center gap-1 px-1.5 h-1/2 ${
-          homeWin ? 'text-terminal-green font-bold' : isTbd ? 'opacity-40' : ''
+          homeWin ? 'text-forest font-bold' : isTbd ? 'text-ink-3' : 'text-ink'
         }`}
       >
         <TeamFlag code={match.home_team_code} />
@@ -90,13 +90,13 @@ function BracketMatchCard({
         {match.is_finished ? (
           <span className="tabular-nums">{match.home_score}</span>
         ) : (
-          <span className="text-[8px] opacity-30 tabular-nums shrink-0">{dateStr}</span>
+          <span className="text-[8px] text-ink-3 tabular-nums shrink-0">{dateStr}</span>
         )}
       </div>
-      <div className="border-t border-terminal-border-subtle/20" />
+      <div className="border-t border-line" />
       <div
         className={`flex items-center gap-1 px-1.5 h-1/2 ${
-          awayWin ? 'text-terminal-green font-bold' : isTbd ? 'opacity-40' : ''
+          awayWin ? 'text-forest font-bold' : isTbd ? 'text-ink-3' : 'text-ink'
         }`}
       >
         <TeamFlag code={match.away_team_code} />
@@ -104,7 +104,7 @@ function BracketMatchCard({
         {match.is_finished ? (
           <span className="tabular-nums">{match.away_score}</span>
         ) : (
-          <span className="text-[8px] opacity-30 tabular-nums shrink-0">{timeStr}</span>
+          <span className="text-[8px] text-ink-3 tabular-nums shrink-0">{timeStr}</span>
         )}
       </div>
     </div>
@@ -221,20 +221,20 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
   if (!hasKnockout) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-terminal-bg border-terminal-border text-terminal-text max-w-2xl">
+        <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-2xl rounded-rebrand-xl">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold">
+            <DialogTitle className="font-display text-[18px] font-bold text-ink">
               Mata-mata — Copa 2026
             </DialogTitle>
           </DialogHeader>
           <div className="text-center py-10">
-            <div className="w-16 h-16 rounded-full border-2 border-terminal-border-subtle flex items-center justify-center mx-auto mb-4 opacity-30">
+            <div className="w-16 h-16 rounded-full border-2 border-line flex items-center justify-center mx-auto mb-4 text-ink-3">
               <span className="text-2xl font-bold">?</span>
             </div>
-            <p className="text-sm font-medium opacity-60">
+            <p className="text-[14px] font-medium text-ink-2">
               Mata-mata ainda não começou
             </p>
-            <p className="text-xs opacity-40 mt-1">
+            <p className="text-[12px] text-ink-3 mt-1">
               Os confrontos serão definidos após a fase de grupos
             </p>
           </div>
@@ -247,16 +247,16 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-terminal-bg border-terminal-border text-terminal-text max-w-[95vw] w-auto max-h-[90vh] flex flex-col overflow-hidden p-0">
-        <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
-          <DialogTitle className="text-base font-bold">
+      <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw] sm:w-auto max-h-[90vh] flex flex-col overflow-hidden p-0 rounded-rebrand-xl">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b border-line">
+          <DialogTitle className="font-display text-[18px] font-bold text-ink">
             Mata-mata — Copa 2026
           </DialogTitle>
         </DialogHeader>
 
         {/* Viewport with zoom + pan */}
         <div
-          className="flex-1 overflow-hidden relative select-none"
+          className="flex-1 overflow-hidden relative select-none bg-canvas"
           style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -265,28 +265,31 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
           onWheel={handleWheel}
         >
           {/* Zoom controls — floating bottom-right */}
-          <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1 bg-terminal-dark-gray/90 border border-terminal-border-subtle rounded-lg p-1 backdrop-blur-sm pointer-events-auto">
+          <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1 bg-white/95 border border-line rounded-rebrand-md p-1 shadow-sm backdrop-blur-sm pointer-events-auto">
             <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); zoomOut(); }}
-              className="w-7 h-7 rounded flex items-center justify-center hover:bg-terminal-gray/40 transition-colors text-terminal-text"
+              className="w-7 h-7 rounded-rebrand-sm flex items-center justify-center text-ink-2 hover:bg-canvas-2 hover:text-ink transition-colors"
               title="Diminuir zoom"
             >
               <Minus className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[10px] tabular-nums opacity-60 w-9 text-center">
+            <span className="text-[10px] tabular-nums text-ink-2 w-9 text-center">
               {zoomPct}%
             </span>
             <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); zoomIn(); }}
-              className="w-7 h-7 rounded flex items-center justify-center hover:bg-terminal-gray/40 transition-colors text-terminal-text"
+              className="w-7 h-7 rounded-rebrand-sm flex items-center justify-center text-ink-2 hover:bg-canvas-2 hover:text-ink transition-colors"
               title="Aumentar zoom"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
-            <div className="w-px h-4 bg-terminal-border-subtle mx-0.5" />
+            <div className="w-px h-4 bg-line mx-0.5" />
             <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); resetView(); }}
-              className="w-7 h-7 rounded flex items-center justify-center hover:bg-terminal-gray/40 transition-colors text-terminal-text"
+              className="w-7 h-7 rounded-rebrand-sm flex items-center justify-center text-ink-2 hover:bg-canvas-2 hover:text-ink transition-colors"
               title="Resetar visualização"
             >
               <RotateCcw className="w-3 h-3" />
@@ -311,7 +314,7 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
               {STAGES.map((stage, i) => (
                 <div
                   key={stage.key + '-label'}
-                  className="absolute text-[9px] uppercase font-bold tracking-wider text-terminal-blue text-center"
+                  className="absolute text-[9px] uppercase font-bold tracking-[0.12em] text-forest text-center"
                   style={{ left: stageX(i), top: 0, width: CARD_W }}
                 >
                   {stage.label}
@@ -331,7 +334,7 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
                     y1={l.y1}
                     x2={l.x2}
                     y2={l.y2}
-                    stroke="rgba(255,255,255,0.12)"
+                    stroke="rgba(26,29,26,0.18)"
                     strokeWidth="1.5"
                   />
                 ))}
@@ -355,21 +358,21 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
 
             {/* 3rd place */}
             {thirdPlace && (
-              <div className="mt-4 pt-4 border-t border-terminal-border-subtle/30">
-                <p className="text-[9px] uppercase font-bold tracking-wider text-terminal-blue mb-2">
+              <div className="mt-4 pt-4 border-t border-line">
+                <p className="text-[9px] uppercase font-bold tracking-[0.12em] text-forest mb-2">
                   Disputa de 3º Lugar
                 </p>
                 <div
-                  className={`inline-block rounded border text-[10px] leading-tight overflow-hidden ${
+                  className={`inline-block rounded-rebrand-sm border text-[10px] leading-tight overflow-hidden ${
                     thirdPlace.home_team_code === 'TBD'
-                      ? 'border-terminal-border-subtle/40 bg-terminal-dark-gray/15'
-                      : 'border-terminal-border bg-terminal-dark-gray/20'
+                      ? 'border-line/60 bg-white/60'
+                      : 'border-line bg-white'
                   }`}
                   style={{ width: CARD_W, height: CARD_H }}
                 >
                   <div
                     className={`flex items-center gap-1 px-1.5 h-1/2 ${
-                      thirdPlace.home_team_code === 'TBD' ? 'opacity-40' : ''
+                      thirdPlace.home_team_code === 'TBD' ? 'text-ink-3' : 'text-ink'
                     }`}
                   >
                     <TeamFlag code={thirdPlace.home_team_code} />
@@ -377,10 +380,10 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
                       {thirdPlace.home_team_code}
                     </span>
                   </div>
-                  <div className="border-t border-terminal-border-subtle/20" />
+                  <div className="border-t border-line" />
                   <div
                     className={`flex items-center gap-1 px-1.5 h-1/2 ${
-                      thirdPlace.away_team_code === 'TBD' ? 'opacity-40' : ''
+                      thirdPlace.away_team_code === 'TBD' ? 'text-ink-3' : 'text-ink'
                     }`}
                   >
                     <TeamFlag code={thirdPlace.away_team_code} />

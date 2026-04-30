@@ -6,8 +6,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
 import type { WcMatch } from '@/services/bolao.service';
 
@@ -23,6 +21,7 @@ interface ChampionPickModalProps {
   currentPick: string | null;
   onConfirm: (teamCode: string) => void;
   isLoading?: boolean;
+  championPoints?: number;
 }
 
 function extractTeams(matches: WcMatch[]): Team[] {
@@ -47,12 +46,11 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
   currentPick,
   onConfirm,
   isLoading,
+  championPoints = 25,
 }) => {
   const [selected, setSelected] = useState<string | null>(currentPick);
   const [search, setSearch] = useState('');
 
-  // Sync `selected` quando `currentPick` muda no parent (ex: outro user
-  // altera, ou quando o modal reabre depois de salvar)
   useEffect(() => {
     if (open) setSelected(currentPick);
   }, [open, currentPick]);
@@ -63,9 +61,7 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
     const q = search.toLowerCase();
     if (!q) return teams;
     return teams.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.code.toLowerCase().includes(q)
+      (t) => t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q)
     );
   }, [teams, search]);
 
@@ -75,46 +71,38 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
   };
 
   const handleConfirm = () => {
-    if (selected) {
-      onConfirm(selected);
-    }
+    if (selected) onConfirm(selected);
   };
-
-  // Sync with external currentPick when modal opens
-  React.useEffect(() => {
-    if (open) setSelected(currentPick);
-  }, [open, currentPick]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="bg-terminal-bg border-terminal-border max-w-lg p-0 overflow-hidden flex flex-col max-h-[90vh]">
-        <DialogHeader className="px-5 pt-5 pb-3 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-terminal-text">
-            <Trophy className="w-5 h-5 text-yellow-400" />
-            Palpite de Campeão
+      <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-lg p-0 overflow-hidden flex flex-col max-h-[90vh] rounded-rebrand-xl">
+        <DialogHeader className="px-5 pt-5 pb-3 shrink-0 border-b border-line">
+          <DialogTitle className="flex items-center gap-2 text-ink font-display text-[18px] font-bold pr-8">
+            <Trophy className="w-5 h-5 text-amber" />
+            Palpite de campeão
           </DialogTitle>
-          <p className="text-xs opacity-50 mt-0.5">
-            Quem vai vencer a Copa do Mundo 2026?
+          <p className="text-[12px] text-ink-2 mt-1">
+            Quem vai vencer a Copa do Mundo 2026? Vale +{championPoints} pts se acertar.
           </p>
         </DialogHeader>
 
-        {/* Search */}
-        <div className="px-5 pb-3 shrink-0">
+        <div className="px-5 pt-4 pb-3 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />
-            <Input
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3 pointer-events-none" />
+            <input
               type="search"
               placeholder="Buscar seleção..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Buscar seleção"
-              className="pl-9 h-11 text-sm bg-terminal-dark-gray border-terminal-border text-terminal-text"
+              className="w-full h-11 pl-9 pr-9 rounded-rebrand-md border border-line bg-white text-[13px] text-ink placeholder:text-ink-3 focus:border-forest focus:ring-2 focus:ring-forest/20 focus:outline-none transition-colors"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
                 aria-label="Limpar busca"
-                className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded opacity-50 hover:opacity-100 hover:bg-terminal-gray/40 transition-colors"
+                className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-rebrand-sm text-ink-3 hover:text-ink hover:bg-canvas-2 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -122,14 +110,11 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
           </div>
         </div>
 
-        {/* Team grid */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-5 pb-3">
+        <div className="flex-1 overflow-y-auto minimal-scrollbar px-5 pb-3">
           {filtered.length === 0 ? (
-            <p className="text-center text-xs opacity-40 py-8">
-              Nenhuma seleção encontrada
-            </p>
+            <p className="text-center text-[12px] text-ink-3 py-8">Nenhuma seleção encontrada</p>
           ) : (
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               {filtered.map((team) => {
                 const isSelected = selected === team.code;
                 return (
@@ -138,28 +123,22 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
                     onClick={() => setSelected(team.code)}
                     aria-label={`Escolher ${team.name} como campeão${isSelected ? ' (selecionado)' : ''}`}
                     aria-pressed={isSelected}
-                    className={`relative flex flex-col items-center gap-1.5 p-3 min-h-[72px] rounded border text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 ${
+                    className={`relative flex flex-col items-center gap-1.5 p-3 min-h-[84px] rounded-rebrand-sm border text-center transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber/40 ${
                       isSelected
-                        ? 'border-yellow-500/60 bg-yellow-500/5'
-                        : 'border-terminal-border hover:border-terminal-border-subtle bg-terminal-dark-gray/30'
+                        ? 'border-amber bg-amber/[0.10] ring-2 ring-amber/30'
+                        : 'border-line bg-white hover:border-line-2 hover:bg-canvas-2'
                     }`}
                   >
                     {isSelected && (
-                      <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-yellow-500 flex items-center justify-center">
-                        <Check className="w-2 h-2 text-terminal-bg" />
+                      <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-amber flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                       </div>
                     )}
                     <TeamFlag code={team.code} size="md" />
-                    <div className="text-center w-full">
-                      <p
-                        className={`text-[11px] font-bold ${isSelected ? 'text-yellow-400' : 'text-terminal-text'}`}
-                      >
-                        {team.code}
-                      </p>
-                      <p className="text-[9px] opacity-50 leading-tight line-clamp-1">
-                        {team.name}
-                      </p>
-                    </div>
+                    <p className={`text-[11px] font-bold ${isSelected ? 'text-amber-2' : 'text-ink'}`}>
+                      {team.code}
+                    </p>
+                    <p className="text-[9px] text-ink-2 leading-tight line-clamp-1">{team.name}</p>
                   </button>
                 );
               })}
@@ -167,36 +146,34 @@ export const ChampionPickModal: React.FC<ChampionPickModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-terminal-border shrink-0 flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-t border-line shrink-0 flex items-center justify-between gap-3 bg-white">
           {selected ? (
-            <p className="text-xs opacity-60 flex-1">
+            <p className="text-[12px] text-ink-2 flex-1 truncate">
               Selecionado:{' '}
-              <span className="font-bold text-yellow-400">
+              <span className="font-bold text-amber-2">
                 {teams.find((t) => t.code === selected)?.name ?? selected}
               </span>
             </p>
           ) : (
-            <p className="text-xs opacity-40 flex-1">Nenhuma seleção escolhida</p>
+            <p className="text-[12px] text-ink-3 flex-1">Nenhuma seleção escolhida</p>
           )}
           <div className="flex gap-2 shrink-0">
-            <Button
+            <button
               type="button"
-              variant="ghost"
               onClick={() => handleOpen(false)}
-              className="text-terminal-text text-sm h-11 px-4"
+              className="h-11 px-4 rounded-rebrand-md text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors"
             >
               Cancelar
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
               disabled={!selected || isLoading}
               onClick={handleConfirm}
-              className="bg-yellow-500 text-terminal-bg hover:bg-yellow-500/90 text-sm gap-1.5 h-11 px-4 font-bold"
+              className="h-11 px-4 rounded-rebrand-md inline-flex items-center gap-1.5 bg-amber text-white text-[13px] font-bold hover:bg-amber-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Trophy className="w-4 h-4" />
               {isLoading ? 'Salvando...' : 'Confirmar'}
-            </Button>
+            </button>
           </div>
         </div>
       </DialogContent>

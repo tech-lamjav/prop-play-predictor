@@ -223,6 +223,16 @@
   resolved "https://registry.npmjs.org/@floating-ui/utils/-/utils-0.2.8.tgz"
   integrity sha512-kym7SodPp8/wloecOpcmSnWJsK7M0E5Wg8UcFA+uO4B9s5d0ywXOEro/8HM9x0rW+TljRzul/14UYz3TleT3ig==
 
+"@fontsource-variable/fraunces@^5.2.9":
+  version "5.2.9"
+  resolved "https://registry.npmjs.org/@fontsource-variable/fraunces/-/fraunces-5.2.9.tgz"
+  integrity sha512-Y6IjunlN9Ni723np+GIgAaKzCDBrPRrqNi01TZxHs5wtHYROWFM9W6yiT+/gGwSjWIRD18oX17kD/BRWekc/Lw==
+
+"@fontsource-variable/inter@^5.2.8":
+  version "5.2.8"
+  resolved "https://registry.npmjs.org/@fontsource-variable/inter/-/inter-5.2.8.tgz"
+  integrity sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==
+
 "@google-cloud/paginator@^5.0.0":
   version "5.0.2"
   resolved "https://registry.npmjs.org/@google-cloud/paginator/-/paginator-5.0.2.tgz"

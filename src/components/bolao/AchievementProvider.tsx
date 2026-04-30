@@ -152,20 +152,20 @@ const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
       <div
         role="status"
         aria-live="polite"
-        className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-achievement-drop motion-reduce:animate-none"
+        className="theme-bolao fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-achievement-drop motion-reduce:animate-none"
       >
-        <div className="flex items-center gap-3 pl-2 pr-2 py-2 rounded-full border border-yellow-500/50 bg-gradient-to-r from-yellow-600/95 via-yellow-500/95 to-yellow-400/95 shadow-2xl shadow-yellow-500/30 backdrop-blur-sm min-w-[300px] max-w-[92vw]">
-          <div className="w-10 h-10 rounded-full bg-terminal-bg/90 border border-yellow-300/40 flex items-center justify-center shrink-0">
-            <Icon className="w-5 h-5 text-yellow-300" />
+        <div className="flex items-center gap-3 pl-2 pr-2 py-2 rounded-full border border-amber/60 bg-gradient-to-r from-amber-2/95 via-amber/95 to-amber/95 shadow-lg shadow-amber/30 backdrop-blur-sm min-w-[300px] max-w-[92vw]">
+          <div className="w-10 h-10 rounded-full bg-white border border-amber/40 flex items-center justify-center shrink-0">
+            <Icon className="w-5 h-5 text-amber-2" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-100/80 leading-tight">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/90 leading-tight">
               Conquista
             </p>
-            <p className="text-sm font-bold text-terminal-bg leading-tight truncate">
+            <p className="text-[14px] font-bold text-white leading-tight truncate">
               {def.title}
             </p>
-            <p className="text-[11px] text-terminal-bg/80 leading-tight truncate">
+            <p className="text-[11px] text-white/85 leading-tight truncate">
               {def.description}
             </p>
           </div>
@@ -174,7 +174,7 @@ const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
             onClick={handleShare}
             disabled={sharing}
             aria-label="Compartilhar conquista"
-            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-terminal-bg/15 hover:bg-terminal-bg/30 active:bg-terminal-bg/40 text-terminal-bg transition-colors disabled:opacity-50"
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white transition-colors disabled:opacity-50"
           >
             <Share2 className="w-4 h-4" />
           </button>

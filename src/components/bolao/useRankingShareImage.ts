@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { shareImage, SHARE_MESSAGES, type ShareResult } from '@/components/bolao/share-utils';
+import { shareImage, downloadImage, SHARE_MESSAGES, type ShareResult } from '@/components/bolao/share-utils';
 
 interface UseRankingShareImageOptions {
   bolaoName: string;
@@ -8,6 +8,12 @@ interface UseRankingShareImageOptions {
   filenameSlug?: string;
   /** "feed" 1080×1080 (default) | "stories" 1080×1920 */
   variant?: 'feed' | 'stories';
+  /**
+   * URL do bolão — incluída no texto compartilhado pra WhatsApp.
+   * Pode ser tanto o link direto (`/bolao/{id}`) quanto o de convite
+   * (`/bolao/entrar/{code}`); ambos resolvem pro bolão.
+   */
+  bolaoUrl?: string;
 }
 
 /**
@@ -21,7 +27,7 @@ interface UseRankingShareImageOptions {
  *   <button onClick={share}>Compartilhar imagem</button>
  */
 export function useRankingShareImage(options: UseRankingShareImageOptions) {
-  const { bolaoName, filenameSlug, variant = 'feed' } = options;
+  const { bolaoName, filenameSlug, variant = 'feed', bolaoUrl } = options;
   const [isSharing, setIsSharing] = useState(false);
   const [lastResult, setLastResult] = useState<ShareResult | null>(null);
 
@@ -31,41 +37,47 @@ export function useRankingShareImage(options: UseRankingShareImageOptions) {
     setNode(el);
   }, []);
 
+  /** Captura o nó como PNG blob. Reusado por share e download. */
+  const capture = useCallback(async (): Promise<{ blob: Blob; filename: string } | null> => {
+    if (!node) return null;
+    const canvas = await html2canvas(node, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), 'image/png', 0.95)
+    );
+    if (!blob) return null;
+    const slug = filenameSlug ?? slugify(bolaoName);
+    const filename = `ranking-${slug}${variant === 'stories' ? '-stories' : ''}.png`;
+    return { blob, filename };
+  }, [node, bolaoName, filenameSlug, variant]);
+
+  /**
+   * Compartilha a imagem via Web Share API (mobile abre sheet com a imagem
+   * anexada → user escolhe WhatsApp/IG). Desktop faz download direto. Texto
+   * inclui o link de convite quando inviteUrl é passado.
+   */
   const share = useCallback(async (): Promise<ShareResult> => {
     if (!node) {
       const err: ShareResult = { success: false, method: 'error', error: 'Imagem não está pronta' };
       setLastResult(err);
       return err;
     }
-
     setIsSharing(true);
     try {
-      // html2canvas: tira screenshot do nó. scale 2 = retina-ish.
-      // backgroundColor null → respeita o background do próprio elemento.
-      const canvas = await html2canvas(node, {
-        backgroundColor: null,
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-
-      const blob: Blob | null = await new Promise(resolve =>
-        canvas.toBlob(b => resolve(b), 'image/png', 0.95)
-      );
-
-      if (!blob) {
+      const captured = await capture();
+      if (!captured) {
         const err: ShareResult = { success: false, method: 'error', error: 'Falha ao gerar imagem' };
         setLastResult(err);
         return err;
       }
-
-      const slug = filenameSlug ?? slugify(bolaoName);
-      const filename = `ranking-${slug}${variant === 'stories' ? '-stories' : ''}.png`;
-
-      const result = await shareImage(blob, {
-        filename,
+      const result = await shareImage(captured.blob, {
+        filename: captured.filename,
         title: `Ranking ${bolaoName}`,
-        text: SHARE_MESSAGES.rankingImage(bolaoName),
+        text: SHARE_MESSAGES.rankingImage(bolaoName, bolaoUrl),
       });
       setLastResult(result);
       return result;
@@ -76,9 +88,39 @@ export function useRankingShareImage(options: UseRankingShareImageOptions) {
     } finally {
       setIsSharing(false);
     }
-  }, [node, bolaoName, filenameSlug]);
+  }, [node, bolaoName, bolaoUrl, capture]);
 
-  return { captureRef, share, isSharing, lastResult };
+  /**
+   * Download direto do PNG. Não passa por share sheet — só salva o arquivo.
+   * Usado pelo botão "Baixar".
+   */
+  const download = useCallback(async (): Promise<ShareResult> => {
+    if (!node) {
+      const err: ShareResult = { success: false, method: 'error', error: 'Imagem não está pronta' };
+      setLastResult(err);
+      return err;
+    }
+    setIsSharing(true);
+    try {
+      const captured = await capture();
+      if (!captured) {
+        const err: ShareResult = { success: false, method: 'error', error: 'Falha ao gerar imagem' };
+        setLastResult(err);
+        return err;
+      }
+      const result = await downloadImage(captured.blob, captured.filename);
+      setLastResult(result);
+      return result;
+    } catch (err: any) {
+      const errResult: ShareResult = { success: false, method: 'error', error: err?.message ?? 'Erro' };
+      setLastResult(errResult);
+      return errResult;
+    } finally {
+      setIsSharing(false);
+    }
+  }, [node, capture]);
+
+  return { captureRef, share, download, isSharing, lastResult };
 }
 
 /** Slug simples: "Bolão da Firma!" → "bolao-da-firma" */

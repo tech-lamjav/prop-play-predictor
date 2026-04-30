@@ -4,7 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -151,24 +152,28 @@ const App = () => (
                 <Settings />
               </ProtectedRoute>
             } />
-            {/* Bolão Copa do Mundo */}
+            {/* Bolão Copa do Mundo — todas as rotas wrappadas em BolaoLayout
+                pra aplicar o tema "Direção A" (rebrand). Resto do app continua
+                com tema "terminal" do legado. */}
             {/* /bolao = landing publica pra deslogado, dashboard pra logado */}
-            <Route path="/bolao" element={<BolaoEntry />} />
-            <Route path="/bolao/entrar/:code" element={
-              <ProtectedRoute>
-                <BolaoJoin />
-              </ProtectedRoute>
-            } />
-            <Route path="/bolao/:id" element={
-              <ProtectedRoute>
-                <BolaoDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="/bolao/:id/palpites" element={
-              <ProtectedRoute>
-                <BolaoPalpites />
-              </ProtectedRoute>
-            } />
+            <Route path="/bolao" element={<BolaoLayout><Outlet /></BolaoLayout>}>
+              <Route index element={<BolaoEntry />} />
+              <Route path="entrar/:code" element={
+                <ProtectedRoute>
+                  <BolaoJoin />
+                </ProtectedRoute>
+              } />
+              <Route path=":id" element={
+                <ProtectedRoute>
+                  <BolaoDetail />
+                </ProtectedRoute>
+              } />
+              <Route path=":id/palpites" element={
+                <ProtectedRoute>
+                  <BolaoPalpites />
+                </ProtectedRoute>
+              } />
+            </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

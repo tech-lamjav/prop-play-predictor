@@ -57,7 +57,7 @@ export function TeamFlag({ code, size = 'sm', className = '' }: TeamFlagProps) {
   if (!isoCode || errored) {
     return (
       <div
-        className={`${sizeClass} rounded-sm bg-terminal-border-subtle/40 border border-terminal-border-subtle/60 shrink-0 ${className}`}
+        className={`${sizeClass} rounded-sm bg-zinc-300/40 border border-zinc-400/30 shrink-0 ${className}`}
         title={code}
         aria-label={`Bandeira de ${code} (não disponível)`}
       />
@@ -72,7 +72,7 @@ export function TeamFlag({ code, size = 'sm', className = '' }: TeamFlagProps) {
       title={code}
       onError={() => setErrored(true)}
       loading="lazy"
-      className={`${sizeClass} rounded-sm border border-terminal-border-subtle/40 shrink-0 object-cover ${className}`}
+      className={`${sizeClass} rounded-sm border border-zinc-400/30 shrink-0 object-cover ${className}`}
     />
   );
 }

@@ -9,7 +9,7 @@ import type { WcMatch } from '@/services/bolao.service';
 
 interface DeadlineBadgeProps {
   matches: WcMatch[] | undefined;
-  mode: 'per_match' | 'per_round' | 'tournament_start';
+  mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
   isClosed: boolean;
   /** "compact" = single line, no icon prefix (use in tight cards) */
   variant?: 'default' | 'compact';

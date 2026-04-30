@@ -9,19 +9,17 @@ interface InsightsBannerProps {
 
 interface InsightVisual {
   icon: React.ComponentType<{ className?: string }>;
-  iconColor: string;
-  borderColor: string;
-  bgColor: string;
-  label: string; // título curto do insight
-  message: (i: BolaoInsight) => string; // texto contextual
+  iconClass: string; // text + bg fundo do círculo do ícone
+  borderClass: string; // borda do card
+  label: string;
+  message: (i: BolaoInsight) => string;
 }
 
 const INSIGHT_VISUAL: Record<string, InsightVisual> = {
   rare_correct: {
     icon: Crosshair,
-    iconColor: 'text-yellow-400',
-    borderColor: 'border-yellow-500/40',
-    bgColor: 'bg-yellow-500/5',
+    iconClass: 'text-amber-2 bg-amber/15',
+    borderClass: 'border-amber/40',
     label: 'Cravou!',
     message: (i) => {
       const exact = i.payload.exact_count ?? 0;
@@ -34,9 +32,8 @@ const INSIGHT_VISUAL: Record<string, InsightVisual> = {
   },
   exact_score_lonely: {
     icon: Crosshair,
-    iconColor: 'text-yellow-400',
-    borderColor: 'border-yellow-500/40',
-    bgColor: 'bg-yellow-500/5',
+    iconClass: 'text-amber-2 bg-amber/15',
+    borderClass: 'border-amber/40',
     label: 'Placar exato!',
     message: (i) => {
       const pct = i.payload.percentage ?? 0;
@@ -48,9 +45,8 @@ const INSIGHT_VISUAL: Record<string, InsightVisual> = {
   },
   majority_wrong: {
     icon: Flame,
-    iconColor: 'text-orange-400',
-    borderColor: 'border-orange-400/40',
-    bgColor: 'bg-orange-400/5',
+    iconClass: 'text-status-warning bg-status-warning/15',
+    borderClass: 'border-status-warning/40',
     label: 'Contra a maré',
     message: (i) => {
       const pct = i.payload.wrong_percentage ?? 0;
@@ -62,27 +58,24 @@ const INSIGHT_VISUAL: Record<string, InsightVisual> = {
   },
   streak_3: {
     icon: Zap,
-    iconColor: 'text-terminal-blue',
-    borderColor: 'border-terminal-blue/40',
-    bgColor: 'bg-terminal-blue/5',
+    iconClass: 'text-status-info bg-status-info/15',
+    borderClass: 'border-status-info/40',
     label: 'Sequência de 3!',
     message: (i) => `Você acertou os últimos ${i.payload.streak ?? 3} palpites seguidos.`,
   },
   streak_5: {
     icon: Zap,
-    iconColor: 'text-terminal-blue',
-    borderColor: 'border-terminal-blue/40',
-    bgColor: 'bg-terminal-blue/5',
+    iconClass: 'text-status-info bg-status-info/15',
+    borderClass: 'border-status-info/40',
     label: 'Sequência de 5!',
-    message: (i) => `Você acertou os últimos ${i.payload.streak ?? 5} palpites seguidos. 🔥`,
+    message: (i) => `Você acertou os últimos ${i.payload.streak ?? 5} palpites seguidos.`,
   },
 };
 
 const FALLBACK_VISUAL: InsightVisual = {
   icon: Target,
-  iconColor: 'text-terminal-text/70',
-  borderColor: 'border-terminal-border',
-  bgColor: 'bg-terminal-dark-gray/30',
+  iconClass: 'text-ink-2 bg-canvas-2',
+  borderClass: 'border-line',
   label: 'Insight',
   message: () => '',
 };
@@ -90,11 +83,6 @@ const FALLBACK_VISUAL: InsightVisual = {
 /**
  * Banner que aparece em BolaoDetail com insights pós-jogo do user.
  * Carrossel horizontal scrollável com auto-mark seen quando user vê.
- *
- * Comportamento:
- *  - Não renderiza se não há insights
- *  - Marca como vistos depois de 4s na tela (delay pra user ler)
- *  - Cada card é dispensável individualmente
  */
 export const InsightsBanner: React.FC<InsightsBannerProps> = ({ bolaoId }) => {
   const { data: insights } = useBolaoInsights(bolaoId);
@@ -102,11 +90,10 @@ export const InsightsBanner: React.FC<InsightsBannerProps> = ({ bolaoId }) => {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const unseenIds = useMemo(
-    () => (insights || []).filter(i => !i.seen && !dismissed.has(i.id)).map(i => i.id),
+    () => (insights || []).filter((i) => !i.seen && !dismissed.has(i.id)).map((i) => i.id),
     [insights, dismissed]
   );
 
-  // Auto-mark seen 4s depois de aparecer (delay pra ler)
   useEffect(() => {
     if (unseenIds.length === 0) return;
     const timer = setTimeout(() => {
@@ -116,7 +103,7 @@ export const InsightsBanner: React.FC<InsightsBannerProps> = ({ bolaoId }) => {
   }, [unseenIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleInsights = useMemo(
-    () => (insights || []).filter(i => !dismissed.has(i.id)).slice(0, 5),
+    () => (insights || []).filter((i) => !dismissed.has(i.id)).slice(0, 5),
     [insights, dismissed]
   );
 
@@ -124,7 +111,7 @@ export const InsightsBanner: React.FC<InsightsBannerProps> = ({ bolaoId }) => {
 
   return (
     <div className="mb-5">
-      <p className="text-[11px] font-bold uppercase tracking-wider opacity-50 mb-2">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2 mb-2">
         Sobre seus últimos palpites
       </p>
       <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -134,28 +121,30 @@ export const InsightsBanner: React.FC<InsightsBannerProps> = ({ bolaoId }) => {
           return (
             <div
               key={i.id}
-              className={`relative shrink-0 max-w-[80vw] sm:max-w-md flex items-start gap-3 p-3.5 pr-9 rounded-lg border ${visual.borderColor} ${visual.bgColor}`}
+              className={`relative shrink-0 max-w-[80vw] sm:max-w-md flex items-start gap-3 p-3.5 pr-9 rounded-rebrand-md border bg-white ${visual.borderClass}`}
             >
-              <div className={`w-9 h-9 rounded-full ${visual.bgColor} ${visual.borderColor} border flex items-center justify-center shrink-0`}>
-                <Icon className={`w-4.5 h-4.5 ${visual.iconColor}`} />
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${visual.iconClass}`}
+              >
+                <Icon className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-bold ${visual.iconColor}`}>{visual.label}</p>
-                <p className="text-[11px] opacity-80 mt-0.5 leading-relaxed">
+                <p className="text-[12px] font-bold text-ink">{visual.label}</p>
+                <p className="text-[11px] text-ink-2 mt-0.5 leading-relaxed">
                   {visual.message(i)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() =>
-                  setDismissed(prev => {
+                  setDismissed((prev) => {
                     const next = new Set(prev);
                     next.add(i.id);
                     return next;
                   })
                 }
                 aria-label="Dispensar insight"
-                className="absolute top-1.5 right-1.5 w-7 h-7 flex items-center justify-center rounded text-terminal-text/40 hover:text-terminal-text/80 hover:bg-terminal-gray/30 transition-colors"
+                className="absolute top-1.5 right-1.5 w-7 h-7 flex items-center justify-center rounded text-ink-3 hover:text-ink hover:bg-canvas-2 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

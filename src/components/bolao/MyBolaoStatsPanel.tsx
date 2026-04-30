@@ -13,9 +13,6 @@ import {
   Target,
   CheckCircle,
   TrendingUp,
-  Lock,
-  Swords,
-  Map as MapIcon,
 } from 'lucide-react';
 import {
   useMyBolaoPersonalStats,
@@ -29,7 +26,6 @@ import type { PersonalPersonalityData } from '@/services/bolao.service';
 interface Props {
   bolaoId: string;
   currentUserId: string | undefined;
-  isPremium: boolean;
 }
 
 function StatCard({
@@ -44,12 +40,12 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20">
-      <div className="opacity-50 shrink-0">{icon}</div>
+    <div className="flex items-center gap-3 p-3 rounded-rebrand-md border border-line bg-white">
+      <div className="text-ink-3 shrink-0">{icon}</div>
       <div className="min-w-0">
-        <p className="text-[10px] opacity-40 uppercase tracking-wider">{label}</p>
-        <p className="text-lg font-bold leading-tight tabular-nums">{value}</p>
-        {sub && <p className="text-[10px] opacity-40">{sub}</p>}
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">{label}</p>
+        <p className="text-lg font-bold leading-tight tabular-nums text-ink">{value}</p>
+        {sub && <p className="text-[10px] text-ink-3 mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -108,15 +104,15 @@ function derivePersonalityLabel(data: PersonalPersonalityData | null | undefined
   };
 }
 
-export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isPremium }) => {
+export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId }) => {
   const { data: personalStats, isLoading: loadingPersonal } = useMyBolaoPersonalStats(bolaoId);
   const { data: ranking } = useBolaoRanking(bolaoId);
-  const { data: heatmap, isLoading: loadingHeatmap } = useMyTeamHeatmap(bolaoId, isPremium);
+  const { data: heatmap, isLoading: loadingHeatmap } = useMyTeamHeatmap(bolaoId);
   const [opponentId, setOpponentId] = useState<string | undefined>(undefined);
   const { data: versus, isLoading: loadingVersus } = useVersusStats(
     bolaoId,
     opponentId,
-    isPremium && !!opponentId
+    !!opponentId
   );
 
   const myRankEntry = useMemo(
@@ -135,7 +131,7 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-20 rounded border border-terminal-border animate-pulse bg-terminal-dark-gray/30"
+            className="h-20 rounded-rebrand-md border border-line bg-canvas-2 animate-pulse"
           />
         ))}
       </div>
@@ -144,9 +140,9 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
 
   if (!personalStats || personalStats.total_predictions === 0) {
     return (
-      <div className="text-center py-8 opacity-40">
+      <div className="text-center py-8 text-ink-3">
         <Target className="w-8 h-8 mx-auto mb-2" />
-        <p className="text-sm">Faça seus primeiros palpites para ver suas estatísticas</p>
+        <p className="text-[13px]">Faça seus primeiros palpites para ver suas estatísticas</p>
       </div>
     );
   }
@@ -164,7 +160,7 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
   return (
     <div className="space-y-5">
       {/* Header — current rank + points */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <StatCard
           icon={<Trophy className="w-4 h-4" />}
           label="Sua posição"
@@ -192,44 +188,45 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
       {/* Evolução */}
       {evolutionChartData.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase font-bold tracking-wider opacity-40 mb-3">
+          <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-ink-2 mb-3">
             Evolução de pontos
           </p>
-          <div className="rounded border border-terminal-border-subtle bg-terminal-dark-gray/20 p-3">
+          <div className="rounded-rebrand-md border border-line bg-white p-3">
             <div style={{ height: 180 }} className="w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={evolutionChartData}>
                   <defs>
                     <linearGradient id="colorMyPoints" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#0a3d2e" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#0a3d2e" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e3e6e0" vertical={false} />
                   <XAxis
                     dataKey="idx"
-                    stroke="#666"
-                    tick={{ fill: 'var(--terminal-text)', fontSize: 10 }}
+                    stroke="#8a8f86"
+                    tick={{ fill: '#4a4f48', fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
                     minTickGap={20}
                   />
                   <YAxis
-                    stroke="#666"
-                    tick={{ fill: 'var(--terminal-text)', fontSize: 10 }}
+                    stroke="#8a8f86"
+                    tick={{ fill: '#4a4f48', fontSize: 10 }}
                     tickLine={false}
                     axisLine={false}
                     width={28}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0a0a0a',
-                      border: '1px solid #333',
-                      borderRadius: '4px',
-                      color: '#fff',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e3e6e0',
+                      borderRadius: '10px',
+                      color: '#1a1d1a',
                       fontSize: '11px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                     }}
-                    itemStyle={{ color: '#14b8a6' }}
+                    itemStyle={{ color: '#0a3d2e' }}
                     formatter={(value: number, _name, ctx: any) => [
                       `${value} pts`,
                       ctx?.payload?.label ?? 'Acumulado',
@@ -243,7 +240,7 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
                   <Area
                     type="monotone"
                     dataKey="cumulative"
-                    stroke="#14b8a6"
+                    stroke="#0a3d2e"
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#colorMyPoints)"
@@ -258,43 +255,29 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
 
       {/* Personalidade */}
       <div>
-        <p className="text-[10px] uppercase font-bold tracking-wider opacity-40 mb-3">
+        <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-ink-2 mb-3">
           Seu estilo
         </p>
-        <div className="p-4 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20">
-          <p className="text-base font-bold text-terminal-blue">{personality.label}</p>
-          <p className="text-xs opacity-70 mt-1">{personality.description}</p>
+        <div className="p-4 rounded-rebrand-md border border-line bg-white">
+          <p className="text-base font-bold text-forest">{personality.label}</p>
+          <p className="text-[12px] text-ink-2 mt-1">{personality.description}</p>
         </div>
       </div>
 
-      {/* Heatmap por seleção (Premium) */}
+      {/* Heatmap por seleção */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] uppercase font-bold tracking-wider opacity-40">
-            Acerto por seleção
-          </p>
-          {!isPremium && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 inline-flex items-center gap-1">
-              <Lock className="w-2.5 h-2.5" /> PRO
-            </span>
-          )}
-        </div>
+        <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-ink-2 mb-3">
+          Acerto por seleção
+        </p>
 
-        {!isPremium ? (
-          <div className="p-4 rounded border border-yellow-500/20 bg-yellow-500/5 text-center">
-            <MapIcon className="w-6 h-6 text-yellow-400/70 mx-auto mb-2" />
-            <p className="text-xs text-yellow-400/80">
-              Veja seu desempenho contra cada seleção no Bolão PRO
-            </p>
-          </div>
-        ) : loadingHeatmap ? (
-          <div className="h-24 rounded border border-terminal-border animate-pulse bg-terminal-dark-gray/30" />
+        {loadingHeatmap ? (
+          <div className="h-24 rounded-rebrand-md border border-line bg-canvas-2 animate-pulse" />
         ) : !heatmap || heatmap.length === 0 ? (
-          <p className="text-xs opacity-40 py-2">
+          <p className="text-[12px] text-ink-3 py-2">
             Sem dados ainda. Volte após os primeiros jogos finalizados.
           </p>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {heatmap.slice(0, 12).map((t) => {
               const accuracy =
                 t.matches_finished > 0
@@ -302,29 +285,29 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
                   : 0;
               const accuracyColor =
                 accuracy >= 70
-                  ? 'text-terminal-green'
+                  ? 'text-status-success'
                   : accuracy >= 40
-                    ? 'text-terminal-blue'
+                    ? 'text-forest'
                     : accuracy > 0
-                      ? 'text-yellow-400/80'
-                      : 'opacity-40';
+                      ? 'text-amber-2'
+                      : 'text-ink-3';
               return (
                 <div
                   key={t.team_code}
-                  className="flex items-center gap-3 p-2 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20"
+                  className="flex items-center gap-3 p-2.5 rounded-rebrand-md border border-line bg-white"
                 >
                   <TeamFlag code={t.team_code} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate">{t.team_name}</p>
-                    <p className="text-[10px] opacity-50">
+                    <p className="text-[12px] font-bold text-ink truncate">{t.team_name}</p>
+                    <p className="text-[10px] text-ink-3">
                       {t.matches_finished} encerrados · {t.exact_scores} exatos
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-sm font-bold tabular-nums ${accuracyColor}`}>
+                    <p className={`text-[14px] font-bold tabular-nums ${accuracyColor}`}>
                       {t.matches_finished > 0 ? `${accuracy}%` : '—'}
                     </p>
-                    <p className="text-[10px] opacity-40 tabular-nums">{t.total_points} pts</p>
+                    <p className="text-[10px] text-ink-3 tabular-nums">{t.total_points} pts</p>
                   </div>
                 </div>
               );
@@ -333,32 +316,17 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
         )}
       </div>
 
-      {/* Versus (Premium) */}
+      {/* Versus */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] uppercase font-bold tracking-wider opacity-40">
-            Comparar com…
-          </p>
-          {!isPremium && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 inline-flex items-center gap-1">
-              <Lock className="w-2.5 h-2.5" /> PRO
-            </span>
-          )}
-        </div>
+        <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-ink-2 mb-3">
+          Comparar com…
+        </p>
 
-        {!isPremium ? (
-          <div className="p-4 rounded border border-yellow-500/20 bg-yellow-500/5 text-center">
-            <Swords className="w-6 h-6 text-yellow-400/70 mx-auto mb-2" />
-            <p className="text-xs text-yellow-400/80">
-              Compare seus números 1-a-1 com qualquer participante no Bolão PRO
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <select
+        <div className="space-y-3">
+          <select
               value={opponentId ?? ''}
               onChange={(e) => setOpponentId(e.target.value || undefined)}
-              className="w-full bg-terminal-black border border-terminal-border text-sm p-2 rounded text-terminal-text"
+              className="w-full bg-white border border-line text-[13px] text-ink p-2.5 rounded-rebrand-md focus:border-forest focus:ring-2 focus:ring-forest/20 focus:outline-none"
             >
               <option value="">Escolha um participante…</option>
               {opponents.map((o) => (
@@ -369,7 +337,7 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
             </select>
 
             {opponentId && loadingVersus && (
-              <div className="h-24 rounded border border-terminal-border animate-pulse bg-terminal-dark-gray/30" />
+              <div className="h-24 rounded-rebrand-md border border-line bg-canvas-2 animate-pulse" />
             )}
 
             {opponentId && versus && (
@@ -384,9 +352,8 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId, isP
                   'Adversário'
                 }
               />
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -411,11 +378,11 @@ function VersusGrid({
   ];
 
   return (
-    <div className="rounded border border-terminal-border-subtle bg-terminal-dark-gray/20 overflow-hidden">
-      <div className="grid grid-cols-3 gap-2 p-3 border-b border-terminal-border-subtle text-[10px] uppercase tracking-wider opacity-60">
-        <span className="font-bold truncate">{myName}</span>
-        <span className="text-center">vs</span>
-        <span className="font-bold text-right truncate">{opponentName}</span>
+    <div className="rounded-rebrand-md border border-line bg-white overflow-hidden">
+      <div className="grid grid-cols-3 gap-2 p-3 border-b border-line text-[10px] font-bold uppercase tracking-[0.1em] text-ink-2">
+        <span className="truncate">{myName}</span>
+        <span className="text-center text-ink-3">vs</span>
+        <span className="text-right truncate">{opponentName}</span>
       </div>
       {rows.map((r) => {
         const myVal = (me?.[r.key] ?? 0) as number;
@@ -425,19 +392,19 @@ function VersusGrid({
         return (
           <div
             key={r.key}
-            className="grid grid-cols-3 gap-2 p-3 border-b border-terminal-border-subtle/50 last:border-b-0"
+            className="grid grid-cols-3 gap-2 p-3 border-b border-line/60 last:border-b-0"
           >
             <span
-              className={`text-sm font-bold tabular-nums ${
-                myWin ? 'text-terminal-green' : oppWin ? 'opacity-50' : ''
+              className={`text-[14px] font-bold tabular-nums ${
+                myWin ? 'text-forest' : oppWin ? 'text-ink-3' : 'text-ink'
               }`}
             >
               {myVal}
             </span>
-            <span className="text-[10px] opacity-50 text-center self-center">{r.label}</span>
+            <span className="text-[11px] text-ink-3 text-center self-center">{r.label}</span>
             <span
-              className={`text-sm font-bold tabular-nums text-right ${
-                oppWin ? 'text-terminal-green' : myWin ? 'opacity-50' : ''
+              className={`text-[14px] font-bold tabular-nums text-right ${
+                oppWin ? 'text-forest' : myWin ? 'text-ink-3' : 'text-ink'
               }`}
             >
               {oppVal}

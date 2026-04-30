@@ -62,28 +62,28 @@ export const FilterScroller: React.FC<FilterScrollerProps> = ({ children, filter
       {/* Left fade + arrow */}
       {canLeft && (
         <>
-          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-terminal-bg to-transparent z-10" />
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-canvas via-canvas/80 to-transparent z-10" />
           <button
             type="button"
             onClick={() => scrollBy('left')}
             aria-label="Rolar filtros para a esquerda"
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 h-8 w-8 flex items-center justify-center rounded-full bg-terminal-dark-gray border border-terminal-border-subtle shadow hover:bg-terminal-gray transition-colors"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 h-7 w-7 flex items-center justify-center rounded-full bg-white border border-line shadow-sm text-ink-2 hover:text-ink hover:bg-canvas-2 hover:border-line-2 transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
         </>
       )}
       {/* Right fade + arrow */}
       {canRight && (
         <>
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-terminal-bg to-transparent z-10" />
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-canvas via-canvas/80 to-transparent z-10" />
           <button
             type="button"
             onClick={() => scrollBy('right')}
             aria-label="Rolar filtros para a direita"
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 h-8 w-8 flex items-center justify-center rounded-full bg-terminal-dark-gray border border-terminal-border-subtle shadow hover:bg-terminal-gray transition-colors"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 h-7 w-7 flex items-center justify-center rounded-full bg-white border border-line shadow-sm text-ink-2 hover:text-ink hover:bg-canvas-2 hover:border-line-2 transition-colors"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </>
       )}

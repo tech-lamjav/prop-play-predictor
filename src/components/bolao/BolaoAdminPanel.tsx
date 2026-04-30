@@ -1,27 +1,19 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  Shield,
+  Settings,
   UserX,
   Lock,
   Unlock,
   AlertTriangle,
-  Palette,
-  SlidersHorizontal,
   ImagePlus,
   X,
   Users,
-  Trophy,
-  Star,
-  ToggleLeft,
-  ToggleRight,
-  ChevronDown,
+  Clock,
   Check,
-  Crown,
   Sparkles,
-  Zap,
+  Target,
+  Pencil,
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -40,19 +32,20 @@ import {
 } from '@/hooks/use-bolao';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
+import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
 import type { BolaoRankingEntry } from '@/services/bolao.service';
 
 interface BolaoAdminPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bolaoId: string;
+  bolaoName?: string;
   isClosed: boolean;
   isPremium: boolean;
   scoringPreset: string | null;
   scoringResult: number;
   scoringExact: number;
   scoringWeights: Record<string, number> | null;
-  customColor: string | null;
   customBannerUrl: string | null;
   championEnabled: boolean;
   specialPredictionsEnabled: boolean;
@@ -62,56 +55,36 @@ interface BolaoAdminPanelProps {
   ranking: BolaoRankingEntry[];
   currentUserId: string | undefined;
   ownerUserId: string;
-  predictionDeadlineMode: 'per_match' | 'per_round' | 'tournament_start';
+  predictionDeadlineMode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
 }
 
-const DEADLINE_MODE_LABELS: Record<string, { label: string; description: string }> = {
-  per_match:        { label: 'Por jogo',     description: 'Até o apito inicial de cada partida' },
-  per_round:        { label: 'Por fase',     description: 'Até o início da primeira partida da fase' },
-  tournament_start: { label: 'Copa inteira', description: 'Até a abertura da Copa' },
-};
+type SectionId = 'geral' | 'pontuacao' | 'prazo' | 'modalidades' | 'membros';
 
-// ── Color Theme ────────────────────────────────────────────────────
-const THEME_COLORS: { value: string; label: string; bg: string; border: string }[] = [
-  { value: 'blue',    label: 'Azul',     bg: 'bg-blue-900/30',    border: 'border-blue-500/60'    },
-  { value: 'green',   label: 'Verde',    bg: 'bg-emerald-900/30', border: 'border-emerald-500/60' },
-  { value: 'gold',    label: 'Dourado',  bg: 'bg-yellow-900/30',  border: 'border-yellow-500/60'  },
-  { value: 'purple',  label: 'Roxo',     bg: 'bg-purple-900/30',  border: 'border-purple-500/60'  },
-  { value: 'red',     label: 'Vinho',    bg: 'bg-red-900/30',     border: 'border-red-700/60'     },
-  { value: 'cyan',    label: 'Ciano',    bg: 'bg-cyan-900/30',    border: 'border-cyan-500/60'    },
-  { value: 'orange',  label: 'Laranja',  bg: 'bg-orange-900/30',  border: 'border-orange-500/60'  },
-  { value: 'default', label: 'Padrão',   bg: 'bg-transparent',    border: 'border-terminal-border'},
+const SECTIONS: {
+  id: SectionId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: 'geral',       label: 'Geral',             icon: Settings },
+  { id: 'pontuacao',   label: 'Pontuação',         icon: Target },
+  { id: 'prazo',       label: 'Prazo de palpites', icon: Clock },
+  { id: 'modalidades', label: 'Modalidades',       icon: Sparkles },
+  { id: 'membros',     label: 'Membros',           icon: Users },
 ];
 
-// ── Scoring Presets (quick-fill shortcuts) ─────────────────────────
+const DEADLINE_MODE_LABELS: Record<string, { label: string; description: string }> = {
+  per_match: { label: 'Por jogo',   description: 'Até o apito inicial de cada partida' },
+  per_day:   { label: 'Por dia',    description: 'Até o início do primeiro jogo do dia' },
+  per_round: { label: 'Por rodada', description: 'Fase de grupos: R1/R2/R3 separadas. Mata-mata: cada eliminatória.' },
+  per_stage: { label: 'Por fase',   description: 'Fase de grupos inteira fecha junto. Mata-mata: cada eliminatória.' },
+};
+
 const SCORING_PRESETS = [
-  {
-    value: 'standard',
-    label: 'Casual',
-    description: 'Simples, sem multiplicador',
-    result: 1,
-    exact: 3,
-    weighted: false,
-  },
-  {
-    value: 'classic',
-    label: 'Clássico',
-    description: 'Placar exato vale mais',
-    result: 1,
-    exact: 5,
-    weighted: false,
-  },
-  {
-    value: 'weighted_stages',
-    label: 'Campeonato',
-    description: 'Mata-mata decide tudo',
-    result: 1,
-    exact: 3,
-    weighted: true,
-  },
+  { value: 'standard',        label: 'Casual',     description: 'Simples, todos os jogos valem o mesmo', result: 1, exact: 3, weighted: false },
+  { value: 'classic',         label: 'Clássico',   description: 'Placar exato vale mais',                result: 1, exact: 5, weighted: false },
+  { value: 'weighted_stages', label: 'Campeonato', description: 'Mata-mata vale mais que grupos',        result: 1, exact: 3, weighted: true },
 ] as const;
 
-// ── Stage labels + default multipliers ─────────────────────────────
 const STAGE_LABELS: { key: string; label: string; defaultWeight: number }[] = [
   { key: 'group',       label: 'Grupos',    defaultWeight: 1.0 },
   { key: 'round_of_32', label: 'R32',       defaultWeight: 1.5 },
@@ -127,15 +100,20 @@ const DEFAULT_WEIGHTS: Record<string, number> = STAGE_LABELS.reduce(
   {}
 );
 
-// ── NumberStepper ─────────────────────────────────────────────────
-// Reusable numeric input with −/+ buttons. Snaps to `step`, clamps to [min,max].
+const SPECIAL_TYPES: Record<string, string> = {
+  finalist: 'Finalistas',
+  semifinalist: 'Semifinalistas',
+  quarterfinalist: 'Quartas de Final',
+  round_of_32: 'Mata-mata (32)',
+};
+
+// ── NumberStepper (light theme) ───────────────────────────────────
 interface NumberStepperProps {
   value: number;
   onChange: (value: number) => void;
   min: number;
   max: number;
   step?: number;
-  highlight?: boolean;
   suffix?: string;
   ariaLabel?: string;
   className?: string;
@@ -144,7 +122,7 @@ interface NumberStepperProps {
 }
 
 const NumberStepper: React.FC<NumberStepperProps> = ({
-  value, onChange, min, max, step = 1, highlight, suffix, ariaLabel, className, disabled, size = 'md',
+  value, onChange, min, max, step = 1, suffix, ariaLabel, className, disabled, size = 'md',
 }) => {
   const bump = (delta: number) => {
     const next = value + delta;
@@ -158,22 +136,18 @@ const NumberStepper: React.FC<NumberStepperProps> = ({
   };
   const canDec = !disabled && value > min;
   const canInc = !disabled && value < max;
-  // h-11 (44px) = WCAG touch target minimum. Smaller variants kept for non-primary
-  // contexts but minimum hit area always 44×44 via padding.
   const containerH = size === 'sm' ? 'h-9' : 'h-11';
   const btnW = size === 'sm' ? 'w-9' : 'w-11';
   const btnText = size === 'sm' ? 'text-base' : 'text-lg';
   const inputText = size === 'sm' ? 'text-xs' : 'text-sm';
   return (
-    <div className={`flex items-stretch ${containerH} rounded border overflow-hidden ${
-      highlight ? 'border-terminal-blue/50' : 'border-terminal-border'
-    } ${disabled ? 'opacity-30' : ''} ${className ?? ''}`}>
+    <div className={`flex items-stretch ${containerH} rounded-rebrand-md border border-line bg-white overflow-hidden ${disabled ? 'opacity-50' : ''} ${className ?? ''}`}>
       <button
         type="button"
         onClick={() => bump(-step)}
         disabled={!canDec}
         aria-label={ariaLabel ? `Diminuir ${ariaLabel}` : 'Diminuir'}
-        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 active:bg-terminal-blue/30 text-terminal-blue font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
+        className={`${btnW} flex items-center justify-center text-ink-2 hover:bg-canvas-2 hover:text-ink active:bg-canvas-2 font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
       >
         −
       </button>
@@ -186,19 +160,19 @@ const NumberStepper: React.FC<NumberStepperProps> = ({
         onChange={(e) => handleInput(e.target.value)}
         disabled={disabled}
         aria-label={ariaLabel}
-        className={`flex-1 min-w-0 text-center font-bold bg-terminal-dark-gray ${inputText} focus:bg-terminal-blue/10 focus:outline-none focus:ring-1 focus:ring-terminal-blue/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:cursor-not-allowed ${
-          highlight ? 'text-terminal-blue' : ''
-        }`}
+        className={`flex-1 min-w-[44px] text-center font-bold tabular-nums bg-white text-ink ${inputText} focus:bg-canvas-2 focus:outline-none focus:ring-1 focus:ring-forest/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:cursor-not-allowed`}
       />
       {suffix && (
-        <span className="flex items-center px-1.5 text-xs opacity-40 bg-terminal-dark-gray">{suffix}</span>
+        <span className="flex items-center px-2.5 border-l border-line text-[11px] text-ink-3 bg-canvas-2 font-medium">
+          {suffix}
+        </span>
       )}
       <button
         type="button"
         onClick={() => bump(step)}
         disabled={!canInc}
         aria-label={ariaLabel ? `Aumentar ${ariaLabel}` : 'Aumentar'}
-        className={`${btnW} flex items-center justify-center bg-terminal-dark-gray/60 hover:bg-terminal-blue/20 active:bg-terminal-blue/30 text-terminal-blue font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-terminal-dark-gray/60`}
+        className={`${btnW} flex items-center justify-center text-ink-2 hover:bg-canvas-2 hover:text-ink active:bg-canvas-2 font-bold ${btnText} leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
       >
         +
       </button>
@@ -206,25 +180,54 @@ const NumberStepper: React.FC<NumberStepperProps> = ({
   );
 };
 
-const SPECIAL_TYPES: Record<string, string> = {
-  finalist: 'Finalistas',
-  semifinalist: 'Semifinalistas',
-  quarterfinalist: 'Quartas de Final',
-  round_of_32: 'Mata-mata (32)',
-};
+// ── Toggle component (light) ──────────────────────────────────────
+const Toggle: React.FC<{ on: boolean; onClick: () => void; ariaLabel: string }> = ({ on, onClick, ariaLabel }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={ariaLabel}
+    aria-pressed={on}
+    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${on ? 'bg-forest' : 'bg-canvas-2 border border-line'}`}
+  >
+    <span
+      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`}
+    />
+  </button>
+);
 
+// ── Card wrapper ─────────────────────────────────────────────────
+const Card: React.FC<{ title: string; sub?: string; children: React.ReactNode }> = ({ title, sub, children }) => (
+  <section className="rounded-rebrand-lg border border-line bg-white">
+    <header className="px-5 pt-4 pb-3 border-b border-line">
+      <p className="text-[14px] font-bold tracking-tight text-ink leading-tight">{title}</p>
+      {sub && <p className="text-[11px] text-ink-2 mt-0.5">{sub}</p>}
+    </header>
+    <div className="px-5">{children}</div>
+  </section>
+);
+
+// ── SettingsRow ──────────────────────────────────────────────────
+const SettingsRow: React.FC<{ title: string; sub?: string; children: React.ReactNode }> = ({ title, sub, children }) => (
+  <div className="flex items-center justify-between gap-6 py-4 border-b border-line last:border-0">
+    <div className="min-w-0">
+      <p className="text-[13px] font-semibold tracking-tight text-ink leading-tight">{title}</p>
+      {sub && <p className="text-[11px] text-ink-2 mt-0.5 leading-snug">{sub}</p>}
+    </div>
+    <div className="shrink-0">{children}</div>
+  </div>
+);
 
 export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   open,
   onOpenChange,
   bolaoId,
+  bolaoName,
   isClosed,
   isPremium,
   scoringPreset,
   scoringResult,
   scoringExact,
   scoringWeights,
-  customColor,
   customBannerUrl,
   championEnabled,
   specialPredictionsEnabled,
@@ -236,17 +239,22 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   ownerUserId,
   predictionDeadlineMode,
 }) => {
-  // Soft-removed members: userId → { timer, userName }. Mostrados como
-  // ocultos na lista; após 5s o RPC é executado, com possibilidade de undo.
+  const [activeSection, setActiveSection] = useState<SectionId>('geral');
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+  // Reseta scroll do content area quando troca de seção, pra cabeçalho da nova
+  // seção sempre aparecer no topo (sem herdar offset da seção anterior).
+  useEffect(() => {
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [activeSection]);
   const pendingRemovalsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [pendingRemovedIds, setPendingRemovedIds] = useState<Set<string>>(new Set());
-  const [specialExpanded, setSpecialExpanded] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-  // When user clicks a deadline mode and there are existing predictions,
-  // we ask for confirmation before applying.
   const [pendingDeadlineMode, setPendingDeadlineMode] = useState<
-    'per_match' | 'per_round' | 'tournament_start' | null
+    'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start' | null
   >(null);
+
+  // Edição inline do nome do bolão
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(bolaoName ?? '');
 
   // Scoring state
   const [customResult, setCustomResult] = useState(scoringResult);
@@ -256,7 +264,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     { ...DEFAULT_WEIGHTS, ...(scoringWeights ?? {}) }
   );
 
-  // Feature toggles state
+  // Modalidades state
   const [champEnabled, setChampEnabled] = useState(championEnabled);
   const [specialConfig, setSpecialConfig] = useState<Record<string, boolean>>(specialPredictionsConfig);
   const [specialPoints, setSpecialPoints] = useState<Record<string, number>>(specialPredictionsPoints);
@@ -275,13 +283,14 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
   if (currentUserId !== ownerUserId) return null;
 
-  // Padrão UX moderno (Gmail-style): clique imediato esconde o membro da lista
-  // e mostra toast com botão "Desfazer". Após 5s sem undo, executa o RPC.
+  // ─────────────────────────────────────────────────────────────────
+  // Handlers
+  // ─────────────────────────────────────────────────────────────────
+
   const handleRemove = (userId: string, userName: string) => {
-    // Já está em remoção pendente? ignora cliques duplos
     if (pendingRemovalsRef.current.has(userId)) return;
 
-    setPendingRemovedIds(prev => {
+    setPendingRemovedIds((prev) => {
       const next = new Set(prev);
       next.add(userId);
       return next;
@@ -291,7 +300,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
       const timer = pendingRemovalsRef.current.get(userId);
       if (timer) clearTimeout(timer);
       pendingRemovalsRef.current.delete(userId);
-      setPendingRemovedIds(prev => {
+      setPendingRemovedIds((prev) => {
         const next = new Set(prev);
         next.delete(userId);
         return next;
@@ -303,12 +312,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
       removeMember.mutate(
         { bolaoId, userId },
         {
-          onSuccess: () => {
-            // Mantém escondido (já confirmado server-side)
-          },
           onError: (err: any) => {
-            // Reverte UI (membro reaparece) + toast de erro
-            setPendingRemovedIds(prev => {
+            setPendingRemovedIds((prev) => {
               const next = new Set(prev);
               next.delete(userId);
               return next;
@@ -347,64 +352,27 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     setCustomResult(preset.result);
     setCustomExact(preset.exact);
     setUseWeighted(preset.weighted);
-    // Reset weights to defaults when applying a preset
-    if (preset.weighted) {
-      setCustomWeights({ ...DEFAULT_WEIGHTS });
-    }
+    if (preset.weighted) setCustomWeights({ ...DEFAULT_WEIGHTS });
   };
 
   const isPresetActive = (preset: typeof SCORING_PRESETS[number]) =>
-    customResult === preset.result
-    && customExact === preset.exact
-    && useWeighted === preset.weighted
-    && (!preset.weighted || STAGE_LABELS.every(s => customWeights[s.key] === s.defaultWeight));
+    customResult === preset.result &&
+    customExact === preset.exact &&
+    useWeighted === preset.weighted &&
+    (!preset.weighted || STAGE_LABELS.every((s) => customWeights[s.key] === s.defaultWeight));
 
-  const handleUpgradeToPremium = async () => {
-    const BOLAO_PRO_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_BOLAO as string | undefined;
-    const BOLAO_PRO_PAYMENT_LINK = 'https://buy.stripe.com/4gMcMXgG43089uVg6zaR20b';
-    setUpgradeLoading(true);
-    try {
-      if (BOLAO_PRO_PRICE_ID) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error('Usuário não autenticado');
-        const { data: fnData, error } = await supabase.functions.invoke('stripe-create-checkout', {
-          body: {
-            priceId: BOLAO_PRO_PRICE_ID,
-            productType: 'bolao_premium',
-            bolaoId, // upgrade existing bolão
-          },
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (error) throw error;
-        window.location.href = fnData.url;
-      } else {
-        // Fallback payment link with client_reference_id for webhook match
-        window.location.href = `${BOLAO_PRO_PAYMENT_LINK}?client_reference_id=${bolaoId}`;
-      }
-    } catch (err: any) {
-      setUpgradeLoading(false);
-      toast({ title: 'Erro ao iniciar checkout', description: err?.message, variant: 'destructive' });
-    }
-  };
-
-  const applyDeadlineModeChange = (mode: 'per_match' | 'per_round' | 'tournament_start') => {
+  const applyDeadlineModeChange = (mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start') => {
     updateDeadlineMode.mutate(
       { bolaoId, mode },
       {
-        onSuccess: () => {
-          toast({ title: `Prazo atualizado: ${DEADLINE_MODE_LABELS[mode]?.label}` });
-        },
-        onError: (err: any) => {
-          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-        },
+        onSuccess: () => toast({ title: `Prazo atualizado: ${DEADLINE_MODE_LABELS[mode]?.label}` }),
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
       }
     );
   };
 
-  const handleDeadlineModeChange = (mode: 'per_match' | 'per_round' | 'tournament_start') => {
+  const handleDeadlineModeChange = (mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start') => {
     if (mode === predictionDeadlineMode) return;
-    // If predictions already exist, confirm before applying — the change can
-    // shift deadlines and lock palpites the user thought were still editable.
     const hasPredictions = bolaoStats != null && bolaoStats.total_predictions > 0;
     if (hasPredictions) {
       setPendingDeadlineMode(mode);
@@ -416,20 +384,10 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const handleSaveScoring = () => {
     const preset = useWeighted ? 'weighted_stages' : 'custom';
     updateScoring.mutate(
+      { bolaoId, preset, scoringResult: customResult, scoringExact: customExact, scoringWeights: useWeighted ? customWeights : null },
       {
-        bolaoId,
-        preset,
-        scoringResult: customResult,
-        scoringExact: customExact,
-        scoringWeights: useWeighted ? customWeights : null,
-      },
-      {
-        onSuccess: (res) => {
-          toast({ title: `Pontuação atualizada: ${res.scoring_result}pt / ${res.scoring_exact}pts` });
-        },
-        onError: (err: any) => {
-          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-        },
+        onSuccess: (res) => toast({ title: `Pontuação atualizada: ${res.scoring_result}pt / ${res.scoring_exact}pts` }),
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
       }
     );
   };
@@ -476,13 +434,36 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     );
   };
 
-  const handleColorChange = (color: string) => {
-    const finalColor = color === 'default' ? null : color;
-    updateTheme.mutate(
-      { bolaoId, color: finalColor ?? undefined },
+  const handleSaveSpecialPoints = () => {
+    updateSettings.mutate(
+      { bolaoId, settings: { special_predictions_points: specialPoints } },
       {
-        onSuccess: () => toast({ title: 'Cor atualizada!' }),
+        onSuccess: () => toast({ title: 'Pontuação dos palpites especiais atualizada' }),
         onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      }
+    );
+  };
+
+  const handleSaveName = () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      toast({ title: 'Nome não pode ficar vazio', variant: 'destructive' });
+      return;
+    }
+    if (trimmed === bolaoName) {
+      setEditingName(false);
+      return;
+    }
+    updateSettings.mutate(
+      { bolaoId, settings: { name: trimmed } },
+      {
+        onSuccess: () => {
+          toast({ title: 'Nome do bolão atualizado' });
+          setEditingName(false);
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro ao atualizar nome', description: err.message, variant: 'destructive' });
+        },
       }
     );
   };
@@ -522,758 +503,558 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-terminal-bg border-terminal-border max-w-lg max-h-[85vh] overflow-y-auto minimal-scrollbar p-0">
-        <DialogHeader className="px-5 pt-5 pb-0">
-          <DialogTitle className="flex items-center gap-2 text-terminal-text">
-            <Shield className="w-5 h-5 text-terminal-blue" />
-            Configurações do Bolão
-          </DialogTitle>
-        </DialogHeader>
+  // ─────────────────────────────────────────────────────────────────
+  // Sections
+  // ─────────────────────────────────────────────────────────────────
 
-        <div className="px-5 pb-5 pt-4 space-y-5">
+  const renderGeral = () => (
+    <>
+      <SectionHeader title="Geral" subtitle="Identificação e status do bolão." />
 
-          {/* ── Inscrições ── */}
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium">
-                {isClosed ? 'Inscrições encerradas' : 'Inscrições abertas'}
-              </p>
-              <p className="text-xs opacity-50 mt-0.5">
-                {isClosed
-                  ? 'Ninguém mais pode entrar no bolão'
-                  : 'Qualquer um com o código pode entrar'}
-              </p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleToggleClose}
-              disabled={toggleClose.isPending}
-              className={`shrink-0 gap-1.5 text-xs ${
-                isClosed
-                  ? 'border-terminal-green/40 text-terminal-green hover:bg-terminal-green/10'
-                  : 'border-terminal-red/40 text-terminal-red/80 hover:bg-terminal-red/10'
-              }`}
-            >
-              {isClosed ? (
-                <><Unlock className="w-3 h-3" /> Reabrir</>
-              ) : (
-                <><Lock className="w-3 h-3" /> Encerrar</>
-              )}
-            </Button>
-          </div>
-
-          {/* ── Premium Upgrade CTA — only when not premium ── */}
-          {!isPremium && (
-            <div className="rounded-lg border border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center shrink-0">
-                  <Crown className="w-4.5 h-4.5 text-yellow-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-yellow-300 flex items-center gap-1.5">
-                    Desbloqueie o Bolão Premium
-                    <Sparkles className="w-3.5 h-3.5" />
-                  </p>
-                  <p className="text-[11px] opacity-70 mt-0.5">
-                    Pagamento único de <span className="font-bold text-yellow-300">R$ 19,90</span> · sem mensalidade
-                  </p>
-                </div>
-              </div>
-
-              {/* 3 features destaque (cards visuais) + 2 finos abaixo */}
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div className="p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
-                  <Users className="w-4 h-4 text-yellow-400 mb-1.5" />
-                  <p className="text-xs font-bold text-yellow-200">Participantes ilimitados</p>
-                  <p className="text-[10px] opacity-60 mt-0.5">Free: até 10 pessoas</p>
-                </div>
-                <div className="p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
-                  <Zap className="w-4 h-4 text-yellow-400 mb-1.5" />
-                  <p className="text-xs font-bold text-yellow-200">Final vale 5× mais</p>
-                  <p className="text-[10px] opacity-60 mt-0.5">Multiplicador progressivo por fase</p>
-                </div>
-                <div className="p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
-                  <Star className="w-4 h-4 text-yellow-400 mb-1.5" />
-                  <p className="text-xs font-bold text-yellow-200">Palpites especiais</p>
-                  <p className="text-[10px] opacity-60 mt-0.5">Campeão, finalistas, semis...</p>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] opacity-70">
-                <span className="flex items-center gap-1">
-                  <SlidersHorizontal className="w-3 h-3 text-yellow-400/80 shrink-0" />
-                  Pontuação 100% customizável
-                </span>
-                <span className="flex items-center gap-1">
-                  <Palette className="w-3 h-3 text-yellow-400/80 shrink-0" />
-                  Logo e cor próprios
-                </span>
-              </div>
-
-              <Button
-                size="sm"
-                onClick={handleUpgradeToPremium}
-                disabled={upgradeLoading}
-                className="w-full mt-3 bg-yellow-500 text-terminal-bg hover:bg-yellow-400 font-bold gap-1.5 text-xs h-9"
+      <Card title="Identificação" sub="Nome e logo aparecem pra todos os participantes">
+        <div className="py-4 border-b border-line">
+          <p className="text-[13px] font-semibold text-ink leading-tight mb-1">Nome do bolão</p>
+          {editingName ? (
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="text"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveName();
+                  if (e.key === 'Escape') {
+                    setNameDraft(bolaoName ?? '');
+                    setEditingName(false);
+                  }
+                }}
+                maxLength={60}
+                aria-label="Nome do bolão"
+                autoFocus
+                className="flex-1 h-10 px-3 rounded-rebrand-md border border-line bg-white text-[13px] text-ink focus:border-forest focus:ring-2 focus:ring-forest/20 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleSaveName}
+                disabled={updateSettings.isPending}
+                className="h-10 px-3 rounded-rebrand-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-2 disabled:opacity-50 transition-colors"
               >
-                {upgradeLoading ? (
-                  'Redirecionando...'
-                ) : (
-                  <>
-                    <Crown className="w-3.5 h-3.5" />
-                    Fazer upgrade · R$ 19,90
-                  </>
-                )}
-              </Button>
+                {updateSettings.isPending ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNameDraft(bolaoName ?? '');
+                  setEditingName(false);
+                }}
+                disabled={updateSettings.isPending}
+                aria-label="Cancelar edição"
+                className="h-10 w-10 inline-flex items-center justify-center rounded-rebrand-md text-ink-2 hover:bg-canvas-2 hover:text-ink disabled:opacity-50 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 mt-1">
+              <p className="text-[14px] text-ink truncate">{bolaoName || '—'}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNameDraft(bolaoName ?? '');
+                  setEditingName(true);
+                }}
+                className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 border border-line hover:border-line-2 hover:bg-canvas-2 hover:text-ink inline-flex items-center gap-1.5 transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar
+              </button>
             </div>
           )}
+        </div>
 
-          {/* ── Features do Bolão ── */}
-          <div className="border-t border-terminal-border-subtle pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Star className="w-3.5 h-3.5 opacity-50" />
-              <p className="text-xs font-bold uppercase tracking-wider opacity-50">Modalidades</p>
+        <div className="py-4">
+          <p className="text-[13px] font-semibold text-ink leading-tight mb-1">Logo do bolão</p>
+          <p className="text-[11px] text-ink-2 mb-3">JPG ou PNG, máximo 2MB. Aparece no header e nos cards.</p>
+          {customBannerUrl ? (
+            <div className="flex items-center gap-3">
+              <img src={customBannerUrl} alt="Logo" className="w-14 h-14 rounded-rebrand-sm border border-line bg-canvas-2 object-contain" />
+              <p className="flex-1 min-w-0 text-[11px] text-ink-2 truncate">{customBannerUrl.split('/').pop()}</p>
+              <button
+                type="button"
+                onClick={handleRemoveLogo}
+                disabled={updateTheme.isPending}
+                className="h-9 px-3 rounded-rebrand-md border border-line text-[12px] text-ink-2 hover:border-status-danger/40 hover:text-status-danger hover:bg-status-danger/[0.06] transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <X className="w-3.5 h-3.5" /> Remover
+              </button>
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadLogo.isPending || updateTheme.isPending}
+              className="w-full h-12 px-3 rounded-rebrand-md border border-dashed border-line text-[13px] text-ink-2 hover:border-forest/40 hover:bg-canvas-2 transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <ImagePlus className="w-4 h-4" />
+              {uploadLogo.isPending ? 'Enviando...' : 'Escolher imagem'}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleLogoFileChange}
+          />
+        </div>
+      </Card>
 
-            <div className="space-y-3">
-              {/* Champion toggle + points inline */}
-              <div className="rounded border border-terminal-border-subtle p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Trophy className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-                    <p className="text-xs font-medium">Palpite de Campeão</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <NumberStepper
-                      value={champPoints}
-                      onChange={setChampPoints}
-                      min={1}
-                      max={50}
-                      size="sm"
-                      disabled={!champEnabled}
-                      ariaLabel="pontos do campeão"
-                      className="w-24"
-                    />
-                    <span className="text-[9px] opacity-30 w-5">pts</span>
-                    <button
-                      onClick={handleToggleChampion}
-                      aria-label={champEnabled ? 'Desabilitar palpite de campeão' : 'Habilitar palpite de campeão'}
-                      aria-pressed={champEnabled}
-                      className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
-                    >
-                      {champEnabled ? (
-                        <ToggleRight className="w-7 h-7 text-terminal-blue" />
-                      ) : (
-                        <ToggleLeft className="w-7 h-7 opacity-30" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                {champPoints !== championPoints && champEnabled && (
-                  <button
-                    onClick={handleSaveChampionPoints}
-                    disabled={updateSettings.isPending}
-                    className="w-full text-[10px] text-terminal-blue hover:underline disabled:opacity-30 mt-2"
-                  >
-                    Salvar pontuação
-                  </button>
-                )}
-              </div>
+      <Card title="Inscrições">
+        <SettingsRow
+          title={isClosed ? 'Inscrições encerradas' : 'Inscrições abertas'}
+          sub={isClosed ? 'Ninguém mais pode entrar.' : 'Qualquer um com o código pode entrar.'}
+        >
+          <button
+            type="button"
+            onClick={handleToggleClose}
+            disabled={toggleClose.isPending}
+            className={`h-9 px-3 rounded-rebrand-md text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 ${
+              isClosed
+                ? 'border border-status-success/40 text-status-success bg-status-success/[0.08] hover:bg-status-success/[0.14]'
+                : 'border border-status-danger/40 text-status-danger bg-status-danger/[0.06] hover:bg-status-danger/[0.12]'
+            }`}
+          >
+            {isClosed ? <><Unlock className="w-3.5 h-3.5" /> Reabrir</> : <><Lock className="w-3.5 h-3.5" /> Encerrar</>}
+          </button>
+        </SettingsRow>
+      </Card>
+    </>
+  );
 
-              {/* Special predictions — collapsible individual toggles */}
-              <div className="rounded border border-terminal-border-subtle overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setSpecialExpanded(!specialExpanded)}
-                  className="w-full flex items-center justify-between gap-3 p-3 hover:bg-terminal-dark-gray/20 transition-colors"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Star className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium">Palpites Especiais</p>
-                      <p className="text-[10px] opacity-40">
-                        {Object.values(specialConfig).filter(Boolean).length} de {Object.keys(specialConfig).length} habilitados
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronDown className={`w-3.5 h-3.5 opacity-30 transition-transform ${specialExpanded ? 'rotate-180' : ''}`} />
-                </button>
-                {specialExpanded && (
-                  <div className="border-t border-terminal-border-subtle px-3 pb-3 pt-2 space-y-2.5">
-                    {Object.entries(SPECIAL_TYPES).map(([type, label]) => (
-                      <div key={type} className="flex items-center justify-between gap-2 pl-5">
-                        <p className="text-[11px] flex-1 min-w-0">{label}</p>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <NumberStepper
-                            value={specialPoints[type] ?? 1}
-                            onChange={(v) => setSpecialPoints({ ...specialPoints, [type]: v })}
-                            min={1}
-                            max={50}
-                            size="sm"
-                            disabled={!specialConfig[type]}
-                            ariaLabel={`pontos de ${label}`}
-                            className="w-24"
-                          />
-                          <span className="text-[9px] opacity-30 w-5">pts</span>
-                          <button
-                            onClick={() => handleToggleSpecialType(type)}
-                            aria-label={specialConfig[type] ? `Desabilitar ${label}` : `Habilitar ${label}`}
-                            aria-pressed={!!specialConfig[type]}
-                            className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
-                          >
-                            {specialConfig[type] ? (
-                              <ToggleRight className="w-7 h-7 text-terminal-blue" />
-                            ) : (
-                              <ToggleLeft className="w-7 h-7 opacity-30" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {JSON.stringify(specialPoints) !== JSON.stringify(specialPredictionsPoints) && (
-                      <button
-                        onClick={() => {
-                          updateSettings.mutate(
-                            { bolaoId, settings: { special_predictions_points: specialPoints } },
-                            {
-                              onSuccess: () => toast({ title: 'Pontuação dos palpites especiais atualizada' }),
-                              onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
-                            }
-                          );
-                        }}
-                        disabled={updateSettings.isPending}
-                        className="w-full text-[10px] text-terminal-blue hover:underline disabled:opacity-30 pt-1"
-                      >
-                        Salvar pontuação
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+  const renderPontuacao = () => (
+    <>
+      <SectionHeader
+        title="Pontuação"
+        subtitle={
+          <>Como cada palpite conta. <span className="font-semibold text-ink">3 estilos prontos</span> ou customize do jeito que quiser.</>
+        }
+      />
 
-          {/* ── Prazo de palpites ── */}
-          <div className="border-t border-terminal-border-subtle pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <SlidersHorizontal className="w-3.5 h-3.5 opacity-50" />
-              <p className="text-xs font-bold uppercase tracking-wider opacity-50">Prazo de palpites</p>
-            </div>
-            <div className="space-y-1.5">
-              {(['per_match', 'per_round', 'tournament_start'] as const).map((mode) => {
-                const active = predictionDeadlineMode === mode;
-                const meta = DEADLINE_MODE_LABELS[mode];
+      <Card title="Estilo de pontuação" sub="Escolha um preset ou customize abaixo">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 py-4">
+              {SCORING_PRESETS.map((p) => {
+                const active = isPresetActive(p);
                 return (
                   <button
-                    key={mode}
+                    key={p.value}
                     type="button"
-                    onClick={() => handleDeadlineModeChange(mode)}
-                    disabled={updateDeadlineMode.isPending}
-                    className={`w-full text-left rounded border p-2.5 transition-all disabled:opacity-60 ${
+                    onClick={() => handleApplyPreset(p)}
+                    className={`text-left rounded-rebrand-md border p-4 transition-all ${
                       active
-                        ? 'border-terminal-blue bg-terminal-blue/10'
-                        : 'border-terminal-border-subtle hover:border-terminal-blue/40 bg-terminal-dark-gray/20'
+                        ? 'border-forest bg-forest/[0.06] ring-2 ring-forest/15'
+                        : 'border-line bg-white hover:border-line-2 hover:bg-canvas-2'
                     }`}
                   >
-                    <div className="flex items-start gap-2">
-                      <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
-                        active ? 'border-terminal-blue bg-terminal-blue' : 'border-terminal-border-subtle'
-                      }`}>
-                        {active && <Check className="w-2.5 h-2.5 text-terminal-bg" strokeWidth={3} />}
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`text-xs font-medium ${active ? 'text-terminal-blue' : ''}`}>
-                          {meta?.label}
-                        </p>
-                        <p className="text-[10px] opacity-50 mt-0.5">{meta?.description}</p>
-                      </div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className={`text-[13px] font-bold ${active ? 'text-forest' : 'text-ink'}`}>{p.label}</p>
+                      {active && (
+                        <span className="w-4 h-4 rounded-full bg-forest text-white flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-ink-2 leading-snug mb-3">{p.description}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-canvas-2 text-ink-2">{p.result} pt</span>
+                      <span className="text-ink-3">·</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-canvas-2 text-ink-2">{p.exact} pts</span>
+                      {p.weighted && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber/[0.18] text-amber-2 ml-auto">5× final</span>
+                      )}
                     </div>
                   </button>
                 );
               })}
             </div>
-            {bolaoStats && bolaoStats.total_predictions > 0 && (
-              <div className="mt-2 p-2 rounded border border-terminal-yellow/30 bg-terminal-yellow/5">
-                <p className="text-[10px] text-terminal-yellow/90">
-                  <AlertTriangle className="w-3 h-3 inline mr-1 -mt-0.5" />
-                  <span className="font-bold">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'pessoa já fez' : 'pessoas já fizeram'} <span className="font-bold">{bolaoStats.total_predictions}</span> palpite{bolaoStats.total_predictions !== 1 ? 's' : ''}. Mudar o prazo afeta todos eles — pediremos confirmação.
-                </p>
-              </div>
-            )}
-          </div>
+          </Card>
 
-          {/* ── Pontuação ── */}
-          <div className="border-t border-terminal-border-subtle pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <SlidersHorizontal className="w-3.5 h-3.5 opacity-50" />
-              <p className="text-xs font-bold uppercase tracking-wider opacity-50">Pontuação</p>
-              {!isPremium && (
-                <span className="text-[9px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-bold ml-auto">
-                  PREMIUM
-                </span>
-              )}
-            </div>
+          <Card title="Valores base" sub="Ajustes finos sobre o preset escolhido">
+            <SettingsRow title="Acertar resultado" sub="Vencedor ou empate, sem o placar exato">
+              <NumberStepper value={customResult} onChange={setCustomResult} min={1} max={10} suffix="pts" ariaLabel="pontos por acertar resultado" className="w-32" />
+            </SettingsRow>
+            <SettingsRow title="Placar exato" sub="Acertou o placar inteiro (3×0, 2×1...)">
+              <NumberStepper value={customExact} onChange={setCustomExact} min={1} max={20} suffix="pts" ariaLabel="pontos por placar exato" className="w-32" />
+            </SettingsRow>
+            <SettingsRow title="Multiplicador por fase" sub="Mata-mata vale mais que jogo de grupo">
+              <Toggle on={useWeighted} onClick={() => setUseWeighted((v) => !v)} ariaLabel={useWeighted ? 'Desabilitar multiplicador' : 'Habilitar multiplicador'} />
+            </SettingsRow>
+          </Card>
 
-            {isPremium ? (
-              <div className="space-y-4">
-                {/* Quick presets — cards with description and values */}
-                <div>
-                  <p className="text-[10px] opacity-40 mb-2">Escolha um estilo</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {SCORING_PRESETS.map((p) => {
-                      const active = isPresetActive(p);
-                      return (
-                        <button
-                          key={p.value}
-                          onClick={() => handleApplyPreset(p)}
-                          className={`text-left p-3 rounded border transition-all ${
-                            active
-                              ? 'border-terminal-blue bg-terminal-blue/10'
-                              : 'border-terminal-border-subtle bg-terminal-dark-gray/20 hover:border-terminal-blue/40 hover:bg-terminal-dark-gray/40'
-                          }`}
-                        >
-                          <p className={`text-xs font-bold mb-1 ${active ? 'text-terminal-blue' : ''}`}>
-                            {p.label}
-                          </p>
-                          <p className="text-[10px] opacity-60 mb-2">{p.description}</p>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">
-                              {p.result} pt
-                            </span>
-                            <span className="text-[10px] opacity-30">·</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">
-                              {p.exact} pts
-                            </span>
-                          </div>
-                          {p.weighted && (
-                            <p className="text-[10px] text-terminal-blue/80 mt-2">
-                              Grupos 1× <span className="opacity-40">→</span> Final 5×
-                            </p>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Editable values */}
-                <div className="p-3 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] opacity-50">Acertar resultado</label>
-                      <div className="flex items-center gap-2">
-                        <NumberStepper
-                          value={customResult}
-                          onChange={setCustomResult}
-                          min={1}
-                          max={10}
-                          ariaLabel="pontos por acertar resultado"
-                          className="flex-1"
-                        />
-                        <span className="text-[10px] opacity-30 shrink-0">pts</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] opacity-50">Placar exato</label>
-                      <div className="flex items-center gap-2">
-                        <NumberStepper
-                          value={customExact}
-                          onChange={setCustomExact}
-                          min={1}
-                          max={20}
-                          ariaLabel="pontos por placar exato"
-                          className="flex-1"
-                        />
-                        <span className="text-[10px] opacity-30 shrink-0">pts</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Weighted stages toggle */}
-                  <div className="flex items-center justify-between gap-3 pt-2 border-t border-terminal-border-subtle">
-                    <div>
-                      <p className="text-xs font-medium">Multiplicador por fase</p>
-                      <p className="text-[10px] opacity-40">Mata-mata vale mais pontos</p>
-                    </div>
-                    <button
-                      onClick={() => setUseWeighted(!useWeighted)}
-                      aria-label={useWeighted ? 'Desabilitar multiplicador por fase' : 'Habilitar multiplicador por fase'}
-                      aria-pressed={useWeighted}
-                      className="shrink-0 w-11 h-11 flex items-center justify-center rounded hover:bg-terminal-blue/10 transition-colors"
-                    >
-                      {useWeighted ? (
-                        <ToggleRight className="w-7 h-7 text-terminal-blue" />
-                      ) : (
-                        <ToggleLeft className="w-7 h-7 opacity-30" />
-                      )}
-                    </button>
-                  </div>
-
-                  {useWeighted && (
-                    <div className="space-y-2 pt-1">
-                      <p className="text-[10px] opacity-50">
-                        Ajuste o peso de cada fase com os botões <span className="font-mono">−</span> / <span className="font-mono">+</span>
-                      </p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {STAGE_LABELS.map(stage => {
-                          const value = customWeights[stage.key] ?? stage.defaultWeight;
-                          const isCustom = value !== stage.defaultWeight;
-                          return (
-                            <div key={stage.key} className="flex flex-col gap-1">
-                              <label className="text-[9px] opacity-50 uppercase tracking-wider">
-                                {stage.label}
-                              </label>
-                              <NumberStepper
-                                value={value}
-                                onChange={(v) => setCustomWeights(w => ({ ...w, [stage.key]: v }))}
-                                min={0.5}
-                                max={10}
-                                step={0.5}
-                                highlight={isCustom}
-                                suffix="×"
-                                ariaLabel={`peso de ${stage.label}`}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCustomWeights({ ...DEFAULT_WEIGHTS })}
-                        className="text-[10px] text-terminal-blue/70 hover:text-terminal-blue underline"
-                      >
-                        Resetar para valores padrão
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <Button
-                  size="sm"
-                  onClick={handleSaveScoring}
-                  disabled={updateScoring.isPending}
-                  className="w-full bg-terminal-blue/20 text-terminal-blue border border-terminal-blue/30 hover:bg-terminal-blue/30 text-xs h-8"
-                >
-                  {updateScoring.isPending ? 'Salvando...' : 'Salvar pontuação'}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Preview dos 3 presets que viram disponíveis no Premium */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pointer-events-none">
-                  {SCORING_PRESETS.map(p => {
-                    const isWeighted = p.weighted;
-                    return (
-                      <div
-                        key={p.value}
-                        className={`p-3 rounded border bg-terminal-dark-gray/20 ${
-                          isWeighted ? 'border-yellow-500/30 ring-1 ring-yellow-500/10' : 'border-terminal-border-subtle opacity-60'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <p className={`text-xs font-bold ${isWeighted ? 'text-yellow-300' : ''}`}>
-                            {p.label}
-                          </p>
-                          {isWeighted && (
-                            <span className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/20 text-yellow-300 font-bold uppercase">
-                              Top
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] opacity-60 leading-tight mb-2">{p.description}</p>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.result} pt</span>
-                          <span className="text-[10px] opacity-30">·</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-terminal-dark-gray/60 font-mono">{p.exact} pts</span>
-                        </div>
-                        {/* Progressão visual de multiplicador no preset Campeonato */}
-                        {isWeighted && (
-                          <div className="mt-2 pt-2 border-t border-yellow-500/15">
-                            <p className="text-[9px] uppercase tracking-wider opacity-50 mb-1">Multiplicador por fase</p>
-                            <div className="flex items-end gap-0.5 h-7">
-                              {[
-                                { label: 'Gr', mult: 1, h: '20%' },
-                                { label: 'R16', mult: 1.5, h: '30%' },
-                                { label: 'Q', mult: 2, h: '40%' },
-                                { label: 'S', mult: 3, h: '60%' },
-                                { label: 'F', mult: 5, h: '100%' },
-                              ].map((bar) => (
-                                <div key={bar.label} className="flex-1 flex flex-col items-center gap-0.5">
-                                  <div
-                                    className="w-full rounded-sm bg-yellow-400/60"
-                                    style={{ height: bar.h }}
-                                    title={`${bar.label}: ${bar.mult}x`}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex justify-between mt-0.5">
-                              <span className="text-[8px] opacity-40 font-mono">Grupos 1×</span>
-                              <span className="text-[8px] text-yellow-300 font-mono font-bold">Final 5×</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <p className="text-[10px] opacity-60 text-center">
-                  Acerto na <span className="text-yellow-300 font-bold">Final vale 5×</span> mais pontos que jogo de grupo
-                </p>
-
-                <div className="flex items-center justify-between gap-2 p-2.5 rounded border border-yellow-500/30 bg-yellow-500/5">
-                  <p className="text-[11px] text-yellow-200/90">
-                    <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
-                    Hoje: {scoringResult}pt resultado · {scoringExact}pts placar
-                  </p>
-                  <button
-                    onClick={handleUpgradeToPremium}
-                    disabled={upgradeLoading}
-                    className="text-[11px] font-bold text-yellow-300 hover:text-yellow-200 whitespace-nowrap disabled:opacity-50"
-                  >
-                    Desbloquear →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Cor do bolão ── */}
-          <div className="border-t border-terminal-border-subtle pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Palette className="w-3.5 h-3.5 opacity-50" />
-              <p className="text-xs font-bold uppercase tracking-wider opacity-50">Cor do bolão</p>
-              {!isPremium && (
-                <span className="text-[9px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-bold ml-auto">
-                  PREMIUM
-                </span>
-              )}
-            </div>
-
-            {isPremium ? (
-              <div className="grid grid-cols-4 gap-1.5">
-                {THEME_COLORS.map((c) => {
-                  const isActive = customColor === c.value || (c.value === 'default' && !customColor);
-                  return (
-                    <button
-                      key={c.value}
-                      onClick={() => handleColorChange(c.value)}
-                      disabled={updateTheme.isPending}
-                      className={`flex flex-col items-center gap-1 p-2 rounded border transition-all ${
-                        isActive ? 'border-terminal-green' : 'border-terminal-border-subtle hover:border-terminal-border'
-                      }`}
-                    >
-                      <div className={`w-6 h-6 rounded border ${c.bg} ${c.border}`} />
-                      <span className={`text-[9px] ${isActive ? 'text-terminal-green font-bold' : 'opacity-40'}`}>
-                        {c.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-1.5 opacity-40 pointer-events-none">
-                  {THEME_COLORS.map((c) => (
-                    <div key={c.value} className="flex flex-col items-center gap-1 p-2 rounded border border-terminal-border-subtle">
-                      <div className={`w-6 h-6 rounded border ${c.bg} ${c.border}`} />
-                      <span className="text-[9px] opacity-40">{c.label}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between gap-2 p-2.5 rounded border border-yellow-500/30 bg-yellow-500/5">
-                  <p className="text-[11px] text-yellow-200/90">
-                    <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
-                    8 cores para identificar seu bolão
-                  </p>
-                  <button
-                    onClick={handleUpgradeToPremium}
-                    disabled={upgradeLoading}
-                    className="text-[11px] font-bold text-yellow-300 hover:text-yellow-200 whitespace-nowrap disabled:opacity-50"
-                  >
-                    Desbloquear →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Logo do bolão ── */}
-          <div className="border-t border-terminal-border-subtle pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <ImagePlus className="w-3.5 h-3.5 opacity-50" />
-              <p className="text-xs font-bold uppercase tracking-wider opacity-50">Logo do bolão</p>
-              {!isPremium && (
-                <span className="text-[9px] px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded font-bold ml-auto">
-                  PREMIUM
-                </span>
-              )}
-            </div>
-
-            {isPremium ? (
-              <div className="flex items-center gap-3">
-                {customBannerUrl ? (
-                  <>
-                    <img
-                      src={customBannerUrl}
-                      alt="Logo"
-                      className="w-12 h-12 rounded border border-terminal-border object-cover shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] opacity-50 truncate">{customBannerUrl.split('/').pop()}</p>
-                    </div>
-                    <button
-                      onClick={handleRemoveLogo}
-                      disabled={updateTheme.isPending}
-                      className="shrink-0 p-1.5 rounded border border-terminal-border-subtle hover:border-terminal-red/40 hover:text-terminal-red transition-colors opacity-50 hover:opacity-100"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadLogo.isPending || updateTheme.isPending}
-                    className="flex items-center gap-2 px-3 py-2 rounded border border-dashed border-terminal-border hover:border-terminal-blue/50 transition-colors text-xs opacity-60 hover:opacity-100 w-full justify-center"
-                  >
-                    <ImagePlus className="w-3.5 h-3.5" />
-                    {uploadLogo.isPending ? 'Enviando...' : 'Escolher imagem (JPG/PNG, max 2MB)'}
-                  </button>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={handleLogoFileChange}
-                />
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-2 p-3 rounded border border-yellow-500/30 bg-yellow-500/5">
-                <div className="flex items-center gap-2">
-                  <ImagePlus className="w-3.5 h-3.5 text-yellow-400/70" />
-                  <p className="text-[11px] text-yellow-200/90">
-                    <Lock className="w-3 h-3 inline mr-1 -mt-0.5" />
-                    Logo personalizado do bolão
-                  </p>
-                </div>
-                <button
-                  onClick={handleUpgradeToPremium}
-                  disabled={upgradeLoading}
-                  className="text-[11px] font-bold text-yellow-300 hover:text-yellow-200 whitespace-nowrap disabled:opacity-50"
-                >
-                  Desbloquear →
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* ── Participantes ── */}
-          <div className="border-t border-terminal-border-subtle pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Users className="w-3.5 h-3.5 opacity-50" />
-              <p className="text-xs font-bold uppercase tracking-wider opacity-50">Participantes</p>
-              <span className="text-[10px] opacity-30 ml-auto">{ranking.length}</span>
-            </div>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto minimal-scrollbar">
-              {ranking
-                .filter(m => !pendingRemovedIds.has(m.user_id))
-                .map((member) => {
-                  const isOwner = member.user_id === ownerUserId;
+          {useWeighted && (
+            <Card title="Multiplicador por fase" sub="Quanto cada acerto vale em cada momento da Copa">
+              <div className="flex sm:grid sm:grid-cols-7 gap-2 py-4 overflow-x-auto sm:overflow-visible -mx-1 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {STAGE_LABELS.map((stage) => {
+                  const value = customWeights[stage.key] ?? stage.defaultWeight;
+                  const heightPct = Math.min(100, (value / 5) * 100);
+                  const isFinal = stage.key === 'final';
+                  const setValue = (next: number) =>
+                    setCustomWeights((w) => ({ ...w, [stage.key]: Math.min(10, Math.max(0.5, next)) }));
                   return (
                     <div
-                      key={member.user_id}
-                      className="flex items-center gap-3 py-2 px-3 rounded border border-terminal-border-subtle bg-terminal-dark-gray/20"
+                      key={stage.key}
+                      className="flex flex-col items-center min-w-[68px] sm:min-w-0 shrink-0 sm:shrink"
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {member.user_name || member.user_email}
-                        </p>
-                        <p className="text-[10px] opacity-40">
-                          {member.total_points} pts · {member.total_predictions} palpites
-                        </p>
+                      <p className="text-[10px] font-medium text-ink-2 mb-1.5 text-center min-h-[26px] flex items-end justify-center leading-tight">
+                        {stage.label}
+                      </p>
+                      <div className="h-24 w-full bg-canvas-2 rounded-rebrand-md flex items-end overflow-hidden">
+                        <div
+                          className={`w-full ${isFinal ? 'bg-amber' : value >= 3 ? 'bg-amber-2' : 'bg-forest'}`}
+                          style={{ height: `${heightPct}%` }}
+                        />
                       </div>
-                      {isOwner ? (
-                        <span className="text-[10px] text-terminal-green font-bold shrink-0">Criador</span>
-                      ) : (
+                      <p className={`text-[14px] font-bold tabular-nums mt-2 ${isFinal ? 'text-amber-2' : 'text-ink'}`}>
+                        {value}×
+                      </p>
+                      <div className="flex items-center gap-1 mt-1">
                         <button
-                          onClick={() => handleRemove(member.user_id, member.user_name || member.user_email)}
-                          aria-label={`Remover ${member.user_name || member.user_email} do bolão`}
-                          className="shrink-0 flex items-center gap-1 text-[10px] font-bold transition-colors px-2 h-9 rounded border border-terminal-border opacity-60 hover:opacity-100 hover:border-terminal-red/40 hover:text-terminal-red hover:bg-terminal-red/5"
+                          type="button"
+                          onClick={() => setValue(value - 0.5)}
+                          disabled={value <= 0.5}
+                          aria-label={`Diminuir peso de ${stage.label}`}
+                          className="w-7 h-7 flex items-center justify-center rounded-full border border-line bg-white text-ink-2 text-[14px] font-semibold hover:bg-canvas-2 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
-                          <UserX className="w-3 h-3" /> Remover
+                          −
                         </button>
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => setValue(value + 0.5)}
+                          disabled={value >= 10}
+                          aria-label={`Aumentar peso de ${stage.label}`}
+                          className="w-7 h-7 flex items-center justify-center rounded-full border border-line bg-white text-ink-2 text-[14px] font-semibold hover:bg-canvas-2 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-
-      {/* ── Confirmação de mudança de deadline mode (quando há palpites) ── */}
-      <Dialog open={pendingDeadlineMode !== null} onOpenChange={(o) => !o && setPendingDeadlineMode(null)}>
-        <DialogContent className="bg-terminal-bg border-terminal-yellow/40 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-terminal-yellow">
-              <AlertTriangle className="w-5 h-5" />
-              Confirmar mudança de prazo
-            </DialogTitle>
-          </DialogHeader>
-          <div className="text-sm space-y-3">
-            <p>
-              Você está mudando o prazo de palpites de{' '}
-              <span className="font-bold">{DEADLINE_MODE_LABELS[predictionDeadlineMode]?.label}</span>{' '}
-              para <span className="font-bold text-terminal-yellow">{pendingDeadlineMode && DEADLINE_MODE_LABELS[pendingDeadlineMode]?.label}</span>.
-            </p>
-            {bolaoStats && (
-              <div className="rounded border border-terminal-yellow/30 bg-terminal-yellow/5 p-3 text-xs">
-                <p className="font-bold mb-1.5">Impacto:</p>
-                <ul className="space-y-1 opacity-90">
-                  <li>
-                    • <span className="font-bold text-terminal-yellow">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'pessoa' : 'pessoas'} {bolaoStats.total_members === 1 ? 'foi afetada' : 'serão afetadas'}
-                  </li>
-                  <li>
-                    • <span className="font-bold text-terminal-yellow">{bolaoStats.total_predictions}</span> {bolaoStats.total_predictions === 1 ? 'palpite' : 'palpites'} {bolaoStats.total_predictions === 1 ? 'foi feito' : 'foram feitos'} no modo atual
-                  </li>
-                  <li>
-                    • Alguns palpites podem ficar fora do novo prazo
-                  </li>
-                </ul>
               </div>
-            )}
-            <p className="text-xs opacity-60">
-              Avise os participantes antes de confirmar — mudanças no meio do bolão podem gerar confusão.
-            </p>
+              <button
+                type="button"
+                onClick={() => setCustomWeights({ ...DEFAULT_WEIGHTS })}
+                className="text-[11px] text-forest hover:underline font-medium pb-4"
+              >
+                Resetar para valores padrão
+              </button>
+            </Card>
+          )}
+
+      <button
+        type="button"
+        onClick={handleSaveScoring}
+        disabled={updateScoring.isPending}
+        className="h-11 px-5 rounded-rebrand-md bg-forest text-white text-[13px] font-bold hover:bg-forest-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {updateScoring.isPending ? 'Salvando...' : 'Salvar pontuação'}
+      </button>
+    </>
+  );
+
+  const renderPrazo = () => (
+    <>
+      <SectionHeader
+        title="Prazo de palpites"
+        subtitle="Quando os palpites de cada jogo deixam de ser editáveis."
+      />
+
+      <Card title="Modo de prazo" sub="Aplica a todos os jogos do bolão">
+        <div className="space-y-2 py-4">
+          {(['per_match', 'per_day', 'per_round', 'per_stage'] as const).map((mode) => {
+            const active = predictionDeadlineMode === mode;
+            const meta = DEADLINE_MODE_LABELS[mode];
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleDeadlineModeChange(mode)}
+                disabled={updateDeadlineMode.isPending}
+                className={`w-full text-left rounded-rebrand-md border p-3 transition-all disabled:opacity-60 ${
+                  active
+                    ? 'border-forest bg-forest/[0.06] ring-2 ring-forest/15'
+                    : 'border-line bg-white hover:border-line-2 hover:bg-canvas-2'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                    active ? 'border-forest bg-forest' : 'border-line'
+                  }`}>
+                    {active && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-[13px] font-semibold ${active ? 'text-forest' : 'text-ink'}`}>{meta?.label}</p>
+                    <p className="text-[11px] text-ink-2 mt-0.5 leading-snug">{meta?.description}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {bolaoStats && bolaoStats.total_predictions > 0 && (
+        <div className="p-3 rounded-rebrand-md border border-status-warning/40 bg-status-warning/[0.08]">
+          <p className="text-[12px] text-ink-2 leading-snug flex items-start gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 text-status-warning shrink-0 mt-0.5" />
+            <span>
+              <span className="font-bold text-ink">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'pessoa já fez' : 'pessoas já fizeram'}{' '}
+              <span className="font-bold text-ink">{bolaoStats.total_predictions}</span> palpite{bolaoStats.total_predictions !== 1 ? 's' : ''}.
+              Mudar o prazo afeta todos eles — pediremos confirmação.
+            </span>
+          </p>
+        </div>
+      )}
+    </>
+  );
+
+  const renderModalidades = () => (
+    <>
+      <SectionHeader
+        title="Modalidades"
+        subtitle="Quais tipos de palpite existem no bolão."
+      />
+
+      <Card title="Palpite de Campeão" sub={`Quem você acha que vai vencer a Copa (vale +${champPoints} pts)`}>
+        <SettingsRow
+          title={champEnabled ? 'Habilitado' : 'Desabilitado'}
+          sub="Membros podem palpitar o campeão"
+        >
+          <Toggle on={champEnabled} onClick={handleToggleChampion} ariaLabel="Toggle palpite de campeão" />
+        </SettingsRow>
+        {champEnabled && (
+          <SettingsRow title="Pontos do campeão" sub="Acerto vale esses pontos">
+            <div className="flex items-center gap-2">
+              <NumberStepper value={champPoints} onChange={setChampPoints} min={1} max={50} suffix="pts" ariaLabel="pontos do campeão" className="w-32" />
+              {champPoints !== championPoints && (
+                <button
+                  type="button"
+                  onClick={handleSaveChampionPoints}
+                  disabled={updateSettings.isPending}
+                  className="h-9 px-3 rounded-rebrand-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-2 disabled:opacity-50"
+                >
+                  Salvar
+                </button>
+              )}
+            </div>
+          </SettingsRow>
+        )}
+      </Card>
+
+      <Card title="Palpites Especiais" sub="Cada modalidade pode ser ativada e ter pontos próprios">
+        {Object.entries(SPECIAL_TYPES).map(([type, label]) => (
+          <SettingsRow
+            key={type}
+            title={label}
+            sub={specialConfig[type] ? `Vale ${specialPoints[type] ?? 1} pt(s) cada` : 'Desabilitado'}
+          >
+            <div className="flex items-center gap-2">
+              <NumberStepper
+                value={specialPoints[type] ?? 1}
+                onChange={(v) => setSpecialPoints({ ...specialPoints, [type]: v })}
+                min={1}
+                max={50}
+                suffix="pts"
+                size="sm"
+                disabled={!specialConfig[type]}
+                ariaLabel={`pontos de ${label}`}
+                className="w-28"
+              />
+              <Toggle
+                on={!!specialConfig[type]}
+                onClick={() => handleToggleSpecialType(type)}
+                ariaLabel={`Toggle ${label}`}
+              />
+            </div>
+          </SettingsRow>
+        ))}
+        {JSON.stringify(specialPoints) !== JSON.stringify(specialPredictionsPoints) && (
+          <div className="py-3 border-t border-line">
+            <button
+              type="button"
+              onClick={handleSaveSpecialPoints}
+              disabled={updateSettings.isPending}
+              className="h-10 px-4 rounded-rebrand-md bg-forest text-white text-[13px] font-bold hover:bg-forest-2 disabled:opacity-50"
+            >
+              {updateSettings.isPending ? 'Salvando...' : 'Salvar pontuação'}
+            </button>
           </div>
-          <div className="flex justify-end gap-2 mt-2">
-            <Button
-              variant="ghost"
-              onClick={() => setPendingDeadlineMode(null)}
-              className="h-11 px-4"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => {
-                if (pendingDeadlineMode) {
-                  applyDeadlineModeChange(pendingDeadlineMode);
-                  setPendingDeadlineMode(null);
-                }
-              }}
-              disabled={updateDeadlineMode.isPending}
-              className="bg-terminal-yellow text-terminal-bg hover:bg-terminal-yellow/90 font-bold h-11 px-4"
-            >
-              Sim, mudar mesmo assim
-            </Button>
+        )}
+      </Card>
+    </>
+  );
+
+  const renderMembros = () => {
+    const visible = ranking.filter((m) => !pendingRemovedIds.has(m.user_id));
+    return (
+      <>
+        <SectionHeader
+          title="Membros"
+          subtitle={`${visible.length} ${visible.length === 1 ? 'pessoa' : 'pessoas'} no bolão.`}
+        />
+
+        <Card title="Participantes" sub="Você é o dono. Pode remover quem quiser (com 5s de undo)">
+          <div className="py-3 space-y-2">
+            {visible.map((member) => {
+              const isOwner = member.user_id === ownerUserId;
+              return (
+                <div
+                  key={member.user_id}
+                  className="flex items-center gap-3 py-2.5 px-3 rounded-rebrand-sm border border-line bg-white"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-ink truncate">{member.user_name || member.user_email}</p>
+                    <p className="text-[11px] text-ink-2 mt-0.5">
+                      {member.total_points} pts · {member.total_predictions} palpites
+                    </p>
+                  </div>
+                  {isOwner ? (
+                    <span className="text-[11px] font-bold text-forest shrink-0">Criador</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(member.user_id, member.user_name || member.user_email)}
+                      aria-label={`Remover ${member.user_name || member.user_email} do bolão`}
+                      className="h-9 px-3 rounded-rebrand-md text-[11px] font-semibold text-ink-2 border border-line hover:border-status-danger/40 hover:text-status-danger hover:bg-status-danger/[0.06] transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <UserX className="w-3.5 h-3.5" /> Remover
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-5xl h-[85vh] sm:min-h-[560px] max-h-[92vh] overflow-hidden p-0 flex flex-col rounded-rebrand-xl">
+          <DialogHeader className="px-5 sm:px-6 pt-5 pb-4 shrink-0 border-b border-line bg-white">
+            <div className="flex items-start justify-between gap-3 pr-7">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-3 mb-0.5">
+                  {bolaoName ? `${bolaoName} · ` : ''}Admin
+                </p>
+                <DialogTitle className="font-display text-[20px] sm:text-[22px] font-bold text-ink leading-tight">
+                  Configurações
+                </DialogTitle>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] text-forest bg-forest/[0.10] border border-forest/30 px-2.5 py-1 rounded-rebrand-sm shrink-0">
+                Você é dono
+              </span>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 flex flex-col lg:grid lg:grid-cols-[220px_1fr] overflow-hidden min-w-0">
+            {/* Sidebar — relative pra fade gradient mobile (indicador de scroll) */}
+            <div className="relative border-b lg:border-b-0 lg:border-r border-line bg-white shrink-0 min-w-0">
+              <nav
+                className="py-3 px-2 lg:py-5 lg:px-3 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                style={{ touchAction: 'pan-x' }}
+              >
+              {SECTIONS.map((s) => {
+                const Icon = s.icon;
+                const isActive = activeSection === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setActiveSection(s.id)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-rebrand-sm text-[13px] text-left transition-colors whitespace-nowrap shrink-0 ${
+                      isActive
+                        ? 'bg-forest/[0.10] text-forest font-semibold'
+                        : 'text-ink-2 hover:text-ink hover:bg-canvas-2'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-forest' : 'text-ink-3'}`} />
+                    <span className="flex-1">{s.label}</span>
+                  </button>
+                );
+              })}
+              <div className="hidden lg:block pt-3 mt-3 border-t border-line px-3">
+                <p className="text-[10px] text-ink-3 leading-snug">
+                  Mudanças aplicam <span className="font-semibold text-ink-2">imediatamente</span> a todos os participantes.
+                </p>
+              </div>
+              </nav>
+              {/* Fade right (mobile only) — indica que há mais abas pra direita */}
+              <div className="lg:hidden pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white via-white/85 to-transparent" />
+            </div>
+
+            {/* Content */}
+            <div ref={contentScrollRef} className="flex-1 lg:flex-none overflow-y-auto overflow-x-hidden min-w-0 px-5 sm:px-7 py-6 space-y-5">
+              {activeSection === 'geral' && renderGeral()}
+              {activeSection === 'pontuacao' && renderPontuacao()}
+              {activeSection === 'prazo' && renderPrazo()}
+              {activeSection === 'modalidades' && renderModalidades()}
+              {activeSection === 'membros' && renderMembros()}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
-    </Dialog>
+
+      {/* Confirmação de mudança de deadline mode (quando há palpites) */}
+      <ConfirmDialog
+        open={pendingDeadlineMode !== null}
+        onOpenChange={(o) => !o && setPendingDeadlineMode(null)}
+        title="Confirmar mudança de prazo"
+        description={
+          <>
+            <p className="mb-3">
+              Você está mudando o prazo de palpites de{' '}
+              <span className="font-bold text-ink">{DEADLINE_MODE_LABELS[predictionDeadlineMode]?.label}</span>{' '}
+              para <span className="font-bold text-status-warning">{pendingDeadlineMode && DEADLINE_MODE_LABELS[pendingDeadlineMode]?.label}</span>.
+            </p>
+            {bolaoStats && (
+              <div className="rounded-rebrand-md border border-status-warning/30 bg-status-warning/[0.08] p-3 text-[12px] mb-3">
+                <p className="font-bold mb-1.5 text-ink">Impacto:</p>
+                <ul className="space-y-1 text-ink-2">
+                  <li>• <span className="font-bold text-ink">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'pessoa será afetada' : 'pessoas serão afetadas'}</li>
+                  <li>• <span className="font-bold text-ink">{bolaoStats.total_predictions}</span> {bolaoStats.total_predictions === 1 ? 'palpite foi feito' : 'palpites foram feitos'} no modo atual</li>
+                  <li>• Alguns palpites podem ficar fora do novo prazo</li>
+                </ul>
+              </div>
+            )}
+            <p className="text-[11px] text-ink-3">
+              Avise os participantes antes de confirmar — mudanças no meio do bolão podem gerar confusão.
+            </p>
+          </>
+        }
+        confirmLabel="Sim, mudar mesmo assim"
+        variant="destructive"
+        onConfirm={() => {
+          if (pendingDeadlineMode) {
+            applyDeadlineModeChange(pendingDeadlineMode);
+            setPendingDeadlineMode(null);
+          }
+        }}
+        isLoading={updateDeadlineMode.isPending}
+      />
+    </>
   );
 };
+
+// ── Section header (eyebrow + title + subtitle) ────────────────────
+const SectionHeader: React.FC<{ title: string; subtitle?: React.ReactNode }> = ({ title, subtitle }) => (
+  <div>
+    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-3">Configurações</p>
+    <h2 className="text-[22px] font-bold tracking-tight text-ink leading-tight font-display mt-0.5">{title}</h2>
+    {subtitle && <p className="text-[12px] text-ink-2 mt-1 max-w-[60ch] leading-snug">{subtitle}</p>}
+  </div>
+);

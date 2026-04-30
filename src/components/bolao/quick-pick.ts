@@ -1,9 +1,10 @@
 /**
- * Quick Pick — preenche 100+ palpites em 1 clique baseado em 3 personas:
+ * Quick Pick — preenche 100+ palpites em 1 clique baseado em 4 personas:
  *
  *  - Realista: favorito ganha, placar conservador. Empate só com ranks próximos.
  *  - Patriota: Brasil (ou seleção escolhida) avança longe; resto realista.
  *  - Zebreiro: 30% upsets calculados + placares improváveis.
+ *  - Placar fixo: aplica o mesmo placar em todos os jogos (ex: 1×1, 2×1).
  *
  * Mata-mata nunca tem empate (prorrogação fictícia +1 gol pro favorito).
  * TBD games são pulados (sem time definido ainda).
@@ -11,7 +12,22 @@
 import { getFifaRank, CLEAR_FAVORITE_RANK_DIFF } from '@/data/fifa-rankings';
 import type { WcMatch } from '@/services/bolao.service';
 
-export type QuickPickPersona = 'realist' | 'patriot' | 'zebra';
+export type QuickPickPersona = 'realist' | 'patriot' | 'zebra' | 'fixed';
+export type QuickPickMode = 'pendentes' | 'substituir';
+
+export type QuickPickApplyOpts =
+  | {
+      kind: 'persona';
+      persona: QuickPickPersona;
+      mode: QuickPickMode;
+      fixedScore?: { home: number; away: number };
+    }
+  | {
+      kind: 'copy';
+      sourceBolaoId: string;
+      sourceBolaoName: string;
+      mode: QuickPickMode;
+    };
 
 export interface QuickPickPrediction {
   match_id: number;
@@ -24,6 +40,8 @@ interface PickContext {
   patriotCode?: string;
   /** Seed pseudoaleatório pra reprodutibilidade (ex: bolao_id hash) */
   seed?: number;
+  /** Placar fixo aplicado a todos os jogos (apenas persona 'fixed') */
+  fixedScore?: { home: number; away: number };
 }
 
 const KNOCKOUT_STAGES = new Set(['round_of_32', 'round_of_16', 'quarter', 'semi', 'third_place', 'final']);
@@ -39,6 +57,7 @@ export function generateQuickPickPredictions(
 ): QuickPickPrediction[] {
   const patriotCode = ctx.patriotCode ?? 'BRA';
   const rng = makeSeededRng(ctx.seed ?? 42);
+  const fixedScore = ctx.fixedScore ?? { home: 1, away: 1 };
   const predictions: QuickPickPrediction[] = [];
 
   for (const match of matches) {
@@ -50,9 +69,19 @@ export function generateQuickPickPredictions(
 
     const isKnockout = KNOCKOUT_STAGES.has(match.stage);
 
-    let { home, away } = pickScore(match, persona, isKnockout, patriotCode, rng);
+    let home: number;
+    let away: number;
 
-    // Mata-mata: nunca empata
+    if (persona === 'fixed') {
+      home = fixedScore.home;
+      away = fixedScore.away;
+    } else {
+      const r = pickScore(match, persona, isKnockout, patriotCode, rng);
+      home = r.home;
+      away = r.away;
+    }
+
+    // Mata-mata: nunca empata (vale também pra placar fixo X×X)
     if (isKnockout && home === away) {
       const homeRank = getFifaRank(match.home_team_code);
       const awayRank = getFifaRank(match.away_team_code);

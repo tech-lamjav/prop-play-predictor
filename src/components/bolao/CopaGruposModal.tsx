@@ -74,23 +74,25 @@ export const CopaGruposModal: React.FC<Props> = ({ open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-terminal-bg border-terminal-border text-terminal-text max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-3xl max-h-[85vh] flex flex-col overflow-hidden rounded-rebrand-xl">
         {/* Fixed header */}
-        <DialogHeader className="shrink-0">
-          <DialogTitle className="text-base font-bold">Tabela dos Grupos — Copa 2026</DialogTitle>
+        <DialogHeader className="shrink-0 border-b border-line pb-3">
+          <DialogTitle className="font-display text-[18px] font-bold text-ink">
+            Tabela dos Grupos — Copa 2026
+          </DialogTitle>
         </DialogHeader>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin pr-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="flex-1 overflow-y-auto pr-1 minimal-scrollbar">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
             {sortedGroups.map(([groupName, teams]) => (
-              <div key={groupName} className="terminal-container p-3">
-                <p className="text-[10px] uppercase font-bold tracking-wider opacity-50 mb-2">
+              <div key={groupName} className="rounded-rebrand-md border border-line bg-white p-3">
+                <p className="text-[10px] uppercase font-bold tracking-[0.12em] text-ink-2 mb-2">
                   Grupo {groupName}
                 </p>
 
                 {/* Column header */}
-                <div className="grid grid-cols-[1fr_18px_18px_18px_18px_26px] gap-1 text-[9px] uppercase opacity-40 pb-1 border-b border-terminal-border-subtle mb-1 text-center">
+                <div className="grid grid-cols-[1fr_18px_18px_18px_18px_26px] gap-1 text-[9px] uppercase text-ink-3 pb-1.5 border-b border-line mb-1 text-center">
                   <span className="text-left">Sel.</span>
                   <span>J</span>
                   <span>V</span>
@@ -102,31 +104,33 @@ export const CopaGruposModal: React.FC<Props> = ({ open, onOpenChange }) => {
                 {teams.map((team, idx) => (
                   <div
                     key={team.code}
-                    className={`grid grid-cols-[1fr_18px_18px_18px_18px_26px] gap-1 py-1 text-xs text-center items-center ${
-                      idx < 2 ? '' : 'opacity-50'
+                    className={`grid grid-cols-[1fr_18px_18px_18px_18px_26px] gap-1 py-1 text-[12px] text-center items-center ${
+                      idx < 2 ? 'text-ink' : 'text-ink-3'
                     }`}
                   >
                     <div className="flex items-center gap-1 text-left">
                       <span
                         className={`w-1 h-3 rounded-sm shrink-0 ${
-                          idx < 2 ? 'bg-terminal-green' : 'bg-transparent'
+                          idx < 2 ? 'bg-forest' : 'bg-transparent'
                         }`}
                       />
                       <TeamFlag code={team.code} />
                       <span className="font-mono font-bold text-[10px]">{team.code}</span>
                     </div>
-                    <span>{team.p}</span>
-                    <span>{team.w}</span>
-                    <span>{team.d}</span>
-                    <span>{team.l}</span>
-                    <span className="font-bold text-terminal-green">{team.pts}</span>
+                    <span className="tabular-nums">{team.p}</span>
+                    <span className="tabular-nums">{team.w}</span>
+                    <span className="tabular-nums">{team.d}</span>
+                    <span className="tabular-nums">{team.l}</span>
+                    <span className={`font-bold tabular-nums ${idx < 2 ? 'text-forest' : 'text-ink-2'}`}>
+                      {team.pts}
+                    </span>
                   </div>
                 ))}
               </div>
             ))}
           </div>
 
-          <p className="text-[10px] opacity-30 text-center mt-3 pb-1">
+          <p className="text-[10px] text-ink-3 text-center mt-3 pb-1">
             Verde = classificado · Tabela atualizada após cada resultado
           </p>
         </div>
