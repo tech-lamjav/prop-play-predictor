@@ -29,6 +29,8 @@ const STAT_LABELS: Record<string, string> = {
   player_q1_assists: '1Q Assistências',
   player_q1_rebounds: '1Q Rebotes',
   player_h1_points: '1H Pontos',
+  player_h1_rebounds: '1H Rebotes',
+  player_h1_assists: '1H Assistências',
 };
 
 export const STAT_TYPES_BASIC: StatType[] = [
@@ -54,6 +56,8 @@ export const STAT_TYPES_PERIOD: StatType[] = [
   { id: 'player_q1_rebounds', label: 'Rebotes 1Q', description: '1º Quarto — Rebotes' },
   { id: 'player_q1_assists', label: 'Assistências 1Q', description: '1º Quarto — Assistências' },
   { id: 'player_h1_points', label: 'Pontos 1H', description: '1º Tempo — Pontos' },
+  { id: 'player_h1_rebounds', label: 'Rebotes 1H', description: '1º Tempo — Rebotes' },
+  { id: 'player_h1_assists', label: 'Assistências 1H', description: '1º Tempo — Assistências' },
 ];
 
 const STAT_TYPES = [...STAT_TYPES_BASIC, ...STAT_TYPES_COMBOS];
