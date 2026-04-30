@@ -703,6 +703,300 @@ export type Database = {
           },
         ]
       }
+      bolao_members: {
+        Row: {
+          bolao_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          bolao_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          bolao_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bolao_members_bolao_id_fkey"
+            columns: ["bolao_id"]
+            isOneToOne: false
+            referencedRelation: "boloes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bolao_predictions: {
+        Row: {
+          bolao_id: string
+          created_at: string
+          id: string
+          match_id: number
+          points_earned: number | null
+          predicted_away_score: number
+          predicted_home_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bolao_id: string
+          created_at?: string
+          id?: string
+          match_id: number
+          points_earned?: number | null
+          predicted_away_score: number
+          predicted_home_score: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bolao_id?: string
+          created_at?: string
+          id?: string
+          match_id?: number
+          points_earned?: number | null
+          predicted_away_score?: number
+          predicted_home_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bolao_predictions_bolao_id_fkey"
+            columns: ["bolao_id"]
+            isOneToOne: false
+            referencedRelation: "boloes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bolao_predictions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "wc_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bolao_special_predictions: {
+        Row: {
+          bolao_id: string
+          created_at: string
+          id: string
+          points_earned: number | null
+          predicted_team_code: string
+          prediction_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bolao_id: string
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          predicted_team_code: string
+          prediction_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bolao_id?: string
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          predicted_team_code?: string
+          prediction_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bolao_special_predictions_bolao_id_fkey"
+            columns: ["bolao_id"]
+            isOneToOne: false
+            referencedRelation: "boloes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bolao_subscriptions: {
+        Row: {
+          bolao_id: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          status: string
+          stripe_session_id: string | null
+          stripe_subscription_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          bolao_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          status?: string
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          bolao_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          status?: string
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bolao_subscriptions_bolao_id_fkey"
+            columns: ["bolao_id"]
+            isOneToOne: false
+            referencedRelation: "boloes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      boloes: {
+        Row: {
+          champion_enabled: boolean
+          champion_points: number
+          created_at: string
+          custom_banner_url: string | null
+          custom_color: string | null
+          description: string | null
+          id: string
+          invite_code: string
+          is_closed: boolean
+          is_premium: boolean
+          is_public: boolean
+          max_participants: number
+          name: string
+          owner_id: string
+          scoring_exact: number
+          scoring_preset: string | null
+          scoring_result: number
+          special_predictions_config: Record<string, boolean>
+          special_predictions_enabled: boolean
+        }
+        Insert: {
+          champion_enabled?: boolean
+          champion_points?: number
+          created_at?: string
+          custom_banner_url?: string | null
+          custom_color?: string | null
+          description?: string | null
+          id?: string
+          invite_code: string
+          is_closed?: boolean
+          is_premium?: boolean
+          is_public?: boolean
+          max_participants?: number
+          name: string
+          owner_id: string
+          scoring_exact?: number
+          scoring_preset?: string | null
+          scoring_result?: number
+          special_predictions_config?: Record<string, boolean>
+          special_predictions_enabled?: boolean
+        }
+        Update: {
+          champion_enabled?: boolean
+          champion_points?: number
+          created_at?: string
+          custom_banner_url?: string | null
+          custom_color?: string | null
+          description?: string | null
+          id?: string
+          invite_code?: string
+          is_closed?: boolean
+          is_premium?: boolean
+          is_public?: boolean
+          max_participants?: number
+          name?: string
+          owner_id?: string
+          scoring_exact?: number
+          scoring_preset?: string | null
+          scoring_result?: number
+          special_predictions_config?: Record<string, boolean>
+          special_predictions_enabled?: boolean
+        }
+        Relationships: []
+      }
+      wc_matches: {
+        Row: {
+          away_score: number | null
+          away_team: string
+          away_team_code: string
+          city: string | null
+          created_at: string
+          group_name: string | null
+          home_score: number | null
+          home_team: string
+          home_team_code: string
+          id: number
+          is_finished: boolean
+          match_date: string
+          match_number: number
+          match_time_brasilia: string
+          stage: string
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          away_score?: number | null
+          away_team: string
+          away_team_code: string
+          city?: string | null
+          created_at?: string
+          group_name?: string | null
+          home_score?: number | null
+          home_team: string
+          home_team_code: string
+          id?: number
+          is_finished?: boolean
+          match_date: string
+          match_number: number
+          match_time_brasilia: string
+          stage?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          away_score?: number | null
+          away_team?: string
+          away_team_code?: string
+          city?: string | null
+          created_at?: string
+          group_name?: string | null
+          home_score?: number | null
+          home_team?: string
+          home_team_code?: string
+          id?: number
+          is_finished?: boolean
+          match_date?: string
+          match_number?: number
+          match_time_brasilia?: string
+          stage?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -725,6 +1019,7 @@ export type Database = {
         Args: { p_semana_inicio?: string }
         Returns: undefined
       }
+      calculate_bolao_scores: { Args: { p_match_id: number }; Returns: Json }
       calculate_weekly_performance: {
         Args: { p_week_start_date?: string }
         Returns: undefined
@@ -908,6 +1203,98 @@ export type Database = {
           right_corner_3_fga: number
           right_corner_3_fgm: number
         }[]
+      }
+      get_bolao_ranking: {
+        Args: { p_bolao_id: string }
+        Returns: {
+          correct_results: number
+          exact_scores: number
+          rank: number
+          total_points: number
+          total_predictions: number
+          user_email: string
+          user_id: string
+          user_name: string
+        }[]
+      }
+      get_champion_predictions: {
+        Args: { p_bolao_id: string }
+        Returns: {
+          created_at: string
+          points_earned: number
+          predicted_team_code: string
+          user_id: string
+          user_name: string
+        }[]
+      }
+      get_user_bolao_ids: { Args: { p_user_id?: string }; Returns: string[] }
+      get_user_boloes: {
+        Args: { p_user_id?: string }
+        Returns: {
+          created_at: string
+          description: string
+          has_champion_prediction: boolean
+          id: string
+          invite_code: string
+          is_closed: boolean
+          is_premium: boolean
+          max_participants: number
+          member_count: number
+          name: string
+          owner_id: string
+          owner_name: string
+          pending_predictions: number
+          user_points: number
+          user_predictions: number
+          user_rank: number
+        }[]
+      }
+      join_bolao_by_code: { Args: { p_invite_code: string }; Returns: Json }
+      remove_bolao_member: {
+        Args: { p_bolao_id: string; p_user_id: string }
+        Returns: Json
+      }
+      toggle_bolao_closed: { Args: { p_bolao_id: string }; Returns: Json }
+      upsert_champion_prediction: {
+        Args: { p_bolao_id: string; p_team_code: string }
+        Returns: Json
+      }
+      toggle_special_prediction: {
+        Args: { p_bolao_id: string; p_prediction_type: string; p_team_code: string }
+        Returns: Json
+      }
+      get_my_special_predictions: {
+        Args: { p_bolao_id: string }
+        Returns: { prediction_type: string; predicted_team_code: string; points_earned: number | null }[]
+      }
+      get_bolao_special_summary: {
+        Args: { p_bolao_id: string }
+        Returns: { prediction_type: string; predicted_team_code: string; pick_count: number }[]
+      }
+      update_bolao_scoring: {
+        Args: { p_bolao_id: string; p_preset: string; p_scoring_result?: number; p_scoring_exact?: number }
+        Returns: Json
+      }
+      get_bolao_stats: {
+        Args: { p_bolao_id: string }
+        Returns: Json
+      }
+      get_bolao_round_ranking: {
+        Args: { p_bolao_id: string; p_stage?: string }
+        Returns: {
+          user_id: string
+          user_name: string
+          user_email: string
+          total_points: number
+          exact_scores: number
+          correct_results: number
+          total_predictions: number
+          rank: number
+        }[]
+      }
+      update_bolao_theme: {
+        Args: { p_bolao_id: string; p_color?: string; p_logo_url?: string }
+        Returns: Json
       }
       get_referral_count: { Args: { p_user_id: string }; Returns: number }
       get_referred_users: {
