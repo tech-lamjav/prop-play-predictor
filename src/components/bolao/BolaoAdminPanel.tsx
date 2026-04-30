@@ -663,33 +663,24 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         </SettingsRow>
       </Card>
 
-      {/* Zona de perigo — delete bolão (irreversível) */}
-      <section className="rounded-rebrand-lg border border-status-danger/40 bg-status-danger/[0.04]">
-        <header className="px-5 pt-4 pb-3 border-b border-status-danger/20">
-          <p className="text-[14px] font-bold tracking-tight text-status-danger leading-tight inline-flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4" />
-            Zona de perigo
-          </p>
-          <p className="text-[11px] text-ink-2 mt-0.5">
-            Ações irreversíveis. Faça com cuidado.
-          </p>
-        </header>
-        <div className="px-5">
-          <SettingsRow
-            title="Excluir bolão"
-            sub="Apaga o bolão, todos os palpites e o ranking. Não tem volta."
+      {/* Zona de perigo — delete bolão (irreversível). Mesmo Card branco
+          das outras secoes; o sinal de perigo fica concentrado no botao,
+          igual o "Encerrar" no card de Inscrições acima. */}
+      <Card title="Zona de perigo" sub="Ações irreversíveis. Faça com cuidado.">
+        <SettingsRow
+          title="Excluir bolão"
+          sub="Apaga o bolão, todos os palpites e o ranking. Não tem volta."
+        >
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors border border-status-danger/40 text-status-danger bg-status-danger/[0.06] hover:bg-status-danger/[0.12]"
           >
-            <button
-              type="button"
-              onClick={() => setDeleteOpen(true)}
-              className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors border border-status-danger/40 text-status-danger bg-white hover:bg-status-danger/[0.08]"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Excluir
-            </button>
-          </SettingsRow>
-        </div>
-      </section>
+            <Trash2 className="w-3.5 h-3.5" />
+            Excluir
+          </button>
+        </SettingsRow>
+      </Card>
     </>
   );
 
