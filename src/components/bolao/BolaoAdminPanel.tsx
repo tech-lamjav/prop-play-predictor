@@ -184,13 +184,19 @@ const NumberStepper: React.FC<NumberStepperProps> = ({
 };
 
 // ── Toggle component (light) ──────────────────────────────────────
-const Toggle: React.FC<{ on: boolean; onClick: () => void; ariaLabel: string }> = ({ on, onClick, ariaLabel }) => (
+const Toggle: React.FC<{
+  on: boolean;
+  onClick: () => void;
+  ariaLabel: string;
+  disabled?: boolean;
+}> = ({ on, onClick, ariaLabel, disabled }) => (
   <button
     type="button"
     onClick={onClick}
     aria-label={ariaLabel}
     aria-pressed={on}
-    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${on ? 'bg-forest' : 'bg-canvas-2 border border-line'}`}
+    disabled={disabled}
+    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${on ? 'bg-forest' : 'bg-canvas-2 border border-line'} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
   >
     <span
       className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`}
@@ -199,11 +205,20 @@ const Toggle: React.FC<{ on: boolean; onClick: () => void; ariaLabel: string }> 
 );
 
 // ── Card wrapper ─────────────────────────────────────────────────
-const Card: React.FC<{ title: string; sub?: string; children: React.ReactNode }> = ({ title, sub, children }) => (
+const Card: React.FC<{
+  title: string;
+  sub?: string;
+  /** Acao no canto direito do header (ex: Toggle de habilitado/desabilitado). */
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, sub, action, children }) => (
   <section className="rounded-rebrand-lg border border-line bg-white">
-    <header className="px-5 pt-4 pb-3 border-b border-line">
-      <p className="text-[14px] font-bold tracking-tight text-ink leading-tight">{title}</p>
-      {sub && <p className="text-[11px] text-ink-2 mt-0.5">{sub}</p>}
+    <header className="px-5 pt-4 pb-3 border-b border-line flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[14px] font-bold tracking-tight text-ink leading-tight">{title}</p>
+        {sub && <p className="text-[11px] text-ink-2 mt-0.5">{sub}</p>}
+      </div>
+      {action && <div className="shrink-0 mt-0.5">{action}</div>}
     </header>
     <div className="px-5">{children}</div>
   </section>
@@ -264,9 +279,13 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(bolaoName ?? '');
 
-  // Scoring state
-  const [customResult, setCustomResult] = useState(scoringResult);
-  const [customExact, setCustomExact] = useState(scoringExact);
+  // Scoring state — toggles permitem desativar uma categoria. Quando OFF,
+  // salva 0 no banco; o valor "ultimo ligado" fica em customResult/customExact
+  // pra ser restaurado quando user religar (UX: nao precisa redigitar).
+  const [resultadoEnabled, setResultadoEnabled] = useState(scoringResult > 0);
+  const [exatoEnabled, setExatoEnabled] = useState(scoringExact > 0);
+  const [customResult, setCustomResult] = useState(scoringResult > 0 ? scoringResult : 1);
+  const [customExact, setCustomExact] = useState(scoringExact > 0 ? scoringExact : 3);
   const [useWeighted, setUseWeighted] = useState(scoringPreset === 'weighted_stages');
   const [customWeights, setCustomWeights] = useState<Record<string, number>>(
     { ...DEFAULT_WEIGHTS, ...(scoringWeights ?? {}) }
@@ -290,7 +309,11 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const { data: bolaoStats } = useBolaoStats(bolaoId, open && currentUserId === ownerUserId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (currentUserId !== ownerUserId) return null;
+  // Modo read-only pra membros (nao-dono): mostra config mas tudo disabled,
+  // com banner explicando que so o dono pode alterar. Antes desse refactor
+  // nao-dono nao via nada (return null) — pessoa não conseguia nem checar
+  // qual era a pontuacao do bolao.
+  const isOwner = currentUserId === ownerUserId;
 
   // ─────────────────────────────────────────────────────────────────
   // Handlers
@@ -360,15 +383,20 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const handleApplyPreset = (preset: typeof SCORING_PRESETS[number]) => {
     setCustomResult(preset.result);
     setCustomExact(preset.exact);
+    setResultadoEnabled(preset.result > 0);
+    setExatoEnabled(preset.exact > 0);
     setUseWeighted(preset.weighted);
     if (preset.weighted) setCustomWeights({ ...DEFAULT_WEIGHTS });
   };
 
-  const isPresetActive = (preset: typeof SCORING_PRESETS[number]) =>
-    customResult === preset.result &&
-    customExact === preset.exact &&
-    useWeighted === preset.weighted &&
-    (!preset.weighted || STAGE_LABELS.every((s) => customWeights[s.key] === s.defaultWeight));
+  const isPresetActive = (preset: typeof SCORING_PRESETS[number]) => {
+    const effectiveResult = resultadoEnabled ? customResult : 0;
+    const effectiveExact = exatoEnabled ? customExact : 0;
+    return effectiveResult === preset.result &&
+      effectiveExact === preset.exact &&
+      useWeighted === preset.weighted &&
+      (!preset.weighted || STAGE_LABELS.every((s) => customWeights[s.key] === s.defaultWeight));
+  };
 
   const applyDeadlineModeChange = (mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start') => {
     updateDeadlineMode.mutate(
@@ -392,8 +420,11 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
   const handleSaveScoring = () => {
     const preset = useWeighted ? 'weighted_stages' : 'custom';
+    // Toggle off => salva 0; toggle on => valor do stepper
+    const effectiveResult = resultadoEnabled ? customResult : 0;
+    const effectiveExact = exatoEnabled ? customExact : 0;
     updateScoring.mutate(
-      { bolaoId, preset, scoringResult: customResult, scoringExact: customExact, scoringWeights: useWeighted ? customWeights : null },
+      { bolaoId, preset, scoringResult: effectiveResult, scoringExact: effectiveExact, scoringWeights: useWeighted ? customWeights : null },
       {
         onSuccess: (res) => toast({ title: `Pontuação atualizada: ${res.scoring_result}pt / ${res.scoring_exact}pts` }),
         onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
@@ -591,38 +622,44 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
           ) : (
             <div className="flex items-center justify-between gap-3 mt-1">
               <p className="text-[14px] text-ink truncate">{bolaoName || '—'}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setNameDraft(bolaoName ?? '');
-                  setEditingName(true);
-                }}
-                className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 border border-line hover:border-line-2 hover:bg-canvas-2 hover:text-ink inline-flex items-center gap-1.5 transition-colors"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Editar
-              </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNameDraft(bolaoName ?? '');
+                    setEditingName(true);
+                  }}
+                  className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 border border-line hover:border-line-2 hover:bg-canvas-2 hover:text-ink inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Editar
+                </button>
+              )}
             </div>
           )}
         </div>
 
         <div className="py-4">
           <p className="text-[13px] font-semibold text-ink leading-tight mb-1">Logo do bolão</p>
-          <p className="text-[11px] text-ink-2 mb-3">JPG ou PNG, máximo 2MB. Aparece no header e nos cards.</p>
+          {isOwner && (
+            <p className="text-[11px] text-ink-2 mb-3">JPG ou PNG, máximo 2MB. Aparece no header e nos cards.</p>
+          )}
           {customBannerUrl ? (
             <div className="flex items-center gap-3">
               <img src={customBannerUrl} alt="Logo" className="w-14 h-14 rounded-rebrand-sm border border-line bg-canvas-2 object-contain" />
               <p className="flex-1 min-w-0 text-[11px] text-ink-2 truncate">{customBannerUrl.split('/').pop()}</p>
-              <button
-                type="button"
-                onClick={handleRemoveLogo}
-                disabled={updateTheme.isPending}
-                className="h-9 px-3 rounded-rebrand-md border border-line text-[12px] text-ink-2 hover:border-status-danger/40 hover:text-status-danger hover:bg-status-danger/[0.06] transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <X className="w-3.5 h-3.5" /> Remover
-              </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={handleRemoveLogo}
+                  disabled={updateTheme.isPending}
+                  className="h-9 px-3 rounded-rebrand-md border border-line text-[12px] text-ink-2 hover:border-status-danger/40 hover:text-status-danger hover:bg-status-danger/[0.06] transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <X className="w-3.5 h-3.5" /> Remover
+                </button>
+              )}
             </div>
-          ) : (
+          ) : isOwner ? (
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -632,6 +669,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
               <ImagePlus className="w-4 h-4" />
               {uploadLogo.isPending ? 'Enviando...' : 'Escolher imagem'}
             </button>
+          ) : (
+            <p className="text-[11px] text-ink-3 italic">Sem logo definido</p>
           )}
           <input
             ref={fileInputRef}
@@ -648,24 +687,29 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
           title={isClosed ? 'Inscrições encerradas' : 'Inscrições abertas'}
           sub={isClosed ? 'Ninguém mais pode entrar.' : 'Qualquer um com o código pode entrar.'}
         >
-          <button
-            type="button"
-            onClick={handleToggleClose}
-            disabled={toggleClose.isPending}
-            className={`h-9 px-3 rounded-rebrand-md text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 ${
-              isClosed
-                ? 'border border-status-success/40 text-status-success bg-status-success/[0.08] hover:bg-status-success/[0.14]'
-                : 'border border-status-danger/40 text-status-danger bg-status-danger/[0.06] hover:bg-status-danger/[0.12]'
-            }`}
-          >
-            {isClosed ? <><Unlock className="w-3.5 h-3.5" /> Reabrir</> : <><Lock className="w-3.5 h-3.5" /> Encerrar</>}
-          </button>
+          {isOwner ? (
+            <button
+              type="button"
+              onClick={handleToggleClose}
+              disabled={toggleClose.isPending}
+              className={`h-9 px-3 rounded-rebrand-md text-[12px] font-semibold inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 ${
+                isClosed
+                  ? 'border border-status-success/40 text-status-success bg-status-success/[0.08] hover:bg-status-success/[0.14]'
+                  : 'border border-status-danger/40 text-status-danger bg-status-danger/[0.06] hover:bg-status-danger/[0.12]'
+              }`}
+            >
+              {isClosed ? <><Unlock className="w-3.5 h-3.5" /> Reabrir</> : <><Lock className="w-3.5 h-3.5" /> Encerrar</>}
+            </button>
+          ) : (
+            <span className={`text-[11px] font-semibold inline-flex items-center gap-1 ${isClosed ? 'text-status-danger' : 'text-status-success'}`}>
+              {isClosed ? <><Lock className="w-3 h-3" /> Encerradas</> : <><Unlock className="w-3 h-3" /> Abertas</>}
+            </span>
+          )}
         </SettingsRow>
       </Card>
 
-      {/* Zona de perigo — delete bolão (irreversível). Mesmo Card branco
-          das outras secoes; o sinal de perigo fica concentrado no botao,
-          igual o "Encerrar" no card de Inscrições acima. */}
+      {/* Zona de perigo — somente owner. Membros nao veem essa secao */}
+      {isOwner && (
       <Card title="Zona de perigo" sub="Ações irreversíveis. Faça com cuidado.">
         <SettingsRow
           title="Excluir bolão"
@@ -681,6 +725,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
           </button>
         </SettingsRow>
       </Card>
+      )}
     </>
   );
 
@@ -702,7 +747,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                     key={p.value}
                     type="button"
                     onClick={() => handleApplyPreset(p)}
-                    className={`text-left rounded-rebrand-md border p-4 transition-all ${
+                    disabled={!isOwner}
+                    className={`text-left rounded-rebrand-md border p-4 transition-all disabled:cursor-not-allowed ${
                       active
                         ? 'border-forest bg-forest/[0.06] ring-2 ring-forest/15'
                         : 'border-line bg-white hover:border-line-2 hover:bg-canvas-2'
@@ -733,13 +779,48 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
           <Card title="Valores base" sub="Ajustes finos sobre o preset escolhido">
             <SettingsRow title="Acertar resultado" sub="Vencedor ou empate, sem o placar exato">
-              <NumberStepper value={customResult} onChange={setCustomResult} min={1} max={10} suffix="pts" ariaLabel="pontos por acertar resultado" className="w-32" />
+              <div className="flex items-center gap-3">
+                <NumberStepper
+                  value={customResult}
+                  onChange={setCustomResult}
+                  min={1} max={10} suffix="pts"
+                  ariaLabel="pontos por acertar resultado"
+                  className="w-32"
+                  disabled={!resultadoEnabled || !isOwner}
+                />
+                <Toggle
+                  on={resultadoEnabled}
+                  onClick={() => setResultadoEnabled((v) => !v)}
+                  ariaLabel={resultadoEnabled ? 'Desabilitar acertar resultado' : 'Habilitar acertar resultado'}
+                  disabled={!isOwner}
+                />
+              </div>
             </SettingsRow>
             <SettingsRow title="Placar exato" sub="Acertou o placar inteiro (3×0, 2×1...)">
-              <NumberStepper value={customExact} onChange={setCustomExact} min={1} max={20} suffix="pts" ariaLabel="pontos por placar exato" className="w-32" />
+              <div className="flex items-center gap-3">
+                <NumberStepper
+                  value={customExact}
+                  onChange={setCustomExact}
+                  min={1} max={20} suffix="pts"
+                  ariaLabel="pontos por placar exato"
+                  className="w-32"
+                  disabled={!exatoEnabled || !isOwner}
+                />
+                <Toggle
+                  on={exatoEnabled}
+                  onClick={() => setExatoEnabled((v) => !v)}
+                  ariaLabel={exatoEnabled ? 'Desabilitar placar exato' : 'Habilitar placar exato'}
+                  disabled={!isOwner}
+                />
+              </div>
             </SettingsRow>
             <SettingsRow title="Multiplicador por fase" sub="Mata-mata vale mais que jogo de grupo">
-              <Toggle on={useWeighted} onClick={() => setUseWeighted((v) => !v)} ariaLabel={useWeighted ? 'Desabilitar multiplicador' : 'Habilitar multiplicador'} />
+              <Toggle
+                on={useWeighted}
+                onClick={() => setUseWeighted((v) => !v)}
+                ariaLabel={useWeighted ? 'Desabilitar multiplicador' : 'Habilitar multiplicador'}
+                disabled={!isOwner}
+              />
             </SettingsRow>
           </Card>
 
@@ -773,7 +854,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                         <button
                           type="button"
                           onClick={() => setValue(value - 0.5)}
-                          disabled={value <= 0.5}
+                          disabled={value <= 0.5 || !isOwner}
                           aria-label={`Diminuir peso de ${stage.label}`}
                           className="w-7 h-7 flex items-center justify-center rounded-full border border-line bg-white text-ink-2 text-[14px] font-semibold hover:bg-canvas-2 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
@@ -782,7 +863,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                         <button
                           type="button"
                           onClick={() => setValue(value + 0.5)}
-                          disabled={value >= 10}
+                          disabled={value >= 10 || !isOwner}
                           aria-label={`Aumentar peso de ${stage.label}`}
                           className="w-7 h-7 flex items-center justify-center rounded-full border border-line bg-white text-ink-2 text-[14px] font-semibold hover:bg-canvas-2 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
@@ -793,24 +874,28 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                   );
                 })}
               </div>
-              <button
-                type="button"
-                onClick={() => setCustomWeights({ ...DEFAULT_WEIGHTS })}
-                className="text-[11px] text-forest hover:underline font-medium pb-4"
-              >
-                Resetar para valores padrão
-              </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => setCustomWeights({ ...DEFAULT_WEIGHTS })}
+                  className="text-[11px] text-forest hover:underline font-medium pb-4"
+                >
+                  Resetar para valores padrão
+                </button>
+              )}
             </Card>
           )}
 
-      <button
-        type="button"
-        onClick={handleSaveScoring}
-        disabled={updateScoring.isPending}
-        className="h-11 px-5 rounded-rebrand-md bg-forest text-white text-[13px] font-bold hover:bg-forest-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {updateScoring.isPending ? 'Salvando...' : 'Salvar pontuação'}
-      </button>
+      {isOwner && (
+        <button
+          type="button"
+          onClick={handleSaveScoring}
+          disabled={updateScoring.isPending}
+          className="h-11 px-5 rounded-rebrand-md bg-forest text-white text-[13px] font-bold hover:bg-forest-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {updateScoring.isPending ? 'Salvando...' : 'Salvar pontuação'}
+        </button>
+      )}
     </>
   );
 
@@ -831,8 +916,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 key={mode}
                 type="button"
                 onClick={() => handleDeadlineModeChange(mode)}
-                disabled={updateDeadlineMode.isPending}
-                className={`w-full text-left rounded-rebrand-md border p-3 transition-all disabled:opacity-60 ${
+                disabled={updateDeadlineMode.isPending || !isOwner}
+                className={`w-full text-left rounded-rebrand-md border p-3 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
                   active
                     ? 'border-forest bg-forest/[0.06] ring-2 ring-forest/15'
                     : 'border-line bg-white hover:border-line-2 hover:bg-canvas-2'
@@ -877,18 +962,30 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         subtitle="Quais tipos de palpite existem no bolão."
       />
 
-      <Card title="Palpite de Campeão" sub={`Quem você acha que vai vencer a Copa (vale +${champPoints} pts)`}>
-        <SettingsRow
-          title={champEnabled ? 'Habilitado' : 'Desabilitado'}
-          sub="Membros podem palpitar o campeão"
-        >
-          <Toggle on={champEnabled} onClick={handleToggleChampion} ariaLabel="Toggle palpite de campeão" />
-        </SettingsRow>
+      <Card
+        title="Palpite de Campeão"
+        sub="Membros palpitam quem vai vencer a Copa"
+        action={
+          <Toggle
+            on={champEnabled}
+            onClick={handleToggleChampion}
+            ariaLabel="Toggle palpite de campeão"
+            disabled={!isOwner}
+          />
+        }
+      >
         {champEnabled && (
           <SettingsRow title="Pontos do campeão" sub="Acerto vale esses pontos">
             <div className="flex items-center gap-2">
-              <NumberStepper value={champPoints} onChange={setChampPoints} min={1} max={50} suffix="pts" ariaLabel="pontos do campeão" className="w-32" />
-              {champPoints !== championPoints && (
+              <NumberStepper
+                value={champPoints}
+                onChange={setChampPoints}
+                min={1} max={50} suffix="pts"
+                ariaLabel="pontos do campeão"
+                className="w-32"
+                disabled={!isOwner}
+              />
+              {isOwner && champPoints !== championPoints && (
                 <button
                   type="button"
                   onClick={handleSaveChampionPoints}
@@ -918,7 +1015,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 max={50}
                 suffix="pts"
                 size="sm"
-                disabled={!specialConfig[type]}
+                disabled={!specialConfig[type] || !isOwner}
                 ariaLabel={`pontos de ${label}`}
                 className="w-28"
               />
@@ -926,11 +1023,12 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 on={!!specialConfig[type]}
                 onClick={() => handleToggleSpecialType(type)}
                 ariaLabel={`Toggle ${label}`}
+                disabled={!isOwner}
               />
             </div>
           </SettingsRow>
         ))}
-        {JSON.stringify(specialPoints) !== JSON.stringify(specialPredictionsPoints) && (
+        {isOwner && JSON.stringify(specialPoints) !== JSON.stringify(specialPredictionsPoints) && (
           <div className="py-3 border-t border-line">
             <button
               type="button"
@@ -955,10 +1053,13 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
           subtitle={`${visible.length} ${visible.length === 1 ? 'pessoa' : 'pessoas'} no bolão.`}
         />
 
-        <Card title="Participantes" sub="Você é o dono. Pode remover quem quiser (com 5s de undo)">
+        <Card
+          title="Participantes"
+          sub={isOwner ? "Você é o dono. Pode remover quem quiser (com 5s de undo)" : "Lista de quem está no bolão"}
+        >
           <div className="py-3 space-y-2">
             {visible.map((member) => {
-              const isOwner = member.user_id === ownerUserId;
+              const memberIsCreator = member.user_id === ownerUserId;
               return (
                 <div
                   key={member.user_id}
@@ -970,9 +1071,9 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                       {member.total_points} pts · {member.total_predictions} palpites
                     </p>
                   </div>
-                  {isOwner ? (
+                  {memberIsCreator ? (
                     <span className="text-[11px] font-bold text-forest shrink-0">Criador</span>
-                  ) : (
+                  ) : isOwner ? (
                     <button
                       type="button"
                       onClick={() => handleRemove(member.user_id, member.user_name || member.user_email)}
@@ -981,7 +1082,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                     >
                       <UserX className="w-3.5 h-3.5" /> Remover
                     </button>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
@@ -1003,16 +1104,27 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
             <div className="flex items-start justify-between gap-3 pr-7">
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-3 mb-0.5">
-                  {bolaoName ? `${bolaoName} · ` : ''}Admin
+                  {bolaoName ? `${bolaoName} · ` : ''}{isOwner ? 'Admin' : 'Configurações'}
                 </p>
                 <DialogTitle className="font-display text-[20px] sm:text-[22px] font-bold text-ink leading-tight">
                   Configurações
                 </DialogTitle>
               </div>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] text-forest bg-forest/[0.10] border border-forest/30 px-2.5 py-1 rounded-rebrand-sm shrink-0">
-                Você é dono
-              </span>
+              {isOwner ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] text-forest bg-forest/[0.10] border border-forest/30 px-2.5 py-1 rounded-rebrand-sm shrink-0">
+                  Você é dono
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-2 bg-canvas-2 border border-line px-2.5 py-1 rounded-rebrand-sm shrink-0">
+                  Somente leitura
+                </span>
+              )}
             </div>
+            {!isOwner && (
+              <div className="mt-3 rounded-rebrand-sm border border-amber/40 bg-amber/[0.08] px-3 py-2 text-[11px] text-ink-2 leading-snug">
+                Você é membro deste bolão. Pra alterar pontuação, modalidades ou prazos, peça pro dono.
+              </div>
+            )}
           </DialogHeader>
 
           <div className="flex-1 flex flex-col lg:grid lg:grid-cols-[220px_1fr] overflow-hidden min-w-0">

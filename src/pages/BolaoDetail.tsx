@@ -543,30 +543,35 @@ const BolaoDetail: React.FC = () => {
               inviteCode={bolao.invite_code}
               variant="compact"
             />
-            {currentUserId && currentUserId === bolao.owner_id ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAdmin(true)}
-                aria-label="Abrir configurações do bolão"
-                className="rounded-rebrand-md gap-1.5 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink"
-              >
-                <Settings className="w-4 h-4" />
-                <span className="hidden sm:inline">Configurações</span>
-              </Button>
-            ) : currentUserId ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmLeaveOpen(true)}
-                aria-label="Sair do bolão"
-                className="rounded-rebrand-md gap-1.5 text-ink-2 hover:text-status-danger hover:bg-status-danger/10"
-                title="Sair do bolão"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sair</span>
-              </Button>
-            ) : null}
+            {currentUserId && (
+              <>
+                {/* Configuracoes: owner edita, membro ve em read-only */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAdmin(true)}
+                  aria-label="Abrir configurações do bolão"
+                  className="rounded-rebrand-md gap-1.5 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Configurações</span>
+                </Button>
+                {/* Sair so aparece pra membro (nao-dono) */}
+                {currentUserId !== bolao.owner_id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmLeaveOpen(true)}
+                    aria-label="Sair do bolão"
+                    className="rounded-rebrand-md gap-1.5 text-ink-2 hover:text-status-danger hover:bg-status-danger/10"
+                    title="Sair do bolão"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sair</span>
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
