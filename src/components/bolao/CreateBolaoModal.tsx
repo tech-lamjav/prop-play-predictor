@@ -11,7 +11,6 @@ import {
   Sparkles,
   Palette,
   Flag,
-  X,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -89,27 +88,17 @@ export const CreateBolaoModal: React.FC<CreateBolaoModalProps> = ({
         // são portados pra fora do DOM tree do BolaoLayout via Radix Portal,
         // então as CSS vars escopadas não chegam sem reaplicar.)
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-line">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-rebrand-md bg-forest flex items-center justify-center text-amber">
-              <Trophy className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-[16px] font-bold text-ink leading-tight">Criar bolão</h2>
-              <p className="text-[12px] text-ink-2 leading-tight mt-0.5">
-                Você é o dono — convida quem quiser depois
-              </p>
-            </div>
+        {/* Header — pr-12 reserva espaco pro X built-in do DialogContent (top-right) */}
+        <div className="flex items-center gap-2.5 px-6 pt-5 pb-4 pr-12 border-b border-line">
+          <div className="w-9 h-9 rounded-rebrand-md bg-forest flex items-center justify-center text-amber">
+            <Trophy className="w-5 h-5" />
           </div>
-          <button
-            type="button"
-            onClick={() => handleOpenChange(false)}
-            className="w-9 h-9 rounded-rebrand-md hover:bg-canvas-2 text-ink-2 flex items-center justify-center transition-colors"
-            aria-label="Fechar"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div>
+            <h2 className="text-[16px] font-bold text-ink leading-tight">Criar bolão</h2>
+            <p className="text-[12px] text-ink-2 leading-tight mt-0.5">
+              Você é o dono — convida quem quiser depois
+            </p>
+          </div>
         </div>
 
         {/* Body */}

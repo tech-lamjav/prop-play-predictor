@@ -218,7 +218,7 @@ const BolaoJoin: React.FC = () => {
                 </button>
                 <Button
                   variant="forest"
-                  onClick={() => navigate(`/bolao/${bolaoId}/palpites`)}
+                  onClick={() => navigate(`/bolao/${bolaoId}?openPalpites=1`)}
                   className="flex-[2] h-11 rounded-rebrand-md text-[13px] gap-2"
                 >
                   <Target className="w-4 h-4" />

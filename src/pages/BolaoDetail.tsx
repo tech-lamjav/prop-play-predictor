@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import {
@@ -107,6 +107,20 @@ const BolaoDetail: React.FC = () => {
   const [predictionsModalOpen, setPredictionsModalOpen] = useState(false);
   const [specialPredictionsOpen, setSpecialPredictionsOpen] = useState(false);
   const [selectedRankUser, setSelectedRankUser] = useState<BolaoRankingEntry | null>(null);
+
+  // Auto-abre o modal de palpites quando vem com ?openPalpites=1
+  // (usado pelo welcome screen do BolaoJoin pra continuar o fluxo
+  // sem ir pra rota fixa /bolao/:id/palpites). Limpa o query param
+  // logo apos abrir pra nao reabrir em refresh.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('openPalpites') === '1') {
+      setPredictionsModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('openPalpites');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: bolao, isLoading: loadingBolao } = useBolao(id);
   const { data: ranking, isLoading: loadingRanking } = useBolaoRanking(id);
