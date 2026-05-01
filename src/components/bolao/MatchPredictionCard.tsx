@@ -6,6 +6,12 @@ import { readDraft, writeDraft, clearDraft } from '@/components/bolao/useDraftPr
 import { generateQuickPickPredictions } from '@/components/bolao/quick-pick';
 import { ScoreStepper } from '@/components/bolao/ScoreStepper';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 
 interface MatchPredictionCardProps {
   match: WcMatch;
@@ -53,8 +59,10 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   enableSuggestion,
   hideMatchDate,
 }) => {
+  // is_closed do bolao NAO bloqueia palpites de quem ja entrou — so prazo
+  // do jogo + match.is_finished. Por isso passamos false em vez de isClosed.
   const locked = deadlineMode
-    ? isMatchPredictionLocked(match, deadlineMode, allMatches, !!isClosed)
+    ? isMatchPredictionLocked(match, deadlineMode, allMatches, false)
     : isMatchLocked(match);
   const deadline = deadlineMode
     ? computeMatchDeadline(match, deadlineMode, allMatches)
@@ -69,8 +77,6 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   const [homeScore, setHomeScore] = useState<string>(initialHome);
   const [awayScore, setAwayScore] = useState<string>(initialAway);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,22 +89,6 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [menuOpen]);
 
   const prevPredictionRef = useRef<BolaoPrediction | undefined>(prediction);
   useEffect(() => {
@@ -132,7 +122,8 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   };
 
   const triggerAutosave = (h: string, a: string) => {
-    if (locked || match.is_finished || isClosed) return;
+    // isClosed (inscricoes encerradas) NAO bloqueia palpites — so locked/is_finished
+    if (locked || match.is_finished) return;
     if (h === '' || a === '') {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       setSaveStatus('idle');
@@ -365,36 +356,35 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
       <div className="hidden sm:flex w-32 shrink-0 items-center justify-end gap-2 text-right">
         {statusContent}
         {onDelete && hasPrediction && !locked && !match.is_finished && (
-          <div ref={menuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Mais opções"
-              aria-expanded={menuOpen}
-              className="w-7 h-7 flex items-center justify-center rounded-rebrand-sm text-ink-3 hover:text-ink hover:bg-canvas-2 transition-colors"
-            >
-              <MoreVertical className="w-4 h-4" />
-            </button>
-            {menuOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 top-full mt-1 z-30 w-44 rounded-rebrand-md border border-line bg-white shadow-md overflow-hidden"
+          // Radix DropdownMenu usa Portal — ignora overflow:hidden dos
+          // pais e auto-flip pra abrir pra cima quando nao tem espaco
+          // embaixo (evita corte na ultima linha visivel da lista).
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Mais opções"
+                className="w-7 h-7 flex items-center justify-center rounded-rebrand-sm text-ink-3 hover:text-ink hover:bg-canvas-2 transition-colors"
               >
-                <button
-                  role="menuitem"
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onDelete(match.id);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-[13px] text-status-danger hover:bg-status-danger/5 focus:bg-status-danger/5 focus:outline-none transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Apagar palpite
-                </button>
-              </div>
-            )}
-          </div>
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            {/* theme-bolao reaplicado pq Portal escapa do DOM tree.
+                Override explicito dos tokens default (popover/accent que
+                herdam tema dark do terminal). */}
+            <DropdownMenuContent
+              align="end"
+              className="theme-bolao w-44 bg-white border-line text-ink rounded-rebrand-md p-1"
+            >
+              <DropdownMenuItem
+                onClick={() => onDelete(match.id)}
+                className="text-status-danger focus:text-status-danger focus:bg-status-danger/[0.06] cursor-pointer rounded-rebrand-sm px-2 py-2"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Apagar palpite
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>

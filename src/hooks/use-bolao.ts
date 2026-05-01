@@ -547,13 +547,19 @@ export function computeMatchDeadline(
   return minKickoff(allMatches);
 }
 
+/**
+ * Locked = palpite nao pode mais ser editado (jogo finalizado ou prazo
+ * passou). NAO inclui is_closed do bolao — encerrar inscricoes nao para
+ * palpites de quem ja entrou. Esse flag ficou retido no parametro pra
+ * retro-compat de call sites mas e ignorado.
+ */
 export function isMatchPredictionLocked(
   match: WcMatch,
   mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start',
   allMatches: WcMatch[] | undefined,
-  isClosed: boolean
+  _isClosed?: boolean
 ): boolean {
-  if (match.is_finished || isClosed) return true;
+  if (match.is_finished) return true;
   const deadline = computeMatchDeadline(match, mode, allMatches);
   return new Date() >= deadline;
 }
@@ -564,13 +570,16 @@ export function isMatchPredictionLocked(
  * "Próximo palpite fecha em XYZ" outside of an individual match card.
  *
  * Returns null if everything is already locked or finished.
+ *
+ * is_closed nao e considerado — encerrar inscricoes nao afeta prazos.
+ * Param _isClosed mantido pra retro-compat (ignorado).
  */
 export function getNextDeadline(
   mode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start',
   allMatches: WcMatch[] | undefined,
-  isClosed: boolean
+  _isClosed?: boolean
 ): { match: WcMatch; deadline: Date } | null {
-  if (isClosed || !allMatches || allMatches.length === 0) return null;
+  if (!allMatches || allMatches.length === 0) return null;
   const now = new Date();
   // Find every match that's still open and pick the earliest deadline.
   const candidates = allMatches

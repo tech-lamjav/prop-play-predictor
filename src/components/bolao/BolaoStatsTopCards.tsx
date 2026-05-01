@@ -86,9 +86,12 @@ export const BolaoStatsTopCards: React.FC<BolaoStatsTopCardsProps> = ({
     }).filter((s) => s.total > 0);
   }, [matches, predictionsByMatch]);
 
-  // Próximo prazo + jogos
+  // Próximo prazo + jogos.
+  // Encerrar inscricoes (is_closed) NAO afeta palpites — quem ja entrou
+  // continua palpitando ate o prazo de cada jogo. Por isso o calculo
+  // ignora is_closed.
   const nextDeadlineGroup = useMemo(() => {
-    if (!matches || bolao.is_closed) return null;
+    if (!matches) return null;
     const mode = bolao.prediction_deadline_mode ?? 'per_match';
     const now = Date.now();
 
@@ -119,7 +122,7 @@ export const BolaoStatsTopCards: React.FC<BolaoStatsTopCardsProps> = ({
       matches: sameDeadline.map((e) => e.match),
       palpitated,
     };
-  }, [matches, bolao.prediction_deadline_mode, bolao.is_closed, predictionsByMatch]);
+  }, [matches, bolao.prediction_deadline_mode, predictionsByMatch]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">

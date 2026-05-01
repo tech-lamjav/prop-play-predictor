@@ -234,9 +234,11 @@ describe('isMatchPredictionLocked', () => {
     expect(isMatchPredictionLocked(m, 'per_match', [m], false)).toBe(true);
   });
 
-  it('lock quando bolao está fechado', () => {
+  it('NAO lock quando bolao tem inscricoes encerradas (is_closed nao afeta palpites)', () => {
+    // is_closed eh sobre NOVAS inscricoes, nao sobre palpites de quem
+    // ja esta no bolao. Match futuro continua palpitavel.
     const m = fakeMatch({ match_date: '2027-01-01' });
-    expect(isMatchPredictionLocked(m, 'per_match', [m], true)).toBe(true);
+    expect(isMatchPredictionLocked(m, 'per_match', [m], true)).toBe(false);
   });
 
   it('lock quando deadline já passou (per_match)', () => {

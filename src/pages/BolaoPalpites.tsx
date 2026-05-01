@@ -186,13 +186,13 @@ const BolaoPalpites: React.FC = () => {
   return (
     <div className="bg-canvas min-h-screen flex flex-col">
       <AnalyticsNav />
-      {!bolao?.is_closed && (
-        <PendingPredictionsSticky
-          totalAvailable={totalMatches}
-          totalDone={totalPredictions}
-          nextMatchId={nextPendingMatchId}
-        />
-      )}
+      {/* is_closed (inscricoes encerradas) nao afeta palpites — sticky
+          continua util pra quem ja entrou */}
+      <PendingPredictionsSticky
+        totalAvailable={totalMatches}
+        totalDone={totalPredictions}
+        nextMatchId={nextPendingMatchId}
+      />
       <div className="max-w-2xl mx-auto px-4 py-6 w-full flex-1">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
@@ -211,8 +211,9 @@ const BolaoPalpites: React.FC = () => {
           <PalpitesProgress done={totalPredictions} total={totalMatches} variant="page" />
         </div>
 
-        {/* Quick Pick — 4 personas + copiar de outro bolão */}
-        {!bolao?.is_closed && totalMatches > 0 && totalPredictions < totalMatches && id && (
+        {/* Quick Pick — 4 personas + copiar de outro bolão.
+            is_closed nao afeta palpites de quem ja entrou. */}
+        {totalMatches > 0 && totalPredictions < totalMatches && id && (
           <QuickPickInline
             remaining={totalMatches - totalPredictions}
             alreadyFilled={totalPredictions}

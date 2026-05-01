@@ -214,8 +214,10 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
 
         {/* Matches — scrollable */}
         <div className="flex-1 overflow-y-auto px-5 py-4 minimal-scrollbar">
-          {/* Quick Pick — 4 personas + copiar de outro bolão */}
-          {!bolao?.is_closed && totalMatches > 0 && totalPredictions < totalMatches && (
+          {/* Quick Pick — 4 personas + copiar de outro bolão.
+              is_closed (inscricoes encerradas) nao afeta palpites — quem
+              ja entrou continua palpitando ate o prazo de cada jogo. */}
+          {totalMatches > 0 && totalPredictions < totalMatches && (
             <QuickPickInline
               remaining={totalMatches - totalPredictions}
               alreadyFilled={totalPredictions}
