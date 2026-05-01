@@ -576,15 +576,16 @@ const BolaoDetail: React.FC = () => {
         </div>
 
         {/* ── 9.2 Cards de stats topo (rebrand): SEUS PALPITES + PRÓXIMO PRAZO ──
-            Substitui DeadlineBadge + banner urgência. */}
-        {!bolao.is_closed && (
-          <BolaoStatsTopCards
-            bolao={bolao}
-            matches={matches}
-            predictions={myPredictions}
-            onContinuarPalpites={() => setPredictionsModalOpen(true)}
-          />
-        )}
+            Substitui DeadlineBadge + banner urgência.
+            Encerrar inscricoes nao para os palpites — quem ja entrou continua
+            palpitando ate o prazo de cada jogo. Por isso o card aparece
+            independente de is_closed. */}
+        <BolaoStatsTopCards
+          bolao={bolao}
+          matches={matches}
+          predictions={myPredictions}
+          onContinuarPalpites={() => setPredictionsModalOpen(true)}
+        />
 
         {/* ── Sidebar mobile (logo após stats topo, lg:hidden pra desktop) ── */}
         <div className="lg:hidden space-y-4 mb-5">

@@ -138,7 +138,8 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
               </span>
             </div>
           </div>
-          {isOwner && (
+          {/* Configuracoes: owner edita, membro ve em read-only */}
+          {currentUserId && (
             <Button
               variant="outline"
               size="sm"
