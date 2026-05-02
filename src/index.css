@@ -307,3 +307,22 @@ All colors MUST be HSL.
 .recharts-rectangle.recharts-tooltip-cursor {
   fill: transparent !important;
 }
+
+/* ============================================================================
+   Direção A — tema do rebrand (light off-white + verde-mata + dourado).
+   Wrapper class .theme-rebrand define APENAS font-family base.
+   bg/color devem ser setados via utilities Tailwind (bg-white, bg-canvas,
+   text-ink) explicitamente, pra não brigar com utilities locais nos modais.
+   ============================================================================ */
+
+.theme-rebrand {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+@layer utilities {
+  /* Tabular numbers — usar em valores monetários, ROI, odds, datas */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+}

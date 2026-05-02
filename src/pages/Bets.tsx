@@ -36,16 +36,30 @@ import {
   ChevronDown,
   Plus,
   BarChart3,
-  Send
+  Send,
+  Download,
+  Share2
 } from 'lucide-react';
 import { telegramBotUrl } from '../config/environment';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '../components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -227,43 +241,59 @@ const BetRow = React.memo(function BetRow({
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
   }, [bet.id, bet.tags, onBetTagsChange]);
 
+  const profitTone =
+    bet.status === 'won' || bet.status === 'half_won' || (bet.is_cashout && bet.cashout_amount && bet.cashout_amount > bet.stake_amount)
+      ? 'text-status-success'
+      : bet.status === 'lost' || bet.status === 'half_lost'
+        ? 'text-status-danger'
+        : 'text-ink-2';
+
+  const statusPillClass =
+    bet.status === 'won' ? 'text-status-success bg-status-success/10 border-status-success/20' :
+    bet.status === 'lost' ? 'text-status-danger bg-status-danger/10 border-status-danger/20' :
+    bet.status === 'half_won' ? 'text-status-success bg-status-success/15 border-status-success/30' :
+    bet.status === 'half_lost' ? 'text-status-danger bg-status-danger/15 border-status-danger/30' :
+    bet.status === 'pending' ? 'text-status-warning bg-status-warning/10 border-status-warning/20' :
+    bet.status === 'cashout' ? 'text-forest bg-forest-tint border-forest/20' :
+    'text-ink-2 bg-ink-3 border-line';
+
   return (
-    <tr className="border-b border-terminal-border-subtle hover:bg-terminal-light-gray transition-colors">
-      <td className="py-1.5 px-1.5 w-8">
+    <tr className="border-b border-line hover:bg-ink-3/30 transition-colors">
+      <td className="py-2 px-1.5 w-8">
         <input
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(bet.id)}
-          className="w-3 h-3 accent-terminal-green cursor-pointer opacity-60 checked:opacity-100"
+          className="w-3.5 h-3.5 accent-forest cursor-pointer"
         />
       </td>
-      <td className="py-1.5 px-1.5 opacity-70">
+      <td className="py-2 px-1.5 text-ink-2 tabular">
         {formatBetDate(bet.bet_date)}
       </td>
-      <td className="py-1.5 px-1.5 font-medium min-w-0 overflow-hidden">
+      <td className="py-2 px-1.5 font-medium min-w-0 overflow-hidden">
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="cursor-default inline-block w-full min-w-0">
-              <div className="whitespace-pre-line break-words">{truncateDescription(bet.bet_description, 50)}</div>
+              <div className="whitespace-pre-line break-words text-ink">{truncateDescription(bet.bet_description, 50)}</div>
               {bet.match_description && (
-                <div className="text-[10px] opacity-50 break-words">{truncateDescription(bet.match_description, 50)}</div>
+                <div className="text-[10px] text-ink-2 break-words">{truncateDescription(bet.match_description, 50)}</div>
               )}
             </span>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs px-2 py-1 text-xs bg-terminal-black border-terminal-border text-terminal-text">
+          <TooltipContent side="top" className="theme-rebrand max-w-xs px-2 py-1 text-xs bg-white border border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
             <div className="whitespace-pre-line">
               {bet.bet_description}
               {bet.match_description && (
                 <>
                   {'\n'}
-                  <span className="opacity-70">{bet.match_description}</span>
+                  <span className="text-ink-2">{bet.match_description}</span>
                 </>
               )}
             </div>
           </TooltipContent>
         </Tooltip>
       </td>
-      <td className="py-1.5 px-1.5">
+      <td className="py-2 px-1.5">
         <TagSelector
           betId={bet.id}
           selectedTags={bet.tags || []}
@@ -272,9 +302,14 @@ const BetRow = React.memo(function BetRow({
           availableTags={availableTags}
         />
       </td>
-      <td className="text-right py-1.5 px-1.5">{formatValue(bet.stake_amount)}</td>
-      <td className="text-right py-1.5 px-1.5 text-terminal-blue">{bet.odds.toFixed(2)}</td>
-      <td className="text-right py-1.5 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap opacity-70">
+      <td className="py-2 px-1.5 text-[12px] text-ink-2 min-w-[8rem]">
+        <div className="text-ink">{bet.sport || '—'}</div>
+        {bet.league && <div className="text-[11px] text-ink-2 mt-0.5">{bet.league}</div>}
+      </td>
+      <td className="py-2 px-1.5 text-[11px] text-ink-2 uppercase tracking-[0.06em] font-semibold">{bet.betting_market || '-'}</td>
+      <td className="text-right py-2 px-1.5 tabular text-ink">{formatValue(bet.stake_amount)}</td>
+      <td className="text-right py-2 px-1.5 text-forest font-semibold tabular">{bet.odds.toFixed(2)}</td>
+      <td className="text-right py-2 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap text-ink-2 tabular">
         {bet.is_cashout && bet.cashout_amount
           ? formatValue(bet.cashout_amount)
           : bet.status === 'half_won'
@@ -285,10 +320,7 @@ const BetRow = React.memo(function BetRow({
                 ? formatValue(bet.stake_amount)
                 : formatValue(bet.potential_return)}
       </td>
-      <td className={`text-right py-1.5 px-1.5 min-w-[5.5rem] font-medium ${
-        bet.status === 'won' || bet.status === 'half_won' || (bet.is_cashout && bet.cashout_amount && bet.cashout_amount > bet.stake_amount) ? 'text-terminal-green' :
-        bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-40'
-      }`}>
+      <td className={`text-right py-2 px-1.5 min-w-[5.5rem] font-semibold tabular ${profitTone}`}>
         {bet.status === 'pending'
           ? '—'
           : bet.is_cashout && bet.cashout_amount
@@ -303,23 +335,12 @@ const BetRow = React.memo(function BetRow({
                     ? formatValue(-bet.stake_amount / 2)
                     : '—'}
       </td>
-      <td className="text-center py-1.5 px-1.5 whitespace-nowrap min-w-[5rem]">
-        <span className={`inline-block px-1.5 py-0.5 text-[10px] uppercase font-bold whitespace-nowrap ${
-          bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
-          bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
-          bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
-          bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
-          bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
-          bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
-          'text-terminal-text bg-terminal-text/10'
-        }`}>
+      <td className="text-center py-2 px-1.5 whitespace-nowrap min-w-[5rem]">
+        <span className={`inline-flex items-center px-2 h-[22px] rounded-md border text-[10px] font-semibold tracking-[0.06em] uppercase ${statusPillClass}`}>
           {translateStatus(bet.status)}
         </span>
       </td>
-      <td className="py-1.5 px-1.5 opacity-70">{bet.sport}</td>
-      <td className="py-1.5 px-1.5 opacity-70">{bet.league || '-'}</td>
-      <td className="py-1.5 px-1.5 opacity-70">{bet.betting_market || '-'}</td>
-      <td className="py-1.5 px-1.5 min-w-[11rem]">
+      <td className="py-2 px-1.5 min-w-[11rem]">
         <div className="flex flex-row items-center gap-1.5 justify-end flex-nowrap">
           {bet.status === 'pending' && (
             <>
@@ -327,32 +348,32 @@ const BetRow = React.memo(function BetRow({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-1.5 text-terminal-text shrink-0 text-[10px] font-bold uppercase"
+                    className="h-7 px-2 inline-flex items-center gap-1 text-[10px] font-semibold text-ink-2 border border-line bg-white hover:bg-forest-tint hover:text-forest hover:border-forest/30 rounded transition-colors uppercase tracking-[0.04em] shrink-0"
                   >
-                    <Target className="w-3.5 h-3.5 opacity-70 shrink-0" />
-                    Resultado
-                    <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
+                    <Target className="w-3.5 h-3.5 shrink-0" />
+                    Result.
+                    <ChevronDown className="w-3 h-3 shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingUp className="w-4 h-4 text-terminal-green" />
+                <DropdownMenuContent align="end" className="theme-rebrand bg-white border border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
+                    <TrendingUp className="w-4 h-4 text-status-success" />
                     <span>Ganhou</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingDown className="w-4 h-4 text-terminal-red" />
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
+                    <TrendingDown className="w-4 h-4 text-status-danger" />
                     <span>Perdeu</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
+                    <TrendingUp className="w-4 h-4 text-status-success opacity-70" />
                     <span>1/2 Green</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
-                    <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
+                    <TrendingDown className="w-4 h-4 text-status-danger opacity-70" />
                     <span>1/2 Red</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer">
-                    <X className="w-4 h-4 opacity-70" />
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-ink-3/60">
+                    <X className="w-4 h-4 text-ink-2" />
                     <span>Anulada</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -360,29 +381,28 @@ const BetRow = React.memo(function BetRow({
               <button
                 type="button"
                 onClick={() => openCashoutModal(bet)}
-                className="px-2 py-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center gap-1.5 shrink-0 text-[10px] font-bold text-terminal-blue hover:text-terminal-black"
+                className="h-7 w-7 inline-flex items-center justify-center text-forest border border-line bg-white hover:bg-forest-tint hover:border-forest/30 rounded transition-colors shrink-0"
                 title="Cashout"
               >
                 <DollarSign className="w-3.5 h-3.5 shrink-0" />
-                CASHOUT
               </button>
             </>
           )}
           <button
             type="button"
             onClick={() => openEditModal(bet)}
-            className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all shrink-0"
+            className="h-7 w-7 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/60 rounded transition-colors shrink-0"
             title="Editar"
           >
-            <Edit className="w-4 h-4 text-terminal-blue hover:text-terminal-black" />
+            <Edit className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={() => deleteBet(bet.id)}
-            className="p-1.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all shrink-0"
+            className="h-7 w-7 inline-flex items-center justify-center text-ink-2 hover:text-status-danger hover:bg-status-danger/10 rounded transition-colors shrink-0"
             title="Excluir"
           >
-            <Trash2 className="w-4 h-4 text-terminal-red hover:text-terminal-black" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </td>
@@ -411,27 +431,35 @@ const BetCard = React.memo(function BetCard({
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
   }, [bet.id, bet.tags, onBetTagsChange]);
 
+  const profitTone =
+    bet.status === 'won' || bet.status === 'half_won' || (bet.is_cashout && bet.cashout_amount && bet.cashout_amount > bet.stake_amount)
+      ? 'text-status-success'
+      : bet.status === 'lost' || bet.status === 'half_lost'
+        ? 'text-status-danger'
+        : 'text-ink-2';
+
+  const statusPillClass =
+    bet.status === 'won' ? 'text-status-success bg-status-success/10 border-status-success/20' :
+    bet.status === 'lost' ? 'text-status-danger bg-status-danger/10 border-status-danger/20' :
+    bet.status === 'half_won' ? 'text-status-success bg-status-success/15 border-status-success/30' :
+    bet.status === 'half_lost' ? 'text-status-danger bg-status-danger/15 border-status-danger/30' :
+    bet.status === 'pending' ? 'text-status-warning bg-status-warning/10 border-status-warning/20' :
+    bet.status === 'cashout' ? 'text-forest bg-forest-tint border-forest/20' :
+    'text-ink-2 bg-ink-3 border-line';
+
   return (
-    <div className="bg-terminal-black border border-terminal-border-subtle p-4 rounded-md space-y-3">
+    <div className="bg-white border border-line-2 p-4 rounded-lg space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={() => onToggleSelect(bet.id)}
-            className="w-3.5 h-3.5 accent-terminal-green cursor-pointer shrink-0"
+            className="w-3.5 h-3.5 accent-forest cursor-pointer shrink-0"
           />
-          <span className="text-xs opacity-50">{formatBetDate(bet.bet_date)}</span>
+          <span className="text-xs text-ink-2 tabular">{formatBetDate(bet.bet_date)}</span>
         </div>
-        <span className={`inline-block px-2 py-0.5 text-[10px] uppercase font-bold rounded whitespace-nowrap ${
-          bet.status === 'won' ? 'text-terminal-green bg-terminal-green/10' :
-          bet.status === 'lost' ? 'text-terminal-red bg-terminal-red/10' :
-          bet.status === 'half_won' ? 'text-terminal-green bg-terminal-green/20' :
-          bet.status === 'half_lost' ? 'text-terminal-red bg-terminal-red/20' :
-          bet.status === 'pending' ? 'text-terminal-yellow bg-terminal-yellow/10' :
-          bet.status === 'cashout' ? 'text-terminal-blue bg-terminal-blue/10' :
-          'text-terminal-text bg-terminal-text/10'
-        }`}>
+        <span className={`inline-flex items-center px-2 h-[20px] rounded-md border text-[10px] font-semibold tracking-[0.06em] uppercase whitespace-nowrap ${statusPillClass}`}>
           {translateStatus(bet.status)}
         </span>
       </div>
@@ -440,29 +468,29 @@ const BetCard = React.memo(function BetCard({
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="w-full text-left font-medium text-sm text-terminal-text cursor-pointer focus:outline-none focus:ring-0"
+              className="w-full text-left font-semibold text-sm text-ink cursor-pointer focus:outline-none focus:ring-0"
             >
               <span className="whitespace-pre-line block">{truncateDescription(bet.bet_description, 50)}</span>
               {bet.match_description && (
-                <span className="text-xs opacity-60 mt-0.5 block">{truncateDescription(bet.match_description, 50)}</span>
+                <span className="text-xs text-ink-2 mt-0.5 block font-normal">{truncateDescription(bet.match_description, 50)}</span>
               )}
             </button>
           </PopoverTrigger>
-          <PopoverContent side="top" align="start" className="max-w-[min(90vw,320px)] p-3 text-xs bg-terminal-black border-terminal-border text-terminal-text">
+          <PopoverContent side="top" align="start" className="theme-rebrand max-w-[min(90vw,320px)] p-3 text-xs bg-white border border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
             <div className="whitespace-pre-line">
               {bet.bet_description}
               {bet.match_description && (
                 <>
                   {'\n'}
-                  <span className="opacity-70">{bet.match_description}</span>
+                  <span className="text-ink-2">{bet.match_description}</span>
                 </>
               )}
             </div>
           </PopoverContent>
         </Popover>
-        <div className="text-xs text-terminal-blue mt-1 uppercase tracking-wider">{bet.sport}</div>
-        {bet.league && <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">{bet.league}</div>}
-        {bet.betting_market && <div className="text-xs text-terminal-blue mt-0.5 uppercase tracking-wider">{bet.betting_market}</div>}
+        <div className="text-[10px] text-ink-2 mt-2 uppercase tracking-[0.1em] font-semibold">{bet.sport}</div>
+        {bet.league && <div className="text-[10px] text-ink-2 mt-0.5 uppercase tracking-[0.1em] font-semibold">{bet.league}</div>}
+        {bet.betting_market && <div className="text-[10px] text-ink-2 mt-0.5 uppercase tracking-[0.1em] font-semibold">{bet.betting_market}</div>}
         <div className="mt-2">
           <TagSelector
             betId={bet.id}
@@ -473,27 +501,24 @@ const BetCard = React.memo(function BetCard({
           />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2 py-2 border-y border-terminal-border-subtle bg-terminal-dark-gray/30 -mx-4 px-4">
-        <div className="text-center">
-          <div className="text-[10px] opacity-50 uppercase mb-0.5">Valor</div>
-          <div className="text-sm">{formatValue(bet.stake_amount)}</div>
+      <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-line -mx-4 px-4">
+        <div>
+          <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Stake</div>
+          <div className="text-sm tabular text-ink">{formatValue(bet.stake_amount)}</div>
         </div>
-        <div className="text-center border-l border-terminal-border-subtle">
-          <div className="text-[10px] opacity-50 uppercase mb-0.5">Odds</div>
-          <div className="text-sm text-terminal-blue">{bet.odds.toFixed(2)}</div>
+        <div className="text-center">
+          <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Odds</div>
+          <div className="text-sm tabular text-forest font-semibold">{bet.odds.toFixed(2)}</div>
         </div>
         {bet.status === 'pending' ? (
-          <div className="text-center border-l border-terminal-border-subtle">
-            <div className="text-[10px] opacity-50 uppercase mb-0.5">Retorno</div>
-            <div className="text-sm opacity-70">{formatValue(bet.potential_return)}</div>
+          <div className="text-right">
+            <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Retorno</div>
+            <div className="text-sm tabular text-ink-2">{formatValue(bet.potential_return)}</div>
           </div>
         ) : (
-          <div className="text-center border-l border-terminal-border-subtle">
-            <div className="text-[10px] opacity-50 uppercase mb-0.5">Lucro</div>
-            <div className={`text-sm font-medium ${
-              bet.status === 'won' || bet.status === 'half_won' || (bet.is_cashout && bet.cashout_amount && bet.cashout_amount > bet.stake_amount) ? 'text-terminal-green' :
-              bet.status === 'lost' || bet.status === 'half_lost' ? 'text-terminal-red' : 'opacity-50'
-            }`}>
+          <div className="text-right">
+            <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Lucro</div>
+            <div className={`text-sm font-semibold tabular ${profitTone}`}>
               {bet.is_cashout && bet.cashout_amount
                 ? formatValue(bet.cashout_amount - bet.stake_amount)
                 : bet.status === 'won'
@@ -509,39 +534,39 @@ const BetCard = React.memo(function BetCard({
           </div>
         )}
       </div>
-      <div className="pt-2">
+      <div>
         {bet.status === 'pending' ? (
           <div className="flex flex-wrap items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-gray/80 transition-all flex items-center gap-2 text-terminal-text w-full sm:w-auto justify-center"
+                  className="h-9 px-3 rounded-md bg-white border border-line hover:bg-forest-tint hover:text-forest hover:border-forest/30 transition-colors flex items-center gap-2 text-ink-2 w-full sm:w-auto justify-center"
                 >
-                  <Target className="w-4 h-4 opacity-70" />
-                  <span className="text-xs font-bold uppercase">Resultado</span>
-                  <ChevronDown className="w-3 h-3 opacity-70" />
+                  <Target className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-[0.04em]">Resultado</span>
+                  <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="bg-terminal-dark-gray border-terminal-border text-terminal-text min-w-[180px]">
-                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer">
-                  <TrendingUp className="w-4 h-4 text-terminal-green" />
+              <DropdownMenuContent align="start" className="theme-rebrand bg-white border border-line text-ink min-w-[180px] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
+                  <TrendingUp className="w-4 h-4 text-status-success" />
                   <span>Ganhou</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer">
-                  <TrendingDown className="w-4 h-4 text-terminal-red" />
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
+                  <TrendingDown className="w-4 h-4 text-status-danger" />
                   <span>Perdeu</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer">
-                  <TrendingUp className="w-4 h-4 text-terminal-green opacity-70" />
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
+                  <TrendingUp className="w-4 h-4 text-status-success opacity-70" />
                   <span>1/2 Green</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer">
-                  <TrendingDown className="w-4 h-4 text-terminal-red opacity-70" />
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
+                  <TrendingDown className="w-4 h-4 text-status-danger opacity-70" />
                   <span>1/2 Red</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer">
-                  <X className="w-4 h-4 opacity-70" />
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-ink-3/60">
+                  <X className="w-4 h-4 text-ink-2" />
                   <span>Anulada</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -549,26 +574,26 @@ const BetCard = React.memo(function BetCard({
             <button
               type="button"
               onClick={() => openCashoutModal(bet)}
-              className="px-3 py-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial min-w-0"
+              className="h-9 px-3 rounded-md bg-white border border-line hover:bg-forest-tint hover:border-forest/30 transition-colors flex items-center justify-center gap-2 flex-1 sm:flex-initial min-w-0"
               title="Cashout"
             >
-              <DollarSign className="w-4 h-4 text-terminal-blue hover:text-terminal-black shrink-0" />
-              <span className="text-xs font-bold text-terminal-blue hover:text-terminal-black">CASHOUT</span>
+              <DollarSign className="w-4 h-4 text-forest shrink-0" />
+              <span className="text-xs font-semibold text-forest uppercase tracking-[0.04em]">Cashout</span>
             </button>
-            <button type="button" onClick={() => openEditModal(bet)} className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex items-center justify-center" title="Editar">
-              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+            <button type="button" onClick={() => openEditModal(bet)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-ink-3/60 transition-colors flex items-center justify-center" title="Editar">
+              <Edit className="w-4 h-4" />
             </button>
-            <button type="button" onClick={() => deleteBet(bet.id)} className="p-2.5 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex items-center justify-center" title="Excluir">
-              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+            <button type="button" onClick={() => deleteBet(bet.id)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex items-center justify-center" title="Excluir">
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <div className="flex gap-2">
-            <button type="button" onClick={() => openEditModal(bet)} className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-blue hover:text-terminal-black hover:border-terminal-blue transition-all flex justify-center items-center" title="Editar">
-              <Edit className="w-5 h-5 text-terminal-blue hover:text-terminal-black" />
+            <button type="button" onClick={() => openEditModal(bet)} className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-ink-3/60 transition-colors flex justify-center items-center" title="Editar">
+              <Edit className="w-4 h-4" />
             </button>
-            <button type="button" onClick={() => deleteBet(bet.id)} className="flex-1 py-3 rounded bg-terminal-gray border border-terminal-border hover:bg-terminal-red hover:text-terminal-black hover:border-terminal-red transition-all flex justify-center items-center" title="Excluir">
-              <Trash2 className="w-5 h-5 text-terminal-red hover:text-terminal-black" />
+            <button type="button" onClick={() => deleteBet(bet.id)} className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex justify-center items-center" title="Excluir">
+              <Trash2 className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -690,7 +715,10 @@ export default function Bets() {
     searchQuery: '',
     dateFrom: '',
     dateTo: '',
-    selectedTags: [] as string[]
+    selectedTags: [] as string[],
+    stakeMin: '' as string,
+    oddsMin: '' as string,
+    oddsMax: '' as string,
   });
 
   // User tags state
@@ -888,9 +916,20 @@ export default function Bets() {
     }
   }, [supabase, toast]);
 
-  const deleteBet = useCallback(async (betId: string) => {
-    if (!window.confirm('Are you sure you want to delete this bet?')) return;
+  // Estado da confirmação de exclusão (single ou bulk).
+  // null quando fechado; { type, ... } quando o usuário pede pra excluir.
+  const [confirmDelete, setConfirmDelete] = useState<
+    | { type: 'single'; betId: string }
+    | { type: 'bulk'; count: number }
+    | null
+  >(null);
 
+  // Apenas dispara o dialog de confirmação. A exclusão real acontece em performDeleteBet.
+  const deleteBet = useCallback((betId: string) => {
+    setConfirmDelete({ type: 'single', betId });
+  }, []);
+
+  const performDeleteBet = useCallback(async (betId: string) => {
     if (isMountedRef.current) {
       setBets(prev => prev.filter(b => b.id !== betId));
     }
@@ -902,11 +941,11 @@ export default function Bets() {
 
       if (error) throw error;
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Bet deleted' });
+        toast({ title: 'Aposta excluída', description: 'Removida com sucesso.' });
       }
     } catch (err) {
       if (isMountedRef.current) {
-        toast({ title: 'Error', description: 'Failed to delete bet', variant: 'destructive' });
+        toast({ title: 'Erro', description: 'Falha ao excluir a aposta.', variant: 'destructive' });
       }
     }
   }, [supabase, toast]);
@@ -1352,7 +1391,23 @@ export default function Bets() {
         const betTagIds = (bet.tags || []).map(tag => tag.id);
         if (!filters.selectedTags.some(tagId => betTagIds.includes(tagId))) return false;
       }
-      
+
+      // Filter by stake mínimo
+      if (filters.stakeMin !== '') {
+        const min = parseFloat(filters.stakeMin.replace(',', '.'));
+        if (!isNaN(min) && bet.stake_amount < min) return false;
+      }
+
+      // Filter by odds min/max
+      if (filters.oddsMin !== '') {
+        const min = parseFloat(filters.oddsMin.replace(',', '.'));
+        if (!isNaN(min) && bet.odds < min) return false;
+      }
+      if (filters.oddsMax !== '') {
+        const max = parseFloat(filters.oddsMax.replace(',', '.'));
+        if (!isNaN(max) && bet.odds > max) return false;
+      }
+
       return true;
     });
   }, [bets, filters]);
@@ -1527,9 +1582,14 @@ export default function Bets() {
     }
   }, [selectedBetIds, supabase, toast, fetchBets]);
 
-  const bulkDelete = useCallback(async () => {
+  // bulkDelete dispara o dialog de confirmação. A exclusão real acontece em performBulkDelete.
+  const bulkDelete = useCallback(() => {
+    if (selectedBetIds.size === 0) return;
+    setConfirmDelete({ type: 'bulk', count: selectedBetIds.size });
+  }, [selectedBetIds.size]);
+
+  const performBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedBetIds);
-    if (!window.confirm(`Excluir ${ids.length} apostas selecionadas?`)) return;
     setBets(prev => prev.filter(b => !ids.includes(b.id)));
     try {
       const { error } = await supabase.from('bets').delete().in('id', ids);
@@ -1675,10 +1735,51 @@ export default function Bets() {
       searchQuery: '',
       dateFrom: '',
       dateTo: '',
-      selectedTags: []
+      selectedTags: [],
+      stakeMin: '',
+      oddsMin: '',
+      oddsMax: '',
     });
     setSelectedBetIds(new Set());
   };
+
+  // Exporta as apostas filtradas pra CSV (download local — sem rede)
+  const handleExportCsv = useCallback(() => {
+    const rows = filteredBets;
+    if (rows.length === 0) {
+      toast({ title: 'Nada para exportar', description: 'Ajuste os filtros e tente novamente.' });
+      return;
+    }
+    const escape = (v: unknown) => {
+      const s = v == null ? '' : String(v);
+      return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Tags'];
+    const lines = rows.map(b => [
+      b.bet_date?.split('T')[0] ?? '',
+      b.bet_description ?? '',
+      b.match_description ?? '',
+      b.sport ?? '',
+      b.league ?? '',
+      b.betting_market ?? '',
+      b.stake_amount,
+      b.odds,
+      b.potential_return,
+      b.status,
+      (b.tags || []).map(t => t.name).join(' | '),
+    ].map(escape).join(','));
+    const csv = '﻿' + [header.join(','), ...lines].join('\n'); // BOM pra Excel reconhecer UTF-8
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `apostas-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Exportado', description: `${rows.length} aposta${rows.length !== 1 ? 's' : ''} no CSV.` });
+  }, [filteredBets, toast]);
 
   // Helper to translate status
   const translateStatus = (status: string) => {
@@ -1714,21 +1815,55 @@ export default function Bets() {
     return isValid(date) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : '';
   };
 
+  // Stats derivados de filteredBets — refletem os mesmos dados que stake médio / odd média.
+  // Precisa estar DEPOIS de formatBetDateForDisplay pra evitar TDZ na primeira render.
+  const secondaryStats = useMemo(() => {
+    const total = filteredBets.length;
+    const totalStaked = filteredBets.reduce((s, b) => s + b.stake_amount, 0);
+    const totalOdds = filteredBets.reduce((s, b) => s + b.odds, 0);
+    const avgStake = total > 0 ? totalStaked / total : 0;
+    const avgOdds = total > 0 ? totalOdds / total : 0;
+
+    const settledBets = filteredBets.filter(b =>
+      ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(b.status)
+    );
+    let biggestWin: { profit: number; description: string; date: string } | null = null;
+    let biggestLoss: { profit: number; description: string; date: string } | null = null;
+
+    settledBets.forEach(bet => {
+      let profit = 0;
+      if (bet.status === 'won') profit = bet.potential_return - bet.stake_amount;
+      else if (bet.status === 'lost') profit = -bet.stake_amount;
+      else if (bet.status === 'cashout' && bet.cashout_amount) profit = bet.cashout_amount - bet.stake_amount;
+      else if (bet.status === 'half_won') profit = (bet.potential_return - bet.stake_amount) / 2;
+      else if (bet.status === 'half_lost') profit = -bet.stake_amount / 2;
+
+      if (profit > 0 && (!biggestWin || profit > biggestWin.profit)) {
+        biggestWin = { profit, description: bet.bet_description, date: formatBetDateForDisplay(bet.bet_date) };
+      }
+      if (profit < 0 && (!biggestLoss || profit < biggestLoss.profit)) {
+        biggestLoss = { profit, description: bet.bet_description, date: formatBetDateForDisplay(bet.bet_date) };
+      }
+    });
+
+    return { avgStake, avgOdds, biggestWin, biggestLoss };
+  }, [filteredBets]);
+
   // Sortable Header Component
   const SortableHeader = ({ column, label, align = 'left', className: extraClassName }: { column: SortColumn; label: string; align?: 'left' | 'right' | 'center'; className?: string }) => {
     const isActive = sortConfig.column === column;
     return (
-      <th 
-        className={`${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} py-1.5 px-1.5 data-label cursor-pointer hover:text-terminal-green transition-colors select-none ${extraClassName ?? ''}`}
+      <th
+        className={`${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'} py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold cursor-pointer hover:text-ink transition-colors select-none ${extraClassName ?? ''}`}
         onClick={() => handleSort(column)}
       >
         <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'}`}>
           {label}
           {isActive ? (
             sortConfig.direction === 'asc' ? (
-              <ChevronUp className="w-3 h-3 text-terminal-green" />
+              <ChevronUp className="w-3 h-3 text-forest" />
             ) : (
-              <ChevronDown className="w-3 h-3 text-terminal-green" />
+              <ChevronDown className="w-3 h-3 text-forest" />
             )
           ) : (
             <ChevronUp className="w-3 h-3 opacity-30" />
@@ -1785,6 +1920,362 @@ export default function Bets() {
     clearSelection();
   }, [totalPages, clearSelection]);
 
+  // Mapeia status → classes do mockup quando ativo (cor por status)
+  const statusActiveClass = (value: string): string => {
+    if (value === 'won' || value === 'half_won') return 'bg-status-success/10 text-status-success border-status-success/30';
+    if (value === 'lost' || value === 'half_lost') return 'bg-status-danger/10 text-status-danger border-status-danger/30';
+    if (value === 'pending') return 'bg-status-warning/10 text-status-warning border-status-warning/30';
+    if (value === 'cashout') return 'bg-forest-tint text-forest border-forest/30';
+    return 'bg-ink-3 text-ink-2 border-line';
+  };
+
+  // Conta total de filtros ativos no botão "Mais filtros" / "Filtros"
+  const advancedFiltersTotal =
+    filters.status.length +
+    filters.sport.length +
+    filters.league.length +
+    filters.betting_market.length +
+    filters.selectedTags.length +
+    (filters.dateFrom || filters.dateTo ? 1 : 0) +
+    (filters.stakeMin !== '' ? 1 : 0) +
+    ((filters.oddsMin !== '' || filters.oddsMax !== '') ? 1 : 0);
+
+  // Detecta qual preset de período está ativo (ou Custom/Tudo)
+  const activePeriodPreset: '7d' | '30d' | '90d' | 'all' | 'custom' | null = (() => {
+    if (!filters.dateFrom && !filters.dateTo) return 'all';
+    const fromDate = parseDateString(filters.dateFrom);
+    if (!fromDate) return 'custom';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (const p of [{ k: '7d' as const, days: 7 }, { k: '30d' as const, days: 30 }, { k: '90d' as const, days: 90 }]) {
+      const target = new Date(today);
+      target.setDate(today.getDate() - p.days);
+      if (Math.abs(fromDate.getTime() - target.getTime()) < 24 * 60 * 60 * 1000) {
+        return p.k;
+      }
+    }
+    return 'custom';
+  })();
+
+  const advancedFiltersContent = (
+    <>
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-line -mx-6 -mt-6 mb-0">
+        <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Filtros avançados</div>
+        <DialogTitle className="text-[16px] font-semibold tracking-tight text-ink mt-0.5">Refinar minhas apostas</DialogTitle>
+      </div>
+
+      {/* Body — 2-col grid */}
+      <div className="py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 text-[12px]">
+        {/* Período — segmented control + popover de calendário em "Personalizado" */}
+        <div>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Período</label>
+          <div className="mt-2 grid grid-cols-3 gap-1 p-1 bg-ink-3/60 rounded-md text-[11px] font-medium">
+            {([
+              { k: '7d', l: '7d' },
+              { k: '30d', l: '30d' },
+              { k: '90d', l: '90d' },
+              { k: 'all', l: 'Tudo' },
+            ] as const).map(p => {
+              const active = activePeriodPreset === p.k;
+              return (
+                <button
+                  key={p.k}
+                  type="button"
+                  onClick={() => {
+                    if (p.k === 'all') {
+                      setFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }));
+                    } else {
+                      const days = p.k === '7d' ? 7 : p.k === '30d' ? 30 : 90;
+                      const today = new Date();
+                      const from = new Date();
+                      from.setDate(today.getDate() - days);
+                      setFilters(prev => ({
+                        ...prev,
+                        dateFrom: formatDateToString(from),
+                        dateTo: formatDateToString(today),
+                      }));
+                    }
+                  }}
+                  className={`h-7 rounded transition-colors ${
+                    active ? 'bg-white border border-line text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
+                  }`}
+                >
+                  {p.l}
+                </button>
+              );
+            })}
+            {/* Personalizado — popover com calendário */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`h-7 rounded transition-colors col-span-2 ${
+                    activePeriodPreset === 'custom'
+                      ? 'bg-white border border-line text-ink shadow-sm'
+                      : 'text-ink-2 hover:text-ink'
+                  }`}
+                >
+                  {activePeriodPreset === 'custom' && filters.dateFrom && filters.dateTo
+                    ? `${format(parseDateString(filters.dateFrom)!, 'dd MMM', { locale: ptBR })} – ${format(parseDateString(filters.dateTo)!, 'dd MMM', { locale: ptBR })}`
+                    : 'Personalizado'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={6}
+                className="theme-rebrand w-auto p-0 bg-white border border-line text-ink rounded-md shadow-[0_10px_30px_-10px_rgba(0,0,0,0.2)] z-[60]"
+              >
+                <CalendarComponent
+                  mode="range"
+                  selected={{
+                    from: parseDateString(filters.dateFrom) || undefined,
+                    to: parseDateString(filters.dateTo) || undefined,
+                  }}
+                  onSelect={(range) => {
+                    setFilters(prev => ({
+                      ...prev,
+                      dateFrom: formatDateToString(range?.from),
+                      dateTo: formatDateToString(range?.to),
+                    }));
+                  }}
+                  numberOfMonths={2}
+                  classNames={{
+                    caption_label: 'text-sm font-semibold text-ink',
+                    nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                    head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
+                    day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                    day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                    day_today: 'bg-ink-3 text-ink font-semibold',
+                    day_outside: 'text-ink-2 opacity-40',
+                    day_disabled: 'text-ink-2 opacity-30',
+                    day_range_middle: 'aria-selected:bg-forest-tint aria-selected:text-forest aria-selected:rounded-none',
+                    day_range_start: 'aria-selected:bg-forest aria-selected:text-white aria-selected:rounded-l-md aria-selected:rounded-r-none',
+                    day_range_end: 'aria-selected:bg-forest aria-selected:text-white aria-selected:rounded-r-md aria-selected:rounded-l-none',
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Status</label>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[
+              { value: 'won', label: 'Ganhou' },
+              { value: 'lost', label: 'Perdeu' },
+              { value: 'pending', label: 'Pendente' },
+              { value: 'half_won', label: '½ Green' },
+              { value: 'half_lost', label: '½ Red' },
+              { value: 'cashout', label: 'Cashout' },
+              { value: 'void', label: 'Anulada' },
+            ].map(s => {
+              const active = filters.status.includes(s.value);
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setFilters(prev => ({
+                    ...prev,
+                    status: active ? prev.status.filter(v => v !== s.value) : [...prev.status, s.value],
+                  }))}
+                  className={`px-2.5 h-7 rounded-md border text-[11px] font-semibold transition-colors ${
+                    active ? statusActiveClass(s.value) : 'bg-white text-ink-2 border-line hover:border-forest/30 hover:text-ink'
+                  }`}
+                >
+                  {active && '✓ '}{s.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Esporte (full row) */}
+        <div className="sm:col-span-2">
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Esporte</label>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[
+              ...uniqueSports.map(s => ({ value: s, label: s })),
+              { value: '__empty__', label: 'Sem classificação' },
+            ].map(s => {
+              const active = filters.sport.includes(s.value);
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setFilters(prev => ({
+                    ...prev,
+                    sport: active ? prev.sport.filter(v => v !== s.value) : [...prev.sport, s.value],
+                  }))}
+                  className={`inline-flex items-center px-3 h-8 rounded-full border text-[11px] font-medium transition-colors ${
+                    active ? 'bg-forest-tint text-forest border-forest' : 'bg-white text-ink-2 border-line hover:border-forest/30 hover:text-ink'
+                  }`}
+                >
+                  {s.label}
+                  {active && ' ✓'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Liga */}
+        <div>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Liga</label>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[
+              ...uniqueLeagues.map(l => ({ value: l, label: l })),
+              { value: '__empty__', label: 'Sem classificação' },
+            ].map(opt => {
+              const active = filters.league.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFilters(prev => ({
+                    ...prev,
+                    league: active ? prev.league.filter(v => v !== opt.value) : [...prev.league, opt.value],
+                  }))}
+                  className={`px-2.5 h-7 rounded-md border text-[11px] font-medium transition-colors ${
+                    active ? 'bg-forest-tint text-forest border-forest' : 'bg-white text-ink-2 border-line hover:border-forest/30 hover:text-ink'
+                  }`}
+                >
+                  {opt.label}{active && ' ✓'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mercado */}
+        <div>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Mercado</label>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {[
+              ...uniqueBettingMarkets.map(m => ({ value: m, label: m })),
+              { value: '__empty__', label: 'Sem classificação' },
+            ].map(opt => {
+              const active = filters.betting_market.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFilters(prev => ({
+                    ...prev,
+                    betting_market: active ? prev.betting_market.filter(v => v !== opt.value) : [...prev.betting_market, opt.value],
+                  }))}
+                  className={`px-2.5 h-7 rounded-md border text-[11px] font-medium transition-colors ${
+                    active ? 'bg-forest-tint text-forest border-forest' : 'bg-white text-ink-2 border-line hover:border-forest/30 hover:text-ink'
+                  }`}
+                >
+                  {opt.label}{active && ' ✓'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Stake mínimo */}
+        <div>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Stake mínimo</label>
+          <div className="mt-2 flex items-center h-10 bg-white border border-line rounded-md focus-within:border-forest/40">
+            <span className="pl-3 text-[12px] text-ink-2">R$</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={filters.stakeMin}
+              onChange={(e) => setFilters(prev => ({ ...prev, stakeMin: e.target.value }))}
+              placeholder="50"
+              className="flex-1 bg-transparent px-3 text-[13px] outline-none tabular text-ink min-w-0"
+            />
+          </div>
+        </div>
+
+        {/* Odd mínima / máxima */}
+        <div>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Odd mínima / máxima</label>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              value={filters.oddsMin}
+              onChange={(e) => setFilters(prev => ({ ...prev, oddsMin: e.target.value }))}
+              placeholder="1,50"
+              className="flex-1 h-10 bg-white border border-line rounded-md px-3 text-[13px] outline-none tabular text-ink min-w-0 focus:border-forest/40"
+            />
+            <span className="text-ink-2">→</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              value={filters.oddsMax}
+              onChange={(e) => setFilters(prev => ({ ...prev, oddsMax: e.target.value }))}
+              placeholder="5,00"
+              className="flex-1 h-10 bg-white border border-line rounded-md px-3 text-[13px] outline-none tabular text-ink min-w-0 focus:border-forest/40"
+            />
+          </div>
+        </div>
+
+        {/* Tags (full row) */}
+        <div className="sm:col-span-2">
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Tags</label>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {userTags.length === 0 ? (
+              <p className="text-[12px] text-ink-2">Nenhuma tag criada ainda.</p>
+            ) : (
+              userTags.map(tag => {
+                const active = filters.selectedTags.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => setFilters(prev => ({
+                      ...prev,
+                      selectedTags: active
+                        ? prev.selectedTags.filter(id => id !== tag.id)
+                        : [...prev.selectedTags, tag.id],
+                    }))}
+                    className={`inline-flex items-center gap-1 px-2 h-7 rounded-md border text-[11px] font-medium transition-colors ${
+                      active
+                        ? 'bg-white border-forest text-ink shadow-[0_0_0_2px_rgba(10,61,46,0.08)]'
+                        : 'bg-white border-line text-ink-2 hover:border-forest/30 hover:text-ink'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: tag.color }} />
+                    {tag.name}
+                    {active && ' ✓'}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-4 border-t border-line bg-canvas/50 -mx-6 -mb-6 mt-0 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={clearAllFilters}
+          className="text-[12px] font-semibold text-ink-2 hover:text-ink"
+        >
+          Limpar tudo
+        </button>
+        <DialogClose asChild>
+          <button
+            type="button"
+            className="h-9 px-4 text-[12px] font-semibold text-white bg-forest hover:bg-forest-soft rounded-md transition-colors"
+          >
+            {advancedFiltersTotal > 0 ? `Aplicar ${advancedFiltersTotal} filtro${advancedFiltersTotal > 1 ? 's' : ''}` : 'Fechar'}
+          </button>
+        </DialogClose>
+      </div>
+    </>
+  );
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-terminal-black flex items-center justify-center">
@@ -1805,110 +2296,566 @@ export default function Bets() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
+    <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <BetsHeader
         showBack
-        onShareClick={() => setIsShareModalOpen(true)}
         onReferralClick={() => setReferralModalOpen(true)}
-        showUnitsView={showUnitsView}
-        onShowUnitsViewChange={setShowUnitsView}
-        onUnitConfigClick={() => setUnitConfigOpen(true)}
-        unitsConfigured={isConfigured()}
       />
-      
-      <main className="container mx-auto px-3 py-4">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {/* ROI - card grande */}
-          <div className="terminal-container p-4 md:p-5 flex flex-col items-center justify-center">
-            <div className="data-label text-[10px] md:text-xs mb-2 text-center">ROI</div>
-            <div className={`text-2xl md:text-4xl font-bold ${stats.roi >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
+
+      {/* Page Header */}
+      <div className="bg-white border-b border-line">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Apostas</div>
+            <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
+            <p className="text-[13px] text-ink-2 mt-1 tabular">
+              {stats.totalBets} {stats.totalBets === 1 ? 'aposta registrada' : 'apostas registradas'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Toggle R$ / u */}
+            <div className="h-9 inline-flex items-center p-0.5 bg-ink-3 border border-line rounded-md">
+              <button
+                type="button"
+                onClick={() => setShowUnitsView(false)}
+                className={`h-7 px-3 text-[12px] font-semibold rounded transition-colors ${
+                  !showUnitsView ? 'bg-white text-ink shadow-sm border border-line' : 'text-ink-2 hover:text-ink'
+                }`}
+              >
+                R$
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isConfigured()) {
+                    setUnitConfigOpen(true);
+                    return;
+                  }
+                  setShowUnitsView(true);
+                }}
+                title={!isConfigured() ? 'Configure sua unidade pra ver apostas em u' : undefined}
+                className={`h-7 px-3 text-[12px] font-semibold rounded transition-colors ${
+                  showUnitsView ? 'bg-white text-ink shadow-sm border border-line' : 'text-ink-2 hover:text-ink'
+                }`}
+              >
+                u
+              </button>
+            </div>
+
+            {/* 1u = R$ X chip — desktop mostra chip completo, mobile só ícone Settings */}
+            <button
+              type="button"
+              onClick={() => setUnitConfigOpen(true)}
+              className="h-9 px-2 md:px-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              title={isConfigured() && config.unit_value ? `1u = ${formatCurrency(config.unit_value)}` : 'Configurar unidade'}
+            >
+              {isConfigured() && config.unit_value ? (
+                <>
+                  <span className="hidden md:inline text-[10px] uppercase tracking-[0.1em] font-semibold">1u =</span>
+                  <span className="hidden md:inline tabular text-ink font-semibold">{formatCurrency(config.unit_value)}</span>
+                  <Edit className="w-3.5 h-3.5 md:w-3 md:h-3 text-ink-2" />
+                </>
+              ) : (
+                <>
+                  <Settings className="w-3.5 h-3.5 text-forest" />
+                  <span className="hidden md:inline text-forest font-semibold">Configurar unidade</span>
+                </>
+              )}
+            </button>
+
+            {/* Exportar — só desktop, raramente usado no mobile */}
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              className="hidden md:inline-flex h-9 px-3 items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              title="Exportar CSV"
+            >
+              <Download className="w-4 h-4" />
+              <span>Exportar</span>
+            </button>
+
+            {/* Compartilhar — ícone-only no mobile */}
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              title="Compartilhar"
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="hidden md:inline">Compartilhar</span>
+            </button>
+
+            {/* Nova aposta — só desktop. Mobile usa o FAB. */}
+            <button
+              type="button"
+              onClick={() => {
+                if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
+                  navigate('/paywall');
+                  return;
+                }
+                setIsCreateModalOpen(true);
+              }}
+              className="hidden md:inline-flex h-9 px-4 items-center gap-2 text-[13px] font-semibold text-white bg-forest hover:bg-forest-soft rounded-md transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nova aposta</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Onboarding cards — usuário sem nenhuma aposta. Aparecem ACIMA do conteúdo regular */}
+        {!isLoading && bets.length === 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+            {/* Primary CTA — Telegram */}
+            <div className="bg-forest text-white rounded-xl p-6 md:p-8 relative overflow-hidden">
+              <div className="absolute top-4 right-4 text-[10px] uppercase tracking-[0.16em] font-semibold text-amber-400 bg-white/5 border border-amber-400/20 px-2 py-1 rounded">
+                Recomendado
+              </div>
+              <div className="w-12 h-12 rounded-md bg-amber-400 text-forest grid place-items-center mb-5">
+                <Send className="w-6 h-6" />
+              </div>
+              <h2 className="text-[22px] md:text-[24px] font-semibold tracking-tight">Comece pelo Telegram.</h2>
+              <p className="text-[13px] md:text-[14px] text-white/70 mt-2 leading-relaxed">
+                Abra o Betinho, mande seu primeiro bilhete por texto, áudio ou print — e essa tela enche sozinha.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer"
+                  className="h-10 px-4 inline-flex items-center gap-2 text-[13px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
+                  <Send className="w-4 h-4" />
+                  <span>Abrir bot</span>
+                </a>
+              </div>
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-semibold mb-3">3 formatos aceitos</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-white/80">
+                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre — "apostei R$ 150 LeBron 25+"</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio — fale o bilhete</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Print — foto do cupom</div>
+                </div>
+              </div>
+            </div>
+            {/* Secondary — manual */}
+            <div className="bg-white border border-line rounded-xl p-6 md:p-8">
+              <h2 className="text-[18px] md:text-[20px] font-semibold tracking-tight text-ink">Ou cadastre manualmente.</h2>
+              <p className="text-[13px] text-ink-2 mt-2 leading-relaxed">
+                Se preferir tela e formulário, dá pra cadastrar pelo painel — leva uns 30 segundos.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
+                    navigate('/paywall');
+                    return;
+                  }
+                  setIsCreateModalOpen(true);
+                }}
+                className="mt-5 h-10 px-4 inline-flex items-center gap-2 text-[13px] font-semibold text-white bg-ink hover:bg-ink/90 rounded-md transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Cadastrar primeira aposta</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <>
+        {/* Stats Grid — 4 slots: 2 Hero + 2 Pair (desktop) */}
+        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {/* ROI - HeroKPI */}
+          <div className="bg-white border border-line rounded-lg p-5">
+            <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">ROI</div>
+            <div className={`text-[28px] md:text-[34px] font-semibold tabular leading-none mt-2 tracking-tight ${
+              stats.roi >= 0 ? 'text-status-success' : 'text-status-danger'
+            }`}>
               {stats.roi.toFixed(1)}%
             </div>
           </div>
 
-          {/* Lucro Líquido - card grande */}
-          <div className="terminal-container p-4 md:p-5 flex flex-col items-center justify-center">
-            <div className="data-label text-[10px] md:text-xs mb-2 text-center">Lucro Líquido</div>
-            <div className={`text-2xl md:text-4xl font-bold ${stats.profit >= 0 ? 'text-terminal-green' : 'text-terminal-red'}`}>
+          {/* Lucro Líquido - HeroKPI */}
+          <div className="bg-white border border-line rounded-lg p-5">
+            <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">Lucro líquido</div>
+            <div className={`text-[28px] md:text-[34px] font-semibold tabular leading-none mt-2 tracking-tight ${
+              stats.profit >= 0 ? 'text-status-success' : 'text-status-danger'
+            }`}>
               {formatValue(stats.profit)}
             </div>
           </div>
 
-          {/* Total Apostado + Retorno Bruto */}
-          <div className="terminal-container p-3 md:p-4 flex flex-col justify-center gap-0">
-            <div className="pb-2.5 text-center">
-              <div className="data-label text-[10px] mb-1">Total Apostado</div>
-              <div className="text-base md:text-lg font-bold text-terminal-text">{formatValue(stats.totalStaked)}</div>
+          {/* Total Apostado + Retorno Bruto - PairKPI */}
+          <div className="bg-white border border-line rounded-lg overflow-hidden divide-y divide-line">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total apostado</div>
+              <div className="text-[15px] tabular font-semibold text-ink">{formatValue(stats.totalStaked)}</div>
             </div>
-            <div className="border-t border-terminal-border pt-2.5 text-center">
-              <div className="data-label text-[10px] mb-1">Retorno Bruto</div>
-              <div className="text-base md:text-lg font-bold text-terminal-text">{formatValue(stats.totalReturn)}</div>
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Retorno bruto</div>
+              <div className="text-[15px] tabular font-semibold text-ink">{formatValue(stats.totalReturn)}</div>
             </div>
           </div>
 
-          {/* Total Apostas + Taxa de Acerto */}
-          <div className="terminal-container p-3 md:p-4 flex flex-col justify-center gap-0">
-            <div className="pb-2.5 text-center">
-              <div className="data-label text-[10px] mb-1">Total Apostas</div>
-              <div className="text-base md:text-lg font-bold text-terminal-text">{stats.totalBets}</div>
+          {/* Total Apostas + Taxa de Acerto - PairKPI */}
+          <div className="bg-white border border-line rounded-lg overflow-hidden divide-y divide-line">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total apostas</div>
+              <div className="text-[15px] tabular font-semibold text-ink">{stats.totalBets}</div>
             </div>
-            <div className="border-t border-terminal-border pt-2.5 text-center">
-              <div className="data-label text-[10px] mb-1">Taxa de Acerto</div>
-              <div className={`text-base md:text-lg font-bold ${stats.winRate >= 50 ? 'text-terminal-green' : 'text-terminal-red'}`}>
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Taxa de acerto</div>
+              <div className={`text-[15px] tabular font-semibold ${
+                stats.winRate >= 50 ? 'text-status-success' : 'text-ink'
+              }`}>
                 {stats.winRate.toFixed(1)}%
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Valor Médio + Odd Média */}
-          <div className="terminal-container p-3 md:p-4 flex flex-row md:flex-col items-stretch justify-center gap-0 col-span-2 md:col-span-1">
-            <div className="flex-1 text-center flex flex-col justify-center md:pb-2.5">
-              <div className="data-label text-[10px] mb-1">Valor Médio das Apostas</div>
-              <div className="text-base md:text-lg font-bold text-terminal-text">{formatValue(stats.averageStake)}</div>
-            </div>
-            <div className="w-px self-stretch md:hidden mx-3" style={{ backgroundColor: 'var(--terminal-border)' }} />
-            <div className="hidden md:block border-t border-terminal-border my-0 md:pt-2.5" />
-            <div className="flex-1 text-center flex flex-col justify-center md:pt-2.5">
-              <div className="data-label text-[10px] mb-1">Odd Média</div>
-              <div className="text-base md:text-lg font-bold text-terminal-text">{stats.averageOdd.toFixed(2)}</div>
-            </div>
+        <div className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
+          <BankrollEvolutionChart
+            bets={bets}
+            initialBankroll={config.bank_amount}
+            capitalMovements={capitalMovements}
+            onUpdateBankroll={async (amount) => {
+              if (config.unit_calculation_method === 'direct') {
+                return await updateConfig({
+                  method: 'direct',
+                  unitValue: config.unit_value || 10,
+                  bankAmount: amount
+                });
+              }
+              const currentDivisor = config.bank_amount && config.unit_value
+                ? config.bank_amount / config.unit_value
+                : 100;
+              return await updateConfig({
+                method: 'division',
+                bankAmount: amount,
+                divisor: currentDivisor
+              });
+            }}
+            onAporte={() => setCapitalModal({ isOpen: true, type: 'deposit', amount: '', description: '' })}
+            onResgate={() => setCapitalModal({ isOpen: true, type: 'withdrawal', amount: '', description: '' })}
+          />
+
+          {/* Coluna direita: Telegram banner + Limite Diário */}
+          <div className="flex flex-col gap-4">
+            {/* Telegram banner */}
+            <a
+              href={telegramBotUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-forest text-white rounded-lg p-5 flex items-start gap-4 hover:bg-forest-soft transition-colors"
+            >
+              <div className="w-12 h-12 rounded-md bg-white/10 border border-white/20 grid place-items-center text-amber-400 shrink-0">
+                <Send className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
+                <div className="text-[14px] font-semibold mt-1 leading-tight">Cadastre apostas em segundos pelo Telegram.</div>
+                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto, áudio ou print do bilhete — a IA registra e este painel atualiza sozinho.</div>
+                <div className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Abrir bot</span>
+                </div>
+              </div>
+            </a>
+
+            {/* Dashboard CTA — atalho pra análise */}
+            <button
+              type="button"
+              onClick={() => navigate('/betting-dashboard')}
+              className="bg-white border border-line rounded-lg p-5 text-left hover:border-forest/30 hover:bg-forest-tint/30 transition-colors group"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="w-10 h-10 rounded-md bg-forest-tint border border-forest/20 grid place-items-center text-forest shrink-0">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <ChevronRight className="w-4 h-4 text-ink-2 group-hover:text-forest transition-colors" />
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold mt-3">Análise</div>
+              <div className="text-[15px] font-semibold text-ink mt-1">Dashboard</div>
+              <div className="text-[12px] text-ink-2 mt-1 leading-snug">
+                KPIs, gráficos por período e desempenho por liga, mercado e tag.
+              </div>
+            </button>
           </div>
         </div>
 
-        <BankrollEvolutionChart 
-          bets={bets} 
-          initialBankroll={config.bank_amount}
-          capitalMovements={capitalMovements}
-          onUpdateBankroll={async (amount) => {
-            if (config.unit_calculation_method === 'direct') {
-              return await updateConfig({
-                method: 'direct',
-                unitValue: config.unit_value || 10,
-                bankAmount: amount
-              });
-            }
-            const currentDivisor = config.bank_amount && config.unit_value
-              ? config.bank_amount / config.unit_value
-              : 100;
-            return await updateConfig({
-              method: 'division',
-              bankAmount: amount,
-              divisor: currentDivisor
-            });
-          }}
-          onAporte={() => setCapitalModal({ isOpen: true, type: 'deposit', amount: '', description: '' })}
-          onResgate={() => setCapitalModal({ isOpen: true, type: 'withdrawal', amount: '', description: '' })}
-          onNavigateCashFlow={() => navigate('/bankroll')}
-          onNavigateDashboard={() => navigate('/betting-dashboard')}
-        />
+        {/* Mobile hero — banca atual + sparkline + mini stats */}
+        <div className="md:hidden mb-4">
+          {(() => {
+            const movementsNet = capitalMovements
+              .filter(m => m.affects_balance)
+              .reduce((s, m) => s + (m.type === 'deposit' ? m.amount : -m.amount), 0);
+            const currentBankroll = (config.bank_amount ?? 0) + stats.profit + movementsNet;
+            return (
+          <div className="bg-forest text-white rounded-xl p-4">
+            <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-amber-400">Banca atual</div>
+            <div className="text-[28px] font-semibold tabular tracking-tight mt-1">
+              {formatValue(currentBankroll)}
+            </div>
+            <div className={`text-[11px] tabular font-semibold mt-0.5 ${stats.profit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {stats.profit >= 0 ? '+' : ''}{formatValue(stats.profit)} · {stats.profit >= 0 ? '+' : ''}{stats.roi.toFixed(1)}% no período
+            </div>
+            {/* mini sparkline em amber — 8 pontos derivados do profit acumulado */}
+            <svg viewBox="0 0 300 50" className="w-full h-[40px] mt-3" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="m-bk-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {(() => {
+                const settled = bets.filter(b => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(b.status))
+                  .sort((a, b) => new Date(a.bet_date).getTime() - new Date(b.bet_date).getTime());
+                if (settled.length === 0) return <path d="M0,40 L300,40" stroke="#fbbf24" strokeWidth="2" fill="none" />;
+                const start = config.bank_amount ?? 0;
+                let acc = start;
+                const points = [{ x: 0, v: start }];
+                settled.forEach((b, i) => {
+                  let p = 0;
+                  if (b.status === 'won') p = b.potential_return - b.stake_amount;
+                  else if (b.status === 'lost') p = -b.stake_amount;
+                  else if (b.status === 'cashout' && b.cashout_amount) p = b.cashout_amount - b.stake_amount;
+                  else if (b.status === 'half_won') p = (b.potential_return - b.stake_amount) / 2;
+                  else if (b.status === 'half_lost') p = -b.stake_amount / 2;
+                  acc += p;
+                  points.push({ x: ((i + 1) / settled.length) * 300, v: acc });
+                });
+                const min = Math.min(...points.map(p => p.v));
+                const max = Math.max(...points.map(p => p.v));
+                const range = max - min || 1;
+                const ys = points.map(p => 45 - ((p.v - min) / range) * 40);
+                const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${ys[i]}`).join(' ');
+                const areaPath = `${linePath} L300,50 L0,50 Z`;
+                return (
+                  <>
+                    <path d={areaPath} fill="url(#m-bk-grad)" />
+                    <path d={linePath} fill="none" stroke="#fbbf24" strokeWidth="2" />
+                  </>
+                );
+              })()}
+            </svg>
+            <div className="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-white/15">
+              <div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">Win-rate</div>
+                <div className="text-[14px] font-semibold tabular mt-0.5">{stats.winRate.toFixed(1)}%</div>
+              </div>
+              <div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">ROI</div>
+                <div className="text-[14px] font-semibold tabular mt-0.5">{stats.roi.toFixed(1)}%</div>
+              </div>
+              <div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">Apostas</div>
+                <div className="text-[14px] font-semibold tabular mt-0.5">{stats.totalBets}</div>
+              </div>
+            </div>
+          </div>
+            );
+          })()}
+        </div>
 
-        {/* Filters Bar */}
-        <div className="terminal-container p-3 mb-4">
-          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2 items-center">
+        {/* Mobile: TG banner + Dashboard CTA */}
+        <div className="md:hidden mb-4 grid grid-cols-1 gap-3">
+          <a
+            href={telegramBotUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-forest text-white rounded-lg p-4 flex items-center gap-3 hover:bg-forest-soft transition-colors"
+          >
+            <div className="w-10 h-10 rounded-md bg-white/10 border border-white/20 grid place-items-center text-amber-400 shrink-0">
+              <Send className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
+              <div className="text-[13px] font-semibold mt-0.5 leading-tight">Cadastre apostas pelo bot</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/50 shrink-0" />
+          </a>
+          <button
+            type="button"
+            onClick={() => navigate('/betting-dashboard')}
+            className="bg-white border border-line rounded-lg p-4 flex items-center gap-3 text-left hover:border-forest/30 hover:bg-forest-tint/30 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-md bg-forest-tint border border-forest/20 grid place-items-center text-forest shrink-0">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-ink-2">Análise</div>
+              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Dashboard de KPIs</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-ink-2 shrink-0" />
+          </button>
+        </div>
+
+        {/* Mobile filter chips — Status quick filter + Período + botão Filtros */}
+        <div className="md:hidden mb-3 flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+          {[
+            { l: 'Todas', value: null },
+            { l: 'Pendentes', value: 'pending' },
+            { l: 'Ganhas', value: 'won' },
+            { l: 'Perdidas', value: 'lost' },
+          ].map((c) => {
+            const active = c.value === null ? filters.status.length === 0 : filters.status.length === 1 && filters.status[0] === c.value;
+            return (
+              <button
+                key={c.l}
+                type="button"
+                onClick={() => {
+                  if (c.value === null) {
+                    setFilters(prev => ({ ...prev, status: [] }));
+                  } else {
+                    setFilters(prev => ({ ...prev, status: [c.value] }));
+                  }
+                }}
+                className={`shrink-0 h-7 px-3 text-[11px] font-medium rounded-full border transition-colors ${
+                  active ? 'bg-ink text-white border-ink' : 'bg-white text-ink-2 border-line'
+                }`}
+              >
+                {c.l}
+              </button>
+            );
+          })}
+
+          {/* Chip Período — abre popover com presets + calendário */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`shrink-0 h-7 px-3 text-[11px] font-medium rounded-full border inline-flex items-center gap-1.5 transition-colors ${
+                  filters.dateFrom || filters.dateTo
+                    ? 'bg-forest-tint text-forest border-forest/30'
+                    : 'bg-white text-ink-2 border-line'
+                }`}
+              >
+                <CalendarIcon className="w-3 h-3" />
+                {(() => {
+                  const from = parseDateString(filters.dateFrom);
+                  const to = parseDateString(filters.dateTo);
+                  if (from && to) return `${format(from, 'dd MMM', { locale: ptBR })} – ${format(to, 'dd MMM', { locale: ptBR })}`;
+                  return 'Período';
+                })()}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              sideOffset={6}
+              className="theme-rebrand w-auto p-0 bg-white border border-line text-ink rounded-md shadow-[0_10px_30px_-10px_rgba(0,0,0,0.2)] z-[60]"
+            >
+              <div className="p-3 border-b border-line flex flex-wrap gap-1.5">
+                {[
+                  { l: '7d', days: 7 },
+                  { l: '30d', days: 30 },
+                  { l: '90d', days: 90 },
+                ].map(p => (
+                  <button
+                    key={p.l}
+                    type="button"
+                    onClick={() => {
+                      const today = new Date();
+                      const from = new Date();
+                      from.setDate(today.getDate() - p.days);
+                      setFilters(prev => ({
+                        ...prev,
+                        dateFrom: formatDateToString(from),
+                        dateTo: formatDateToString(today),
+                      }));
+                    }}
+                    className="h-7 px-3 text-[11px] font-semibold border border-line text-ink-2 hover:bg-forest-tint hover:text-forest hover:border-forest/30 rounded-md transition-colors"
+                  >
+                    Últimos {p.l}
+                  </button>
+                ))}
+              </div>
+              <CalendarComponent
+                mode="range"
+                selected={{
+                  from: parseDateString(filters.dateFrom) || undefined,
+                  to: parseDateString(filters.dateTo) || undefined,
+                }}
+                onSelect={(range) => {
+                  setFilters(prev => ({
+                    ...prev,
+                    dateFrom: formatDateToString(range?.from),
+                    dateTo: formatDateToString(range?.to),
+                  }));
+                }}
+                numberOfMonths={1}
+                classNames={{
+                  caption_label: 'text-sm font-semibold text-ink',
+                  nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                  head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
+                  day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                  day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                  day_today: 'bg-ink-3 text-ink font-semibold',
+                  day_outside: 'text-ink-2 opacity-40',
+                  day_disabled: 'text-ink-2 opacity-30',
+                  day_range_middle: 'aria-selected:bg-forest-tint aria-selected:text-forest aria-selected:rounded-none',
+                  day_range_start: 'aria-selected:bg-forest aria-selected:text-white aria-selected:rounded-l-md aria-selected:rounded-r-none',
+                  day_range_end: 'aria-selected:bg-forest aria-selected:text-white aria-selected:rounded-r-md aria-selected:rounded-l-none',
+                }}
+              />
+              {/* Limpar — rodapé esquerdo, só aparece quando há range selecionado */}
+              {(filters.dateFrom || filters.dateTo) && (
+                <div className="px-3 py-2 border-t border-line">
+                  <button
+                    type="button"
+                    onClick={() => setFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }))}
+                    className="text-[11px] font-semibold text-ink-2 hover:text-status-danger transition-colors"
+                  >
+                    Limpar período
+                  </button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+          {/* Botão Filtros — abre dialog com filtros completos (mesmo do desktop) */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                className={`shrink-0 h-7 px-3 ml-auto text-[11px] font-semibold rounded-full border inline-flex items-center gap-1.5 transition-colors ${
+                  advancedFiltersTotal > 0
+                    ? 'bg-forest-tint text-forest border-forest/30'
+                    : 'bg-white text-ink-2 border-line'
+                }`}
+                aria-label="Abrir filtros"
+              >
+                <Filter className="w-3 h-3" />
+                Filtros
+                {advancedFiltersTotal > 0 && (
+                  <span className="px-1 text-[9px] font-bold bg-forest text-white rounded-full leading-tight">
+                    {advancedFiltersTotal}
+                  </span>
+                )}
+              </button>
+            </DialogTrigger>
+            <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              {advancedFiltersContent}
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Filters Bar (desktop) */}
+        <div className="hidden md:block bg-white border border-line rounded-lg p-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2">
+              {/* Search */}
+              <div className="flex items-center gap-2 px-2.5 h-9 bg-ink-3/40 border border-line rounded-md w-[200px]">
+                <Search className="w-4 h-4 text-ink-2 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Buscar aposta…"
+                  className="bg-transparent text-[13px] text-ink placeholder:text-ink-2 flex-1 outline-none min-w-0"
+                  value={filters.searchQuery}
+                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
+                />
+              </div>
+
               <MultiSelectFilter
+                variant="rebrand"
                 label="STATUS"
-                placeholder="TODOS STATUS"
+                placeholder="Todos"
                 options={[
                   { value: 'pending', label: 'PENDENTE' },
                   { value: 'won', label: 'GANHOU' },
@@ -1923,8 +2870,9 @@ export default function Bets() {
               />
 
               <MultiSelectFilter
-                label="ESPORTES"
-                placeholder="TODOS ESPORTES"
+                variant="rebrand"
+                label="ESPORTE"
+                placeholder="Todos"
                 options={[
                   ...uniqueSports.map(sport => ({
                     value: sport,
@@ -1936,84 +2884,10 @@ export default function Bets() {
                 onChange={(values) => setFilters(prev => ({ ...prev, sport: values }))}
               />
 
-              <Popover open={isFilterDateFromOpen} onOpenChange={setIsFilterDateFromOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {(() => {
-                      const date = parseDateString(filters.dateFrom);
-                      return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'DATA INICIAL';
-                    })()}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
-                  <CalendarComponent
-                    mode="single"
-                    selected={parseDateString(filters.dateFrom) || undefined}
-                    onSelect={(date) => {
-                      const formatted = formatDateToString(date);
-                      setFilters(prev => {
-                        const next = { ...prev, dateFrom: formatted };
-                        const fromDate = parseDateString(formatted);
-                        const toDate = parseDateString(prev.dateTo);
-                        if (fromDate && toDate && isBefore(toDate, fromDate)) {
-                          next.dateTo = '';
-                        }
-                        return next;
-                      });
-                      setIsFilterDateFromOpen(false);
-                      setIsFilterDateToOpen(true);
-                    }}
-                    initialFocus
-                    className="bg-terminal-dark-gray"
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <Popover open={isFilterDateToOpen} onOpenChange={setIsFilterDateToOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="terminal-input w-full md:w-auto text-xs px-3 py-1.5 rounded-sm justify-start text-left font-normal flex items-center h-auto"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {(() => {
-                      const date = parseDateString(filters.dateTo);
-                      return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'DATA FINAL';
-                    })()}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
-                  <CalendarComponent
-                    mode="single"
-                    selected={parseDateString(filters.dateTo) || undefined}
-                    disabled={(date) => {
-                      const fromDate = parseDateString(filters.dateFrom);
-                      return fromDate ? isBefore(date, fromDate) : false;
-                    }}
-                    onSelect={(date) => {
-                      const fromDate = parseDateString(filters.dateFrom);
-                      if (fromDate && date && isBefore(date, fromDate)) {
-                        return;
-                      }
-                      setFilters(prev => ({
-                        ...prev,
-                        dateTo: formatDateToString(date)
-                      }));
-                      setIsFilterDateToOpen(false);
-                    }}
-                    initialFocus
-                    className="bg-terminal-dark-gray"
-                  />
-                </PopoverContent>
-              </Popover>
-
               <MultiSelectFilter
-                label="LIGAS"
-                placeholder="TODAS LIGAS"
+                variant="rebrand"
+                label="LIGA"
+                placeholder="Todas"
                 options={[
                   ...uniqueLeagues.map(league => ({
                     value: league,
@@ -2026,8 +2900,9 @@ export default function Bets() {
               />
 
               <MultiSelectFilter
-                label="MERCADOS"
-                placeholder="TODOS MERCADOS"
+                variant="rebrand"
+                label="MERCADO"
+                placeholder="Todos"
                 options={[
                   ...uniqueBettingMarkets.map(market => ({
                     value: market,
@@ -2039,124 +2914,201 @@ export default function Bets() {
                 onChange={(values) => setFilters(prev => ({ ...prev, betting_market: values }))}
               />
 
-              <MultiSelectFilter
-                label="TAGS"
-                placeholder="TODAS AS TAGS"
-                options={userTags.map(tag => ({
-                  value: tag.id,
-                  label: tag.name.toUpperCase()
-                }))}
-                selected={filters.selectedTags}
-                onChange={(values) => setFilters(prev => ({ ...prev, selectedTags: values }))}
-              />
+              {/* Date range — single button opens range calendar */}
+              <Popover open={isFilterDateFromOpen} onOpenChange={setIsFilterDateFromOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-9 px-3 inline-flex items-center gap-2 text-[12px] text-ink-2 border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors font-medium"
+                  >
+                    <span className="font-semibold uppercase tracking-[0.08em] text-[10px] text-ink-2">PERÍODO</span>
+                    {(() => {
+                      const from = parseDateString(filters.dateFrom);
+                      const to = parseDateString(filters.dateTo);
+                      if (from && to) {
+                        return (
+                          <span className="text-ink font-medium tabular">
+                            {format(from, 'dd MMM', { locale: ptBR })} – {format(to, 'dd MMM', { locale: ptBR })}
+                          </span>
+                        );
+                      }
+                      if (from) return <span className="text-ink font-medium tabular">Desde {format(from, 'dd MMM', { locale: ptBR })}</span>;
+                      if (to) return <span className="text-ink font-medium tabular">Até {format(to, 'dd MMM', { locale: ptBR })}</span>;
+                      return <span className="text-ink font-medium">Todo</span>;
+                    })()}
+                    <ChevronDown className="ml-auto w-3 h-3 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="theme-rebrand w-auto p-0 bg-white border border-line text-ink rounded-md shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]" align="start">
+                  <div className="p-3 border-b border-line flex flex-wrap gap-1.5">
+                    {[
+                      { l: '7d', days: 7 },
+                      { l: '30d', days: 30 },
+                      { l: '90d', days: 90 },
+                    ].map(p => (
+                      <button
+                        key={p.l}
+                        type="button"
+                        onClick={() => {
+                          const today = new Date();
+                          const from = new Date();
+                          from.setDate(today.getDate() - p.days);
+                          setFilters(prev => ({
+                            ...prev,
+                            dateFrom: formatDateToString(from),
+                            dateTo: formatDateToString(today),
+                          }));
+                          setIsFilterDateFromOpen(false);
+                        }}
+                        className="h-7 px-3 text-[11px] font-semibold border border-line text-ink-2 hover:bg-forest-tint hover:text-forest hover:border-forest/30 rounded-md transition-colors"
+                      >
+                        Últimos {p.l}
+                      </button>
+                    ))}
+                  </div>
+                  <CalendarComponent
+                    mode="range"
+                    selected={{
+                      from: parseDateString(filters.dateFrom) || undefined,
+                      to: parseDateString(filters.dateTo) || undefined,
+                    }}
+                    onSelect={(range) => {
+                      setFilters(prev => ({
+                        ...prev,
+                        dateFrom: formatDateToString(range?.from),
+                        dateTo: formatDateToString(range?.to),
+                      }));
+                      if (range?.from && range?.to) {
+                        setIsFilterDateFromOpen(false);
+                      }
+                    }}
+                    numberOfMonths={2}
+                    initialFocus
+                    classNames={{
+                      caption_label: 'text-sm font-semibold text-ink',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_outside: 'text-ink-2 opacity-40',
+                      day_disabled: 'text-ink-2 opacity-30',
+                      day_range_middle: 'aria-selected:bg-forest-tint aria-selected:text-forest aria-selected:rounded-none',
+                      day_range_start: 'aria-selected:bg-forest aria-selected:text-white aria-selected:rounded-l-md aria-selected:rounded-r-none',
+                      day_range_end: 'aria-selected:bg-forest aria-selected:text-white aria-selected:rounded-r-md aria-selected:rounded-l-none',
+                    }}
+                  />
+                  {(filters.dateFrom || filters.dateTo) && (
+                    <div className="px-3 py-2 border-t border-line">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }));
+                          setIsFilterDateFromOpen(false);
+                        }}
+                        className="text-[11px] font-semibold text-ink-2 hover:text-status-danger transition-colors"
+                      >
+                        Limpar período
+                      </button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              {/* Mais filtros — dialog centralizado com TODOS os filtros */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className={`h-9 px-3 inline-flex items-center gap-2 text-[12px] font-semibold border rounded-md transition-colors ${
+                      advancedFiltersTotal > 0
+                        ? 'text-forest border-forest/30 bg-forest-tint hover:bg-forest-tint/80'
+                        : 'text-ink-2 border-line bg-white hover:bg-ink-3/40 hover:text-ink'
+                    }`}
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>Mais filtros</span>
+                    {advancedFiltersTotal > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-forest text-white rounded-full">
+                        {advancedFiltersTotal}
+                      </span>
+                    )}
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                  {advancedFiltersContent}
+                </DialogContent>
+              </Dialog>
 
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="terminal-input px-3 py-1.5 text-xs flex items-center justify-center gap-1.5 border border-terminal-border hover:border-terminal-red hover:text-terminal-red transition-colors rounded-sm whitespace-nowrap"
+                className="h-9 px-3 text-[12px] flex items-center justify-center gap-1.5 text-ink-2 hover:bg-status-danger/10 hover:text-status-danger transition-colors rounded-md whitespace-nowrap font-medium"
               >
                 <X className="w-3.5 h-3.5 shrink-0" />
-                <span>Limpar Filtros</span>
+                <span>Limpar filtros</span>
               </button>
-
-              <div className="relative col-span-2 md:w-auto md:min-w-[120px] md:max-w-[140px]">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-terminal-text opacity-50" />
-                <input
-                  type="text"
-                  placeholder="Buscar aposta..."
-                  className="terminal-input w-full pl-8 pr-3 py-1.5 text-xs rounded-sm"
-                  value={filters.searchQuery}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-                />
-              </div>
           </div>
         </div>
 
-        {/* Bets Table */}
-        <div className="terminal-container p-4">
-          <div className="flex justify-between items-center mb-3">
-            <div className="flex flex-col gap-1">
-              <h3 className="section-title">APOSTAS RECENTES</h3>
-              <label className="md:hidden flex items-center gap-1.5 cursor-pointer w-fit">
-                <input
-                  type="checkbox"
-                  checked={isAllPageSelected}
-                  ref={el => { if (el) el.indeterminate = isPageIndeterminate; }}
-                  onChange={toggleSelectAllPage}
-                  className="w-3 h-3 accent-terminal-green cursor-pointer opacity-60 checked:opacity-100"
-                />
-                <span className="text-[10px] text-terminal-text/50 uppercase tracking-wider">Selecionar todos</span>
-              </label>
+        {/* Bets Table — wrapper card só no desktop. Mobile cards ficam standalone na canvas */}
+        <div className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
+          <div className="flex justify-between items-center px-1 md:px-5 py-3 md:border-b md:border-line">
+            <div className="flex items-baseline gap-3">
+              <h3 className="text-[11px] md:text-[13px] uppercase md:normal-case tracking-[0.12em] md:tracking-normal font-semibold text-ink-2 md:text-ink">Apostas</h3>
+              <span className="text-[11px] text-ink-2 tabular">
+                Mostrando {paginatedBets.length} de {sortedBets.length}
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={fetchBets}
-                className="terminal-button px-3 py-2 text-sm flex items-center justify-center gap-1.5 border-terminal-border hover:border-terminal-green transition-colors"
-              >
-                <RefreshCw className={`w-4 h-4 shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
-              </button>
             <button
               type="button"
-              onClick={() => {
-                if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-                  navigate('/paywall');
-                  return;
-                }
-                setIsCreateModalOpen(true);
-              }}
-                className="terminal-button px-4 py-2 text-sm flex items-center gap-2 border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                NOVA APOSTA
-              </button>
-              {isBetinhoFree && dailyBetCount !== null && (
-                <span className="text-[10px] opacity-50">
-                  {dailyBetCount}/{DAILY_BET_LIMIT} apostas hoje
-                </span>
-              )}
-            </div>
+              onClick={fetchBets}
+              className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors"
+              title="Atualizar"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
-          
+
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-2 p-5">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full bg-terminal-gray" />
+                <Skeleton key={i} className="h-10 w-full bg-ink-3" />
               ))}
             </div>
           ) : filteredBets.length === 0 ? (
-            <div className="text-center py-12 opacity-50">
+            <div className="text-center py-12 text-ink-2">
               <Target className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>NENHUMA APOSTA ENCONTRADA</p>
+              <p className="text-[12px] uppercase tracking-[0.14em] font-semibold">Nenhuma aposta encontrada</p>
+              <p className="text-[11px] mt-1">Tente ajustar os filtros</p>
             </div>
           ) : (
             <>
-              {/* Desktop Table View - table-auto para min-width das células (RETORNO/STATUS/AÇÕES) serem respeitados */}
+              {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-xs min-w-[960px] table-auto">
-                  <thead>
-                    <tr className="border-b border-terminal-border-subtle">
-                      <th className="py-1.5 px-1.5 w-8 text-left">
+                <table className="w-full text-[12px] min-w-[960px] table-auto">
+                  <thead className="bg-ink-3/40">
+                    <tr>
+                      <th className="py-2.5 px-1.5 w-8 text-left">
                         <input
                           type="checkbox"
                           checked={isAllPageSelected}
                           ref={el => { if (el) el.indeterminate = isPageIndeterminate; }}
                           onChange={toggleSelectAllPage}
-                          className="w-3 h-3 accent-terminal-green cursor-pointer opacity-60 checked:opacity-100"
+                          className="w-3.5 h-3.5 accent-forest cursor-pointer"
                         />
                       </th>
                       <SortableHeader column="bet_date" label="DATA" />
-                      <th className="text-left py-1.5 px-1.5 data-label">DESCRIÇÃO</th>
-                      <th className="text-left py-1.5 px-1.5 data-label">TAGS</th>
-                      <SortableHeader column="stake_amount" label="VALOR" align="right" />
+                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">DESCRIÇÃO</th>
+                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">TAGS</th>
+                      <SortableHeader column="sport" label="ESPORTE / LIGA" />
+                      <SortableHeader column="betting_market" label="MERCADO" />
+                      <SortableHeader column="stake_amount" label="STAKE" align="right" />
                       <SortableHeader column="odds" label="ODDS" align="right" />
                       <SortableHeader column="return" label="RETORNO" align="right" className="min-w-[5.5rem]" />
                       <SortableHeader column="profit" label="LUCRO" align="right" className="min-w-[5.5rem]" />
                       <SortableHeader column="status" label="STATUS" align="center" className="min-w-[5rem]" />
-                      <SortableHeader column="sport" label="ESPORTE" />
-                      <SortableHeader column="league" label="LIGA" />
-                      <SortableHeader column="betting_market" label="MERCADO" />
-                      <th className="text-right py-1.5 px-1.5 data-label min-w-[11rem]">AÇÕES</th>
+                      <th className="text-right py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold min-w-[11rem]">AÇÕES</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2171,63 +3123,141 @@ export default function Bets() {
               </div>
 
               {/* Pagination footer */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-terminal-border-subtle">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-terminal-text opacity-70">Mostrando</span>
-                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                    <SelectTrigger className="w-[70px] h-8 text-xs terminal-button border-terminal-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-terminal-dark-gray border-terminal-border">
-                      <SelectItem value="15">15</SelectItem>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-[10px] text-terminal-text opacity-70">
-                    de {sortedBets.length} apostas
-                  </span>
+              <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px]">
+                <div className="text-[11px] text-ink-2 tabular">
+                  Página {currentPage} de {totalPages}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="terminal-button h-8 w-8 p-0"
+                    className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="text-[10px] text-terminal-text opacity-70 min-w-[4rem] text-center">
-                    {currentPage} de {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+                  {(() => {
+                    const pages: (number | 'ellipsis')[] = [];
+                    if (totalPages <= 7) {
+                      for (let i = 1; i <= totalPages; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      const start = Math.max(2, currentPage - 1);
+                      const end = Math.min(totalPages - 1, currentPage + 1);
+                      if (start > 2) pages.push('ellipsis');
+                      for (let i = start; i <= end; i++) pages.push(i);
+                      if (end < totalPages - 1) pages.push('ellipsis');
+                      pages.push(totalPages);
+                    }
+                    return pages.map((p, idx) =>
+                      p === 'ellipsis' ? (
+                        <span key={`e-${idx}`} className="text-[11px] text-ink-2 px-1">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => handlePageChange(p)}
+                          className={`h-8 w-8 inline-flex items-center justify-center text-[12px] rounded-md font-medium transition-colors ${
+                            p === currentPage
+                              ? 'bg-forest text-white'
+                              : 'text-ink-2 hover:text-ink hover:bg-ink-3/40'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    );
+                  })()}
+                  <button
+                    type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="terminal-button h-8 w-8 p-0"
+                    className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronRight className="w-4 h-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             </>
           )}
         </div>
+
+        {/* Secondary stats — abaixo da tabela */}
+        {!isLoading && filteredBets.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+            <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Stake médio</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate">por aposta</div>
+              </div>
+              <div className="text-[15px] tabular font-semibold text-ink shrink-0 ml-2">{formatValue(secondaryStats.avgStake)}</div>
+            </div>
+            <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Odd média</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">prob. implícita {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
+              </div>
+              <div className="text-[15px] tabular font-semibold text-forest shrink-0 ml-2">{secondaryStats.avgOdds.toFixed(2)}</div>
+            </div>
+            <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Maior vitória</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate">
+                  {secondaryStats.biggestWin
+                    ? `${truncateDescription(secondaryStats.biggestWin.description, 28)} · ${secondaryStats.biggestWin.date}`
+                    : '—'}
+                </div>
+              </div>
+              <div className="text-[15px] tabular font-semibold text-status-success shrink-0 ml-2">
+                {secondaryStats.biggestWin ? `+${formatValue(secondaryStats.biggestWin.profit)}` : '—'}
+              </div>
+            </div>
+            <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Maior derrota</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate">
+                  {secondaryStats.biggestLoss
+                    ? `${truncateDescription(secondaryStats.biggestLoss.description, 28)} · ${secondaryStats.biggestLoss.date}`
+                    : '—'}
+                </div>
+              </div>
+              <div className="text-[15px] tabular font-semibold text-status-danger shrink-0 ml-2">
+                {secondaryStats.biggestLoss ? formatValue(secondaryStats.biggestLoss.profit) : '—'}
+              </div>
+            </div>
+          </div>
+        )}
+        </>
       </main>
+
+      {/* Mobile FAB — Nova aposta */}
+      {selectedBetIds.size === 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
+              navigate('/paywall');
+              return;
+            }
+            setIsCreateModalOpen(true);
+          }}
+          className="md:hidden theme-rebrand fixed right-5 bottom-6 z-40 w-14 h-14 rounded-full bg-forest text-white grid place-items-center shadow-[0_10px_30px_-5px_rgba(10,61,46,0.5)] hover:bg-forest-soft transition-colors"
+          aria-label="Nova aposta"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Bulk Action Bar - fixed at bottom like ClickUp */}
       {selectedBetIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-3 pb-3 pointer-events-none">
-          <div className="container flex items-center gap-2 px-4 py-3 bg-terminal-dark-gray border border-white/10 rounded-lg shadow-lg pointer-events-auto">
-            <div className="flex items-center gap-1.5 border border-white/15 rounded px-2 py-1">
-              <span className="text-xs text-terminal-green font-bold whitespace-nowrap">
+        <div className="theme-rebrand fixed bottom-0 left-0 right-0 z-50 flex justify-center px-3 pb-3 pointer-events-none">
+          <div className="max-w-7xl w-full flex items-center gap-2 px-4 py-3 bg-white border border-line rounded-lg shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.15)] pointer-events-auto">
+            <div className="flex items-center gap-1.5 border border-forest/20 bg-forest-tint rounded-md px-2 py-1">
+              <span className="text-[12px] text-forest font-semibold whitespace-nowrap">
                 {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
               </span>
               <button type="button" onClick={clearSelection}
-                className="text-xs text-terminal-text/50 hover:text-terminal-text transition-colors leading-none">
+                className="text-sm text-ink-2 hover:text-ink transition-colors leading-none ml-1">
                 ×
               </button>
             </div>
@@ -2238,48 +3268,48 @@ export default function Bets() {
               <Sheet>
                 <SheetTrigger asChild>
                   <button type="button"
-                    className="px-4 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green rounded transition-colors flex items-center gap-1.5">
+                    className="h-9 px-4 text-[12px] font-semibold border border-forest/30 text-forest bg-white hover:bg-forest-tint rounded-md transition-colors flex items-center gap-1.5">
                     <ChevronUp className="w-3.5 h-3.5" /> Ações
                   </button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="bg-terminal-dark-gray border-t border-white/10 px-4 pb-8 pt-4 rounded-t-xl">
-                  <p className="text-xs text-terminal-text/50 mb-3 pr-8">
+                <SheetContent side="bottom" className="theme-rebrand bg-white border-t border-line px-4 pb-8 pt-4 rounded-t-xl">
+                  <p className="text-[11px] text-ink-2 mb-3 pr-8 uppercase tracking-[0.1em] font-semibold">
                     {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => bulkUpdateStatus('won')}
-                      className="py-3 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
-                      <TrendingUp className="w-4 h-4" /> GANHOU
+                      className="h-11 text-[12px] font-semibold border border-status-success/30 text-status-success bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <TrendingUp className="w-4 h-4" /> Ganhou
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('lost')}
-                      className="py-3 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
-                      <TrendingDown className="w-4 h-4" /> PERDEU
+                      className="h-11 text-[12px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <TrendingDown className="w-4 h-4" /> Perdeu
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('half_won')}
-                      className="py-3 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
-                      <TrendingUp className="w-4 h-4 opacity-70" /> 1/2 GREEN
+                      className="h-11 text-[12px] font-semibold border border-status-success/20 text-status-success/80 bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <TrendingUp className="w-4 h-4 opacity-70" /> ½ Green
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
-                      className="py-3 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
-                      <TrendingDown className="w-4 h-4 opacity-70" /> 1/2 RED
+                      className="h-11 text-[12px] font-semibold border border-status-danger/20 text-status-danger/80 bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <TrendingDown className="w-4 h-4 opacity-70" /> ½ Red
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('void')}
-                      className="py-3 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center justify-center gap-2">
-                      <X className="w-4 h-4" /> ANULADA
+                      className="h-11 text-[12px] font-semibold border border-line text-ink-2 bg-white hover:bg-ink-3/40 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <X className="w-4 h-4" /> Anulada
                     </button>
                     <button type="button" onClick={bulkDelete}
-                      className="py-3 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center justify-center gap-2">
-                      <Trash2 className="w-4 h-4" /> EXCLUIR
+                      className="h-11 text-[12px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <Trash2 className="w-4 h-4" /> Excluir
                     </button>
                   </div>
                   {userTags.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs text-terminal-text/50 mb-2">Adicionar tag</p>
+                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar tag</p>
                       <div className="flex flex-wrap gap-2">
                         {userTags.map(tag => (
                           <button key={tag.id} type="button"
                             onClick={() => bulkAddTag(tag)}
-                            className="px-3 py-1.5 text-xs border border-terminal-border hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                            className="h-8 px-3 text-[11px] border border-line bg-white text-ink hover:bg-ink-3/40 rounded-md transition-colors flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
                             {tag.name}
                           </button>
@@ -2292,22 +3322,22 @@ export default function Bets() {
             </div>
 
             {/* Desktop: inline buttons */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1.5">
               <Popover>
                 <PopoverTrigger asChild>
                   <button type="button"
-                    className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
+                    className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-ink-3/40 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
                     <Plus className="w-3.5 h-3.5" /> TAG
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-48 p-1 bg-terminal-dark-gray border-terminal-border" align="start" side="top">
+                <PopoverContent className="theme-rebrand w-48 p-1 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]" align="start" side="top">
                   {userTags.length === 0 ? (
-                    <p className="text-xs text-terminal-text/50 p-2">Nenhuma tag criada</p>
+                    <p className="text-[11px] text-ink-2 p-2">Nenhuma tag criada</p>
                   ) : (
                     userTags.map(tag => (
                       <button key={tag.id} type="button"
                         onClick={() => bulkAddTag(tag)}
-                        className="w-full text-left px-2 py-1.5 text-xs hover:bg-terminal-gray rounded flex items-center gap-2 transition-colors">
+                        className="w-full text-left px-2 py-1.5 text-[11px] text-ink hover:bg-ink-3/40 rounded flex items-center gap-2 transition-colors">
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
                         {tag.name}
                       </button>
@@ -2316,28 +3346,28 @@ export default function Bets() {
                 </PopoverContent>
               </Popover>
               <button type="button" onClick={() => bulkUpdateStatus('won')}
-                className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5" /> GANHOU
+                className="h-8 px-3 text-[11px] font-semibold border border-status-success/30 text-status-success bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5" /> Ganhou
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('lost')}
-                className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                <TrendingDown className="w-3.5 h-3.5" /> PERDEU
+                className="h-8 px-3 text-[11px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center gap-1.5">
+                <TrendingDown className="w-3.5 h-3.5" /> Perdeu
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('half_won')}
-                className="px-3 py-1.5 text-xs font-bold border border-terminal-green text-terminal-green/70 hover:bg-terminal-green hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 opacity-70" /> 1/2 GREEN
+                className="h-8 px-3 text-[11px] font-semibold border border-status-success/20 text-status-success/80 bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 opacity-70" /> ½ Green
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
-                className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red/70 hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                <TrendingDown className="w-3.5 h-3.5 opacity-70" /> 1/2 RED
+                className="h-8 px-3 text-[11px] font-semibold border border-status-danger/20 text-status-danger/80 bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center gap-1.5">
+                <TrendingDown className="w-3.5 h-3.5 opacity-70" /> ½ Red
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('void')}
-                className="px-3 py-1.5 text-xs font-bold border border-terminal-border text-terminal-text hover:bg-terminal-gray rounded transition-colors flex items-center gap-1.5">
-                <X className="w-3.5 h-3.5" /> ANULADA
+                className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-ink-3/40 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
+                <X className="w-3.5 h-3.5" /> Anulada
               </button>
               <button type="button" onClick={bulkDelete}
-                className="px-3 py-1.5 text-xs font-bold border border-terminal-red text-terminal-red hover:bg-terminal-red hover:text-terminal-black rounded transition-colors flex items-center gap-1.5">
-                <Trash2 className="w-3.5 h-3.5" /> EXCLUIR
+                className="h-8 px-3 text-[11px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center gap-1.5">
+                <Trash2 className="w-3.5 h-3.5" /> Excluir
               </button>
             </div>
           </div>
@@ -2345,100 +3375,144 @@ export default function Bets() {
       )}
       
       {/* Cashout Modal */}
-      <Dialog open={cashoutModal.isOpen} onOpenChange={(open) => 
+      <Dialog open={cashoutModal.isOpen} onOpenChange={(open) =>
         setCashoutModal(prev => ({ ...prev, isOpen: open }))
       }>
-        <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-md">
+        <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-terminal-green">
-              <DollarSign className="w-4 h-4" />
-              {cashoutModal.bet?.is_cashout ? 'EDITAR CASHOUT' : 'CASHOUT'}
+            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Cashout</div>
+            <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
+              {cashoutModal.bet?.is_cashout ? 'Editar cashout' : 'Encerrar antes do fim'}
             </DialogTitle>
-            <DialogDescription className="text-terminal-text opacity-60">
-              {cashoutModal.bet?.is_cashout 
+            <DialogDescription className="text-ink-2 text-[13px]">
+              {cashoutModal.bet?.is_cashout
                 ? 'Atualize o valor do cashout para esta aposta.'
                 : 'Insira o valor do cashout para esta aposta.'
               }
             </DialogDescription>
           </DialogHeader>
-          
-          {cashoutModal.bet && (
+
+          {cashoutModal.bet && (() => {
+            const bet = cashoutModal.bet;
+            const cashoutValue = parseFloat(cashoutModal.cashoutAmount) || 0;
+            const guaranteedProfit = cashoutValue - bet.stake_amount;
+            const potentialIfWin = bet.potential_return - cashoutValue;
+            return (
             <div className="space-y-4">
-              <div className="p-3 bg-terminal-black rounded border border-terminal-border-subtle">
-                <p className="font-medium text-sm">{cashoutModal.bet.bet_description}</p>
-                <div className="flex justify-between text-xs mt-2 opacity-70">
-                  <span>VALOR: {formatValue(cashoutModal.bet.stake_amount)}</span>
-                  <span>ODDS: {cashoutModal.bet.odds}</span>
+              <div className="bg-canvas border border-line rounded-lg p-4">
+                <div className="text-[11px] text-ink-2">Aposta</div>
+                <p className="text-[14px] font-semibold text-ink mt-0.5">{bet.bet_description}</p>
+                {bet.match_description && (
+                  <p className="text-[11px] text-ink-2 mt-0.5">{bet.match_description}</p>
+                )}
+                <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-line">
+                  <div>
+                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Stake</div>
+                    <div className="text-[13px] tabular text-ink mt-0.5">{formatValue(bet.stake_amount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Odd</div>
+                    <div className="text-[13px] tabular text-forest font-semibold mt-0.5">{bet.odds}</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Retorno se ganhar</div>
+                    <div className="text-[13px] tabular text-ink mt-0.5">{formatValue(bet.potential_return)}</div>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs uppercase opacity-70">Valor do Cashout (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={cashoutModal.cashoutAmount}
-                  onChange={(e) => setCashoutModal(prev => ({ ...prev, cashoutAmount: e.target.value }))}
-                  className="bg-terminal-black border-terminal-border text-terminal-text"
-                />
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor do cashout</Label>
+                <div className="flex items-center h-12 bg-white border-2 border-forest/30 focus-within:border-forest rounded-md">
+                  <span className="pl-4 text-[14px] text-ink-2 font-medium">R$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={cashoutModal.cashoutAmount}
+                    onChange={(e) => setCashoutModal(prev => ({ ...prev, cashoutAmount: e.target.value }))}
+                    placeholder="0,00"
+                    className="flex-1 bg-transparent px-3 text-[20px] font-semibold tabular text-ink outline-none"
+                  />
+                </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              {/* Resumo de lucro garantido vs potencial — só aparece quando há valor digitado */}
+              {cashoutValue > 0 && (
+                <div className={`p-3 rounded-md border flex items-start gap-2 text-[12px] ${
+                  guaranteedProfit >= 0
+                    ? 'bg-status-success/10 border-status-success/20 text-status-success'
+                    : 'bg-status-danger/10 border-status-danger/20 text-status-danger'
+                }`}>
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span className="leading-relaxed">
+                    {guaranteedProfit >= 0
+                      ? <>Lucro garantido de <span className="font-semibold tabular">+{formatValue(guaranteedProfit)}</span>.</>
+                      : <>Prejuízo limitado a <span className="font-semibold tabular">{formatValue(guaranteedProfit)}</span>.</>
+                    }{' '}Você abre mão de potencial <span className="font-semibold tabular">{formatValue(potentialIfWin)}</span> se acertar.
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2 justify-end">
                 <Button
                   onClick={() => setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' })}
-                  variant="outline"
-                  className="flex-1 border-terminal-border hover:bg-terminal-gray text-terminal-text"
+                  variant="ghost"
+                  className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:bg-ink-3/40 hover:text-ink"
                 >
-                  CANCELAR
+                  Cancelar
                 </Button>
                 <Button
                   onClick={processCashout}
                   disabled={!cashoutModal.cashoutAmount}
-                  className="flex-1 bg-terminal-green hover:bg-terminal-green-bright text-white"
+                  className="h-10 px-5 text-[13px] font-semibold bg-forest hover:bg-forest-soft text-white"
                 >
-                  CONFIRMAR
+                  Confirmar cashout
                 </Button>
               </div>
             </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
       {/* Capital Movement Modal (Aporte/Resgate) */}
       <Dialog open={capitalModal.isOpen} onOpenChange={(open) => setCapitalModal(prev => ({ ...prev, isOpen: open }))}>
-        <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-md">
+        <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-terminal-blue">
-              {capitalModal.type === 'deposit' ? 'APORTE' : 'RESGATE'}
+            <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold ${capitalModal.type === 'deposit' ? 'text-status-success' : 'text-status-danger'}`}>
+              {capitalModal.type === 'deposit' ? 'Aporte' : 'Resgate'}
+            </div>
+            <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
+              {capitalModal.type === 'deposit' ? 'Adicionar à banca' : 'Retirar da banca'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs uppercase opacity-70">Valor</Label>
+              <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor</Label>
               <Input
                 type="number"
                 value={capitalModal.amount}
                 onChange={(e) => setCapitalModal(prev => ({ ...prev, amount: e.target.value }))}
                 placeholder="0.00"
-                className="bg-terminal-black border-terminal-border text-terminal-text"
+                className="h-10 bg-canvas border-line text-ink tabular"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase opacity-70">Descrição (opcional)</Label>
+              <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Descrição (opcional)</Label>
               <Input
                 value={capitalModal.description}
                 onChange={(e) => setCapitalModal(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Ex: Depósito via PIX"
-                className="bg-terminal-black border-terminal-border text-terminal-text"
+                className="h-10 bg-canvas border-line text-ink"
               />
             </div>
             <div className="flex gap-2 pt-2">
               <Button
                 onClick={() => setCapitalModal(prev => ({ ...prev, isOpen: false }))}
                 variant="outline"
-                className="flex-1 border-terminal-border hover:bg-terminal-gray text-terminal-text"
+                className="flex-1 h-10 border-line bg-white hover:bg-ink-3/40 text-ink-2 hover:text-ink"
               >
-                CANCELAR
+                Cancelar
               </Button>
               <Button
                 onClick={async () => {
@@ -2454,9 +3528,9 @@ export default function Bets() {
                   toast({ title: 'Sucesso', description: capitalModal.type === 'deposit' ? 'Aporte registrado' : 'Resgate registrado' });
                 }}
                 disabled={!capitalModal.amount || parseFloat(capitalModal.amount) <= 0}
-                className="flex-1 bg-terminal-blue hover:bg-blue-600 text-white"
+                className="flex-1 h-10 bg-forest hover:bg-forest-soft text-white font-semibold"
               >
-                CONFIRMAR
+                Confirmar
               </Button>
             </div>
           </div>
@@ -2484,27 +3558,28 @@ export default function Bets() {
           }
         }
       }>
-        <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-terminal-blue">
-              <Edit className="w-4 h-4" />
-              EDITAR APOSTA
+            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Aposta</div>
+            <DialogTitle className="flex items-center gap-2 text-[18px] font-semibold tracking-tight text-ink">
+              <Edit className="w-4 h-4 text-forest" />
+              Editar aposta
             </DialogTitle>
           </DialogHeader>
-          
+
           {editModal.bet && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs uppercase opacity-70">Descrição</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Descrição</Label>
                 <Input
                   value={editModal.formData.bet_description}
                   onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, bet_description: e.target.value } }))}
-                  className="bg-terminal-black border-terminal-border text-terminal-text"
+                  className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase opacity-70">Esporte</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Esporte</Label>
                   <div className="relative">
                     <Input
                       value={editModal.formData.sport}
@@ -2574,10 +3649,10 @@ export default function Bets() {
                       }}
                       onBlur={() => setIsSportDropdownOpen(false)}
                       placeholder="Selecione ou digite o esporte"
-                      className="bg-terminal-black border-terminal-border text-terminal-text"
+                      className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white"
                     />
                     {isSportDropdownOpen && (
-                      <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-dark-gray">
+                      <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                         {filteredSportsList.length > 0 ? (
                           filteredSportsList.map((sport, index) => (
                             <button
@@ -2594,15 +3669,15 @@ export default function Bets() {
                                 setIsSportQueryTouched(false);
                                 setSportHighlightIndex(-1);
                               }}
-                              className={`w-full text-left px-3 py-2 text-sm text-terminal-text hover:bg-terminal-black ${
-                                index === sportHighlightIndex ? 'bg-terminal-black' : ''
+                              className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                                index === sportHighlightIndex ? 'bg-ink-3/40' : ''
                               }`}
                             >
                               {sport}
                             </button>
                           ))
                         ) : (
-                          <div className="px-3 py-2 text-xs opacity-60">
+                          <div className="px-3 py-2 text-xs text-ink-2">
                             Nenhum esporte encontrado
                           </div>
                         )}
@@ -2611,7 +3686,7 @@ export default function Bets() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase opacity-70">Liga</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Liga</Label>
                   <div className="relative">
                     <Input
                       value={editModal.formData.league}
@@ -2681,10 +3756,10 @@ export default function Bets() {
                       }}
                       onBlur={() => setIsLeagueDropdownOpen(false)}
                       placeholder="Selecione ou digite a liga"
-                      className="bg-terminal-black border-terminal-border text-terminal-text"
+                      className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white"
                     />
                     {isLeagueDropdownOpen && (
-                      <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-dark-gray">
+                      <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                         {filteredLeaguesList.length > 0 ? (
                           filteredLeaguesList.map((league, index) => (
                             <button
@@ -2701,15 +3776,15 @@ export default function Bets() {
                                 setIsLeagueQueryTouched(false);
                                 setLeagueHighlightIndex(-1);
                               }}
-                              className={`w-full text-left px-3 py-2 text-sm text-terminal-text hover:bg-terminal-black ${
-                                index === leagueHighlightIndex ? 'bg-terminal-black' : ''
+                              className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                                index === leagueHighlightIndex ? 'bg-ink-3/40' : ''
                               }`}
                             >
                               {league}
                             </button>
                           ))
                         ) : (
-                          <div className="px-3 py-2 text-xs opacity-60">
+                          <div className="px-3 py-2 text-xs text-ink-2">
                             Nenhuma liga encontrada
                           </div>
                         )}
@@ -2718,7 +3793,7 @@ export default function Bets() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase opacity-70">Mercado</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Mercado</Label>
                   <div className="relative">
                     <Input
                       value={editModal.formData.betting_market}
@@ -2784,10 +3859,10 @@ export default function Bets() {
                       }}
                       onBlur={() => setIsBettingMarketDropdownOpen(false)}
                       placeholder="Selecione ou digite o mercado"
-                      className="bg-terminal-black border-terminal-border text-terminal-text"
+                      className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white"
                     />
                     {isBettingMarketDropdownOpen && (
-                      <div className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-dark-gray">
+                      <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                         {filteredBettingMarketsList.length > 0 ? (
                           filteredBettingMarketsList.map((market, index) => (
                             <button
@@ -2804,15 +3879,15 @@ export default function Bets() {
                                 setIsBettingMarketQueryTouched(false);
                                 setBettingMarketHighlightIndex(-1);
                               }}
-                              className={`w-full text-left px-3 py-2 text-sm text-terminal-text hover:bg-terminal-black ${
-                                index === bettingMarketHighlightIndex ? 'bg-terminal-black' : ''
+                              className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                                index === bettingMarketHighlightIndex ? 'bg-ink-3/40' : ''
                               }`}
                             >
                               {market}
                             </button>
                           ))
                         ) : (
-                          <div className="px-3 py-2 text-xs opacity-60">
+                          <div className="px-3 py-2 text-xs text-ink-2">
                             Nenhum mercado encontrado
                           </div>
                         )}
@@ -2824,31 +3899,31 @@ export default function Bets() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase opacity-70">Valor</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor</Label>
                   <Input
                     type="number"
                     value={editModal.formData.stake_amount}
                     onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, stake_amount: e.target.value } }))}
-                    className="bg-terminal-black border-terminal-border text-terminal-text"
+                    className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white tabular"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs uppercase opacity-70">Odds</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Odds</Label>
                   <Input
                     type="number"
                     value={editModal.formData.odds}
                     onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, odds: e.target.value } }))}
-                    className="bg-terminal-black border-terminal-border text-terminal-text"
+                    className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white tabular"
                   />
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <Label className="text-xs uppercase opacity-70">Crédito de apostas</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Crédito de apostas</Label>
                 <button
                   type="button"
                   onClick={() => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, is_credit_bet: !prev.formData.is_credit_bet } }))}
-                  style={{ backgroundColor: editModal.formData.is_credit_bet ? 'var(--terminal-green)' : '#3d4a5c' }}
+                  style={{ backgroundColor: editModal.formData.is_credit_bet ? 'var(--forest)' : '#d1d5db' }}
                   className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
                 >
                   <span style={{ transform: editModal.formData.is_credit_bet ? 'translateX(22px)' : 'translateX(2px)' }} className="absolute top-0.5 left-0 w-4 h-4 bg-white rounded-full shadow transition-transform" />
@@ -2856,21 +3931,21 @@ export default function Bets() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs uppercase opacity-70">Data da Aposta</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Data da Aposta</Label>
                 <Popover open={isEditDatePopoverOpen} onOpenChange={setIsEditDatePopoverOpen} modal>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-full justify-start text-left font-normal bg-terminal-black border-terminal-border text-terminal-text hover:bg-terminal-gray"
+                      className="w-full justify-start text-left font-normal h-10 bg-canvas border-line text-ink rounded-md hover:bg-ink-3/40 hover:text-ink"
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <CalendarIcon className="mr-2 h-4 w-4 text-forest" />
                       {(() => {
                         const date = parseDateString(editModal.formData.bet_date);
                         return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data';
                       })()}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                  <PopoverContent className="theme-rebrand w-auto p-0 bg-white border-line shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                     <CalendarComponent
                       mode="single"
                       selected={parseDateString(editModal.formData.bet_date) || undefined}
@@ -2885,29 +3960,39 @@ export default function Bets() {
                         setIsEditDatePopoverOpen(false);
                       }}
                       initialFocus
-                      className="bg-terminal-dark-gray"
+                      className="bg-white"
+                      classNames={{
+                        caption_label: 'text-sm font-semibold text-ink',
+                        nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                        head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
+                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                        day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                        day_today: 'bg-ink-3 text-ink font-semibold',
+                        day_outside: 'text-ink-2 opacity-40',
+                        day_disabled: 'text-ink-2 opacity-30',
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs uppercase opacity-70">Status</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Status</Label>
                 <Select
                   value={editModal.formData.status}
                   onValueChange={(value: any) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, status: value } }))}
                 >
-                  <SelectTrigger className="bg-terminal-black border-terminal-border text-terminal-text">
+                  <SelectTrigger className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
-                    <SelectItem value="pending">PENDENTE</SelectItem>
-                    <SelectItem value="won">GANHOU</SelectItem>
-                    <SelectItem value="lost">PERDEU</SelectItem>
-                    <SelectItem value="half_won">1/2 GREEN</SelectItem>
-                    <SelectItem value="half_lost">1/2 RED</SelectItem>
-                    <SelectItem value="void">ANULADA</SelectItem>
-                    <SelectItem value="cashout">CASHOUT</SelectItem>
+                  <SelectContent className="theme-rebrand bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="won">Ganhou</SelectItem>
+                    <SelectItem value="lost">Perdeu</SelectItem>
+                    <SelectItem value="half_won">1/2 Green</SelectItem>
+                    <SelectItem value="half_lost">1/2 Red</SelectItem>
+                    <SelectItem value="void">Anulada</SelectItem>
+                    <SelectItem value="cashout">Cashout</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2916,15 +4001,15 @@ export default function Bets() {
                 <Button
                   onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
                   variant="outline"
-                  className="flex-1 border-terminal-border hover:bg-terminal-gray text-terminal-text"
+                  className="flex-1 h-10 border-line bg-white hover:bg-ink-3/40 text-ink-2 hover:text-ink"
                 >
-                  CANCELAR
+                  Cancelar
                 </Button>
                 <Button
                   onClick={updateBetData}
-                  className="flex-1 bg-terminal-blue hover:bg-blue-600 text-white"
+                  className="flex-1 h-10 bg-forest hover:bg-forest-soft text-white font-semibold"
                 >
-                  SALVAR ALTERAÇÕES
+                  Salvar alterações
                 </Button>
               </div>
             </div>
@@ -2967,16 +4052,43 @@ export default function Bets() {
         />
       )}
 
-      <a
-        href={telegramBotUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`fixed right-6 z-50 flex items-center gap-2 bg-[#0088cc] hover:bg-[#006da3] text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105 ${selectedBetIds.size > 0 ? 'bottom-20' : 'bottom-6'}`}
-        title="Abrir Telegram"
+      {/* Confirmação de exclusão (single ou bulk) — substitui o window.confirm nativo */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
       >
-        <Send size={20} />
-        <span className="hidden sm:inline text-sm font-medium">Telegram</span>
-      </a>
+        <AlertDialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-status-danger font-semibold">Excluir aposta{confirmDelete?.type === 'bulk' && confirmDelete.count > 1 ? 's' : ''}</div>
+            <AlertDialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
+              {confirmDelete?.type === 'bulk'
+                ? `Excluir ${confirmDelete.count} aposta${confirmDelete.count !== 1 ? 's' : ''}?`
+                : 'Excluir esta aposta?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-ink-2 text-[13px]">
+              Essa ação não pode ser desfeita. {confirmDelete?.type === 'bulk' ? 'As apostas serão removidas permanentemente.' : 'A aposta será removida permanentemente.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-ink-3/40">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDelete?.type === 'single') {
+                  performDeleteBet(confirmDelete.betId);
+                } else if (confirmDelete?.type === 'bulk') {
+                  performBulkDelete();
+                }
+                setConfirmDelete(null);
+              }}
+              className="h-10 px-4 text-[13px] font-semibold text-white bg-status-danger hover:bg-status-danger/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
