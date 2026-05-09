@@ -14,7 +14,7 @@ const STATUS_STYLE: Record<InjuryStatus, { headerBg: string; headerText: string;
   Out:          { headerBg: 'bg-[#251515]', headerText: 'text-red-400',     playerText: 'text-red-400'    },
 };
 
-interface InjuredPlayer { name: string; stars: number }
+interface InjuredPlayer { name: string; stars: number; playerId: number }
 
 function normalizeStatus(status: string): InjuryStatus | null {
   const s = (status ?? '').toLowerCase().trim();
@@ -65,7 +65,7 @@ export function InjuryReportModal({ open, onClose, games }: Props) {
     }
     const m = teamInjuryData.get(player.team_abbreviation)!;
     if (!m.has(status)) m.set(status, []);
-    m.get(status)!.push({ name: player.player_name, stars: player.rating_stars ?? 0 });
+    m.get(status)!.push({ name: player.player_name, stars: player.rating_stars ?? 0, playerId: player.player_id });
   });
 
   const matchups = games

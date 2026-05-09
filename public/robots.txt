@@ -1,8 +1,36 @@
 User-agent: Googlebot
 Allow: /
+Disallow: /dashboard
+Disallow: /bets
+Disallow: /bankroll
+Disallow: /betting-dashboard
+Disallow: /analysis
+Disallow: /onboarding
+Disallow: /settings
+Disallow: /report
+Disallow: /analise-360
+Disallow: /nba-players
+Disallow: /oportunidades
+Disallow: /paywall
+Disallow: /paywall-dashboard
+Disallow: /paywall-platform
 
 User-agent: Bingbot
 Allow: /
+Disallow: /dashboard
+Disallow: /bets
+Disallow: /bankroll
+Disallow: /betting-dashboard
+Disallow: /analysis
+Disallow: /onboarding
+Disallow: /settings
+Disallow: /report
+Disallow: /analise-360
+Disallow: /nba-players
+Disallow: /oportunidades
+Disallow: /paywall
+Disallow: /paywall-dashboard
+Disallow: /paywall-platform
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +40,19 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /bets
+Disallow: /bankroll
+Disallow: /betting-dashboard
+Disallow: /analysis
+Disallow: /onboarding
+Disallow: /settings
+Disallow: /report
+Disallow: /analise-360
+Disallow: /nba-players
+Disallow: /oportunidades
+Disallow: /paywall
+Disallow: /paywall-dashboard
+Disallow: /paywall-platform
+
+Sitemap: https://www.smartbetting.app/sitemap.xml

@@ -4,6 +4,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Minimal scrollbar for modals and panels */
+.minimal-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.minimal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.minimal-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 30%);
+  border-radius: 4px;
+}
+.minimal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 45%);
+}
+.minimal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(0 0% 30%) transparent;
+}
+
+/* Mandala satellite entrance animation */
+@keyframes mandala-satellite-enter {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); filter: blur(4px); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.03); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0px); }
+}
+.mandala-satellite-enter {
+  animation: mandala-satellite-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
@@ -201,6 +230,24 @@ All colors MUST be HSL.
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 }
 
 /* Terminal Component Styles */
@@ -296,4 +343,192 @@ All colors MUST be HSL.
 .recharts-tooltip-cursor,
 .recharts-rectangle.recharts-tooltip-cursor {
   fill: transparent !important;
+}
+
+/* Achievement badge: drop in from top with bounce, hold ~2.5s, slide up out */
+@keyframes achievement-drop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -120%) scale(0.92);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.04);
+  }
+  18% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -120%) scale(0.92);
+  }
+}
+
+.animate-achievement-drop {
+  animation: achievement-drop 3.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-achievement-drop {
+    animation: none !important;
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  /* Reduz drasticamente animações para usuários sensíveis (vestibular).
+     Mantém transições rápidas mas remove pulse/bounce/spin demorados. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   Direção A — Tema do rebrand do Bolão (light theme verde-mata + dourado).
+   Escopado em .theme-bolao pra coexistir com o tema "terminal" do resto do app.
+   ----------------------------------------------------------------------------
+   Conforme o handoff de design (docs/teste-unzipped/.../README.md), esse tema
+   define: paleta off-white com verde-mata + dourado, tipografia Inter (UI) +
+   Fraunces (hero), raios suaves, sem sombras dramáticas (borders + cor de
+   fundo pra hierarquia).
+   ============================================================================ */
+
+.theme-bolao {
+  /* Brand */
+  --canvas: #f6f7f5;
+  --canvas-2: #eef0eb;
+  --ink: #1a1d1a;
+  --ink-2: #4a4f48;
+  --ink-3: #8a8f86;
+  --line: #e3e6e0;
+  --line-2: #d4d8d0;
+  --forest: #0a3d2e;
+  --forest-2: #0f5238;
+  --amber: #d4a017;
+  --amber-2: #b8870f;
+
+  /* Status */
+  --status-success: #2f7d50;
+  --status-warning: #c97a1a;
+  --status-danger: #b8341c;
+  --status-info: #1a5fb4;
+
+  /* Raios (em px pra clareza, Tailwind config mapeia) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Fundo + cor base */
+  background-color: var(--canvas);
+  color: var(--ink);
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+}
+
+@layer utilities {
+  /* Tokens da Direção A — aplicam tanto no próprio elemento .theme-bolao
+     quanto em descendentes (necessário porque modais Radix portam pro body
+     e o .theme-bolao fica no próprio DialogContent). */
+  .theme-bolao .bg-canvas, .theme-bolao.bg-canvas { background-color: var(--canvas); }
+  .theme-bolao .bg-canvas-2, .theme-bolao.bg-canvas-2 { background-color: var(--canvas-2); }
+  .theme-bolao .bg-forest, .theme-bolao.bg-forest { background-color: var(--forest); }
+  .theme-bolao .bg-forest-2, .theme-bolao.bg-forest-2 { background-color: var(--forest-2); }
+  .theme-bolao .bg-amber, .theme-bolao.bg-amber { background-color: var(--amber); }
+  .theme-bolao .bg-amber-2, .theme-bolao.bg-amber-2 { background-color: var(--amber-2); }
+  .theme-bolao .bg-ink, .theme-bolao.bg-ink { background-color: var(--ink); }
+  .theme-bolao .bg-ink-2, .theme-bolao.bg-ink-2 { background-color: var(--ink-2); }
+  .theme-bolao .bg-ink-3, .theme-bolao.bg-ink-3 { background-color: var(--ink-3); }
+
+  /* Text colors */
+  .theme-bolao .text-canvas, .theme-bolao.text-canvas { color: var(--canvas); }
+  .theme-bolao .text-ink, .theme-bolao.text-ink { color: var(--ink); }
+  .theme-bolao .text-ink-2, .theme-bolao.text-ink-2 { color: var(--ink-2); }
+  .theme-bolao .text-ink-3, .theme-bolao.text-ink-3 { color: var(--ink-3); }
+  .theme-bolao .text-forest, .theme-bolao.text-forest { color: var(--forest); }
+  .theme-bolao .text-forest-2, .theme-bolao.text-forest-2 { color: var(--forest-2); }
+  .theme-bolao .text-amber, .theme-bolao.text-amber { color: var(--amber); }
+  .theme-bolao .text-amber-2, .theme-bolao.text-amber-2 { color: var(--amber-2); }
+
+  /* Borders */
+  .theme-bolao .border-line, .theme-bolao.border-line { border-color: var(--line); }
+  .theme-bolao .border-line-2, .theme-bolao.border-line-2 { border-color: var(--line-2); }
+  .theme-bolao .border-forest, .theme-bolao.border-forest { border-color: var(--forest); }
+  .theme-bolao .border-amber, .theme-bolao.border-amber { border-color: var(--amber); }
+
+  /* Status colors */
+  .theme-bolao .text-status-success, .theme-bolao.text-status-success { color: var(--status-success); }
+  .theme-bolao .text-status-warning, .theme-bolao.text-status-warning { color: var(--status-warning); }
+  .theme-bolao .text-status-danger, .theme-bolao.text-status-danger { color: var(--status-danger); }
+  .theme-bolao .text-status-info, .theme-bolao.text-status-info { color: var(--status-info); }
+  .theme-bolao .bg-status-success, .theme-bolao.bg-status-success { background-color: var(--status-success); }
+  .theme-bolao .bg-status-warning, .theme-bolao.bg-status-warning { background-color: var(--status-warning); }
+  .theme-bolao .bg-status-danger, .theme-bolao.bg-status-danger { background-color: var(--status-danger); }
+  .theme-bolao .bg-status-info, .theme-bolao.bg-status-info { background-color: var(--status-info); }
+
+  /* Tipografia — display usa Inter peso alto + tracking apertado pra ficar
+     impactante sem precisar de serif (Fraunces foi descartada pra manter
+     coesão com a identidade "data/profissional" do Smart Betting). Peso é
+     controlado pelas classes Tailwind no JSX (font-bold, font-extrabold). */
+  .theme-bolao .font-display {
+    font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Raios — sobrescreve as classes Tailwind padrão dentro do tema, alinhando
+     ao spec da Direção A (sem isso, rounded-md = 6px Tailwind padrão e a gente
+     fica sem o 10px do spec) */
+  .theme-bolao .rounded-rebrand-sm,
+  .theme-bolao.rounded-rebrand-sm { border-radius: var(--radius-sm); }
+  .theme-bolao .rounded-rebrand-md,
+  .theme-bolao.rounded-rebrand-md { border-radius: var(--radius-md); }
+  .theme-bolao .rounded-rebrand-lg,
+  .theme-bolao.rounded-rebrand-lg { border-radius: var(--radius-lg); }
+  .theme-bolao .rounded-rebrand-xl,
+  .theme-bolao.rounded-rebrand-xl { border-radius: var(--radius-xl); }
+}
+
+/* Empty-state placeholder visual em DEV — só aparece quando tem
+   data-empty-state="true" no elemento. Em prod (vite build), some.
+   Uso: <div data-empty-state="true" data-rebrand-todo="ilustração X" /> */
+@media (min-width: 0px) {
+  .theme-bolao [data-empty-state="true"] {
+    position: relative;
+  }
+}
+.theme-bolao [data-empty-state="true"]::after {
+  content: '⚠ EMPTY STATE — falta ilustração';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--amber);
+  color: var(--ink);
+  padding: 2px 6px;
+  border-radius: 3px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.theme-bolao [data-empty-state="true"] {
+  outline: 2px dashed var(--amber);
+  outline-offset: -2px;
+}
+/* Em produção, removemos o aviso visual mantendo o data-attr (pra futura
+   troca quando ilustrações chegarem). */
+@media (prefers-reduced-data: reduce) {
+  .theme-bolao [data-empty-state="true"]::after {
+    display: none;
+  }
+  .theme-bolao [data-empty-state="true"] {
+    outline: none;
+  }
 }

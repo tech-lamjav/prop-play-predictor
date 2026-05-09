@@ -73,11 +73,11 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
               <button
                 key={player.player_id}
                 onClick={() => handlePlayerClick(player.player_name)}
-                className="w-full text-left p-2 rounded border border-terminal-green/20 hover:border-terminal-green/50 hover:bg-terminal-green/5 transition-all group"
+                className="w-full text-left p-2 rounded border border-terminal-blue/20 hover:border-terminal-blue/50 hover:bg-terminal-blue/5 transition-all group"
               >
                 <div className="flex items-center gap-2">
                   {/* Avatar */}
-                  <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-terminal-dark-gray border border-terminal-green/20">
+                  <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-terminal-dark-gray border border-terminal-blue/20">
                     {photoUrl ? (
                       <img
                         src={photoUrl}
@@ -90,7 +90,7 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
                         }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-terminal-green/60">
+                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-terminal-blue/60">
                         {initials}
                       </div>
                     )}
@@ -98,7 +98,7 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-terminal-green group-hover:text-terminal-green-bright truncate">
+                    <div className="text-sm font-medium text-terminal-blue group-hover:text-terminal-blue truncate">
                       {player.player_name}
                     </div>
                     <div className="flex items-center gap-2">

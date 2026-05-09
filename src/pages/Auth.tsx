@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Trophy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
@@ -29,6 +29,14 @@ const Auth = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   
   const supabase = createClient();
+
+  // Detecta se o usuario chegou aqui por um link de convite de bolao
+  // (ProtectedRoute redireciona /bolao/entrar/:code -> /auth com state.from
+  // setado). Quando vier dali, mostramos copy contextualizada e defaultamos
+  // pra aba "Cadastrar" (cara provavelmente eh novo).
+  const fromBolaoInvite = (
+    location.state as { from?: { pathname?: string } } | null
+  )?.from?.pathname?.startsWith('/bolao/entrar/') ?? false;
 
   // Detect referral code from URL parameter
   useEffect(() => {
@@ -235,7 +243,26 @@ const Auth = () => {
           <LanguageToggle />
         </div>
 
-        <Tabs defaultValue="signin" className="w-full">
+        {/* Banner contextual quando o usuario chegou por invite de bolao */}
+        {fromBolaoInvite && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-md bg-amber-500/20 grid place-items-center text-amber-500 shrink-0">
+                <Trophy className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground leading-tight">
+                  Você foi convidado pro Bolão Copa 2026
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 leading-snug">
+                  Crie sua conta (grátis) ou entre — depois você cai direto no bolão pra fazer seus palpites.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Tabs defaultValue={fromBolaoInvite ? "signup" : "signin"} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">{t("auth.signin")}</TabsTrigger>
             <TabsTrigger value="signup">{t("auth.signup")}</TabsTrigger>

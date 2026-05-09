@@ -154,11 +154,11 @@ export default function Onboarding() {
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() => navigate('/home-games')}
+            onClick={() => navigate('/home-nba')}
             className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
           >
-            <Gamepad2 className="w-8 h-8 text-terminal-green" />
-            <span className="font-semibold text-terminal-green">Conhecer análises</span>
+            <Gamepad2 className="w-8 h-8 text-terminal-blue" />
+            <span className="font-semibold text-terminal-blue">Conhecer análises</span>
             <span className="text-sm text-terminal-text opacity-80 font-normal">
               Ver jogos, props e dashboards da NBA
             </span>
@@ -168,8 +168,8 @@ export default function Onboarding() {
             onClick={() => whatsappSynced ? navigate('/bets') : setCurrentStep(1)}
             className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
           >
-            <Send className="w-8 h-8 text-terminal-green" />
-            <span className="font-semibold text-terminal-green">
+            <Send className="w-8 h-8 text-terminal-blue" />
+            <span className="font-semibold text-terminal-blue">
               {whatsappSynced ? 'Acessar Betinho' : 'Configurar Betinho (Telegram)'}
             </span>
             <span className="text-sm text-terminal-text opacity-80 font-normal">
@@ -327,7 +327,7 @@ export default function Onboarding() {
         <AnalyticsNav />
         <div className="container mx-auto px-4 py-8 md:py-12">
           <div className="text-center mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-terminal-green mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-terminal-blue mb-2">
               BEM-VINDO AO SMARTBETTING
             </h1>
             <p className="text-sm text-terminal-text opacity-70">

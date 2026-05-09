@@ -71,8 +71,8 @@ serve(async (req) => {
     // Obter dados do body
     const body = await req.json();
     console.log('Request body:', body);
-    const { priceId, productType } = body;
-    
+    const { priceId, productType, bolaoId, bolaoName, bolaoDescription } = body;
+
     if (!priceId) {
       console.error('Missing priceId in body');
       return new Response(
@@ -89,8 +89,10 @@ serve(async (req) => {
       Deno.env.get('STRIPE_PRICE_ID_ANALYTICS'),
     ].filter(Boolean) as string[];
 
-    let finalProductType: 'analytics' | 'betinho';
-    if (normalizedProductType === 'analytics' || normalizedProductType === 'platform') {
+    let finalProductType: 'analytics' | 'betinho' | 'bolao_premium';
+    if (normalizedProductType === 'bolao_premium') {
+      finalProductType = 'bolao_premium';
+    } else if (normalizedProductType === 'analytics' || normalizedProductType === 'platform') {
       finalProductType = 'analytics';
     } else if (analyticsPriceIds.includes(priceId)) {
       finalProductType = 'analytics';
@@ -104,6 +106,7 @@ serve(async (req) => {
     console.log('Product Type received:', normalizedProductType);
     console.log('Referer:', referer || 'n/a');
     console.log('Product Type resolved:', finalProductType);
+    if (bolaoId) console.log('Bolao ID:', bolaoId);
 
     // Use SITE_URL for frontend redirects, fallback to SUPABASE_URL for local dev
     const SITE_URL = Deno.env.get('SITE_URL') || Deno.env.get('APP_BASE_URL') || 'http://localhost:8080';
@@ -185,35 +188,56 @@ serve(async (req) => {
 
     console.log('Creating Stripe checkout session with customer:', customerId);
 
-    // Redirect to the correct paywall route per product
-    const paywallPath = finalProductType === 'analytics' ? '/paywall-platform' : '/paywall';
-    const successUrl = `${SITE_URL}${paywallPath}?success=true&session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${SITE_URL}${paywallPath}?canceled=true`;
-    console.log('Selected paywallPath:', paywallPath);
+    // Redirect URLs depend on product type
+    let successUrl: string;
+    let cancelUrl: string;
+
+    if (finalProductType === 'bolao_premium' && bolaoId) {
+      successUrl = `${SITE_URL}/bolao/${bolaoId}?success=true&session_id={CHECKOUT_SESSION_ID}`;
+      cancelUrl = `${SITE_URL}/bolao/${bolaoId}?canceled=true`;
+    } else {
+      const paywallPath = finalProductType === 'analytics' ? '/paywall-platform' : '/paywall';
+      successUrl = `${SITE_URL}${paywallPath}?success=true&session_id={CHECKOUT_SESSION_ID}`;
+      cancelUrl = `${SITE_URL}${paywallPath}?canceled=true`;
+    }
+
     console.log('Success URL:', successUrl);
     console.log('Cancel URL:', cancelUrl);
 
-    // Criar sessão de checkout
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId, // Usar customer_id ao invés de customer_email
+    // bolao_premium = one-time payment; others = subscription
+    const isBolao = finalProductType === 'bolao_premium';
+
+    const sessionMetadata: Record<string, string> = {
+      userId: user.id,
+      userEmail: user.email || '',
+      productType: finalProductType,
+    };
+    if (bolaoId) sessionMetadata.bolaoId = bolaoId;
+    if (bolaoName) sessionMetadata.bolaoName = String(bolaoName).slice(0, 200);
+    if (bolaoDescription) sessionMetadata.bolaoDescription = String(bolaoDescription).slice(0, 400);
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      customer: customerId,
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
-      mode: 'subscription', // ou 'payment' para pagamento único
+      mode: isBolao ? 'payment' : 'subscription',
       allow_promotion_codes: true,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: {
-        userId: user.id,
-        userEmail: user.email || '',
-        productType: finalProductType, // Add productType to session metadata
-      },
-      subscription_data: {
+      metadata: sessionMetadata,
+    };
+
+    if (!isBolao) {
+      sessionParams.subscription_data = {
         metadata: {
           userId: user.id,
-          productType: finalProductType, // Add productType to subscription metadata
+          productType: finalProductType,
         },
-      },
-    });
+      };
+    }
+
+    // Criar sessão de checkout
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     console.log('Stripe checkout session created:', session.id);
     console.log('Checkout URL:', session.url);

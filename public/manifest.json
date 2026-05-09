@@ -1,0 +1,22 @@
+{
+  "name": "Smart Betting",
+  "short_name": "SmartBet",
+  "description": "Análises, gestão e ferramentas para apostadores",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1419",
+  "theme_color": "#4FD1C5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-sem-texto.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-sem-texto.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

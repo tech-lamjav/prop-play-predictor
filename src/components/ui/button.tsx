@@ -18,6 +18,13 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Variantes do rebrand (Direção A) — só usar dentro de .theme-bolao
+        forest:
+          "bg-forest text-white hover:bg-forest-2 font-semibold",
+        amber:
+          "bg-amber text-forest hover:bg-amber-2 font-semibold",
+        "outline-forest":
+          "border border-forest text-forest bg-transparent hover:bg-forest hover:text-white font-semibold",
       },
       size: {
         default: "h-10 px-4 py-2",
