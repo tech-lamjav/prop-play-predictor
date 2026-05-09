@@ -6,6 +6,7 @@ import { readDraft, writeDraft, clearDraft } from '@/components/bolao/useDraftPr
 import { generateQuickPickPredictions } from '@/components/bolao/quick-pick';
 import { ScoreStepper } from '@/components/bolao/ScoreStepper';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
+import { BetinhoCTA } from '@/components/bolao/BetinhoCTA';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -279,6 +280,7 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   };
 
   return (
+    <div className="flex flex-col">
     <div
       className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 transition-colors ${
         match.is_finished
@@ -387,6 +389,10 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
           </DropdownMenu>
         )}
       </div>
+    </div>
+    {/* CTA discreto pra Betinho — pré-jogo convida a registrar a aposta;
+        pós-jogo convida a registrar o resultado. Mesma posição em ambos. */}
+    <BetinhoCTA variant={match.is_finished ? 'post' : 'pre'} />
     </div>
   );
 };

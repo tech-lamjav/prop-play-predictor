@@ -181,3 +181,48 @@ describe('MatchPredictionCard — autosave', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 });
+
+describe('MatchPredictionCard — BetinhoCTA', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('renderiza CTA pré-jogo quando match nao finalizado', () => {
+    render(
+      <MatchPredictionCard
+        match={fakeMatch({ is_finished: false })}
+        onSave={vi.fn()}
+        bolaoId="b1"
+      />
+    );
+    expect(screen.getByTestId('betinho-cta-pre')).toBeInTheDocument();
+    expect(screen.getByText(/Apostou nesse jogo/)).toBeInTheDocument();
+    expect(screen.getByText('Registre aqui')).toBeInTheDocument();
+  });
+
+  it('renderiza CTA pos-jogo quando match finalizado', () => {
+    render(
+      <MatchPredictionCard
+        match={fakeMatch({ is_finished: true, home_score: 2, away_score: 1 })}
+        onSave={vi.fn()}
+        bolaoId="b1"
+      />
+    );
+    expect(screen.getByTestId('betinho-cta-post')).toBeInTheDocument();
+    expect(screen.getByText('Registre o resultado aqui')).toBeInTheDocument();
+  });
+
+  it('link aponta pra /betinho/bolao em nova aba', () => {
+    render(
+      <MatchPredictionCard
+        match={fakeMatch()}
+        onSave={vi.fn()}
+        bolaoId="b1"
+      />
+    );
+    const link = screen.getByRole('link', { name: /Registre aqui/ });
+    expect(link).toHaveAttribute('href', '/betinho/bolao');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+});

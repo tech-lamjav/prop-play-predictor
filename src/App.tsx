@@ -77,6 +77,10 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/betinho" element={<Betinho />} />
+            {/* Variante da LP do Betinho pra usuários vindos do bolão da Copa.
+                Mesmo componente; useLocation detecta a rota e troca hero +
+                "como funciona". CTAs em /bolao/.../palpites apontam pra cá. */}
+            <Route path="/betinho/bolao" element={<Betinho />} />
             <Route path="/auth" element={
               <ProtectedRoute requireAuth={false}>
                 <Auth />
