@@ -131,8 +131,8 @@ export default function Bankroll() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-terminal-black text-terminal-text flex items-center justify-center">
-        <div className="text-terminal-blue">Carregando...</div>
+      <div className="theme-rebrand min-h-screen bg-canvas text-ink flex items-center justify-center">
+        <div className="text-ink-2 text-[13px]">Carregando...</div>
       </div>
     );
   }
@@ -190,44 +190,110 @@ export default function Bankroll() {
   };
 
   return (
-    <div className="min-h-screen bg-terminal-black text-terminal-text">
+    <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <BetsHeader showBack />
 
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="border-terminal-green text-terminal-green hover:bg-terminal-green/10"
-            onClick={() => {
-              setEditingMovement(null);
-              setMovementType('deposit');
-              setMovementAmount('');
-              setMovementDesc('');
-              setMovementDate('');
-              setMovementModalOpen(true);
-            }}
-          >
-            <ArrowDownCircle className="w-4 h-4 mr-2" />
-            Adicionar Aporte
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="border-terminal-red text-terminal-red hover:bg-terminal-red/10"
-            onClick={() => {
-              setEditingMovement(null);
-              setMovementType('withdrawal');
-              setMovementAmount('');
-              setMovementDesc('');
-              setMovementDate('');
-              setMovementModalOpen(true);
-            }}
-          >
-            <ArrowUpCircle className="w-4 h-4 mr-2" />
-            Adicionar Resgate
-          </Button>
+      {/* Page Header */}
+      <div className="bg-white border-b border-line">
+        <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Banca</div>
+            <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minha banca</h1>
+            <p className="text-[13px] text-ink-2 mt-1">Visão geral, evolução e histórico de movimentações</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMovement(null);
+                setMovementType('withdrawal');
+                setMovementAmount('');
+                setMovementDesc('');
+                setMovementDate('');
+                setMovementModalOpen(true);
+              }}
+              className="h-9 px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+            >
+              <ArrowUpCircle className="w-4 h-4" />
+              <span>Resgate</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMovement(null);
+                setMovementType('deposit');
+                setMovementAmount('');
+                setMovementDesc('');
+                setMovementDate('');
+                setMovementModalOpen(true);
+              }}
+              className="h-9 px-4 inline-flex items-center gap-2 text-[13px] font-semibold text-white bg-forest hover:bg-forest-soft rounded-md transition-colors"
+            >
+              <ArrowDownCircle className="w-4 h-4" />
+              <span>Aporte</span>
+            </button>
+          </div>
         </div>
+      </div>
+
+      <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 focus:outline-none space-y-6">
+        {/* KPIs — Resumo da banca */}
+        {(() => {
+          const startBalance = config.bank_amount ?? 0;
+          const totalDeposits = capitalMovements
+            .filter((m) => m.type === 'deposit' && m.affects_balance && m.source !== 'bankroll_edit')
+            .reduce((sum, m) => sum + m.amount, 0);
+          const totalWithdrawals = capitalMovements
+            .filter((m) => m.type === 'withdrawal' && m.affects_balance && m.source !== 'bankroll_edit')
+            .reduce((sum, m) => sum + m.amount, 0);
+          const betProfit = bets
+            .filter((bet) => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(bet.status))
+            .reduce((sum, bet) => {
+              if (bet.status === 'won') return sum + (bet.potential_return - bet.stake_amount);
+              if (bet.status === 'lost') return sum - bet.stake_amount;
+              if (bet.status === 'cashout' && bet.cashout_amount) return sum + (bet.cashout_amount - bet.stake_amount);
+              if (bet.status === 'half_won') return sum + (bet.stake_amount + bet.potential_return) / 2 - bet.stake_amount;
+              if (bet.status === 'half_lost') return sum - bet.stake_amount / 2;
+              return sum;
+            }, 0);
+          const currentBalance = startBalance + totalDeposits - totalWithdrawals + betProfit;
+          const profitPct = startBalance > 0 ? (betProfit / startBalance) * 100 : 0;
+
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white border border-line rounded-lg p-4">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Saldo atual</div>
+                <div className="text-[22px] font-semibold tabular text-ink mt-1 leading-tight">{formatCurrency(currentBalance)}</div>
+                <div className="text-[11px] text-ink-2 mt-0.5">base {formatCurrency(startBalance)}</div>
+              </div>
+              <div className="bg-white border border-line rounded-lg p-4">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total aportado</div>
+                <div className="text-[22px] font-semibold tabular text-status-success mt-1 leading-tight">+{formatCurrency(totalDeposits)}</div>
+                <div className="text-[11px] text-ink-2 mt-0.5">
+                  {capitalMovements.filter(m => m.type === 'deposit' && m.source !== 'bankroll_edit').length} {capitalMovements.filter(m => m.type === 'deposit' && m.source !== 'bankroll_edit').length === 1 ? 'depósito' : 'depósitos'}
+                </div>
+              </div>
+              <div className="bg-white border border-line rounded-lg p-4">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total retirado</div>
+                <div className={`text-[22px] font-semibold tabular mt-1 leading-tight ${totalWithdrawals > 0 ? 'text-status-danger' : 'text-ink-2'}`}>
+                  {totalWithdrawals > 0 ? `-${formatCurrency(totalWithdrawals)}` : formatCurrency(0)}
+                </div>
+                <div className="text-[11px] text-ink-2 mt-0.5">
+                  {capitalMovements.filter(m => m.type === 'withdrawal' && m.source !== 'bankroll_edit').length} {capitalMovements.filter(m => m.type === 'withdrawal' && m.source !== 'bankroll_edit').length === 1 ? 'saque' : 'saques'}
+                </div>
+              </div>
+              <div className="bg-white border border-line rounded-lg p-4">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Lucro acumulado</div>
+                <div className={`text-[22px] font-semibold tabular mt-1 leading-tight ${betProfit >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
+                  {betProfit >= 0 ? '+' : ''}{formatCurrency(betProfit)}
+                </div>
+                <div className="text-[11px] text-ink-2 mt-0.5">
+                  {startBalance > 0 ? `${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% sobre a banca` : 'sobre as apostas'}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <CashFlowTable
           bets={bets}
@@ -248,7 +314,7 @@ export default function Bankroll() {
           onDeleteCapitalMovement={(id) => setDeletingMovementId(id)}
           canEditMovement={(id) => capitalMovements.find((m) => m.id === id)?.source === 'manual'}
         />
-      </div>
+      </main>
 
       <Dialog
         open={movementModalOpen}
@@ -257,18 +323,21 @@ export default function Bankroll() {
           setMovementModalOpen(open);
         }}
       >
-        <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-md">
+        <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
           <DialogHeader>
-            <DialogTitle>
+            <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold ${movementType === 'deposit' ? 'text-status-success' : 'text-status-danger'}`}>
+              {movementType === 'deposit' ? 'Aporte' : 'Resgate'}
+            </div>
+            <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
               {editingMovement
                 ? movementType === 'deposit'
-                  ? 'Editar Aporte'
-                  : 'Editar Resgate'
+                  ? 'Editar aporte'
+                  : 'Editar resgate'
                 : movementType === 'deposit'
-                  ? 'Adicionar Aporte'
-                  : 'Adicionar Resgate'}
+                  ? 'Adicionar aporte'
+                  : 'Adicionar resgate'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-[13px] text-ink-2">
               {editingMovement
                 ? 'Altere os dados da movimentação.'
                 : movementType === 'deposit'
@@ -276,36 +345,44 @@ export default function Bankroll() {
                   : 'Registre um resgate de capital da sua banca.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount">Valor (R$)</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="0.00"
-                value={movementAmount}
-                onChange={(e) => setMovementAmount(e.target.value)}
-                className="bg-terminal-black border-terminal-border text-terminal-text"
-              />
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="amount" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Valor</Label>
+              <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
+                <span className="pl-3 pr-1 text-[13px] text-ink-2 font-medium">R$</span>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0,00"
+                  value={movementAmount}
+                  onChange={(e) => setMovementAmount(e.target.value)}
+                  autoComplete="off"
+                  className="flex-1 h-9 bg-transparent border-0 text-ink text-[13px] tabular focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Data</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Data</Label>
               <Popover open={movementDatePopoverOpen} onOpenChange={setMovementDatePopoverOpen} modal>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal bg-terminal-black border-terminal-border text-terminal-text hover:bg-terminal-gray"
+                  <button
+                    type="button"
+                    className="w-full h-10 px-3 inline-flex items-center bg-canvas border border-line rounded-md text-[13px] text-ink hover:border-forest/30 focus:border-forest/50 focus:ring-2 focus:ring-forest/10 outline-none transition-colors"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-2 h-4 w-4 text-forest" />
                     {(() => {
                       const date = parseDateString(movementDate);
-                      return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data';
+                      return date ? (
+                        <span className="tabular">{format(date, 'dd/MM/yyyy', { locale: ptBR })}</span>
+                      ) : (
+                        <span className="text-ink-2">Selecione a data</span>
+                      );
                     })()}
-                  </Button>
+                  </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                <PopoverContent className="theme-rebrand w-auto p-0 bg-white border-line shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                   <CalendarComponent
                     mode="single"
                     selected={parseDateString(movementDate) || undefined}
@@ -314,26 +391,37 @@ export default function Bankroll() {
                       setMovementDatePopoverOpen(false);
                     }}
                     initialFocus
-                    className="bg-terminal-dark-gray"
+                    className="bg-white"
+                    classNames={{
+                      caption_label: 'text-sm font-semibold text-ink',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_outside: 'text-ink-2 opacity-40',
+                      day_disabled: 'text-ink-2 opacity-30',
+                    }}
                   />
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="desc">Descrição (opcional)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="desc" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Descrição <span className="normal-case tracking-normal text-ink-2/70 font-normal">(opcional)</span></Label>
               <Input
                 id="desc"
                 type="text"
-                placeholder="Ex: Depósito mensal"
+                placeholder={movementType === 'deposit' ? 'Ex: Depósito mensal' : 'Ex: Saque para conta'}
                 value={movementDesc}
                 onChange={(e) => setMovementDesc(e.target.value)}
-                className="bg-terminal-black border-terminal-border text-terminal-text"
+                autoComplete="off"
+                className="h-10 bg-canvas border-line text-ink text-[13px] focus-visible:border-forest/50 focus-visible:ring-2 focus-visible:ring-forest/10"
               />
             </div>
             <Button
               onClick={handleSaveMovement}
               disabled={movementSaving || !movementAmount || parseFloat(movementAmount) <= 0}
-              className="w-full"
+              className="w-full h-10 bg-forest hover:bg-forest-soft text-white font-semibold disabled:opacity-50"
             >
               {movementSaving ? 'Salvando...' : editingMovement ? 'Salvar alterações' : 'Salvar'}
             </Button>
@@ -342,21 +430,26 @@ export default function Bankroll() {
       </Dialog>
 
       <AlertDialog open={deletingMovementId !== null} onOpenChange={(open) => !open && setDeletingMovementId(null)}>
-        <AlertDialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text">
+        <AlertDialogContent className="theme-rebrand bg-white border-line text-ink shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir movimentação</AlertDialogTitle>
-            <AlertDialogDescription>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-status-danger font-semibold">Excluir</div>
+            <AlertDialogTitle className="text-[18px] font-semibold tracking-tight text-ink">Excluir movimentação</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px] text-ink-2">
               Excluir este aporte/resgate? O saldo será recalculado.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteConfirming}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel
+              disabled={deleteConfirming}
+              className="h-9 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-ink-3/40"
+            >
+              Cancelar
+            </AlertDialogCancel>
             <Button
               type="button"
-              variant="destructive"
-              className="bg-terminal-red hover:bg-terminal-red/90"
               disabled={deleteConfirming}
               onClick={handleConfirmDelete}
+              className="h-9 px-4 text-[13px] font-semibold text-white bg-status-danger hover:bg-status-danger/90"
             >
               {deleteConfirming ? 'Excluindo...' : 'Excluir'}
             </Button>
