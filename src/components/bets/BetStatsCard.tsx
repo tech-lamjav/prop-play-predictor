@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface BetStatsCardProps {
   label: string;
@@ -14,29 +14,34 @@ export const BetStatsCard: React.FC<BetStatsCardProps> = ({
   value,
   subtext,
   trend,
-  valueColor = 'text-terminal-green',
+  valueColor = 'text-ink',
 }) => {
   const getTrendIcon = () => {
-    const iconClass = 'w-3 h-3 md:w-4 md:h-4';
+    const iconClass = 'w-3 h-3 md:w-3.5 md:h-3.5';
     if (trend === 'up') {
-      return <TrendingUp className={`${iconClass} text-terminal-green shrink-0`} />;
+      return <TrendingUp className={`${iconClass} text-emerald-700 shrink-0`} />;
     } else if (trend === 'down') {
-      return <TrendingDown className={`${iconClass} text-terminal-red shrink-0`} />;
+      return <TrendingDown className={`${iconClass} text-rose-700 shrink-0`} />;
     }
     return null;
   };
 
   return (
-    <div className="terminal-container p-3 md:p-4 flex flex-col items-center justify-center h-full min-w-0 overflow-hidden">
-      <div className="data-label text-[10px] md:text-xs mb-0.5 md:mb-1 truncate w-full text-center">{label}</div>
-      <div className="flex items-center justify-center gap-1 md:gap-2 min-w-0 w-full overflow-hidden">
-        <div className={`text-sm md:text-lg font-bold ${valueColor} min-w-0 overflow-hidden text-ellipsis whitespace-nowrap max-w-full`} title={typeof value === 'string' ? value : String(value)}>
+    <div className="bg-white border border-line rounded-xl p-3 md:p-4 min-w-0 overflow-hidden">
+      <div className="text-[10px] md:text-[11px] uppercase tracking-[0.14em] font-bold text-ink-2 truncate">
+        {label}
+      </div>
+      <div className="flex items-baseline gap-1.5 mt-1.5 min-w-0">
+        <div
+          className={`text-[18px] md:text-[22px] font-extrabold tracking-tight tabular ${valueColor} min-w-0 overflow-hidden text-ellipsis whitespace-nowrap`}
+          title={typeof value === 'string' ? value : String(value)}
+        >
           {value}
         </div>
         {getTrendIcon()}
       </div>
       {subtext && (
-        <div className="text-[10px] md:text-xs opacity-50 mt-0.5 md:mt-1 text-center truncate w-full">
+        <div className="text-[10px] md:text-[11px] text-ink-2/80 mt-1 truncate">
           {subtext}
         </div>
       )}
