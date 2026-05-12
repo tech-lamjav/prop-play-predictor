@@ -96,9 +96,7 @@ const App = () => (
             } />
             <Route path="/betting-dashboard" element={
               <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-dashboard">
-                  <BettingDashboard />
-                </PremiumRoute>
+                <BettingDashboard />
               </ProtectedRoute>
             } />
             <Route path="/analysis" element={

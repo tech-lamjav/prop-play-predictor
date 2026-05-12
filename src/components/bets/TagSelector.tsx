@@ -180,10 +180,10 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
               <button
                 type="button"
                 onClick={() => handleTagToggle(tag)}
-                className="opacity-0 group-hover:opacity-60 hover:!opacity-100 hover:!text-status-danger transition-all px-0.5"
+                className="opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:!opacity-100 hover:!text-status-danger transition-all -mr-0.5 inline-flex items-center justify-center w-5 h-5 md:w-auto md:h-auto md:px-0.5"
                 aria-label={`Remover tag ${tag.name}`}
               >
-                <X className="w-2.5 h-2.5" />
+                <X className="w-3 h-3 md:w-2.5 md:h-2.5" />
               </button>
             </span>
             <PopoverContent

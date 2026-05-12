@@ -12,7 +12,8 @@ import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
-import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MultiSelectFilter } from '../components/ui/multi-select-filter';
 import { 
   RefreshCw, 
@@ -451,12 +452,14 @@ const BetCard = React.memo(function BetCard({
     <div className="bg-white border border-line-2 p-4 rounded-lg space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => onToggleSelect(bet.id)}
-            className="w-3.5 h-3.5 accent-forest cursor-pointer shrink-0"
-          />
+          <label className="inline-flex items-center justify-center w-9 h-9 -ml-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelect(bet.id)}
+              className="w-4 h-4 accent-forest cursor-pointer shrink-0"
+            />
+          </label>
           <span className="text-xs text-ink-2 tabular">{formatBetDate(bet.bet_date)}</span>
         </div>
         <span className={`inline-flex items-center px-2 h-[20px] rounded-md border text-[10px] font-semibold tracking-[0.06em] uppercase whitespace-nowrap ${statusPillClass}`}>
@@ -589,10 +592,22 @@ const BetCard = React.memo(function BetCard({
           </div>
         ) : (
           <div className="flex gap-2">
-            <button type="button" onClick={() => openEditModal(bet)} className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-ink-3/60 transition-colors flex justify-center items-center" title="Editar">
+            <button
+              type="button"
+              onClick={() => openEditModal(bet)}
+              className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-ink-3/60 transition-colors flex items-center justify-center gap-2"
+              title="Editar"
+            >
               <Edit className="w-4 h-4" />
+              <span className="text-xs font-semibold uppercase tracking-[0.04em]">Editar</span>
             </button>
-            <button type="button" onClick={() => deleteBet(bet.id)} className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex justify-center items-center" title="Excluir">
+            <button
+              type="button"
+              onClick={() => deleteBet(bet.id)}
+              className="h-10 w-10 shrink-0 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex items-center justify-center"
+              title="Excluir"
+              aria-label="Excluir aposta"
+            >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -609,8 +624,10 @@ export default function Bets() {
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
   const { movements: capitalMovements, addMovement } = useCapitalMovements(user?.id);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
@@ -706,20 +723,34 @@ export default function Bets() {
   const [bettingMarketHighlightIndex, setBettingMarketHighlightIndex] = useState(-1);
   const bettingMarketItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  // Filter states
-  const [filters, setFilters] = useState({
-    status: [] as string[],
-    sport: [] as string[],
-    league: [] as string[],
-    betting_market: [] as string[],
-    searchQuery: '',
-    dateFrom: '',
-    dateTo: '',
-    selectedTags: [] as string[],
-    stakeMin: '' as string,
-    oddsMin: '' as string,
-    oddsMax: '' as string,
+  // Filter states — inicializa a partir de query params (?league=X&market=Y&tag=Z)
+  // pra suportar deep-link do dashboard (ex.: "Ver todas as N apostas" de uma fatia).
+  const [filters, setFilters] = useState(() => {
+    const parseList = (key: string) =>
+      searchParams.getAll(key).flatMap((v) => v.split(',').filter(Boolean));
+    return {
+      status: parseList('status'),
+      sport: parseList('sport'),
+      league: parseList('league'),
+      betting_market: parseList('market'),
+      searchQuery: '',
+      dateFrom: '',
+      dateTo: '',
+      selectedTags: parseList('tag'),
+      stakeMin: '' as string,
+      oddsMin: '' as string,
+      oddsMax: '' as string,
+    };
   });
+
+  // Limpa query params da URL após aplicar (URL fica limpa, filtros permanecem no state)
+  useEffect(() => {
+    if (searchParams.toString()) {
+      const empty = new URLSearchParams();
+      setSearchParams(empty, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // User tags state
   const [userTags, setUserTags] = useState<Tag[]>([]);
@@ -2363,15 +2394,16 @@ export default function Bets() {
               )}
             </button>
 
-            {/* Exportar — só desktop, raramente usado no mobile */}
+            {/* Exportar — ícone-only no mobile, ícone+texto no desktop */}
             <button
               type="button"
               onClick={handleExportCsv}
-              className="hidden md:inline-flex h-9 px-3 items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
               title="Exportar CSV"
+              aria-label="Exportar CSV"
             >
               <Download className="w-4 h-4" />
-              <span>Exportar</span>
+              <span className="hidden md:inline">Exportar</span>
             </button>
 
             {/* Compartilhar — ícone-only no mobile */}
@@ -2404,7 +2436,7 @@ export default function Bets() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 focus:outline-none">
         {/* Onboarding cards — usuário sem nenhuma aposta. Aparecem ACIMA do conteúdo regular */}
         {!isLoading && bets.length === 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
@@ -2418,7 +2450,7 @@ export default function Bets() {
               </div>
               <h2 className="text-[22px] md:text-[24px] font-semibold tracking-tight">Comece pelo Telegram.</h2>
               <p className="text-[13px] md:text-[14px] text-white/70 mt-2 leading-relaxed">
-                Abra o Betinho, mande seu primeiro bilhete por texto, áudio ou print — e essa tela enche sozinha.
+                Abra o Betinho, mande seu primeiro bilhete por texto ou print — e essa tela enche sozinha.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer"
@@ -2512,6 +2544,7 @@ export default function Bets() {
           </div>
         </div>
 
+        {!isMobile && (
         <div className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
           <BankrollEvolutionChart
             bets={bets}
@@ -2536,6 +2569,7 @@ export default function Bets() {
             }}
             onAporte={() => setCapitalModal({ isOpen: true, type: 'deposit', amount: '', description: '' })}
             onResgate={() => setCapitalModal({ isOpen: true, type: 'withdrawal', amount: '', description: '' })}
+            formatValue={formatValue}
           />
 
           {/* Coluna direita: Telegram banner + Limite Diário */}
@@ -2553,7 +2587,7 @@ export default function Bets() {
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
                 <div className="text-[14px] font-semibold mt-1 leading-tight">Cadastre apostas em segundos pelo Telegram.</div>
-                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto, áudio ou print do bilhete — a IA registra e este painel atualiza sozinho.</div>
+                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete — a IA registra e este painel atualiza sozinho.</div>
                 <div className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
                   <Send className="w-3.5 h-3.5" />
                   <span>Abrir bot</span>
@@ -2576,11 +2610,12 @@ export default function Bets() {
               <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold mt-3">Análise</div>
               <div className="text-[15px] font-semibold text-ink mt-1">Dashboard</div>
               <div className="text-[12px] text-ink-2 mt-1 leading-snug">
-                KPIs, gráficos por período e desempenho por liga, mercado e tag.
+                Onde você ganha e onde perde — desempenho por liga, mercado e tag.
               </div>
             </button>
           </div>
         </div>
+        )}
 
         {/* Mobile hero — banca atual + sparkline + mini stats */}
         <div className="md:hidden mb-4">
@@ -2639,7 +2674,7 @@ export default function Bets() {
             </svg>
             <div className="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-white/15">
               <div>
-                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">Win-rate</div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">Taxa de acerto</div>
                 <div className="text-[14px] font-semibold tabular mt-0.5">{stats.winRate.toFixed(1)}%</div>
               </div>
               <div>
@@ -2689,8 +2724,16 @@ export default function Bets() {
           </button>
         </div>
 
-        {/* Mobile filter chips — Status quick filter + Período + botão Filtros */}
-        <div className="md:hidden mb-3 flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {/* Mobile filter chips — Status quick filter + Período (rola horizontal) + botão Filtros (fixo) */}
+        <div className="md:hidden mb-3 grid grid-cols-[1fr_auto] gap-2 items-center">
+          <div
+            className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1"
+            style={{
+              scrollbarWidth: 'none',
+              maskImage: 'linear-gradient(to right, black calc(100% - 16px), transparent)',
+              WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 16px), transparent)',
+            }}
+          >
           {[
             { l: 'Todas', value: null },
             { l: 'Pendentes', value: 'pending' },
@@ -2709,7 +2752,7 @@ export default function Bets() {
                     setFilters(prev => ({ ...prev, status: [c.value] }));
                   }
                 }}
-                className={`shrink-0 h-7 px-3 text-[11px] font-medium rounded-full border transition-colors ${
+                className={`shrink-0 h-9 px-3.5 text-[12px] font-medium rounded-full border transition-colors ${
                   active ? 'bg-ink text-white border-ink' : 'bg-white text-ink-2 border-line'
                 }`}
               >
@@ -2723,13 +2766,13 @@ export default function Bets() {
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className={`shrink-0 h-7 px-3 text-[11px] font-medium rounded-full border inline-flex items-center gap-1.5 transition-colors ${
+                className={`shrink-0 h-9 px-3.5 text-[12px] font-medium rounded-full border inline-flex items-center gap-1.5 transition-colors ${
                   filters.dateFrom || filters.dateTo
                     ? 'bg-forest-tint text-forest border-forest/30'
                     : 'bg-white text-ink-2 border-line'
                 }`}
               >
-                <CalendarIcon className="w-3 h-3" />
+                <CalendarIcon className="w-3.5 h-3.5" />
                 {(() => {
                   const from = parseDateString(filters.dateFrom);
                   const to = parseDateString(filters.dateTo);
@@ -2810,19 +2853,20 @@ export default function Bets() {
               )}
             </PopoverContent>
           </Popover>
-          {/* Botão Filtros — abre dialog com filtros completos (mesmo do desktop) */}
+          </div>
+          {/* Botão Filtros — abre dialog com filtros completos (mesmo do desktop). Fora do scroller para nunca sumir. */}
           <Dialog>
             <DialogTrigger asChild>
               <button
                 type="button"
-                className={`shrink-0 h-7 px-3 ml-auto text-[11px] font-semibold rounded-full border inline-flex items-center gap-1.5 transition-colors ${
+                className={`shrink-0 h-9 px-3.5 text-[12px] font-semibold rounded-full border inline-flex items-center gap-1.5 transition-colors ${
                   advancedFiltersTotal > 0
                     ? 'bg-forest-tint text-forest border-forest/30'
                     : 'bg-white text-ink-2 border-line'
                 }`}
                 aria-label="Abrir filtros"
               >
-                <Filter className="w-3 h-3" />
+                <Filter className="w-3.5 h-3.5" />
                 Filtros
                 {advancedFiltersTotal > 0 && (
                   <span className="px-1 text-[9px] font-bold bg-forest text-white rounded-full leading-tight">
@@ -2831,7 +2875,7 @@ export default function Bets() {
                 )}
               </button>
             </DialogTrigger>
-            <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent aria-describedby={undefined} className="theme-rebrand bg-white border-line text-ink sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               {advancedFiltersContent}
             </DialogContent>
           </Dialog>
@@ -3035,7 +3079,7 @@ export default function Bets() {
                     )}
                   </button>
                 </DialogTrigger>
-                <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent aria-describedby={undefined} className="theme-rebrand bg-white border-line text-ink sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                   {advancedFiltersContent}
                 </DialogContent>
               </Dialog>
@@ -3058,6 +3102,7 @@ export default function Bets() {
               <h3 className="text-[11px] md:text-[13px] uppercase md:normal-case tracking-[0.12em] md:tracking-normal font-semibold text-ink-2 md:text-ink">Apostas</h3>
               <span className="text-[11px] text-ink-2 tabular">
                 Mostrando {paginatedBets.length} de {sortedBets.length}
+                {sortedBets.length !== bets.length && ` · ${bets.length} total`}
               </span>
             </div>
             <button
@@ -3132,6 +3177,7 @@ export default function Bets() {
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
+                    aria-label="Página anterior"
                     className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -3172,6 +3218,7 @@ export default function Bets() {
                     type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
+                    aria-label="Próxima página"
                     className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -3477,7 +3524,7 @@ export default function Bets() {
 
       {/* Capital Movement Modal (Aporte/Resgate) */}
       <Dialog open={capitalModal.isOpen} onOpenChange={(open) => setCapitalModal(prev => ({ ...prev, isOpen: open }))}>
-        <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
+        <DialogContent aria-describedby={undefined} className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
           <DialogHeader>
             <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold ${capitalModal.type === 'deposit' ? 'text-status-success' : 'text-status-danger'}`}>
               {capitalModal.type === 'deposit' ? 'Aporte' : 'Resgate'}
@@ -3558,7 +3605,7 @@ export default function Bets() {
           }
         }
       }>
-        <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
+        <DialogContent aria-describedby={undefined} className="theme-rebrand bg-white border-line text-ink sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
           <DialogHeader>
             <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Aposta</div>
             <DialogTitle className="flex items-center gap-2 text-[18px] font-semibold tracking-tight text-ink">

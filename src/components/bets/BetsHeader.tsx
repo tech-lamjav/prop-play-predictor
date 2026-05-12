@@ -68,7 +68,6 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
   const betinhoModuleItems = [
     { name: 'Apostas', href: '/bets', icon: Target },
     { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
-    { name: 'Banca', href: '/bankroll', icon: TrendingUp },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -90,7 +89,14 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
   };
 
   return (
-    <nav className="theme-rebrand bg-white border-b border-line sticky top-0 z-50">
+    <>
+    <a
+      href="#main-content"
+      className="theme-rebrand sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-forest focus:text-white focus:rounded-md focus:shadow-lg focus:outline-none"
+    >
+      Pular para o conteúdo principal
+    </a>
+    <nav aria-label="Navegação principal" className="theme-rebrand bg-white/85 supports-[backdrop-filter]:bg-white/70 backdrop-blur-md border-b border-line sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-14">
 
@@ -239,6 +245,7 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
                   variant="ghost"
                   size="sm"
                   className="h-9 w-9 rounded-full flex items-center justify-center bg-forest text-white hover:bg-forest-soft hover:text-white"
+                  aria-label="Menu da conta"
                 >
                   <UserIcon className="w-4 h-4" />
                 </Button>
@@ -377,5 +384,6 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
         )}
       </div>
     </nav>
+    </>
   );
 };

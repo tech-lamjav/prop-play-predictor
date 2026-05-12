@@ -53,8 +53,8 @@ export default function PremiumRoute({
 
   if (authLoading || isCheckingSubscription) {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green" />
+      <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-forest border-t-transparent" />
       </div>
     );
   }
@@ -71,8 +71,8 @@ export default function PremiumRoute({
 
   if (subscriptionStatus !== 'premium') {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green" />
+      <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-forest border-t-transparent" />
       </div>
     );
   }

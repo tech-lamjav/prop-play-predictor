@@ -10,13 +10,15 @@ import {
   ReferenceLine,
   Label as RechartsLabel,
 } from 'recharts';
-import { Save, Edit2, Plus, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { Save, Edit2, Plus, ArrowDownCircle, ArrowUpCircle, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Bet } from '@/hooks/use-bets';
 import type { CapitalMovement } from '@/hooks/use-capital-movements';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 
@@ -29,6 +31,10 @@ interface BankrollEvolutionChartProps {
   chartHeight?: number;
   onAporte?: () => void;
   onResgate?: () => void;
+  /** Esconde o botão "Ver banca completa" — usar quando o componente já está dentro da própria página de banca. */
+  hideViewFullButton?: boolean;
+  /** Formata valor monetário (respeita toggle R$/u quando passado). Default: R$ X,XX. */
+  formatValue?: (value: number) => string;
   /** Deprecated — fluxo de caixa agora vive no menu Betinho do BetsHeader. Mantido pra compat. */
   onNavigateCashFlow?: () => void;
   /** Deprecated — dashboard agora vive no menu Betinho do BetsHeader. Mantido pra compat. */
@@ -46,7 +52,10 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   chartHeight = 240,
   onAporte,
   onResgate,
+  hideViewFullButton = false,
+  formatValue: formatValueProp,
 }) => {
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [tempBankroll, setTempBankroll] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -106,13 +115,17 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   }, [bets, initialBankroll, capitalMovements]);
 
   // Filtra os dados por período (7d, 30d, 90d ou tudo). Mantém o ponto inicial pra preservar a baseline.
+  // Quando o filtro resulta em só o ponto Início, retornamos um array vazio pra exibir empty state
+  // (em vez de fallback silencioso pro histórico completo, que mascarava o filtro).
   const filteredChartData = useMemo(() => {
     if (chartData.length === 0 || period === 'all') return chartData;
     const days = period === '7d' ? 7 : period === '30d' ? 30 : 90;
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     const filtered = chartData.filter((d, i) => i === 0 || d.ts >= cutoff);
-    return filtered.length <= 1 ? chartData : filtered;
+    return filtered.length <= 1 ? [] : filtered;
   }, [chartData, period]);
+
+  const periodHasNoEvents = chartData.length > 0 && filteredChartData.length === 0 && period !== 'all';
 
   const handleSave = async () => {
     const amount = parseFloat(tempBankroll);
@@ -126,17 +139,29 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
     setIsUpdating(false);
   };
 
-  const currentBankroll = filteredChartData.length > 0
-    ? filteredChartData[filteredChartData.length - 1].bankroll
+  // Banca atual usa SEMPRE chartData completo (não filtrado).
+  // Não muda quando o usuário troca o período do gráfico.
+  const currentBankroll = chartData.length > 0
+    ? chartData[chartData.length - 1].bankroll
     : (initialBankroll || 0);
   const totalProfit = currentBankroll - (initialBankroll || 0);
   const profitPercentage = initialBankroll ? (totalProfit / initialBankroll) * 100 : 0;
 
-  const formatBRL = (value: number) =>
-    value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  const formatBRLShort = (value: number) =>
-    value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  // Helpers de formatação — quando formatValueProp passado, respeita o toggle R$/u da página.
+  // Sem prop: fallback BRL com prefixo R$.
+  const formatV = (value: number): string => {
+    if (formatValueProp) return formatValueProp(value);
+    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  // Versão short pra eixos/labels do chart — sem centavos quando inteiro.
+  const formatVShort = (value: number): string => {
+    if (formatValueProp) {
+      // Remove ",00" final da string formatada se inteira
+      const f = formatValueProp(value);
+      return f.replace(/[,.]00\b/, '');
+    }
+    return `R$${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
 
   const lineColor = totalProfit >= 0 ? '#0a3d2e' : '#be123c';
   const lastIndex = filteredChartData.length - 1;
@@ -164,7 +189,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
             {readOnly ? 'Lucro acumulado no período' : 'Evolução da banca'}
           </h2>
           <p className="text-[11px] text-ink-2 mt-0.5 tabular">
-            {periodLabel[period]} · base R$ {formatBRL(initialBankroll || 0)}
+            {periodLabel[period]} · base {formatV(initialBankroll || 0)}
           </p>
         </div>
         {!readOnly && (
@@ -186,8 +211,23 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
       </div>
 
       <div className="p-5 grid grid-cols-1 md:grid-cols-[1fr_180px] gap-6 items-stretch">
-        {/* Chart */}
-        <div style={{ height: chartHeight }} className="w-full min-w-0">
+        {/* Chart — h-full estica para igualar a altura da coluna lateral; min-h preserva o tamanho base no mobile */}
+        <div style={{ minHeight: chartHeight }} className="w-full min-w-0 h-full">
+          {periodHasNoEvents ? (
+            <div className="w-full h-full flex flex-col items-center justify-center text-center px-4">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-semibold">Sem movimentos no período</div>
+              <p className="text-[13px] text-ink-2 mt-2 max-w-[280px]">
+                Nenhuma aposta liquidada ou movimento de banca nos {period === '7d' ? 'últimos 7 dias' : period === '30d' ? 'últimos 30 dias' : 'últimos 90 dias'}.
+              </p>
+              <button
+                type="button"
+                onClick={() => setPeriod('all')}
+                className="mt-4 h-8 px-3 inline-flex items-center text-[12px] font-semibold text-forest border border-forest/30 hover:bg-forest-tint rounded-md transition-colors"
+              >
+                Ver histórico completo
+              </button>
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={filteredChartData} margin={{ top: 20, right: 60, left: 0, bottom: 5 }}>
               <defs>
@@ -210,7 +250,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                 tick={{ fill: '#5a625a', fontSize: 10 }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `R$${formatBRLShort(value)}`}
+                tickFormatter={(value) => formatVShort(value)}
                 domain={[(dataMin: number) => Math.floor(dataMin * 0.95), (dataMax: number) => Math.ceil(dataMax * 1.05)]}
                 allowDataOverflow={false}
                 width={50}
@@ -226,7 +266,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                 }}
                 itemStyle={{ color: lineColor, fontWeight: 600 }}
                 labelStyle={{ color: '#5a625a', fontSize: 11 }}
-                formatter={(value: number) => [`R$ ${formatBRL(value)}`, 'Banca']}
+                formatter={(value: number) => [formatV(value), 'Banca']}
                 labelFormatter={(label, payload) => {
                   if (payload && payload.length > 0) {
                     return payload[0].payload.fullDate;
@@ -243,7 +283,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                   strokeWidth={1}
                 >
                   <RechartsLabel
-                    value={`Base R$ ${formatBRLShort(initialBankroll)}`}
+                    value={`Base ${formatVShort(initialBankroll)}`}
                     position="insideRight"
                     fill="#9aa097"
                     fontSize={10}
@@ -277,7 +317,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                           fontWeight={700}
                           fontFamily="Inter, system-ui, sans-serif"
                         >
-                          R$ {formatBRLShort(value)}
+                          {formatVShort(value)}
                         </text>
                       </g>
                     );
@@ -287,6 +327,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
               />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </div>
 
         {/* Side panel — Banca atual + Movimentos */}
@@ -296,10 +337,10 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
             <div className="border-l-2 border-forest pl-3">
               <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold">Banca atual</div>
               <div className="text-[22px] font-semibold tabular text-ink mt-0.5 leading-tight">
-                R$ {formatBRL(currentBankroll)}
+                {formatV(currentBankroll)}
               </div>
               <div className={`text-[11px] tabular font-semibold mt-0.5 ${totalProfit >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                {totalProfit >= 0 ? '+' : '-'}R$ {formatBRL(Math.abs(totalProfit))}
+                {totalProfit >= 0 ? '+' : '-'}{formatV(Math.abs(totalProfit))}
                 {initialBankroll ? ` · ${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(1)}%` : ''}
               </div>
             </div>
@@ -309,7 +350,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
               <div className="border-l-2 border-line pl-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold">Movimentos</div>
                 <div className={`text-[14px] tabular font-semibold mt-0.5 ${netMovements >= 0 ? 'text-ink' : 'text-status-danger'}`}>
-                  {netMovements >= 0 ? '+' : ''}R$ {formatBRL(netMovements)}
+                  {netMovements >= 0 ? '+' : ''}{formatV(netMovements)}
                 </div>
                 <div className="text-[11px] text-ink-2 tabular mt-0.5">
                   {deposits.length} depósito{deposits.length !== 1 ? 's' : ''} · {withdrawals.length} saque{withdrawals.length !== 1 ? 's' : ''}
@@ -317,7 +358,10 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
               </div>
             )}
 
-            {/* Adicionar movimento — single CTA dropdown */}
+            {/* Bloco de CTAs — empurrado para o fim do card via mt-auto, evita gap visual */}
+            <div className="mt-auto flex flex-col gap-2">
+
+            {/* Gerenciar banca — dropdown agrupando aporte/resgate/edição da banca inicial */}
             {(onAporte || onResgate) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -325,7 +369,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                     type="button"
                     className="h-8 px-3 inline-flex items-center justify-center gap-1.5 text-[12px] font-medium text-forest border border-forest/30 hover:bg-forest-tint rounded-md transition-colors"
                   >
-                    Adicionar movimento
+                    Gerenciar banca
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="theme-rebrand bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] w-48">
@@ -347,22 +391,33 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                       Resgate
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuSeparator className="bg-line" />
+                  <DropdownMenuItem
+                    onClick={() => setIsEditing(true)}
+                    className="cursor-pointer focus:bg-ink-3/60"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2 text-ink-2" />
+                    Editar banca inicial
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
 
-            {/* Editar banca inicial — link discreto */}
-            {!isEditing ? (
+            {/* Abrir tela de gestão de banca completa — escondido quando já estamos nessa tela */}
+            {!hideViewFullButton && (
               <button
                 type="button"
-                onClick={() => setIsEditing(true)}
-                className="text-[10px] text-ink-2 hover:text-ink underline-offset-2 hover:underline self-start inline-flex items-center gap-1 mt-auto"
+                onClick={() => navigate('/bankroll')}
+                className="h-8 px-3 inline-flex items-center justify-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-forest hover:bg-forest-tint border border-line hover:border-forest/30 rounded-md transition-colors"
               >
-                <Edit2 className="w-3 h-3" />
-                Editar banca inicial
+                Ver banca completa
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
-            ) : (
-              <div className="flex flex-col gap-1 mt-auto">
+            )}
+
+            {/* Editor inline da banca inicial — só aparece quando acionado pelo dropdown */}
+            {isEditing && (
+              <div className="flex flex-col gap-1 mt-1">
                 <span className="text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">Banca inicial</span>
                 <div className="flex items-center gap-1">
                   <input
@@ -371,18 +426,22 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                     onChange={(e) => setTempBankroll(e.target.value)}
                     className="flex-1 h-8 bg-white border border-line text-[12px] px-2 rounded text-ink text-right tabular focus:outline-none focus:border-forest"
                     placeholder="0.00"
+                    autoFocus
                   />
                   <button
                     type="button"
                     onClick={handleSave}
                     disabled={isUpdating}
                     className="h-8 w-8 inline-flex items-center justify-center text-forest hover:bg-forest-tint rounded transition-colors"
+                    aria-label="Salvar banca inicial"
                   >
                     <Save className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
             )}
+
+            </div>{/* end Bloco de CTAs */}
           </div>
         )}
 
@@ -392,13 +451,13 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
             <div>
               <span className="text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold block mb-0.5">Lucro no período</span>
               <span className={`font-semibold tabular ${totalProfit >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                R$ {formatBRL(currentBankroll)}
+                {formatV(currentBankroll)}
               </span>
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold block mb-0.5">Variação</span>
               <span className={`text-xs tabular ${totalProfit >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                {totalProfit >= 0 ? '+' : ''}{formatBRL(totalProfit)}
+                {totalProfit >= 0 ? '+' : ''}{formatV(totalProfit)}
               </span>
             </div>
           </div>
