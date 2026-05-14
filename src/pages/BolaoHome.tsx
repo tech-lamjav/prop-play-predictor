@@ -78,18 +78,6 @@ const BolaoHome: React.FC = () => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
   }, []);
 
-  // Próxima abertura (jogo de abertura) pra mostrar no card lateral
-  const openingMatch = useMemo(() => {
-    if (!matches) return null;
-    return matches
-      .filter((m) => m.home_team_code !== 'TBD')
-      .sort(
-        (a, b) =>
-          a.match_date.localeCompare(b.match_date) ||
-          a.match_time_brasilia.localeCompare(b.match_time_brasilia)
-      )[0];
-  }, [matches]);
-
   // Lista de fases pra navegação por setas: Rodada 1/2/3 + mata-mata
   const phases = useMemo(() => {
     if (!matches) return [] as { id: string; label: string; subLabel: string; matches: typeof matches }[];
@@ -248,103 +236,55 @@ const BolaoHome: React.FC = () => {
 
   return (
     <>
-      <AnalyticsNav />
+      <AnalyticsNav variant="rebrand" />
       <div className="max-w-[1120px] mx-auto px-4 sm:px-6 py-8">
-        {/* ═══ HERO — chamada + dois CTAs ═══ */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-8">
-          {/* Hero forest */}
-          <div className="lg:col-span-7 bg-forest text-white rounded-rebrand-xl p-7 relative overflow-hidden">
-            <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber/10 pointer-events-none" />
-            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold opacity-60 mb-2">
-              Copa do Mundo 2026
-            </div>
-            <h1 className="font-display text-[40px] sm:text-[48px] leading-[1.05] font-extrabold mb-2">
-              {days > 0 ? (
-                <>
-                  Faltam <span className="text-amber">{days} dias</span>.<br />
-                  Já tá no bolão de quem?
-                </>
-              ) : (
-                <>A Copa começou.<br />Bora palpitar?</>
-              )}
-            </h1>
-            <p className="text-[13px] opacity-75 mb-5 max-w-[460px] leading-relaxed">
-              Crie um do zero pra galera ou entre no de um amigo com o código. EUA · México · Canadá · 48 seleções · 104 jogos.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="amber"
-                size="lg"
-                onClick={() => setShowCreate(true)}
-                className="rounded-rebrand-md gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                Criar bolão
-              </Button>
-              <span className="opacity-40 text-[12px] mx-1">ou</span>
-              <div className="flex items-center gap-1 bg-white/10 border border-white/20 rounded-rebrand-md p-1">
-                <input
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                  placeholder="Código (ex: ABC123)"
-                  maxLength={8}
-                  className="bg-transparent px-3 h-9 text-[13px] text-white placeholder:text-white/40 focus:outline-none w-[160px] sm:w-[180px] font-mono"
-                />
-                <button
-                  onClick={handleJoin}
-                  disabled={inviteCode.trim().length < 4 || joinBolao.isPending}
-                  className="h-9 px-3 text-[12px] font-semibold bg-white/15 hover:bg-white/25 text-white rounded inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {joinBolao.isPending ? '...' : <>Entrar <ChevronRight className="w-3 h-3" /></>}
-                </button>
-              </div>
-            </div>
+        {/* ═══ HERO — chamada + dois CTAs (full-width) ═══ */}
+        <div className="bg-forest text-white rounded-rebrand-xl p-7 relative overflow-hidden mb-8">
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber/10 pointer-events-none" />
+          <div className="text-[11px] uppercase tracking-[0.14em] font-semibold opacity-60 mb-2">
+            Copa do Mundo 2026
           </div>
-
-          {/* Card stats da Copa */}
-          <div className="lg:col-span-5 bg-white border border-line rounded-rebrand-xl p-6">
-            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2 mb-3">
-              A Copa em números
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <div className="font-display text-[28px] font-bold leading-none tabular-nums text-amber-2">
-                  {days}
-                </div>
-                <div className="text-[11px] text-ink-2 leading-tight mt-1.5">
-                  {days === 1 ? 'dia pra começar' : 'dias pra começar'}
-                </div>
-              </div>
-              <div>
-                <div className="font-display text-[28px] font-bold leading-none tabular-nums text-ink">
-                  104
-                </div>
-                <div className="text-[11px] text-ink-2 leading-tight mt-1.5">jogos no torneio</div>
-              </div>
-              <div>
-                <div className="font-display text-[28px] font-bold leading-none tabular-nums text-ink">
-                  12
-                </div>
-                <div className="text-[11px] text-ink-2 leading-tight mt-1.5">grupos · 48 seleções</div>
-              </div>
-            </div>
-            {openingMatch && (
-              <div className="mt-4 pt-4 border-t border-line">
-                <div className="text-[11px] text-ink-2 mb-1.5">Abertura</div>
-                <div className="flex items-center gap-2 text-[13px]">
-                  <TeamFlag code={openingMatch.home_team_code} size="md" />
-                  <span className="font-medium">{openingMatch.home_team}</span>
-                  <span className="text-ink-3">×</span>
-                  <span className="font-medium">{openingMatch.away_team}</span>
-                  <TeamFlag code={openingMatch.away_team_code} size="md" />
-                  <span className="ml-auto text-[11px] tabular-nums text-ink-2">
-                    {openingMatch.match_date.slice(8, 10)}/{openingMatch.match_date.slice(5, 7)} ·{' '}
-                    {openingMatch.match_time_brasilia.slice(0, 5)}
-                  </span>
-                </div>
-              </div>
+          <h1 className="font-display text-[40px] sm:text-[48px] leading-[1.05] font-extrabold mb-2">
+            {days > 0 ? (
+              <>
+                Faltam <span className="text-amber">{days} dias</span>.<br />
+                Já tá no bolão de quem?
+              </>
+            ) : (
+              <>A Copa começou.<br />Bora palpitar?</>
             )}
+          </h1>
+          <p className="text-[13px] opacity-75 mb-5 max-w-[460px] leading-relaxed">
+            Crie um do zero pra galera ou entre no de um amigo com o código. EUA · México · Canadá · 48 seleções · 104 jogos.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="amber"
+              size="lg"
+              onClick={() => setShowCreate(true)}
+              className="rounded-rebrand-md gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Criar bolão
+            </Button>
+            <span className="opacity-40 text-[12px] mx-1">ou</span>
+            <div className="flex items-center gap-1 bg-white/10 border border-white/20 rounded-rebrand-md p-1">
+              <input
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                placeholder="Código (ex: ABC123)"
+                maxLength={8}
+                className="bg-transparent px-3 h-9 text-[13px] text-white placeholder:text-white/40 focus:outline-none w-[160px] sm:w-[180px] font-mono"
+              />
+              <button
+                onClick={handleJoin}
+                disabled={inviteCode.trim().length < 4 || joinBolao.isPending}
+                className="h-9 px-3 text-[12px] font-semibold bg-white/15 hover:bg-white/25 text-white rounded inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {joinBolao.isPending ? '...' : <>Entrar <ChevronRight className="w-3 h-3" /></>}
+              </button>
+            </div>
           </div>
         </div>
 

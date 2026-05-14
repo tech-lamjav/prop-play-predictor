@@ -43,9 +43,21 @@ export default function UserNav({ className }: UserNavProps) {
       {/* User Menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          {/*
+            Affordance universal: borda visível em qualquer fundo (clara ou escura)
+            via `border-current/15` (adapta à cor de texto do contexto) e fallback
+            sólido `bg-forest text-white` que contrasta em qualquer tema.
+
+            Sem `variant` prop — o mesmo trio funciona em header terminal (preto)
+            e em header rebrand (branco) sem ajuste por chamador.
+          */}
+          <Button
+            variant="ghost"
+            className="relative h-9 w-9 rounded-full p-0 border border-current/15 hover:border-current/30 hover:bg-current/5 transition-colors"
+            aria-label="Menu da conta"
+          >
             <Avatar className="h-8 w-8">
-              <AvatarFallback>
+              <AvatarFallback className="bg-forest text-white text-xs font-semibold">
                 {user?.user_metadata?.name ? getInitials(user.user_metadata.name) : 'U'}
               </AvatarFallback>
             </Avatar>
