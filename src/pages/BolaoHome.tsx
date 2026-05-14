@@ -237,7 +237,7 @@ const BolaoHome: React.FC = () => {
   return (
     <>
       <AnalyticsNav variant="rebrand" />
-      <div className="max-w-[1120px] mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* ═══ HERO — chamada + dois CTAs (full-width) ═══ */}
         <div className="bg-forest text-white rounded-rebrand-xl p-7 relative overflow-hidden mb-8">
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber/10 pointer-events-none" />

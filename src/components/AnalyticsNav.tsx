@@ -189,7 +189,18 @@ export default function AnalyticsNav({
               className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate('/home-nba')}
             >
-              <img src="/logo.png" alt="Smartbetting" className="h-8 w-auto" />
+              {/*
+                A logo PNG é uma versão clara (texto branco + ícone teal),
+                desenhada pro header escuro. No variant rebrand (fundo claro)
+                aplicamos `invert hue-rotate-180` pra escurecer preservando
+                aproximadamente a cor do ícone. Solução in-place enquanto não
+                há um asset logo-dark.png dedicado.
+              */}
+              <img
+                src="/logo.png"
+                alt="Smartbetting"
+                className={`h-8 w-auto ${variant === 'rebrand' ? 'invert hue-rotate-180' : ''}`}
+              />
             </div>
             {showBack && (
               <Button
