@@ -161,7 +161,10 @@ const BolaoHome: React.FC = () => {
           onSuccess: (bolao) => {
             setShowCreate(false);
             toast({ title: 'Bolão criado!', description: `Código: ${bolao.invite_code}` });
-            navigate(`/bolao/${bolao.id}?settings=true`);
+            // /welcome guia o criador pelo proximo passo (convidar amigos)
+            // e depois pelas configs opcionais. Antes caia direto em
+            // ?settings=true, que era confuso pra primeiro contato.
+            navigate(`/bolao/${bolao.id}/welcome`);
           },
           onError: (err: any) => {
             toast({ title: 'Erro ao criar', description: err.message, variant: 'destructive' });

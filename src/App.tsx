@@ -47,6 +47,7 @@ const BolaoHome = React.lazy(() => import("./pages/BolaoHome"));
 const BolaoDetail = React.lazy(() => import("./pages/BolaoDetail"));
 const BolaoPalpites = React.lazy(() => import("./pages/BolaoPalpites"));
 const BolaoJoin = React.lazy(() => import("./pages/BolaoJoin"));
+const BolaoWelcome = React.lazy(() => import("./pages/BolaoWelcome"));
 
 const queryClient = new QueryClient();
 
@@ -170,6 +171,11 @@ const App = () => (
               <Route path=":id" element={
                 <ProtectedRoute>
                   <BolaoDetail />
+                </ProtectedRoute>
+              } />
+              <Route path=":id/welcome" element={
+                <ProtectedRoute>
+                  <BolaoWelcome />
                 </ProtectedRoute>
               } />
               <Route path=":id/palpites" element={
