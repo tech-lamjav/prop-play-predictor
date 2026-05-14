@@ -346,6 +346,7 @@ const BolaoDetail: React.FC = () => {
           bolao={bolao}
           matches={matches}
           predictions={myPredictions}
+          ranking={ranking}
           memberCount={memberCountForGate}
           currentUserId={currentUserId}
           onBack={() => navigate('/bolao')}

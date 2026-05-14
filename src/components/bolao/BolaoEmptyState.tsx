@@ -9,16 +9,22 @@ import {
   Check,
   Users,
   Hash,
+  Trophy,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
 import { BrandIcon } from '@/components/bolao/BrandIcon';
-import type { Bolao, BolaoPrediction, WcMatch } from '@/services/bolao.service';
+import { CopaGruposView } from '@/components/bolao/CopaGruposView';
+import { BolaoRankingTable } from '@/components/bolao/BolaoRankingTable';
+import type { Bolao, BolaoPrediction, BolaoRankingEntry, WcMatch } from '@/services/bolao.service';
 
 interface BolaoEmptyStateProps {
   bolao: Bolao;
   matches: WcMatch[] | undefined;
   predictions: BolaoPrediction[] | undefined;
+  /** Ranking do bolão até o momento — usado pela tab "Ranking". */
+  ranking: BolaoRankingEntry[] | undefined;
   memberCount: number;
   currentUserId: string | undefined;
   onBack: () => void;
@@ -31,6 +37,8 @@ interface BolaoEmptyStateProps {
    */
   onSpecialPicks: () => void;
 }
+
+type EmptyStateTab = 'palpites' | 'tabela' | 'ranking';
 
 /**
  * Tela A do BolaoDetail — estado vazio (poucos membros).
@@ -52,6 +60,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   bolao,
   matches,
   predictions,
+  ranking,
   memberCount,
   currentUserId,
   onBack,
@@ -61,6 +70,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   onSpecialPicks,
 }) => {
   const [linkCopied, setLinkCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<EmptyStateTab>('palpites');
 
   // Total de jogos jogáveis (não TBD, não finalizados)
   const totalMatches =
@@ -175,22 +185,27 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
           )}
         </div>
 
-        {/* ─── Sub-nav: Palpites | Especiais ─── */}
-        {specialsAvailable && (
-          <div className="flex items-center gap-1 border-b border-line mb-5">
-            {/* Aba "Palpites" — ativa por default (essa tela é o conteúdo de Palpites) */}
-            <div
-              aria-current="page"
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 border-forest text-forest text-[13px] font-semibold cursor-default"
-            >
-              <Target className="w-3.5 h-3.5" />
-              Palpites de placar
-            </div>
-            {/* Aba "Especiais" — abre o SpecialPredictionsModal (Campeão + finalistas + ...) */}
+        {/* ─── Sub-nav: Palpites | Especiais | Tabela | Ranking ─── */}
+        <div className="flex items-center gap-0.5 border-b border-line mb-5 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 minimal-scrollbar">
+          {/* Aba "Palpites" — conteúdo principal (hero + convidar) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('palpites')}
+            className={`inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 text-[13px] font-semibold whitespace-nowrap transition-colors shrink-0 ${
+              activeTab === 'palpites'
+                ? 'border-forest text-forest'
+                : 'border-transparent text-ink-2 hover:text-ink hover:border-line-2'
+            }`}
+          >
+            <Target className="w-3.5 h-3.5" />
+            Palpites
+          </button>
+          {/* Aba "Especiais" — abre modal (não é tab inline porque o conteúdo é interativo de palpite) */}
+          {specialsAvailable && (
             <button
               type="button"
               onClick={onSpecialPicks}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 border-transparent text-ink-2 hover:text-ink hover:border-line-2 text-[13px] font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 border-transparent text-ink-2 hover:text-ink hover:border-line-2 text-[13px] font-semibold whitespace-nowrap transition-colors shrink-0"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Especiais
@@ -200,9 +215,38 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
                 </span>
               )}
             </button>
-          </div>
-        )}
+          )}
+          {/* Aba "Tabela" — grupos da Copa */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('tabela')}
+            className={`inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 text-[13px] font-semibold whitespace-nowrap transition-colors shrink-0 ${
+              activeTab === 'tabela'
+                ? 'border-forest text-forest'
+                : 'border-transparent text-ink-2 hover:text-ink hover:border-line-2'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            Tabela
+          </button>
+          {/* Aba "Ranking" — ranking do bolão até o momento */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('ranking')}
+            className={`inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 text-[13px] font-semibold whitespace-nowrap transition-colors shrink-0 ${
+              activeTab === 'ranking'
+                ? 'border-forest text-forest'
+                : 'border-transparent text-ink-2 hover:text-ink hover:border-line-2'
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            Ranking
+          </button>
+        </div>
 
+        {/* ─── Conteúdo da aba "Palpites": Hero + Convidar ─── */}
+        {activeTab === 'palpites' && (
+          <>
         {/* ─── HERO: Palpitar (forest, full-width, destaque máximo) ─── */}
         <div className="bg-forest text-white rounded-rebrand-xl p-7 sm:p-9 mb-4 relative overflow-hidden">
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber/10 pointer-events-none" />
@@ -317,6 +361,39 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
             </a>
           </div>
         </div>
+          </>
+        )}
+
+        {/* ─── Conteúdo da aba "Tabela" ─── */}
+        {activeTab === 'tabela' && (
+          <div className="bg-white border border-line rounded-rebrand-xl p-5 sm:p-6">
+            <div className="mb-4">
+              <h2 className="font-display text-[18px] font-bold text-ink">Tabela dos grupos</h2>
+              <p className="text-[12px] text-ink-2 mt-0.5">
+                Como estão os 12 grupos da Copa 2026. Atualiza após cada resultado.
+              </p>
+            </div>
+            <CopaGruposView />
+          </div>
+        )}
+
+        {/* ─── Conteúdo da aba "Ranking" ─── */}
+        {activeTab === 'ranking' && (
+          <div>
+            <div className="mb-4">
+              <h2 className="font-display text-[18px] font-bold text-ink">Ranking do bolão</h2>
+              <p className="text-[12px] text-ink-2 mt-0.5">
+                Pontuação dos jogadores até agora. {memberCount < 4 && 'Fica mais interessante a partir de 4 jogadores.'}
+              </p>
+            </div>
+            <BolaoRankingTable
+              ranking={ranking ?? []}
+              currentUserId={currentUserId}
+              /* onInviteFriends muda a aba pra "palpites" — lá tem o card de convite. */
+              onInviteFriends={() => setActiveTab('palpites')}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
