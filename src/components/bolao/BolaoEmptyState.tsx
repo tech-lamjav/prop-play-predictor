@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ArrowLeft,
-  Trophy,
   Settings,
   Sparkles,
   Wand2,
@@ -26,14 +25,28 @@ interface BolaoEmptyStateProps {
   onPalpitar: () => void;
   onQuickPick: () => void;
   onConfigurar: () => void;
-  onChampionPick: () => void;
+  /**
+   * Abre o modal de Especiais (Campeão + Finalistas + Semis + Quartas + Mata-mata 32).
+   * Substituiu o antigo par `onChampionPick` + `onSpecialPicks` — ambos abriam o mesmo modal.
+   */
   onSpecialPicks: () => void;
 }
 
 /**
  * Tela A do BolaoDetail — estado vazio (poucos membros).
- * Foco em 2 ações: convidar amigos + começar a palpitar.
- * Esconde ranking / insights / stats que ficam vazios sem massa crítica.
+ *
+ * Hierarquia de prioridade pré-Copa:
+ *   1. PALPITAR (hero forest grande, full-width) — ação principal
+ *   2. CONVIDAR amigos (card compacto, sempre visível) — secundário
+ *   3. Sub-nav "Especiais" no topo abre modal com Campeão + Especiais — terciário
+ *
+ * Decisões anteriores que justificam essa estrutura:
+ *   - O /welcome já guiou o criador a convidar logo após criar — aqui o convite
+ *     vira "lembrete passivo", não destaque competindo com palpitar.
+ *   - "Palpite de Campeão" e "Palpites Especiais" eram cards separados nessa
+ *     tela; ambos abriam o mesmo SpecialPredictionsModal. Foram movidos pra
+ *     uma sub-nav "Especiais" no topo (single source of truth pra modalidades
+ *     que não são placar de jogo).
  */
 export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   bolao,
@@ -45,10 +58,8 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   onPalpitar,
   onQuickPick,
   onConfigurar,
-  onChampionPick,
   onSpecialPicks,
 }) => {
-  const isOwner = currentUserId === bolao.owner_id;
   const [linkCopied, setLinkCopied] = useState(false);
 
   // Total de jogos jogáveis (não TBD, não finalizados)
@@ -94,6 +105,18 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent('Pra entrar no bolão da Copa 2026')}`;
 
+  // Sub-nav só aparece se pelo menos um dos modos especiais está habilitado
+  const specialsAvailable =
+    (bolao.champion_enabled ?? true) || (bolao.special_predictions_enabled ?? true);
+
+  // Copy contextual do card de convite — varia com member_count
+  const inviteHeadline =
+    memberCount === 1
+      ? 'Só você ainda. Chame a galera.'
+      : memberCount < 4
+        ? `${memberCount} jogadores. Chame mais — fica mais disputado a partir de 4.`
+        : `${memberCount} jogadores. Chame mais se quiser.`;
+
   return (
     <div className="bg-canvas">
       <div className="max-w-[1120px] mx-auto px-4 sm:px-6 py-8">
@@ -138,7 +161,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
               </span>
             </div>
           </div>
-          {/* Configuracoes: owner edita, membro ve em read-only */}
+          {/* Configurações: owner edita; membro vê read-only */}
           {currentUserId && (
             <Button
               variant="outline"
@@ -152,109 +175,76 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
           )}
         </div>
 
-        {/* ─── 2 cards passo-a-passo ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          {/* PASSO 1 — Convidar (forest) */}
-          <div className="bg-forest text-white rounded-rebrand-xl p-7 relative overflow-hidden">
-            <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full bg-amber/10 pointer-events-none" />
-            <div className="absolute right-16 top-12 w-20 h-20 rounded-full bg-amber/10 pointer-events-none" />
-            <div className="relative">
-              <p className="text-[10px] uppercase tracking-[0.16em] font-bold opacity-60 mb-2">
-                Passo 1 de 2
-              </p>
-              <h2 className="font-display text-[24px] sm:text-[28px] font-extrabold leading-[1.1] mb-3">
-                Chame a galera primeiro.
-                <br />
-                Bolão de 2 não tem graça.
-              </h2>
-              <p className="text-[13px] opacity-75 leading-relaxed mb-5">
-                Manda o link no zap. Pode chamar 6, 20, 50 — não tem limite. O ranking só fica
-                interessante a partir de 4.
-              </p>
-
-              <div className="flex items-center gap-2 mb-3 flex-wrap sm:flex-nowrap">
-                <input
-                  readOnly
-                  value={inviteUrl.replace(/^https?:\/\//, '')}
-                  className="flex-1 min-w-0 h-11 px-3.5 rounded-rebrand-md bg-white/10 border border-white/20 text-white text-[12px] font-mono truncate focus:outline-none"
-                />
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="h-11 px-4 inline-flex items-center gap-2 rounded-rebrand-md bg-amber text-forest font-bold text-[13px] hover:bg-amber-2 transition-colors shrink-0"
-                >
-                  <BrandIcon brand="whatsapp" className="w-4 h-4" />
-                  <span>Mandar no WhatsApp</span>
-                </a>
-              </div>
-
-              <div className="flex items-center gap-3 text-[12px] flex-wrap">
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="inline-flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity"
-                >
-                  {linkCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  {linkCopied ? 'Copiado!' : 'Copiar link'}
-                </button>
-                <span className="opacity-30">·</span>
-                <a
-                  href={telegramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity"
-                >
-                  <BrandIcon brand="telegram" className="w-3.5 h-3.5" />
-                  Telegram
-                </a>
-              </div>
+        {/* ─── Sub-nav: Palpites | Especiais ─── */}
+        {specialsAvailable && (
+          <div className="flex items-center gap-1 border-b border-line mb-5">
+            {/* Aba "Palpites" — ativa por default (essa tela é o conteúdo de Palpites) */}
+            <div
+              aria-current="page"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 border-forest text-forest text-[13px] font-semibold cursor-default"
+            >
+              <Target className="w-3.5 h-3.5" />
+              Palpites de placar
             </div>
+            {/* Aba "Especiais" — abre o SpecialPredictionsModal (Campeão + finalistas + ...) */}
+            <button
+              type="button"
+              onClick={onSpecialPicks}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 border-transparent text-ink-2 hover:text-ink hover:border-line-2 text-[13px] font-semibold transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Especiais
+              {!bolao.is_premium && (bolao.special_predictions_enabled ?? true) && (
+                <span className="text-[9px] font-bold tracking-wider px-1 py-0.5 rounded bg-amber/15 text-amber-2 border border-amber/30 ml-0.5">
+                  PREMIUM
+                </span>
+              )}
+            </button>
           </div>
+        )}
 
-          {/* PASSO 2 — Palpitar (white) */}
-          <div className="bg-white border border-line rounded-rebrand-xl p-7">
-            <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2 mb-2">
-              Passo 2 de 2
-            </p>
-            <h2 className="font-display text-[24px] sm:text-[28px] font-extrabold leading-[1.1] text-ink mb-3">
+        {/* ─── HERO: Palpitar (forest, full-width, destaque máximo) ─── */}
+        <div className="bg-forest text-white rounded-rebrand-xl p-7 sm:p-9 mb-4 relative overflow-hidden">
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber/10 pointer-events-none" />
+          <div className="absolute right-32 top-12 w-24 h-24 rounded-full bg-amber/10 pointer-events-none" />
+          <div className="relative max-w-[640px]">
+            <h2 className="font-display text-[28px] sm:text-[36px] font-extrabold leading-[1.05] mb-3">
               Faça seus {totalMatches} palpites
             </h2>
-            <p className="text-[13px] text-ink-2 leading-relaxed mb-5">
-              Pode palpitar agora ou deixar o Quick Pick preencher por você. Edita um por um quando
-              quiser.
+            <p className="text-[14px] opacity-80 leading-relaxed mb-6 max-w-[480px]">
+              Pode palpitar agora ou deixar o Quick Pick preencher por você. Edita um por um quando quiser.
             </p>
-
-            <div className="flex flex-col gap-2 mb-5">
+            <div className="flex flex-col sm:flex-row gap-2 mb-6">
               <Button
-                variant="forest"
+                variant="amber"
+                size="lg"
                 onClick={onPalpitar}
-                className="rounded-rebrand-md h-11 gap-2 justify-center"
+                className="rounded-rebrand-md gap-2 justify-center"
               >
                 <Target className="w-4 h-4" />
                 Começar a palpitar
               </Button>
               <Button
-                variant="outline-forest"
+                size="lg"
                 onClick={onQuickPick}
-                className="rounded-rebrand-md min-h-11 h-auto gap-2 justify-center whitespace-normal py-2 text-center leading-tight"
+                className="rounded-rebrand-md gap-2 justify-center bg-white/10 text-white border border-white/30 hover:bg-white/20 hover:border-white/50 transition-colors"
               >
                 <Wand2 className="w-4 h-4 shrink-0" />
-                <span>Quick Pick — preencher tudo em 1 clique</span>
+                Quick Pick — preencher em 1 clique
               </Button>
             </div>
-
-            <div className="border-t border-line pt-4 space-y-2">
+            {/* Info de prazo + primeiro jogo */}
+            <div className="flex items-center gap-x-5 gap-y-1.5 pt-4 border-t border-white/15 text-[12px] flex-wrap">
               {nextDeadlineLabel && (
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-ink-2">Próximo prazo</span>
-                  <span className="font-medium text-ink tabular-nums">{nextDeadlineLabel}</span>
+                <div className="inline-flex items-center gap-1.5">
+                  <span className="opacity-60">Próximo prazo:</span>
+                  <span className="font-medium tabular-nums">{nextDeadlineLabel}</span>
                 </div>
               )}
               {nextMatch && (
-                <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-ink-2">Primeiro jogo</span>
-                  <span className="inline-flex items-center gap-1.5 font-medium text-ink">
+                <div className="inline-flex items-center gap-1.5">
+                  <span className="opacity-60">Primeiro jogo:</span>
+                  <span className="inline-flex items-center gap-1 font-medium">
                     <TeamFlag code={nextMatch.home_team_code} size="sm" />
                     {nextMatch.home_team} × {nextMatch.away_team}
                     <TeamFlag code={nextMatch.away_team_code} size="sm" />
@@ -262,73 +252,71 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
                 </div>
               )}
               {!nextMatch && pendingCount > 0 && (
-                <p className="text-[12px] text-ink-2">
+                <span className="opacity-80">
                   {pendingCount} jogo{pendingCount !== 1 ? 's' : ''} pra palpitar
-                </p>
+                </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* ─── 2 cards menores: Campeão + Especiais ─── */}
-        {(bolao.champion_enabled ?? true) || (bolao.special_predictions_enabled ?? true) ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {(bolao.champion_enabled ?? true) && (
-              <div className="bg-white border border-line rounded-rebrand-lg p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-rebrand-md bg-amber/10 border border-amber/30 grid place-items-center text-amber-2 shrink-0">
-                  <Trophy className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold text-ink leading-tight">
-                    Palpite de Campeão
-                  </p>
-                  <p className="text-[12px] text-ink-2 mt-0.5 leading-tight">
-                    Quem ganha a Copa? Vale {bolao.champion_points || 10}pts. Pode mudar até a
-                    final.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onChampionPick}
-                  className="rounded-rebrand-md bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink gap-1 shrink-0"
-                >
-                  Escolher
-                </Button>
-              </div>
-            )}
-
-            {(bolao.special_predictions_enabled ?? true) && (
-              <div className="bg-white border border-line rounded-rebrand-lg p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-rebrand-md bg-canvas-2 border border-line grid place-items-center text-forest shrink-0">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold text-ink leading-tight">
-                    Palpites Especiais
-                  </p>
-                  <p className="text-[12px] text-ink-2 mt-0.5 leading-tight">
-                    Finalistas, semis, quartas e mata-mata. Até 19pts.
-                  </p>
-                </div>
-                {bolao.is_premium ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onSpecialPicks}
-                    className="rounded-rebrand-md bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink gap-1 shrink-0"
-                  >
-                    Ver
-                  </Button>
-                ) : (
-                  <span className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber/15 text-amber-2 border border-amber/30 shrink-0">
-                    PREMIUM
-                  </span>
-                )}
-              </div>
-            )}
+        {/* ─── Card secundário: Convidar amigos (sempre visível) ─── */}
+        <div className="bg-white border border-line rounded-rebrand-xl p-5">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-9 h-9 rounded-rebrand-md bg-canvas-2 grid place-items-center text-forest shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-display text-[15px] font-bold text-ink leading-tight">
+                {inviteHeadline}
+              </p>
+              <p className="text-[12px] text-ink-2 mt-0.5 leading-relaxed">
+                Manda o link no zap. Pode chamar quantos quiser — o ranking fica interessante a partir de 4.
+              </p>
+            </div>
           </div>
-        ) : null}
+          <div className="flex items-center gap-2 mb-3 flex-wrap sm:flex-nowrap">
+            <input
+              readOnly
+              value={inviteUrl.replace(/^https?:\/\//, '')}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className="flex-1 min-w-0 h-10 px-3 rounded-rebrand-md bg-canvas-2 border border-line text-ink text-[12px] font-mono truncate focus:outline-none focus:border-forest"
+            />
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-10 px-3.5 inline-flex items-center gap-1.5 rounded-rebrand-md bg-forest text-white hover:bg-forest-2 font-semibold text-[12px] shrink-0 transition-colors"
+            >
+              <BrandIcon brand="whatsapp" className="w-4 h-4" />
+              WhatsApp
+            </a>
+          </div>
+          <div className="flex items-center gap-4 text-[12px]">
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center gap-1.5 text-ink-2 hover:text-forest transition-colors"
+            >
+              {linkCopied ? (
+                <Check className="w-3.5 h-3.5 text-status-success" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+              {linkCopied ? 'Copiado!' : 'Copiar link'}
+            </button>
+            <span className="text-ink-3">·</span>
+            <a
+              href={telegramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-ink-2 hover:text-forest transition-colors"
+            >
+              <BrandIcon brand="telegram" className="w-3.5 h-3.5" />
+              Telegram
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

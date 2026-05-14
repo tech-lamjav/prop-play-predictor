@@ -341,7 +341,7 @@ const BolaoDetail: React.FC = () => {
   if (memberCountForGate < 2 && !bolao.is_closed) {
     return (
       <>
-        <AnalyticsNav />
+        <AnalyticsNav variant="rebrand" />
         <BolaoEmptyState
           bolao={bolao}
           matches={matches}
@@ -352,7 +352,8 @@ const BolaoDetail: React.FC = () => {
           onPalpitar={() => setPredictionsModalOpen(true)}
           onQuickPick={() => setPredictionsModalOpen(true)}
           onConfigurar={() => setShowAdmin(true)}
-          onChampionPick={() => setSpecialPredictionsOpen(true)}
+          /* onChampionPick removido — Campeão entrou no SpecialPredictionsModal.
+             Aba "Especiais" no header do EmptyState aciona o mesmo modal. */
           onSpecialPicks={() => setSpecialPredictionsOpen(true)}
         />
 
@@ -459,7 +460,7 @@ const BolaoDetail: React.FC = () => {
 
   return (
     <div className="bg-canvas flex-1">
-      <AnalyticsNav />
+      <AnalyticsNav variant="rebrand" />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
 
