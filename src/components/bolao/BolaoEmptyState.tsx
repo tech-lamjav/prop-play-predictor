@@ -418,10 +418,11 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
                   Pontuação dos jogadores até agora. {memberCount < 4 && 'Fica mais interessante a partir de 4 jogadores.'}
                 </p>
               </div>
-              {/* Botões de share da imagem do ranking — só aparecem com 2+ jogadores
-                  (mesma condição usada no hub completo do BolaoDetail). Em pré-Copa
-                  com só o dono, não tem ranking real pra compartilhar. */}
-              {ranking && ranking.length > 1 && (
+              {/* Botões de share da imagem do ranking — aparecem com pelo menos 1
+                  entry (geralmente só o dono em pré-Copa). Antes o gate era > 1
+                  pra esconder "ranking solo", mas isso impedia o criador de testar
+                  o fluxo de compartilhar antes de chamar amigos. */}
+              {ranking && ranking.length >= 1 && (
                 <div className="flex items-center gap-3 text-[12px] text-ink-2">
                   <span className="text-ink-3">Compartilhar:</span>
                   <button
@@ -465,7 +466,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
       </div>
 
       {/* ─── Off-screen render dos cards de ranking pra captura via html2canvas ─── */}
-      {ranking && ranking.length > 1 && (
+      {ranking && ranking.length >= 1 && (
         <>
           <RankingShareImage
             ref={rankingShareFeed.captureRef}
