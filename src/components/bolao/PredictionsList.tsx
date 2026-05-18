@@ -259,28 +259,13 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFilter, filterMode]);
 
-  // Auto-avançar pro próximo dia com pendências quando o dia atual ficar completo.
-  // 800ms de delay pra dar tempo do user perceber "✓ Tudo palpitado".
-  // Cancela se user trocar de dia manualmente antes do timer disparar.
-  useEffect(() => {
-    if (filterMode !== 'date' || dateFilter === 'all') return;
-    if (!selectedDayStats) return;
-    if (selectedDayStats.total === 0) return;
-    if (selectedDayStats.palpitated < selectedDayStats.total) return;
-
-    const timer = setTimeout(() => {
-      // Procura próximo dia (após o atual) com ao menos um jogo pendente
-      const currentIndex = dates.indexOf(dateFilter);
-      const nextDate = dates
-        .slice(currentIndex + 1)
-        .find((d) => (pendingByDate.get(d) ?? 0) > 0);
-      if (nextDate) {
-        setDateFilter(nextDate);
-      }
-      // Se não há próximo, fica no dia atual com a mensagem "Tudo palpitado"
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [filterMode, dateFilter, selectedDayStats, dates, pendingByDate]);
+  // Removido: auto-advance pro próximo dia quando o dia atual fica completo.
+  // Motivo (feedback Diody, 18/mai/2026): quando o user clica num dia que JÁ
+  // tem todos palpites preenchidos pra revisar/editar, o effect disparava
+  // depois de 800ms e trocava o filter pro próximo dia pendente — "não dava
+  // pra ficar no dia que já preenchi". A intenção era educada (guiar pro
+  // próximo) mas virou agressiva. Se o user quer pular pra próximo pendente,
+  // ele tem outras formas: botão "Próximo" da sticky bar + chip "só pendentes".
 
   return (
     <>
