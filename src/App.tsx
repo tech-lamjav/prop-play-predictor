@@ -48,6 +48,7 @@ const BolaoDetail = React.lazy(() => import("./pages/BolaoDetail"));
 const BolaoPalpites = React.lazy(() => import("./pages/BolaoPalpites"));
 const BolaoJoin = React.lazy(() => import("./pages/BolaoJoin"));
 const BolaoWelcome = React.lazy(() => import("./pages/BolaoWelcome"));
+const BolaoLP = React.lazy(() => import("./pages/BolaoLP"));
 
 const queryClient = new QueryClient();
 
@@ -163,6 +164,8 @@ const App = () => (
             {/* /bolao = landing publica pra deslogado, dashboard pra logado */}
             <Route path="/bolao" element={<BolaoLayout><Outlet /></BolaoLayout>}>
               <Route index element={<BolaoEntry />} />
+              {/* LP enxuta pra campanhas/anuncios — publica, sem auth */}
+              <Route path="comecar" element={<BolaoLP />} />
               <Route path="entrar/:code" element={
                 <ProtectedRoute>
                   <BolaoJoin />
