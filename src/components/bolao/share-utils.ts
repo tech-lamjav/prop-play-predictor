@@ -32,6 +32,17 @@ export function canShareFiles(): boolean {
 }
 
 /**
+ * Detecta plataforma mobile via UA. Safari macOS suporta Web Share API
+ * mas o sheet do macOS NÃO inclui WhatsApp/Telegram/IG, só Mail/Mensagens/
+ * AirDrop. Então pra botões "WhatsApp" específicos a gente precisa
+ * distinguir mobile (UI nativa OK) de desktop (precisa fallback wa.me).
+ */
+function isMobileUA(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+}
+
+/**
  * Compartilha uma imagem (PNG blob).
  *
  * Comportamento por plataforma:
@@ -74,6 +85,63 @@ export async function shareImage(
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return { success: true, method: 'download' };
+  } catch (err: any) {
+    return { success: false, method: 'error', error: err?.message ?? 'Erro ao salvar imagem' };
+  }
+}
+
+/**
+ * Variante de shareImage especificamente pra botão "WhatsApp".
+ *
+ * Mobile: usa Web Share API (sheet nativo do iOS/Android inclui WhatsApp).
+ * Desktop: faz download da imagem + abre WhatsApp Web em nova aba com texto
+ *          pré-formatado. User cola a imagem do Downloads no chat.
+ *
+ * Por que não usar shareImage() direto no botão WhatsApp:
+ *   - Safari macOS suporta canShareFiles() → cai no Web Share API
+ *   - Mas o sheet do macOS NÃO inclui WhatsApp (só Mail/AirDrop/Mensagens)
+ *   - User clica "WhatsApp" e não vai pra WhatsApp — UX quebrada
+ *
+ * Mantemos shareImage() pros botões Stories/Genérico, onde Web Share API
+ * é desejável.
+ */
+export async function shareImageToWhatsApp(
+  blob: Blob,
+  options: { filename: string; title?: string; text?: string }
+): Promise<ShareResult> {
+  const { filename, title, text } = options;
+  const typedBlob = blob.type === 'image/png' ? blob : new Blob([blob], { type: 'image/png' });
+  const file = new File([typedBlob], filename, { type: 'image/png' });
+
+  // 1. Mobile com Web Share API: usa sheet nativo (inclui WhatsApp)
+  if (isMobileUA() && canShareFiles()) {
+    try {
+      await navigator.share({ files: [file], title, text });
+      return { success: true, method: 'native-share' };
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return { success: false, method: 'error', error: 'Cancelado' };
+      // Outro erro → cai no fallback download
+    }
+  }
+
+  // 2. Desktop: download + abre WhatsApp Web em nova aba
+  try {
+    // Download da imagem
+    const url = URL.createObjectURL(typedBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Abre WhatsApp Web com texto pré-formatado pra colar com a imagem
+    if (text) {
+      const waUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+    }
     return { success: true, method: 'download' };
   } catch (err: any) {
     return { success: false, method: 'error', error: err?.message ?? 'Erro ao salvar imagem' };

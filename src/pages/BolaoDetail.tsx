@@ -289,9 +289,10 @@ const BolaoDetail: React.FC = () => {
     }
   };
 
-  // WhatsApp: compartilha imagem feed + texto com link via share sheet
+  // WhatsApp: mobile usa Web Share API (sheet nativo com WhatsApp);
+  // desktop baixa imagem + abre WhatsApp Web. Ver shareImageToWhatsApp().
   const handleShareRanking = async () => {
-    showShareResultToast(await rankingShareFeed.share());
+    showShareResultToast(await rankingShareFeed.shareToWhatsApp());
   };
 
   // Stories: compartilha imagem 1080×1920 via share sheet

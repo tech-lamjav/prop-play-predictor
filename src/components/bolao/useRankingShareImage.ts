@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { shareImage, downloadImage, SHARE_MESSAGES, type ShareResult } from '@/components/bolao/share-utils';
+import { shareImage, shareImageToWhatsApp, downloadImage, SHARE_MESSAGES, type ShareResult } from '@/components/bolao/share-utils';
 
 interface UseRankingShareImageOptions {
   bolaoName: string;
@@ -91,6 +91,41 @@ export function useRankingShareImage(options: UseRankingShareImageOptions) {
   }, [node, bolaoName, bolaoUrl, capture]);
 
   /**
+   * Variante de share pra botão "WhatsApp" especificamente.
+   * Mobile: Web Share API (sheet nativo); Desktop: download + WhatsApp Web.
+   * Ver shareImageToWhatsApp() pro racional completo.
+   */
+  const shareToWhatsApp = useCallback(async (): Promise<ShareResult> => {
+    if (!node) {
+      const err: ShareResult = { success: false, method: 'error', error: 'Imagem não está pronta' };
+      setLastResult(err);
+      return err;
+    }
+    setIsSharing(true);
+    try {
+      const captured = await capture();
+      if (!captured) {
+        const err: ShareResult = { success: false, method: 'error', error: 'Falha ao gerar imagem' };
+        setLastResult(err);
+        return err;
+      }
+      const result = await shareImageToWhatsApp(captured.blob, {
+        filename: captured.filename,
+        title: `Ranking ${bolaoName}`,
+        text: SHARE_MESSAGES.rankingImage(bolaoName, bolaoUrl),
+      });
+      setLastResult(result);
+      return result;
+    } catch (err: any) {
+      const errResult: ShareResult = { success: false, method: 'error', error: err?.message ?? 'Erro' };
+      setLastResult(errResult);
+      return errResult;
+    } finally {
+      setIsSharing(false);
+    }
+  }, [node, bolaoName, bolaoUrl, capture]);
+
+  /**
    * Download direto do PNG. Não passa por share sheet — só salva o arquivo.
    * Usado pelo botão "Baixar".
    */
@@ -120,7 +155,7 @@ export function useRankingShareImage(options: UseRankingShareImageOptions) {
     }
   }, [node, capture]);
 
-  return { captureRef, share, download, isSharing, lastResult };
+  return { captureRef, share, shareToWhatsApp, download, isSharing, lastResult };
 }
 
 /** Slug simples: "Bolão da Firma!" → "bolao-da-firma" */

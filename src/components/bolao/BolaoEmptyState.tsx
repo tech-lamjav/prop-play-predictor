@@ -427,8 +427,8 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
                   <span className="text-ink-3">Compartilhar:</span>
                   <button
                     type="button"
-                    onClick={() => void rankingShareFeed.share()}
-                    aria-label="Compartilhar ranking (feed 1080×1080)"
+                    onClick={() => void rankingShareFeed.shareToWhatsApp()}
+                    aria-label="Compartilhar ranking via WhatsApp (mobile: sheet nativo; desktop: download + WhatsApp Web)"
                     className="inline-flex items-center gap-1.5 hover:text-forest transition-colors"
                   >
                     <BrandIcon brand="whatsapp" className="w-3.5 h-3.5" />
