@@ -1,4 +1,4 @@
-// @ts-nocheck — Deno edge function. TS check rodado pelo deploy do Supabase.
+/** @jsxImportSource https://esm.sh/react@18.2.0 */
 //
 // OG image dinâmica pra bolão.
 // Usado em <meta property="og:image"> nos links de convite — quando alguém
