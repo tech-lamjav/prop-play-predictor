@@ -30,6 +30,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 /**
+ * Flag temporária pra esconder o botão "Bolão Copa 2026" da nav.
+ *
+ * Motivo: testar o produto em prod via URL direta (`/bolao`) antes de liberar
+ * o ponto de entrada visível pros usuários gerais. As rotas continuam
+ * funcionando normalmente — só o item da header é ocultado.
+ *
+ * Pra liberar: setar pra `true`.
+ */
+const SHOW_BOLAO_NAV_ITEM = false;
+
+/**
  * Visual variant da nav.
  *
  * - `terminal` (default): tema escuro original — usado em todas as páginas
@@ -114,7 +125,15 @@ const themes: Record<NavVariant, NavTheme> = {
     ghostHoverBg: 'hover:bg-canvas-2',
     textHover: 'text-ink hover:text-forest',
     slash: 'text-ink-3',
-    dropdownBg: 'bg-white',
+    /*
+     * `theme-bolao` é CRÍTICO aqui: o DropdownMenuContent renderiza num Portal
+     * fora do <BolaoLayout className="theme-bolao">. Sem essa classe, as CSS
+     * vars (--ink, --canvas-2, --forest, --line) ficam undefined no portal
+     * e classes como `text-ink` caem pro fallback `text-popover-foreground`
+     * default — que é branco no tema dark do app, causando "branco em branco"
+     * (bg-white literal + texto branco invisível).
+     */
+    dropdownBg: 'theme-bolao bg-white',
     dropdownBorder: 'border-line',
     dropdownText: 'text-ink',
     dropdownItemFocus: 'focus:bg-canvas-2 focus:text-forest',
@@ -293,19 +312,21 @@ export default function AnalyticsNav({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/bolao')}
-              className={`flex items-center gap-2 px-4 h-9 ${
-                location.pathname.startsWith('/bolao')
-                  ? `${t.textAccent} ${t.ghostHoverBg}`
-                  : t.ghostBtn
-              }`}
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span className="text-xs font-semibold uppercase tracking-wide">Bolão Copa 2026</span>
-            </Button>
+            {SHOW_BOLAO_NAV_ITEM && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/bolao')}
+                className={`flex items-center gap-2 px-4 h-9 ${
+                  location.pathname.startsWith('/bolao')
+                    ? `${t.textAccent} ${t.ghostHoverBg}`
+                    : t.ghostBtn
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold uppercase tracking-wide">Bolão Copa 2026</span>
+              </Button>
+            )}
           </div>
 
           {/* Right side - Auth & Premium */}
@@ -399,23 +420,27 @@ export default function AnalyticsNav({
               <div className={`border-t ${t.border}`} />
 
               {/* Bolão Copa */}
-              <div>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleNavigation('/bolao')}
-                  className={`w-full justify-start h-10 ${
-                    location.pathname.startsWith('/bolao')
-                      ? `${t.activeBg} ${t.textAccent}`
-                      : t.ghostBtn
-                  }`}
-                >
-                  <Trophy className="w-4 h-4 mr-3" />
-                  <span className="text-sm">Bolão Copa 2026</span>
-                </Button>
-              </div>
+              {SHOW_BOLAO_NAV_ITEM && (
+                <>
+                  <div>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleNavigation('/bolao')}
+                      className={`w-full justify-start h-10 ${
+                        location.pathname.startsWith('/bolao')
+                          ? `${t.activeBg} ${t.textAccent}`
+                          : t.ghostBtn
+                      }`}
+                    >
+                      <Trophy className="w-4 h-4 mr-3" />
+                      <span className="text-sm">Bolão Copa 2026</span>
+                    </Button>
+                  </div>
 
-              {/* Divisor */}
-              <div className={`border-t ${t.border}`} />
+                  {/* Divisor */}
+                  <div className={`border-t ${t.border}`} />
+                </>
+              )}
 
               {/* Seção Betinho */}
               <div>
