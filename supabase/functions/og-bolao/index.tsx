@@ -1,3 +1,4 @@
+/** @jsxImportSource https://esm.sh/react@18.2.0 */
 // @ts-nocheck — Deno edge function. TS check rodado pelo deploy do Supabase.
 //
 // OG image dinâmica pra bolão.
