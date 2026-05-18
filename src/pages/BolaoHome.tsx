@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Trophy,
   Plus,
@@ -62,6 +62,7 @@ function formatDeadline(matches: any[] | undefined, bolao: any) {
 
 const BolaoHome: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { data: boloes, isLoading } = useUserBoloes();
   const { data: matches } = useWcMatches();
@@ -77,6 +78,18 @@ const BolaoHome: React.FC = () => {
   React.useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
   }, []);
+
+  // Auto-abre o modal de criar bolão quando vem de /bolao/comecar (LP)
+  // ou de qualquer link com ?create=true. Limpa o query param depois pra
+  // não reabrir se o user fechar e navegar pra outra parte da app.
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setShowCreate(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('create');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Lista de fases pra navegação por setas: Rodada 1/2/3 + mata-mata
   const phases = useMemo(() => {
