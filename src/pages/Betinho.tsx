@@ -38,7 +38,7 @@ import {
   Search,
   Settings
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/integrations/supabase/client";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -63,11 +63,19 @@ const getVideoUrl = (videoPath: string, bucketName: string = 'landing-page') => 
 const Betinho = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const supabase = createClient();
 
+  // Variante /betinho/bolao — usuário veio de um bolão da Copa. Renderiza
+  // hero + "como funciona" customizados (resto da página igual).
+  const isBolaoVariant = location.pathname.startsWith('/betinho/bolao');
+
   useEffect(() => {
     if (authLoading || !user?.id) return;
+    // Variante /betinho/bolao é educacional ("convencer + entender") —
+    // não redireciona pra onboarding mesmo se whatsapp nao sincronizado.
+    if (isBolaoVariant) return;
     const checkWhatsappSynced = async () => {
       const { data } = await supabase
         .from('users')
@@ -79,7 +87,7 @@ const Betinho = () => {
       }
     };
     checkWhatsappSynced();
-  }, [authLoading, user?.id, supabase, navigate]);
+  }, [authLoading, user?.id, supabase, navigate, isBolaoVariant]);
 
   // Helper to navigate to auth preserving ref parameter
   const navigateToAuth = () => {
@@ -183,8 +191,13 @@ const Betinho = () => {
   return (
     <div className="min-h-screen bg-terminal-black text-terminal-text overflow-x-hidden">
       <Helmet>
-        <title>Betinho — Gestão de Apostas e Controle de Banca no Telegram | Smart Betting</title>
-        <meta name="description" content="Registre apostas com foto do bilhete, controle sua banca e acompanhe sua performance com insights. Gestão de apostas descomplicada no Telegram." />
+        <title>{isBolaoVariant
+          ? "Apostas reais? Documente no WhatsApp | Betinho"
+          : "Betinho — Gestão de Apostas e Controle de Banca no Telegram | Smart Betting"}</title>
+        <meta name="description" content={isBolaoVariant
+          ? "Você palpitou no bolão. E suas apostas reais — você anota? Documenta tudo no WhatsApp em 10 segundos."
+          : "Registre apostas com foto do bilhete, controle sua banca e acompanhe sua performance com insights. Gestão de apostas descomplicada no Telegram."
+        } />
       </Helmet>
       {/* Navigation - alinhado ao visual do dashboard (cinza/azul) */}
       <nav className="sticky top-0 z-50 bg-terminal-black/80 backdrop-blur-lg border-b border-terminal-border text-terminal-text">
@@ -219,59 +232,94 @@ const Betinho = () => {
       </nav>
 
       <div className="container mx-auto px-4 sm:px-6">
-        {/* Hero Section - Telegram first */}
-        <section className="relative py-16 md:py-20 overflow-hidden">
-          <div className="relative text-center max-w-5xl mx-auto">
-            <div className="inline-flex items-center gap-2 bg-terminal-blue/10 text-terminal-blue px-4 py-2 rounded-full text-sm font-medium mb-6 border border-terminal-border">
-              <Bot className="h-4 w-4" />
-              Assistente de apostas no Telegram
-            </div>
-            
-            <h1 className="text-4xl md:text-6xl font-bold text-terminal-text mb-6 leading-tight">
-              Seu assistente de apostas no <span className="text-terminal-blue">Telegram</span>
-            </h1>
-            
-            <p className="text-xl md:text-2xl text-terminal-text/80 mb-8 leading-relaxed">
-              Envie texto ou print pelo bot e veja tudo organizado no dashboard.
-              <span className="text-terminal-text font-semibold"> IA processa e registra para você.</span>
-            </p>
+        {/* Hero Section */}
+        {isBolaoVariant ? (
+          // Variante bolão — convencer + entender, soft scroll pra "como funciona"
+          <section className="relative py-16 md:py-20 overflow-hidden">
+            <div className="relative text-center max-w-5xl mx-auto">
+              <div className="inline-flex items-center gap-2 bg-terminal-blue/10 text-terminal-blue px-4 py-2 rounded-full text-sm font-medium mb-6 border border-terminal-border">
+                <MessageCircle className="h-4 w-4" />
+                Vindo do bolão da Copa
+              </div>
 
-            {/* Social Proof */}
-            <div className="flex items-center justify-center gap-6 mb-8 text-sm text-terminal-text/70">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-terminal-green" />
-                <span>IA para texto e print</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-terminal-blue" />
-                <span>Sincroniza com seu dashboard</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-terminal-blue" />
-                <span>Fluxo 100% no Telegram</span>
-              </div>
-            </div>
+              <h1 className="text-4xl md:text-6xl font-bold text-terminal-text mb-6 leading-tight">
+                Você acabou de palpitar no bolão.
+                <br />
+                E suas apostas <span className="text-terminal-blue">de verdade</span> — você anota?
+              </h1>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-lg mx-auto">
-              <Button 
-                size="lg" 
-                onClick={navigateToAuth} 
-                className="w-full bg-[#3B82F6] hover:bg-[#2F6AD4] gap-2 text-lg py-5 text-white"
-              >
-                <MessageCircle className="h-5 w-5" />
-                Começar grátis
-              </Button>
+              <p className="text-xl md:text-2xl text-terminal-text/80 mb-8 leading-relaxed">
+                Documenta tudo no WhatsApp em 10 segundos.
+                <span className="text-terminal-text font-semibold"> Sem planilha, sem app.</span>
+              </p>
+
               <Button
                 size="lg"
-                variant="outline"
-                onClick={navigateToAuth}
-                className="w-full bg-transparent border-terminal-border text-terminal-text hover:border-terminal-blue hover:text-terminal-blue py-5"
+                onClick={() => {
+                  document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="bg-[#3B82F6] hover:bg-[#2F6AD4] gap-2 text-lg py-5 px-8 text-white"
               >
-                Ver dashboard
+                Ver como funciona
+                <ArrowRight className="h-5 w-5 rotate-90" />
               </Button>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : (
+          // Variante padrão — Telegram first
+          <section className="relative py-16 md:py-20 overflow-hidden">
+            <div className="relative text-center max-w-5xl mx-auto">
+              <div className="inline-flex items-center gap-2 bg-terminal-blue/10 text-terminal-blue px-4 py-2 rounded-full text-sm font-medium mb-6 border border-terminal-border">
+                <Bot className="h-4 w-4" />
+                Assistente de apostas no Telegram
+              </div>
+
+              <h1 className="text-4xl md:text-6xl font-bold text-terminal-text mb-6 leading-tight">
+                Seu assistente de apostas no <span className="text-terminal-blue">Telegram</span>
+              </h1>
+
+              <p className="text-xl md:text-2xl text-terminal-text/80 mb-8 leading-relaxed">
+                Envie texto ou print pelo bot e veja tudo organizado no dashboard.
+                <span className="text-terminal-text font-semibold"> IA processa e registra para você.</span>
+              </p>
+
+              {/* Social Proof */}
+              <div className="flex items-center justify-center gap-6 mb-8 text-sm text-terminal-text/70">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-terminal-green" />
+                  <span>IA para texto e print</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-terminal-blue" />
+                  <span>Sincroniza com seu dashboard</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-terminal-blue" />
+                  <span>Fluxo 100% no Telegram</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-lg mx-auto">
+                <Button
+                  size="lg"
+                  onClick={navigateToAuth}
+                  className="w-full bg-[#3B82F6] hover:bg-[#2F6AD4] gap-2 text-lg py-5 text-white"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  Começar grátis
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={navigateToAuth}
+                  className="w-full bg-transparent border-terminal-border text-terminal-text hover:border-terminal-blue hover:text-terminal-blue py-5"
+                >
+                  Ver dashboard
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Dashboard Preview Section (mock) */}
         <section className="py-12 px-3 sm:px-4">
@@ -468,61 +516,120 @@ const Betinho = () => {
           </div>
         </section>
 
-        {/* How It Works Section - Telegram */}
-        <section className="py-16 px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
-              Como funciona no <span className="text-terminal-blue">Telegram</span>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Três passos simples: sincronize, envie, veja no dashboard.
-            </p>
-          </div>
+        {/* How It Works Section */}
+        {isBolaoVariant ? (
+          // Variante bolão — WhatsApp first, alvo do soft scroll do hero
+          <section id="how-it-works" className="py-16 px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+                Como funciona no <span className="text-terminal-blue">WhatsApp</span>
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Três passos simples: conecta, manda, vê.
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
-                  <Send className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-center text-foreground">1. Sincronize pelo Telegram</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  Abra o bot, toque em enviar seu número e conecte sua conta.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                    <Smartphone className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-center text-foreground">1. Conecta seu WhatsApp</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">
+                    Sincroniza o bot com seu número em segundos.
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
-                  <Brain className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-center text-foreground">2. Envie texto ou print</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  1 mensagem = 1 aposta. Texto ou imagem, a IA extrai odds, valor e jogo.
-                </p>
-              </CardContent>
-            </Card>
+              <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                    <MessageCircle className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-center text-foreground">2. Manda como você fala</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">
+                    "apostei 50 no Brasil 1.85". A IA extrai e organiza tudo.
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
-                  <BarChart3 className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-center text-foreground">3. Acompanhe no dashboard</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  Confirmação rápida e todas as apostas no seu painel, com stats e filtros.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
+              <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                    <BarChart3 className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-center text-foreground">3. Vê tudo no dashboard</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">
+                    Banca, ROI, win rate. Tudo organizado, automático.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        ) : (
+          // Variante padrão — Telegram first
+          <section className="py-16 px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+                Como funciona no <span className="text-terminal-blue">Telegram</span>
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Três passos simples: sincronize, envie, veja no dashboard.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                    <Send className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-center text-foreground">1. Sincronize pelo Telegram</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">
+                    Abra o bot, toque em enviar seu número e conecte sua conta.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                    <Brain className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-center text-foreground">2. Envie texto ou print</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">
+                    1 mensagem = 1 aposta. Texto ou imagem, a IA extrai odds, valor e jogo.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border-border hover:shadow-lg transition-all duration-300">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                    <BarChart3 className="h-8 w-8 text-white" />
+                  </div>
+                  <CardTitle className="text-center text-foreground">3. Acompanhe no dashboard</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-muted-foreground">
+                    Confirmação rápida e todas as apostas no seu painel, com stats e filtros.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        )}
 
         {/* Features Section - estilo dashboard */}
         <section className="py-16 px-6 bg-terminal-black">

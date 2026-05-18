@@ -3,7 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AchievementProvider } from "@/components/bolao/AchievementProvider";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -40,6 +42,12 @@ const SharePage = React.lazy(() => import("./pages/SharePage"));
 const Analise360List = React.lazy(() => import("./pages/Analise360List"));
 const Analise360Detail = React.lazy(() => import("./pages/Analise360Detail"));
 const HomeNBA = React.lazy(() => import("./pages/HomeNBA"));
+const BolaoEntry = React.lazy(() => import("./pages/BolaoEntry"));
+const BolaoHome = React.lazy(() => import("./pages/BolaoHome"));
+const BolaoDetail = React.lazy(() => import("./pages/BolaoDetail"));
+const BolaoPalpites = React.lazy(() => import("./pages/BolaoPalpites"));
+const BolaoJoin = React.lazy(() => import("./pages/BolaoJoin"));
+const BolaoWelcome = React.lazy(() => import("./pages/BolaoWelcome"));
 
 const queryClient = new QueryClient();
 
@@ -52,6 +60,7 @@ const LazyFallback = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <AchievementProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
@@ -69,6 +78,10 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/betinho" element={<Betinho />} />
+            {/* Variante da LP do Betinho pra usuários vindos do bolão da Copa.
+                Mesmo componente; useLocation detecta a rota e troca hero +
+                "como funciona". CTAs em /bolao/.../palpites apontam pra cá. */}
+            <Route path="/betinho/bolao" element={<Betinho />} />
             <Route path="/auth" element={
               <ProtectedRoute requireAuth={false}>
                 <Auth />
@@ -144,12 +157,40 @@ const App = () => (
                 <Settings />
               </ProtectedRoute>
             } />
+            {/* Bolão Copa do Mundo — todas as rotas wrappadas em BolaoLayout
+                pra aplicar o tema "Direção A" (rebrand). Resto do app continua
+                com tema "terminal" do legado. */}
+            {/* /bolao = landing publica pra deslogado, dashboard pra logado */}
+            <Route path="/bolao" element={<BolaoLayout><Outlet /></BolaoLayout>}>
+              <Route index element={<BolaoEntry />} />
+              <Route path="entrar/:code" element={
+                <ProtectedRoute>
+                  <BolaoJoin />
+                </ProtectedRoute>
+              } />
+              <Route path=":id" element={
+                <ProtectedRoute>
+                  <BolaoDetail />
+                </ProtectedRoute>
+              } />
+              <Route path=":id/welcome" element={
+                <ProtectedRoute>
+                  <BolaoWelcome />
+                </ProtectedRoute>
+              } />
+              <Route path=":id/palpites" element={
+                <ProtectedRoute>
+                  <BolaoPalpites />
+                </ProtectedRoute>
+              } />
+            </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />
         </Suspense>
       </BrowserRouter>
+      </AchievementProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
