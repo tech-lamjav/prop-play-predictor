@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Trophy,
   Copy,
-  MessageCircle,
+  Share2,
   Settings,
   Target,
   Clock,
@@ -15,7 +15,7 @@ import {
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Button } from '@/components/ui/button';
 import { useBolao } from '@/hooks/use-bolao';
-import { SHARE_MESSAGES } from '@/components/bolao/share-utils';
+import { shareTextOrLink, SHARE_MESSAGES } from '@/components/bolao/share-utils';
 import { useToast } from '@/hooks/use-toast';
 
 /**
@@ -53,7 +53,6 @@ const BolaoWelcome: React.FC = () => {
   }
 
   const inviteUrl = `${window.location.origin}/bolao/entrar/${bolao.invite_code}`;
-  const message = SHARE_MESSAGES.invite(bolao.name, bolao.invite_code, inviteUrl);
   const settingsUrl = `/bolao/${bolao.id}?settings=true`;
 
   const handleCopyLink = async () => {
@@ -71,9 +70,13 @@ const BolaoWelcome: React.FC = () => {
     }
   };
 
-  const handleWhatsApp = () => {
-    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank', 'noopener');
+  // Web Share API: abre o sheet nativo (WhatsApp/Telegram/Instagram/Copiar).
+  // Em desktop sem Web Share API, cai no fallback wa.me automaticamente.
+  const handleShare = () => {
+    void shareTextOrLink({
+      title: `Bolão "${bolao.name}" — Copa 2026`,
+      text: SHARE_MESSAGES.invite(bolao.name, bolao.invite_code, inviteUrl),
+    });
   };
 
   // Cards de personalização — todos apontam pro admin panel completo. Aba
@@ -157,11 +160,11 @@ const BolaoWelcome: React.FC = () => {
             <Button
               variant="forest"
               size="lg"
-              onClick={handleWhatsApp}
+              onClick={handleShare}
               className="rounded-rebrand-md gap-2 flex-1"
             >
-              <MessageCircle className="w-4 h-4" />
-              Mandar no WhatsApp
+              <Share2 className="w-4 h-4" />
+              Compartilhar
             </Button>
           </div>
         </div>

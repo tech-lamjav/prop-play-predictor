@@ -11,12 +11,18 @@ import {
   Hash,
   Trophy,
   LayoutGrid,
+  Share2,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
 import { BrandIcon } from '@/components/bolao/BrandIcon';
 import { CopaGruposView } from '@/components/bolao/CopaGruposView';
 import { BolaoRankingTable } from '@/components/bolao/BolaoRankingTable';
+import { RankingShareImage } from '@/components/bolao/RankingShareImage';
+import { RankingShareImageStories } from '@/components/bolao/RankingShareImageStories';
+import { useRankingShareImage } from '@/components/bolao/useRankingShareImage';
+import { shareTextOrLink, SHARE_MESSAGES } from '@/components/bolao/share-utils';
 import type { Bolao, BolaoPrediction, BolaoRankingEntry, WcMatch } from '@/services/bolao.service';
 
 interface BolaoEmptyStateProps {
@@ -72,6 +78,23 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   const [linkCopied, setLinkCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<EmptyStateTab>('palpites');
 
+  // Hooks pra gerar imagem do ranking (1080×1080 feed e 1080×1920 stories).
+  // Em pré-Copa com 0-1 jogador, os botões ficam ocultos (ver condição abaixo);
+  // os hooks são criados sempre pra manter ordem estável dos hooks no React.
+  const bolaoShareUrl = `${window.location.origin}/bolao/${bolao.id}`;
+  const rankingShareFeed = useRankingShareImage({
+    bolaoName: bolao.name,
+    filenameSlug: bolao.invite_code,
+    variant: 'feed',
+    bolaoUrl: bolaoShareUrl,
+  });
+  const rankingShareStories = useRankingShareImage({
+    bolaoName: bolao.name,
+    filenameSlug: bolao.invite_code,
+    variant: 'stories',
+    bolaoUrl: bolaoShareUrl,
+  });
+
   // Total de jogos jogáveis (não TBD, não finalizados)
   const totalMatches =
     matches?.filter((m) => !m.is_finished && m.home_team_code !== 'TBD').length || 0;
@@ -111,8 +134,17 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
     }
   };
 
-  const shareMessage = `Pra entrar no bolão da Copa 2026:\n${inviteUrl}\n\nCódigo: ${bolao.invite_code}`;
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+  // Web Share API com fallback wa.me (em desktop sem share API).
+  // O sheet nativo deixa o user escolher entre WhatsApp / Telegram / Instagram / Copiar etc.
+  const handleShareInvite = () => {
+    void shareTextOrLink({
+      title: `Bolão "${bolao.name}" — Copa 2026`,
+      text: SHARE_MESSAGES.invite(bolao.name, bolao.invite_code, inviteUrl),
+    });
+  };
+
+  // Telegram continua como link direto secundário — Web Share API não tem
+  // como filtrar app específico, então mantemos o atalho pra quem prefere.
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent('Pra entrar no bolão da Copa 2026')}`;
 
   // Sub-nav só aparece se pelo menos um dos modos especiais está habilitado
@@ -326,15 +358,14 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
               onClick={(e) => (e.target as HTMLInputElement).select()}
               className="flex-1 min-w-0 h-10 px-3 rounded-rebrand-md bg-canvas-2 border border-line text-ink text-[12px] font-mono truncate focus:outline-none focus:border-forest"
             />
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={handleShareInvite}
               className="h-10 px-3.5 inline-flex items-center gap-1.5 rounded-rebrand-md bg-forest text-white hover:bg-forest-2 font-semibold text-[12px] shrink-0 transition-colors"
             >
-              <BrandIcon brand="whatsapp" className="w-4 h-4" />
-              WhatsApp
-            </a>
+              <Share2 className="w-4 h-4" />
+              Compartilhar
+            </button>
           </div>
           <div className="flex items-center gap-4 text-[12px]">
             <button
@@ -380,11 +411,48 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
         {/* ─── Conteúdo da aba "Ranking" ─── */}
         {activeTab === 'ranking' && (
           <div>
-            <div className="mb-4">
-              <h2 className="font-display text-[18px] font-bold text-ink">Ranking do bolão</h2>
-              <p className="text-[12px] text-ink-2 mt-0.5">
-                Pontuação dos jogadores até agora. {memberCount < 4 && 'Fica mais interessante a partir de 4 jogadores.'}
-              </p>
+            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+              <div>
+                <h2 className="font-display text-[18px] font-bold text-ink">Ranking do bolão</h2>
+                <p className="text-[12px] text-ink-2 mt-0.5">
+                  Pontuação dos jogadores até agora. {memberCount < 4 && 'Fica mais interessante a partir de 4 jogadores.'}
+                </p>
+              </div>
+              {/* Botões de share da imagem do ranking — só aparecem com 2+ jogadores
+                  (mesma condição usada no hub completo do BolaoDetail). Em pré-Copa
+                  com só o dono, não tem ranking real pra compartilhar. */}
+              {ranking && ranking.length > 1 && (
+                <div className="flex items-center gap-3 text-[12px] text-ink-2">
+                  <span className="text-ink-3">Compartilhar:</span>
+                  <button
+                    type="button"
+                    onClick={() => void rankingShareFeed.share()}
+                    aria-label="Compartilhar ranking (feed 1080×1080)"
+                    className="inline-flex items-center gap-1.5 hover:text-forest transition-colors"
+                  >
+                    <BrandIcon brand="whatsapp" className="w-3.5 h-3.5" />
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void rankingShareStories.share()}
+                    aria-label="Compartilhar ranking nos Stories (1080×1920)"
+                    className="inline-flex items-center gap-1.5 hover:text-forest transition-colors"
+                  >
+                    <BrandIcon brand="instagram" className="w-3.5 h-3.5" />
+                    Stories
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void rankingShareFeed.download()}
+                    aria-label="Baixar imagem do ranking"
+                    className="inline-flex items-center gap-1.5 hover:text-forest transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Baixar
+                  </button>
+                </div>
+              )}
             </div>
             <BolaoRankingTable
               ranking={ranking ?? []}
@@ -395,6 +463,26 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
           </div>
         )}
       </div>
+
+      {/* ─── Off-screen render dos cards de ranking pra captura via html2canvas ─── */}
+      {ranking && ranking.length > 1 && (
+        <>
+          <RankingShareImage
+            ref={rankingShareFeed.captureRef}
+            bolaoName={bolao.name}
+            inviteCode={bolao.invite_code}
+            ranking={ranking}
+            currentUserId={currentUserId}
+          />
+          <RankingShareImageStories
+            ref={rankingShareStories.captureRef}
+            bolaoName={bolao.name}
+            inviteCode={bolao.invite_code}
+            ranking={ranking}
+            currentUserId={currentUserId}
+          />
+        </>
+      )}
     </div>
   );
 };
