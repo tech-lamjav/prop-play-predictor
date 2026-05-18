@@ -1,0 +1,127 @@
+-- ============================================================
+-- BOLÃO COPA 2026 — Schema baseline (5/5): seed wc_matches
+-- ============================================================
+-- 104 partidas da Copa 2026 (72 grupos + 16 R32 + 8 R16 + 4 quartas +
+-- 2 semis + 1 disputa de 3º + 1 final). Extraído de staging em 17/mai/2026.
+--
+-- ON CONFLICT (id) DO NOTHING garante idempotência:
+--   - prod virgem: insere tudo
+--   - staging (já tem): pula, sem erro
+--
+-- Final: setval na sequence pra não conflitar inserts futuros.
+-- ============================================================
+
+INSERT INTO public.wc_matches (id, match_number, stage, group_name, home_team, away_team, home_team_code, away_team_code, match_date, match_time_brasilia, venue, city, home_score, away_score, is_finished) VALUES
+-- Fase de grupos (72 partidas)
+(1, 1, 'group', 'A', 'México', 'África do Sul', 'MEX', 'RSA', '2026-06-11', '16:00:00', 'Estadio Azteca', 'Cidade do México', NULL, NULL, false),
+(2, 2, 'group', 'A', 'Coreia do Sul', 'Tchéquia', 'KOR', 'CZE', '2026-06-11', '23:00:00', 'Estadio Akron', 'Guadalajara', NULL, NULL, false),
+(3, 3, 'group', 'A', 'Tchéquia', 'África do Sul', 'CZE', 'RSA', '2026-06-18', '13:00:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(4, 4, 'group', 'A', 'México', 'Coreia do Sul', 'MEX', 'KOR', '2026-06-18', '22:00:00', 'Estadio Akron', 'Guadalajara', NULL, NULL, false),
+(5, 5, 'group', 'A', 'Tchéquia', 'México', 'CZE', 'MEX', '2026-06-24', '22:00:00', 'Estadio Azteca', 'Cidade do México', NULL, NULL, false),
+(6, 6, 'group', 'A', 'África do Sul', 'Coreia do Sul', 'RSA', 'KOR', '2026-06-24', '22:00:00', 'Estadio BBVA', 'Monterrey', NULL, NULL, false),
+(7, 7, 'group', 'B', 'Canadá', 'Bósnia e Herzegovina', 'CAN', 'BIH', '2026-06-12', '16:00:00', 'BMO Field', 'Toronto', NULL, NULL, false),
+(8, 8, 'group', 'B', 'Catar', 'Suíça', 'QAT', 'SUI', '2026-06-13', '16:00:00', 'Levi''s Stadium', 'São Francisco', NULL, NULL, false),
+(9, 9, 'group', 'B', 'Suíça', 'Bósnia e Herzegovina', 'SUI', 'BIH', '2026-06-18', '16:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(10, 10, 'group', 'B', 'Canadá', 'Catar', 'CAN', 'QAT', '2026-06-18', '19:00:00', 'BC Place', 'Vancouver', NULL, NULL, false),
+(11, 11, 'group', 'B', 'Suíça', 'Canadá', 'SUI', 'CAN', '2026-06-24', '16:00:00', 'BC Place', 'Vancouver', NULL, NULL, false),
+(12, 12, 'group', 'B', 'Bósnia e Herzegovina', 'Catar', 'BIH', 'QAT', '2026-06-24', '16:00:00', 'Lumen Field', 'Seattle', NULL, NULL, false),
+(13, 13, 'group', 'C', 'Brasil', 'Marrocos', 'BRA', 'MAR', '2026-06-13', '19:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false),
+(14, 14, 'group', 'C', 'Haiti', 'Escócia', 'HAI', 'SCO', '2026-06-13', '22:00:00', 'Gillette Stadium', 'Boston', NULL, NULL, false),
+(15, 15, 'group', 'C', 'Escócia', 'Marrocos', 'SCO', 'MAR', '2026-06-19', '19:00:00', 'Gillette Stadium', 'Boston', NULL, NULL, false),
+(16, 16, 'group', 'C', 'Brasil', 'Haiti', 'BRA', 'HAI', '2026-06-19', '22:00:00', 'Lincoln Financial Field', 'Filadélfia', NULL, NULL, false),
+(17, 17, 'group', 'C', 'Escócia', 'Brasil', 'SCO', 'BRA', '2026-06-24', '19:00:00', 'Hard Rock Stadium', 'Miami', NULL, NULL, false),
+(18, 18, 'group', 'C', 'Marrocos', 'Haiti', 'MAR', 'HAI', '2026-06-24', '19:00:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(19, 19, 'group', 'D', 'Estados Unidos', 'Paraguai', 'USA', 'PAR', '2026-06-12', '22:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(20, 20, 'group', 'D', 'Austrália', 'Turquia', 'AUS', 'TUR', '2026-06-13', '01:00:00', 'BC Place', 'Vancouver', NULL, NULL, false),
+(21, 21, 'group', 'D', 'Estados Unidos', 'Austrália', 'USA', 'AUS', '2026-06-19', '16:00:00', 'Lumen Field', 'Seattle', NULL, NULL, false),
+(22, 22, 'group', 'D', 'Turquia', 'Paraguai', 'TUR', 'PAR', '2026-06-19', '01:00:00', 'Levi''s Stadium', 'São Francisco', NULL, NULL, false),
+(23, 23, 'group', 'D', 'Turquia', 'Estados Unidos', 'TUR', 'USA', '2026-06-25', '23:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(24, 24, 'group', 'D', 'Paraguai', 'Austrália', 'PAR', 'AUS', '2026-06-25', '23:00:00', 'Levi''s Stadium', 'São Francisco', NULL, NULL, false),
+(25, 25, 'group', 'E', 'Alemanha', 'Curaçao', 'GER', 'CUW', '2026-06-14', '14:00:00', 'NRG Stadium', 'Houston', NULL, NULL, false),
+(26, 26, 'group', 'E', 'Costa do Marfim', 'Equador', 'CIV', 'ECU', '2026-06-14', '20:00:00', 'Lincoln Financial Field', 'Filadélfia', NULL, NULL, false),
+(27, 27, 'group', 'E', 'Alemanha', 'Costa do Marfim', 'GER', 'CIV', '2026-06-20', '17:00:00', 'BMO Field', 'Toronto', NULL, NULL, false),
+(28, 28, 'group', 'E', 'Equador', 'Curaçao', 'ECU', 'CUW', '2026-06-20', '21:00:00', 'Arrowhead Stadium', 'Kansas City', NULL, NULL, false),
+(29, 29, 'group', 'E', 'Equador', 'Alemanha', 'ECU', 'GER', '2026-06-25', '17:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false),
+(30, 30, 'group', 'E', 'Curaçao', 'Costa do Marfim', 'CUW', 'CIV', '2026-06-25', '17:00:00', 'Lincoln Financial Field', 'Filadélfia', NULL, NULL, false),
+(31, 31, 'group', 'F', 'Holanda', 'Japão', 'NED', 'JPN', '2026-06-14', '17:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(32, 32, 'group', 'F', 'Suécia', 'Tunísia', 'SWE', 'TUN', '2026-06-14', '23:00:00', 'Estadio BBVA', 'Monterrey', NULL, NULL, false),
+(33, 33, 'group', 'F', 'Holanda', 'Suécia', 'NED', 'SWE', '2026-06-20', '14:00:00', 'NRG Stadium', 'Houston', NULL, NULL, false),
+(34, 34, 'group', 'F', 'Tunísia', 'Japão', 'TUN', 'JPN', '2026-06-20', '01:00:00', 'Estadio BBVA', 'Monterrey', NULL, NULL, false),
+(35, 35, 'group', 'F', 'Japão', 'Suécia', 'JPN', 'SWE', '2026-06-25', '20:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(36, 36, 'group', 'F', 'Tunísia', 'Holanda', 'TUN', 'NED', '2026-06-25', '20:00:00', 'Arrowhead Stadium', 'Kansas City', NULL, NULL, false),
+(37, 37, 'group', 'G', 'Irã', 'Nova Zelândia', 'IRN', 'NZL', '2026-06-15', '22:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(38, 38, 'group', 'G', 'Bélgica', 'Egito', 'BEL', 'EGY', '2026-06-15', '16:00:00', 'Lumen Field', 'Seattle', NULL, NULL, false),
+(39, 39, 'group', 'G', 'Bélgica', 'Irã', 'BEL', 'IRN', '2026-06-21', '16:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(40, 40, 'group', 'G', 'Nova Zelândia', 'Egito', 'NZL', 'EGY', '2026-06-21', '22:00:00', 'BC Place', 'Vancouver', NULL, NULL, false),
+(41, 41, 'group', 'G', 'Egito', 'Irã', 'EGY', 'IRN', '2026-06-26', '00:00:00', 'Lumen Field', 'Seattle', NULL, NULL, false),
+(42, 42, 'group', 'G', 'Nova Zelândia', 'Bélgica', 'NZL', 'BEL', '2026-06-26', '00:00:00', 'BC Place', 'Vancouver', NULL, NULL, false),
+(43, 43, 'group', 'H', 'Espanha', 'Cabo Verde', 'ESP', 'CPV', '2026-06-15', '13:00:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(44, 44, 'group', 'H', 'Arábia Saudita', 'Uruguai', 'KSA', 'URU', '2026-06-15', '19:00:00', 'Hard Rock Stadium', 'Miami', NULL, NULL, false),
+(45, 45, 'group', 'H', 'Espanha', 'Arábia Saudita', 'ESP', 'KSA', '2026-06-21', '13:00:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(46, 46, 'group', 'H', 'Uruguai', 'Cabo Verde', 'URU', 'CPV', '2026-06-21', '19:00:00', 'Hard Rock Stadium', 'Miami', NULL, NULL, false),
+(47, 47, 'group', 'H', 'Cabo Verde', 'Arábia Saudita', 'CPV', 'KSA', '2026-06-26', '21:00:00', 'NRG Stadium', 'Houston', NULL, NULL, false),
+(48, 48, 'group', 'H', 'Uruguai', 'Espanha', 'URU', 'ESP', '2026-06-26', '21:00:00', 'Estadio Akron', 'Guadalajara', NULL, NULL, false),
+(49, 49, 'group', 'I', 'França', 'Senegal', 'FRA', 'SEN', '2026-06-16', '16:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false),
+(50, 50, 'group', 'I', 'Iraque', 'Noruega', 'IRQ', 'NOR', '2026-06-16', '19:00:00', 'Gillette Stadium', 'Boston', NULL, NULL, false),
+(51, 51, 'group', 'I', 'França', 'Iraque', 'FRA', 'IRQ', '2026-06-22', '18:00:00', 'Lincoln Financial Field', 'Filadélfia', NULL, NULL, false),
+(52, 52, 'group', 'I', 'Noruega', 'Senegal', 'NOR', 'SEN', '2026-06-22', '21:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false),
+(53, 53, 'group', 'I', 'Noruega', 'França', 'NOR', 'FRA', '2026-06-26', '16:00:00', 'Gillette Stadium', 'Boston', NULL, NULL, false),
+(54, 54, 'group', 'I', 'Senegal', 'Iraque', 'SEN', 'IRQ', '2026-06-26', '16:00:00', 'BMO Field', 'Toronto', NULL, NULL, false),
+(55, 55, 'group', 'J', 'Argentina', 'Argélia', 'ARG', 'ALG', '2026-06-16', '22:00:00', 'Arrowhead Stadium', 'Kansas City', NULL, NULL, false),
+(56, 56, 'group', 'J', 'Áustria', 'Jordânia', 'AUT', 'JOR', '2026-06-16', '01:00:00', 'Levi''s Stadium', 'São Francisco', NULL, NULL, false),
+(57, 57, 'group', 'J', 'Argentina', 'Áustria', 'ARG', 'AUT', '2026-06-22', '14:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(58, 58, 'group', 'J', 'Jordânia', 'Argélia', 'JOR', 'ALG', '2026-06-22', '00:00:00', 'Levi''s Stadium', 'São Francisco', NULL, NULL, false),
+(59, 59, 'group', 'J', 'Argélia', 'Áustria', 'ALG', 'AUT', '2026-06-27', '23:00:00', 'Arrowhead Stadium', 'Kansas City', NULL, NULL, false),
+(60, 60, 'group', 'J', 'Jordânia', 'Argentina', 'JOR', 'ARG', '2026-06-27', '23:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(61, 61, 'group', 'K', 'Portugal', 'Rep. Dem. do Congo', 'POR', 'COD', '2026-06-17', '14:00:00', 'NRG Stadium', 'Houston', NULL, NULL, false),
+(62, 62, 'group', 'K', 'Uzbequistão', 'Colômbia', 'UZB', 'COL', '2026-06-17', '23:00:00', 'Estadio Azteca', 'Cidade do México', NULL, NULL, false),
+(63, 63, 'group', 'K', 'Portugal', 'Uzbequistão', 'POR', 'UZB', '2026-06-23', '14:00:00', 'NRG Stadium', 'Houston', NULL, NULL, false),
+(64, 64, 'group', 'K', 'Colômbia', 'Rep. Dem. do Congo', 'COL', 'COD', '2026-06-23', '23:00:00', 'Estadio Akron', 'Guadalajara', NULL, NULL, false),
+(65, 65, 'group', 'K', 'Colômbia', 'Portugal', 'COL', 'POR', '2026-06-27', '20:30:00', 'Hard Rock Stadium', 'Miami', NULL, NULL, false),
+(66, 66, 'group', 'K', 'Rep. Dem. do Congo', 'Uzbequistão', 'COD', 'UZB', '2026-06-27', '20:30:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(67, 67, 'group', 'L', 'Inglaterra', 'Croácia', 'ENG', 'CRO', '2026-06-17', '17:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(68, 68, 'group', 'L', 'Gana', 'Panamá', 'GHA', 'PAN', '2026-06-17', '20:00:00', 'BMO Field', 'Toronto', NULL, NULL, false),
+(69, 69, 'group', 'L', 'Inglaterra', 'Gana', 'ENG', 'GHA', '2026-06-23', '17:00:00', 'Gillette Stadium', 'Boston', NULL, NULL, false),
+(70, 70, 'group', 'L', 'Panamá', 'Croácia', 'PAN', 'CRO', '2026-06-23', '20:00:00', 'BMO Field', 'Toronto', NULL, NULL, false),
+(71, 71, 'group', 'L', 'Panamá', 'Inglaterra', 'PAN', 'ENG', '2026-06-27', '18:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false),
+(72, 72, 'group', 'L', 'Croácia', 'Gana', 'CRO', 'GHA', '2026-06-27', '18:00:00', 'Lincoln Financial Field', 'Filadélfia', NULL, NULL, false),
+-- Round of 32 (16 partidas) — home/away_team_code = 'TBD' até definidos pelos grupos
+(73, 73, 'round_of_32', NULL, '2º Grupo A', '2º Grupo B', 'TBD', 'TBD', '2026-06-28', '16:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(74, 74, 'round_of_32', NULL, '1º Grupo E', '3º Grupo ABCDF', 'TBD', 'TBD', '2026-06-29', '17:30:00', 'Gillette Stadium', 'Boston', NULL, NULL, false),
+(75, 75, 'round_of_32', NULL, '1º Grupo F', '2º Grupo C', 'TBD', 'TBD', '2026-06-29', '22:00:00', 'Estadio BBVA', 'Monterrey', NULL, NULL, false),
+(76, 76, 'round_of_32', NULL, '1º Grupo C', '2º Grupo F', 'TBD', 'TBD', '2026-06-29', '14:00:00', 'NRG Stadium', 'Houston', NULL, NULL, false),
+(77, 77, 'round_of_32', NULL, '1º Grupo I', '3º Grupo CDFGH', 'TBD', 'TBD', '2026-06-30', '18:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false),
+(78, 78, 'round_of_32', NULL, '2º Grupo E', '2º Grupo I', 'TBD', 'TBD', '2026-06-30', '14:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(79, 79, 'round_of_32', NULL, '1º Grupo A', '3º Grupo CEFHI', 'TBD', 'TBD', '2026-06-30', '22:00:00', 'Estadio Azteca', 'Cidade do México', NULL, NULL, false),
+(80, 80, 'round_of_32', NULL, '1º Grupo L', '3º Grupo EHIJK', 'TBD', 'TBD', '2026-07-01', '13:00:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(81, 81, 'round_of_32', NULL, '1º Grupo D', '3º Grupo BEFIJ', 'TBD', 'TBD', '2026-07-01', '21:00:00', 'Levi''s Stadium', 'São Francisco', NULL, NULL, false),
+(82, 82, 'round_of_32', NULL, '1º Grupo G', '3º Grupo AEHIJ', 'TBD', 'TBD', '2026-07-01', '17:00:00', 'Lumen Field', 'Seattle', NULL, NULL, false),
+(83, 83, 'round_of_32', NULL, '2º Grupo K', '2º Grupo L', 'TBD', 'TBD', '2026-07-02', '20:00:00', 'BMO Field', 'Toronto', NULL, NULL, false),
+(84, 84, 'round_of_32', NULL, '1º Grupo H', '2º Grupo J', 'TBD', 'TBD', '2026-07-02', '16:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(85, 85, 'round_of_32', NULL, '1º Grupo B', '3º Grupo EFGIJ', 'TBD', 'TBD', '2026-07-02', '00:00:00', 'BC Place', 'Vancouver', NULL, NULL, false),
+(86, 86, 'round_of_32', NULL, '1º Grupo J', '2º Grupo H', 'TBD', 'TBD', '2026-07-03', '19:00:00', 'Hard Rock Stadium', 'Miami', NULL, NULL, false),
+(87, 87, 'round_of_32', NULL, '1º Grupo K', '3º Grupo DEIJL', 'TBD', 'TBD', '2026-07-03', '22:30:00', 'Arrowhead Stadium', 'Kansas City', NULL, NULL, false),
+(88, 88, 'round_of_32', NULL, '2º Grupo D', '2º Grupo G', 'TBD', 'TBD', '2026-07-03', '15:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+-- Round of 16 (8 partidas)
+(89, 89, 'round_of_16', NULL, 'Vencedor J74', 'Vencedor J77', 'TBD', 'TBD', '2026-07-04', '18:00:00', 'Lincoln Financial Field', 'Filadélfia', NULL, NULL, false),
+(90, 90, 'round_of_16', NULL, 'Vencedor J73', 'Vencedor J75', 'TBD', 'TBD', '2026-07-04', '14:00:00', 'NRG Stadium', 'Houston', NULL, NULL, false),
+(91, 91, 'round_of_16', NULL, 'Vencedor J76', 'Vencedor J78', 'TBD', 'TBD', '2026-07-05', '17:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false),
+(92, 92, 'round_of_16', NULL, 'Vencedor J79', 'Vencedor J80', 'TBD', 'TBD', '2026-07-05', '21:00:00', 'Estadio Azteca', 'Cidade do México', NULL, NULL, false),
+(93, 93, 'round_of_16', NULL, 'Vencedor J83', 'Vencedor J84', 'TBD', 'TBD', '2026-07-06', '16:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(94, 94, 'round_of_16', NULL, 'Vencedor J81', 'Vencedor J82', 'TBD', 'TBD', '2026-07-06', '21:00:00', 'Lumen Field', 'Seattle', NULL, NULL, false),
+(95, 95, 'round_of_16', NULL, 'Vencedor J86', 'Vencedor J88', 'TBD', 'TBD', '2026-07-07', '13:00:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(96, 96, 'round_of_16', NULL, 'Vencedor J85', 'Vencedor J87', 'TBD', 'TBD', '2026-07-07', '17:00:00', 'BC Place', 'Vancouver', NULL, NULL, false),
+-- Quartas (4)
+(97, 97, 'quarter', NULL, 'Vencedor J89', 'Vencedor J90', 'TBD', 'TBD', '2026-07-09', '17:00:00', 'Gillette Stadium', 'Boston', NULL, NULL, false),
+(98, 98, 'quarter', NULL, 'Vencedor J93', 'Vencedor J94', 'TBD', 'TBD', '2026-07-10', '16:00:00', 'SoFi Stadium', 'Los Angeles', NULL, NULL, false),
+(99, 99, 'quarter', NULL, 'Vencedor J91', 'Vencedor J92', 'TBD', 'TBD', '2026-07-11', '18:00:00', 'Hard Rock Stadium', 'Miami', NULL, NULL, false),
+(100, 100, 'quarter', NULL, 'Vencedor J95', 'Vencedor J96', 'TBD', 'TBD', '2026-07-11', '22:00:00', 'Arrowhead Stadium', 'Kansas City', NULL, NULL, false),
+-- Semis (2) + 3º (1) + Final (1)
+(101, 101, 'semi', NULL, 'Vencedor J97', 'Vencedor J98', 'TBD', 'TBD', '2026-07-14', '16:00:00', 'AT&T Stadium', 'Dallas', NULL, NULL, false),
+(102, 102, 'semi', NULL, 'Vencedor J99', 'Vencedor J100', 'TBD', 'TBD', '2026-07-15', '16:00:00', 'Mercedes-Benz Stadium', 'Atlanta', NULL, NULL, false),
+(103, 103, 'third_place', NULL, 'Perdedor J101', 'Perdedor J102', 'TBD', 'TBD', '2026-07-18', '18:00:00', 'Hard Rock Stadium', 'Miami', NULL, NULL, false),
+(104, 104, 'final', NULL, 'Vencedor J101', 'Vencedor J102', 'TBD', 'TBD', '2026-07-19', '16:00:00', 'MetLife Stadium', 'Nova York', NULL, NULL, false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Ajusta a sequence pra evitar conflitos em inserts futuros (id manual nos VALUES)
+SELECT setval('public.wc_matches_id_seq', (SELECT GREATEST(MAX(id), 1) FROM public.wc_matches));
