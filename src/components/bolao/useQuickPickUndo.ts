@@ -61,13 +61,22 @@ export function useQuickPickUndo(bolaoId: string, predictions: BolaoPrediction[]
 
         let deletedCount = 0;
         let failedCount = 0;
+        const failedErrors: string[] = [];
         if (toDelete.length > 0) {
+          // Log detalhado: silenciar com .catch(() => false) escondia bugs
+          // tipo prazo encerrado, auth perdida, RLS, etc. Agora cada falha
+          // vai pro console.error com contexto + acumula mensagem pra toast.
           const results = await Promise.all(
             toDelete.map((id) =>
               bolaoService
                 .deletePrediction(bolaoId, id)
                 .then(() => true)
-                .catch(() => false)
+                .catch((err: unknown) => {
+                  const msg = err instanceof Error ? err.message : String(err);
+                  console.error(`[QuickPickUndo] Falha excluindo match ${id}:`, err);
+                  failedErrors.push(`match ${id}: ${msg}`);
+                  return false;
+                })
             )
           );
           deletedCount = results.filter((r) => r).length;
@@ -102,9 +111,11 @@ export function useQuickPickUndo(bolaoId: string, predictions: BolaoPrediction[]
         ]);
 
         if (failedCount > 0) {
+          // Mostra a primeira mensagem real de erro pro user entender o que rolou
+          const firstError = failedErrors[0] ?? 'erro desconhecido';
           toast({
-            title: 'Desfeito parcialmente',
-            description: `${deletedCount} apagados, ${failedCount} falharam. ${toRestore.length} restaurados.`,
+            title: 'Não consegui desfazer todos',
+            description: `${deletedCount} apagados, ${failedCount} falharam. Causa: ${firstError}`,
             variant: 'destructive',
           });
         } else {

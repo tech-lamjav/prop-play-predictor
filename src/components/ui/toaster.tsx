@@ -23,10 +23,16 @@ export function Toaster() {
     <ToastProvider>
       <ToastViewport />
       {toasts.map(function ({ id, title, description, action, variant, className, ...props }) {
+        // Em /bolao usamos paleta light "Direção A". Cores LITERAIS (#hex)
+        // em vez de CSS vars (var(--ink)) porque o portal do Radix renderiza
+        // no body — fora do escopo de `.theme-bolao` do BolaoLayout, então
+        // var(--ink) pode resolver pra undefined dependendo do browser
+        // (especialmente iOS Safari mobile em system light mode), resultando
+        // em texto invisível ("branco em branco").
         const themeClass = isBolao
           ? variant === 'destructive'
-            ? 'theme-bolao !bg-status-danger !border-status-danger !text-white'
-            : 'theme-bolao !bg-white !border-line !text-ink shadow-md'
+            ? '!bg-[#b91c1c] !border-[#b91c1c] !text-white'
+            : '!bg-white !border-[#e3e6e0] !text-[#1a1d1a] shadow-md'
           : ''
         return (
           <Toast
@@ -38,7 +44,7 @@ export function Toaster() {
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
-                <ToastDescription className={isBolao && variant !== 'destructive' ? 'text-ink-2' : undefined}>
+                <ToastDescription className={isBolao && variant !== 'destructive' ? '!text-[#4a4f48]' : undefined}>
                   {description}
                 </ToastDescription>
               )}
