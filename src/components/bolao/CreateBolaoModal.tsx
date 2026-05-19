@@ -12,7 +12,7 @@ import {
   Palette,
   Flag,
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
 const schema = z.object({
@@ -88,16 +88,21 @@ export const CreateBolaoModal: React.FC<CreateBolaoModalProps> = ({
         // são portados pra fora do DOM tree do BolaoLayout via Radix Portal,
         // então as CSS vars escopadas não chegam sem reaplicar.)
       >
-        {/* Header — pr-12 reserva espaco pro X built-in do DialogContent (top-right) */}
+        {/* Header — pr-12 reserva espaco pro X built-in do DialogContent (top-right).
+            DialogTitle + DialogDescription são necessários pra acessibilidade
+            (Radix avisa em console quando faltam). Renderizam como h2/p com
+            os mesmos estilos visuais. */}
         <div className="flex items-center gap-2.5 px-6 pt-5 pb-4 pr-12 border-b border-line">
           <div className="w-9 h-9 rounded-rebrand-md bg-forest flex items-center justify-center text-amber">
             <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-[16px] font-bold text-ink leading-tight">Criar bolão</h2>
-            <p className="text-[12px] text-ink-2 leading-tight mt-0.5">
+            <DialogTitle className="text-[16px] font-bold text-ink leading-tight">
+              Criar bolão
+            </DialogTitle>
+            <DialogDescription className="text-[12px] text-ink-2 leading-tight mt-0.5">
               Você é o dono — convida quem quiser depois
-            </p>
+            </DialogDescription>
           </div>
         </div>
 
