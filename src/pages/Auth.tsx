@@ -203,15 +203,14 @@ const Auth = () => {
     // theme-bolao no root pra ativar CSS vars (--canvas, --forest, --ink, etc.)
     // mesmo fora do BolaoLayout (Auth tem rota /auth, não /bolao/*).
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      {/* Topbar minimalista */}
+      {/* Topbar minimalista — logo igual ao header do bolão (AnalyticsNav rebrand).
+          A logo.png é branca/clara; aplicamos `invert hue-rotate-180` pra ficar
+          legível em fundo branco. Mesmo tratamento usado na nav do /bolao. */}
       <header className="border-b border-line bg-white">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-rebrand-sm bg-forest text-white grid place-items-center">
-              <Trophy className="w-4 h-4" />
-            </div>
-            <span className="font-display text-[15px] font-bold text-ink">Smartbetting</span>
-          </div>
+          <a href="/" aria-label="Smartbetting — home" className="flex items-center hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Smartbetting" className="h-8 w-auto invert hue-rotate-180" />
+          </a>
           <LanguageToggle />
         </div>
       </header>
