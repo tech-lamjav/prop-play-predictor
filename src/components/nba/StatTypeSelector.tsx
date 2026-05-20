@@ -81,10 +81,10 @@ export const StatTypeSelector: React.FC<StatTypeSelectorProps> = ({
       <button
         key={stat.id}
         onClick={() => onStatChange(stat.id)}
-        className={`terminal-button px-3 py-1.5 text-center transition-all ${
+        className={`bg-white border border-line text-ink hover:border-forest/30 px-3 py-1.5 text-center transition-all ${
           isSelected
-            ? 'border-terminal-blue text-terminal-blue bg-terminal-blue/10'
-            : 'opacity-50 hover:opacity-80 hover:border-terminal-blue/40'
+            ? 'border-forest text-forest bg-forest/10'
+            : 'opacity-50 hover:opacity-80 hover:border-forest/40'
         }`}
         title={stat.description}
       >
@@ -94,13 +94,13 @@ export const StatTypeSelector: React.FC<StatTypeSelectorProps> = ({
   };
 
   return (
-    <div className="terminal-container px-4 py-3 mb-3">
+    <div className="rounded-lg bg-white border border-line px-4 py-3 mb-3">
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-[10px] data-label opacity-50 shrink-0">STATS</span>
         <div className="flex gap-1 flex-wrap">
           {basicStats.map(renderButton)}
         </div>
-        <div className="h-5 w-px bg-terminal-blue/20 shrink-0" />
+        <div className="h-5 w-px bg-forest/20 shrink-0" />
         <div className="flex gap-1 flex-wrap">
           {comboStats.map(renderButton)}
         </div>

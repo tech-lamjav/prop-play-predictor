@@ -108,7 +108,7 @@ export function TeamAutocomplete({ value, onValueChange, placeholder = 'Selecion
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="terminal-input h-9 w-full justify-between text-sm"
+          className="bg-white border border-line rounded-md text-ink h-9 w-full justify-between text-sm"
         >
           {selectedTeam ? (
             <div className="flex items-center gap-2">
@@ -123,7 +123,7 @@ export function TeamAutocomplete({ value, onValueChange, placeholder = 'Selecion
               <span>{selectedTeam.name}</span>
             </div>
           ) : (
-            <span className="text-terminal-text opacity-50">{placeholder}</span>
+            <span className="text-ink opacity-50">{placeholder}</span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>

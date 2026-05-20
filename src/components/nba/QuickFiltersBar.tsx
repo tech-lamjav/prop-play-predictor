@@ -45,11 +45,11 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
   ];
 
   return (
-    <div className="terminal-container p-3 mb-3">
+    <div className="rounded-lg bg-white border border-line p-3 mb-3">
       <div className="flex items-center gap-4 flex-wrap">
         {/* Filter Icon */}
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-terminal-green" />
+          <Filter className="w-4 h-4 text-forest" />
           <span className="data-label text-xs">FILTERS</span>
         </div>
 
@@ -70,10 +70,10 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
                   disabled={isDisabled}
                   className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
                     isActive
-                      ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
+                      ? 'bg-forest/20 border-forest text-forest'
                       : isDisabled
-                      ? 'border-terminal-green/10 text-terminal-text/30 cursor-not-allowed'
-                      : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                      ? 'border-line text-ink/30 cursor-not-allowed'
+                      : 'border-forest/30 text-ink hover:border-forest/50 hover:bg-forest/5'
                   }`}
                 >
                   {option.label}
@@ -84,7 +84,7 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
         </div>
 
         {/* Divider */}
-        <div className="h-6 w-px bg-terminal-green/20" />
+        <div className="h-6 w-px bg-forest/20" />
 
         {/* Home/Away Filter */}
         <div className="flex items-center gap-2">
@@ -99,8 +99,8 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
                   onClick={() => onHomeAwayChange(option.value)}
                   className={`px-3 py-1 text-xs font-medium rounded border transition-all flex items-center gap-1.5 ${
                     isActive
-                      ? 'bg-terminal-green/20 border-terminal-green text-terminal-green'
-                      : 'border-terminal-green/30 text-terminal-text hover:border-terminal-green/50 hover:bg-terminal-green/5'
+                      ? 'bg-forest/20 border-forest text-forest'
+                      : 'border-forest/30 text-ink hover:border-forest/50 hover:bg-forest/5'
                   }`}
                 >
                   {option.icon}
@@ -114,7 +114,7 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
         {/* Active Filters Count and Clear Button */}
         {hasActiveFilters && (
           <div className="ml-auto flex items-center gap-2">
-            <div className="text-xs px-2 py-1 rounded bg-terminal-green/10 text-terminal-green border border-terminal-green/30">
+            <div className="text-xs px-2 py-1 rounded bg-emerald-50 text-forest border border-forest/30">
               {[
                 lastNGames !== 'all' && `Last ${lastNGames}`,
                 homeAway !== 'all' && homeAway.charAt(0).toUpperCase() + homeAway.slice(1),
@@ -124,7 +124,7 @@ export const QuickFiltersBar: React.FC<QuickFiltersBarProps> = ({
             </div>
             <button
               onClick={handleClearFilters}
-              className="px-2 py-1 text-xs font-medium rounded border border-terminal-red/30 text-terminal-red hover:bg-terminal-red/10 hover:border-terminal-red/50 transition-all flex items-center gap-1"
+              className="px-2 py-1 text-xs font-medium rounded border border-rose-200/30 text-rose-700 hover:bg-rose-50 hover:border-rose-200/50 transition-all flex items-center gap-1"
               title="Limpar filtros"
             >
               <X className="w-3 h-3" />

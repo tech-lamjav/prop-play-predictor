@@ -323,6 +323,7 @@ export interface B2BBoxScorePlayer {
   previous_team_score: number | null;
   previous_opponent_score: number | null;
   previous_home_away: string;
+  previous_game_datetime_brasilia: string | null;
 }
 
 export interface DailyOpportunity {

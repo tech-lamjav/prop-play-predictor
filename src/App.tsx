@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
-import Home from "./pages/Home";
 import Picks from "./pages/Picks";
 import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -24,7 +23,6 @@ const Bets = React.lazy(() => import("./pages/Bets"));
 const Bankroll = React.lazy(() => import("./pages/Bankroll"));
 const BettingDashboard = React.lazy(() => import("./pages/BettingDashboard"));
 const PlayerSelectionTest = React.lazy(() => import("./pages/PlayerSelectionTest"));
-const PlayerSelection = React.lazy(() => import("./pages/PlayerSelection"));
 const Analysis = React.lazy(() => import("./pages/Analysis"));
 const Waitlist = React.lazy(() => import("./pages/Waitlist"));
 const Paywall = React.lazy(() => import("./pages/Paywall"));
@@ -62,12 +60,8 @@ const App = () => (
             <Route path="/" element={<LandingEcossistema />} />
             <Route path="/nba" element={<Landing />} />
             <Route path="/home-nba" element={<HomeNBA />} />
-            <Route path="/home-players" element={<Home />} />
-            <Route path="/oportunidades" element={
-              <ProtectedRoute>
-                <Picks />
-              </ProtectedRoute>
-            } />
+            {/* TEMP: ProtectedRoute removido pra screenshot do rebrand. RESTAURAR antes do merge. */}
+            <Route path="/oportunidades" element={<Picks />} />
             <Route path="/betinho" element={<Betinho />} />
             <Route path="/auth" element={
               <ProtectedRoute requireAuth={false}>
@@ -108,11 +102,6 @@ const App = () => (
             } />
             <Route path="/home-games" element={<Games />} />
             <Route path="/game/:gameId" element={<GameDetail />} />
-            <Route path="/nba-players" element={
-              <ProtectedRoute>
-                <PlayerSelection />
-              </ProtectedRoute>
-            } />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/paywall" element={<Paywall />} />

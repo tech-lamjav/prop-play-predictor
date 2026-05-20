@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones, PlayerPassingSeason } from '@/services/nba-data.service';
-import AnalyticsNav from '@/components/AnalyticsNav';
+import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
 import { PlayerHeader } from '@/components/nba/PlayerHeader';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShootingZonesCard } from '@/components/nba/ShootingZonesCard';
+import { MatchupZonesCard } from '@/components/nba/MatchupZonesCard';
 import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useAuth } from '@/hooks/use-auth';
@@ -590,11 +591,11 @@ export default function NBADashboard() {
 
   if (!player && playerLookupDone) {
     return (
-      <div className="w-full min-h-screen bg-terminal-black text-terminal-text flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-terminal-text opacity-80">Jogador não encontrado.</p>
+      <div className="w-full min-h-screen bg-canvas text-ink flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-ink opacity-80">Jogador não encontrado.</p>
         <Button
           variant="outline"
-          className="terminal-button"
+          className="bg-white border border-line text-ink hover:border-forest/30"
           onClick={() => navigate(-1)}
         >
           Voltar
@@ -604,20 +605,19 @@ export default function NBADashboard() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <AnalyticsNav showBack title={player?.player_name} />
+    <div className="w-full min-h-screen bg-canvas text-ink">
+      <NBAHomeNav showBack />
       <main className="container mx-auto px-3 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Left Sidebar */}
-          <div className="lg:col-span-1 space-y-3">
-            {/* Player Header */}
+        {(() => {
+          const playerHeaderEl = (
             <PlayerHeader
               player={player || undefined}
               seasonAverages={seasonAverages}
               isLoading={statsLoading}
             />
+          );
 
-            {/* Next Game Card */}
+          const nextGameEl = (
             <NextGamesCard
               team={teamData || undefined}
               isLoading={teamLoading}
@@ -628,70 +628,76 @@ export default function NBADashboard() {
               opponentPlaytypes={oppPlaytypes}
               selectedStatType={selectedStatType}
             />
+          );
 
-            {/* Oportunidades do Dia (mesma fonte dos Picks) ou fallback para Insights */}
-            {dailyOpps.length > 0 ? (
-              <div className="terminal-container p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-bold text-terminal-blue uppercase tracking-widest">
-                    Oportunidades do Dia
+          const opportunitiesEl = dailyOpps.length > 0 ? (
+              <div className="rounded-lg bg-white border border-line overflow-hidden">
+                <div className="px-4 py-3 flex items-center justify-between border-b border-line">
+                  <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
+                    Oportunidades do dia
                   </span>
-                  <span className="text-[9px] opacity-40">mesma análise da tela de Picks</span>
+                  <span className="text-[10px] text-ink-dim">mesma análise da tela de Picks</span>
                 </div>
-                <div className="space-y-2">
-                  {dailyOpps.map((opp, i) => {
-                    const triggerLastName = opp.trigger_name.split(' ').pop();
-                    const statusBadge = opp.trigger_status.toLowerCase().includes('out') ? { text: 'OUT', cls: 'bg-terminal-red/20 text-terminal-red border-terminal-red/30' }
-                      : opp.trigger_status.toLowerCase().includes('doubtful') ? { text: 'DTD', cls: 'bg-orange-400/20 text-orange-400 border-orange-400/30' }
-                      : { text: 'Q', cls: 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30' };
-                    const statLabel = { player_points: 'Pontos', player_assists: 'Assistências', player_rebounds: 'Rebotes', player_points_rebounds_assists: 'PRA', player_threes: '3 Pontos', player_steals: 'Roubos', player_blocks: 'Bloqueios' }[opp.stat_type] || opp.stat_type;
-                    const isClickable = !!handleInsightClick;
+                {dailyOpps.map((opp, i) => {
+                  const triggerLastName = opp.trigger_name.split(' ').pop() ?? opp.trigger_name;
+                  const status = opp.trigger_status.toLowerCase();
+                  const statusBadge = status.includes('out')
+                    ? 'OUT'
+                    : status.includes('doubtful')
+                      ? 'DTD'
+                      : 'Q';
+                  const statLabel: Record<string, string> = {
+                    player_points: 'Pontos',
+                    player_assists: 'Assistências',
+                    player_rebounds: 'Rebotes',
+                    player_points_rebounds_assists: 'PRA',
+                    player_threes: '3 Pontos',
+                    player_steals: 'Roubos',
+                    player_blocks: 'Bloqueios',
+                  };
+                  const label = statLabel[opp.stat_type] || opp.stat_type;
+                  const isClickable = !!handleInsightClick;
+                  const score = opp.score ?? 0;
+                  const scoreColor = score >= 80 ? 'text-forest' : score >= 70 ? 'text-forest' : 'text-amber-700';
 
-                    return (
-                      <button
-                        key={i}
-                        className={`w-full text-left bg-terminal-dark-gray rounded border border-terminal-blue/20 p-3 transition-all ${
-                          isClickable ? 'hover:border-terminal-blue/50 hover:bg-terminal-blue/5 cursor-pointer' : 'cursor-default'
-                        }`}
-                        onClick={() => handleInsightClick?.(opp.stat_type, opp.trigger_name)}
-                      >
-                        {/* Header: stat + trigger + score */}
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-terminal-text uppercase">{statLabel}</span>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>
-                              SEM {triggerLastName} ({statusBadge.text})
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleInsightClick?.(opp.stat_type, opp.trigger_name)}
+                      className={`w-full text-left px-4 py-3.5 ${i > 0 ? 'border-t border-line' : ''} ${
+                        isClickable ? 'hover:bg-canvas-2/40 cursor-pointer transition-colors' : 'cursor-default'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[12px] font-semibold tracking-tight text-ink">{label}</span>
+                            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              Sem {triggerLastName} ({statusBadge})
                             </span>
                           </div>
-                          <span className={`text-sm font-black tabular-nums ${
-                            (opp.score ?? 0) >= 80 ? 'text-terminal-green' : (opp.score ?? 0) >= 70 ? 'text-terminal-yellow' : 'text-orange-400'
-                          }`}>
-                            {opp.score}
-                          </span>
+                          <div className="text-[12px] tabular mt-1.5 text-ink-2 flex items-center gap-1.5 flex-wrap">
+                            <span>{opp.avg_com?.toFixed(1) ?? '—'}</span>
+                            <span className="text-ink-dim">→</span>
+                            <span className="font-semibold text-[14px] text-ink">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
+                            {opp.gap_pct != null && (
+                              <span className="ml-1 font-semibold text-forest">+{opp.gap_pct.toFixed(1)}%</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] mt-1.5 text-ink-dim">
+                            {opp.line_value != null ? `Linha: ${opp.line_value.toFixed(1)} · ` : ''}
+                            clique para filtrar o gráfico
+                          </div>
                         </div>
-
-                        {/* Numbers */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm opacity-50">{opp.avg_com?.toFixed(1)}</span>
-                          <span className="text-xs opacity-30">→</span>
-                          <span className="text-lg font-bold text-terminal-text leading-none">{opp.avg_sem?.toFixed(1)}</span>
-                          {opp.gap_pct > 0 && (
-                            <span className="text-[11px] font-semibold text-terminal-text bg-terminal-text/10 px-1.5 py-0.5 rounded">
-                              +{opp.gap_pct?.toFixed(1)}%
-                            </span>
-                          )}
-                          {opp.line_value && (
-                            <span className="text-[11px] opacity-40 ml-auto">Linha: {opp.line_value?.toFixed(1)}</span>
-                          )}
+                        <div className="text-right shrink-0">
+                          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-dim">Score</div>
+                          <div className={`text-[24px] font-semibold tabular tracking-tight ${scoreColor}`}>{opp.score ?? '—'}</div>
                         </div>
-
-                        <div className="text-[9px] opacity-40 mt-1">
-                          com {triggerLastName} → sem {triggerLastName} • Clique para filtrar o gráfico
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <PropInsightsCard
@@ -700,22 +706,19 @@ export default function NBADashboard() {
                 isLoading={propsLoading}
                 onInsightClick={handleInsightClick}
               />
-            )}
+            );
 
-            {/* Teammates */}
+          const teammatesEl = (
             <TeammatesCard
               teammates={teammates}
               currentPlayerId={player?.player_id || 0}
               teamName={player?.team_name || ''}
               isLoading={teammatesLoading}
             />
-          </div>
+          );
 
-          {/* Main Content Area */}
-          <div className="lg:col-span-2" ref={chartRef}>
-            {/* Game Chart (stat tabs integrated inside) */}
-            {statsLoading ? (
-              <Skeleton className="h-[400px] w-full bg-terminal-gray mb-6" />
+          const gameChartEl = statsLoading ? (
+              <Skeleton className="h-[400px] w-full bg-canvas-2 mb-6" />
             ) : (
               <GameChart
                 chartLoading={
@@ -761,28 +764,70 @@ export default function NBADashboard() {
                 potentialAstSeason={passingSeason?.potential_ast ?? null}
                 potentialAstSeasonRank={passingSeason?.potential_ast_rank ?? null}
               />
-            )}
+            );
 
-            {/* Recent Games + Shooting Zones side by side */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
-              {statsLoading ? (
-                <Skeleton className="h-[300px] w-full bg-terminal-gray" />
-              ) : (
-                <ComparisonTable
-                  gameStats={filteredGameStats}
-                  playerName={player?.player_name || ''}
-                />
-              )}
-              <ShootingZonesCard
-                data={shootingZones}
-                isLoading={shootingZonesLoading}
-                playerName={player?.player_name || ''}
-                oppShootingZones={oppShootingZones}
-                opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
-              />
-            </div>
-          </div>
-        </div>
+          const recentGamesEl = statsLoading ? (
+            <Skeleton className="h-[300px] w-full bg-canvas-2" />
+          ) : (
+            <ComparisonTable
+              gameStats={filteredGameStats}
+              playerName={player?.player_name || ''}
+            />
+          );
+
+          const zonesEl = (
+            <ShootingZonesCard
+              data={shootingZones}
+              isLoading={shootingZonesLoading}
+              playerName={player?.player_name || ''}
+              oppShootingZones={oppShootingZones}
+              opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
+            />
+          );
+
+          const matchupEl = (
+            <MatchupZonesCard
+              data={shootingZones}
+              oppShootingZones={oppShootingZones}
+              opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
+              playerName={player?.player_name}
+            />
+          );
+
+          return (
+            <>
+              {/* Mobile layout — single column reordered */}
+              <div className="lg:hidden flex flex-col gap-3" ref={chartRef}>
+                {playerHeaderEl}
+                {nextGameEl}
+                {opportunitiesEl}
+                {gameChartEl}
+                {zonesEl}
+                {matchupEl}
+                {recentGamesEl}
+                {teammatesEl}
+              </div>
+
+              {/* Desktop layout — 3-col grid */}
+              <div className="hidden lg:grid lg:grid-cols-3 gap-3">
+                <div className="lg:col-span-1 space-y-3">
+                  {playerHeaderEl}
+                  {nextGameEl}
+                  {opportunitiesEl}
+                  {teammatesEl}
+                </div>
+                <div className="lg:col-span-2 space-y-3">
+                  {gameChartEl}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+                    {recentGamesEl}
+                    {zonesEl}
+                  </div>
+                  {matchupEl}
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </main>
 
     </div>
