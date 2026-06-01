@@ -11,7 +11,7 @@ import {
   useUpsertPredictionsBatch,
   useDeletePrediction,
 } from '@/hooks/use-bolao';
-import { PredictionsList } from '@/components/bolao/PredictionsList';
+import { PredictionsList, type FilterMode } from '@/components/bolao/PredictionsList';
 import { PendingPredictionsSticky } from '@/components/bolao/PendingPredictionsSticky';
 import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
 import { useAchievement } from '@/components/bolao/AchievementProvider';
@@ -31,6 +31,7 @@ const BolaoPalpites: React.FC = () => {
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('all');
+  const [filterMode, setFilterMode] = useState<FilterMode>('date');
 
   React.useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -208,7 +209,12 @@ const BolaoPalpites: React.FC = () => {
             <h1 className="font-display text-[20px] font-bold text-ink leading-tight">Palpites</h1>
             <p className="text-[12px] text-ink-2 truncate">{bolao?.name}</p>
           </div>
-          <PalpitesProgress done={totalPredictions} total={totalMatches} variant="page" />
+          <PalpitesProgress
+            done={totalPredictions}
+            total={totalMatches}
+            variant="page"
+            onClick={() => setFilterMode('pending')}
+          />
         </div>
 
         {/* Quick Pick — 4 personas + copiar de outro bolão.
@@ -238,6 +244,8 @@ const BolaoPalpites: React.FC = () => {
             accentColor="green"
             groupFilter={groupFilter}
             onGroupFilterChange={setGroupFilter}
+            filterMode={filterMode}
+            onFilterModeChange={setFilterMode}
             enableSuggestion
           />
         )}
