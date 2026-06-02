@@ -54,6 +54,8 @@ export interface Bolao {
     round_of_32: number;
   };
   champion_points: number;
+  player_awards_enabled: Record<PlayerAwardType, boolean> | null;
+  player_award_points: Record<PlayerAwardType, number> | null;
   created_at: string;
 }
 
@@ -732,6 +734,8 @@ export const bolaoService = {
       special_predictions_config?: Record<string, boolean>;
       special_predictions_points?: Record<string, number>;
       champion_points?: number;
+      player_awards_enabled?: Record<string, boolean>;
+      player_award_points?: Record<string, number>;
     }
   ): Promise<void> {
     const { error } = await supabase

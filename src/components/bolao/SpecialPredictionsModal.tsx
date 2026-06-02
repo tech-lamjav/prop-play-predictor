@@ -48,6 +48,8 @@ interface SpecialPredictionsModalProps {
   enabledTypes?: SpecialPredictionsConfig;
   championPoints: number;
   pointsConfig: PointsConfig;
+  playerAwardsEnabled?: Record<string, boolean>;
+  playerAwardPoints?: Record<string, number>;
 }
 
 export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = ({
@@ -63,6 +65,8 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
   enabledTypes,
   championPoints,
   pointsConfig,
+  playerAwardsEnabled,
+  playerAwardPoints,
 }) => {
   const [championPickerOpen, setChampionPickerOpen] = useState(false);
 
@@ -315,7 +319,11 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     </h3>
                     <div className="flex-1 h-px bg-line" />
                   </div>
-                  <PlayerAwardsSection bolaoId={bolaoId} />
+                  <PlayerAwardsSection
+                    bolaoId={bolaoId}
+                    enabled={playerAwardsEnabled}
+                    pointsConfig={playerAwardPoints}
+                  />
                 </div>
               </div>
 
