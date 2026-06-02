@@ -55,6 +55,8 @@ interface BolaoAdminPanelProps {
   specialPredictionsConfig: Record<string, boolean>;
   specialPredictionsPoints: Record<string, number>;
   championPoints: number;
+  playerAwardsEnabled?: Record<string, boolean>;
+  playerAwardPoints?: Record<string, number>;
   ranking: BolaoRankingEntry[];
   currentUserId: string | undefined;
   ownerUserId: string;
@@ -108,6 +110,20 @@ const SPECIAL_TYPES: Record<string, string> = {
   semifinalist: 'Semifinalistas',
   quarterfinalist: 'Quartas de Final',
   round_of_32: 'Mata-mata (32)',
+};
+
+const PLAYER_AWARD_TYPES: { key: string; label: string; sub: string }[] = [
+  { key: 'top_scorer', label: 'Artilheiro', sub: 'Chuteira de Ouro' },
+  { key: 'best_player', label: 'Craque da Copa', sub: 'Bola de Ouro' },
+  { key: 'best_goalkeeper', label: 'Melhor Goleiro', sub: 'Luva de Ouro' },
+  { key: 'best_young_player', label: 'Revelação', sub: 'Melhor jovem (≤21)' },
+];
+
+const DEFAULT_PLAYER_AWARDS_ENABLED: Record<string, boolean> = {
+  top_scorer: true, best_player: true, best_goalkeeper: true, best_young_player: true,
+};
+const DEFAULT_PLAYER_AWARD_POINTS: Record<string, number> = {
+  top_scorer: 10, best_player: 10, best_goalkeeper: 8, best_young_player: 8,
 };
 
 // ── NumberStepper (light theme) ───────────────────────────────────
@@ -252,6 +268,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   specialPredictionsConfig,
   specialPredictionsPoints,
   championPoints,
+  playerAwardsEnabled,
+  playerAwardPoints,
   ranking,
   currentUserId,
   ownerUserId,
@@ -296,6 +314,12 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const [specialConfig, setSpecialConfig] = useState<Record<string, boolean>>(specialPredictionsConfig);
   const [specialPoints, setSpecialPoints] = useState<Record<string, number>>(specialPredictionsPoints);
   const [champPoints, setChampPoints] = useState(championPoints);
+  const [playerAwardsConfig, setPlayerAwardsConfig] = useState<Record<string, boolean>>(
+    { ...DEFAULT_PLAYER_AWARDS_ENABLED, ...(playerAwardsEnabled ?? {}) }
+  );
+  const [playerPoints, setPlayerPoints] = useState<Record<string, number>>(
+    { ...DEFAULT_PLAYER_AWARD_POINTS, ...(playerAwardPoints ?? {}) }
+  );
 
   const { toast } = useToast();
   const removeMember = useRemoveMember();
@@ -479,6 +503,33 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
       { bolaoId, settings: { special_predictions_points: specialPoints } },
       {
         onSuccess: () => toast({ title: 'Pontuação dos palpites especiais atualizada' }),
+        onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
+      }
+    );
+  };
+
+  const handleTogglePlayerAward = (key: string) => {
+    const newConfig = { ...playerAwardsConfig, [key]: !playerAwardsConfig[key] };
+    const prev = { ...playerAwardsConfig };
+    setPlayerAwardsConfig(newConfig);
+    const label = PLAYER_AWARD_TYPES.find((a) => a.key === key)?.label ?? key;
+    updateSettings.mutate(
+      { bolaoId, settings: { player_awards_enabled: newConfig } },
+      {
+        onSuccess: () => toast({ title: newConfig[key] ? `${label} habilitado` : `${label} desabilitado` }),
+        onError: (err: any) => {
+          setPlayerAwardsConfig(prev);
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
+  };
+
+  const handleSavePlayerPoints = () => {
+    updateSettings.mutate(
+      { bolaoId, settings: { player_award_points: playerPoints } },
+      {
+        onSuccess: () => toast({ title: 'Pontuação dos prêmios de jogador atualizada' }),
         onError: (err: any) => toast({ title: 'Erro', description: err.message, variant: 'destructive' }),
       }
     );
@@ -1033,6 +1084,48 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
             <button
               type="button"
               onClick={handleSaveSpecialPoints}
+              disabled={updateSettings.isPending}
+              className="h-10 px-4 rounded-rebrand-md bg-forest text-white text-[13px] font-bold hover:bg-forest-2 disabled:opacity-50"
+            >
+              {updateSettings.isPending ? 'Salvando...' : 'Salvar pontuação'}
+            </button>
+          </div>
+        )}
+      </Card>
+
+      <Card title="Prêmios de Jogador" sub="Artilheiro, craque, goleiro e revelação — cada um ativável com pontos próprios">
+        {PLAYER_AWARD_TYPES.map(({ key, label, sub }) => (
+          <SettingsRow
+            key={key}
+            title={label}
+            sub={playerAwardsConfig[key] ? `${sub} · vale ${playerPoints[key] ?? 1} pt(s)` : 'Desabilitado'}
+          >
+            <div className="flex items-center gap-2">
+              <NumberStepper
+                value={playerPoints[key] ?? 1}
+                onChange={(v) => setPlayerPoints({ ...playerPoints, [key]: v })}
+                min={1}
+                max={50}
+                suffix="pts"
+                size="sm"
+                disabled={!playerAwardsConfig[key] || !isOwner}
+                ariaLabel={`pontos de ${label}`}
+                className="w-28"
+              />
+              <Toggle
+                on={!!playerAwardsConfig[key]}
+                onClick={() => handleTogglePlayerAward(key)}
+                ariaLabel={`Toggle ${label}`}
+                disabled={!isOwner}
+              />
+            </div>
+          </SettingsRow>
+        ))}
+        {isOwner && JSON.stringify(playerPoints) !== JSON.stringify({ ...DEFAULT_PLAYER_AWARD_POINTS, ...(playerAwardPoints ?? {}) }) && (
+          <div className="py-3 border-t border-line">
+            <button
+              type="button"
+              onClick={handleSavePlayerPoints}
               disabled={updateSettings.isPending}
               className="h-10 px-4 rounded-rebrand-md bg-forest text-white text-[13px] font-bold hover:bg-forest-2 disabled:opacity-50"
             >

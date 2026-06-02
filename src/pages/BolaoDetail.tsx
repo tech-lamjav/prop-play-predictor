@@ -383,6 +383,8 @@ const BolaoDetail: React.FC = () => {
           enabledTypes={bolao.special_predictions_config ?? undefined}
           championPoints={bolao.champion_points ?? 25}
           pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_32: 1 }}
+          playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
+          playerAwardPoints={bolao.player_award_points ?? undefined}
         />
 
         {currentUserId && (
@@ -404,6 +406,8 @@ const BolaoDetail: React.FC = () => {
             specialPredictionsConfig={bolao.special_predictions_config ?? { finalist: true, semifinalist: true, quarterfinalist: true, round_of_32: true }}
             specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_32: 1 }}
             championPoints={bolao.champion_points ?? 10}
+            playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
+            playerAwardPoints={bolao.player_award_points ?? undefined}
             ranking={ranking || []}
             currentUserId={currentUserId}
             ownerUserId={bolao.owner_id}
@@ -742,6 +746,8 @@ const BolaoDetail: React.FC = () => {
         enabledTypes={bolao.special_predictions_config ?? undefined}
         championPoints={bolao.champion_points ?? 25}
         pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_32: 1 }}
+        playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
+        playerAwardPoints={bolao.player_award_points ?? undefined}
       />
 
       {/* Predictions modal */}
@@ -772,6 +778,8 @@ const BolaoDetail: React.FC = () => {
           specialPredictionsConfig={bolao.special_predictions_config ?? { finalist: true, semifinalist: true, quarterfinalist: true, round_of_32: true }}
           specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_32: 1 }}
           championPoints={bolao.champion_points ?? 10}
+          playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
+          playerAwardPoints={bolao.player_award_points ?? undefined}
           ranking={ranking || []}
           currentUserId={currentUserId}
           ownerUserId={bolao.owner_id}
