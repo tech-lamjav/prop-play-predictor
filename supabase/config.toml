@@ -26,3 +26,7 @@ verify_jwt = false
 [functions.ingest-wc-squads]
 # Ingestão de elencos sob demanda — protegida pelo header x-cron-secret (CRON_SECRET).
 verify_jwt = false
+
+[functions.enrich-wc-players]
+# Enriquecimento de birth_date (em lotes) — protegida pelo header x-cron-secret.
+verify_jwt = false
