@@ -34,10 +34,18 @@ Robô que lê o placar da API-Sports e atualiza o bolão. Migrations já aplicad
 **Produção** (`lavclmlvvfzkblrstojd`) — só depois do staging validado
 - [ ] Renovar assinatura API-Sports (vence **11/jun/2026**) — **Diody**.
 - [ ] Secrets `API_SPORTS_KEY` (idealmente chave backend nova) + `CRON_SECRET` (pode ser outro valor) — **Diody**.
-- [ ] Aplicar migrations 046 + 047 em prod — **Diody** (via migration, conforme regra anti-drift).
-- [ ] Deploy da função em prod.
-- [ ] Agendar cron em prod.
-- [ ] Smoke test em prod.
+- [ ] Vault: `ingest_wc_cron_secret` + `ingest_wc_url` (URL com o ref de prod) — via SQL.
+- [ ] Aplicar migrations 046, 047, 048, 049 em prod — **Diody/Claude** (via migration, regra anti-drift).
+- [ ] Deploy das funções `ingest-wc-scores` **e** `ingest-wc-squads` em prod.
+- [ ] Rodar `ingest-wc-squads` 1x (popular elencos) + smoke test do `ingest-wc-scores`.
+- [ ] Cron já vem da migration 048 (lê Vault) — conferir `cron.job`.
+
+## Componente: ingestão de elencos (`ingest-wc-squads`)
+Popula `wc_players` (migration 049) com os elencos. Disparada **sob demanda** (não tem cron):
+rodar quando a FIFA confirmar os 26, e re-rodar se mudar. Reusa os secrets do `ingest-wc-scores`.
+Chamada: `POST /functions/v1/ingest-wc-squads` com header `x-cron-secret`.
+⚠️ Squads = pool nacional amplo (~1381 jogadores no staging), não os 26 finais.
+TODO: enriquecer `birth_date` via `players/profiles` (só necessário pro filtro de Melhor Jovem).
 
 ### Como setar os secrets no painel (passo a passo)
 1. Acessar https://supabase.com/dashboard/project/kpbjuplcwiyrymafhehz/settings/functions
@@ -59,3 +67,5 @@ SELECT vault.create_secret('https://<PROJECT_REF>.supabase.co/functions/v1/inges
 - 2026-06-01 — **staging ligado ponta a ponta:** secrets (painel + Vault), deploy da função,
   migration 048 (pg_cron `*/5` + pg_net lendo Vault). Smoke test 200 OK (72 fixtures, 0 sem-link).
   Cron via pg_net também 200. Falta só validar com jogo finalizado real.
+- 2026-06-01 — **M2 elencos no staging:** migration 049 (wc_players) + deploy `ingest-wc-squads`.
+  Run = 48 times, 1381 jogadores, 167 goleiros, 0 erros. birth_date pendente (profiles).
