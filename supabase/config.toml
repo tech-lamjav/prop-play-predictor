@@ -18,3 +18,7 @@ verify_jwt = false
 # Desabilita verificação JWT para webhooks do Stripe
 # Webhooks do Stripe usam assinatura própria (stripe-signature) ao invés de JWT
 verify_jwt = false
+
+[functions.ingest-wc-scores]
+# Job de cron — sem JWT de usuário. Protegida pelo header x-cron-secret (CRON_SECRET).
+verify_jwt = false
