@@ -17,6 +17,15 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const API_BASE = "https://v3.football.api-sports.io";
 
+// A API às vezes devolve nomes com entidades HTML (ex: O&apos;Neill). Decodifica.
+function decodeName(s: string): string {
+  return (s ?? "")
+    .replace(/&apos;|&#39;|&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .trim();
+}
+
 serve(async (req) => {
   const cronSecret = Deno.env.get("CRON_SECRET") || "";
   const provided = req.headers.get("x-cron-secret") || "";
@@ -58,7 +67,7 @@ serve(async (req) => {
         .filter((p) => p?.id != null)
         .map((p) => ({
           player_id: Number(p.id),
-          player_name: String(p.name ?? "").trim() || `#${p.id}`,
+          player_name: decodeName(String(p.name ?? "")) || `#${p.id}`,
           api_team_id: t.api_team_id,
           team_code: t.team_code,
           position: p.position ?? null,

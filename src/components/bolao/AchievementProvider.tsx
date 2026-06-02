@@ -159,13 +159,13 @@ const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
             <Icon className="w-5 h-5 text-amber-2" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/90 leading-tight">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2 leading-tight">
               Conquista
             </p>
-            <p className="text-[14px] font-bold text-white leading-tight truncate">
+            <p className="text-[14px] font-bold text-ink leading-tight truncate">
               {def.title}
             </p>
-            <p className="text-[11px] text-white/85 leading-tight truncate">
+            <p className="text-[11px] text-ink-2 leading-tight truncate">
               {def.description}
             </p>
           </div>
@@ -174,7 +174,7 @@ const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
             onClick={handleShare}
             disabled={sharing}
             aria-label="Compartilhar conquista"
-            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white transition-colors disabled:opacity-50"
+            className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-ink/10 hover:bg-ink/20 active:bg-ink/25 text-ink transition-colors disabled:opacity-50"
           >
             <Share2 className="w-4 h-4" />
           </button>
