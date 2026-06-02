@@ -63,6 +63,15 @@ SELECT vault.create_secret('<x-cron-secret>', 'ingest_wc_cron_secret', 'x-cron-s
 SELECT vault.create_secret('https://<PROJECT_REF>.supabase.co/functions/v1/ingest-wc-scores', 'ingest_wc_url', 'URL da função');
 ```
 
+## Componente: settlement dos prêmios de jogador (M4)
+- Migration `052` — `resolve_player_awards()` (pontua palpites vs `wc_player_awards`, idempotente).
+- `ingest-wc-topscorer` — **pós-final**: resolve o artilheiro automático (desempate gols→assists→min)
+  + chama resolve. `POST /functions/v1/ingest-wc-topscorer` (header `x-cron-secret`).
+- `set-player-award` — **noite da final**: registra vencedor de júri (goleiro/craque/revelação) ou
+  força o artilheiro. `POST /functions/v1/set-player-award` body `{award_type, player_id}` (header `x-cron-secret`).
+- Operação na noite da final: rodar `ingest-wc-topscorer` (artilheiro) + 3× `set-player-award` (júri).
+- Prod (além do já listado): aplicar migration 052; deploy de `ingest-wc-topscorer` + `set-player-award`.
+
 ## Log de execução
 - 2026-06-01 — migrations 046/047 aplicadas no **staging** (validadas). Função `ingest-wc-scores`
   escrita.
@@ -71,3 +80,7 @@ SELECT vault.create_secret('https://<PROJECT_REF>.supabase.co/functions/v1/inges
   Cron via pg_net também 200. Falta só validar com jogo finalizado real.
 - 2026-06-01 — **M2 elencos no staging:** migration 049 (wc_players) + deploy `ingest-wc-squads`.
   Run = 48 times, 1381 jogadores, 167 goleiros, 0 erros. birth_date pendente (profiles).
+- 2026-06-01 — **M2 birth_date:** `enrich-wc-players` rodado: 1323/1381 com data, 77 elegíveis Revelação.
+- 2026-06-01 — **M3 completo:** migrations 050 (schema) + 051 (RPCs); frontend PlayerAwardsSection +
+  admin (toggles/pontos). tsc limpo. **M4:** migration 052 (resolve, testado acerto=10/erro=0) +
+  `ingest-wc-topscorer` (artilheiro auto) + `set-player-award` (júri/manual) deployadas no staging.
