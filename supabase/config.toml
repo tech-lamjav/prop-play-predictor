@@ -30,3 +30,7 @@ verify_jwt = false
 [functions.enrich-wc-players]
 # Enriquecimento de birth_date (em lotes) — protegida pelo header x-cron-secret.
 verify_jwt = false
+
+[functions.ingest-wc-topscorer]
+# Resolve o artilheiro automático (pós-final) — protegida pelo header x-cron-secret.
+verify_jwt = false
