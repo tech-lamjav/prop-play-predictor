@@ -23,11 +23,13 @@ Robô que lê o placar da API-Sports e atualiza o bolão. Migrations já aplicad
 
 ### Checklist por ambiente
 
-**Staging** (`kpbjuplcwiyrymafhehz`)
-- [ ] Secrets `API_SPORTS_KEY` e `CRON_SECRET` setados no painel — **Diody** (Dashboard → Project Settings → Edge Functions → Manage secrets / Add new secret).
-- [ ] Deploy da função `ingest-wc-scores` — **Claude (via MCP)**.
-- [ ] Habilitar extensões `pg_cron` + `pg_net` e agendar o job (migration) — **Claude (via MCP)**.
-- [ ] Smoke test: forçar/checar 1 jogo e confirmar placar + pontos — **Claude + Diody**.
+**Staging** (`kpbjuplcwiyrymafhehz`) — ✅ CONCLUÍDO 2026-06-01
+- [x] Secrets `API_SPORTS_KEY` e `CRON_SECRET` setados no painel — Diody.
+- [x] Vault: `ingest_wc_cron_secret` + `ingest_wc_url` (via SQL, não versionado).
+- [x] Deploy da função `ingest-wc-scores` (version 1, verify_jwt=false) — Claude (MCP).
+- [x] Extensões `pg_cron` + `pg_net` + job agendado `*/5 * * * *` (migration 048).
+- [x] Smoke test: função retornou 200 `{ok, fixtures_recebidos:72, sem_link:0}`; cron via pg_net também 200.
+- [ ] Pendente: validar ramo "placar→pontos" com 1 jogo real (só com jogo finalizado).
 
 **Produção** (`lavclmlvvfzkblrstojd`) — só depois do staging validado
 - [ ] Renovar assinatura API-Sports (vence **11/jun/2026**) — **Diody**.
@@ -44,7 +46,16 @@ Robô que lê o placar da API-Sports e atualiza o bolão. Migrations já aplicad
 3. **Add new secret** → Name: `CRON_SECRET` → Value: (valor passado no chat) → salvar.
 4. Avisar o Claude que está feito → ele faz o deploy + cron.
 
+### Pré-requisito Vault por ambiente (rodar 1x via SQL — NÃO versionar valores)
+```sql
+-- staging já feito. Pra prod, trocar URL pro ref de prod e (idealmente) outro secret:
+SELECT vault.create_secret('<x-cron-secret>', 'ingest_wc_cron_secret', 'x-cron-secret do ingest-wc-scores');
+SELECT vault.create_secret('https://<PROJECT_REF>.supabase.co/functions/v1/ingest-wc-scores', 'ingest_wc_url', 'URL da função');
+```
+
 ## Log de execução
-_(preencher conforme avança)_
 - 2026-06-01 — migrations 046/047 aplicadas no **staging** (validadas). Função `ingest-wc-scores`
-  escrita (sem deploy). Aguardando secrets no staging pra deploy + cron.
+  escrita.
+- 2026-06-01 — **staging ligado ponta a ponta:** secrets (painel + Vault), deploy da função,
+  migration 048 (pg_cron `*/5` + pg_net lendo Vault). Smoke test 200 OK (72 fixtures, 0 sem-link).
+  Cron via pg_net também 200. Falta só validar com jogo finalizado real.
