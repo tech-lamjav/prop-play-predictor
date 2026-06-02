@@ -36,8 +36,9 @@ Robô que lê o placar da API-Sports e atualiza o bolão. Migrations já aplicad
 - [ ] Secrets `API_SPORTS_KEY` (idealmente chave backend nova) + `CRON_SECRET` (pode ser outro valor) — **Diody**.
 - [ ] Vault: `ingest_wc_cron_secret` + `ingest_wc_url` (URL com o ref de prod) — via SQL.
 - [ ] Aplicar migrations 046, 047, 048, 049 em prod — **Diody/Claude** (via migration, regra anti-drift).
-- [ ] Deploy das funções `ingest-wc-scores`, `ingest-wc-squads` **e** `enrich-wc-players` em prod.
-- [ ] Rodar `ingest-wc-squads` 1x → depois `enrich-wc-players` em loop (birth_date) + smoke test do `ingest-wc-scores`.
+- [ ] Criar bucket público `wc-player-photos` (storage.buckets).
+- [ ] Deploy: `ingest-wc-scores`, `ingest-wc-squads`, `enrich-wc-players`, `mirror-wc-photos`, `ingest-wc-topscorer`, `set-player-award`.
+- [ ] Rodar `ingest-wc-squads` → `enrich-wc-players` (loop) → `mirror-wc-photos` (loop) + smoke test do `ingest-wc-scores`.
 - [ ] Cron já vem da migration 048 (lê Vault) — conferir `cron.job`.
 
 ## Componente: ingestão de elencos (`ingest-wc-squads` + `enrich-wc-players`)
@@ -47,7 +48,11 @@ Popula `wc_players` (migration 049). Disparadas **sob demanda** (sem cron). Reus
    ⚠️ Squads = pool nacional amplo (~1381 no staging), não os 26 finais. Re-rodar perto da convocação.
 2. `POST /functions/v1/enrich-wc-players` (body `{after, batch}`, em loop até `done`) — preenche
    `birth_date` via `players/profiles`. Necessário pro filtro de Revelação. Staging: 1323/1381
-   preenchidos, 77 elegíveis (≥2005). **Fotos já vêm no squads** (URL do CDN da API, sem download).
+   preenchidos, 77 elegíveis (≥2005).
+3. `POST /functions/v1/mirror-wc-photos` (body `{after, batch}`, em loop até `done`) — baixa as
+   fotos da api-sports e sobe no bucket **`wc-player-photos`** (público), reescrevendo `photo_url`
+   pro nosso Storage. **Necessário** porque a api-sports bloqueia hotlink no navegador (a imagem só
+   carrega server-side). Pré-req: criar o bucket público. Staging: 1381/1381 espelhadas.
 
 ### Como setar os secrets no painel (passo a passo)
 1. Acessar https://supabase.com/dashboard/project/kpbjuplcwiyrymafhehz/settings/functions
