@@ -34,3 +34,7 @@ verify_jwt = false
 [functions.ingest-wc-topscorer]
 # Resolve o artilheiro automático (pós-final) — protegida pelo header x-cron-secret.
 verify_jwt = false
+
+[functions.set-player-award]
+# Registra vencedor de prêmio (júri/manual) + liquida — protegida pelo header x-cron-secret.
+verify_jwt = false
