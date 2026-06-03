@@ -385,6 +385,7 @@ const BolaoDetail: React.FC = () => {
           pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
           playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
           playerAwardPoints={bolao.player_award_points ?? undefined}
+          specialDeadlines={bolao.special_deadlines ?? null}
         />
 
         {currentUserId && (
@@ -401,6 +402,8 @@ const BolaoDetail: React.FC = () => {
             scoringExact={bolao.scoring_exact}
             scoringWeights={bolao.scoring_weights ?? null}
             predictionDeadlineMode={bolao.prediction_deadline_mode ?? 'per_match'}
+            matches={matches}
+            specialDeadlines={bolao.special_deadlines ?? null}
             customBannerUrl={bolao.custom_banner_url ?? null}
             championEnabled={bolao.champion_enabled ?? true}
             specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
@@ -749,6 +752,7 @@ const BolaoDetail: React.FC = () => {
         pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
         playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
         playerAwardPoints={bolao.player_award_points ?? undefined}
+        specialDeadlines={bolao.special_deadlines ?? null}
       />
 
       {/* Predictions modal */}
@@ -774,6 +778,8 @@ const BolaoDetail: React.FC = () => {
           scoringExact={bolao.scoring_exact}
           scoringWeights={bolao.scoring_weights ?? null}
           predictionDeadlineMode={bolao.prediction_deadline_mode ?? 'per_match'}
+          matches={matches}
+          specialDeadlines={bolao.special_deadlines ?? null}
           customBannerUrl={bolao.custom_banner_url ?? null}
           championEnabled={bolao.champion_enabled ?? true}
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}

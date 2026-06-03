@@ -375,6 +375,7 @@ export function useUpdateBolaoSettings() {
         champion_points?: number;
         player_awards_enabled?: Record<string, boolean>;
         player_award_points?: Record<string, number>;
+        special_deadlines?: import('@/services/bolao.service').SpecialDeadlinesConfig | null;
       };
     }) => bolaoService.updateBolaoSettings(params.bolaoId, params.settings),
     onSuccess: (_data, variables) => {

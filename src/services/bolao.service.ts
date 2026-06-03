@@ -58,7 +58,21 @@ export interface Bolao {
   champion_points: number;
   player_awards_enabled: Record<PlayerAwardType, boolean> | null;
   player_award_points: Record<PlayerAwardType, number> | null;
+  /** Config de prazo dos palpites especiais (presets + override por tipo). null = rolling. */
+  special_deadlines: SpecialDeadlinesConfig | null;
   created_at: string;
+}
+
+/** Preset de prazo dos palpites especiais. */
+export type SpecialDeadlineMode = 'rolling' | 'opening';
+
+/**
+ * Config de prazo dos palpites especiais. `mode` é o preset; `overrides`
+ * sobrescreve a data/hora (ISO timestamptz) de tipos específicos.
+ */
+export interface SpecialDeadlinesConfig {
+  mode: SpecialDeadlineMode;
+  overrides?: Record<string, string | null>;
 }
 
 export interface BolaoMember {
@@ -764,6 +778,7 @@ export const bolaoService = {
       champion_points?: number;
       player_awards_enabled?: Record<string, boolean>;
       player_award_points?: Record<string, number>;
+      special_deadlines?: SpecialDeadlinesConfig | null;
     }
   ): Promise<void> {
     const { error } = await supabase
