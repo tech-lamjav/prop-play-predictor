@@ -218,7 +218,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
         </div>
 
         {/* ─── Sub-nav: Palpites | Especiais | Tabela | Ranking ─── */}
-        <div className="flex items-center gap-0.5 border-b border-line mb-5 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 minimal-scrollbar">
+        <div className="flex items-center gap-0.5 border-b border-line mb-5 overflow-x-auto overflow-y-hidden -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {/* Aba "Palpites" — conteúdo principal (hero + convidar) */}
           <button
             type="button"

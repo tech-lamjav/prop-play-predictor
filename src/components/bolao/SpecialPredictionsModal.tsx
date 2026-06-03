@@ -19,7 +19,7 @@ import {
   useToggleSpecialPrediction,
 } from '@/hooks/use-bolao';
 import { useToast } from '@/hooks/use-toast';
-import type { WcMatch, ChampionPrediction } from '@/services/bolao.service';
+import type { WcMatch, ChampionPrediction, SpecialDeadlinesConfig } from '@/services/bolao.service';
 
 interface SpecialPredictionsConfig {
   finalist?: boolean;
@@ -52,6 +52,7 @@ interface SpecialPredictionsModalProps {
   pointsConfig: PointsConfig;
   playerAwardsEnabled?: Record<string, boolean>;
   playerAwardPoints?: Record<string, number>;
+  specialDeadlines?: SpecialDeadlinesConfig | null;
 }
 
 export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = ({
@@ -69,6 +70,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
   pointsConfig,
   playerAwardsEnabled,
   playerAwardPoints,
+  specialDeadlines,
 }) => {
   const [championPickerOpen, setChampionPickerOpen] = useState(false);
 
@@ -316,6 +318,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     pointsConfig={pointsConfig}
                     championPick={myChampionPick}
                     onSuggestChampion={championEnabled ? handleSuggestChampion : undefined}
+                    specialDeadlines={specialDeadlines}
                   />
                 )}
 
@@ -331,6 +334,8 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     bolaoId={bolaoId}
                     enabled={playerAwardsEnabled}
                     pointsConfig={playerAwardPoints}
+                    matches={matches}
+                    specialDeadlines={specialDeadlines}
                   />
                 </div>
               </div>
@@ -402,12 +407,16 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     <div className="rounded-rebrand-md border border-line bg-white p-4">
                       <div className="flex items-center gap-1.5 text-ink-2 mb-1.5">
                         <Clock className="w-3.5 h-3.5" />
-                        <span className="text-[12px] font-semibold">Prazo</span>
+                        <span className="text-[12px] font-semibold">Primeiro prazo</span>
                       </div>
                       <p className="text-[14px] font-bold text-ink leading-tight">{deadline.label}</p>
                       <p className="text-[11px] text-ink-2 mt-0.5">
                         {deadline.passed ? 'Copa iniciada · ' : 'até a abertura da Copa · '}
                         {deadline.dateStr}
+                      </p>
+                      <p className="text-[10px] text-ink-3 mt-2 leading-snug border-t border-line pt-2">
+                        Prêmios de jogador fecham na abertura. Cada fase do mata-mata fecha
+                        no início da rodada que a decide — o prazo aparece em cada card.
                       </p>
                     </div>
                   )}

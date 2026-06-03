@@ -3,7 +3,8 @@ import { Goal, Star, Shield, Sparkles, ChevronDown, Search, X, Check } from 'luc
 import { TeamFlag } from '@/components/bolao/TeamFlag';
 import { useWcPlayers, useMySpecialPredictions, useSetPlayerPrediction } from '@/hooks/use-bolao';
 import { useToast } from '@/hooks/use-toast';
-import type { PlayerAwardType, WcPlayer } from '@/services/bolao.service';
+import { isSpecialLocked, formatDeadlineLabel } from '@/components/bolao/special-deadlines';
+import type { PlayerAwardType, WcPlayer, WcMatch, SpecialDeadlinesConfig } from '@/services/bolao.service';
 
 /** Cutoff de elegibilidade do Melhor Jovem 2026 (nascidos a partir desta data). */
 const YOUNG_CUTOFF = '2005-01-01';
@@ -36,9 +37,13 @@ interface Props {
   enabled?: Partial<Record<PlayerAwardType, boolean>>;
   /** Pontos por prêmio (config do bolão). */
   pointsConfig?: Partial<Record<PlayerAwardType, number>>;
+  /** Jogos da Copa — pra calcular o prazo (prêmios fecham na abertura). */
+  matches?: WcMatch[];
+  /** Config de prazo dos especiais (preset + overrides). */
+  specialDeadlines?: SpecialDeadlinesConfig | null;
 }
 
-export const PlayerAwardsSection: React.FC<Props> = ({ bolaoId, enabled, pointsConfig }) => {
+export const PlayerAwardsSection: React.FC<Props> = ({ bolaoId, enabled, pointsConfig, matches, specialDeadlines }) => {
   const { data: players } = useWcPlayers();
   const { data: myPreds } = useMySpecialPredictions(bolaoId);
 
@@ -62,6 +67,8 @@ export const PlayerAwardsSection: React.FC<Props> = ({ bolaoId, enabled, pointsC
   const awardsToShow = AWARDS.filter((a) => enabled?.[a.key] !== false);
   if (awardsToShow.length === 0) return null;
 
+  // Por padrão todos fecham na abertura da Copa, mas cada prêmio pode ter
+  // override próprio — então calculamos o prazo por award.
   return (
     <div className="space-y-3">
       {awardsToShow.map((award) => (
@@ -72,6 +79,8 @@ export const PlayerAwardsSection: React.FC<Props> = ({ bolaoId, enabled, pointsC
           players={players || []}
           pickedPlayer={myPicks[award.key] ? playersById.get(myPicks[award.key]!) ?? null : null}
           pointsLabel={pointsConfig?.[award.key] != null ? `+${pointsConfig[award.key]} pts` : undefined}
+          locked={matches ? isSpecialLocked(award.key, matches, specialDeadlines) : false}
+          deadlineLabel={matches ? formatDeadlineLabel(award.key, matches, specialDeadlines) : null}
         />
       ))}
     </div>
@@ -84,9 +93,11 @@ interface CardProps {
   players: WcPlayer[];
   pickedPlayer: WcPlayer | null;
   pointsLabel?: string;
+  locked?: boolean;
+  deadlineLabel?: string | null;
 }
 
-const PlayerAwardCard: React.FC<CardProps> = ({ award, bolaoId, players, pickedPlayer, pointsLabel }) => {
+const PlayerAwardCard: React.FC<CardProps> = ({ award, bolaoId, players, pickedPlayer, pointsLabel, locked, deadlineLabel }) => {
   const Icon = award.icon;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -112,6 +123,10 @@ const PlayerAwardCard: React.FC<CardProps> = ({ award, bolaoId, players, pickedP
   }, [eligible, search]);
 
   const handlePick = (playerId: number | null) => {
+    if (locked) {
+      toast({ title: 'Prazo encerrado', description: `Os palpites de ${award.label.toLowerCase()} já fecharam.` });
+      return;
+    }
     setPick.mutate(
       { bolaoId, predictionType: award.key, playerId },
       {
@@ -139,6 +154,11 @@ const PlayerAwardCard: React.FC<CardProps> = ({ award, bolaoId, players, pickedP
             <p className="text-[11px] text-ink-2 leading-tight mt-0.5">
               {award.sublabel}
               {pointsLabel && <span className="text-forest font-semibold"> · {pointsLabel}</span>}
+              {deadlineLabel && (
+                <span className={locked ? 'text-status-danger font-semibold' : 'text-ink-3'}>
+                  {' · '}{locked ? 'encerrado' : deadlineLabel}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -177,8 +197,8 @@ const PlayerAwardCard: React.FC<CardProps> = ({ award, bolaoId, players, pickedP
               <button
                 type="button"
                 onClick={() => handlePick(null)}
-                disabled={setPick.isPending}
-                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-rebrand-sm border border-line text-[11px] font-semibold text-ink-2 hover:border-line-2 hover:bg-canvas-2 transition-colors"
+                disabled={setPick.isPending || locked}
+                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-rebrand-sm border border-line text-[11px] font-semibold text-ink-2 hover:border-line-2 hover:bg-canvas-2 transition-colors disabled:opacity-50"
               >
                 <X className="w-3 h-3" /> Remover
               </button>
@@ -207,7 +227,7 @@ const PlayerAwardCard: React.FC<CardProps> = ({ award, bolaoId, players, pickedP
                   key={p.player_id}
                   type="button"
                   onClick={() => handlePick(p.player_id)}
-                  disabled={setPick.isPending}
+                  disabled={setPick.isPending || locked}
                   aria-pressed={picked}
                   className={`relative flex items-center gap-2 p-2 rounded-rebrand-sm border text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 ${
                     picked ? 'border-amber bg-amber/[0.10] ring-2 ring-amber/30' : 'border-line bg-white hover:border-line-2 hover:bg-canvas-2'
