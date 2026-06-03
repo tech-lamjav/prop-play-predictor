@@ -311,6 +311,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     bolaoId={bolaoId}
                     isPremium={isPremium}
                     matches={matches}
+                    currentUserId={currentUserId}
                     enabledTypes={enabledTypes}
                     pointsConfig={pointsConfig}
                     championPick={myChampionPick}

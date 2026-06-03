@@ -620,6 +620,18 @@ export const bolaoService = {
     return { action: result.action as 'set' | 'removed' };
   },
 
+  /** Auto-preenche os 16 avos (round_of_32) com os 32 códigos projetados. Substitui os atuais. */
+  async setRoundOf32FromProjection(bolaoId: string, codes: string[]): Promise<{ count: number }> {
+    const { data, error } = await supabase.rpc('set_round_of_32_from_projection', {
+      p_bolao_id: bolaoId,
+      p_codes: codes,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; count?: number; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao aplicar a projeção');
+    return { count: result.count ?? 0 };
+  },
+
   async updateBolaoScoring(
     bolaoId: string,
     preset: 'standard' | 'classic' | 'weighted_stages' | 'custom',

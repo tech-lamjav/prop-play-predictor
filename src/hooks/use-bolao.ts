@@ -299,6 +299,18 @@ export function useSetPlayerPrediction() {
   });
 }
 
+export function useSetRoundOf32FromProjection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { bolaoId: string; codes: string[] }) =>
+      bolaoService.setRoundOf32FromProjection(params.bolaoId, params.codes),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['special-summary', variables.bolaoId] });
+    },
+  });
+}
+
 export function useUpdateBolaoScoring() {
   const queryClient = useQueryClient();
   return useMutation({
