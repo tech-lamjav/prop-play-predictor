@@ -620,6 +620,19 @@ export const bolaoService = {
     return { action: result.action as 'set' | 'removed' };
   },
 
+  /** Avança o vencedor de um confronto do mata-mata (e remove o perdedor das fases adiante). */
+  async bracketAdvance(bolaoId: string, winner: string, loser: string, nextStage: string): Promise<void> {
+    const { data, error } = await supabase.rpc('bracket_advance', {
+      p_bolao_id: bolaoId,
+      p_winner: winner,
+      p_loser: loser,
+      p_next_stage: nextStage,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao avançar no chaveamento');
+  },
+
   /** Auto-preenche os 16 avos (round_of_32) com os 32 códigos projetados. Substitui os atuais. */
   async setRoundOf32FromProjection(bolaoId: string, codes: string[]): Promise<{ count: number }> {
     const { data, error } = await supabase.rpc('set_round_of_32_from_projection', {

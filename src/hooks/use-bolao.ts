@@ -299,6 +299,18 @@ export function useSetPlayerPrediction() {
   });
 }
 
+export function useBracketAdvance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { bolaoId: string; winner: string; loser: string; nextStage: string }) =>
+      bolaoService.bracketAdvance(params.bolaoId, params.winner, params.loser, params.nextStage),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['champion-predictions', variables.bolaoId] });
+    },
+  });
+}
+
 export function useSetRoundOf32FromProjection() {
   const queryClient = useQueryClient();
   return useMutation({

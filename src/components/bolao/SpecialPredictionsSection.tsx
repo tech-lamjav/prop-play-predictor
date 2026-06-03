@@ -8,8 +8,13 @@ import {
   useToggleSpecialPrediction,
   useBolaoPredictions,
   useSetRoundOf32FromProjection,
+  useBracketAdvance,
+  useUpsertChampionPrediction,
 } from '@/hooks/use-bolao';
 import { computeGroupProjection, type PredictionMap } from '@/components/bolao/group-projection';
+import { KnockoutBracket } from '@/components/bolao/KnockoutBracket';
+import { nextStageOf, type BracketPicks, type ResolvedMatch } from '@/components/bolao/bracket';
+import { List, GitFork } from 'lucide-react';
 import type { WcMatch } from '@/services/bolao.service';
 import { useToast } from '@/hooks/use-toast';
 
@@ -379,6 +384,11 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     );
   };
 
+  // Visualização: lista (cards por fase) ou chaveamento (bracket clicável).
+  const [view, setView] = useState<'lista' | 'bracket'>('lista');
+  const bracketAdvance = useBracketAdvance();
+  const upsertChampion = useUpsertChampionPrediction();
+
   const teams = useMemo(() => extractTeams(matches), [matches]);
 
   const myPicksByType = useMemo(() => {
@@ -460,6 +470,29 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     round_of_32: `+${pts.round_of_32} pt cada`,
   };
 
+  // Picks no formato do bracket + handler de avanço (clicar no vencedor).
+  const bracketPicks: BracketPicks = {
+    round_of_16: myPicksByType.round_of_16 || [],
+    quarterfinalist: myPicksByType.quarterfinalist || [],
+    semifinalist: myPicksByType.semifinalist || [],
+    finalist: myPicksByType.finalist || [],
+    champion: championPick ?? null,
+  };
+  const bracketBusy = bracketAdvance.isPending || upsertChampion.isPending;
+  const handleAdvance = (match: ResolvedMatch, winnerCode: string) => {
+    const ns = nextStageOf(match.stage);
+    if (!ns) return;
+    const loser = match.home.code === winnerCode ? match.away.code : match.home.code;
+    const onError = (err: any) =>
+      projToast({ title: 'Erro', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+    if (ns === 'champion') {
+      upsertChampion.mutate({ bolaoId, teamCode: winnerCode }, { onError });
+    } else {
+      bracketAdvance.mutate({ bolaoId, winner: winnerCode, loser: loser ?? '', nextStage: ns }, { onError });
+    }
+  };
+  const canBracket = !!projection?.complete;
+
   // Palpites Especiais agora são liberados pra todo bolão (Free e Premium).
   // A diferença Premium vs Free é APENAS quantidade de participantes (>20).
   return (
@@ -514,6 +547,40 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
         )
       )}
 
+      {/* Toggle Lista | Chaveamento (bracket só com a projeção completa) */}
+      <div className="flex items-center gap-1 p-0.5 rounded-rebrand-md bg-canvas-2 w-fit">
+        <button
+          type="button"
+          onClick={() => setView('lista')}
+          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold transition-colors ${
+            view === 'lista' ? 'bg-white text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
+          }`}
+        >
+          <List className="w-3.5 h-3.5" /> Lista
+        </button>
+        <button
+          type="button"
+          onClick={() => canBracket && setView('bracket')}
+          disabled={!canBracket}
+          title={canBracket ? undefined : 'Complete os palpites de grupo pra montar o chaveamento'}
+          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            view === 'bracket' ? 'bg-white text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
+          }`}
+        >
+          <GitFork className="w-3.5 h-3.5 rotate-90" /> Chaveamento
+        </button>
+      </div>
+
+      {view === 'bracket' && canBracket && projection ? (
+        <KnockoutBracket
+          matches={matches}
+          projection={projection}
+          picks={bracketPicks}
+          onAdvance={handleAdvance}
+          busy={bracketBusy}
+        />
+      ) : (
+      <>
       {(Object.keys(TYPE_META) as SpecialType[])
         .filter((type) => !enabledTypes || enabledTypes[type] !== false)
         .map((type, idx) => {
@@ -543,6 +610,8 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
             />
           );
         })}
+      </>
+      )}
     </div>
   );
 };

@@ -114,6 +114,11 @@ const ADVANCERS: Record<string, keyof Omit<BracketPicks, 'champion'> | 'champion
   final: 'champion',
 };
 
+/** Fase de palpite que o vencedor de um jogo desta stage preenche (ou null). */
+export function nextStageOf(stage: string): string | null {
+  return ADVANCERS[stage] ?? null;
+}
+
 /**
  * Resolve o bracket inteiro: participantes de cada jogo + o vencedor deduzido
  * dos palpites especiais. Processa por match_number (feeders referenciam jogos
