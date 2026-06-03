@@ -9,7 +9,8 @@ import {
   ChevronDown,
   Menu,
   X,
-  FileText
+  FileText,
+  Trophy
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import UserNav from './UserNav';
@@ -49,10 +50,14 @@ export default function MainNav({ className }: MainNavProps) {
     return location.pathname === path;
   };
 
+  const isBolaoActive = location.pathname.startsWith('/bolao');
+
   const activeModuleName = analysisItems.some((i) => isActive(i.href))
     ? 'Análises'
     : betinhoModuleItems.some((i) => isActive(i.href))
     ? 'Betinho'
+    : isBolaoActive
+    ? 'Bolão'
     : null;
 
   const handleNavigation = (href: string) => {
@@ -129,6 +134,16 @@ export default function MainNav({ className }: MainNavProps) {
                 })}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Bolão — destino único, sem dropdown */}
+            <Button
+              variant="ghost"
+              onClick={() => handleNavigation('/bolao')}
+              className={`flex items-center gap-2 ${isBolaoActive ? 'font-semibold text-foreground' : ''}`}
+            >
+              <Trophy className="w-4 h-4" />
+              <span>Bolão</span>
+            </Button>
           </div>
 
           {/* Right side - User Menu */}
@@ -231,6 +246,30 @@ export default function MainNav({ className }: MainNavProps) {
                       </Button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Divisor */}
+              <div className="border-t border-border" />
+
+              {/* Seção Bolão */}
+              <div>
+                <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Bolão
+                </p>
+                <div className="space-y-1">
+                  <Button
+                    variant={isBolaoActive ? "default" : "ghost"}
+                    onClick={() => handleNavigation('/bolao')}
+                    className={`w-full justify-start flex items-center space-x-3 ${
+                      isBolaoActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Trophy className="w-4 h-4" />
+                    <span className="font-medium">Bolão Copa 2026</span>
+                  </Button>
                 </div>
               </div>
 
