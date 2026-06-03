@@ -45,12 +45,14 @@ export interface Bolao {
     finalist: boolean;
     semifinalist: boolean;
     quarterfinalist: boolean;
+    round_of_16: boolean;
     round_of_32: boolean;
   };
   special_predictions_points: {
     finalist: number;
     semifinalist: number;
     quarterfinalist: number;
+    round_of_16: number;
     round_of_32: number;
   };
   champion_points: number;
@@ -120,7 +122,7 @@ export interface ChampionPrediction {
 }
 
 export type SpecialPredictionType =
-  | 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32'
+  | 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32'
   | 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
 
 export type PlayerAwardType = 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
@@ -575,7 +577,7 @@ export const bolaoService = {
 
   async toggleSpecialPrediction(
     bolaoId: string,
-    predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32',
+    predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32',
     teamCode: string
   ): Promise<{ action: 'added' | 'removed'; count?: number }> {
     const { data, error } = await supabase.rpc('toggle_special_prediction', {
@@ -616,6 +618,18 @@ export const bolaoService = {
     const result = data as { success: boolean; action?: string; error?: string };
     if (!result.success) throw new Error(result.error || 'Erro ao salvar palpite');
     return { action: result.action as 'set' | 'removed' };
+  },
+
+  /** Auto-preenche os 16 avos (round_of_32) com os 32 códigos projetados. Substitui os atuais. */
+  async setRoundOf32FromProjection(bolaoId: string, codes: string[]): Promise<{ count: number }> {
+    const { data, error } = await supabase.rpc('set_round_of_32_from_projection', {
+      p_bolao_id: bolaoId,
+      p_codes: codes,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; count?: number; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao aplicar a projeção');
+    return { count: result.count ?? 0 };
   },
 
   async updateBolaoScoring(

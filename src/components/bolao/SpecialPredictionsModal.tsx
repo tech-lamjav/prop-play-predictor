@@ -25,6 +25,7 @@ interface SpecialPredictionsConfig {
   finalist?: boolean;
   semifinalist?: boolean;
   quarterfinalist?: boolean;
+  round_of_16?: boolean;
   round_of_32?: boolean;
 }
 
@@ -32,6 +33,7 @@ interface PointsConfig {
   finalist: number;
   semifinalist: number;
   quarterfinalist: number;
+  round_of_16: number;
   round_of_32: number;
 }
 
@@ -109,10 +111,11 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
   );
 
   const myPicksByType = useMemo(() => {
-    const map: Record<'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32', string[]> = {
+    const map: Record<'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32', string[]> = {
       finalist: [],
       semifinalist: [],
       quarterfinalist: [],
+      round_of_16: [],
       round_of_32: [],
     };
     for (const p of mySpecialPreds || []) {
@@ -121,10 +124,11 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
     return map;
   }, [mySpecialPreds]);
 
-  const STAGE_MAX: Record<'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32', number> = {
+  const STAGE_MAX: Record<'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32', number> = {
     finalist: 2,
     semifinalist: 4,
     quarterfinalist: 8,
+    round_of_16: 16,
     round_of_32: 32,
   };
 
@@ -163,10 +167,11 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
     setChampionPickerOpen(false);
     optimisticChampion(teamCode);
 
-    const cascadeOrder: ('finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32')[] = [
+    const cascadeOrder: ('finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32')[] = [
       'finalist',
       'semifinalist',
       'quarterfinalist',
+      'round_of_16',
       'round_of_32',
     ];
     const cascadedStages: string[] = [];
@@ -209,6 +214,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
       finalist: true,
       semifinalist: true,
       quarterfinalist: true,
+      round_of_16: true,
       round_of_32: true,
     };
     const items: { label: string; pts: number }[] = [];
@@ -217,7 +223,8 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
       if (enabled.finalist !== false) items.push({ label: 'Finalistas (2)', pts: pointsConfig.finalist * 2 });
       if (enabled.semifinalist !== false) items.push({ label: 'Semis (4)', pts: pointsConfig.semifinalist * 4 });
       if (enabled.quarterfinalist !== false) items.push({ label: 'Quartas (8)', pts: pointsConfig.quarterfinalist * 8 });
-      if (enabled.round_of_32 !== false) items.push({ label: 'Mata-mata (32)', pts: pointsConfig.round_of_32 * 32 });
+      if (enabled.round_of_16 !== false) items.push({ label: 'Oitavas (16)', pts: (pointsConfig.round_of_16 ?? 2) * 16 });
+      if (enabled.round_of_32 !== false) items.push({ label: '16 avos (32)', pts: (pointsConfig.round_of_32 ?? 1) * 32 });
     }
     const total = items.reduce((acc, i) => acc + i.pts, 0);
     return { items, total };
@@ -304,6 +311,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     bolaoId={bolaoId}
                     isPremium={isPremium}
                     matches={matches}
+                    currentUserId={currentUserId}
                     enabledTypes={enabledTypes}
                     pointsConfig={pointsConfig}
                     championPick={myChampionPick}

@@ -261,7 +261,7 @@ export function useToggleSpecialPrediction() {
   return useMutation({
     mutationFn: (params: {
       bolaoId: string;
-      predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32';
+      predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32';
       teamCode: string;
     }) => bolaoService.toggleSpecialPrediction(params.bolaoId, params.predictionType, params.teamCode),
     onSuccess: (_data, variables) => {
@@ -295,6 +295,18 @@ export function useSetPlayerPrediction() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
+    },
+  });
+}
+
+export function useSetRoundOf32FromProjection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { bolaoId: string; codes: string[] }) =>
+      bolaoService.setRoundOf32FromProjection(params.bolaoId, params.codes),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['special-summary', variables.bolaoId] });
     },
   });
 }
