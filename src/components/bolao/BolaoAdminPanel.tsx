@@ -109,7 +109,8 @@ const SPECIAL_TYPES: Record<string, string> = {
   finalist: 'Finalistas',
   semifinalist: 'Semifinalistas',
   quarterfinalist: 'Quartas de Final',
-  round_of_32: 'Mata-mata (32)',
+  round_of_16: 'Oitavas de Final',
+  round_of_32: '16 avos de final',
 };
 
 const PLAYER_AWARD_TYPES: { key: string; label: string; sub: string }[] = [

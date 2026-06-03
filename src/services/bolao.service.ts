@@ -45,12 +45,14 @@ export interface Bolao {
     finalist: boolean;
     semifinalist: boolean;
     quarterfinalist: boolean;
+    round_of_16: boolean;
     round_of_32: boolean;
   };
   special_predictions_points: {
     finalist: number;
     semifinalist: number;
     quarterfinalist: number;
+    round_of_16: number;
     round_of_32: number;
   };
   champion_points: number;
@@ -120,7 +122,7 @@ export interface ChampionPrediction {
 }
 
 export type SpecialPredictionType =
-  | 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32'
+  | 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32'
   | 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
 
 export type PlayerAwardType = 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
@@ -575,7 +577,7 @@ export const bolaoService = {
 
   async toggleSpecialPrediction(
     bolaoId: string,
-    predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32',
+    predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32',
     teamCode: string
   ): Promise<{ action: 'added' | 'removed'; count?: number }> {
     const { data, error } = await supabase.rpc('toggle_special_prediction', {

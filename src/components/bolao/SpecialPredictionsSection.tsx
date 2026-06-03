@@ -10,12 +10,13 @@ import {
 import type { WcMatch } from '@/services/bolao.service';
 import { useToast } from '@/hooks/use-toast';
 
-type SpecialType = 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32';
+type SpecialType = 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32';
 
 interface PointsConfig {
   finalist: number;
   semifinalist: number;
   quarterfinalist: number;
+  round_of_16: number;
   round_of_32: number;
 }
 
@@ -41,7 +42,8 @@ const TYPE_META: Record<
   finalist: { label: 'Finalistas', sublabel: 'Escolha 2 seleções', max: 2, icon: Trophy },
   semifinalist: { label: 'Semifinalistas', sublabel: 'Escolha 4 seleções', max: 4, icon: Flag },
   quarterfinalist: { label: 'Quartas de final', sublabel: 'Escolha 8 seleções', max: 8, icon: Flag },
-  round_of_32: { label: 'Mata-mata (16 avos)', sublabel: 'Escolha 32 seleções', max: 32, icon: Target },
+  round_of_16: { label: 'Oitavas de final', sublabel: 'Escolha 16 seleções', max: 16, icon: Flag },
+  round_of_32: { label: '16 avos de final', sublabel: 'Escolha 32 seleções', max: 32, icon: Target },
 };
 
 function extractTeams(matches: WcMatch[]) {
@@ -323,6 +325,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
       finalist: [],
       semifinalist: [],
       quarterfinalist: [],
+      round_of_16: [],
       round_of_32: [],
     };
     for (const p of myPreds || []) {
@@ -337,12 +340,14 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     const fi = myPicksByType.finalist || [];
     const se = myPicksByType.semifinalist || [];
     const qu = myPicksByType.quarterfinalist || [];
+    const r16 = myPicksByType.round_of_16 || [];
     const dedup = (arr: string[]) => Array.from(new Set(arr));
     return {
       finalist: dedup(ch),
       semifinalist: dedup([...ch, ...fi]),
       quarterfinalist: dedup([...ch, ...fi, ...se]),
-      round_of_32: dedup([...ch, ...fi, ...se, ...qu]),
+      round_of_16: dedup([...ch, ...fi, ...se, ...qu]),
+      round_of_32: dedup([...ch, ...fi, ...se, ...qu, ...r16]),
     };
   }, [championPick, myPicksByType]);
 
@@ -352,7 +357,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
    * quartas e mata-mata 32 se houver vaga e a fase estiver habilitada.
    */
   const handleAfterAdd = (type: SpecialType, teamCode: string) => {
-    const HIERARCHY: SpecialType[] = ['finalist', 'semifinalist', 'quarterfinalist', 'round_of_32'];
+    const HIERARCHY: SpecialType[] = ['finalist', 'semifinalist', 'quarterfinalist', 'round_of_16', 'round_of_32'];
     const idx = HIERARCHY.indexOf(type);
     if (idx === -1) return;
     const stagesBelow = HIERARCHY.slice(idx + 1);
@@ -375,6 +380,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
       finalist: new Map(),
       semifinalist: new Map(),
       quarterfinalist: new Map(),
+      round_of_16: new Map(),
       round_of_32: new Map(),
     };
     for (const s of summary || []) {
@@ -383,11 +389,13 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     return map;
   }, [summary]);
 
-  const pts: PointsConfig = pointsConfig ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_32: 1 };
+  // Merge com defaults — bolões criados antes das Oitavas não têm round_of_16 no points.
+  const pts: PointsConfig = { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1, ...(pointsConfig ?? {}) };
   const POINTS_LABEL: Record<SpecialType, string> = {
     finalist: `+${pts.finalist} pts cada`,
     semifinalist: `+${pts.semifinalist} pts cada`,
     quarterfinalist: `+${pts.quarterfinalist} pts cada`,
+    round_of_16: `+${pts.round_of_16} pts cada`,
     round_of_32: `+${pts.round_of_32} pt cada`,
   };
 
