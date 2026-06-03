@@ -367,6 +367,7 @@ export function useUpdateBolaoSettings() {
       bolaoId: string;
       settings: {
         name?: string;
+        description?: string | null;
         champion_enabled?: boolean;
         special_predictions_enabled?: boolean;
         special_predictions_config?: Record<string, boolean>;

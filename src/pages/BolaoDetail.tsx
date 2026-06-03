@@ -393,6 +393,7 @@ const BolaoDetail: React.FC = () => {
             onOpenChange={setShowAdmin}
             bolaoId={bolao.id}
             bolaoName={bolao.name}
+            bolaoDescription={bolao.description}
             isClosed={bolao.is_closed}
             isPremium={bolao.is_premium}
             scoringPreset={bolao.scoring_preset ?? null}
@@ -765,6 +766,7 @@ const BolaoDetail: React.FC = () => {
           onOpenChange={setShowAdmin}
           bolaoId={bolao.id}
           bolaoName={bolao.name}
+          bolaoDescription={bolao.description}
           isClosed={bolao.is_closed}
           isPremium={bolao.is_premium}
           scoringPreset={bolao.scoring_preset ?? null}

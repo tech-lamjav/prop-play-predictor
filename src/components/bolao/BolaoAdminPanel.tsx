@@ -43,6 +43,7 @@ interface BolaoAdminPanelProps {
   onOpenChange: (open: boolean) => void;
   bolaoId: string;
   bolaoName?: string;
+  bolaoDescription?: string | null;
   isClosed: boolean;
   isPremium: boolean;
   scoringPreset: string | null;
@@ -257,6 +258,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   onOpenChange,
   bolaoId,
   bolaoName,
+  bolaoDescription,
   isClosed,
   isPremium,
   scoringPreset,
@@ -297,6 +299,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   // Edição inline do nome do bolão
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(bolaoName ?? '');
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState(bolaoDescription ?? '');
 
   // Scoring state — toggles permitem desativar uma categoria. Quando OFF,
   // salva 0 no banco; o valor "ultimo ligado" fica em customResult/customExact
@@ -560,6 +564,26 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     );
   };
 
+  const handleSaveDesc = () => {
+    const trimmed = descDraft.trim();
+    if (trimmed === (bolaoDescription ?? '').trim()) {
+      setEditingDesc(false);
+      return;
+    }
+    updateSettings.mutate(
+      { bolaoId, settings: { description: trimmed || null } },
+      {
+        onSuccess: () => {
+          toast({ title: 'Descrição atualizada' });
+          setEditingDesc(false);
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro ao atualizar descrição', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
+  };
+
   const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -682,6 +706,71 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                     setEditingName(true);
                   }}
                   className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 border border-line hover:border-line-2 hover:bg-canvas-2 hover:text-ink inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Editar
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="py-4 border-b border-line">
+          <p className="text-[13px] font-semibold text-ink leading-tight mb-1">Descrição do bolão</p>
+          {editingDesc ? (
+            <div className="mt-2 space-y-2">
+              <textarea
+                value={descDraft}
+                onChange={(e) => setDescDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setDescDraft(bolaoDescription ?? '');
+                    setEditingDesc(false);
+                  }
+                }}
+                maxLength={280}
+                rows={3}
+                autoFocus
+                placeholder="Ex: bolão da firma — o campeão paga a pizza 🍕"
+                aria-label="Descrição do bolão"
+                className="w-full px-3 py-2 rounded-rebrand-md border border-line bg-white text-[13px] text-ink focus:border-forest focus:ring-2 focus:ring-forest/20 focus:outline-none resize-none"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveDesc}
+                  disabled={updateSettings.isPending}
+                  className="h-9 px-3 rounded-rebrand-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-2 disabled:opacity-50 transition-colors"
+                >
+                  {updateSettings.isPending ? 'Salvando...' : 'Salvar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescDraft(bolaoDescription ?? '');
+                    setEditingDesc(false);
+                  }}
+                  disabled={updateSettings.isPending}
+                  className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 hover:bg-canvas-2 hover:text-ink disabled:opacity-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <span className="text-[10px] text-ink-3 ml-auto tabular-nums">{descDraft.length}/280</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-3 mt-1">
+              <p className={`text-[14px] whitespace-pre-line ${bolaoDescription ? 'text-ink' : 'text-ink-3 italic'}`}>
+                {bolaoDescription || 'Sem descrição'}
+              </p>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescDraft(bolaoDescription ?? '');
+                    setEditingDesc(true);
+                  }}
+                  className="shrink-0 h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 border border-line hover:border-line-2 hover:bg-canvas-2 hover:text-ink inline-flex items-center gap-1.5 transition-colors"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   Editar
