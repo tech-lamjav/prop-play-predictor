@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Filter, CheckCircle, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { MatchPredictionCard } from '@/components/bolao/MatchPredictionCard';
 import { FilterScroller } from '@/components/bolao/FilterScroller';
+import { GroupProjectionTable } from '@/components/bolao/GroupProjectionTable';
+import { computeGroupProjection, type PredictionMap } from '@/components/bolao/group-projection';
 import type { WcMatch, BolaoPrediction } from '@/services/bolao.service';
 
 interface PredictionsListProps {
@@ -29,8 +31,8 @@ type FilterMode = 'group' | 'date' | 'stage';
 
 const STAGE_LABEL_BY_KEY: Record<string, string> = {
   group: 'Fase de grupos',
-  round_of_32: 'Oitavas (32)',
-  round_of_16: '16 Avos',
+  round_of_32: '16 avos',
+  round_of_16: 'Oitavas',
   quarter: 'Quartas',
   semi: 'Semifinais',
   third_place: '3º lugar',
@@ -106,6 +108,20 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
     () => new Map((predictions || []).map((p) => [p.match_id, p])),
     [predictions]
   );
+
+  // Projeção dos grupos a partir dos palpites do usuário (group_name → projeção).
+  const projectionByGroup = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof computeGroupProjection>['groups'][number]>();
+    if (!matches) return map;
+    const predMap: PredictionMap = {};
+    for (const p of predictions || []) {
+      if (p.predicted_home_score != null && p.predicted_away_score != null) {
+        predMap[p.match_id] = { home: p.predicted_home_score, away: p.predicted_away_score };
+      }
+    }
+    for (const g of computeGroupProjection(matches, predMap).groups) map.set(g.group, g);
+    return map;
+  }, [matches, predictions]);
 
   // Detecta novos saves observando mudança em predictions (para indicator
   // "Tudo salvo — última alteração há Xs" no footer)
@@ -543,6 +559,10 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
                   {groupName}
                 </h3>
               )}
+              {filterMode === 'group' && groupName.startsWith('Grupo ') &&
+                projectionByGroup.get(groupName.slice(6)) && (
+                  <GroupProjectionTable projection={projectionByGroup.get(groupName.slice(6))!} />
+                )}
               <div className="bg-white border border-line rounded-rebrand-md divide-y divide-line overflow-hidden">
                 {groupMatches.map((match) => (
                   <div key={match.id} id={`match-${match.id}`} className="relative">
