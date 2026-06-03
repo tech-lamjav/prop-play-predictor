@@ -54,6 +54,8 @@ export interface Bolao {
     round_of_32: number;
   };
   champion_points: number;
+  player_awards_enabled: Record<PlayerAwardType, boolean> | null;
+  player_award_points: Record<PlayerAwardType, number> | null;
   created_at: string;
 }
 
@@ -117,10 +119,27 @@ export interface ChampionPrediction {
   created_at: string;
 }
 
+export type SpecialPredictionType =
+  | 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32'
+  | 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
+
+export type PlayerAwardType = 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
+
 export interface SpecialPrediction {
-  prediction_type: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32';
-  predicted_team_code: string;
+  prediction_type: SpecialPredictionType;
+  predicted_team_code: string | null;
+  predicted_player_id: number | null;
   points_earned: number | null;
+}
+
+export interface WcPlayer {
+  player_id: number;
+  player_name: string;
+  team_code: string;
+  position: string | null;
+  shirt_number: number | null;
+  birth_date: string | null;
+  photo_url: string | null;
 }
 
 export interface SpecialSummaryEntry {
@@ -570,6 +589,35 @@ export const bolaoService = {
     return { action: result.action as 'added' | 'removed', count: result.count };
   },
 
+  // --- Player Awards (palpites de jogador) ---
+
+  /** Lista todos os jogadores da Copa (ref global wc_players). Filtro/busca é client-side. */
+  async getWcPlayers(): Promise<WcPlayer[]> {
+    const { data, error } = await supabase
+      .from('wc_players')
+      .select('player_id, player_name, team_code, position, shirt_number, birth_date, photo_url')
+      .order('player_name');
+    if (error) throw error;
+    return (data || []) as WcPlayer[];
+  },
+
+  /** Define (pick único) o palpite de jogador. playerId null limpa o palpite. */
+  async setPlayerPrediction(
+    bolaoId: string,
+    predictionType: PlayerAwardType,
+    playerId: number | null
+  ): Promise<{ action: 'set' | 'removed' }> {
+    const { data, error } = await supabase.rpc('set_player_prediction', {
+      p_bolao_id: bolaoId,
+      p_prediction_type: predictionType,
+      p_player_id: playerId,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; action?: string; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao salvar palpite');
+    return { action: result.action as 'set' | 'removed' };
+  },
+
   async updateBolaoScoring(
     bolaoId: string,
     preset: 'standard' | 'classic' | 'weighted_stages' | 'custom',
@@ -686,6 +734,8 @@ export const bolaoService = {
       special_predictions_config?: Record<string, boolean>;
       special_predictions_points?: Record<string, number>;
       champion_points?: number;
+      player_awards_enabled?: Record<string, boolean>;
+      player_award_points?: Record<string, number>;
     }
   ): Promise<void> {
     const { error } = await supabase

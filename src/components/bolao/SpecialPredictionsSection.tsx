@@ -326,7 +326,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
       round_of_32: [],
     };
     for (const p of myPreds || []) {
-      if (p.prediction_type in map) map[p.prediction_type].push(p.predicted_team_code);
+      if (p.prediction_type in map && p.predicted_team_code) map[p.prediction_type].push(p.predicted_team_code);
     }
     return map;
   }, [myPreds]);

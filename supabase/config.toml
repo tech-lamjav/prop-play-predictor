@@ -18,3 +18,27 @@ verify_jwt = false
 # Desabilita verificação JWT para webhooks do Stripe
 # Webhooks do Stripe usam assinatura própria (stripe-signature) ao invés de JWT
 verify_jwt = false
+
+[functions.ingest-wc-scores]
+# Job de cron — sem JWT de usuário. Protegida pelo header x-cron-secret (CRON_SECRET).
+verify_jwt = false
+
+[functions.ingest-wc-squads]
+# Ingestão de elencos sob demanda — protegida pelo header x-cron-secret (CRON_SECRET).
+verify_jwt = false
+
+[functions.enrich-wc-players]
+# Enriquecimento de birth_date (em lotes) — protegida pelo header x-cron-secret.
+verify_jwt = false
+
+[functions.ingest-wc-topscorer]
+# Resolve o artilheiro automático (pós-final) — protegida pelo header x-cron-secret.
+verify_jwt = false
+
+[functions.set-player-award]
+# Registra vencedor de prêmio (júri/manual) + liquida — protegida pelo header x-cron-secret.
+verify_jwt = false
+
+[functions.mirror-wc-photos]
+# Espelha fotos dos jogadores no nosso Storage (evita hotlink) — header x-cron-secret.
+verify_jwt = false

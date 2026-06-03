@@ -272,6 +272,33 @@ export function useToggleSpecialPrediction() {
   });
 }
 
+// =============================================
+// Player Awards (palpites de jogador)
+// =============================================
+
+export function useWcPlayers() {
+  return useQuery({
+    queryKey: ['wc-players'],
+    queryFn: () => bolaoService.getWcPlayers(),
+    staleTime: 60 * 60 * 1000, // ref data quase estática
+  });
+}
+
+export function useSetPlayerPrediction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      bolaoId: string;
+      predictionType: 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
+      playerId: number | null;
+    }) => bolaoService.setPlayerPrediction(params.bolaoId, params.predictionType, params.playerId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
+    },
+  });
+}
+
 export function useUpdateBolaoScoring() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -321,6 +348,8 @@ export function useUpdateBolaoSettings() {
         special_predictions_config?: Record<string, boolean>;
         special_predictions_points?: Record<string, number>;
         champion_points?: number;
+        player_awards_enabled?: Record<string, boolean>;
+        player_award_points?: Record<string, number>;
       };
     }) => bolaoService.updateBolaoSettings(params.bolaoId, params.settings),
     onSuccess: (_data, variables) => {
