@@ -642,6 +642,8 @@ const BolaoDetail: React.FC = () => {
           matches={matches}
           predictions={myPredictions}
           onContinuarPalpites={() => setPredictionsModalOpen(true)}
+          onSpecialPicks={() => setSpecialPredictionsOpen(true)}
+          onPlayerPicks={playerAwardsAnyEnabled ? () => setPlayerAwardsOpen(true) : undefined}
         />
 
         {/* ── Sidebar mobile (logo após stats topo, lg:hidden pra desktop) ── */}
