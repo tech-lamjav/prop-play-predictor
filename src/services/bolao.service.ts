@@ -573,7 +573,7 @@ export const bolaoService = {
     // agrega tudo da mesma tabela.
     const { data, error } = await supabase
       .from('bolao_special_predictions')
-      .select('prediction_type, predicted_team_code, points_earned')
+      .select('prediction_type, predicted_team_code, predicted_player_id, points_earned')
       .eq('bolao_id', bolaoId)
       .eq('user_id', userId)
       .order('prediction_type');

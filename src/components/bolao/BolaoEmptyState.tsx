@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   Share2,
   Download,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
@@ -42,6 +43,8 @@ interface BolaoEmptyStateProps {
    * Substituiu o antigo par `onChampionPick` + `onSpecialPicks` — ambos abriam o mesmo modal.
    */
   onSpecialPicks: () => void;
+  /** Abre o modal de Palpites de Jogador. undefined = prêmios desabilitados (esconde a aba). */
+  onPlayerPicks?: () => void;
 }
 
 type EmptyStateTab = 'palpites' | 'tabela' | 'ranking';
@@ -74,6 +77,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   onQuickPick,
   onConfigurar,
   onSpecialPicks,
+  onPlayerPicks,
 }) => {
   const [linkCopied, setLinkCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<EmptyStateTab>('palpites');
@@ -246,6 +250,17 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
                   PREMIUM
                 </span>
               )}
+            </button>
+          )}
+          {/* Aba "Jogadores" — abre modal de palpites de jogador (artilheiro/craque/...) */}
+          {onPlayerPicks && (
+            <button
+              type="button"
+              onClick={onPlayerPicks}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 border-transparent text-ink-2 hover:text-ink hover:border-line-2 text-[13px] font-semibold whitespace-nowrap transition-colors shrink-0"
+            >
+              <Star className="w-3.5 h-3.5" />
+              Jogadores
             </button>
           )}
           {/* Aba "Tabela" — grupos da Copa */}

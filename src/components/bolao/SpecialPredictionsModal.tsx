@@ -11,7 +11,6 @@ import { TeamFlag } from '@/components/bolao/TeamFlag';
 import { ChampionHeroCard } from '@/components/bolao/ChampionHeroCard';
 import { ChampionPickModal } from '@/components/bolao/ChampionPickModal';
 import { SpecialPredictionsSection } from '@/components/bolao/SpecialPredictionsSection';
-import { PlayerAwardsSection } from '@/components/bolao/PlayerAwardsSection';
 import {
   useChampionPredictions,
   useUpsertChampionPrediction,
@@ -50,8 +49,6 @@ interface SpecialPredictionsModalProps {
   enabledTypes?: SpecialPredictionsConfig;
   championPoints: number;
   pointsConfig: PointsConfig;
-  playerAwardsEnabled?: Record<string, boolean>;
-  playerAwardPoints?: Record<string, number>;
   specialDeadlines?: SpecialDeadlinesConfig | null;
 }
 
@@ -68,8 +65,6 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
   enabledTypes,
   championPoints,
   pointsConfig,
-  playerAwardsEnabled,
-  playerAwardPoints,
   specialDeadlines,
 }) => {
   const [championPickerOpen, setChampionPickerOpen] = useState(false);
@@ -321,23 +316,6 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     specialDeadlines={specialDeadlines}
                   />
                 )}
-
-                {/* Palpites de jogador (artilheiro/goleiro/craque/revelação) */}
-                <div>
-                  <div className="flex items-center gap-2 mt-1 mb-2">
-                    <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-3">
-                      Palpites de jogador
-                    </h3>
-                    <div className="flex-1 h-px bg-line" />
-                  </div>
-                  <PlayerAwardsSection
-                    bolaoId={bolaoId}
-                    enabled={playerAwardsEnabled}
-                    pointsConfig={playerAwardPoints}
-                    matches={matches}
-                    specialDeadlines={specialDeadlines}
-                  />
-                </div>
               </div>
 
               {/* Sidebar — bônus, popularidade, prazo (sempre visível) */}

@@ -15,6 +15,7 @@ import {
   Target,
   AlertCircle,
   LogOut,
+  Star,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +32,7 @@ import { UserPredictionsModal } from '@/components/bolao/UserPredictionsModal';
 import { BolaoShareButton } from '@/components/bolao/BolaoShareButton';
 import { BolaoAdminPanel } from '@/components/bolao/BolaoAdminPanel';
 import { SpecialPredictionsModal } from '@/components/bolao/SpecialPredictionsModal';
+import { PlayerAwardsModal } from '@/components/bolao/PlayerAwardsModal';
 import { PredictionsModal } from '@/components/bolao/PredictionsModal';
 
 import { BolaoStatsPanel } from '@/components/bolao/BolaoStatsPanel';
@@ -106,6 +108,7 @@ const BolaoDetail: React.FC = () => {
 
   const [predictionsModalOpen, setPredictionsModalOpen] = useState(false);
   const [specialPredictionsOpen, setSpecialPredictionsOpen] = useState(false);
+  const [playerAwardsOpen, setPlayerAwardsOpen] = useState(false);
   const [selectedRankUser, setSelectedRankUser] = useState<BolaoRankingEntry | null>(null);
 
   // Auto-abre o modal de palpites quando vem com ?openPalpites=1
@@ -357,6 +360,7 @@ const BolaoDetail: React.FC = () => {
           /* onChampionPick removido — Campeão entrou no SpecialPredictionsModal.
              Aba "Especiais" no header do EmptyState aciona o mesmo modal. */
           onSpecialPicks={() => setSpecialPredictionsOpen(true)}
+          onPlayerPicks={playerAwardsAnyEnabled ? () => setPlayerAwardsOpen(true) : undefined}
         />
 
         {/* Modais — mesmas instâncias do hub completo, evitando dupla
@@ -383,10 +387,21 @@ const BolaoDetail: React.FC = () => {
           enabledTypes={bolao.special_predictions_config ?? undefined}
           championPoints={bolao.champion_points ?? 25}
           pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
-          playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
-          playerAwardPoints={bolao.player_award_points ?? undefined}
           specialDeadlines={bolao.special_deadlines ?? null}
         />
+
+        {playerAwardsAnyEnabled && (
+          <PlayerAwardsModal
+            open={playerAwardsOpen}
+            onOpenChange={setPlayerAwardsOpen}
+            bolaoId={bolao.id}
+            bolaoName={bolao.name}
+            matches={matches || []}
+            playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
+            playerAwardPoints={bolao.player_award_points ?? undefined}
+            specialDeadlines={bolao.special_deadlines ?? null}
+          />
+        )}
 
         {currentUserId && (
           <BolaoAdminPanel
@@ -427,6 +442,10 @@ const BolaoDetail: React.FC = () => {
   const championOrSpecialEnabled =
     (bolao.champion_enabled ?? true) || (bolao.special_predictions_enabled ?? true);
 
+  // Prêmios de jogador habilitados? (null = todos ligados por padrão)
+  const playerAwardsAnyEnabled =
+    !bolao.player_awards_enabled || Object.values(bolao.player_awards_enabled).some(Boolean);
+
   const sidebarContent = (
     <>
       {championOrSpecialEnabled && (
@@ -461,6 +480,32 @@ const BolaoDetail: React.FC = () => {
               className="text-[11px] font-semibold text-amber-2 hover:bg-amber/10 shrink-0 border border-amber/40 rounded-rebrand-sm px-2.5 py-1 transition-colors"
             >
               {myChampionPick ? 'Ver palpites →' : 'Palpitar →'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {playerAwardsAnyEnabled && (
+        <div className="bg-white border border-line rounded-rebrand-lg p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-9 h-9 rounded-rebrand-md bg-amber/10 border border-amber/30 flex items-center justify-center text-amber-2 shrink-0">
+                <Star className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">
+                  Palpites de Jogador
+                </p>
+                <p className="text-[12px] text-ink mt-0.5 truncate">
+                  Artilheiro, Craque, Goleiro, Revelação
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setPlayerAwardsOpen(true)}
+              className="text-[11px] font-semibold text-amber-2 hover:bg-amber/10 shrink-0 border border-amber/40 rounded-rebrand-sm px-2.5 py-1 transition-colors"
+            >
+              Palpitar →
             </button>
           </div>
         </div>
@@ -750,10 +795,21 @@ const BolaoDetail: React.FC = () => {
         enabledTypes={bolao.special_predictions_config ?? undefined}
         championPoints={bolao.champion_points ?? 25}
         pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
-        playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
-        playerAwardPoints={bolao.player_award_points ?? undefined}
         specialDeadlines={bolao.special_deadlines ?? null}
       />
+
+      {playerAwardsAnyEnabled && (
+        <PlayerAwardsModal
+          open={playerAwardsOpen}
+          onOpenChange={setPlayerAwardsOpen}
+          bolaoId={bolao.id}
+          bolaoName={bolao.name}
+          matches={matches || []}
+          playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
+          playerAwardPoints={bolao.player_award_points ?? undefined}
+          specialDeadlines={bolao.special_deadlines ?? null}
+        />
+      )}
 
       {/* Predictions modal */}
       <PredictionsModal
@@ -801,6 +857,7 @@ const BolaoDetail: React.FC = () => {
         bolaoId={bolao.id}
         user={selectedRankUser}
         isCurrentUser={selectedRankUser?.user_id === currentUserId}
+        playerAwardsEnabled={bolao.player_awards_enabled ?? null}
       />
 
       {/* Premium welcome modal — shown once after successful payment */}
