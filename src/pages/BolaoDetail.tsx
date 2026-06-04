@@ -341,6 +341,11 @@ const BolaoDetail: React.FC = () => {
   // Threshold pra teste = 1 (só user). Em produção depois ajustamos pra < 4.
   // Renderiza a Tela A em vez do hub completo quando o bolão ainda não tem
   // massa crítica de gente — foca em CONVIDAR + COMEÇAR A PALPITAR.
+  // Prêmios de jogador habilitados? (null = todos ligados por padrão).
+  // Definido aqui (antes do early-return da Tela A) pra ambos os branches usarem.
+  const playerAwardsAnyEnabled =
+    !bolao.player_awards_enabled || Object.values(bolao.player_awards_enabled).some(Boolean);
+
   const memberCountForGate = ranking?.length ?? 1;
   if (memberCountForGate < 2 && !bolao.is_closed) {
     return (
@@ -441,10 +446,6 @@ const BolaoDetail: React.FC = () => {
   // sidebar mostra só o resumo "Campeão, Finalistas, Semis..." e abre o modal.
   const championOrSpecialEnabled =
     (bolao.champion_enabled ?? true) || (bolao.special_predictions_enabled ?? true);
-
-  // Prêmios de jogador habilitados? (null = todos ligados por padrão)
-  const playerAwardsAnyEnabled =
-    !bolao.player_awards_enabled || Object.values(bolao.player_awards_enabled).some(Boolean);
 
   const sidebarContent = (
     <>
