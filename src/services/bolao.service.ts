@@ -591,14 +591,24 @@ export const bolaoService = {
 
   // --- Player Awards (palpites de jogador) ---
 
-  /** Lista todos os jogadores da Copa (ref global wc_players). Filtro/busca é client-side. */
+  /** Lista todos os jogadores da Copa (ref global wc_players). Filtro/busca é client-side.
+   *  Pagina em lotes de 1000 porque o PostgREST corta em 1000 linhas por padrão — sem isso,
+   *  jogadores no fim da ordem alfabética (ex.: Vini Jr) não apareciam no seletor. */
   async getWcPlayers(): Promise<WcPlayer[]> {
-    const { data, error } = await supabase
-      .from('wc_players')
-      .select('player_id, player_name, team_code, position, shirt_number, birth_date, photo_url')
-      .order('player_name');
-    if (error) throw error;
-    return (data || []) as WcPlayer[];
+    const PAGE = 1000;
+    const all: WcPlayer[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('wc_players')
+        .select('player_id, player_name, team_code, position, shirt_number, birth_date, photo_url')
+        .order('player_name')
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data || []) as WcPlayer[];
+      all.push(...rows);
+      if (rows.length < PAGE) break;
+    }
+    return all;
   },
 
   /** Define (pick único) o palpite de jogador. playerId null limpa o palpite. */
