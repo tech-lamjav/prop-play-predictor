@@ -38,7 +38,7 @@ import {
  *
  * Pra liberar: setar pra `true`.
  */
-const SHOW_BOLAO_NAV_ITEM = false;
+const SHOW_BOLAO_NAV_ITEM = true;
 
 /**
  * Visual variant da nav.
