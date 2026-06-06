@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3, Calendar, Menu, X, LogIn, Zap, ChevronLeft, ChevronDown,
-  Target, FileText, TrendingUp, Radar,
+  Target, FileText, TrendingUp, Radar, Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -175,6 +175,21 @@ export const NBAHomeNav: React.FC<NBAHomeHeaderProps> = ({ showBack = false, bac
                   })}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Bolão — destino único, sem dropdown */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleNavigation('/bolao')}
+                className={`flex items-center gap-2 px-4 h-9 ${
+                  location.pathname.startsWith('/bolao')
+                    ? 'text-forest font-semibold'
+                    : 'text-ink-2 hover:text-ink hover:bg-ink-3/40'
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold uppercase tracking-wide">Bolão</span>
+              </Button>
             </div>
 
             {/* Right: premium + UserNav | Entrar/Assinar */}
@@ -281,6 +296,26 @@ export const NBAHomeNav: React.FC<NBAHomeHeaderProps> = ({ showBack = false, bac
                         </Button>
                       );
                     })}
+                  </div>
+                </div>
+
+                <div className="border-t border-line" />
+
+                <div>
+                  <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-2">Bolão</p>
+                  <div className="flex flex-col gap-1">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleNavigation('/bolao')}
+                      className={`w-full justify-start h-10 ${
+                        location.pathname.startsWith('/bolao')
+                          ? 'bg-forest-tint text-forest'
+                          : 'text-ink-2 hover:text-ink hover:bg-ink-3/40'
+                      }`}
+                    >
+                      <Trophy className="w-4 h-4 mr-3" />
+                      <span className="text-sm">Bolão Copa 2026</span>
+                    </Button>
                   </div>
                 </div>
               </div>
