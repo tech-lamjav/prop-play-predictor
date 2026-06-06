@@ -9,6 +9,10 @@ import {
   Crown,
   Flag,
   ListChecks,
+  Goal,
+  Star,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 import {
   Dialog,
@@ -22,11 +26,14 @@ import {
   useWcMatches,
   useChampionPredictions,
   useUserSpecialPredictions,
+  useWcPlayers,
 } from '@/hooks/use-bolao';
 import type {
   BolaoRankingEntry,
   WcMatch,
   BolaoPrediction,
+  WcPlayer,
+  PlayerAwardType,
 } from '@/services/bolao.service';
 
 interface UserPredictionsModalProps {
@@ -35,9 +42,18 @@ interface UserPredictionsModalProps {
   bolaoId: string;
   user: BolaoRankingEntry | null;
   isCurrentUser?: boolean;
+  /** Liga/desliga a aba "Jogadores". Default: mostra (null = todos habilitados). */
+  playerAwardsEnabled?: Record<string, boolean> | null;
 }
 
-type TabId = 'jogos' | 'especiais';
+type TabId = 'jogos' | 'especiais' | 'jogadores';
+
+const PLAYER_AWARD_META: { key: PlayerAwardType; label: string; sub: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { key: 'top_scorer', label: 'Artilheiro', sub: 'Chuteira de Ouro', icon: Goal },
+  { key: 'best_player', label: 'Craque da Copa', sub: 'Bola de Ouro', icon: Star },
+  { key: 'best_goalkeeper', label: 'Melhor Goleiro', sub: 'Luva de Ouro', icon: Shield },
+  { key: 'best_young_player', label: 'Revelação', sub: 'Melhor jovem', icon: Sparkles },
+];
 
 const SPECIAL_META: Record<
   'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32',
@@ -76,8 +92,12 @@ export const UserPredictionsModal: React.FC<UserPredictionsModalProps> = ({
   bolaoId,
   user,
   isCurrentUser,
+  playerAwardsEnabled,
 }) => {
   const [tab, setTab] = useState<TabId>('jogos');
+
+  // Mostra a aba "Jogadores" se algum prêmio estiver habilitado (null = todos).
+  const showPlayerTab = !playerAwardsEnabled || Object.values(playerAwardsEnabled).some(Boolean);
 
   if (!user) return null;
 
@@ -141,15 +161,24 @@ export const UserPredictionsModal: React.FC<UserPredictionsModalProps> = ({
             >
               Especiais
             </TabButton>
+            {showPlayerTab && (
+              <TabButton
+                active={tab === 'jogadores'}
+                onClick={() => setTab('jogadores')}
+                icon={<Star className="w-3.5 h-3.5" />}
+              >
+                Jogadores
+              </TabButton>
+            )}
           </div>
         </DialogHeader>
 
         {/* Conteúdo scrollável */}
         <div className="flex-1 overflow-y-auto minimal-scrollbar px-5 sm:px-6 py-5">
-          {tab === 'jogos' ? (
-            <JogosTab bolaoId={bolaoId} userId={user.user_id} />
-          ) : (
-            <EspeciaisTab bolaoId={bolaoId} userId={user.user_id} />
+          {tab === 'jogos' && <JogosTab bolaoId={bolaoId} userId={user.user_id} />}
+          {tab === 'especiais' && <EspeciaisTab bolaoId={bolaoId} userId={user.user_id} />}
+          {tab === 'jogadores' && (
+            <JogadoresTab bolaoId={bolaoId} userId={user.user_id} enabled={playerAwardsEnabled} />
           )}
         </div>
       </DialogContent>
@@ -565,6 +594,120 @@ const EspeciaisTab: React.FC<{ bolaoId: string; userId: string }> = ({ bolaoId, 
           </p>
         )}
     </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Tab: Jogadores (artilheiro/craque/goleiro/revelação)
+// ─────────────────────────────────────────────────────────────────
+
+const JogadoresTab: React.FC<{ bolaoId: string; userId: string; enabled?: Record<string, boolean> | null }> = ({
+  bolaoId,
+  userId,
+  enabled,
+}) => {
+  const { data: specialPreds, isLoading } = useUserSpecialPredictions(bolaoId, userId);
+  const { data: players } = useWcPlayers();
+
+  const playersById = useMemo(() => {
+    const m = new Map<number, WcPlayer>();
+    for (const p of players || []) m.set(p.player_id, p);
+    return m;
+  }, [players]);
+
+  /** award_type → { player, points } escolhido pelo usuário. */
+  const picksByType = useMemo(() => {
+    const map: Record<string, { playerId: number; points: number | null }> = {};
+    for (const p of specialPreds || []) {
+      if (p.predicted_player_id != null) {
+        map[p.prediction_type] = { playerId: p.predicted_player_id, points: p.points_earned };
+      }
+    }
+    return map;
+  }, [specialPreds]);
+
+  const awards = PLAYER_AWARD_META.filter((a) => !enabled || enabled[a.key] !== false);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-16 rounded-rebrand-md bg-canvas-2 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  const anyPick = awards.some((a) => picksByType[a.key]);
+  if (!anyPick) {
+    return (
+      <div className="text-center py-12 text-ink-3">
+        <Star className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-[13px]">Nenhum palpite de jogador registrado ainda.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {awards.map((award) => {
+        const pick = picksByType[award.key];
+        const player = pick ? playersById.get(pick.playerId) ?? null : null;
+        const Icon = award.icon;
+        const earned = pick?.points != null && pick.points > 0;
+        return (
+          <div key={award.key} className="rounded-rebrand-md border border-line bg-white overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="w-9 h-9 rounded-rebrand-sm bg-canvas-2 text-ink-2 flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-ink leading-tight">{award.label}</p>
+                <p className="text-[11px] text-ink-2 leading-tight mt-0.5">{award.sub}</p>
+              </div>
+              {pick ? (
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <PlayerAvatar player={player} />
+                  <div className="min-w-0 text-right">
+                    <p className="text-[12px] font-semibold text-ink truncate">
+                      {player?.player_name ?? `#${pick.playerId}`}
+                    </p>
+                    {player && (
+                      <p className="text-[10px] text-ink-2 flex items-center gap-1 justify-end">
+                        <TeamFlag code={player.team_code} size="sm" /> {player.team_code}
+                      </p>
+                    )}
+                  </div>
+                  {earned && <PointsBadge points={pick.points} />}
+                </div>
+              ) : (
+                <span className="text-[11px] text-ink-3 italic shrink-0">não palpitou</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const PlayerAvatar: React.FC<{ player: WcPlayer | null }> = ({ player }) => {
+  const [err, setErr] = useState(false);
+  if (!player || err || !player.photo_url) {
+    return (
+      <div className="w-8 h-8 rounded-full bg-canvas-2 text-ink-3 flex items-center justify-center text-[10px] font-bold shrink-0">
+        {(player?.player_name ?? '?').slice(0, 2).toUpperCase()}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={player.photo_url}
+      alt={player.player_name}
+      onError={() => setErr(true)}
+      className="w-8 h-8 rounded-full object-cover bg-canvas-2 shrink-0"
+      loading="lazy"
+    />
   );
 };
 

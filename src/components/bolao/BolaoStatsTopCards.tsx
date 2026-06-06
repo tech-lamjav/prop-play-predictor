@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { ChevronRight, Clock, Check, AlertCircle } from 'lucide-react';
+import { ChevronRight, Clock, Check, AlertCircle, Circle, Target, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
-import { computeMatchDeadline } from '@/hooks/use-bolao';
+import { computeMatchDeadline, useMySpecialPredictions } from '@/hooks/use-bolao';
+import { specialDeadline, type SpecialDeadlineType } from '@/components/bolao/special-deadlines';
 import type { Bolao, BolaoPrediction, WcMatch } from '@/services/bolao.service';
 
 interface BolaoStatsTopCardsProps {
@@ -10,6 +11,31 @@ interface BolaoStatsTopCardsProps {
   matches: WcMatch[] | undefined;
   predictions: BolaoPrediction[] | undefined;
   onContinuarPalpites: () => void;
+  /** Abre o modal de Palpites Especiais (seleções). */
+  onSpecialPicks?: () => void;
+  /** Abre o modal de Palpites de Jogador. */
+  onPlayerPicks?: () => void;
+}
+
+// Tiers de seleção do mata-mata — cada um fecha no início da rodada que o decide.
+const TIER_FRONTS: { key: string; type: SpecialDeadlineType; label: string; max: number }[] = [
+  { key: 'round_of_32', type: 'round_of_32', label: '16 avos', max: 32 },
+  { key: 'round_of_16', type: 'round_of_16', label: 'Oitavas', max: 16 },
+  { key: 'quarterfinalist', type: 'quarterfinalist', label: 'Quartas', max: 8 },
+  { key: 'semifinalist', type: 'semifinalist', label: 'Semis', max: 4 },
+  { key: 'finalist', type: 'finalist', label: 'Finalistas', max: 2 },
+];
+
+const PLAYER_AWARD_KEYS: SpecialDeadlineType[] = ['top_scorer', 'best_player', 'best_goalkeeper', 'best_young_player'];
+
+/** Uma "frente" de palpite que fecha num prazo (jogos / jogador / um tier). */
+interface PredictionFront {
+  key: string;
+  label: string;
+  done: number;
+  total: number;
+  deadline: Date;
+  cta: 'jogos' | 'especiais' | 'jogador';
 }
 
 const STAGE_LABELS: { key: WcMatch['stage']; label: string }[] = [
@@ -21,17 +47,15 @@ const STAGE_LABELS: { key: WcMatch['stage']; label: string }[] = [
   { key: 'final', label: 'Final' },
 ];
 
-function formatDayLabel(iso: string): string {
-  // 'YYYY-MM-DD' → 'Sáb 14/06'
-  const d = new Date(iso + 'T00:00:00');
-  const dayShort = d.toLocaleDateString('pt-BR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-  });
-  // Capitaliza e remove ponto: "sáb." → "Sáb"
-  const cleaned = dayShort.replace(/\./g, '');
-  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+/** Date → { day: 'Sáb 14/06', time: '16:00' } em BRT (pra âncora do prazo). */
+function formatAnchorHeadline(d: Date): { day: string; time: string } {
+  const dayRaw = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit',
+  }).format(d).replace(/\./g, '');
+  const time = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
+  }).format(d);
+  return { day: dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1), time };
 }
 
 function countdownLabel(deadline: Date): string {
@@ -52,7 +76,10 @@ export const BolaoStatsTopCards: React.FC<BolaoStatsTopCardsProps> = ({
   matches,
   predictions,
   onContinuarPalpites,
+  onSpecialPicks,
+  onPlayerPicks,
 }) => {
+  const { data: specialPreds } = useMySpecialPredictions(bolao.id);
   const predictionsByMatch = useMemo(
     () => new Map((predictions || []).map((p) => [p.match_id, p])),
     [predictions]
@@ -124,6 +151,76 @@ export const BolaoStatsTopCards: React.FC<BolaoStatsTopCardsProps> = ({
     };
   }, [matches, bolao.prediction_deadline_mode, predictionsByMatch]);
 
+  // Todas as frentes (jogos + jogador + tiers de mata-mata) que fecham no
+  // MESMO instante do próximo prazo — pra o card dizer o QUE precisa ser
+  // preenchido até cada data, não só "tem que palpitar".
+  const nextDeadline = useMemo(() => {
+    const now = Date.now();
+    const cfg = bolao.special_deadlines ?? null;
+    const ms = matches || [];
+
+    // Contagem dos picks do usuário por tipo.
+    const teamCounts: Record<string, number> = {};
+    let playerPicked = 0;
+    for (const p of specialPreds || []) {
+      if (p.predicted_team_code) teamCounts[p.prediction_type] = (teamCounts[p.prediction_type] ?? 0) + 1;
+      if (p.predicted_player_id && PLAYER_AWARD_KEYS.includes(p.prediction_type as SpecialDeadlineType)) playerPicked += 1;
+    }
+
+    const fronts: PredictionFront[] = [];
+
+    // Jogos — frente do próximo deadline de jogo (já calculado).
+    if (nextDeadlineGroup) {
+      fronts.push({
+        key: 'jogos',
+        label: nextDeadlineGroup.matches.length > 1 ? 'Jogos da rodada' : 'Jogo',
+        done: nextDeadlineGroup.palpitated,
+        total: nextDeadlineGroup.matches.length,
+        deadline: nextDeadlineGroup.deadline,
+        cta: 'jogos',
+      });
+    }
+
+    // Tiers de seleção do mata-mata (habilitados).
+    if (bolao.special_predictions_enabled ?? true) {
+      const sc = bolao.special_predictions_config as Record<string, boolean> | null | undefined;
+      for (const t of TIER_FRONTS) {
+        if (sc && sc[t.key] === false) continue;
+        const d = specialDeadline(t.type, ms, cfg);
+        if (!d || d.getTime() <= now) continue;
+        fronts.push({ key: t.key, label: t.label, done: teamCounts[t.key] ?? 0, total: t.max, deadline: d, cta: 'especiais' });
+      }
+    }
+
+    // Prêmios de jogador — agrupados numa frente só (0/N).
+    const pae = bolao.player_awards_enabled as Record<string, boolean> | null | undefined;
+    const enabledAwards = PLAYER_AWARD_KEYS.filter((k) => !pae || pae[k] !== false);
+    if (enabledAwards.length > 0) {
+      let earliest: Date | null = null;
+      for (const k of enabledAwards) {
+        const d = specialDeadline(k, ms, cfg);
+        if (d && (!earliest || d.getTime() < earliest.getTime())) earliest = d;
+      }
+      if (earliest && earliest.getTime() > now) {
+        fronts.push({
+          key: 'jogador',
+          label: 'Palpites de jogador',
+          done: Math.min(playerPicked, enabledAwards.length),
+          total: enabledAwards.length,
+          deadline: earliest,
+          cta: 'jogador',
+        });
+      }
+    }
+
+    if (fronts.length === 0) return null;
+
+    // Âncora = menor prazo aberto; lista só as frentes que fecham nesse instante.
+    const anchor = fronts.reduce((min, f) => (f.deadline.getTime() < min.getTime() ? f.deadline : min), fronts[0].deadline);
+    const atAnchor = fronts.filter((f) => Math.abs(f.deadline.getTime() - anchor.getTime()) < 60_000);
+    return { anchor, fronts: atAnchor };
+  }, [bolao, matches, specialPreds, nextDeadlineGroup]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
       {/* ─── Esquerda: SEUS PALPITES ─── */}
@@ -190,25 +287,14 @@ export const BolaoStatsTopCards: React.FC<BolaoStatsTopCardsProps> = ({
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] opacity-60">
               Próximo prazo
             </p>
-            {nextDeadlineGroup &&
+            {nextDeadline &&
               (() => {
-                const total = nextDeadlineGroup.matches.length;
-                const done = nextDeadlineGroup.palpitated;
-                const pending = total - done;
-                if (total === 0) return null;
-                if (done === total) {
+                const pending = nextDeadline.fronts.filter((f) => f.done < f.total).length;
+                if (pending === 0) {
                   return (
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-status-success text-white shadow-sm">
                       <Check className="w-3 h-3" strokeWidth={3} />
                       Tudo certo
-                    </span>
-                  );
-                }
-                if (done === 0) {
-                  return (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-status-danger text-white shadow-sm">
-                      <AlertCircle className="w-3 h-3" />
-                      Falta palpitar
                     </span>
                   );
                 }
@@ -221,55 +307,81 @@ export const BolaoStatsTopCards: React.FC<BolaoStatsTopCardsProps> = ({
               })()}
           </div>
 
-          {nextDeadlineGroup ? (
+          {nextDeadline ? (
             <>
-              <h3 className="font-display text-[28px] sm:text-[32px] font-extrabold leading-tight mb-2">
-                {formatDayLabel(nextDeadlineGroup.matches[0].match_date)}
-                {' · '}
-                <span className="text-amber">
-                  {nextDeadlineGroup.matches[0].match_time_brasilia.slice(0, 5)}
-                </span>
-              </h3>
+              {(() => {
+                const h = formatAnchorHeadline(nextDeadline.anchor);
+                return (
+                  <h3 className="font-display text-[28px] sm:text-[32px] font-extrabold leading-tight mb-2">
+                    {h.day}
+                    {' · '}
+                    <span className="text-amber">{h.time}</span>
+                  </h3>
+                );
+              })()}
 
               <div className="flex items-center gap-2 text-[12px] opacity-80 mb-4">
                 <Clock className="w-3.5 h-3.5" />
-                <span>{countdownLabel(nextDeadlineGroup.deadline)}</span>
+                <span>{countdownLabel(nextDeadline.anchor)}</span>
                 <span className="opacity-50">·</span>
-                <span>
-                  {nextDeadlineGroup.matches.length} jogo
-                  {nextDeadlineGroup.matches.length !== 1 ? 's' : ''}
-                </span>
-                <span className="opacity-50">·</span>
-                <span>
-                  <span className="font-bold tabular-nums">{nextDeadlineGroup.palpitated}</span>{' '}
-                  palpitado{nextDeadlineGroup.palpitated !== 1 ? 's' : ''}
-                </span>
+                <span>fecha nessa data</span>
               </div>
 
-              <ul className="space-y-1.5">
-                {nextDeadlineGroup.matches.slice(0, 4).map((m) => (
-                  <li
-                    key={m.id}
-                    className="flex items-center gap-2 text-[13px] tabular-nums"
-                  >
-                    <span className="opacity-60 w-12 shrink-0">
-                      {m.match_time_brasilia.slice(0, 5)}
-                    </span>
-                    <TeamFlag code={m.home_team_code} size="sm" />
-                    <span className="font-mono font-semibold w-9">{m.home_team_code}</span>
-                    <span className="opacity-30 mx-1">×</span>
-                    <span className="font-mono font-semibold w-9">{m.away_team_code}</span>
-                    <TeamFlag code={m.away_team_code} size="sm" />
-                  </li>
-                ))}
-              </ul>
+              <ul className="space-y-2">
+                {nextDeadline.fronts.map((f) => {
+                  const done = f.done >= f.total;
+                  const FrontIcon = f.cta === 'jogador' ? Star : Target;
+                  const onCta =
+                    f.cta === 'jogos' ? onContinuarPalpites : f.cta === 'jogador' ? onPlayerPicks : onSpecialPicks;
+                  return (
+                    <li key={f.key}>
+                      <div className="flex items-center gap-2 text-[13px]">
+                        {done ? (
+                          <Check className="w-4 h-4 text-status-success shrink-0" strokeWidth={3} />
+                        ) : (
+                          <Circle className="w-4 h-4 text-amber shrink-0" />
+                        )}
+                        <FrontIcon className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                        <span className="font-semibold">{f.label}</span>
+                        <span className="tabular-nums opacity-80">
+                          {f.done}/{f.total}
+                        </span>
+                        {!done && onCta && (
+                          <button
+                            type="button"
+                            onClick={onCta}
+                            className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber text-forest hover:bg-amber/90 transition-colors"
+                          >
+                            Palpitar
+                          </button>
+                        )}
+                      </div>
 
-              {nextDeadlineGroup.matches.length > 4 && (
-                <p className="text-[11px] opacity-60 mt-2">
-                  +{nextDeadlineGroup.matches.length - 4} jogo
-                  {nextDeadlineGroup.matches.length - 4 !== 1 ? 's' : ''}
-                </p>
-              )}
+                      {/* Jogos: mini-lista dos confrontos da rodada */}
+                      {f.cta === 'jogos' && nextDeadlineGroup && (
+                        <ul className="mt-1.5 ml-6 space-y-1">
+                          {nextDeadlineGroup.matches.slice(0, 4).map((m) => (
+                            <li key={m.id} className="flex items-center gap-2 text-[12px] tabular-nums opacity-90">
+                              <span className="opacity-60 w-11 shrink-0">{m.match_time_brasilia.slice(0, 5)}</span>
+                              <TeamFlag code={m.home_team_code} size="sm" />
+                              <span className="font-mono font-semibold w-9">{m.home_team_code}</span>
+                              <span className="opacity-30 mx-0.5">×</span>
+                              <span className="font-mono font-semibold w-9">{m.away_team_code}</span>
+                              <TeamFlag code={m.away_team_code} size="sm" />
+                            </li>
+                          ))}
+                          {nextDeadlineGroup.matches.length > 4 && (
+                            <li className="text-[11px] opacity-60">
+                              +{nextDeadlineGroup.matches.length - 4} jogo
+                              {nextDeadlineGroup.matches.length - 4 !== 1 ? 's' : ''}
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             </>
           ) : (
             <p className="text-[14px] opacity-70">Sem prazos abertos no momento.</p>

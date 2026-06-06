@@ -45,18 +45,34 @@ export interface Bolao {
     finalist: boolean;
     semifinalist: boolean;
     quarterfinalist: boolean;
+    round_of_16: boolean;
     round_of_32: boolean;
   };
   special_predictions_points: {
     finalist: number;
     semifinalist: number;
     quarterfinalist: number;
+    round_of_16: number;
     round_of_32: number;
   };
   champion_points: number;
   player_awards_enabled: Record<PlayerAwardType, boolean> | null;
   player_award_points: Record<PlayerAwardType, number> | null;
+  /** Config de prazo dos palpites especiais (presets + override por tipo). null = rolling. */
+  special_deadlines: SpecialDeadlinesConfig | null;
   created_at: string;
+}
+
+/** Preset de prazo dos palpites especiais. */
+export type SpecialDeadlineMode = 'rolling' | 'opening';
+
+/**
+ * Config de prazo dos palpites especiais. `mode` é o preset; `overrides`
+ * sobrescreve a data/hora (ISO timestamptz) de tipos específicos.
+ */
+export interface SpecialDeadlinesConfig {
+  mode: SpecialDeadlineMode;
+  overrides?: Record<string, string | null>;
 }
 
 export interface BolaoMember {
@@ -120,7 +136,7 @@ export interface ChampionPrediction {
 }
 
 export type SpecialPredictionType =
-  | 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32'
+  | 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32'
   | 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
 
 export type PlayerAwardType = 'top_scorer' | 'best_goalkeeper' | 'best_young_player' | 'best_player';
@@ -557,7 +573,7 @@ export const bolaoService = {
     // agrega tudo da mesma tabela.
     const { data, error } = await supabase
       .from('bolao_special_predictions')
-      .select('prediction_type, predicted_team_code, points_earned')
+      .select('prediction_type, predicted_team_code, predicted_player_id, points_earned')
       .eq('bolao_id', bolaoId)
       .eq('user_id', userId)
       .order('prediction_type');
@@ -575,7 +591,7 @@ export const bolaoService = {
 
   async toggleSpecialPrediction(
     bolaoId: string,
-    predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32',
+    predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32',
     teamCode: string
   ): Promise<{ action: 'added' | 'removed'; count?: number }> {
     const { data, error } = await supabase.rpc('toggle_special_prediction', {
@@ -591,14 +607,24 @@ export const bolaoService = {
 
   // --- Player Awards (palpites de jogador) ---
 
-  /** Lista todos os jogadores da Copa (ref global wc_players). Filtro/busca é client-side. */
+  /** Lista todos os jogadores da Copa (ref global wc_players). Filtro/busca é client-side.
+   *  Pagina em lotes de 1000 porque o PostgREST corta em 1000 linhas por padrão — sem isso,
+   *  jogadores no fim da ordem alfabética (ex.: Vini Jr) não apareciam no seletor. */
   async getWcPlayers(): Promise<WcPlayer[]> {
-    const { data, error } = await supabase
-      .from('wc_players')
-      .select('player_id, player_name, team_code, position, shirt_number, birth_date, photo_url')
-      .order('player_name');
-    if (error) throw error;
-    return (data || []) as WcPlayer[];
+    const PAGE = 1000;
+    const all: WcPlayer[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('wc_players')
+        .select('player_id, player_name, team_code, position, shirt_number, birth_date, photo_url')
+        .order('player_name')
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data || []) as WcPlayer[];
+      all.push(...rows);
+      if (rows.length < PAGE) break;
+    }
+    return all;
   },
 
   /** Define (pick único) o palpite de jogador. playerId null limpa o palpite. */
@@ -616,6 +642,31 @@ export const bolaoService = {
     const result = data as { success: boolean; action?: string; error?: string };
     if (!result.success) throw new Error(result.error || 'Erro ao salvar palpite');
     return { action: result.action as 'set' | 'removed' };
+  },
+
+  /** Avança o vencedor de um confronto do mata-mata (e remove o perdedor das fases adiante). */
+  async bracketAdvance(bolaoId: string, winner: string, loser: string, nextStage: string): Promise<void> {
+    const { data, error } = await supabase.rpc('bracket_advance', {
+      p_bolao_id: bolaoId,
+      p_winner: winner,
+      p_loser: loser,
+      p_next_stage: nextStage,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao avançar no chaveamento');
+  },
+
+  /** Auto-preenche os 16 avos (round_of_32) com os 32 códigos projetados. Substitui os atuais. */
+  async setRoundOf32FromProjection(bolaoId: string, codes: string[]): Promise<{ count: number }> {
+    const { data, error } = await supabase.rpc('set_round_of_32_from_projection', {
+      p_bolao_id: bolaoId,
+      p_codes: codes,
+    });
+    if (error) throw error;
+    const result = data as { success: boolean; count?: number; error?: string };
+    if (!result.success) throw new Error(result.error || 'Erro ao aplicar a projeção');
+    return { count: result.count ?? 0 };
   },
 
   async updateBolaoScoring(
@@ -729,6 +780,7 @@ export const bolaoService = {
     bolaoId: string,
     settings: {
       name?: string;
+      description?: string | null;
       champion_enabled?: boolean;
       special_predictions_enabled?: boolean;
       special_predictions_config?: Record<string, boolean>;
@@ -736,6 +788,7 @@ export const bolaoService = {
       champion_points?: number;
       player_awards_enabled?: Record<string, boolean>;
       player_award_points?: Record<string, number>;
+      special_deadlines?: SpecialDeadlinesConfig | null;
     }
   ): Promise<void> {
     const { error } = await supabase

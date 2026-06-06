@@ -261,7 +261,7 @@ export function useToggleSpecialPrediction() {
   return useMutation({
     mutationFn: (params: {
       bolaoId: string;
-      predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32';
+      predictionType: 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32';
       teamCode: string;
     }) => bolaoService.toggleSpecialPrediction(params.bolaoId, params.predictionType, params.teamCode),
     onSuccess: (_data, variables) => {
@@ -295,6 +295,30 @@ export function useSetPlayerPrediction() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
+    },
+  });
+}
+
+export function useBracketAdvance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { bolaoId: string; winner: string; loser: string; nextStage: string }) =>
+      bolaoService.bracketAdvance(params.bolaoId, params.winner, params.loser, params.nextStage),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['champion-predictions', variables.bolaoId] });
+    },
+  });
+}
+
+export function useSetRoundOf32FromProjection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { bolaoId: string; codes: string[] }) =>
+      bolaoService.setRoundOf32FromProjection(params.bolaoId, params.codes),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['special-predictions-mine', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['special-summary', variables.bolaoId] });
     },
   });
 }
@@ -343,6 +367,7 @@ export function useUpdateBolaoSettings() {
       bolaoId: string;
       settings: {
         name?: string;
+        description?: string | null;
         champion_enabled?: boolean;
         special_predictions_enabled?: boolean;
         special_predictions_config?: Record<string, boolean>;
@@ -350,6 +375,7 @@ export function useUpdateBolaoSettings() {
         champion_points?: number;
         player_awards_enabled?: Record<string, boolean>;
         player_award_points?: Record<string, number>;
+        special_deadlines?: import('@/services/bolao.service').SpecialDeadlinesConfig | null;
       };
     }) => bolaoService.updateBolaoSettings(params.bolaoId, params.settings),
     onSuccess: (_data, variables) => {
