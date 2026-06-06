@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Filter, CheckCircle, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Filter, CheckCircle, ChevronLeft, ChevronRight, Check, ListChecks } from 'lucide-react';
 import { MatchPredictionCard } from '@/components/bolao/MatchPredictionCard';
 import { FilterScroller } from '@/components/bolao/FilterScroller';
 import { GroupProjectionTable } from '@/components/bolao/GroupProjectionTable';
@@ -25,9 +25,16 @@ interface PredictionsListProps {
   onGroupFilterChange: (filter: string) => void;
   /** When true, each card shows a "sugerir placar" sparkles button */
   enableSuggestion?: boolean;
+  /**
+   * Modo de filtro controlado pelo caller — permite que a barra de progresso
+   * (fora deste componente) salte direto pra aba "Pendentes". Opcional: se
+   * omitido, o componente gerencia o modo internamente.
+   */
+  filterMode?: FilterMode;
+  onFilterModeChange?: (mode: FilterMode) => void;
 }
 
-type FilterMode = 'group' | 'date' | 'stage';
+export type FilterMode = 'group' | 'date' | 'stage' | 'pending';
 
 const STAGE_LABEL_BY_KEY: Record<string, string> = {
   group: 'Fase de grupos',
@@ -95,11 +102,14 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
   groupFilter,
   onGroupFilterChange,
   enableSuggestion,
+  filterMode: controlledFilterMode,
+  onFilterModeChange,
 }) => {
-  const [filterMode, setFilterMode] = useState<FilterMode>('date');
+  const [internalFilterMode, setInternalFilterMode] = useState<FilterMode>('date');
+  const filterMode = controlledFilterMode ?? internalFilterMode;
+  const setFilterMode = onFilterModeChange ?? setInternalFilterMode;
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [stageFilter, setStageFilter] = useState<string>('all');
-  const [onlyPending, setOnlyPending] = useState(false);
   const [autoSelected, setAutoSelected] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const prevPredCountRef = React.useRef<number>(predictions?.length ?? 0);
@@ -150,8 +160,23 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
     return Array.from(unique).sort();
   }, [matches]);
 
+  // Um jogo está "pendente" quando é jogável (não finalizado, times definidos)
+  // e ainda não recebeu palpite. Centraliza a regra usada na aba Pendentes,
+  // nos badges por dia e na contagem total.
+  const isPending = React.useCallback(
+    (m: WcMatch) =>
+      !m.is_finished &&
+      m.home_team_code !== 'TBD' &&
+      m.away_team_code !== 'TBD' &&
+      !predictionsByMatch.has(m.id),
+    [predictionsByMatch]
+  );
+
   const filteredMatches = useMemo(() => {
     if (!matches) return [];
+    if (filterMode === 'pending') {
+      return matches.filter(isPending);
+    }
     let list = matches;
     if (filterMode === 'group') {
       if (groupFilter !== 'all') list = list.filter((m) => m.group_name === groupFilter);
@@ -160,20 +185,21 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
     } else {
       if (dateFilter !== 'all') list = list.filter((m) => m.match_date === dateFilter);
     }
-    if (onlyPending) {
-      list = list.filter(
-        (m) =>
-          !m.is_finished &&
-          m.home_team_code !== 'TBD' &&
-          m.away_team_code !== 'TBD' &&
-          !predictionsByMatch.has(m.id)
-      );
-    }
     return list;
-  }, [matches, filterMode, groupFilter, dateFilter, stageFilter, onlyPending, predictionsByMatch]);
+  }, [matches, filterMode, groupFilter, dateFilter, stageFilter, isPending]);
 
   const groupedMatches = useMemo(() => {
     const grouped: Record<string, WcMatch[]> = {};
+    // Aba Pendentes: lista corrida de tudo que falta, agrupada por dia (com
+    // cabeçalho de data) pra dar contexto sem o user precisar caçar dia a dia.
+    if (filterMode === 'pending') {
+      filteredMatches.forEach((m) => {
+        const key = formatLongDateLabel(m.match_date);
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(m);
+      });
+      return grouped;
+    }
     if (filterMode === 'date' && dateFilter !== 'all') {
       grouped[formatLongDateLabel(dateFilter)] = filteredMatches;
       return grouped;
@@ -216,12 +242,17 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
     if (!matches) return new Map<string, number>();
     const m = new Map<string, number>();
     matches.forEach((match) => {
-      if (match.is_finished || match.home_team_code === 'TBD' || match.away_team_code === 'TBD') return;
-      if (predictionsByMatch.has(match.id)) return;
+      if (!isPending(match)) return;
       m.set(match.match_date, (m.get(match.match_date) ?? 0) + 1);
     });
     return m;
-  }, [matches, predictionsByMatch]);
+  }, [matches, isPending]);
+
+  // Total de pendentes no torneio inteiro — alimenta o badge da aba Pendentes.
+  const totalPending = useMemo(
+    () => (matches || []).filter(isPending).length,
+    [matches, isPending]
+  );
 
   // Estatísticas do dia selecionado (pra cabeçalho rico)
   const selectedDayStats = useMemo(() => {
@@ -281,11 +312,11 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
   // depois de 800ms e trocava o filter pro próximo dia pendente — "não dava
   // pra ficar no dia que já preenchi". A intenção era educada (guiar pro
   // próximo) mas virou agressiva. Se o user quer pular pra próximo pendente,
-  // ele tem outras formas: botão "Próximo" da sticky bar + chip "só pendentes".
+  // ele tem outras formas: botão "Próximo" da sticky bar + aba "Pendentes".
 
   return (
     <>
-      {/* Mode toggle: Dias | Grupos | Fase + filtro "só pendentes" */}
+      {/* Mode toggle: Por dia | Por grupo | Por fase + aba "Pendentes (N)" */}
       <div
         className={`${filterPadding} flex items-center justify-between gap-2 mb-2 flex-wrap`}
       >
@@ -334,37 +365,46 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
           </button>
         </div>
 
-        {/* Toggle "só pendentes" — texto-link estilo mockup */}
-        {(() => {
-          const totalPending = (matches || []).filter(
-            (m) =>
-              !m.is_finished &&
-              m.home_team_code !== 'TBD' &&
-              m.away_team_code !== 'TBD' &&
-              !predictionsByMatch.has(m.id)
-          ).length;
-          if (totalPending === 0) return null;
-          return (
-            <button
-              type="button"
-              onClick={() => setOnlyPending((v) => !v)}
-              className="text-[11px] text-ink-2 hover:text-ink transition-colors"
-              aria-pressed={onlyPending}
+        {/* Aba "Pendentes" — ação destacada (âmbar) que leva direto pra lista
+            do que falta. Substituiu o antigo toggle "Mostrar: todos" (texto
+            cinza, invisível). Feedback Diody: user em 71/72 não achava o que
+            faltava sem caçar dia a dia. */}
+        {totalPending === 0 ? (
+          // Sem nag: só mostra o "tudo preenchido" quando o user está na aba
+          // pendentes e acabou de zerar — senão some.
+          filterMode === 'pending' ? (
+            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-rebrand-md text-[12px] font-semibold text-status-success border border-status-success">
+              <Check className="w-3.5 h-3.5" strokeWidth={3} />
+              Tudo preenchido
+            </span>
+          ) : null
+        ) : (
+          <button
+            type="button"
+            aria-pressed={filterMode === 'pending'}
+            onClick={() => setFilterMode(filterMode === 'pending' ? 'date' : 'pending')}
+            className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-rebrand-md text-[12px] font-semibold border transition-colors ${
+              filterMode === 'pending'
+                ? 'bg-status-warning text-white border-status-warning'
+                : 'bg-white text-status-warning border-amber hover:bg-canvas-2'
+            }`}
+          >
+            <ListChecks className="w-3.5 h-3.5" />
+            Pendentes
+            <span
+              className={`tabular-nums text-[11px] font-bold rounded-full px-1.5 min-w-[18px] text-center ${
+                filterMode === 'pending' ? 'bg-white/20 text-white' : 'bg-status-warning text-white'
+              }`}
             >
-              Mostrar:{' '}
-              <span
-                className={`font-semibold ${
-                  onlyPending ? 'text-forest underline underline-offset-2' : 'text-ink'
-                }`}
-              >
-                {onlyPending ? `só pendentes (${totalPending})` : 'todos'}
-              </span>
-            </button>
-          );
-        })()}
+              {totalPending}
+            </span>
+          </button>
+        )}
       </div>
 
-      {/* Filter scroller */}
+      {/* Filter scroller — escondido no modo Pendentes (lista corrida, sem
+          sub-filtro de data/grupo/fase). */}
+      {filterMode !== 'pending' && (
       <div className={variant === 'modal' ? 'px-5' : ''}>
         <FilterScroller filterIcon={<Filter className="w-3 h-3 text-ink-3 shrink-0" />}>
           {filterMode === 'group' ? (
@@ -478,6 +518,7 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
           )}
         </FilterScroller>
       </div>
+      )}
 
       {/* Matches */}
       {isLoadingMatches ? (
@@ -576,7 +617,7 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
                       allMatches={matches}
                       isClosed={isClosed}
                       enableSuggestion={enableSuggestion}
-                      hideMatchDate={filterMode === 'date'}
+                      hideMatchDate={filterMode === 'date' || filterMode === 'pending'}
                     />
                   </div>
                 ))}
@@ -585,11 +626,17 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
           ))}
           {filteredMatches.length === 0 && (
             <div className="text-center py-12 text-ink-2">
-              <p className="text-[13px]">
-                {onlyPending
-                  ? 'Tudo palpitado por aqui! Tira o filtro pra ver a lista completa.'
-                  : 'Nenhum jogo encontrado nesse filtro.'}
-              </p>
+              {filterMode === 'pending' ? (
+                <div className="inline-flex flex-col items-center gap-2">
+                  <CheckCircle className="w-8 h-8 text-status-success" />
+                  <p className="text-[14px] font-semibold text-ink">Tudo preenchido!</p>
+                  <p className="text-[12px]">
+                    Você palpitou em todos os jogos. Use as abas acima pra revisar.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[13px]">Nenhum jogo encontrado nesse filtro.</p>
+              )}
             </div>
           )}
         </div>

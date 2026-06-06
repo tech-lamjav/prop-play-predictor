@@ -13,7 +13,8 @@ import {
   useUpsertPredictionsBatch,
   useDeletePrediction,
 } from '@/hooks/use-bolao';
-import { PredictionsList } from '@/components/bolao/PredictionsList';
+import { PredictionsList, type FilterMode } from '@/components/bolao/PredictionsList';
+import { ChevronRight } from 'lucide-react';
 import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
 import { QuickPickInline } from '@/components/bolao/QuickPickInline';
 import type { QuickPickApplyOpts } from '@/components/bolao/quick-pick';
@@ -37,6 +38,7 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
   currentUserId,
 }) => {
   const [groupFilter, setGroupFilter] = useState<string>('all');
+  const [filterMode, setFilterMode] = useState<FilterMode>('date');
   const [confirmDeleteMatchId, setConfirmDeleteMatchId] = useState<number | null>(null);
 
   const { data: bolao } = useBolao(bolaoId);
@@ -210,6 +212,22 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
               </span>
             </div>
           </div>
+          {/* CTA "ver o que falta" — ancorado no gatilho emocional (a barra de
+              progresso). Resolve o feedback do user em 71/72 que não achava
+              os pendentes. Some quando completo. Leva direto pra aba Pendentes. */}
+          {totalMatches > 0 && totalPredictions < totalMatches && filterMode !== 'pending' && (
+            <button
+              type="button"
+              onClick={() => setFilterMode('pending')}
+              className="mt-2 w-full inline-flex items-center justify-between gap-2 h-9 px-3 rounded-rebrand-md border border-amber bg-white text-status-warning text-[12px] font-semibold hover:bg-canvas-2 transition-colors"
+            >
+              <span>
+                Faltam {totalMatches - totalPredictions} jogo
+                {totalMatches - totalPredictions !== 1 ? 's' : ''} — ver o que falta
+              </span>
+              <ChevronRight className="w-4 h-4 shrink-0" />
+            </button>
+          )}
         </DialogHeader>
 
         {/* Matches — scrollable */}
@@ -240,6 +258,8 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
             accentColor="green"
             groupFilter={groupFilter}
             onGroupFilterChange={setGroupFilter}
+            filterMode={filterMode}
+            onFilterModeChange={setFilterMode}
             enableSuggestion
           />
         </div>
