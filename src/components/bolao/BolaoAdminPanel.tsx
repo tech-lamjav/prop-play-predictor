@@ -178,20 +178,6 @@ const DEFAULT_PLAYER_AWARD_POINTS: Record<string, number> = {
   top_scorer: 10, best_player: 10, best_goalkeeper: 8, best_young_player: 8,
 };
 
-const PLAYER_AWARD_TYPES: { key: string; label: string; sub: string }[] = [
-  { key: 'top_scorer', label: 'Artilheiro', sub: 'Chuteira de Ouro' },
-  { key: 'best_player', label: 'Craque da Copa', sub: 'Bola de Ouro' },
-  { key: 'best_goalkeeper', label: 'Melhor Goleiro', sub: 'Luva de Ouro' },
-  { key: 'best_young_player', label: 'Revelação', sub: 'Melhor jovem (≤21)' },
-];
-
-const DEFAULT_PLAYER_AWARDS_ENABLED: Record<string, boolean> = {
-  top_scorer: true, best_player: true, best_goalkeeper: true, best_young_player: true,
-};
-const DEFAULT_PLAYER_AWARD_POINTS: Record<string, number> = {
-  top_scorer: 10, best_player: 10, best_goalkeeper: 8, best_young_player: 8,
-};
-
 // ── NumberStepper (light theme) ───────────────────────────────────
 interface NumberStepperProps {
   value: number;
