@@ -1,43 +1,35 @@
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
-import {
-  Search, ChevronRight, Star, Radar, TrendingUp, Calendar,
-  AlertTriangle, FileText
-} from 'lucide-react';
-import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
+import { Search, ChevronRight, Star, FileText, LayoutGrid, ArrowRight } from 'lucide-react';
+import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { useHomeNBAData } from '@/hooks/use-home-nba';
-import AnalyticsNav from '@/components/AnalyticsNav';
+import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import { NBABriefingStrip } from '@/components/nba-home/NBABriefingStrip';
+import { NBATopPickHero, type TopPickData } from '@/components/nba-home/NBATopPickHero';
+import { NBAHotOppCard, type HotOppData } from '@/components/nba-home/NBAHotOppCard';
+import { NBAKeyInjuriesRail, type KeyInjuryData } from '@/components/nba-home/NBAKeyInjuriesRail';
+import { NBAGamesRich, type RichGame } from '@/components/nba-home/NBAGamesRich';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // --- Date helpers ---
 
-function formatDateBR(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(`${iso}T12:00:00-03:00`);
-  return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', day: '2-digit', month: 'long' });
+function getSaoPauloTodayDate(): Date {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year')?.value ?? '2025';
+  const m = parts.find(p => p.type === 'month')?.value ?? '01';
+  const d = parts.find(p => p.type === 'day')?.value ?? '01';
+  return new Date(`${y}-${m}-${d}T12:00:00-03:00`);
 }
 
 // --- Helpers ---
 
-const STAT_LABELS: Record<string, string> = {
-  player_points: 'pontos', player_assists: 'assists', player_rebounds: 'rebotes',
-  player_threes: '3 pontos', player_steals: 'roubos', player_blocks: 'bloqueios',
-  player_points_rebounds_assists: 'pts+reb+ast', player_points_assists: 'pts+ast',
-  player_points_rebounds: 'pts+reb', player_rebounds_assists: 'reb+ast',
-};
-
-function getTriggerStatusBadge(status: string): { text: string; cls: string } {
-  const s = status.toLowerCase();
-  if (s === 'out' || s.includes('out')) return { text: 'OUT', cls: 'bg-terminal-red/20 text-terminal-red border-terminal-red/30' };
-  if (s.includes('doubtful')) return { text: 'DTD', cls: 'bg-orange-400/20 text-orange-400 border-orange-400/30' };
-  return { text: 'Q', cls: 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30' };
-}
-
 function slugify(name: string) {
-  return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, '-');
 }
 
 // --- Player Photo ---
@@ -47,7 +39,7 @@ function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: 
   const sizeClass = size === 'lg' ? 'w-12 h-12' : size === 'md' ? 'w-10 h-10' : 'w-8 h-8';
   const textClass = size === 'lg' ? 'text-sm' : size === 'md' ? 'text-[10px]' : 'text-[9px]';
   return (
-    <div className={`${sizeClass} rounded-full overflow-hidden bg-terminal-gray border border-terminal-border-subtle shrink-0 flex items-center justify-center`}>
+    <div className={`${sizeClass} rounded-full overflow-hidden bg-ink-3 border border-line shrink-0 flex items-center justify-center`}>
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
         alt={`Foto de ${name}`}
@@ -60,7 +52,7 @@ function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: 
             const el = e.target as HTMLImageElement;
             el.style.display = 'none';
             const parent = el.parentElement;
-            if (parent) parent.innerHTML = `<span class="${textClass} font-bold text-terminal-text opacity-60">${initials}</span>`;
+            if (parent) parent.innerHTML = `<span class="${textClass} font-semibold text-ink-2">${initials}</span>`;
           }
         }}
       />
@@ -68,44 +60,10 @@ function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: 
   );
 }
 
-// --- Last Results ---
+// --- Section Header ---
 
-function LastResults({ results }: { results: string | null }) {
-  if (!results) return null;
-  const last3 = results.replace(/\s/g, '').slice(0, 3).split('').reverse();
-  return (
-    <div className="flex items-center gap-0.5">
-      {last3.map((r, i) => {
-        const isWin = r === 'V' || r === 'W';
-        const opacity = ['opacity-40', 'opacity-70', 'opacity-100'][i] ?? 'opacity-100';
-        return (
-          <span key={i} className={`w-4 h-4 flex items-center justify-center text-[8px] font-bold rounded ${opacity} ${
-            isWin ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
-          }`}>
-            {isWin ? 'V' : 'D'}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-// --- Skeleton ---
-
-function SectionSkeleton({ rows = 3 }: { rows?: number }) {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton key={i} className="h-[72px] w-full rounded-lg bg-terminal-dark-gray" />
-      ))}
-    </div>
-  );
-}
-
-// --- Section Header (simplified — subtitle removed to reduce noise) ---
-
-function SectionHeader({ icon: Icon, title, count, actionLabel, onAction, actionHref }: {
-  icon: React.ComponentType<{ className?: string }>;
+function SectionHeader({ eyebrow, title, count, actionLabel, onAction, actionHref }: {
+  eyebrow?: string;
   title: string;
   count?: number;
   actionLabel?: string;
@@ -113,19 +71,23 @@ function SectionHeader({ icon: Icon, title, count, actionLabel, onAction, action
   actionHref?: string;
 }) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-2">
-        <Icon className="w-4 h-4 text-terminal-text/25" />
-        <h2 className="text-sm font-bold text-terminal-text/70 uppercase tracking-wide">{title}</h2>
-        {count != null && <span className="text-xs text-terminal-text/20 tabular-nums">{count}</span>}
+    <div className="flex items-end justify-between mb-3">
+      <div>
+        {eyebrow && (
+          <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2">{eyebrow}</div>
+        )}
+        <div className="text-[18px] font-semibold tracking-tight mt-1 text-ink">
+          {title}
+          {count != null && <span className="text-ink-2/70 font-normal text-[14px] ml-2 tabular">{count}</span>}
+        </div>
       </div>
       {actionLabel && actionHref && (
         <a
           href={actionHref}
           onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0 && onAction) { e.preventDefault(); onAction(); } }}
-          className="text-[11px] text-terminal-blue/50 hover:text-terminal-blue flex items-center gap-1 transition-colors shrink-0 no-underline"
+          className="text-[12px] font-semibold inline-flex items-center gap-1 transition-colors shrink-0 no-underline text-forest hover:text-forest-soft"
         >
-          {actionLabel} <ChevronRight className="w-3 h-3" />
+          {actionLabel} <ChevronRight className="w-3.5 h-3.5" />
         </a>
       )}
     </div>
@@ -147,27 +109,224 @@ export default function HomeNBA() {
 
   // --- Derived data ---
 
-  const topTriggers = useMemo(() => {
+  const todayDate = useMemo(() => (today ? new Date(`${today}T12:00:00-03:00`) : getSaoPauloTodayDate()), [today]);
+
+  interface TriggerAgg {
+    id: number;
+    name: string;
+    status: string;
+    teamAbbr: string;
+    daysOut: number | null;
+    stars: number;
+    backupCount: number;
+    topImpact: { playerName: string; statType: string; gapPct: number } | null;
+  }
+
+  const topTriggers = useMemo<TriggerAgg[]>(() => {
     const starsMap = new Map<number, number>();
     players.forEach(p => starsMap.set(p.player_id, p.rating_stars ?? 0));
-    const seen = new Map<number, { id: number; name: string; status: string; teamAbbr: string; daysOut: number | null; stars: number; backupCount: number }>();
+    const seen = new Map<number, TriggerAgg>();
     opportunities.forEach(o => {
       if (!seen.has(o.trigger_player_id)) {
-        seen.set(o.trigger_player_id, { id: o.trigger_player_id, name: o.trigger_name, status: o.trigger_status, teamAbbr: o.trigger_team_abbr, daysOut: o.trigger_days_out, stars: starsMap.get(o.trigger_player_id) ?? 0, backupCount: 0 });
+        seen.set(o.trigger_player_id, {
+          id: o.trigger_player_id,
+          name: o.trigger_name,
+          status: o.trigger_status,
+          teamAbbr: o.trigger_team_abbr,
+          daysOut: o.trigger_days_out,
+          stars: starsMap.get(o.trigger_player_id) ?? 0,
+          backupCount: 0,
+          topImpact: null,
+        });
       }
-      seen.get(o.trigger_player_id)!.backupCount = new Set(opportunities.filter(x => x.trigger_player_id === o.trigger_player_id && x.backup_player_id).map(x => x.backup_player_id)).size;
+      const agg = seen.get(o.trigger_player_id)!;
+      agg.backupCount = new Set(
+        opportunities
+          .filter(x => x.trigger_player_id === o.trigger_player_id && x.backup_player_id)
+          .map(x => x.backup_player_id),
+      ).size;
+      // Top impact = maior gap_pct entre as oportunidades deste trigger
+      if (!agg.topImpact || o.gap_pct > agg.topImpact.gapPct) {
+        agg.topImpact = { playerName: o.backup_player_name, statType: o.stat_type, gapPct: o.gap_pct };
+      }
     });
-    return Array.from(seen.values()).filter(t => t.stars >= 2).sort((a, b) => b.stars - a.stars).slice(0, 3);
+    return Array.from(seen.values())
+      .filter(t => t.stars >= 2)
+      .sort((a, b) => b.stars - a.stars)
+      .slice(0, 4);
   }, [opportunities, players]);
 
-  const topOpps = useMemo(() => [...opportunities].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).slice(0, 2), [opportunities]);
+  const sortedOpps = useMemo(() => [...opportunities].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)), [opportunities]);
+  const heroPick = sortedOpps[0] ?? null;
+  /** Restantes (sem o hero) para a seção de oportunidades. */
+  const topOpps = useMemo(() => sortedOpps.slice(1, 4), [sortedOpps]);
 
-  // Build set of teams with injuries for game card indicators
-  const teamsWithInjuries = useMemo(() => {
-    const set = new Set<string>();
-    topTriggers.forEach(t => set.add(t.teamAbbr));
-    return set;
+  const heroData = useMemo<TopPickData | null>(() => {
+    if (!heroPick) return null;
+    return {
+      playerName: heroPick.backup_player_name,
+      teamAbbr: heroPick.trigger_team_abbr,
+      statType: heroPick.stat_type,
+      triggerName: heroPick.trigger_name,
+      triggerStatus: heroPick.trigger_status,
+      lineValue: heroPick.line_value,
+      avgCom: heroPick.avg_com,
+      avgSem: heroPick.avg_sem,
+      gapPct: heroPick.gap_pct,
+      edgePct: heroPick.gap_vs_line_pct,
+      score: heroPick.score,
+      opponentAbbr: heroPick.opponent_abbr,
+      isHome: heroPick.is_home,
+      gameTime: heroPick.game_time,
+    };
+  }, [heroPick]);
+
+  const handleOpenHero = () => {
+    if (!heroPick) return;
+    const slug = slugify(heroPick.backup_player_name);
+    navigate(`/nba-dashboard/${slug}?stat=${heroPick.stat_type}&trigger=${encodeURIComponent(heroPick.trigger_name)}`);
+  };
+
+  // Onda 3 — Hot opportunities (4 cards) e Key Injuries (rail)
+  const hotOppsData = useMemo<Array<HotOppData & { _opp: typeof sortedOpps[0] }>>(() => {
+    return topOpps.map(o => ({
+      _opp: o,
+      playerName: o.backup_player_name,
+      teamAbbr: o.trigger_team_abbr,
+      statType: o.stat_type,
+      triggerName: o.trigger_name,
+      triggerStatus: o.trigger_status,
+      lineValue: o.line_value,
+      projection: o.avg_sem,
+      edgePct: o.gap_vs_line_pct,
+      score: o.score,
+      ratingStars: o.rating_stars,
+      opponentAbbr: o.opponent_abbr,
+      isHome: o.is_home,
+      gameTime: o.game_time,
+    }));
+  }, [topOpps]);
+
+  const keyInjuriesData = useMemo<KeyInjuryData[]>(() => {
+    return topTriggers.map(t => ({
+      id: t.id,
+      name: t.name,
+      teamAbbr: t.teamAbbr,
+      status: t.status,
+      impactedCount: t.backupCount,
+      topImpact: t.topImpact,
+    }));
   }, [topTriggers]);
+
+  // Onda 4 — enriquecer cada jogo com angle + highlights + injuries vindos de opportunities
+  const richGames = useMemo<RichGame[]>(() => {
+    const STAT_DEF_LABEL: Record<string, string> = {
+      player_points: 'Defesa de pontos',
+      player_assists: 'Defesa de assist.',
+      player_rebounds: 'Reb. cedidos',
+      player_threes: 'Defesa de 3pts',
+      player_steals: 'Defesa de roubos',
+      player_blocks: 'Defesa de blocks',
+      player_points_rebounds_assists: 'Defesa de PRA',
+      player_points_assists: 'Defesa de PA',
+      player_points_rebounds: 'Defesa de PR',
+      player_rebounds_assists: 'Defesa de RA',
+    };
+    const STAT_SHORT: Record<string, string> = {
+      player_points: 'pts', player_assists: 'ast', player_rebounds: 'reb',
+      player_threes: '3pts', player_steals: 'stl', player_blocks: 'blk',
+      player_points_rebounds_assists: 'pra', player_points_assists: 'pa',
+      player_points_rebounds: 'pr', player_rebounds_assists: 'ra',
+    };
+
+    return games.map<RichGame>(game => {
+      const finished = game.winner_team_id !== null;
+      const gameOpps = opportunities.filter(o => o.game_id === game.game_id);
+
+      // Highlights: top 2 opps por score (sem repetir player+stat)
+      const seenKey = new Set<string>();
+      const highlights = [...gameOpps]
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+        .filter(o => {
+          const k = `${o.backup_player_id ?? o.backup_player_name}-${o.stat_type}`;
+          if (seenKey.has(k)) return false;
+          seenKey.add(k);
+          return true;
+        })
+        .slice(0, 2)
+        .map(o => ({
+          playerName: o.backup_player_name,
+          teamAbbr: o.trigger_team_abbr,
+          stars: o.rating_stars,
+          statShort: STAT_SHORT[o.stat_type] ?? o.stat_type,
+          gapPct: o.gap_pct,
+        }));
+
+      // Angle: top opp por score que tenha opponent_def_rank
+      const angleOpp = [...gameOpps]
+        .filter(o => o.opponent_def_rank != null && o.opponent_abbr != null)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0] ?? null;
+      const angle = angleOpp
+        ? {
+            teamAbbr: angleOpp.opponent_abbr!,
+            metricLabel: STAT_DEF_LABEL[angleOpp.stat_type] ?? 'Defesa',
+            rank: angleOpp.opponent_def_rank!,
+          }
+        : null;
+
+      // Injuries: triggers únicos do jogo (até 3)
+      const seenTriggers = new Map<number, { name: string; teamAbbr: string; status: string }>();
+      gameOpps.forEach(o => {
+        if (!seenTriggers.has(o.trigger_player_id)) {
+          seenTriggers.set(o.trigger_player_id, {
+            name: o.trigger_name,
+            teamAbbr: o.trigger_team_abbr,
+            status: o.trigger_status,
+          });
+        }
+      });
+      const injuries = Array.from(seenTriggers.values()).slice(0, 3);
+
+      return {
+        gameId: game.game_id,
+        gameDate: game.game_date,
+        gameDatetimeBrasilia: game.game_datetime_brasilia,
+        isFinished: finished,
+        homeWon: finished && game.winner_team_id === game.home_team_id,
+        visitorWon: finished && game.winner_team_id === game.visitor_team_id,
+        home: {
+          teamId: game.home_team_id,
+          abbr: game.home_team_abbreviation,
+          name: game.home_team_name,
+          score: game.home_team_score,
+          lastFive: game.home_team_last_five,
+          isB2B: game.home_team_is_b2b_game,
+        },
+        visitor: {
+          teamId: game.visitor_team_id,
+          abbr: game.visitor_team_abbreviation,
+          name: game.visitor_team_name,
+          score: game.visitor_team_score,
+          lastFive: game.visitor_team_last_five,
+          isB2B: game.visitor_team_is_b2b_game,
+        },
+        angle,
+        highlights,
+        injuries,
+      };
+    });
+  }, [games, opportunities]);
+
+  // KPIs do BriefingStrip
+  const briefingKpis = useMemo(() => {
+    const highConf = opportunities.filter(o => (o.rating_stars ?? 0) >= 3).length;
+    return {
+      games: games.length,
+      opps: opportunities.length,
+      highConf,
+      keyInjuries: topTriggers.length,
+    };
+  }, [games, opportunities, topTriggers]);
 
   const searchResults = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) return [];
@@ -176,325 +335,200 @@ export default function HomeNBA() {
   }, [players, searchTerm]);
 
   return (
-    <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
+    <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <Helmet>
         <title>Lesões NBA Hoje e Oportunidades de Apostas do Dia | Smart Betting</title>
         <meta name="description" content="Lesões chave da NBA hoje com impacto nos companheiros, oportunidades de prop bets selecionadas e jogos do dia. Atualizado diariamente." />
       </Helmet>
-      <AnalyticsNav />
+      <NBAHomeNav showBack />
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Header + Impact headline */}
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <h1 className="text-2xl font-bold text-terminal-blue mb-0.5">Hoje na NBA</h1>
-            <p className="text-sm text-terminal-text/35 capitalize">{formatDateBR(today)}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-terminal-text/25" />
+      <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">
+        {/* Briefing strip com busca embarcada na coluna esquerda */}
+        <NBABriefingStrip
+          date={todayDate}
+          kpis={briefingKpis}
+          searchSlot={
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-2" />
               <Input
                 placeholder="Buscar jogador..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onBlur={() => setTimeout(() => setSearchTerm(''), 200)}
-                className="pl-8 w-44 sm:w-48 lg:w-56 bg-terminal-dark-gray border-terminal-border-subtle/50 text-terminal-text placeholder:text-terminal-text/20 h-9 font-mono text-xs rounded-md"
+                className="pl-9 w-full h-10 bg-white border border-line text-ink placeholder:text-ink-2 text-[13px] rounded-md"
               />
               {searchResults.length > 0 && (
-                <div className="absolute top-full mt-1 right-0 w-72 bg-terminal-dark-gray border border-terminal-border-subtle/60 rounded-lg shadow-xl shadow-black/40 z-50 overflow-hidden">
+                <div className="absolute top-full mt-1 left-0 w-full bg-white border border-line rounded-lg shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] z-50 overflow-hidden">
                   {searchResults.map(player => {
                     const slug = slugify(player.player_name);
                     return (
                       <a key={player.player_id} href={`/nba-dashboard/${slug}`}
                         onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); setSearchTerm(''); navigate(`/nba-dashboard/${slug}`); } }}
-                        className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-terminal-gray/40 transition-colors no-underline border-b border-terminal-border-subtle/20 last:border-b-0"
+                        className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-ink-3/40 transition-colors no-underline border-b border-line last:border-b-0"
                       >
                         <PlayerPhoto name={player.player_name} teamAbbr={player.team_abbreviation} size="sm" />
                         <div className="min-w-0 flex-1">
-                          <span className="text-sm text-terminal-text truncate block">{player.player_name}</span>
-                          <div className="flex items-center gap-1.5 text-[10px] text-terminal-text/40">
+                          <span className="text-[13px] font-semibold text-ink truncate block">{player.player_name}</span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-ink-2">
                             <span>{player.team_abbreviation}</span>
                             {player.rating_stars > 0 && (
                               <div className="flex items-center gap-0.5 ml-1">
                                 {Array.from({ length: Math.min(player.rating_stars, 5) }).map((_, i) => (
-                                  <Star key={i} className="w-2 h-2 text-terminal-yellow fill-terminal-yellow" />
+                                  <Star key={i} className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
                                 ))}
                               </div>
                             )}
                           </div>
                         </div>
-                        <ChevronRight className="w-3 h-3 text-terminal-text/20 shrink-0" />
+                        <ChevronRight className="w-3.5 h-3.5 text-ink-2/60 shrink-0" />
                       </a>
                     );
                   })}
                 </div>
               )}
               {searchTerm.length >= 2 && searchResults.length === 0 && !isLoading && (
-                <div className="absolute top-full mt-1 right-0 w-72 bg-terminal-dark-gray border border-terminal-border-subtle/60 rounded-lg shadow-xl shadow-black/40 z-50 px-3 py-3 text-xs text-terminal-text/30 text-center">
+                <div className="absolute top-full mt-1 left-0 w-full bg-white border border-line rounded-lg shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] z-50 px-3 py-3 text-[12px] text-ink-2 text-center">
                   Nenhum jogador encontrado
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          }
+        />
 
-        {/* Impact headline — the aha moment */}
-        {!isLoading && (topTriggers.length > 0 || topOpps.length > 0 || games.length > 0) && (
-          <div className="flex items-center gap-2 mb-6">
-            {topTriggers.length > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-terminal-red/70 bg-terminal-red/5 border border-terminal-red/15 px-2 py-1 rounded-full whitespace-nowrap">
-                <AlertTriangle className="w-3 h-3 shrink-0" />
-                <span className="font-bold tabular-nums">{topTriggers.length}</span> lesoes chave
-              </span>
-            )}
-            {topOpps.length > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-terminal-green/70 bg-terminal-green/5 border border-terminal-green/15 px-2 py-1 rounded-full whitespace-nowrap">
-                <TrendingUp className="w-3 h-3 shrink-0" />
-                <span className="font-bold tabular-nums">{topOpps.length}</span> oportunidades
-              </span>
-            )}
-            {games.length > 0 && (
-              <span className="flex items-center gap-1 text-[11px] text-terminal-blue/70 bg-terminal-blue/5 border border-terminal-blue/15 px-2 py-1 rounded-full whitespace-nowrap">
-                <Calendar className="w-3 h-3 shrink-0" />
-                <span className="font-bold tabular-nums">{games.length}</span> jogos
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Section 1: Hero Destaque + Sidebar (oportunidades + lesões) */}
+        {/* Onda 2: TopPickHero — destaque #1 do dia (skeleton enquanto carrega) */}
         {isLoading ? (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-10">
-            <Skeleton className="lg:col-span-3 h-52 rounded-xl bg-terminal-dark-gray" />
+          <Skeleton className="h-64 rounded-2xl" />
+        ) : heroData ? (
+          <NBATopPickHero pick={heroData} onOpenAnalysis={handleOpenHero} />
+        ) : null}
+
+        {/* Onda 3: HotOpps grid + KeyInjuriesRail (2-col) */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+            <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Skeleton className="h-40 rounded-xl" />
+              <Skeleton className="h-40 rounded-xl" />
+              <Skeleton className="h-40 rounded-xl" />
+              <Skeleton className="h-40 rounded-xl" />
+            </div>
             <div className="lg:col-span-2 space-y-2">
-              <Skeleton className="h-16 w-full rounded-lg bg-terminal-dark-gray" />
-              <Skeleton className="h-16 w-full rounded-lg bg-terminal-dark-gray" />
-              <Skeleton className="h-16 w-full rounded-lg bg-terminal-dark-gray" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-10 items-start">
-            {/* Left: Destaques do Dia (opp #1 + opp #2 + ver todas) */}
-            <div className="lg:col-span-3 bg-terminal-dark-gray border border-terminal-border-subtle/50 rounded-xl p-4 space-y-3">
-              <span className="text-[9px] text-terminal-blue/50 uppercase tracking-widest font-semibold block">Destaques do Dia</span>
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+            {/* Left: Outras oportunidades quentes (3 cards + CTA no slot 4 do grid 2x2) */}
+            <div className="lg:col-span-3 flex flex-col gap-3">
+              <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2">Outras oportunidades quentes</div>
 
-              {isLoading ? <SectionSkeleton rows={2} /> : topOpps.length === 0 ? (
-                <p className="text-sm text-terminal-text/25 py-4 text-center">Nenhuma oportunidade disponivel</p>
+              {hotOppsData.length === 0 ? (
+                <div className="bg-white border border-line rounded-xl p-6 text-center text-[13px] text-ink-2">
+                  Sem oportunidades adicionais hoje
+                </div>
               ) : (
-                <>
-                  {topOpps.map((opp) => {
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {hotOppsData.map(o => {
+                    const opp = o._opp;
                     const slug = slugify(opp.backup_player_name);
-                    const isPositive = opp.gap_pct > 0;
-                    const triggerLastName = opp.trigger_name.split(' ').pop();
-                    const statLabel = STAT_LABELS[opp.stat_type] ?? opp.stat_type;
                     return (
-                      <a
+                      <NBAHotOppCard
                         key={`${opp.trigger_player_id}-${opp.backup_player_id}-${opp.stat_type}`}
+                        opp={o}
                         href={`/nba-dashboard/${slug}?stat=${opp.stat_type}&trigger=${encodeURIComponent(opp.trigger_name)}`}
-                        onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate(`/nba-dashboard/${slug}?stat=${opp.stat_type}&trigger=${encodeURIComponent(opp.trigger_name)}`); } }}
-                        className="block bg-terminal-gray rounded-lg p-3 hover:bg-terminal-gray/80 active:scale-[0.99] border border-terminal-border-subtle transition-all no-underline"
-                      >
-                        <div className="flex items-start gap-3">
-                          <PlayerPhoto name={opp.backup_player_name} teamAbbr={opp.trigger_team_abbr} size="lg" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[13px] text-terminal-text leading-relaxed mb-1.5">
-                              <span className="font-bold">{opp.backup_player_name}</span> faz{' '}
-                              <span className={`font-bold ${isPositive ? 'text-terminal-green' : 'text-terminal-red'}`}>{isPositive ? '+' : ''}{opp.gap_pct.toFixed(0)}% {statLabel}</span>{' '}
-                              quando {triggerLastName}{' '}
-                              <span className={`font-bold ${getTriggerStatusBadge(opp.trigger_status).cls.split(' ').find(c => c.startsWith('text-'))}`}>({getTriggerStatusBadge(opp.trigger_status).text})</span> nao joga
-                            </p>
-                            <div className="flex items-center gap-2 text-[11px] flex-wrap">
-                              <span className="text-terminal-text/30 tabular-nums">{opp.avg_com.toFixed(1)} → <span className="text-terminal-text font-bold">{opp.avg_sem.toFixed(1)}</span></span>
-                              {opp.line_value != null && (
-                                <>
-                                  <span className="text-terminal-text/15">|</span>
-                                  <span className="text-terminal-text/30 tabular-nums">Linha {opp.line_value.toFixed(1)}</span>
-                                  {opp.gap_vs_line_pct != null && (
-                                    <span className={`font-bold tabular-nums ${opp.gap_vs_line_pct > 0 ? 'text-terminal-green/70' : 'text-terminal-red/70'}`}>({opp.gap_vs_line_pct > 0 ? '+' : ''}{opp.gap_vs_line_pct.toFixed(0)}%)</span>
-                                  )}
-                                </>
-                              )}
-                              {opp.score != null && (
-                                <>
-                                  <span className="text-terminal-text/15">|</span>
-                                  <span className={`font-bold tabular-nums ${opp.score >= 80 ? 'text-terminal-green' : opp.score >= 70 ? 'text-terminal-yellow' : 'text-orange-400'}`}>Score {opp.score}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </a>
+                        onClick={() => navigate(`/nba-dashboard/${slug}?stat=${opp.stat_type}&trigger=${encodeURIComponent(opp.trigger_name)}`)}
+                      />
                     );
                   })}
-                  {/* Ver todas */}
+                  {/* CTA card no slot vazio do grid 2x2 — leva pra tela com tabela completa */}
                   <a
                     href="/oportunidades"
                     onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate('/oportunidades'); } }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 bg-terminal-gray border border-terminal-blue/20 rounded-lg hover:bg-terminal-gray/80 active:scale-[0.99] transition-all text-left no-underline"
+                    className="group bg-forest-tint border border-forest/20 rounded-xl p-4 hover:bg-forest-tint/70 hover:border-forest/40 transition-colors no-underline flex flex-col gap-3"
                   >
-                    <TrendingUp className="w-4 h-4 text-terminal-blue/40 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-semibold text-terminal-blue/70 block">Ver Todas as Oportunidades</span>
-                      <span className="text-[10px] text-terminal-text/25">Tabela completa com scores, gaps e linhas</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-md grid place-items-center bg-forest text-white shrink-0">
+                        <LayoutGrid className="w-5 h-5" />
+                      </div>
+                      <div className="text-[14px] font-semibold tracking-tight text-forest leading-tight">
+                        As {opportunities.length} oportunidades de hoje
+                      </div>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-terminal-blue/20 shrink-0" />
+                    <div className="text-[12px] text-ink-2 leading-relaxed flex-1">
+                      Compare lado a lado e ordene por score, vantagem ou linha.
+                    </div>
+                    <div className="h-10 rounded-md text-[13px] font-semibold inline-flex items-center justify-center gap-2 bg-amber-400 text-ink group-hover:bg-amber-300 transition-colors w-full">
+                      <span>Ver oportunidades</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
                   </a>
-                </>
+                </div>
               )}
             </div>
 
-            {/* Right: Lesões Chave + CTAs */}
-            <div className="lg:col-span-2 space-y-3">
-              {/* Lesões chave */}
-              {topTriggers.length > 0 && (
-                <div>
-                  <span className="text-[9px] text-terminal-text/25 uppercase tracking-widest font-semibold block mb-2">Lesoes Chave</span>
-                  <div className="space-y-1.5">
-                    {topTriggers.slice(0, 3).map(t => (
-                      <a
-                        key={t.id}
-                        href={`/analise-360/${t.id}`}
-                        onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate(`/analise-360/${t.id}`); } }}
-                        className="w-full bg-terminal-dark-gray border border-terminal-border-subtle/40 rounded-lg px-3 py-2.5 flex items-center gap-2.5 hover:border-terminal-red/25 active:scale-[0.99] transition-all text-left no-underline"
-                      >
-                        <PlayerPhoto name={t.name} teamAbbr={t.teamAbbr} size="md" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-sm font-bold text-terminal-text truncate">{t.name}</span>
-                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border ${getTriggerStatusBadge(t.status).cls}`}>
-                              {getTriggerStatusBadge(t.status).text}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-terminal-text/35">{t.backupCount} impactados</span>
-                        </div>
-                        <span className="text-[10px] text-terminal-blue/50 shrink-0 whitespace-nowrap">Ver impacto →</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Injury Report */}
-              <button
-                onClick={() => setInjuryModalOpen(true)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-terminal-blue/5 border border-terminal-blue/15 rounded-lg hover:bg-terminal-blue/10 active:scale-[0.99] transition-all text-left"
-              >
-                <AlertTriangle className="w-4 h-4 text-terminal-blue/40 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-terminal-blue/70 block">Injury Report Completo</span>
-                  <span className="text-[10px] text-terminal-text/25">Todas as lesoes dos jogos de hoje</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-terminal-blue/20 shrink-0" />
-              </button>
-
-              {/* Análise 360 */}
-              <a
-                href="/analise-360"
-                onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate('/analise-360'); } }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-terminal-blue/5 border border-terminal-blue/15 rounded-lg hover:bg-terminal-blue/10 active:scale-[0.99] transition-all text-left no-underline"
-              >
-                <Radar className="w-4 h-4 text-terminal-blue/40 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-terminal-blue/70 block">Analise 360</span>
-                  <span className="text-[10px] text-terminal-text/25">Veja o impacto completo das lesoes nos companheiros</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-terminal-blue/20 shrink-0" />
-              </a>
-
-              {/* Relatório do Dia */}
-              <a
-                href="/report"
-                onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate('/report'); } }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 bg-terminal-blue/5 border border-terminal-blue/15 rounded-lg hover:bg-terminal-blue/10 active:scale-[0.99] transition-all text-left no-underline"
-              >
-                <FileText className="w-4 h-4 text-terminal-blue/40 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-semibold text-terminal-blue/70 block">Relatorio do Dia</span>
-                  <span className="text-[10px] text-terminal-text/25">Resumo com as melhores analises e picks</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-terminal-blue/20 shrink-0" />
-              </a>
+            {/* Right: KeyInjuriesRail */}
+            <div className="lg:col-span-2">
+              <NBAKeyInjuriesRail
+                injuries={keyInjuriesData}
+                onSelect={(id) => navigate(`/analise-360/${id}`)}
+                onOpenAll={() => navigate('/analise-360')}
+                onOpenInjuryReport={() => setInjuryModalOpen(true)}
+              />
             </div>
           </div>
         )}
 
-        {/* Section 2: Jogos de Hoje — horizontal scroll */}
-        <div className="mb-10">
-          <SectionHeader icon={Calendar} title="Jogos de Hoje" count={games.length || undefined} actionLabel="Ver todos" actionHref="/home-games" onAction={() => navigate('/home-games')} />
+        {/* Onda 4: Jogos de hoje — rich rows (desktop) / stacked cards (mobile) */}
+        <div>
+          <SectionHeader
+            eyebrow="Jogos de hoje"
+            title={`${games.length || 0} ${games.length === 1 ? 'partida' : 'partidas'}`}
+            actionLabel="Ver todos"
+            actionHref="/home-games"
+            onAction={() => navigate('/home-games')}
+          />
 
           {isLoading ? (
-            <div className="flex gap-3 overflow-hidden">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-28 w-52 rounded-xl bg-terminal-dark-gray shrink-0" />
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-xl" />
               ))}
             </div>
-          ) : games.length === 0 ? (
-            <div className="text-center py-8 text-xs text-terminal-text/25">Nenhum jogo hoje</div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}>
-              {games.map(game => {
-                const finished = game.winner_team_id !== null;
-                const homeWon = finished && game.winner_team_id === game.home_team_id;
-                const visitorWon = finished && game.winner_team_id === game.visitor_team_id;
-                const hasInjuryImpact = teamsWithInjuries.has(game.home_team_abbreviation) || teamsWithInjuries.has(game.visitor_team_abbreviation);
-                return (
-                  <a
-                    key={game.game_id}
-                    href={`/game/${game.game_id}?date=${game.game_date}`}
-                    onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate(`/game/${game.game_id}?date=${game.game_date}`); } }}
-                    className={`shrink-0 w-56 bg-terminal-dark-gray border rounded-xl p-3.5 hover:border-terminal-green/40 active:scale-[0.98] transition-all no-underline ${hasInjuryImpact ? 'border-terminal-red/25' : 'border-terminal-border-subtle/50'}`}
-                  >
-                    {/* Time + injury indicator + chevron */}
-                    <div className="flex items-center justify-between mb-3">
-                      {game.game_datetime_brasilia && !finished ? (
-                        <span className="text-xs text-terminal-blue font-mono tabular-nums font-bold">
-                          {new Date(game.game_datetime_brasilia).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      ) : finished ? (
-                        <span className="text-[10px] bg-terminal-gray/40 text-terminal-text/60 px-1.5 py-0.5 rounded">FT</span>
-                      ) : (
-                        <span className="text-[10px] text-terminal-text/30">TBD</span>
-                      )}
-                      <div className="flex items-center gap-1.5">
-                        {(game.home_team_is_b2b_game || game.visitor_team_is_b2b_game) && (
-                          <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 rounded">B2B</span>
-                        )}
-                        {hasInjuryImpact && !finished && (
-                          <span className="text-[8px] text-terminal-red/50 flex items-center gap-0.5">
-                            <AlertTriangle className="w-2.5 h-2.5" />
-                          </span>
-                        )}
-                        <ChevronRight className="w-3 h-3 text-terminal-text/15" />
-                      </div>
-                    </div>
-                    {/* Home team */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                        <img src={getTeamLogoUrl(game.home_team_name)} alt={game.home_team_abbreviation} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
-                      </div>
-                      <span className={`text-sm font-bold flex-1 truncate ${homeWon ? 'text-terminal-green' : 'text-terminal-text'}`}>{game.home_team_abbreviation}</span>
-                      {finished && <span className={`text-sm font-bold tabular-nums ${homeWon ? 'text-terminal-green' : 'text-terminal-text/40'}`}>{game.home_team_score}</span>}
-                      <LastResults results={game.home_team_last_five} />
-                    </div>
-                    {/* Visitor team */}
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                        <img src={getTeamLogoUrl(game.visitor_team_name)} alt={game.visitor_team_abbreviation} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display='none'; }} />
-                      </div>
-                      <span className={`text-sm font-bold flex-1 truncate ${visitorWon ? 'text-terminal-green' : 'text-terminal-text'}`}>{game.visitor_team_abbreviation}</span>
-                      {finished && <span className={`text-sm font-bold tabular-nums ${visitorWon ? 'text-terminal-green' : 'text-terminal-text/40'}`}>{game.visitor_team_score}</span>}
-                      <LastResults results={game.visitor_team_last_five} />
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
+            <NBAGamesRich
+              games={richGames}
+              onOpenGame={(id, date) => navigate(`/game/${id}?date=${date}`)}
+            />
           )}
         </div>
 
-      </div>
+        {/* Acesso rápido — Relatório do dia (Injury Report agora vive dentro do KeyInjuriesRail) */}
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2 mb-3">Acesso rápido</div>
+          <a
+            href="/report"
+            onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate('/report'); } }}
+            className="block text-left rounded-xl px-5 py-4 flex items-center gap-4 transition-colors bg-white border border-line hover:border-forest/30 no-underline"
+          >
+            <div className="w-11 h-11 rounded-lg grid place-items-center bg-ink-3/60 text-forest shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold tracking-tight text-ink">Relatório do dia</div>
+              <div className="text-[11px] mt-0.5 text-ink-2">Resumo com as melhores análises e picks</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-ink-2/40 shrink-0" />
+          </a>
+        </div>
+      </main>
 
-      <InjuryReportModal open={injuryModalOpen} onClose={() => setInjuryModalOpen(false)} games={games} />
+      <InjuryReportModal
+        open={injuryModalOpen}
+        onClose={() => setInjuryModalOpen(false)}
+        games={games}
+        opportunities={opportunities}
+      />
     </div>
   );
 }

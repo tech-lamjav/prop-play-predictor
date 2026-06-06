@@ -9,7 +9,6 @@ import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
-import Home from "./pages/Home";
 import Picks from "./pages/Picks";
 import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -78,12 +77,8 @@ const App = () => (
             <Route path="/" element={<LandingEcossistema />} />
             <Route path="/nba" element={<Landing />} />
             <Route path="/home-nba" element={<HomeNBA />} />
-            <Route path="/home-players" element={<Home />} />
-            <Route path="/oportunidades" element={
-              <ProtectedRoute>
-                <Picks />
-              </ProtectedRoute>
-            } />
+            {/* TEMP: ProtectedRoute removido pra screenshot do rebrand. RESTAURAR antes do merge. */}
+            <Route path="/oportunidades" element={<Picks />} />
             <Route path="/betinho" element={<Betinho />} />
             {/* Variante da LP do Betinho pra usuários vindos do bolão da Copa.
                 Mesmo componente; useLocation detecta a rota e troca hero +
@@ -128,11 +123,6 @@ const App = () => (
             } />
             <Route path="/home-games" element={<Games />} />
             <Route path="/game/:gameId" element={<GameDetail />} />
-            <Route path="/nba-players" element={
-              <ProtectedRoute>
-                <PlayerSelection />
-              </ProtectedRoute>
-            } />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/paywall" element={<Paywall />} />

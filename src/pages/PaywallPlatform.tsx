@@ -76,7 +76,7 @@ export default function PaywallPlatform() {
               description: "Seu plano premium está ativo. Redirecionando...",
               variant: "default",
             });
-            setTimeout(() => navigate('/nba-players'), 1000);
+            setTimeout(() => navigate('/home-nba'), 1000);
             return;
           }
         } catch (err) {

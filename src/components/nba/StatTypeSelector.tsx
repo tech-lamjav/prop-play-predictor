@@ -25,24 +25,39 @@ const STAT_LABELS: Record<string, string> = {
   player_rebounds_assists: 'Reb + Ast',
   player_points_rebounds_assists: 'PRA',
   player_double_double: 'Double-Double',
+  player_q1_points: '1Q Pontos',
+  player_q1_assists: '1Q Assistências',
+  player_q1_rebounds: '1Q Rebotes',
+  player_h1_points: '1H Pontos',
+  player_h1_rebounds: '1H Rebotes',
+  player_h1_assists: '1H Assistências',
 };
 
 export const STAT_TYPES_BASIC: StatType[] = [
-  { id: 'player_points', label: 'PTS', description: 'Points' },
-  { id: 'player_assists', label: 'AST', description: 'Assists' },
-  { id: 'player_rebounds', label: 'REB', description: 'Rebounds' },
-  { id: 'player_threes', label: '3PT', description: '3-Pointers' },
-  { id: 'player_steals', label: 'STL', description: 'Steals' },
-  { id: 'player_blocks', label: 'BLK', description: 'Blocks' },
-  { id: 'player_turnovers', label: 'TO', description: 'Turnovers' },
+  { id: 'player_points', label: 'Pontos', description: 'Pontos' },
+  { id: 'player_assists', label: 'Assistências', description: 'Assistências' },
+  { id: 'player_rebounds', label: 'Rebotes', description: 'Rebotes' },
+  { id: 'player_threes', label: '3 Pontos', description: 'Cestas de 3 pontos' },
+  { id: 'player_steals', label: 'Roubos', description: 'Roubos de bola' },
+  { id: 'player_blocks', label: 'Bloqueios', description: 'Bloqueios' },
+  { id: 'player_turnovers', label: 'Turnovers', description: 'Turnovers' },
 ];
 
 export const STAT_TYPES_COMBOS: StatType[] = [
-  { id: 'player_points_assists', label: 'P+A', description: 'Points + Assists' },
-  { id: 'player_points_rebounds', label: 'P+R', description: 'Points + Rebounds' },
-  { id: 'player_rebounds_assists', label: 'R+A', description: 'Rebounds + Assists' },
-  { id: 'player_points_rebounds_assists', label: 'PRA', description: 'Pts + Reb + Ast' },
-  { id: 'player_double_double', label: 'DD', description: 'Double-Double' },
+  { id: 'player_points_assists', label: 'Pts + Ast', description: 'Pontos + Assistências' },
+  { id: 'player_points_rebounds', label: 'Pts + Reb', description: 'Pontos + Rebotes' },
+  { id: 'player_rebounds_assists', label: 'Reb + Ast', description: 'Rebotes + Assistências' },
+  { id: 'player_points_rebounds_assists', label: 'Pts + Reb + Ast', description: 'Pontos + Rebotes + Assistências' },
+  { id: 'player_double_double', label: 'Double-Double', description: 'Double-Double' },
+];
+
+export const STAT_TYPES_PERIOD: StatType[] = [
+  { id: 'player_q1_points', label: 'Pontos 1Q', description: '1º Quarto — Pontos' },
+  { id: 'player_q1_rebounds', label: 'Rebotes 1Q', description: '1º Quarto — Rebotes' },
+  { id: 'player_q1_assists', label: 'Assistências 1Q', description: '1º Quarto — Assistências' },
+  { id: 'player_h1_points', label: 'Pontos 1H', description: '1º Tempo — Pontos' },
+  { id: 'player_h1_rebounds', label: 'Rebotes 1H', description: '1º Tempo — Rebotes' },
+  { id: 'player_h1_assists', label: 'Assistências 1H', description: '1º Tempo — Assistências' },
 ];
 
 const STAT_TYPES = [...STAT_TYPES_BASIC, ...STAT_TYPES_COMBOS];
@@ -66,10 +81,10 @@ export const StatTypeSelector: React.FC<StatTypeSelectorProps> = ({
       <button
         key={stat.id}
         onClick={() => onStatChange(stat.id)}
-        className={`terminal-button px-3 py-1.5 text-center transition-all ${
+        className={`bg-white border border-line text-ink hover:border-forest/30 px-3 py-1.5 text-center transition-all ${
           isSelected
-            ? 'border-terminal-blue text-terminal-blue bg-terminal-blue/10'
-            : 'opacity-50 hover:opacity-80 hover:border-terminal-blue/40'
+            ? 'border-forest text-forest bg-forest/10'
+            : 'opacity-50 hover:opacity-80 hover:border-forest/40'
         }`}
         title={stat.description}
       >
@@ -79,13 +94,13 @@ export const StatTypeSelector: React.FC<StatTypeSelectorProps> = ({
   };
 
   return (
-    <div className="terminal-container px-4 py-3 mb-3">
+    <div className="rounded-lg bg-white border border-line px-4 py-3 mb-3">
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-[10px] data-label opacity-50 shrink-0">STATS</span>
         <div className="flex gap-1 flex-wrap">
           {basicStats.map(renderButton)}
         </div>
-        <div className="h-5 w-px bg-terminal-blue/20 shrink-0" />
+        <div className="h-5 w-px bg-forest/20 shrink-0" />
         <div className="flex gap-1 flex-wrap">
           {comboStats.map(renderButton)}
         </div>

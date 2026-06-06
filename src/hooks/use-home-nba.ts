@@ -22,7 +22,7 @@ async function fetchHomeNBAData(): Promise<HomeNBAData> {
   const [games, players, opportunities] = await Promise.all([
     nbaDataService.getGames({ gameDate: today }),
     nbaDataService.getAllPlayers(),
-    nbaDataService.getDailyOpportunities().catch(() => [] as DailyOpportunity[]),
+    nbaDataService.getDailyOpportunities(today).catch(() => [] as DailyOpportunity[]),
   ]);
   return { games, players, opportunities, today };
 }
