@@ -3,7 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AchievementProvider } from "@/components/bolao/AchievementProvider";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -14,30 +16,44 @@ import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
+import { lazyWithRetry } from "./lib/lazy-with-retry";
 
-// Lazy-loaded pages (not critical for first paint)
-const Betinho = React.lazy(() => import("./pages/Betinho"));
-const Onboarding = React.lazy(() => import("./pages/Onboarding"));
-const DashboardTest = React.lazy(() => import("./pages/DashboardTest"));
-const Bets = React.lazy(() => import("./pages/Bets"));
-const Bankroll = React.lazy(() => import("./pages/Bankroll"));
-const BettingDashboard = React.lazy(() => import("./pages/BettingDashboard"));
-const PlayerSelectionTest = React.lazy(() => import("./pages/PlayerSelectionTest"));
-const Analysis = React.lazy(() => import("./pages/Analysis"));
-const Waitlist = React.lazy(() => import("./pages/Waitlist"));
-const Paywall = React.lazy(() => import("./pages/Paywall"));
-const PaywallDashboard = React.lazy(() => import("./pages/PaywallDashboard"));
-const PaywallPlatform = React.lazy(() => import("./pages/PaywallPlatform"));
-const NotFound = React.lazy(() => import("./pages/NotFound"));
-const ComoUsar = React.lazy(() => import("./pages/ComoUsar"));
-const Games = React.lazy(() => import("./pages/Games"));
-const GameDetail = React.lazy(() => import("./pages/GameDetail"));
-const Settings = React.lazy(() => import("./pages/Settings"));
-const Report = React.lazy(() => import("./pages/Report"));
-const SharePage = React.lazy(() => import("./pages/SharePage"));
-const Analise360List = React.lazy(() => import("./pages/Analise360List"));
-const Analise360Detail = React.lazy(() => import("./pages/Analise360Detail"));
-const HomeNBA = React.lazy(() => import("./pages/HomeNBA"));
+// Lazy-loaded pages (not critical for first paint).
+// Usa `lazyWithRetry` em vez de `React.lazy` direto pra detectar falha de
+// chunk após deploy (hash dos chunks muda, navegador com versão antiga
+// cacheada tenta carregar chunk inexistente -> "Failed to fetch dynamically
+// imported module" -> tela branca). Helper força reload uma vez por sessão
+// pra pegar build novo.
+const Betinho = lazyWithRetry(() => import("./pages/Betinho"));
+const Onboarding = lazyWithRetry(() => import("./pages/Onboarding"));
+const DashboardTest = lazyWithRetry(() => import("./pages/DashboardTest"));
+const Bets = lazyWithRetry(() => import("./pages/Bets"));
+const Bankroll = lazyWithRetry(() => import("./pages/Bankroll"));
+const BettingDashboard = lazyWithRetry(() => import("./pages/BettingDashboard"));
+const PlayerSelectionTest = lazyWithRetry(() => import("./pages/PlayerSelectionTest"));
+const PlayerSelection = lazyWithRetry(() => import("./pages/PlayerSelection"));
+const Analysis = lazyWithRetry(() => import("./pages/Analysis"));
+const Waitlist = lazyWithRetry(() => import("./pages/Waitlist"));
+const Paywall = lazyWithRetry(() => import("./pages/Paywall"));
+const PaywallDashboard = lazyWithRetry(() => import("./pages/PaywallDashboard"));
+const PaywallPlatform = lazyWithRetry(() => import("./pages/PaywallPlatform"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
+const Games = lazyWithRetry(() => import("./pages/Games"));
+const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
+const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const Report = lazyWithRetry(() => import("./pages/Report"));
+const SharePage = lazyWithRetry(() => import("./pages/SharePage"));
+const Analise360List = lazyWithRetry(() => import("./pages/Analise360List"));
+const Analise360Detail = lazyWithRetry(() => import("./pages/Analise360Detail"));
+const HomeNBA = lazyWithRetry(() => import("./pages/HomeNBA"));
+const BolaoEntry = lazyWithRetry(() => import("./pages/BolaoEntry"));
+const BolaoHome = lazyWithRetry(() => import("./pages/BolaoHome"));
+const BolaoDetail = lazyWithRetry(() => import("./pages/BolaoDetail"));
+const BolaoPalpites = lazyWithRetry(() => import("./pages/BolaoPalpites"));
+const BolaoJoin = lazyWithRetry(() => import("./pages/BolaoJoin"));
+const BolaoWelcome = lazyWithRetry(() => import("./pages/BolaoWelcome"));
+const BolaoLP = lazyWithRetry(() => import("./pages/BolaoLP"));
 
 const queryClient = new QueryClient();
 
@@ -50,6 +66,7 @@ const LazyFallback = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <AchievementProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
@@ -63,6 +80,10 @@ const App = () => (
             {/* TEMP: ProtectedRoute removido pra screenshot do rebrand. RESTAURAR antes do merge. */}
             <Route path="/oportunidades" element={<Picks />} />
             <Route path="/betinho" element={<Betinho />} />
+            {/* Variante da LP do Betinho pra usuários vindos do bolão da Copa.
+                Mesmo componente; useLocation detecta a rota e troca hero +
+                "como funciona". CTAs em /bolao/.../palpites apontam pra cá. */}
+            <Route path="/betinho/bolao" element={<Betinho />} />
             <Route path="/auth" element={
               <ProtectedRoute requireAuth={false}>
                 <Auth />
@@ -133,12 +154,42 @@ const App = () => (
                 <Settings />
               </ProtectedRoute>
             } />
+            {/* Bolão Copa do Mundo — todas as rotas wrappadas em BolaoLayout
+                pra aplicar o tema "Direção A" (rebrand). Resto do app continua
+                com tema "terminal" do legado. */}
+            {/* /bolao = landing publica pra deslogado, dashboard pra logado */}
+            <Route path="/bolao" element={<BolaoLayout><Outlet /></BolaoLayout>}>
+              <Route index element={<BolaoEntry />} />
+              {/* LP enxuta pra campanhas/anuncios — publica, sem auth */}
+              <Route path="comecar" element={<BolaoLP />} />
+              <Route path="entrar/:code" element={
+                <ProtectedRoute>
+                  <BolaoJoin />
+                </ProtectedRoute>
+              } />
+              <Route path=":id" element={
+                <ProtectedRoute>
+                  <BolaoDetail />
+                </ProtectedRoute>
+              } />
+              <Route path=":id/welcome" element={
+                <ProtectedRoute>
+                  <BolaoWelcome />
+                </ProtectedRoute>
+              } />
+              <Route path=":id/palpites" element={
+                <ProtectedRoute>
+                  <BolaoPalpites />
+                </ProtectedRoute>
+              } />
+            </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Footer />
         </Suspense>
       </BrowserRouter>
+      </AchievementProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

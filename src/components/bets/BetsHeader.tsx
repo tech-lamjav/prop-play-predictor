@@ -20,6 +20,7 @@ import {
   Send,
   Users as UsersIcon,
   UserIcon,
+  Trophy,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -183,6 +184,19 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
                 })}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Bolão — destino único, sem dropdown */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleNavigation('/bolao')}
+              className={`flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray ${
+                location.pathname.startsWith('/bolao') ? 'text-terminal-blue' : ''
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold uppercase tracking-wide">Bolão</span>
+            </Button>
           </div>
 
           {/* Right - Controls */}

@@ -9,6 +9,25 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
 
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SIGNING_SECRET') || '';
 
+/**
+ * Gera invite_code compatível com `bolao.service.ts > generateInviteCode`:
+ * alfabeto custom sem caracteres ambíguos (I/O/0/1), sempre 6 chars.
+ *
+ * Substitui o `Math.random().toString(36).substring(2, 8).toUpperCase()` antigo
+ * que (B4 do PR #140 review):
+ *   1. Podia produzir <6 chars (Math.random dando valor com poucos dígitos)
+ *   2. Tinha alfabeto diferente do gerado pelo frontend (caracteres ambíguos)
+ *   3. Não tinha retry em colisão de UNIQUE
+ */
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem I/O/0/1
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 serve(async (req) => {
   console.log('[Webhook] Request received');
   console.log('[Webhook] Method:', req.method);
@@ -97,35 +116,162 @@ serve(async (req) => {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
         const productType = session.metadata?.productType;
-        const subscriptionField = getSubscriptionField(productType);
-        
+        // bolaoId may come from metadata (checkout session) or client_reference_id (payment link)
+        const bolaoId = session.metadata?.bolaoId || session.client_reference_id || null;
+
         console.log('[Webhook] Checkout session completed');
         console.log('[Webhook] Session ID:', session.id);
-        console.log('[Webhook] Session metadata:', JSON.stringify(session.metadata));
-        console.log('[Webhook] UserId from metadata:', userId);
-        console.log('[Webhook] ProductType from metadata:', productType);
-        console.log('[Webhook] Updating field:', subscriptionField);
-        
-        if (userId) {
+        console.log('[Webhook] ProductType:', productType);
+        console.log('[Webhook] UserId:', userId);
+        console.log('[Webhook] BolaoId:', bolaoId);
+        console.log('[Webhook] Mode:', session.mode);
+
+        // Bolão premium: one-time payment identified by bolaoId (UUID format)
+        const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+        const isBolaoPayment = (productType === 'bolao_premium' && bolaoId) ||
+          (session.mode === 'payment' && bolaoId && isUuid(bolaoId));
+
+        if (isBolaoPayment && bolaoId) {
+          // B1 — Hijack protection: bolaoId vem de metadata.bolaoId OU
+          // client_reference_id, ambos controlados pelo cliente. UUIDs vazam
+          // em links de convite. Sem validar ownership, atacante pode pagar
+          // R$ 19,90 passando bolaoId de outro user e promover bolão alheio.
+          // SELECT inclui owner_id pra checar antes do UPDATE.
+          const { data: existingBolao } = await supabase
+            .from('boloes')
+            .select('id, owner_id')
+            .eq('id', bolaoId)
+            .maybeSingle();
+
+          if (existingBolao && userId && existingBolao.owner_id !== userId) {
+            console.error('[Webhook] ⚠️ HIJACK ATTEMPT: payer is not bolao owner', {
+              bolaoId,
+              payingUser: userId,
+              actualOwner: existingBolao.owner_id,
+              sessionId: session.id,
+            });
+            // Retorna 200 pra Stripe NÃO retentar (não é erro do nosso lado,
+            // é fraude do atacante). Marcamos no body pra log/auditoria.
+            return new Response(
+              JSON.stringify({ received: true, hijack_attempt: true }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+
+          if (existingBolao) {
+            // Old flow: bolão was created before payment — just upgrade it
+            const { error } = await supabase
+              .from('boloes')
+              .update({ is_premium: true, max_participants: 9999 })
+              .eq('id', bolaoId);
+            if (error) {
+              console.error('[Webhook] Error upgrading bolão to premium:', error);
+            } else {
+              console.log('[Webhook] ✅ Bolão upgraded to premium:', bolaoId);
+            }
+          } else {
+            // New flow: create the bolão now (user paid without prior creation)
+            const bolaoName = session.metadata?.bolaoName || 'Bolão Copa 2026';
+            const bolaoDescription = session.metadata?.bolaoDescription || null;
+
+            // B4 — Retry on collision: invite_code é UNIQUE em boloes.
+            // Se a primeira tentativa colidir, regenera e tenta de novo.
+            // Max 3 tentativas pra evitar loop. Sucesso garante 1 INSERT atômico.
+            let createError: { code?: string; message?: string } | null = null;
+            let attempts = 0;
+            const MAX_ATTEMPTS = 3;
+
+            while (attempts < MAX_ATTEMPTS) {
+              const inviteCode = generateInviteCode();
+              const { error } = await supabase.from('boloes').insert({
+                id: bolaoId,
+                owner_id: userId || null,
+                name: bolaoName,
+                description: bolaoDescription,
+                invite_code: inviteCode,
+                is_premium: true,
+                max_participants: 9999,
+              });
+
+              if (!error) {
+                createError = null;
+                console.log('[Webhook] ✅ Premium bolão created:', bolaoId, 'invite:', inviteCode);
+                break;
+              }
+
+              // 23505 = unique_violation (Postgres). Verifica se foi
+              // invite_code que colidiu (pode ser id, mas id é UUID pré-gerado
+              // e não deveria colidir; se colidir, é bug maior — não retry).
+              const isInviteCollision =
+                error.code === '23505' &&
+                (error.message?.includes('invite_code') ?? false);
+
+              if (!isInviteCollision) {
+                createError = error;
+                console.error('[Webhook] Error creating premium bolão:', error);
+                break;
+              }
+
+              attempts++;
+              console.warn(`[Webhook] invite_code collision (attempt ${attempts}/${MAX_ATTEMPTS}), regenerating`);
+            }
+
+            if (!createError && attempts < MAX_ATTEMPTS) {
+              // Add owner as member
+              if (userId) {
+                const { error: memberError } = await supabase.from('bolao_members').insert({
+                  bolao_id: bolaoId,
+                  user_id: userId,
+                  role: 'owner',
+                });
+                if (memberError) {
+                  // Bolão criado mas membership falhou — bug funcional silencioso
+                  // (dono fica sem acesso). Log loud pra investigação manual.
+                  console.error('[Webhook] ⚠️ Bolão created but owner membership failed', {
+                    bolaoId, userId, error: memberError,
+                  });
+                }
+              }
+            } else if (attempts >= MAX_ATTEMPTS) {
+              console.error('[Webhook] ❌ Failed to create bolão after 3 invite_code collisions', { bolaoId });
+            }
+          }
+
+          // Record the purchase — upsert por stripe_session_id pra idempotência
+          // (B2: Stripe retenta eventos. Sem upsert, 2 entregas = 2 rows.)
+          if (userId) {
+            const { error: subError } = await supabase
+              .from('bolao_subscriptions')
+              .upsert({
+                user_id: userId,
+                bolao_id: bolaoId,
+                type: 'bolao_premium',
+                stripe_session_id: session.id,
+                status: 'active',
+              }, { onConflict: 'stripe_session_id' });
+            if (subError) console.error('[Webhook] Error recording purchase:', subError);
+            else console.log('[Webhook] Purchase recorded for user:', userId);
+          }
+        } else if (userId) {
+          // Subscription product (betinho / analytics)
+          const subscriptionField = getSubscriptionField(productType);
           console.log(`[Webhook] Updating ${subscriptionField} to premium for user:`, userId);
           const updateData: Record<string, string> = {};
           updateData[subscriptionField] = 'premium';
-          
+
           const { data, error } = await supabase
             .from('users')
             .update(updateData)
             .eq('id', userId);
-          
+
           if (error) {
             console.error('[Webhook] Error updating subscription status:', error);
-            console.error('[Webhook] Error details:', JSON.stringify(error));
           } else {
             console.log(`[Webhook] ✅ ${subscriptionField} updated to premium for user:`, userId);
             console.log('[Webhook] Updated data:', JSON.stringify(data));
           }
         } else {
-          console.warn('[Webhook] ⚠️ No userId found in session metadata');
-          console.warn('[Webhook] Full session object:', JSON.stringify(session, null, 2));
+          console.warn('[Webhook] ⚠️ No userId or bolaoId found in session metadata');
         }
         break;
       }
