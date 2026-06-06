@@ -36,13 +36,15 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
-import type { BolaoRankingEntry } from '@/services/bolao.service';
+import type { BolaoRankingEntry, WcMatch, SpecialDeadlinesConfig } from '@/services/bolao.service';
+import { specialDeadline } from '@/components/bolao/special-deadlines';
 
 interface BolaoAdminPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bolaoId: string;
   bolaoName?: string;
+  bolaoDescription?: string | null;
   isClosed: boolean;
   isPremium: boolean;
   scoringPreset: string | null;
@@ -61,6 +63,10 @@ interface BolaoAdminPanelProps {
   currentUserId: string | undefined;
   ownerUserId: string;
   predictionDeadlineMode: 'per_match' | 'per_day' | 'per_round' | 'per_stage' | 'tournament_start';
+  /** Jogos da Copa — pra exibir os prazos efetivos dos palpites especiais. */
+  matches?: WcMatch[];
+  /** Config atual de prazo dos especiais (preset + overrides). */
+  specialDeadlines?: SpecialDeadlinesConfig | null;
 }
 
 type SectionId = 'geral' | 'pontuacao' | 'prazo' | 'modalidades' | 'membros';
@@ -109,7 +115,67 @@ const SPECIAL_TYPES: Record<string, string> = {
   finalist: 'Finalistas',
   semifinalist: 'Semifinalistas',
   quarterfinalist: 'Quartas de Final',
-  round_of_32: 'Mata-mata (32)',
+  round_of_16: 'Oitavas de Final',
+  round_of_32: '16 avos de final',
+};
+
+const PLAYER_AWARD_TYPES: { key: string; label: string; sub: string }[] = [
+  { key: 'top_scorer', label: 'Artilheiro', sub: 'Chuteira de Ouro' },
+  { key: 'best_player', label: 'Craque da Copa', sub: 'Bola de Ouro' },
+  { key: 'best_goalkeeper', label: 'Melhor Goleiro', sub: 'Luva de Ouro' },
+  { key: 'best_young_player', label: 'Revelação', sub: 'Melhor jovem (≤21)' },
+];
+
+// Prazo dos palpites especiais — ordem de exibição + de qual flag de modalidade dependem.
+const SPECIAL_DEADLINE_MODES: Record<'rolling' | 'opening', { label: string; description: string }> = {
+  rolling: { label: 'Rolável por rodada', description: 'Cada fase fecha no início da rodada que a decide. Prêmios de jogador na abertura.' },
+  opening: { label: 'Tudo na abertura', description: 'Todos os palpites especiais fecham no primeiro jogo da Copa.' },
+};
+
+type SpecialDeadlineKey =
+  | 'round_of_32' | 'round_of_16' | 'quarterfinalist' | 'semifinalist' | 'finalist' | 'champion'
+  | 'top_scorer' | 'best_player' | 'best_goalkeeper' | 'best_young_player';
+
+const SPECIAL_DEADLINE_ROWS: { key: SpecialDeadlineKey; label: string; group: 'knockout' | 'player' }[] = [
+  { key: 'round_of_32', label: '16 avos', group: 'knockout' },
+  { key: 'round_of_16', label: 'Oitavas', group: 'knockout' },
+  { key: 'quarterfinalist', label: 'Quartas', group: 'knockout' },
+  { key: 'semifinalist', label: 'Semis', group: 'knockout' },
+  { key: 'finalist', label: 'Finalistas', group: 'knockout' },
+  { key: 'champion', label: 'Campeão', group: 'knockout' },
+  { key: 'top_scorer', label: 'Artilheiro', group: 'player' },
+  { key: 'best_player', label: 'Craque', group: 'player' },
+  { key: 'best_goalkeeper', label: 'Goleiro', group: 'player' },
+  { key: 'best_young_player', label: 'Revelação', group: 'player' },
+];
+
+/** Date → "YYYY-MM-DDTHH:mm" em BRT (valor de input datetime-local). */
+function toBrtInputValue(d: Date): string {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(d).reduce((a, x) => { a[x.type] = x.value; return a; }, {} as Record<string, string>);
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+/** "YYYY-MM-DDTHH:mm" (BRT) → ISO com offset -03:00 pra persistir. */
+function brtInputToIso(v: string): string {
+  return `${v}:00-03:00`;
+}
+
+/** Formata um prazo pra exibição curta, ex "28/06 16:00". */
+function fmtDeadlineShort(d: Date | null): string {
+  if (!d) return '—';
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).format(d).replace(',', '');
+}
+
+const DEFAULT_PLAYER_AWARDS_ENABLED: Record<string, boolean> = {
+  top_scorer: true, best_player: true, best_goalkeeper: true, best_young_player: true,
+};
+const DEFAULT_PLAYER_AWARD_POINTS: Record<string, number> = {
+  top_scorer: 10, best_player: 10, best_goalkeeper: 8, best_young_player: 8,
 };
 
 const PLAYER_AWARD_TYPES: { key: string; label: string; sub: string }[] = [
@@ -256,6 +322,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   onOpenChange,
   bolaoId,
   bolaoName,
+  bolaoDescription,
   isClosed,
   isPremium,
   scoringPreset,
@@ -274,6 +341,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   currentUserId,
   ownerUserId,
   predictionDeadlineMode,
+  matches,
+  specialDeadlines,
 }) => {
   const [activeSection, setActiveSection] = useState<SectionId>('geral');
   const contentScrollRef = useRef<HTMLDivElement>(null);
@@ -296,6 +365,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   // Edição inline do nome do bolão
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(bolaoName ?? '');
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState(bolaoDescription ?? '');
 
   // Scoring state — toggles permitem desativar uma categoria. Quando OFF,
   // salva 0 no banco; o valor "ultimo ligado" fica em customResult/customExact
@@ -320,6 +391,15 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const [playerPoints, setPlayerPoints] = useState<Record<string, number>>(
     { ...DEFAULT_PLAYER_AWARD_POINTS, ...(playerAwardPoints ?? {}) }
   );
+
+  // Prazo dos palpites especiais (preset + overrides por tipo) — salva na hora.
+  const [specialDlMode, setSpecialDlMode] = useState<'rolling' | 'opening'>(specialDeadlines?.mode ?? 'rolling');
+  const [specialDlOverrides, setSpecialDlOverrides] = useState<Record<string, string | null>>(
+    specialDeadlines?.overrides ?? {}
+  );
+  // Linha cujo editor de data está aberto (key) + rascunho do input.
+  const [editingDeadline, setEditingDeadline] = useState<SpecialDeadlineKey | null>(null);
+  const [deadlineDraft, setDeadlineDraft] = useState('');
 
   const { toast } = useToast();
   const removeMember = useRemoveMember();
@@ -508,6 +588,62 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     );
   };
 
+  // ── Prazo dos palpites especiais (salva imediatamente, como o modo dos jogos) ──
+  const persistSpecialDeadlines = (
+    mode: 'rolling' | 'opening',
+    overrides: Record<string, string | null>,
+    successMsg: string
+  ) => {
+    // Remove chaves nulas/vazias pra não inflar o jsonb.
+    const clean: Record<string, string> = {};
+    for (const [k, v] of Object.entries(overrides)) if (v) clean[k] = v;
+    const prevMode = specialDlMode;
+    const prevOverrides = specialDlOverrides;
+    setSpecialDlMode(mode);
+    setSpecialDlOverrides(clean);
+    updateSettings.mutate(
+      { bolaoId, settings: { special_deadlines: { mode, overrides: clean } } },
+      {
+        onSuccess: () => toast({ title: successMsg }),
+        onError: (err: any) => {
+          setSpecialDlMode(prevMode);
+          setSpecialDlOverrides(prevOverrides);
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
+  };
+
+  const handleSpecialDlModeChange = (mode: 'rolling' | 'opening') => {
+    if (mode === specialDlMode) return;
+    persistSpecialDeadlines(mode, specialDlOverrides, `Prazo dos especiais: ${SPECIAL_DEADLINE_MODES[mode].label}`);
+  };
+
+  const handleStartEditDeadline = (key: SpecialDeadlineKey) => {
+    const eff = specialDeadline(key, matches ?? [], { mode: specialDlMode, overrides: specialDlOverrides });
+    setDeadlineDraft(eff ? toBrtInputValue(eff) : '');
+    setEditingDeadline(key);
+  };
+
+  const handleSaveDeadlineOverride = (key: SpecialDeadlineKey) => {
+    if (!deadlineDraft) return;
+    const label = SPECIAL_DEADLINE_ROWS.find((r) => r.key === key)?.label ?? key;
+    persistSpecialDeadlines(
+      specialDlMode,
+      { ...specialDlOverrides, [key]: brtInputToIso(deadlineDraft) },
+      `Prazo de ${label} definido`
+    );
+    setEditingDeadline(null);
+  };
+
+  const handleClearDeadlineOverride = (key: SpecialDeadlineKey) => {
+    const label = SPECIAL_DEADLINE_ROWS.find((r) => r.key === key)?.label ?? key;
+    const next = { ...specialDlOverrides };
+    delete next[key];
+    persistSpecialDeadlines(specialDlMode, next, `Prazo de ${label} voltou ao padrão`);
+    setEditingDeadline(null);
+  };
+
   const handleTogglePlayerAward = (key: string) => {
     const newConfig = { ...playerAwardsConfig, [key]: !playerAwardsConfig[key] };
     const prev = { ...playerAwardsConfig };
@@ -554,6 +690,26 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         },
         onError: (err: any) => {
           toast({ title: 'Erro ao atualizar nome', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
+  };
+
+  const handleSaveDesc = () => {
+    const trimmed = descDraft.trim();
+    if (trimmed === (bolaoDescription ?? '').trim()) {
+      setEditingDesc(false);
+      return;
+    }
+    updateSettings.mutate(
+      { bolaoId, settings: { description: trimmed || null } },
+      {
+        onSuccess: () => {
+          toast({ title: 'Descrição atualizada' });
+          setEditingDesc(false);
+        },
+        onError: (err: any) => {
+          toast({ title: 'Erro ao atualizar descrição', description: err.message, variant: 'destructive' });
         },
       }
     );
@@ -681,6 +837,71 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                     setEditingName(true);
                   }}
                   className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 border border-line hover:border-line-2 hover:bg-canvas-2 hover:text-ink inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Editar
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="py-4 border-b border-line">
+          <p className="text-[13px] font-semibold text-ink leading-tight mb-1">Descrição do bolão</p>
+          {editingDesc ? (
+            <div className="mt-2 space-y-2">
+              <textarea
+                value={descDraft}
+                onChange={(e) => setDescDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setDescDraft(bolaoDescription ?? '');
+                    setEditingDesc(false);
+                  }
+                }}
+                maxLength={280}
+                rows={3}
+                autoFocus
+                placeholder="Ex: bolão da firma — o campeão paga a pizza 🍕"
+                aria-label="Descrição do bolão"
+                className="w-full px-3 py-2 rounded-rebrand-md border border-line bg-white text-[13px] text-ink focus:border-forest focus:ring-2 focus:ring-forest/20 focus:outline-none resize-none"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveDesc}
+                  disabled={updateSettings.isPending}
+                  className="h-9 px-3 rounded-rebrand-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-2 disabled:opacity-50 transition-colors"
+                >
+                  {updateSettings.isPending ? 'Salvando...' : 'Salvar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescDraft(bolaoDescription ?? '');
+                    setEditingDesc(false);
+                  }}
+                  disabled={updateSettings.isPending}
+                  className="h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 hover:bg-canvas-2 hover:text-ink disabled:opacity-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <span className="text-[10px] text-ink-3 ml-auto tabular-nums">{descDraft.length}/280</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start justify-between gap-3 mt-1">
+              <p className={`text-[14px] whitespace-pre-line ${bolaoDescription ? 'text-ink' : 'text-ink-3 italic'}`}>
+                {bolaoDescription || 'Sem descrição'}
+              </p>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDescDraft(bolaoDescription ?? '');
+                    setEditingDesc(true);
+                  }}
+                  className="shrink-0 h-9 px-3 rounded-rebrand-md text-[12px] font-semibold text-ink-2 border border-line hover:border-line-2 hover:bg-canvas-2 hover:text-ink inline-flex items-center gap-1.5 transition-colors"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                   Editar
@@ -988,6 +1209,119 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
               </button>
             );
           })}
+        </div>
+      </Card>
+
+      {/* Prazo dos palpites especiais (16 avos…campeão + prêmios de jogador) */}
+      <Card title="Palpites especiais" sub="Quando 16 avos…campeão e os prêmios de jogador fecham">
+        <div className="space-y-2 py-4">
+          {(['rolling', 'opening'] as const).map((mode) => {
+            const active = specialDlMode === mode;
+            const meta = SPECIAL_DEADLINE_MODES[mode];
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleSpecialDlModeChange(mode)}
+                disabled={updateSettings.isPending || !isOwner}
+                className={`w-full text-left rounded-rebrand-md border p-3 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                  active ? 'border-forest bg-forest/[0.06] ring-2 ring-forest/15' : 'border-line bg-white hover:border-line-2 hover:bg-canvas-2'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${active ? 'border-forest bg-forest' : 'border-line'}`}>
+                    {active && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-[13px] font-semibold ${active ? 'text-forest' : 'text-ink'}`}>{meta.label}</p>
+                    <p className="text-[11px] text-ink-2 mt-0.5 leading-snug">{meta.description}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Ajuste fino: override de data/hora por tipo (só os habilitados) */}
+        <div className="border-t border-line pt-3">
+          <p className="text-[11px] font-semibold text-ink-2 mb-1">Ajustar tipos específicos</p>
+          <p className="text-[11px] text-ink-3 mb-3 leading-snug">
+            Por padrão cada tipo segue o preset acima. Defina uma data pra travar antes ou depois.
+          </p>
+          <div className="space-y-1.5">
+            {SPECIAL_DEADLINE_ROWS.filter((row) => {
+              if (row.key === 'champion') return champEnabled;
+              if (row.group === 'knockout') return !!specialConfig[row.key];
+              return !!playerAwardsConfig[row.key];
+            }).map((row) => {
+              const hasOverride = !!specialDlOverrides[row.key];
+              const eff = specialDeadline(row.key, matches ?? [], { mode: specialDlMode, overrides: specialDlOverrides });
+              const isEditing = editingDeadline === row.key;
+              return (
+                <div key={row.key} className="rounded-rebrand-sm border border-line bg-white">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-ink leading-tight">{row.label}</p>
+                      <p className="text-[11px] text-ink-2 leading-tight mt-0.5 tabular-nums">
+                        {fmtDeadlineShort(eff)}
+                        {hasOverride
+                          ? <span className="text-amber-2 font-semibold"> · ajustado</span>
+                          : <span className="text-ink-3"> · padrão</span>}
+                      </p>
+                    </div>
+                    {isOwner && !isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditDeadline(row.key)}
+                        className="shrink-0 h-8 px-3 rounded-rebrand-sm border border-line text-[12px] font-semibold text-ink-2 hover:border-line-2 hover:bg-canvas-2"
+                      >
+                        {hasOverride ? 'Editar' : 'Definir'}
+                      </button>
+                    )}
+                  </div>
+                  {isEditing && (
+                    <div className="px-3 pb-3 pt-1 border-t border-line flex flex-wrap items-center gap-2">
+                      <input
+                        type="datetime-local"
+                        value={deadlineDraft}
+                        onChange={(e) => setDeadlineDraft(e.target.value)}
+                        aria-label={`Prazo de ${row.label}`}
+                        className="h-9 px-2.5 rounded-rebrand-sm border border-line bg-canvas-2 text-[12px] text-ink focus:bg-white focus:border-forest focus:ring-2 focus:ring-forest/20 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-ink-3">BRT</span>
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        {hasOverride && (
+                          <button
+                            type="button"
+                            onClick={() => handleClearDeadlineOverride(row.key)}
+                            disabled={updateSettings.isPending}
+                            className="h-8 px-2.5 rounded-rebrand-sm border border-line text-[11px] font-semibold text-ink-2 hover:bg-canvas-2 disabled:opacity-50"
+                          >
+                            Restaurar padrão
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setEditingDeadline(null)}
+                          className="h-8 px-2.5 rounded-rebrand-sm text-[11px] font-semibold text-ink-2 hover:bg-canvas-2"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveDeadlineOverride(row.key)}
+                          disabled={updateSettings.isPending || !deadlineDraft}
+                          className="h-8 px-3 rounded-rebrand-sm bg-forest text-white text-[11px] font-semibold hover:bg-forest-2 disabled:opacity-50"
+                        >
+                          Salvar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </Card>
 

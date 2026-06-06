@@ -6,16 +6,26 @@ import {
   useMySpecialPredictions,
   useSpecialSummary,
   useToggleSpecialPrediction,
+  useBolaoPredictions,
+  useSetRoundOf32FromProjection,
+  useBracketAdvance,
+  useUpsertChampionPrediction,
 } from '@/hooks/use-bolao';
-import type { WcMatch } from '@/services/bolao.service';
+import { computeGroupProjection, type PredictionMap } from '@/components/bolao/group-projection';
+import { isSpecialLocked, formatDeadlineLabel } from '@/components/bolao/special-deadlines';
+import { KnockoutBracket } from '@/components/bolao/KnockoutBracket';
+import { nextStageOf, type BracketPicks, type ResolvedMatch } from '@/components/bolao/bracket';
+import { List, GitFork } from 'lucide-react';
+import type { WcMatch, SpecialDeadlinesConfig } from '@/services/bolao.service';
 import { useToast } from '@/hooks/use-toast';
 
-type SpecialType = 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_32';
+type SpecialType = 'finalist' | 'semifinalist' | 'quarterfinalist' | 'round_of_16' | 'round_of_32';
 
 interface PointsConfig {
   finalist: number;
   semifinalist: number;
   quarterfinalist: number;
+  round_of_16: number;
   round_of_32: number;
 }
 
@@ -23,6 +33,8 @@ interface Props {
   bolaoId: string;
   isPremium: boolean;
   matches: WcMatch[];
+  /** Usuário logado — pra projetar os grupos a partir dos palpites de jogo DELE. */
+  currentUserId?: string;
   enabledTypes?: Record<string, boolean>;
   pointsConfig?: PointsConfig;
   /** Time já escolhido como campeão — pinned como finalista (não removível por aqui). */
@@ -32,16 +44,28 @@ interface Props {
    * não tem campeão definido. Parent pode auto-sugerir esse time como campeão.
    */
   onSuggestChampion?: (teamCode: string) => void;
+  /** Config de prazo dos especiais (preset + overrides) — pra badges e lock. */
+  specialDeadlines?: SpecialDeadlinesConfig | null;
 }
 
 const TYPE_META: Record<
   SpecialType,
   { label: string; sublabel: string; max: number; icon: React.ComponentType<{ className?: string }> }
 > = {
-  finalist: { label: 'Finalistas', sublabel: 'Escolha 2 seleções', max: 2, icon: Trophy },
-  semifinalist: { label: 'Semifinalistas', sublabel: 'Escolha 4 seleções', max: 4, icon: Flag },
-  quarterfinalist: { label: 'Quartas de final', sublabel: 'Escolha 8 seleções', max: 8, icon: Flag },
-  round_of_32: { label: 'Mata-mata (16 avos)', sublabel: 'Escolha 32 seleções', max: 32, icon: Target },
+  // Ordem de funil: 16 avos (mais inclusivo) → Final. Cada fase filtra pra anterior.
+  round_of_32: { label: '16 avos de final', sublabel: 'Escolha 32 seleções', max: 32, icon: Target },
+  round_of_16: { label: 'Oitavas de final', sublabel: 'Escolha 16 das suas 32', max: 16, icon: Flag },
+  quarterfinalist: { label: 'Quartas de final', sublabel: 'Escolha 8 das suas 16', max: 8, icon: Flag },
+  semifinalist: { label: 'Semifinalistas', sublabel: 'Escolha 4 das suas 8', max: 4, icon: Flag },
+  finalist: { label: 'Finalistas', sublabel: 'Escolha 2 das suas 4', max: 2, icon: Trophy },
+};
+
+/** Fase "pai" (mais inclusiva) — o seletor de cada fase mostra só os picks do pai. */
+const PARENT_STAGE: Partial<Record<SpecialType, SpecialType>> = {
+  round_of_16: 'round_of_32',
+  quarterfinalist: 'round_of_16',
+  semifinalist: 'quarterfinalist',
+  finalist: 'semifinalist',
 };
 
 function extractTeams(matches: WcMatch[]) {
@@ -92,6 +116,12 @@ interface BracketCardProps {
   defaultOpen?: boolean;
   /** Callback chamado após adicionar um pick (não chamado em remoção). Parent cascateia pra fases anteriores. */
   onAfterAdd?: (teamCode: string) => void;
+  /** Label da fase "pai" — mostrado quando o seletor está vazio (pai não preenchido). */
+  parentLabel?: string;
+  /** Prazo já encerrado — trava os toggles deste card. */
+  locked?: boolean;
+  /** Rótulo do prazo, ex "fecha 28/06 16h" ou "encerrado". */
+  deadlineLabel?: string | null;
 }
 
 const BracketCard: React.FC<BracketCardProps> = ({
@@ -101,10 +131,13 @@ const BracketCard: React.FC<BracketCardProps> = ({
   summaryCounts,
   teams,
   pointsLabel,
+  parentLabel,
   pinnedCodes,
   championCode,
   defaultOpen,
   onAfterAdd,
+  locked: cardLocked,
+  deadlineLabel,
 }) => {
   const meta = TYPE_META[type];
   const Icon = meta.icon;
@@ -123,6 +156,10 @@ const BracketCard: React.FC<BracketCardProps> = ({
   const isLocked = (code: string) => (pinnedCodes ?? []).includes(code);
 
   const handleToggle = (code: string) => {
+    if (cardLocked) {
+      toast({ title: 'Prazo encerrado', description: `Os palpites de ${meta.label.toLowerCase()} já fecharam.` });
+      return;
+    }
     const isPicked = myPicks.includes(code);
     if (isPicked && isLocked(code)) {
       toast({
@@ -176,6 +213,14 @@ const BracketCard: React.FC<BracketCardProps> = ({
             <p className="text-[13px] font-semibold text-ink leading-tight">{meta.label}</p>
             <p className="text-[11px] text-ink-2 leading-tight mt-0.5">
               {meta.sublabel} · <span className="text-forest font-semibold">{pointsLabel}</span>
+              {deadlineLabel && (
+                <>
+                  {' · '}
+                  <span className={cardLocked ? 'text-status-danger font-semibold' : 'text-ink-3'}>
+                    {cardLocked ? 'encerrado' : deadlineLabel}
+                  </span>
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -231,6 +276,16 @@ const BracketCard: React.FC<BracketCardProps> = ({
             </div>
           )}
 
+          {teams.length === 0 ? (
+            <p className="text-[12px] text-ink-2 text-center py-6 leading-snug">
+              {parentLabel ? (
+                <>Preencha primeiro os times de <span className="font-semibold text-ink">{parentLabel}</span> — eles aparecem aqui pra você afunilar.</>
+              ) : (
+                'Nenhuma seleção disponível.'
+              )}
+            </p>
+          ) : (
+          <>
           <div className="relative my-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-3 pointer-events-none" />
             <input
@@ -254,7 +309,7 @@ const BracketCard: React.FC<BracketCardProps> = ({
                   key={team.code}
                   type="button"
                   onClick={() => handleToggle(team.code)}
-                  disabled={toggle.isPending}
+                  disabled={toggle.isPending || cardLocked}
                   aria-label={`${picked ? 'Remover' : 'Escolher'} ${team.name} para ${meta.label}`}
                   aria-pressed={picked}
                   className={`relative flex flex-col items-center gap-1 p-2.5 min-h-[78px] rounded-rebrand-sm border text-center transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 ${
@@ -297,6 +352,8 @@ const BracketCard: React.FC<BracketCardProps> = ({
               </p>
             )}
           </div>
+          </>
+          )}
         </div>
       )}
     </div>
@@ -307,22 +364,74 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
   bolaoId,
   isPremium,
   matches,
+  currentUserId,
   enabledTypes,
   pointsConfig,
   championPick,
   onSuggestChampion,
+  specialDeadlines,
 }) => {
   const { data: myPreds } = useMySpecialPredictions(bolaoId);
   const { data: summary } = useSpecialSummary(bolaoId);
   const cascadeToggle = useToggleSpecialPrediction();
 
+  // Projeção dos grupos a partir dos palpites de JOGO do usuário → auto-fill dos 16 avos.
+  const { data: myMatchPreds } = useBolaoPredictions(bolaoId, currentUserId);
+  const setR32 = useSetRoundOf32FromProjection();
+  const { toast: projToast } = useToast();
+  const [confirmingR32, setConfirmingR32] = useState(false);
+  const projection = useMemo(() => {
+    if (!matches || !currentUserId) return null;
+    const predMap: PredictionMap = {};
+    for (const p of myMatchPreds || []) {
+      if (p.predicted_home_score != null && p.predicted_away_score != null) {
+        predMap[p.match_id] = { home: p.predicted_home_score, away: p.predicted_away_score };
+      }
+    }
+    return computeGroupProjection(matches, predMap);
+  }, [matches, myMatchPreds, currentUserId]);
+
+  const handleApplyProjection = () => {
+    if (!projection?.qualifiers.length) return;
+    setR32.mutate(
+      { bolaoId, codes: projection.qualifiers },
+      {
+        onSuccess: (r) => {
+          setConfirmingR32(false);
+          projToast({ title: `16 avos preenchidos`, description: `${r.count} seleções a partir da sua projeção.` });
+        },
+        onError: (err: any) =>
+          projToast({ title: 'Erro', description: err?.message ?? 'Tente novamente', variant: 'destructive' }),
+      }
+    );
+  };
+
+  // Visualização: lista (cards por fase) ou chaveamento (bracket clicável).
+  const [view, setView] = useState<'lista' | 'bracket'>('lista');
+  const bracketAdvance = useBracketAdvance();
+  const upsertChampion = useUpsertChampionPrediction();
+
   const teams = useMemo(() => extractTeams(matches), [matches]);
+
+  // Prazos por fase (rolável por rodada). Servidor é a autoridade; aqui só
+  // mostramos o prazo e travamos a UI quando passa.
+  const deadlineInfo = useMemo(() => {
+    const types: SpecialType[] = ['round_of_32', 'round_of_16', 'quarterfinalist', 'semifinalist', 'finalist'];
+    const locked: Record<string, boolean> = {};
+    const label: Record<string, string | null> = {};
+    for (const t of types) {
+      locked[t] = isSpecialLocked(t, matches, specialDeadlines);
+      label[t] = formatDeadlineLabel(t, matches, specialDeadlines);
+    }
+    return { locked, label };
+  }, [matches, specialDeadlines]);
 
   const myPicksByType = useMemo(() => {
     const map: Record<string, string[]> = {
       finalist: [],
       semifinalist: [],
       quarterfinalist: [],
+      round_of_16: [],
       round_of_32: [],
     };
     for (const p of myPreds || []) {
@@ -337,12 +446,14 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     const fi = myPicksByType.finalist || [];
     const se = myPicksByType.semifinalist || [];
     const qu = myPicksByType.quarterfinalist || [];
+    const r16 = myPicksByType.round_of_16 || [];
     const dedup = (arr: string[]) => Array.from(new Set(arr));
     return {
       finalist: dedup(ch),
       semifinalist: dedup([...ch, ...fi]),
       quarterfinalist: dedup([...ch, ...fi, ...se]),
-      round_of_32: dedup([...ch, ...fi, ...se, ...qu]),
+      round_of_16: dedup([...ch, ...fi, ...se, ...qu]),
+      round_of_32: dedup([...ch, ...fi, ...se, ...qu, ...r16]),
     };
   }, [championPick, myPicksByType]);
 
@@ -352,7 +463,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
    * quartas e mata-mata 32 se houver vaga e a fase estiver habilitada.
    */
   const handleAfterAdd = (type: SpecialType, teamCode: string) => {
-    const HIERARCHY: SpecialType[] = ['finalist', 'semifinalist', 'quarterfinalist', 'round_of_32'];
+    const HIERARCHY: SpecialType[] = ['finalist', 'semifinalist', 'quarterfinalist', 'round_of_16', 'round_of_32'];
     const idx = HIERARCHY.indexOf(type);
     if (idx === -1) return;
     const stagesBelow = HIERARCHY.slice(idx + 1);
@@ -375,6 +486,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
       finalist: new Map(),
       semifinalist: new Map(),
       quarterfinalist: new Map(),
+      round_of_16: new Map(),
       round_of_32: new Map(),
     };
     for (const s of summary || []) {
@@ -383,35 +495,166 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     return map;
   }, [summary]);
 
-  const pts: PointsConfig = pointsConfig ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_32: 1 };
+  // Merge com defaults — bolões criados antes das Oitavas não têm round_of_16 no points.
+  const pts: PointsConfig = { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1, ...(pointsConfig ?? {}) };
   const POINTS_LABEL: Record<SpecialType, string> = {
     finalist: `+${pts.finalist} pts cada`,
     semifinalist: `+${pts.semifinalist} pts cada`,
     quarterfinalist: `+${pts.quarterfinalist} pts cada`,
+    round_of_16: `+${pts.round_of_16} pts cada`,
     round_of_32: `+${pts.round_of_32} pt cada`,
   };
+
+  // Picks no formato do bracket + handler de avanço (clicar no vencedor).
+  const bracketPicks: BracketPicks = {
+    round_of_16: myPicksByType.round_of_16 || [],
+    quarterfinalist: myPicksByType.quarterfinalist || [],
+    semifinalist: myPicksByType.semifinalist || [],
+    finalist: myPicksByType.finalist || [],
+    champion: championPick ?? null,
+  };
+  const bracketBusy = bracketAdvance.isPending || upsertChampion.isPending;
+  const handleAdvance = (match: ResolvedMatch, winnerCode: string) => {
+    const ns = nextStageOf(match.stage);
+    if (!ns) return;
+    if (isSpecialLocked(ns, matches, specialDeadlines)) {
+      projToast({ title: 'Prazo encerrado', description: 'Os palpites desta fase já fecharam.' });
+      return;
+    }
+    const loser = match.home.code === winnerCode ? match.away.code : match.home.code;
+    const onError = (err: any) =>
+      projToast({ title: 'Erro', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+    if (ns === 'champion') {
+      upsertChampion.mutate({ bolaoId, teamCode: winnerCode }, { onError });
+    } else {
+      bracketAdvance.mutate({ bolaoId, winner: winnerCode, loser: loser ?? '', nextStage: ns }, { onError });
+    }
+  };
+  const canBracket = !!projection?.complete;
 
   // Palpites Especiais agora são liberados pra todo bolão (Free e Premium).
   // A diferença Premium vs Free é APENAS quantidade de participantes (>20).
   return (
     <div className="space-y-3">
+      {/* Auto-preenchimento dos 16 avos a partir da projeção dos palpites de grupo */}
+      {projection && (enabledTypes?.round_of_32 !== false) && (
+        projection.complete ? (
+          <div className="rounded-rebrand-md border border-forest/30 bg-forest/[0.06] p-3">
+            {!confirmingR32 ? (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-[12px] text-ink leading-snug min-w-0">
+                  <span className="font-semibold">Seus palpites de grupo classificam 32 seleções.</span>{' '}
+                  <span className="text-ink-2">Preencher os 16 avos com elas?</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingR32(true)}
+                  disabled={deadlineInfo.locked.round_of_32}
+                  title={deadlineInfo.locked.round_of_32 ? 'Prazo dos 16 avos encerrado' : undefined}
+                  className="shrink-0 h-9 px-3.5 rounded-rebrand-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {deadlineInfo.locked.round_of_32 ? '16 avos encerrados' : 'Usar projeção nos 16 avos'}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-[12px] text-ink-2 leading-snug min-w-0">
+                  Isso <span className="font-semibold text-ink">substitui</span> seus 16 avos atuais pelas 32 da projeção.
+                </p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingR32(false)}
+                    className="h-9 px-3 rounded-rebrand-md border border-line text-[12px] font-semibold text-ink-2 hover:bg-canvas-2"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyProjection}
+                    disabled={setR32.isPending}
+                    className="h-9 px-3.5 rounded-rebrand-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-2 disabled:opacity-50"
+                  >
+                    {setR32.isPending ? 'Aplicando…' : 'Confirmar'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-[11px] text-ink-3 px-1 leading-snug">
+            Palpite todos os jogos de grupo pra preencher os 16 avos automaticamente a partir da projeção.
+          </p>
+        )
+      )}
+
+      {/* Toggle Lista | Chaveamento (bracket só com a projeção completa) */}
+      <div className="flex items-center gap-1 p-0.5 rounded-rebrand-md bg-canvas-2 w-fit">
+        <button
+          type="button"
+          onClick={() => setView('lista')}
+          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold transition-colors ${
+            view === 'lista' ? 'bg-white text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
+          }`}
+        >
+          <List className="w-3.5 h-3.5" /> Lista
+        </button>
+        <button
+          type="button"
+          onClick={() => canBracket && setView('bracket')}
+          disabled={!canBracket}
+          title={canBracket ? undefined : 'Complete os palpites de grupo pra montar o chaveamento'}
+          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            view === 'bracket' ? 'bg-white text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
+          }`}
+        >
+          <GitFork className="w-3.5 h-3.5 rotate-90" /> Chaveamento
+        </button>
+      </div>
+
+      {view === 'bracket' && canBracket && projection ? (
+        <KnockoutBracket
+          matches={matches}
+          projection={projection}
+          picks={bracketPicks}
+          onAdvance={handleAdvance}
+          busy={bracketBusy}
+        />
+      ) : (
+      <>
       {(Object.keys(TYPE_META) as SpecialType[])
         .filter((type) => !enabledTypes || enabledTypes[type] !== false)
-        .map((type, idx) => (
-          <BracketCard
-            key={type}
-            type={type}
-            bolaoId={bolaoId}
-            myPicks={myPicksByType[type] || []}
-            summaryCounts={summaryByType[type] || new Map()}
-            teams={teams}
-            pointsLabel={POINTS_LABEL[type]}
-            pinnedCodes={pinnedByStage[type]}
-            championCode={championPick ?? null}
-            defaultOpen={idx === 0 && type === 'finalist'}
-            onAfterAdd={(teamCode) => handleAfterAdd(type, teamCode)}
-          />
-        ))}
+        .map((type, idx) => {
+          // Funil: cada fase só lista os times escolhidos na fase anterior (pai).
+          // União com os picks próprios garante que picks legados sempre apareçam.
+          const parent = PARENT_STAGE[type];
+          const stageTeams = parent
+            ? teams.filter((t) => {
+                const pool = new Set([...(myPicksByType[parent] || []), ...(myPicksByType[type] || [])]);
+                return pool.has(t.code);
+              })
+            : teams;
+          return (
+            <BracketCard
+              key={type}
+              type={type}
+              bolaoId={bolaoId}
+              myPicks={myPicksByType[type] || []}
+              summaryCounts={summaryByType[type] || new Map()}
+              teams={stageTeams}
+              pointsLabel={POINTS_LABEL[type]}
+              pinnedCodes={pinnedByStage[type]}
+              championCode={championPick ?? null}
+              defaultOpen={idx === 0}
+              onAfterAdd={(teamCode) => handleAfterAdd(type, teamCode)}
+              parentLabel={parent ? TYPE_META[parent].label : undefined}
+              locked={deadlineInfo.locked[type]}
+              deadlineLabel={deadlineInfo.label[type]}
+            />
+          );
+        })}
+      </>
+      )}
     </div>
   );
 };
