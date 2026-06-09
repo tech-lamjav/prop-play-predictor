@@ -200,6 +200,26 @@ export interface FutebolMatchupMarkets {
   away?: FutebolTeamMarket;
 }
 
+export interface FutebolScorer {
+  player_id: number;
+  player_name: string;
+  team_name: string | null;
+  goals: number;
+}
+
+export interface FutebolCardLeader {
+  player_id: number;
+  player_name: string;
+  team_name: string | null;
+  yellow: number;
+  red: number;
+}
+
+export interface FutebolLeaders {
+  scorers: FutebolScorer[];
+  cards: FutebolCardLeader[];
+}
+
 export const futebolDataService = {
   async getFixtures(
     competition: Competition,
@@ -265,6 +285,17 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || {}) as FutebolMatchupMarkets;
+    });
+  },
+
+  async getLeaders(competition: Competition, season: number): Promise<FutebolLeaders> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_leaders', {
+        p_competition: competition,
+        p_season: season,
+      });
+      if (error) throw error;
+      return (data || { scorers: [], cards: [] }) as FutebolLeaders;
     });
   },
 };

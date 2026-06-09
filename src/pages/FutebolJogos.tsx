@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtures, useFutebolStandings } from '@/hooks/use-futebol-data';
-import type { Competition, FutebolFixture, FutebolStandingRow } from '@/services/futebol-data.service';
+import { useFutebolFixtures, useFutebolStandings, useFutebolLeaders } from '@/hooks/use-futebol-data';
+import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders } from '@/services/futebol-data.service';
 
 const COMPETITIONS: { value: Competition; label: string }[] = [
   { value: 'brasileirao', label: 'Brasileirão' },
@@ -124,6 +124,54 @@ function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]
   );
 }
 
+function LeadersTables({ leaders, loading }: { leaders?: FutebolLeaders; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="space-y-1">
+        {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-9 w-full bg-canvas-2 rounded-rebrand-sm" />)}
+      </div>
+    );
+  }
+  const scorers = leaders?.scorers || [];
+  const cards = leaders?.cards || [];
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3 mb-2 px-1">Artilheiros</p>
+        <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
+          {scorers.length ? scorers.map((s, i) => (
+            <div key={s.player_id} className="flex items-center gap-3 px-3 py-2 border-b border-line last:border-0 text-sm">
+              <span className="w-5 text-xs text-ink-3 tabular-nums">{i + 1}</span>
+              <span className="flex-1 min-w-0 truncate text-ink">{s.player_name}</span>
+              <span className="text-xs text-ink-3 truncate max-w-[120px] text-right">{s.team_name}</span>
+              <span className="w-8 text-right font-bold text-forest tabular-nums">{s.goals}</span>
+            </div>
+          )) : <div className="p-4 text-center text-sm text-ink-3">Sem dados.</div>}
+        </div>
+      </div>
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3 mb-2 px-1">Cartões</p>
+        <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
+          <div className="flex items-center gap-3 px-3 py-2 text-[10px] uppercase tracking-wide text-ink-3 border-b border-line">
+            <span className="w-5" /><span className="flex-1">Jogador</span>
+            <span className="w-8 text-center">Amar</span><span className="w-8 text-center">Verm</span>
+          </div>
+          {cards.length ? cards.map((c, i) => (
+            <div key={c.player_id} className="flex items-center gap-3 px-3 py-2 border-b border-line last:border-0 text-sm">
+              <span className="w-5 text-xs text-ink-3 tabular-nums">{i + 1}</span>
+              <span className="flex-1 min-w-0 truncate">
+                <span className="text-ink">{c.player_name}</span> <span className="text-xs text-ink-3">· {c.team_name}</span>
+              </span>
+              <span className="w-8 text-center font-medium text-amber-2 tabular-nums">{c.yellow}</span>
+              <span className="w-8 text-center font-medium text-status-danger tabular-nums">{c.red}</span>
+            </div>
+          )) : <div className="p-4 text-center text-sm text-ink-3">Sem dados.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MatchRow({ fixture, onClick }: { fixture: FutebolFixture; onClick: () => void }) {
   const finished = isFinished(fixture.status_short);
   const homeWin = finished && (fixture.goals_home ?? 0) > (fixture.goals_away ?? 0);
@@ -169,10 +217,11 @@ export default function FutebolJogos() {
   const [season, setSeason] = useState<number>(2025);
   const [roundIdx, setRoundIdx] = useState(0);
 
-  const [view, setView] = useState<'jogos' | 'tabela'>('jogos');
+  const [view, setView] = useState<'jogos' | 'tabela' | 'artilheiros'>('jogos');
 
   const { data: fixtures, isLoading, isError } = useFutebolFixtures(competition, season);
   const { data: standings, isLoading: loadingStandings } = useFutebolStandings(competition, season, view === 'tabela');
+  const { data: leaders, isLoading: loadingLeaders } = useFutebolLeaders(competition, season, view === 'artilheiros');
 
   // rodadas na ordem cronológica (fixtures já vêm ordenadas por kickoff)
   const rounds = useMemo(() => {
@@ -232,7 +281,11 @@ export default function FutebolJogos() {
 
         {/* Segmento Jogos / Tabela */}
         <div className="flex gap-1 mb-3 bg-canvas-2 border border-line rounded-rebrand-md p-1 w-fit">
-          {(['jogos', 'tabela'] as const).map((v) => (
+          {([
+            ['jogos', 'Jogos'],
+            ['tabela', 'Tabela'],
+            ['artilheiros', 'Artilheiros'],
+          ] as const).map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -240,7 +293,7 @@ export default function FutebolJogos() {
                 view === v ? 'bg-white text-ink shadow-sm' : 'text-ink-2 hover:text-ink'
               }`}
             >
-              {v === 'jogos' ? 'Jogos' : 'Tabela'}
+              {label}
             </button>
           ))}
         </div>
@@ -291,6 +344,8 @@ export default function FutebolJogos() {
             loading={loadingStandings}
             onTeam={(id) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`)}
           />
+        ) : view === 'artilheiros' ? (
+          <LeadersTables leaders={leaders} loading={loadingLeaders} />
         ) : isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 8 }).map((_, i) => (

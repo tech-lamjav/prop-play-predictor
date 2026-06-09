@@ -57,7 +57,7 @@ Prioridade por valor/esforço:
 3. ~~**Timeline de lances**~~ ✅ FEITO (events no bundle `get_futebol_fixture_detail` + aba "Lances" no detalhe: gols+autor+assist, cartões, subs Entra/Sai, VAR).
 4. ~~**Taxas de mercado no confronto**~~ ✅ FEITO (RPC `get_futebol_matchup_markets` + card "Tendências · temporada" no detalhe do Jogo: %Over2.5, %BTTS, médias de gols feitos/sofridos dos 2 times, com disclaimer descritivo).
 5. **xG over/under-performance** (gols reais vs xG) — `fact_fixture_stats`.
-6. **Artilheiros / líderes de cartões** — `fact_fixture_events + dim_players`.
+6. ~~**Artilheiros / líderes de cartões**~~ ✅ FEITO (RPC `get_futebol_leaders` + segmento "Artilheiros" na tela Jogos: ranking de gols + cartões amarelos/vermelhos).
 
 Telas que habilita: enriquecer **Jogo**; nova tela **Time** (perfil); **Home** com tabela + próximos + artilheiros.
 
