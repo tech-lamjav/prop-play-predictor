@@ -327,6 +327,20 @@ export default function AnalyticsNav({
                 <span className="text-xs font-semibold uppercase tracking-wide">Bolão Copa 2026</span>
               </Button>
             )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/futebol/jogos')}
+              className={`flex items-center gap-2 px-4 h-9 ${
+                location.pathname.startsWith('/futebol')
+                  ? `${t.textAccent} ${t.ghostHoverBg}`
+                  : t.ghostBtn
+              }`}
+            >
+              <Target className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold uppercase tracking-wide">Futebol</span>
+            </Button>
           </div>
 
           {/* Right side - Auth & Premium */}
@@ -441,6 +455,25 @@ export default function AnalyticsNav({
                   <div className={`border-t ${t.border}`} />
                 </>
               )}
+
+              {/* Futebol */}
+              <div>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleNavigation('/futebol/jogos')}
+                  className={`w-full justify-start h-10 ${
+                    location.pathname.startsWith('/futebol')
+                      ? `${t.activeBg} ${t.textAccent}`
+                      : t.ghostBtn
+                  }`}
+                >
+                  <Target className="w-4 h-4 mr-3" />
+                  <span className="text-sm">Futebol</span>
+                </Button>
+              </div>
+
+              {/* Divisor */}
+              <div className={`border-t ${t.border}`} />
 
               {/* Seção Betinho */}
               <div>
