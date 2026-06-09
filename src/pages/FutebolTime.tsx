@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolTeamProfile } from '@/hooks/use-futebol-data';
+import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type { Competition, FutebolScopeResult, FutebolScopeStats } from '@/services/futebol-data.service';
 
 const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo' };
@@ -66,7 +67,7 @@ export default function FutebolTime() {
           <>
             {/* Header */}
             <div className={`${CARD} p-4 flex items-center gap-3`}>
-              <Crest name={data.team.team_name || ''} logo={data.team.team_logo} />
+              <Crest name={data.team.team_name || ''} logo={getFutebolTeamLogoUrl(data.team.team_id)} />
               <div>
                 <h1 className="font-display text-xl font-extrabold text-ink">{data.team.team_name}</h1>
                 <p className="text-xs text-ink-3">{COMP_LABEL[competition] || competition} · {season}</p>

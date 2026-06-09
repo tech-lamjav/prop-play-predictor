@@ -5,6 +5,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixtures, useFutebolStandings, useFutebolLeaders } from '@/hooks/use-futebol-data';
 import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders } from '@/services/futebol-data.service';
+import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 
 const COMPETITIONS: { value: Competition; label: string }[] = [
   { value: 'brasileirao', label: 'Brasileirão' },
@@ -109,7 +110,7 @@ function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]
         >
           <span className="text-ink-3 text-xs tabular-nums text-left">{i + 1}</span>
           <span className="flex items-center gap-2 min-w-0">
-            <Crest name={r.team_name} logo={r.team_logo} />
+            <Crest name={r.team_name} logo={getFutebolTeamLogoUrl(r.team_id)} />
             <span className="truncate text-ink text-left">{r.team_name}</span>
           </span>
           <span className="text-center text-ink-2 tabular-nums">{r.played}</span>
@@ -186,7 +187,7 @@ function MatchRow({ fixture, onClick }: { fixture: FutebolFixture; onClick: () =
         <span className={`text-sm truncate text-right ${homeWin ? 'text-ink font-semibold' : 'text-ink-2'}`}>
           {fixture.home_team_name}
         </span>
-        <Crest name={fixture.home_team_name} logo={fixture.home_team_logo} />
+        <Crest name={fixture.home_team_name} logo={getFutebolTeamLogoUrl(fixture.home_team_id)} />
       </div>
 
       {/* Placar / hora */}
@@ -202,7 +203,7 @@ function MatchRow({ fixture, onClick }: { fixture: FutebolFixture; onClick: () =
 
       {/* Away */}
       <div className="flex-1 flex items-center gap-2 min-w-0">
-        <Crest name={fixture.away_team_name} logo={fixture.away_team_logo} />
+        <Crest name={fixture.away_team_name} logo={getFutebolTeamLogoUrl(fixture.away_team_id)} />
         <span className={`text-sm truncate ${awayWin ? 'text-ink font-semibold' : 'text-ink-2'}`}>
           {fixture.away_team_name}
         </span>

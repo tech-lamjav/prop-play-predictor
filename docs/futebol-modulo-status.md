@@ -44,7 +44,11 @@ Brasileirão 2024/2025 completos (380 jogos, 380 FT cada); 2026 em andamento (17
 - **`FutebolJogos.tsx`** agora tem segmento **Jogos | Tabela** — Tabela = classificação clicável (linha → tela Time).
 - **`FutebolTime.tsx`** (`/futebol/time/:teamId?c=&s=`): perfil do time — Resultados (geral/casa/fora: V-E-D, médias gols, %Over2.5, %BTTS) + Médias por jogo (posse, finalizações, xG, escanteios, cartões).
 - Rotas em `src/App.tsx`; entrada **FUTEBOL** em `src/components/AnalyticsNav.tsx` (desktop + mobile).
-- **Conhecido (cosmético):** logos dos times (`media.api-sports.io`) dão 404 nesta sandbox (DNS bloqueado) → fallback de iniciais. Em navegador real o CDN público carrega. Se incomodar, proxiar via edge function.
+- **Logos dos times (RESOLVIDO):** a api-sports tem hotlink protection (`<img>` direto falha no navegador). Espelhados pro nosso Storage (mesmo padrão do `mirror-wc-photos`):
+  - bucket público **`futebol-team-logos`** + RPC **`get_futebol_teams()`** (lê `bq_futebol.dim_teams`) — criados no DEV (não-migration).
+  - edge function **`supabase/functions/mirror-futebol-team-logos`** (deploy DEV, `verify_jwt=false`): baixa cada logo da api-sports → sobe `{team_id}.png` no bucket. Rodada 1x via `pg_net` (75/75 espelhados).
+  - helper **`src/utils/futebol-logos.ts`** `getFutebolTeamLogoUrl(teamId)` → URL do Storage; os `Crest` usam ela com fallback pras iniciais.
+  - **Pra prod:** criar bucket + `get_futebol_teams` + deploy da function + rodar 1x (ou cron) no ambiente alvo. Re-rodar quando entrarem times novos.
 
 ### Paleta (rebrand / tema `theme-bolao`, definido em `src/index.css`)
 Wrap a página em `theme-bolao` + `AnalyticsNav variant="rebrand"`. Tokens: `bg-canvas/canvas-2`, `text-ink/ink-2/ink-3`, `bg-forest/text-forest`, `text-amber/amber-2`, `border-line/line-2`, `text-status-success/danger/warning`, `rounded-rebrand-sm/md/lg`, `font-display`. Evitar `Card`/`Select` do shadcn cru (usam tokens do tema default escuro + Radix porta pro body fora do tema) — usei divs `bg-white border-line` e pills/stepper próprios.

@@ -5,6 +5,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useFutebolFixtureDetail, useFutebolMatchupMarkets } from '@/hooks/use-futebol-data';
+import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type {
   FutebolEvent, FutebolFormResult, FutebolLineupPlayer, FutebolTeamStats,
 } from '@/services/futebol-data.service';
@@ -242,7 +243,7 @@ export default function FutebolJogo() {
                   onClick={() => navigate(`/futebol/time/${fixture.home_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
                   className="flex-1 flex flex-col items-center gap-2 group"
                 >
-                  <Crest name={fixture.home_team_name} logo={fixture.home_team_logo} />
+                  <Crest name={fixture.home_team_name} logo={getFutebolTeamLogoUrl(fixture.home_team_id)} />
                   <span className="text-sm text-ink font-medium text-center group-hover:text-forest">{fixture.home_team_name}</span>
                 </button>
                 <div className="px-4 text-center">
@@ -261,7 +262,7 @@ export default function FutebolJogo() {
                   onClick={() => navigate(`/futebol/time/${fixture.away_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
                   className="flex-1 flex flex-col items-center gap-2 group"
                 >
-                  <Crest name={fixture.away_team_name} logo={fixture.away_team_logo} />
+                  <Crest name={fixture.away_team_name} logo={getFutebolTeamLogoUrl(fixture.away_team_id)} />
                   <span className="text-sm text-ink font-medium text-center group-hover:text-forest">{fixture.away_team_name}</span>
                 </button>
               </div>
