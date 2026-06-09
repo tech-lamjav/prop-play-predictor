@@ -238,10 +238,13 @@ export default function FutebolJogo() {
                 )}
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex-1 flex flex-col items-center gap-2">
+                <button
+                  onClick={() => navigate(`/futebol/time/${fixture.home_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
+                  className="flex-1 flex flex-col items-center gap-2 group"
+                >
                   <Crest name={fixture.home_team_name} logo={fixture.home_team_logo} />
-                  <span className="text-sm text-ink font-medium text-center">{fixture.home_team_name}</span>
-                </div>
+                  <span className="text-sm text-ink font-medium text-center group-hover:text-forest">{fixture.home_team_name}</span>
+                </button>
                 <div className="px-4 text-center">
                   {finished ? (
                     <div className="text-3xl font-extrabold text-ink tabular-nums">
@@ -254,10 +257,13 @@ export default function FutebolJogo() {
                     {finished ? 'Encerrado' : (fixture.status_long || 'Agendado')}
                   </div>
                 </div>
-                <div className="flex-1 flex flex-col items-center gap-2">
+                <button
+                  onClick={() => navigate(`/futebol/time/${fixture.away_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
+                  className="flex-1 flex flex-col items-center gap-2 group"
+                >
                   <Crest name={fixture.away_team_name} logo={fixture.away_team_logo} />
-                  <span className="text-sm text-ink font-medium text-center">{fixture.away_team_name}</span>
-                </div>
+                  <span className="text-sm text-ink font-medium text-center group-hover:text-forest">{fixture.away_team_name}</span>
+                </button>
               </div>
             </div>
 
