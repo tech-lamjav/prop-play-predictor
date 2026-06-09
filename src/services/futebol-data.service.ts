@@ -187,6 +187,19 @@ export interface FutebolTeamProfile {
   stats_avg: FutebolScopeStats[];
 }
 
+export interface FutebolTeamMarket {
+  games: number;
+  avg_gf: number;
+  avg_ga: number;
+  over25_pct: number;
+  btts_pct: number;
+}
+
+export interface FutebolMatchupMarkets {
+  home?: FutebolTeamMarket;
+  away?: FutebolTeamMarket;
+}
+
 export const futebolDataService = {
   async getFixtures(
     competition: Competition,
@@ -234,6 +247,24 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || { team: null, results: [], stats_avg: [] }) as FutebolTeamProfile;
+    });
+  },
+
+  async getMatchupMarkets(
+    homeId: number,
+    awayId: number,
+    competition: Competition,
+    season: number
+  ): Promise<FutebolMatchupMarkets> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_matchup_markets', {
+        p_home_id: homeId,
+        p_away_id: awayId,
+        p_competition: competition,
+        p_season: season,
+      });
+      if (error) throw error;
+      return (data || {}) as FutebolMatchupMarkets;
     });
   },
 };

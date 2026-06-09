@@ -6,6 +6,7 @@ import {
   type FutebolFixtureDetail,
   type FutebolStandingRow,
   type FutebolTeamProfile,
+  type FutebolMatchupMarkets,
 } from '@/services/futebol-data.service';
 
 export function useFutebolFixtures(competition: Competition, season: number, round?: string | null) {
@@ -45,6 +46,22 @@ export function useFutebolTeamProfile(teamId: number | undefined, competition: C
     queryKey: ['futebol', 'team', teamId, competition, season],
     queryFn: () => futebolDataService.getTeamProfile(teamId as number, competition, season),
     enabled: !!teamId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolMatchupMarkets(
+  homeId: number | undefined,
+  awayId: number | undefined,
+  competition: Competition | undefined,
+  season: number | undefined
+) {
+  return useQuery<FutebolMatchupMarkets>({
+    queryKey: ['futebol', 'markets', homeId, awayId, competition, season],
+    queryFn: () => futebolDataService.getMatchupMarkets(homeId as number, awayId as number, competition as Competition, season as number),
+    enabled: !!homeId && !!awayId && !!competition && !!season,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,

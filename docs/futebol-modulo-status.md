@@ -55,7 +55,7 @@ Prioridade por valor/esforço:
 1. ~~**Classificação do Brasileirão**~~ ✅ FEITO (RPC `get_futebol_standings` + segmento Tabela).
 2. ~~**Perfil/médias do time**~~ ✅ FEITO (RPC `get_futebol_team_profile` + tela `FutebolTime`).
 3. ~~**Timeline de lances**~~ ✅ FEITO (events no bundle `get_futebol_fixture_detail` + aba "Lances" no detalhe: gols+autor+assist, cartões, subs Entra/Sai, VAR).
-4. **Taxas de mercado** por time/confronto (% Over 2.5, % BTTS, médias de gols/escanteios/cartões) — `fact_fixtures + stats`. Métrica mais "value bet" sem odds.
+4. ~~**Taxas de mercado no confronto**~~ ✅ FEITO (RPC `get_futebol_matchup_markets` + card "Tendências · temporada" no detalhe do Jogo: %Over2.5, %BTTS, médias de gols feitos/sofridos dos 2 times, com disclaimer descritivo).
 5. **xG over/under-performance** (gols reais vs xG) — `fact_fixture_stats`.
 6. **Artilheiros / líderes de cartões** — `fact_fixture_events + dim_players`.
 

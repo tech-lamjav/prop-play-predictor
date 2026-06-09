@@ -4,7 +4,7 @@ import { ChevronLeft, Info, MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolMatchupMarkets } from '@/hooks/use-futebol-data';
 import type {
   FutebolEvent, FutebolFormResult, FutebolLineupPlayer, FutebolTeamStats,
 } from '@/services/futebol-data.service';
@@ -180,6 +180,16 @@ function EventRow({ e }: { e: FutebolEvent }) {
   );
 }
 
+function MarketCmp({ label, home, away, suffix = '' }: { label: string; home: number | null | undefined; away: number | null | undefined; suffix?: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 text-sm">
+      <span className="w-14 font-bold text-ink tabular-nums">{home ?? '—'}{home != null ? suffix : ''}</span>
+      <span className="flex-1 text-center text-[11px] text-ink-3 uppercase tracking-wide">{label}</span>
+      <span className="w-14 text-right font-bold text-ink tabular-nums">{away ?? '—'}{away != null ? suffix : ''}</span>
+    </div>
+  );
+}
+
 const CARD = 'bg-white border border-line rounded-rebrand-md';
 
 export default function FutebolJogo() {
@@ -188,6 +198,9 @@ export default function FutebolJogo() {
   const { data, isLoading, isError } = useFutebolFixtureDetail(fixtureId ? Number(fixtureId) : undefined);
 
   const fixture = data?.fixture;
+  const { data: markets } = useFutebolMatchupMarkets(
+    fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
+  );
   const stats = data?.stats || [];
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
@@ -256,6 +269,22 @@ export default function FutebolJogo() {
                 próprias conclusões. <span className="text-ink-3">(Análise de valor entra quando o modelo estiver pronto.)</span>
               </p>
             </div>
+
+            {/* Tendências de gols do confronto (descritivo) */}
+            {markets?.home && markets?.away && (
+              <div className={`${CARD} mt-3 p-4`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-ink-3">Tendências · temporada</span>
+                  <span className="text-[11px] font-bold text-amber-2 truncate text-right">{fixture.away_team_name}</span>
+                </div>
+                <MarketCmp label="Mais de 2.5 gols" home={markets.home.over25_pct} away={markets.away.over25_pct} suffix="%" />
+                <MarketCmp label="Ambos marcam (BTTS)" home={markets.home.btts_pct} away={markets.away.btts_pct} suffix="%" />
+                <MarketCmp label="Média de gols feitos" home={markets.home.avg_gf} away={markets.away.avg_gf} />
+                <MarketCmp label="Média de gols sofridos" home={markets.home.avg_ga} away={markets.away.avg_ga} />
+                <p className="text-[10px] text-ink-3 mt-2">Frequência na temporada — descritivo, não é recomendação.</p>
+              </div>
+            )}
 
             {/* Estatística descritiva */}
             <div className="mt-4">
