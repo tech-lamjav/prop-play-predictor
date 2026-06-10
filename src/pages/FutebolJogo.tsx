@@ -4,7 +4,7 @@ import { ChevronLeft, Info, MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolMatchupMarkets } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type {
   FutebolEvent, FutebolFormResult, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
@@ -209,7 +209,9 @@ const CARD = 'bg-white border border-line rounded-rebrand-md';
 export default function FutebolJogo() {
   const { fixtureId } = useParams<{ fixtureId: string }>();
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useFutebolFixtureDetail(fixtureId ? Number(fixtureId) : undefined);
+  const fid = fixtureId ? Number(fixtureId) : undefined;
+  const { data, isLoading, isError } = useFutebolFixtureDetail(fid);
+  const { data: extras, isLoading: extrasLoading } = useFutebolFixtureExtras(fid);
 
   const fixture = data?.fixture;
   const { data: markets } = useFutebolMatchupMarkets(
@@ -220,7 +222,7 @@ export default function FutebolJogo() {
   const away = stats.find((s) => s.team_side === 'away');
   const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
 
-  const playerStats = data?.player_stats || [];
+  const playerStats = extras?.player_stats || [];
   const statsById = new Map<number, FutebolPlayerStat>(
     playerStats.filter((p) => p.player_id != null).map((p) => [p.player_id, p])
   );
@@ -350,9 +352,11 @@ export default function FutebolJogo() {
 
                 <TabsContent value="lances" className="mt-3">
                   <div className={`${CARD} p-4`}>
-                    {data!.events.length ? (
+                    {extrasLoading ? (
+                      <p className="text-sm text-ink-3 text-center py-4">Carregando lances…</p>
+                    ) : extras?.events?.length ? (
                       <div className="divide-y divide-line">
-                        {data!.events.map((e, i) => <EventRow key={i} e={e} />)}
+                        {extras.events.map((e, i) => <EventRow key={i} e={e} />)}
                       </div>
                     ) : (
                       <p className="text-sm text-ink-3 text-center py-4">Lances disponíveis após o jogo.</p>
@@ -364,20 +368,22 @@ export default function FutebolJogo() {
                   <div className={`${CARD} p-4 space-y-3`}>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-ink truncate">{fixture.home_team_name}</span>
-                      <FormChips form={data!.form_home} />
+                      {extrasLoading ? <span className="text-xs text-ink-3">…</span> : <FormChips form={extras?.form_home || []} />}
                     </div>
                     <div className="h-px bg-line" />
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-ink truncate">{fixture.away_team_name}</span>
-                      <FormChips form={data!.form_away} />
+                      {extrasLoading ? <span className="text-xs text-ink-3">…</span> : <FormChips form={extras?.form_away || []} />}
                     </div>
                   </div>
 
                   <div className={`${CARD} p-4`}>
                     <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-2">Confrontos diretos</p>
-                    {data!.h2h.length ? (
+                    {extrasLoading ? (
+                      <p className="text-xs text-ink-3">Carregando…</p>
+                    ) : extras?.h2h?.length ? (
                       <div className="space-y-1">
-                        {data!.h2h.map((h) => (
+                        {extras.h2h.map((h) => (
                           <div key={h.fixture_id} className="flex items-center justify-between text-sm text-ink">
                             <span className="text-[11px] text-ink-3 w-16">{fmtDate(h.date_utc)}</span>
                             <span className="flex-1 text-right truncate">{h.home_team_name}</span>
@@ -410,29 +416,31 @@ export default function FutebolJogo() {
                     </div>
                   )}
                   <div className={`${CARD} p-4`}>
-                    {data!.lineup_players.length ? (
+                    {extrasLoading ? (
+                      <p className="text-sm text-ink-3 text-center py-4">Carregando escalação…</p>
+                    ) : extras?.lineup_players?.length ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <p className="text-sm font-semibold text-ink mb-2">
                             {fixture.home_team_name}
-                            {data!.lineups.find((l) => l.team_side === 'home')?.formation && (
+                            {extras.lineups.find((l) => l.team_side === 'home')?.formation && (
                               <span className="ml-2 text-[10px] text-amber-2 font-bold">
-                                {data!.lineups.find((l) => l.team_side === 'home')?.formation}
+                                {extras.lineups.find((l) => l.team_side === 'home')?.formation}
                               </span>
                             )}
                           </p>
-                          <LineupColumn players={data!.lineup_players} side="home" statsById={statsById} />
+                          <LineupColumn players={extras.lineup_players} side="home" statsById={statsById} />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-ink mb-2">
                             {fixture.away_team_name}
-                            {data!.lineups.find((l) => l.team_side === 'away')?.formation && (
+                            {extras.lineups.find((l) => l.team_side === 'away')?.formation && (
                               <span className="ml-2 text-[10px] text-amber-2 font-bold">
-                                {data!.lineups.find((l) => l.team_side === 'away')?.formation}
+                                {extras.lineups.find((l) => l.team_side === 'away')?.formation}
                               </span>
                             )}
                           </p>
-                          <LineupColumn players={data!.lineup_players} side="away" statsById={statsById} />
+                          <LineupColumn players={extras.lineup_players} side="away" statsById={statsById} />
                         </div>
                       </div>
                     ) : (

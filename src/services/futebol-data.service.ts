@@ -149,6 +149,9 @@ export interface FutebolFixtureDetail {
     score_halftime_away: number | null;
   }) | null;
   stats: FutebolTeamStats[];
+}
+
+export interface FutebolFixtureExtras {
   events: FutebolEvent[];
   player_stats: FutebolPlayerStat[];
   form_home: FutebolFormResult[];
@@ -261,6 +264,16 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || { fixture: null }) as FutebolFixtureDetail;
+    });
+  },
+
+  async getFixtureExtras(fixtureId: number): Promise<FutebolFixtureExtras> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_extras', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || { events: [], player_stats: [], form_home: [], form_away: [], h2h: [], lineups: [], lineup_players: [] }) as FutebolFixtureExtras;
     });
   },
 

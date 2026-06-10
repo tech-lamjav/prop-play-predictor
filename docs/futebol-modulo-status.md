@@ -32,7 +32,7 @@ BigQuery smartbetting-dados.futebol (dataset, location us-east1)
 - **Coluna reservada do BQ** (ex.: `current`) quebra o pushdown → evitar/omitir.
 - **`execute_sql` roda em transação** → erro de um SELECT no lote dá rollback no DDL anterior. Aplicar ALTER/CREATE sozinhos.
 - Dataset é **`futebol`** (não `apifootball_raw` como dizia o ClickUp), location **us-east1**.
-- **Latência do bundle:** `get_futebol_fixture_detail` faz ~9 consultas ao BQ em série (~7s). Estoura o `statement_timeout` do `anon` (3s) → 500 no PostgREST. Workaround DEV: `ALTER ROLE anon/authenticated SET statement_timeout='15s'` + `NOTIFY pgrst, 'reload config'`. **A lentidão é inerente ao FDW** — o sync pra tabela nativa (caminho de prod) elimina; lá os timeouts padrão bastam. Pra melhor UX no protótipo, dá pra dividir o bundle (core vs escalação) em RPCs paralelas.
+- **Latência do detalhe do Jogo (otimizado):** o bundle único fazia ~14 leituras ao BQ em série (~7s) e estourava o `statement_timeout` do `anon` (3s). **Dividido em 2 RPCs paralelas:** `get_futebol_fixture_detail` (core: fixture sem joins de dim_teams + stats, **~1,5s** → cabeçalho + Estatísticas) e `get_futebol_fixture_extras` (events, form, h2h, lineups, player_stats — ~6s, em paralelo, atrás das abas). Cabeçalho + aba padrão aparecem em ~1,5s. Timeout dev mantido em 15s (`ALTER ROLE ... statement_timeout` + `NOTIFY pgrst, 'reload config'`) como folga. **A lentidão de fundo é inerente ao FDW** — o sync pra tabela nativa (prod) elimina de vez.
 
 ## 4. Dados validados (2026-06-08)
 
