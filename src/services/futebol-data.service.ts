@@ -92,6 +92,21 @@ export interface FutebolH2H {
   goals_away: number | null;
 }
 
+export interface FutebolPlayerStat {
+  player_id: number;
+  team_side: 'home' | 'away';
+  player_name: string | null;
+  minutes: number | null;
+  rating: number | null;
+  goals: number | null;
+  assists: number | null;
+  shots_total: number | null;
+  shots_on: number | null;
+  passes_key: number | null;
+  tackles_total: number | null;
+  is_substitute: boolean | null;
+}
+
 export interface FutebolLineup {
   team_id: number;
   team_name: string | null;
@@ -135,6 +150,7 @@ export interface FutebolFixtureDetail {
   }) | null;
   stats: FutebolTeamStats[];
   events: FutebolEvent[];
+  player_stats: FutebolPlayerStat[];
   form_home: FutebolFormResult[];
   form_away: FutebolFormResult[];
   h2h: FutebolH2H[];

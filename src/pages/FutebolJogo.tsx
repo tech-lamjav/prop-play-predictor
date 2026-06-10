@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useFutebolFixtureDetail, useFutebolMatchupMarkets } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type {
-  FutebolEvent, FutebolFormResult, FutebolLineupPlayer, FutebolTeamStats,
+  FutebolEvent, FutebolFormResult, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
 } from '@/services/futebol-data.service';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
@@ -106,17 +106,30 @@ function StatRow({ label, home, away }: { label: string; home: number | null; aw
   );
 }
 
-function LineupColumn({ players, side }: { players: FutebolLineupPlayer[]; side: 'home' | 'away' }) {
+function RatingBadge({ value }: { value: number }) {
+  const cls = value >= 7.5 ? 'bg-forest text-canvas' : value >= 6.5 ? 'bg-canvas-2 text-ink border border-line' : 'bg-status-danger/15 text-status-danger';
+  return <span className={`text-[10px] font-bold tabular-nums rounded px-1 py-0.5 ${cls}`}>{value.toFixed(1)}</span>;
+}
+
+function LineupColumn({ players, side, statsById }: { players: FutebolLineupPlayer[]; side: 'home' | 'away'; statsById: Map<number, FutebolPlayerStat> }) {
   const list = players.filter((p) => p.team_side === side);
   const starters = list.filter((p) => p.is_starter);
   const bench = list.filter((p) => !p.is_starter);
-  const Row = (p: FutebolLineupPlayer) => (
-    <div key={`${p.player_id}-${p.player_slot}`} className="flex items-center gap-2 py-1 text-sm text-ink-2">
-      <span className="w-6 text-[11px] text-ink-3 tabular-nums text-right">{p.shirt_number ?? '–'}</span>
-      <span className="truncate text-ink">{p.player_name}</span>
-      {p.position && <span className="ml-auto text-[10px] text-ink-3">{p.position}</span>}
-    </div>
-  );
+  const Row = (p: FutebolLineupPlayer) => {
+    const st = p.player_id != null ? statsById.get(p.player_id) : undefined;
+    return (
+      <div key={`${p.player_id}-${p.player_slot}`} className="flex items-center gap-2 py-1 text-sm">
+        <span className="w-6 text-[11px] text-ink-3 tabular-nums text-right">{p.shirt_number ?? '–'}</span>
+        <span className="truncate text-ink">{p.player_name}</span>
+        {st?.goals ? <span className="text-[10px] font-bold text-forest">{st.goals}G</span> : null}
+        {st?.assists ? <span className="text-[10px] font-bold text-amber-2">{st.assists}A</span> : null}
+        <span className="ml-auto flex items-center gap-2">
+          {p.position && <span className="text-[10px] text-ink-3">{p.position}</span>}
+          {st?.rating != null && <RatingBadge value={st.rating} />}
+        </span>
+      </div>
+    );
+  };
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Titulares</p>
@@ -206,6 +219,15 @@ export default function FutebolJogo() {
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
   const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
+
+  const playerStats = data?.player_stats || [];
+  const statsById = new Map<number, FutebolPlayerStat>(
+    playerStats.filter((p) => p.player_id != null).map((p) => [p.player_id, p])
+  );
+  const destaques = playerStats
+    .filter((p) => p.rating != null)
+    .sort((a, b) => (b.rating as number) - (a.rating as number))
+    .slice(0, 3);
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
@@ -370,7 +392,23 @@ export default function FutebolJogo() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="lineups" className="mt-3">
+                <TabsContent value="lineups" className="mt-3 space-y-3">
+                  {destaques.length > 0 && (
+                    <div className={`${CARD} p-3`}>
+                      <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-2">Destaques · nota</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {destaques.map((d) => (
+                          <div key={d.player_id} className="text-center">
+                            {d.rating != null && <RatingBadge value={d.rating} />}
+                            <div className="text-xs text-ink truncate mt-1">{d.player_name}</div>
+                            <div className="text-[10px] text-ink-3">
+                              {[d.goals ? `${d.goals}G` : null, d.assists ? `${d.assists}A` : null].filter(Boolean).join(' · ') || '—'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className={`${CARD} p-4`}>
                     {data!.lineup_players.length ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -383,7 +421,7 @@ export default function FutebolJogo() {
                               </span>
                             )}
                           </p>
-                          <LineupColumn players={data!.lineup_players} side="home" />
+                          <LineupColumn players={data!.lineup_players} side="home" statsById={statsById} />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-ink mb-2">
@@ -394,7 +432,7 @@ export default function FutebolJogo() {
                               </span>
                             )}
                           </p>
-                          <LineupColumn players={data!.lineup_players} side="away" />
+                          <LineupColumn players={data!.lineup_players} side="away" statsById={statsById} />
                         </div>
                       </div>
                     ) : (

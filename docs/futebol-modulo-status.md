@@ -32,6 +32,7 @@ BigQuery smartbetting-dados.futebol (dataset, location us-east1)
 - **Coluna reservada do BQ** (ex.: `current`) quebra o pushdown → evitar/omitir.
 - **`execute_sql` roda em transação** → erro de um SELECT no lote dá rollback no DDL anterior. Aplicar ALTER/CREATE sozinhos.
 - Dataset é **`futebol`** (não `apifootball_raw` como dizia o ClickUp), location **us-east1**.
+- **Latência do bundle:** `get_futebol_fixture_detail` faz ~9 consultas ao BQ em série (~7s). Estoura o `statement_timeout` do `anon` (3s) → 500 no PostgREST. Workaround DEV: `ALTER ROLE anon/authenticated SET statement_timeout='15s'` + `NOTIFY pgrst, 'reload config'`. **A lentidão é inerente ao FDW** — o sync pra tabela nativa (caminho de prod) elimina; lá os timeouts padrão bastam. Pra melhor UX no protótipo, dá pra dividir o bundle (core vs escalação) em RPCs paralelas.
 
 ## 4. Dados validados (2026-06-08)
 
@@ -68,7 +69,7 @@ Telas que habilita: enriquecer **Jogo**; nova tela **Time** (perfil); **Home** c
 ## 7. Bloqueado (precisa de ingestão nova ou do modelo)
 
 - **Odds/EV/CLV** (subtask 13), **predictions** (14), **lesões** (12) — não estão no dataset `futebol`.
-- **Stats por jogador por jogo** (`fact_fixture_player_stats`, subtask 8) — **não foi montada**; analytics de jogador hoje = só gols/cartões/quem jogou.
+- ~~**Stats por jogador por jogo**~~ ✅ **JÁ EXISTE E VALIDADA** (subtask 8 entregue pelo dev, 2026-06-09): `bq_futebol.fact_fixture_player_stats` (45 cols: minutes, rating, shots, goals, assists, passes_total/key/accuracy, tackles, duels, dribbles, fouls, cartões, pênaltis). Brasileirão 24/25/26 (~45,8 linhas/jogo = elenco completo; rating/minutes só de quem jogou). Gols batem com os artilheiros (fact_fixture_events). **Quirk:** contadores (goals_total etc.) vêm NULL pra quem não fez (não 0) → usar coalesce/nulls last. **Destrava analytics de jogador** (perfil, melhores por nota, criadores).
 - **Score de Confiabilidade / Oportunidades / Análise mastigada** — dependem do modelo proprietário (Poisson/devigged/CLV), que não existe.
 
 ## 8. Como retomar
