@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -218,7 +218,9 @@ export default function FutebolJogos() {
   const [season, setSeason] = useState<number>(2025);
   const [roundIdx, setRoundIdx] = useState(0);
 
-  const [view, setView] = useState<'jogos' | 'tabela' | 'artilheiros'>('jogos');
+  const [params] = useSearchParams();
+  const initialView = (['tabela', 'artilheiros'].includes(params.get('view') || '') ? params.get('view') : 'jogos') as 'jogos' | 'tabela' | 'artilheiros';
+  const [view, setView] = useState<'jogos' | 'tabela' | 'artilheiros'>(initialView);
 
   const { data: fixtures, isLoading, isError } = useFutebolFixtures(competition, season);
   const { data: standings, isLoading: loadingStandings } = useFutebolStandings(competition, season, view === 'tabela');

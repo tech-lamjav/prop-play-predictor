@@ -44,7 +44,8 @@ Brasileirão 2024/2025 completos (380 jogos, 380 FT cada); 2026 em andamento (17
 - **`FutebolJogo.tsx`** (`/futebol/jogo/:fixtureId`): Header + **slot "Sem oportunidade mapeada…"** (placeholder do bloco de oportunidade) + Tabs **Estatísticas** (barras forest×amber), **Forma & H2H**, **Escalação** (formação + titulares/banco).
 - **`FutebolJogos.tsx`** agora tem segmento **Jogos | Tabela** — Tabela = classificação clicável (linha → tela Time).
 - **`FutebolTime.tsx`** (`/futebol/time/:teamId?c=&s=`): perfil do time — Resultados (geral/casa/fora: V-E-D, médias gols, %Over2.5, %BTTS) + Médias por jogo (posse, finalizações, xG, escanteios, cartões).
-- Rotas em `src/App.tsx`; entrada **FUTEBOL** em `src/components/AnalyticsNav.tsx` (desktop + mobile).
+- **`FutebolHome.tsx`** (`/futebol`): home/resumo do Brasileirão 2026 — próximos jogos (só kickoff ≥ hoje), top-6 da classificação e top-5 artilheiros, com deep-links (`?view=tabela`/`artilheiros`). É o ponto de entrada do módulo (nav "Futebol" → `/futebol`).
+- Rotas em `src/App.tsx`; entrada **FUTEBOL** em `src/components/AnalyticsNav.tsx` (desktop + mobile) aponta pra `/futebol`.
 - **Logos dos times (RESOLVIDO):** a api-sports tem hotlink protection (`<img>` direto falha no navegador). Espelhados pro nosso Storage (mesmo padrão do `mirror-wc-photos`):
   - bucket público **`futebol-team-logos`** + RPC **`get_futebol_teams()`** (lê `bq_futebol.dim_teams`) — criados no DEV (não-migration).
   - edge function **`supabase/functions/mirror-futebol-team-logos`** (deploy DEV, `verify_jwt=false`): baixa cada logo da api-sports → sobe `{team_id}.png` no bucket. Rodada 1x via `pg_net` (75/75 espelhados).

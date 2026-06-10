@@ -331,7 +331,7 @@ export default function AnalyticsNav({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/futebol/jogos')}
+              onClick={() => navigate('/futebol')}
               className={`flex items-center gap-2 px-4 h-9 ${
                 location.pathname.startsWith('/futebol')
                   ? `${t.textAccent} ${t.ghostHoverBg}`
@@ -460,7 +460,7 @@ export default function AnalyticsNav({
               <div>
                 <Button
                   variant="ghost"
-                  onClick={() => handleNavigation('/futebol/jogos')}
+                  onClick={() => handleNavigation('/futebol')}
                   className={`w-full justify-start h-10 ${
                     location.pathname.startsWith('/futebol')
                       ? `${t.activeBg} ${t.textAccent}`
