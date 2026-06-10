@@ -32,6 +32,14 @@ function num(v: number | null | undefined, suffix = ''): string {
   return v === null || v === undefined ? '—' : `${v}${suffix}`;
 }
 
+function DeltaCell({ real, exp, goodWhenPositive }: { real: number | null; exp: number | null; goodWhenPositive: boolean }) {
+  if (real == null || exp == null) return <span className="text-ink-3">—</span>;
+  const d = real - exp;
+  const good = goodWhenPositive ? d > 0 : d < 0;
+  const cls = Math.abs(d) < 0.05 ? 'text-ink-3' : good ? 'text-status-success' : 'text-status-danger';
+  return <span className={`${cls} font-medium`}>{d > 0 ? '+' : ''}{d.toFixed(2)}</span>;
+}
+
 export default function FutebolTime() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
@@ -43,6 +51,13 @@ export default function FutebolTime() {
 
   const results = (data?.results || []).slice().sort((a, b) => SCOPE_ORDER.indexOf(a.scope) - SCOPE_ORDER.indexOf(b.scope));
   const stats = (data?.stats_avg || []).slice().sort((a, b) => SCOPE_ORDER.indexOf(a.scope) - SCOPE_ORDER.indexOf(b.scope));
+
+  const eff = SCOPE_ORDER.map((sc) => {
+    const r = results.find((x) => x.scope === sc);
+    const s = stats.find((x) => x.scope === sc);
+    if (!r || !s) return null;
+    return { scope: sc, gf: r.avg_gf, xgf: s.avg_xg, ga: r.avg_ga, xga: s.avg_xg_against };
+  }).filter(Boolean) as { scope: string; gf: number; xgf: number | null; ga: number; xga: number | null }[];
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
@@ -113,6 +128,32 @@ export default function FutebolTime() {
                 )) : <div className="px-3 py-4 text-center text-sm text-ink-3">Sem estatísticas.</div>}
               </div>
             </div>
+
+            {/* Eficiência: gols reais × xG (ataque e defesa) */}
+            {eff.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3 mb-2 px-1">Eficiência · gols × xG</p>
+                <div className={`${CARD} overflow-hidden`}>
+                  <div className="grid grid-cols-[64px_repeat(6,1fr)] gap-1 px-3 py-2 text-[10px] uppercase tracking-wide text-ink-3 border-b border-line">
+                    <span />
+                    <span className="text-center">Feitos</span><span className="text-center">xG</span><span className="text-center">Δ</span>
+                    <span className="text-center">Sofr.</span><span className="text-center">xG</span><span className="text-center">Δ</span>
+                  </div>
+                  {eff.map((e) => (
+                    <div key={e.scope} className="grid grid-cols-[64px_repeat(6,1fr)] gap-1 px-3 py-2.5 items-center text-sm border-b border-line last:border-0">
+                      <span className="font-semibold text-ink">{SCOPE_LABEL[e.scope]}</span>
+                      <span className="text-center text-ink tabular-nums">{num(e.gf)}</span>
+                      <span className="text-center text-ink-3 tabular-nums">{num(e.xgf)}</span>
+                      <span className="text-center tabular-nums"><DeltaCell real={e.gf} exp={e.xgf} goodWhenPositive /></span>
+                      <span className="text-center text-ink tabular-nums">{num(e.ga)}</span>
+                      <span className="text-center text-ink-3 tabular-nums">{num(e.xga)}</span>
+                      <span className="text-center tabular-nums"><DeltaCell real={e.ga} exp={e.xga} goodWhenPositive={false} /></span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-ink-3 mt-1 px-1">Δ = real − esperado (xG). Verde = a favor (mais gols que o xG no ataque; menos que o xG na defesa).</p>
+              </div>
+            )}
           </>
         )}
       </div>

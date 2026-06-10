@@ -179,6 +179,7 @@ export interface FutebolScopeStats {
   avg_corners: number | null;
   avg_yellow: number | null;
   avg_xg: number | null;
+  avg_xg_against: number | null;
 }
 
 export interface FutebolTeamProfile {
