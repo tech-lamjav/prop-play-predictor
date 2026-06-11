@@ -53,6 +53,7 @@ interface BolaoAdminPanelProps {
   scoringWeights: Record<string, number> | null;
   customBannerUrl: string | null;
   championEnabled: boolean;
+  knockoutRealEnabled: boolean;
   specialPredictionsEnabled: boolean;
   specialPredictionsConfig: Record<string, boolean>;
   specialPredictionsPoints: Record<string, number>;
@@ -317,6 +318,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   scoringWeights,
   customBannerUrl,
   championEnabled,
+  knockoutRealEnabled,
   specialPredictionsEnabled,
   specialPredictionsConfig,
   specialPredictionsPoints,
@@ -368,6 +370,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
   // Modalidades state
   const [champEnabled, setChampEnabled] = useState(championEnabled);
+  const [knockoutReal, setKnockoutReal] = useState(knockoutRealEnabled);
   const [specialConfig, setSpecialConfig] = useState<Record<string, boolean>>(specialPredictionsConfig);
   const [specialPoints, setSpecialPoints] = useState<Record<string, number>>(specialPredictionsPoints);
   const [champPoints, setChampPoints] = useState(championPoints);
@@ -531,6 +534,21 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         onSuccess: () => toast({ title: newVal ? 'Palpite de campeão habilitado' : 'Palpite de campeão desabilitado' }),
         onError: (err: any) => {
           setChampEnabled(!newVal);
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
+  };
+
+  const handleToggleKnockoutReal = () => {
+    const newVal = !knockoutReal;
+    setKnockoutReal(newVal);
+    updateSettings.mutate(
+      { bolaoId, settings: { knockout_real_predictions_enabled: newVal } },
+      {
+        onSuccess: () => toast({ title: newVal ? 'Mata-mata por jogo real habilitado' : 'Mata-mata por jogo real desabilitado' }),
+        onError: (err: any) => {
+          setKnockoutReal(!newVal);
           toast({ title: 'Erro', description: err.message, variant: 'destructive' });
         },
       }
@@ -1371,7 +1389,33 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         )}
       </Card>
 
+      <Card
+        title="Mata-mata por jogo real"
+        sub="Substitui o funil de projeção: membros palpitam o PLACAR dos jogos reais do mata-mata, liberados conforme os confrontos se definem. O Campeão continua valendo."
+        action={
+          <Toggle
+            on={knockoutReal}
+            onClick={handleToggleKnockoutReal}
+            ariaLabel="Toggle mata-mata por jogo real"
+            disabled={!isOwner}
+          />
+        }
+      >
+        {knockoutReal && (
+          <p className="text-[12px] text-ink-2 leading-snug">
+            Ligado: o funil de projeção abaixo fica desativado e os palpites de
+            placar do mata-mata aparecem na aba de Jogos conforme os confrontos
+            se definem.
+          </p>
+        )}
+      </Card>
+
       <Card title="Palpites Especiais" sub="Cada modalidade pode ser ativada e ter pontos próprios">
+        {knockoutReal && (
+          <p className="text-[12px] text-ink-3 leading-snug pb-2">
+            Desativado enquanto o <span className="font-semibold">mata-mata por jogo real</span> estiver ligado.
+          </p>
+        )}
         {Object.entries(SPECIAL_TYPES).map(([type, label]) => (
           <SettingsRow
             key={type}

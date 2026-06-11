@@ -394,6 +394,7 @@ const BolaoDetail: React.FC = () => {
           championPoints={bolao.champion_points ?? 25}
           pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
           specialDeadlines={bolao.special_deadlines ?? null}
+          knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
         />
 
         {playerAwardsAnyEnabled && (
@@ -427,6 +428,7 @@ const BolaoDetail: React.FC = () => {
             specialDeadlines={bolao.special_deadlines ?? null}
             customBannerUrl={bolao.custom_banner_url ?? null}
             championEnabled={bolao.champion_enabled ?? true}
+            knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
             specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
             specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
             specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
@@ -465,13 +467,17 @@ const BolaoDetail: React.FC = () => {
                   {(() => {
                     const labels: string[] = [];
                     if (bolao.champion_enabled ?? true) labels.push('Campeão');
-                    const cfg = normalizeSpecialConfig(bolao.special_predictions_config);
-                    if (bolao.special_predictions_enabled ?? true) {
-                      if (cfg.finalist) labels.push('Finalistas');
-                      if (cfg.semifinalist) labels.push('Semis');
-                      if (cfg.quarterfinalist) labels.push('Quartas');
-                      if (cfg.round_of_16) labels.push('Oitavas');
-                      if (cfg.round_of_32) labels.push('16 avos');
+                    if (bolao.knockout_real_predictions_enabled) {
+                      labels.push('Mata-mata (jogo real)');
+                    } else {
+                      const cfg = normalizeSpecialConfig(bolao.special_predictions_config);
+                      if (bolao.special_predictions_enabled ?? true) {
+                        if (cfg.finalist) labels.push('Finalistas');
+                        if (cfg.semifinalist) labels.push('Semis');
+                        if (cfg.quarterfinalist) labels.push('Quartas');
+                        if (cfg.round_of_16) labels.push('Oitavas');
+                        if (cfg.round_of_32) labels.push('16 avos');
+                      }
                     }
                     return labels.join(', ') || 'Nenhum habilitado';
                   })()}
@@ -801,6 +807,7 @@ const BolaoDetail: React.FC = () => {
         championPoints={bolao.champion_points ?? 25}
         pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
         specialDeadlines={bolao.special_deadlines ?? null}
+        knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
       />
 
       {playerAwardsAnyEnabled && (
@@ -843,6 +850,7 @@ const BolaoDetail: React.FC = () => {
           specialDeadlines={bolao.special_deadlines ?? null}
           customBannerUrl={bolao.custom_banner_url ?? null}
           championEnabled={bolao.champion_enabled ?? true}
+          knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
           specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
           specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}

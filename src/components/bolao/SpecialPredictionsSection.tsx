@@ -46,6 +46,12 @@ interface Props {
   onSuggestChampion?: (teamCode: string) => void;
   /** Config de prazo dos especiais (preset + overrides) — pra badges e lock. */
   specialDeadlines?: SpecialDeadlinesConfig | null;
+  /**
+   * Modo "mata-mata por jogo real" ligado: esconde o funil de projeção. O
+   * palpite de placar dos jogos reais vai pra aba de Jogos. O palpite de
+   * Campeão continua (é renderizado pelo Modal, fora desta seção).
+   */
+  knockoutRealMode?: boolean;
 }
 
 const TYPE_META: Record<
@@ -370,6 +376,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
   championPick,
   onSuggestChampion,
   specialDeadlines,
+  knockoutRealMode,
 }) => {
   const { data: myPreds } = useMySpecialPredictions(bolaoId);
   const { data: summary } = useSpecialSummary(bolaoId);
@@ -531,6 +538,22 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     }
   };
   const canBracket = !!projection?.complete;
+
+  // Modo "mata-mata por jogo real": o funil de projeção dá lugar ao palpite de
+  // placar nos jogos reais (na aba de Jogos). O Campeão segue no Modal, acima.
+  if (knockoutRealMode) {
+    return (
+      <div className="rounded-rebrand-md border border-line bg-canvas-2 p-3">
+        <p className="text-[12px] text-ink leading-snug">
+          <span className="font-semibold">Mata-mata por jogo real.</span>{' '}
+          Os palpites de placar do mata-mata ficam na aba{' '}
+          <span className="font-semibold">Jogos</span>, liberados conforme os
+          confrontos se definem ao fim da fase de grupos. O palpite de{' '}
+          <span className="font-semibold">Campeão</span> continua aqui em cima.
+        </p>
+      </div>
+    );
+  }
 
   // Palpites Especiais agora são liberados pra todo bolão (Free e Premium).
   // A diferença Premium vs Free é APENAS quantidade de participantes (>20).

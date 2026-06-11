@@ -40,6 +40,7 @@ export interface Bolao {
   custom_color: string | null;
   custom_banner_url: string | null;
   champion_enabled: boolean;
+  knockout_real_predictions_enabled: boolean;
   special_predictions_enabled: boolean;
   special_predictions_config: {
     finalist: boolean;
@@ -782,6 +783,7 @@ export const bolaoService = {
       name?: string;
       description?: string | null;
       champion_enabled?: boolean;
+      knockout_real_predictions_enabled?: boolean;
       special_predictions_enabled?: boolean;
       special_predictions_config?: Record<string, boolean>;
       special_predictions_points?: Record<string, number>;

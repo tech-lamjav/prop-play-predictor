@@ -50,6 +50,8 @@ interface SpecialPredictionsModalProps {
   championPoints: number;
   pointsConfig: PointsConfig;
   specialDeadlines?: SpecialDeadlinesConfig | null;
+  /** Modo "mata-mata por jogo real": esconde o funil; placar vai pra aba de Jogos. */
+  knockoutRealMode?: boolean;
 }
 
 export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = ({
@@ -66,6 +68,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
   championPoints,
   pointsConfig,
   specialDeadlines,
+  knockoutRealMode,
 }) => {
   const [championPickerOpen, setChampionPickerOpen] = useState(false);
 
@@ -314,6 +317,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                     championPick={myChampionPick}
                     onSuggestChampion={championEnabled ? handleSuggestChampion : undefined}
                     specialDeadlines={specialDeadlines}
+                    knockoutRealMode={knockoutRealMode}
                   />
                 )}
               </div>
