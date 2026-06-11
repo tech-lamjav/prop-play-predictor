@@ -627,7 +627,16 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
         .map((type, idx) => {
           // Funil: cada fase só lista os times escolhidos na fase anterior (pai).
           // União com os picks próprios garante que picks legados sempre apareçam.
-          const parent = PARENT_STAGE[type];
+          //
+          // Pai EFETIVO = ancestral HABILITADO mais próximo. Se o dono desligou a
+          // fase-pai estrutural, sobe na cadeia até achar uma habilitada; se nenhuma
+          // estiver habilitada, a fase abre para todas as seleções (parent = null).
+          // Sem isso, desligar uma fase do meio deixava as de baixo sem pool de
+          // candidatos — deadlock em "preencha primeiro X" apontando pra fase oculta.
+          let parent = PARENT_STAGE[type];
+          while (parent && enabledTypes && enabledTypes[parent] === false) {
+            parent = PARENT_STAGE[parent];
+          }
           const stageTeams = parent
             ? teams.filter((t) => {
                 const pool = new Set([...(myPicksByType[parent] || []), ...(myPicksByType[type] || [])]);
