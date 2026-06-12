@@ -76,13 +76,17 @@ RankingShareImage.displayName = 'RankingShareImage';
 // ════════════════════════════════════════════════════════════════
 
 const Header: React.FC<{ bolaoName: string }> = ({ bolaoName }) => (
-  <header className="flex items-baseline justify-between" style={{ marginBottom: 34 }}>
+  <header className="flex items-center justify-between" style={{ marginBottom: 34 }}>
     <span
       style={{
         fontSize: 52,
         fontWeight: 700,
         letterSpacing: '-0.02em',
-        lineHeight: 1.05,
+        // line-height folgado + padding vertical evitam o clipping de glifos do
+        // html2canvas (que corta ascender/descender com line-height apertado).
+        lineHeight: 1.4,
+        paddingTop: 6,
+        paddingBottom: 6,
         maxWidth: 720,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -199,6 +203,11 @@ const Top5Row: React.FC<{
             fontStyle: isEmpty ? 'italic' : 'normal',
             letterSpacing: '-0.01em',
             margin: 0,
+            // line-height + padding: evita html2canvas cortar glifos (descenders
+            // de "jogador", ascenders, etc.) com overflow:hidden.
+            lineHeight: 1.5,
+            paddingTop: 4,
+            paddingBottom: 4,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -208,7 +217,7 @@ const Top5Row: React.FC<{
           {isMe && <span style={{ fontSize: 17, color: C_FOREST, fontWeight: 700, marginLeft: 10 }}>você</span>}
         </p>
         {!isEmpty && (
-          <p style={{ fontSize: 19, fontWeight: 500, color: C_GRAY, marginTop: 3 }}>
+          <p style={{ fontSize: 19, fontWeight: 500, color: C_GRAY, marginTop: 3, lineHeight: 1.4, paddingBottom: 2 }}>
             {metricsLabel(entry)}
           </p>
         )}
@@ -303,6 +312,9 @@ const AllRow: React.FC<{ rank: number; entry: BolaoRankingEntry; isMe?: boolean 
       style={{
         fontWeight: rank <= 5 ? 700 : 600,
         color: C_INK,
+        lineHeight: 1.5,
+        paddingTop: 3,
+        paddingBottom: 3,
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
