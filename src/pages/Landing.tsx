@@ -1,13 +1,9 @@
-import { useState, useMemo } from "react";
+﻿import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { BarChart3, TrendingUp, Clock, Shield, Target, Database, Zap, CheckCircle, PlayCircle, ArrowRight, Timer, Brain } from "lucide-react";
+import { Star, CheckCircle2, XCircle, PlayCircle, ArrowRight, Lightbulb, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { FREE_PLAYERS } from "@/config/freemium";
+import { getTeamLogoUrl, getPlayerPhotoUrl, teamAbbrToName } from "@/utils/team-logos";
 import { Helmet } from "react-helmet-async";
 
 const getFreePlayerDashboardPath = () => {
@@ -16,658 +12,757 @@ const getFreePlayerDashboardPath = () => {
   return `/nba-dashboard/${slug}`;
 };
 
-const MOCK_STAT_LABELS = [
-  { id: 'PTS', full: 'POINTS' },
-  { id: 'AST', full: 'ASSISTS' },
-  { id: 'REB', full: 'REBOUNDS' },
-  { id: '3PT', full: '3-POINTERS' },
-  { id: 'STL', full: 'STEALS' },
-  { id: 'BLK', full: 'BLOCKS' },
-  { id: 'TO',  full: 'TURNOVERS' },
-  { id: 'P+A', full: 'POINTS + ASSISTS' },
-  { id: 'P+R', full: 'POINTS + REBOUNDS' },
-  { id: 'R+A', full: 'REBOUNDS + ASSISTS' },
-  { id: 'PRA', full: 'PTS + REB + AST' },
-  { id: 'DD',  full: 'DOUBLE-DOUBLE' },
+// Espelha o StatTypeSelector rebrandado (PR #162): grupos BÁSICOS e COMBOS.
+const STAT_BASIC = [
+  { id: 'PTS', label: 'Pontos' },
+  { id: 'AST', label: 'Assistências' },
+  { id: 'REB', label: 'Rebotes' },
+  { id: '3PT', label: '3 Pontos' },
+  { id: 'STL', label: 'Roubos' },
+  { id: 'BLK', label: 'Bloqueios' },
+  { id: 'TO',  label: 'Turnovers' },
+];
+const STAT_COMBOS = [
+  { id: 'P+A', label: 'Pts + Ast' },
+  { id: 'P+R', label: 'Pts + Reb' },
+  { id: 'PRA', label: 'PRA' },
 ];
 
-type MockStatData = { values: number[]; line: number; avg: number; hitRate: string; over: number; total: number };
+type MockStatData = { values: number[]; line: number; seasonAvg: number };
 
 const MOCK_DATA: Record<string, MockStatData> = {
-  PTS:  { values: [24,31,28,33,22,30,27,35,29,25,32,28,34,23,30], line: 27.5, avg: 29.1, hitRate: '67.0', over: 10, total: 15 },
-  AST:  { values: [8,12,10,14,7,11,9,13,10,8,12,11,15,6,10],     line: 9.5,  avg: 10.2, hitRate: '60.0', over: 9,  total: 15 },
-  REB:  { values: [11,14,13,15,9,12,10,16,13,11,14,12,15,10,13],  line: 11.5, avg: 12.8, hitRate: '73.3', over: 11, total: 15 },
-  '3PT':{ values: [1,2,1,3,0,2,1,2,1,0,3,2,1,0,2],               line: 1.5,  avg: 1.4,  hitRate: '40.0', over: 6,  total: 15 },
-  STL:  { values: [1,2,1,0,2,1,3,1,2,0,1,2,1,1,2],               line: 1.5,  avg: 1.3,  hitRate: '33.3', over: 5,  total: 15 },
-  BLK:  { values: [1,0,1,2,0,1,1,0,2,1,0,1,0,1,1],               line: 0.5,  avg: 0.8,  hitRate: '53.3', over: 8,  total: 15 },
-  TO:   { values: [3,4,2,5,3,2,4,3,2,4,3,5,2,3,4],               line: 3.5,  avg: 3.3,  hitRate: '33.3', over: 5,  total: 15 },
-  'P+A':{ values: [32,43,38,47,29,41,36,48,39,33,44,39,49,29,40], line: 37.5, avg: 39.1, hitRate: '66.7', over: 10, total: 15 },
-  'P+R':{ values: [35,45,41,48,31,42,37,51,42,36,46,40,49,33,43], line: 39.5, avg: 41.3, hitRate: '66.7', over: 10, total: 15 },
-  'R+A':{ values: [19,26,23,29,16,23,19,29,23,19,26,23,30,16,23], line: 21.5, avg: 22.9, hitRate: '60.0', over: 9,  total: 15 },
-  PRA:  { values: [43,57,51,62,38,53,46,64,52,44,58,51,64,39,53], line: 49.5, avg: 51.7, hitRate: '66.7', over: 10, total: 15 },
-  DD:   { values: [1,1,1,1,0,1,1,1,1,1,1,1,1,0,1],               line: 0.5,  avg: 0.9,  hitRate: '86.7', over: 13, total: 15 },
+  PTS:  { values: [24,31,28,33,22,30,27,35,29,25,32,28,34,23,30], line: 27.5, seasonAvg: 27.5 },
+  AST:  { values: [8,12,10,14,7,11,9,13,10,8,12,11,15,6,10],     line: 9.5,  seasonAvg: 10.6 },
+  REB:  { values: [11,14,13,15,9,12,10,16,13,11,14,12,15,10,13],  line: 11.5, seasonAvg: 12.9 },
+  '3PT':{ values: [1,2,1,3,0,2,1,2,1,0,3,2,1,0,2],               line: 1.5,  seasonAvg: 1.4 },
+  STL:  { values: [1,2,1,0,2,1,3,1,2,0,1,2,1,1,2],               line: 1.5,  seasonAvg: 1.3 },
+  BLK:  { values: [1,0,1,2,0,1,1,0,2,1,0,1,0,1,1],               line: 0.5,  seasonAvg: 0.8 },
+  TO:   { values: [3,4,2,5,3,2,4,3,2,4,3,5,2,3,4],               line: 3.5,  seasonAvg: 3.3 },
+  'P+A':{ values: [32,43,38,47,29,41,36,48,39,33,44,39,49,29,40], line: 37.5, seasonAvg: 38.1 },
+  'P+R':{ values: [35,45,41,48,31,42,37,51,42,36,46,40,49,33,43], line: 39.5, seasonAvg: 40.4 },
+  PRA:  { values: [43,57,51,62,38,53,46,64,52,44,58,51,64,39,53], line: 49.5, seasonAvg: 51.0 },
 };
 
+// Datas em DD/MM, como o dashboard real exibe pro público brasileiro.
 const MOCK_GAMES = [
-  { opp: 'LAL', date: '02/14' }, { opp: 'GSW', date: '02/12' }, { opp: 'BOS', date: '02/10' },
-  { opp: 'MIA', date: '02/08' }, { opp: 'PHX', date: '02/06' }, { opp: 'DAL', date: '02/04' },
-  { opp: 'NYK', date: '02/02' }, { opp: 'MIL', date: '01/31' }, { opp: 'CLE', date: '01/29' },
-  { opp: 'OKC', date: '01/27' }, { opp: 'MIN', date: '01/25' }, { opp: 'PHI', date: '01/23' },
-  { opp: 'SAC', date: '01/21' }, { opp: 'HOU', date: '01/19' }, { opp: 'LAC', date: '01/17' },
+  { opp: 'LAL', date: '14/02' }, { opp: 'GSW', date: '12/02' }, { opp: 'BOS', date: '10/02' },
+  { opp: 'MIA', date: '08/02' }, { opp: 'PHX', date: '06/02' }, { opp: 'DAL', date: '04/02' },
+  { opp: 'NYK', date: '02/02' }, { opp: 'MIL', date: '31/01' }, { opp: 'CLE', date: '29/01' },
+  { opp: 'OKC', date: '27/01' }, { opp: 'MIN', date: '25/01' }, { opp: 'PHI', date: '23/01' },
+  { opp: 'SAC', date: '21/01' }, { opp: 'HOU', date: '19/01' }, { opp: 'LAC', date: '17/01' },
 ];
+
+const TEAMMATES = [
+  { name: 'Jamal Murray', pos: 'G', stars: 3, out: false },
+  { name: 'Peyton Watson', pos: 'G', stars: 3, out: true },
+  { name: 'Tim Hardaway Jr.', pos: 'G', stars: 3, out: false },
+  { name: 'Bruce Brown', pos: 'G', stars: 2, out: false },
+];
+
+const GAME_WINDOWS = [5, 10, 15] as const;
+
+// Jogos (índices de MOCK_GAMES) em que o Murray ficou fora — base do filtro
+// de gatilho que demonstra a metodologia (desfalque → números sobem).
+const WITHOUT_MURRAY_IDX = [1, 2, 3, 5, 7, 10, 12, 13, 14];
+
+function StarRow({ n, size = 'w-3 h-3' }: { n: number; size?: string }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 shrink-0">
+      {[0, 1, 2].map((i) => (
+        <Star key={i} className={`${size} ${i < n ? 'text-amber fill-current' : 'text-line-2 fill-current'}`} />
+      ))}
+    </span>
+  );
+}
+
+function PlayerAvatar({ name, className, initialsClass }: { name: string; className: string; initialsClass: string }) {
+  const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+  return (
+    <div className={`relative overflow-hidden shrink-0 bg-gradient-to-br from-canvas-2 to-line-2 grid place-items-center ${className}`}>
+      <span className={`font-semibold text-ink-2 ${initialsClass}`}>{initials}</span>
+      <img
+        src={getPlayerPhotoUrl(name, 'Denver Nuggets')}
+        alt={name}
+        className="absolute inset-0 w-full h-full object-cover"
+        loading="lazy"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+      />
+    </div>
+  );
+}
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const { user } = useAuth();
   const dashboardPath = getFreePlayerDashboardPath();
   const firstFreePlayerName = FREE_PLAYERS[0];
   const [selectedStat, setSelectedStat] = useState('PTS');
+  const [gamesWindow, setGamesWindow] = useState<(typeof GAME_WINDOWS)[number]>(15);
+  // Filtro de gatilho ("sem Murray em quadra") — ativado pelo card de insight,
+  // como o onInsightClick do PropInsightsCard real.
+  const [triggerFilter, setTriggerFilter] = useState(false);
 
   const statData = useMemo(() => MOCK_DATA[selectedStat] || MOCK_DATA.PTS, [selectedStat]);
-  const maxVal = useMemo(() => Math.max(...statData.values) + 3, [statData]);
+
+  // Janela de jogos selecionada (Últ. 5 / 10 / 15), como no GameChart real.
+  // Com o filtro de gatilho ativo, só entram os jogos sem o Murray — com os
+  // números mais altos que sustentam o insight.
+  const windowed = useMemo(() => {
+    const boost = Math.max(1, Math.round(statData.line * 0.04));
+    const baseValues = triggerFilter
+      ? WITHOUT_MURRAY_IDX.map((i) => statData.values[i] + boost)
+      : statData.values;
+    const baseGames = triggerFilter
+      ? WITHOUT_MURRAY_IDX.map((i) => MOCK_GAMES[i])
+      : MOCK_GAMES;
+    const values = baseValues.slice(0, gamesWindow);
+    const games = baseGames.slice(0, gamesWindow);
+    const over = values.filter((v) => v > statData.line).length;
+    const hitRate = ((over / values.length) * 100).toFixed(1);
+    const maxVal = Math.ceil((Math.max(...values) + 3) / 2) * 2;
+    const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+    return { values, games, over, total: values.length, hitRate, maxVal, avg };
+  }, [statData, gamesWindow, triggerFilter]);
+
+  // Tabela "Jogos Recentes" no formato do dashboard real (até 10 jogos).
+  const recentGames = useMemo(() => {
+    const rows = windowed.values.slice(0, 10).map((v, i) => ({
+      ...windowed.games[i],
+      value: v,
+      diffPct: Math.round(((v - statData.line) / statData.line) * 100),
+    }));
+    const hits = rows.filter((r) => r.value > statData.line).length;
+    return { rows, hitPct: Math.round((hits / rows.length) * 100) };
+  }, [windowed, statData]);
+
+  // Números do insight derivados dos mesmos dados do gráfico filtrado,
+  // pra história fechar quando o visitante clicar.
+  const insightStats = useMemo(() => {
+    const pts = MOCK_DATA.PTS;
+    const boost = Math.max(1, Math.round(pts.line * 0.04));
+    const vals = WITHOUT_MURRAY_IDX.map((i) => pts.values[i] + boost);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const pct = Math.round(((avg - pts.seasonAvg) / pts.seasonAvg) * 100);
+    return { avg: avg.toFixed(1), pct };
+  }, []);
+
+  const handleInsightClick = () => {
+    setSelectedStat('PTS');
+    setTriggerFilter(true);
+    document.getElementById('lp-grafico-desempenho')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const hitRateGood = parseFloat(windowed.hitRate) >= 50;
+  const linePct = (statData.line / windowed.maxVal) * 100;
+
+  const statPill = (s: { id: string; label: string }) => {
+    const active = selectedStat === s.id;
+    return (
+      <button
+        key={s.id}
+        onClick={() => setSelectedStat(s.id)}
+        className={`shrink-0 h-8 px-3.5 rounded-full border text-[12px] font-semibold whitespace-nowrap transition-colors ${
+          active
+            ? 'bg-forest text-white border-forest'
+            : 'bg-white text-ink border-line hover:border-forest/30'
+        }`}
+      >
+        {s.label}
+      </button>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
       <Helmet>
         <title>Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting</title>
-        <meta name="description" content="Oportunidades diárias de prop bets NBA, reports com insights, injury report e Análise 360°. Tome decisões baseadas em dados, não em palpites." />
+        <meta name="description" content="Compare a linha das casas com o histórico real do jogador: últimos jogos, injury report e Análise 360°. Dashboard aberto pra testar sem login." />
       </Helmet>
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
+      <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center">
-            <img src="/logo.png" alt="Smart Betting" className="h-10" />
+            {/* logo branca vira escura no canvas claro (mesmo filtro do Footer) */}
+            <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <LanguageToggle />
-            <Button
-              variant="outline"
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
               onClick={() => navigate(user ? "/onboarding" : "/auth")}
-              className="text-sm sm:text-base px-3 sm:px-4 py-2"
+              className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
               {user ? "Acessar" : "Entrar"}
-            </Button>
-            <Button 
-              onClick={() => navigate("/auth")} 
-              className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/auth")}
+              className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
             >
               Começar Grátis
-            </Button>
+            </button>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 sm:px-6">
-        {/* Hero Section */}
-        <section className="relative py-20 overflow-hidden">
-          
-          <div className="relative text-center">
-            
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 max-w-5xl mx-auto leading-tight">
-              Pare de <span className="bg-gradient-primary bg-clip-text text-[#5b9bd5]">apostar no escuro</span>
-            </h1>
-            
-            <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-              Análise de dados para suas apostas na NBA. 
-              <span className="text-foreground font-semibold"> Baseado em evidências, não em palpites.</span>
-            </p>
-
-            {/* Social Proof */}
-            <div className="flex items-center justify-center gap-6 mb-8 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-success" />
-                <span>Sem promessas de ganho</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-success" />
-                <span>Dados históricos transparentes</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-lg mx-auto">
-              <Button size="lg" onClick={() => navigate(dashboardPath)} className="w-full sm:flex-1 hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-[#5b9bd5] hover:bg-[#4a8ac4]">
-                <PlayCircle className="h-5 w-5" />
-                Experimente agora — Veja a análise de {firstFreePlayerName}
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="w-full sm:flex-1 gap-2 text-lg py-6">
-                Criar conta grátis
-              </Button>
-            </div>
+      {/* Hero — copy à esquerda, produto vaza a dobra logo abaixo */}
+      <section className="relative bg-forest text-white">
+        <div className="absolute inset-0 bg-gradient-to-br from-forest via-forest-2 to-forest pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(212,160,23,0.16),transparent_50%)] pointer-events-none" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-40 sm:pb-56">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-5">
+            NBA · Prop Bets
+          </p>
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-5 max-w-3xl">
+            A casa demora pra ajustar a linha.<br />
+            <span className="text-amber">Você chega antes.</span>
+          </h1>
+          <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
+            Titular desfalcou? Os números de quem fica em quadra sobem na hora —
+            a linha demora. Nossa metodologia varre o injury report e te mostra
+            onde essa janela abriu, com o dado na frente. Testa num caso real:{" "}
+            <span className="text-white font-semibold">clica no insight aí embaixo.</span>
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <button
+              type="button"
+              onClick={() => navigate(dashboardPath)}
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
+            >
+              <PlayCircle className="h-5 w-5 shrink-0" />
+              <span className="sm:hidden">Ver análise real grátis</span>
+              <span className="hidden sm:inline">Abrir a análise de {firstFreePlayerName}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/auth")}
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-white text-forest hover:bg-white/90 font-bold text-[15px] shadow-md transition-colors"
+            >
+              Criar conta grátis
+            </button>
           </div>
-        </section>
+          <p className="text-[12px] text-white/55 mt-4">
+            Sem login e sem cartão pra testar · Sem promessas de ganho · A decisão é sempre sua
+          </p>
+        </div>
+      </section>
 
-
-        {/* Dashboard Preview Section */}
-        <section className="py-20 px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
-              Veja como funciona na prática
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Dashboard completo com dados reais da NBA para suas análises de prop bets
-            </p>
+      {/* Produto vazando a dobra — réplica do NBADashboard rebrandado (PR #162) */}
+      <section className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 -mt-28 sm:-mt-40">
+        <div className="rounded-rebrand-xl overflow-hidden shadow-2xl border border-line-2 bg-canvas">
+          {/* Barra de janela */}
+          <div className="flex items-center justify-between gap-3 bg-ink px-4 py-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+              <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+              <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+            </div>
+            <span className="font-mono text-[10px] sm:text-[11px] text-white/50 truncate">
+              smartbetting.app/nba-dashboard/nikola-jokic
+            </span>
+            <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber bg-amber/15 border border-amber/40 rounded-full px-2 py-0.5 whitespace-nowrap">
+              dados de exemplo
+            </span>
           </div>
 
-          {/* Mock Dashboard Interface — mirrors real NBADashboard terminal style */}
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-terminal-black rounded-sm p-4 md:p-6 shadow-2xl overflow-hidden border border-terminal-border-subtle">
-              {/* Player Header */}
-              <div className="terminal-container p-4 mb-3">
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-sm bg-terminal-gray border-2 border-terminal-green flex items-center justify-center flex-shrink-0">
-                    <span className="text-xl font-bold text-terminal-green">NJ</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-terminal-green mb-1">Nikola Jokic</h3>
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="opacity-70">Denver Nuggets</span>
-                      <span className="opacity-50">•</span>
-                      <span className="opacity-70">C</span>
-                      <span className="opacity-50">•</span>
-                      <span className="text-terminal-green">Active</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-terminal-border-subtle">
-                      <div>
-                        <div className="data-label mb-1">POINTS</div>
-                        <div className="text-lg font-bold text-terminal-text">29.1</div>
+          <div className="p-3 sm:p-5">
+            <div className="grid lg:grid-cols-[300px_1fr] gap-3">
+              {/* Coluna esquerda — Player header + Companheiros */}
+              <div className="space-y-3">
+                <div className="rounded-rebrand-lg bg-white border border-line p-4">
+                  <div className="flex items-start gap-3.5">
+                    <PlayerAvatar name="Nikola Jokic" className="w-16 h-16 rounded-rebrand-lg" initialsClass="text-[20px]" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-lg font-bold text-ink leading-tight">Nikola Jokic</h3>
+                        <span className="inline-flex items-center gap-0.5 bg-amber/15 border border-amber/30 rounded-full px-2 py-1">
+                          <StarRow n={3} />
+                        </span>
                       </div>
-                      <div>
-                        <div className="data-label mb-1">ASSISTS</div>
-                        <div className="text-lg font-bold text-terminal-text">10.2</div>
-                      </div>
-                      <div>
-                        <div className="data-label mb-1">REBOUNDS</div>
-                        <div className="text-lg font-bold text-terminal-text">12.8</div>
+                      <div className="flex items-center gap-1.5 text-[13px] text-ink-2 mt-1 flex-wrap">
+                        <img src={getTeamLogoUrl('Denver Nuggets')} alt="Denver Nuggets" className="w-4 h-4 object-contain" loading="lazy" />
+                        <span>Denver Nuggets</span>
+                        <span className="text-ink-3">·</span>
+                        <span>C</span>
+                        <span className="text-ink-3">·</span>
+                        <span className="text-forest font-semibold">Ativo</span>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Stat Type Selector — interactive */}
-              <div className="terminal-container p-4 mb-3">
-                <h3 className="section-title mb-3">SELECT STAT TYPE</h3>
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
-                  {MOCK_STAT_LABELS.map((s) => {
-                    const active = selectedStat === s.id;
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedStat(s.id)}
-                        className={`terminal-button p-2 text-center transition-all ${
-                          active ? 'bg-terminal-blue text-terminal-black border-terminal-blue' : 'hover:border-terminal-blue/50'
-                        }`}
-                      >
-                        <div className="text-xs font-bold">{s.id}</div>
-                        {active && <div className="text-[8px] mt-0.5 opacity-80">ACTIVE</div>}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 text-[10px] opacity-50">
-                  VIEWING: {MOCK_STAT_LABELS.find(s => s.id === selectedStat)?.full}
-                </div>
-              </div>
-
-              {/* Stats Header — reactive to selected stat */}
-              <div className="terminal-container p-4 mb-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="data-label text-xs mb-1">GRAPH AVG</div>
-                    <div className="text-3xl font-bold text-terminal-green">{statData.avg.toFixed(1)}</div>
-                    <div className="text-xs opacity-50 mt-1">{MOCK_STAT_LABELS.find(s => s.id === selectedStat)?.full}</div>
+                  <div className="grid grid-cols-3 gap-3 mt-4">
+                    <div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">Pontos</div>
+                      <div className="text-xl font-bold text-ink tabular-nums">27.5</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">Assistências</div>
+                      <div className="text-xl font-bold text-ink tabular-nums">10.6</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">Rebotes</div>
+                      <div className="text-xl font-bold text-ink tabular-nums">12.9</div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="data-label text-xs mb-1">HIT RATE</div>
-                    <div className="text-3xl font-bold text-terminal-green">{statData.hitRate}%</div>
-                    <div className="text-xs opacity-50 mt-1">({statData.over}/{statData.total})</div>
+                  <p className="text-[11px] text-ink-3 mt-3 pt-3 border-t border-line">
+                    Idade 31 · Último jogo: ontem
+                  </p>
+                </div>
+
+                {/* Insight de oportunidade — espelho do PropInsightsCard real */}
+                <div className="rounded-rebrand-lg bg-white border border-line p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-2 shrink-0" />
+                    <span className="text-[10px] font-bold text-amber-2 uppercase tracking-widest">Insight</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-status-danger/10 text-status-danger">
+                      OUT
+                    </span>
                   </div>
-                </div>
-              </div>
-
-              {/* Chart — reactive to selected stat */}
-              <div className="terminal-container p-4 mb-3">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="section-title">Performance vs Linha</h3>
-                  <div className="text-[10px] opacity-50">ÚLTIMOS {statData.total} JOGOS</div>
-                </div>
-
-                <div className="hidden sm:block">
-                  <div className="h-56 p-4 pb-0 relative">
-                    <div className="ml-6 h-[160px] flex items-end gap-1 relative">
-                      <div className="absolute inset-x-0 border-t-2 border-dashed border-white/80 z-10" style={{ bottom: `${(statData.line / maxVal) * 100}%` }}></div>
-                      <div className="absolute right-1 z-10 bg-terminal-dark-gray px-2 py-0.5 rounded-sm text-[10px] font-bold text-white border border-white/40" style={{ bottom: `${(statData.line / maxVal) * 100}%`, transform: 'translateY(50%)' }}>
-                        Linha: {statData.line}
+                  <p className="text-xs text-ink/80 mb-3 leading-relaxed">
+                    Com <span className="font-bold text-status-danger">Murray</span> fora,
+                    os <span className="font-bold text-forest">pontos</span> de Jokic
+                    sobem <span className="font-bold text-forest">+{insightStats.pct}%</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleInsightClick}
+                    className={`w-full text-left bg-canvas-2 rounded-rebrand-sm border p-3 transition-all cursor-pointer ${
+                      triggerFilter ? 'border-forest/50 bg-forest/[0.06]' : 'border-amber/30 hover:border-amber/60 hover:bg-amber/[0.06]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-ink uppercase">Pontos</span>
+                      <div className="flex items-center gap-1.5">
+                        <StarRow n={3} size="w-2.5 h-2.5" />
+                        <ArrowRight className="w-3.5 h-3.5 text-amber-2" />
                       </div>
-                      {statData.values.map((v, i) => {
-                        const h = Math.max((v / maxVal) * 160, 4);
-                        return (
-                          <div key={i} className="flex-1 flex items-end justify-center px-[2px]">
-                            <div
-                              className={`w-full max-w-[14px] transition-all duration-300 ${v > statData.line ? 'bg-green-500' : 'bg-red-500'}`}
-                              style={{ height: `${h}px`, minHeight: '4px', borderRadius: '1px 1px 0 0' }}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="ml-6 flex gap-1 mt-1">
-                      {MOCK_GAMES.map((g, i) => (
-                        <div key={i} className="flex-1 text-center">
-                          <div className="text-[9px] font-semibold text-terminal-green-bright leading-tight">{g.opp}</div>
-                          <div className="text-[8px] opacity-40 leading-tight">{g.date}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-6 mt-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
-                      <span className="opacity-70">Over ({statData.over})</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
-                      <span className="opacity-70">Under ({statData.total - statData.over})</span>
+                      <span className="text-sm text-ink-3 tabular-nums">27.5</span>
+                      <span className="text-xs text-ink-3">→</span>
+                      <span className="text-lg font-bold text-forest leading-none tabular-nums">{insightStats.avg}</span>
+                      <span className="text-[11px] font-semibold text-forest bg-forest/10 px-1.5 py-0.5 rounded tabular-nums">
+                        +{insightStats.pct}%
+                      </span>
                     </div>
-                  </div>
+                    <div className="text-[9px] text-ink-3 mt-1">
+                      média normal → sem Murray
+                    </div>
+                  </button>
+                  <p className="text-[9px] text-amber-2/70 mt-2 text-center">
+                    {triggerFilter ? 'Filtro aplicado no gráfico ao lado' : 'Clique para filtrar o gráfico'}
+                  </p>
                 </div>
 
-                <div className="block sm:hidden">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center bg-terminal-dark-gray p-3 rounded-sm border border-terminal-border-subtle">
-                      <div className="text-xl font-bold text-green-400">{statData.over}</div>
-                      <div className="text-[10px] opacity-60">OVER</div>
-                    </div>
-                    <div className="text-center bg-terminal-dark-gray p-3 rounded-sm border border-terminal-border-subtle">
-                      <div className="text-xl font-bold text-terminal-red">{statData.total - statData.over}</div>
-                      <div className="text-[10px] opacity-60">UNDER</div>
-                    </div>
+                <div className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
+                  <div className="px-4 pt-3.5 pb-2.5 border-b border-line">
+                    <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Companheiros</p>
+                    <p className="text-[11px] text-ink-3 mt-0.5">Denver Nuggets</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Shooting Zones */}
-              <div className="terminal-container p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="section-title">SHOOTING ZONES</h3>
-                  <div className="text-[10px] opacity-50">Nikola Jokic</div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    { title: 'Restricted Area', fga: '8.2', fgm: '5.4', pct: '65.9%' },
-                    { title: 'Paint (Non-RA)', fga: '3.1', fgm: '1.6', pct: '51.6%' },
-                    { title: 'Mid Range', fga: '4.5', fgm: '2.3', pct: '51.1%' },
-                    { title: 'Above the Break 3', fga: '2.8', fgm: '1.0', pct: '35.7%' },
-                    { title: 'Corner 3', fga: '0.4', fgm: '0.2', pct: '50.0%' },
-                    { title: 'Backcourt', fga: '0.1', fgm: '0.0', pct: '0.0%' },
-                  ].map((z) => (
-                    <div key={z.title} className="p-3 bg-terminal-dark-gray border border-terminal-border-subtle rounded-sm">
-                      <div className="text-xs font-bold text-terminal-blue mb-2">{z.title}</div>
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex flex-col">
-                          <span className="opacity-60">FGA</span>
-                          <span className="font-semibold">{z.fga}</span>
-                        </div>
-                        <div className="flex flex-col text-terminal-blue">
-                          <span className="opacity-60">FGM</span>
-                          <span className="font-semibold">{z.fgm}</span>
-                        </div>
-                        <div className="flex flex-col text-terminal-yellow">
-                          <span className="opacity-60">FG%</span>
-                          <span className="font-semibold">{z.pct}</span>
-                        </div>
+                  {TEAMMATES.map((t) => (
+                    <div key={t.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-line last:border-b-0">
+                      <PlayerAvatar name={t.name} className="w-8 h-8 rounded-full" initialsClass="text-[10px]" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold text-ink leading-tight truncate">{t.name}</p>
+                        <p className="text-[11px] text-ink-3 flex items-center gap-1.5">
+                          {t.pos}
+                          {t.out && (
+                            <span className="text-[9px] font-bold uppercase text-status-danger bg-status-danger/10 border border-status-danger/30 rounded px-1">
+                              Out
+                            </span>
+                          )}
+                        </p>
                       </div>
+                      <StarRow n={t.stars} size="w-2.5 h-2.5" />
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
 
-            {/* Call to Action Below Dashboard */}
-            <div className="text-center mt-12">
-              <Button 
-                size="lg" 
-                onClick={() => navigate(dashboardPath)} 
-                className="hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-[#5b9bd5] hover:bg-[#4a8ac4]"
-              >
-                <PlayCircle className="h-5 w-5" />
-                Ver análise real agora
-              </Button>
-              <p className="text-sm text-muted-foreground mt-4">
-                Sem login — experimente o dashboard com dados reais
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Problem Statement */}
-        <section className="py-16 px-6">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-8">
-              Você está perdendo tempo e dinheiro por falta de dados confiáveis
-            </h2>
-            
-            <div className="grid md:grid-cols-2 gap-8 mt-12">
-              <Card className="bg-destructive/5 border-destructive/20 p-6 rounded-sm">
-                <CardContent className="space-y-4">
-                  <div className="text-destructive font-semibold text-lg">Sem a Smartbetting</div>
-                  <ul className="space-y-3 text-left text-muted-foreground">
-                    <li>• Horas coletando stats manualmente</li>
-                    <li>• Incerteza sobre quais dados analisar</li>
-                    <li>• Dependência de dicas de terceiros</li>
-                    <li>• Taxa de acerto estagnada</li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-success/5 border-success/20 p-6 rounded-sm">
-                <CardContent className="space-y-4">
-                  <div className="text-success font-semibold text-lg">Com Smartbetting</div>
-                  <ul className="space-y-3 text-left text-muted-foreground">
-                    <li>• Análises prontas em segundos</li>
-                    <li>• Dados relevantes pré-selecionados</li>
-                    <li>• Decisões baseadas em evidências</li>
-                    <li>• Potencial para melhorar sua taxa de acerto</li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works */}
-        <section className="py-20 px-6 bg-muted/30">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Como funciona nossa vantagem competitiva
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Modelo proprietário treinado com milhares de resultados históricos da NBA, focado especificamente em prop bets.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300 rounded-sm">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-sm flex items-center justify-center mb-4 mx-auto">
-                  <Database className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-center text-foreground">Dados Relevantes</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">Análise automática das odds disponíveis nas principais casas de apostas, de acordo com o Injury Report</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300 rounded-sm">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-sm flex items-center justify-center mb-4 mx-auto">
-                  <Brain className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-center text-foreground">IA Especializada</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">Modelo proprietário focado em avaliar oportunidades baseado em informações e não opniões</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border-border hover:shadow-lg transition-all duration-300 rounded-sm">
-              <CardHeader>
-                <div className="w-16 h-16 bg-gradient-primary rounded-sm flex items-center justify-center mb-4 mx-auto">
-                  <Target className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-center text-foreground">Transparência Total</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-muted-foreground">
-                  Histórico completo de análises anteriores. Você vê exatamente 
-                  como nosso modelo performou no passado.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        {/* Value Props for Personas */}
-        <section className="py-20 px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-md text-sm font-medium mb-6">
-                <Target className="h-4 w-4" />
-                Feito para você
-              </div>
-              <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
-                Perfeito para o seu <span className="text-[#5b9bd5]">perfil de apostador</span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                Não importa se você tem 10 minutos ou 10 horas por dia - nossa plataforma se adapta ao seu ritmo
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Busy Bettor Profile */}
-              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 rounded-sm">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                <CardContent className="relative p-8 space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-primary rounded-sm flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                        <Clock className="h-10 w-10 text-white" />
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent rounded-full flex items-center justify-center">
-                        <Zap className="text-white text-xs font-bold h-4 w-4" />
-                      </div>
+              {/* Coluna direita — Stats + Gráfico */}
+              <div className="space-y-3 min-w-0">
+                {/* Stat selector — BÁSICOS / COMBOS com pills */}
+                <div className="rounded-rebrand-lg bg-white border border-line px-4 py-3">
+                  <div className="flex items-center gap-3 overflow-x-auto [scrollbar-width:none]">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3 shrink-0">Básicos</span>
+                    <div className="flex gap-1.5">
+                      {STAT_BASIC.map(statPill)}
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-foreground">Apostador Ocupado</h3>
-                      <p className="text-primary font-medium">Eficiência em primeiro lugar</p>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3 shrink-0 pl-2 border-l border-line">Combos</span>
+                    <div className="flex gap-1.5">
+                      {STAT_COMBOS.map(statPill)}
                     </div>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
-                        <CheckCircle className="h-5 w-5 text-white" />
+                </div>
+
+                {/* Gráfico de desempenho */}
+                <div id="lp-grafico-desempenho" className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-4 pt-3.5 pb-3 border-b border-line">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Gráfico de desempenho</span>
+                      <span className="text-[10px] tabular-nums text-ink-3">· últimos {windowed.total}</span>
+                      {triggerFilter && (
+                        <button
+                          type="button"
+                          onClick={() => setTriggerFilter(false)}
+                          className="inline-flex items-center gap-1.5 h-6 px-2 rounded-rebrand-sm bg-forest text-white text-[10px] font-semibold hover:bg-forest-2 transition-colors"
+                        >
+                          Sem Murray em quadra
+                          <X className="w-3 h-3 opacity-80" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-[12px]">
+                      <span className="text-ink-2">
+                        Taxa de acerto{' '}
+                        <span className={`font-semibold tabular-nums ${hitRateGood ? 'text-forest' : 'text-status-danger'}`}>
+                          {windowed.hitRate}%
+                        </span>{' '}
+                        <span className="text-ink-3 tabular-nums">({windowed.over}/{windowed.total})</span>
+                      </span>
+                      <span className="text-ink-2">
+                        Linha <span className="font-semibold text-ink tabular-nums">{statData.line}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-3 flex items-center gap-1.5">
+                    {GAME_WINDOWS.map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => setGamesWindow(w)}
+                        className={`shrink-0 h-8 px-3 text-[12px] font-semibold rounded-rebrand-sm whitespace-nowrap transition-colors border ${
+                          gamesWindow === w
+                            ? 'bg-forest text-white border-forest'
+                            : 'bg-white text-ink border-line hover:border-forest/30'
+                        }`}
+                      >
+                        Últ. {w}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="px-4 pb-2">
+                    <div className="flex gap-2">
+                      {/* Eixo Y */}
+                      <div className="relative w-7 h-[180px] shrink-0 text-right">
+                        <span className="absolute -top-1.5 right-0 text-[10px] text-ink-3 tabular-nums">{windowed.maxVal}</span>
+                        <span className="absolute right-0 text-[10px] text-ink-3 tabular-nums" style={{ top: 'calc(50% - 7px)' }}>{Math.round(windowed.maxVal / 2)}</span>
+                        <span className="absolute -bottom-1.5 right-0 text-[10px] text-ink-3 tabular-nums">0</span>
                       </div>
-                      <div>
-                        <p className="font-bold text-foreground text-lg">Economize 2-3 horas/dia</p>
-                        <p className="text-muted-foreground">Análises prontas em 30 segundos</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="flex -space-x-1">
-                            <div className="w-3 h-3 bg-success rounded-full"></div>
-                            <div className="w-3 h-3 bg-success/80 rounded-full"></div>
-                            <div className="w-3 h-3 bg-success/60 rounded-full"></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="h-[180px] flex items-end gap-[3px] sm:gap-1 relative border-l border-b border-line">
+                          {/* gridlines */}
+                          <div className="absolute inset-x-0 top-0 border-t border-line/70" />
+                          <div className="absolute inset-x-0 border-t border-line/70" style={{ top: '50%' }} />
+                          {/* linha da casa — sólida, com chip do valor (como no real) */}
+                          <div className="absolute inset-x-0 border-t-2 border-ink z-10" style={{ bottom: `${linePct}%` }} />
+                          <div
+                            className="absolute -right-1 z-10 bg-ink text-white px-1.5 py-0.5 rounded-sm text-[10px] font-bold tabular-nums shadow-sm"
+                            style={{ bottom: `${linePct}%`, transform: 'translateY(50%)' }}
+                          >
+                            {statData.line}
                           </div>
-                          <span className="text-xs text-success font-medium">Tempo poupado: 21h/semana</span>
+                          {windowed.values.map((v, i) => {
+                            const h = Math.max((v / windowed.maxVal) * 180, 14);
+                            return (
+                              <div key={i} className="flex-1 flex items-end justify-center min-w-0">
+                                <div
+                                  className={`w-full max-w-[30px] transition-all duration-300 rounded-t-[3px] relative ${v > statData.line ? 'bg-forest' : 'bg-status-danger'}`}
+                                  style={{ height: `${h}px` }}
+                                >
+                                  <span className="absolute bottom-0.5 inset-x-0 text-center text-[8px] sm:text-[10px] font-bold text-white tabular-nums">
+                                    {v}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Eixo X — logos dos adversários + data */}
+                        <div className="flex gap-[3px] sm:gap-1 mt-1.5">
+                          {windowed.games.map((g, i) => (
+                            <div key={i} className="flex-1 min-w-0 flex flex-col items-center gap-0.5">
+                              <img
+                                src={getTeamLogoUrl(teamAbbrToName(g.opp))}
+                                alt={g.opp}
+                                className="w-4 h-4 object-contain"
+                                loading="lazy"
+                              />
+                              <span className="hidden sm:block text-[8px] text-ink-3 tabular-nums leading-none">{g.date}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                        <Zap className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground text-lg">Interface simples</p>
-                        <p className="text-muted-foreground">Decisões rápidas sem complicação</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
-                        <Shield className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground text-lg">Dados confiáveis</p>
-                        <p className="text-muted-foreground">Sem mais dúvidas sobre qual análise fazer</p>
-                      </div>
-                    </div>
                   </div>
 
-                  <div className="mt-6 p-4 bg-muted/50 rounded-md border border-border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Timer className="h-5 w-5 text-primary" />
-                      <span className="font-semibold text-foreground">Perfeito para você se:</span>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 border-t border-line text-[11px] text-ink-2">
+                    <div className="flex items-center gap-4">
+                      <span className="font-semibold text-ink-3">Últ. {windowed.total}</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-forest" /> Over
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-status-danger" /> Under
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-px bg-ink" /> Linha
+                      </span>
                     </div>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Tem pouco tempo para análises</li>
-                      <li>• Quer resultados rápidos e precisos</li>
-                      <li>• Prefere simplicidade à complexidade</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Professional Aspirant Profile */}
-              <Card className="group relative overflow-hidden bg-card border-border hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 rounded-sm">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                <CardContent className="relative p-8 space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-primary rounded-sm flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                        <TrendingUp className="h-10 w-10 text-white" />
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-success rounded-full flex items-center justify-center">
-                        <Target className="text-white text-xs font-bold h-4 w-4" />
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-foreground">Aspirante a Profissional</h3>
-                      <p className="text-success font-medium">Crescimento e volume</p>
+                    <div className="flex items-center gap-3 tabular-nums">
+                      <span>Média <span className="font-semibold text-ink">{windowed.avg}</span></span>
+                      <span>Média da Temporada <span className="font-semibold text-ink">{statData.seasonAvg}</span></span>
                     </div>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                        <Database className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground text-lg">Volume de análises</p>
-                        <p className="text-muted-foreground">Múltiplas oportunidades por dia</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="flex gap-1">
-                            <div className="w-2 h-4 bg-success rounded-full"></div>
-                            <div className="w-2 h-6 bg-success/80 rounded-full"></div>
-                            <div className="w-2 h-5 bg-success/60 rounded-full"></div>
-                            <div className="w-2 h-7 bg-success/40 rounded-full"></div>
-                          </div>
-                          <span className="text-xs text-success font-medium">15+ análises/dia</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="w-8 h-8 bg-success rounded-full flex items-center justify-center flex-shrink-0">
-                        <Target className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground text-lg">Independência</p>
-                        <p className="text-muted-foreground">Pare de depender de tipsters</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-4 p-4 bg-muted/30 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                        <Brain className="h-5 w-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground text-lg">Edge competitivo</p>
-                        <p className="text-muted-foreground">Dados que outros não têm acesso</p>
-                      </div>
-                    </div>
+                </div>
+
+                {/* Jogos Recentes */}
+                <div className="rounded-rebrand-lg bg-white border border-line p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Jogos recentes</span>
+                    <span className="text-[10px] text-ink-3">Nikola Jokic</span>
                   </div>
-
-                  <div className="mt-6 p-4 bg-muted/50 rounded-md border border-border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-5 w-5 text-success" />
-                      <span className="font-semibold text-foreground">Perfeito para você se:</span>
-                    </div>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Quer escalar suas operações</li>
-                      <li>• Busca independência de terceiros</li>
-                      <li>• Tem tempo para múltiplas análises</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Bottom CTA */}
-            <div className="text-center mt-16 flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button 
-                size="lg" 
-                onClick={() => navigate(dashboardPath)} 
-                className="hover:opacity-90 gap-2 text-lg py-6 text-slate-50 bg-[#5b9bd5] hover:bg-[#4a8ac4] px-8 shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <PlayCircle className="h-5 w-5" />
-                Ver análise grátis agora
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="gap-2 text-lg py-6 px-8">
-                Criar conta grátis
-              </Button>
-            </div>
-          </div>
-        </section>
-
-
-        {/* Trust & Risk Mitigation */}
-        <section className="py-16 px-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-muted/30 rounded-md p-8 md:p-12">
-              <div className="text-center space-y-6">
-                <Shield className="h-16 w-16 text-primary mx-auto" />
-                <h3 className="text-2xl md:text-3xl font-bold text-foreground">
-                  Transparência é nossa prioridade
-                </h3>
-                <div className="grid md:grid-cols-2 gap-8 text-left">
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-foreground">❌ O que NÃO fazemos:</h4>
-                    <ul className="space-y-2 text-muted-foreground">
-                      <li>• Prometemos ganhos garantidos</li>
-                      <li>• Indicamos apostas específicas</li>
-                      <li>• Escondemos nossos resultados passados</li>
-                      <li>• Usamos depoimentos falsos</li>
-                    </ul>
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-foreground">✅ O que fazemos:</h4>
-                    <ul className="space-y-2 text-muted-foreground">
-                      <li>• Fornecemos análise de dados objetiva</li>
-                      <li>• Comparamos odds disponíveis</li>
-                      <li>• Mostramos histórico completo do modelo</li>
-                      <li>• Educamos sobre análise de prop bets</li>
-                    </ul>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left">
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">Data</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">Adv.</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium hidden sm:table-cell">Local</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Valor</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Linha</th>
+                          <th className="pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Resultado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentGames.rows.slice(0, 7).map((g, i) => (
+                          <tr key={i} className="border-t border-line">
+                            <td className="py-1.5 pr-3 text-ink-2 tabular-nums">{g.date}</td>
+                            <td className="py-1.5 pr-3 font-semibold text-ink">{i % 2 === 0 ? '@' : ''}{g.opp}</td>
+                            <td className="py-1.5 pr-3 text-ink-3 hidden sm:table-cell">{i % 2 === 0 ? 'Fora' : 'Casa'}</td>
+                            <td className="py-1.5 pr-3 text-right font-bold text-ink tabular-nums">{g.value.toFixed(1)}</td>
+                            <td className="py-1.5 pr-3 text-right text-ink-2 tabular-nums">{statData.line}</td>
+                            <td className={`py-1.5 text-right font-bold tabular-nums ${g.value > statData.line ? 'text-forest' : 'text-status-danger'}`}>
+                              {g.diffPct > 0 ? '+' : ''}{g.diffPct}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Final CTA */}
-        <section className="py-20 px-6 text-center">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
-              Pare de perder tempo com análises manuais
-            </h2>
-            <p className="text-xl text-muted-foreground mb-8">
-              Junte-se aos apostadores que já economizam horas por dia e tomam decisões baseadas em dados confiáveis.
+        {/* CTA abaixo do produto */}
+        <div className="text-center mt-8 sm:mt-10">
+          <button
+            type="button"
+            onClick={() => navigate(dashboardPath)}
+            className="inline-flex items-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
+          >
+            <PlayCircle className="h-5 w-5" />
+            Abrir o dashboard de verdade
+          </button>
+          <p className="text-sm text-ink-3 mt-3">
+            Sem login — dados ao vivo do {firstFreePlayerName}
+          </p>
+        </div>
+      </section>
+
+      {/* Faixa de fatos */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 mt-14 sm:mt-20">
+        <div className="border-y border-line py-4 flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-y-2 sm:gap-x-8 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">
+          <span>12 mercados de props</span>
+          <span className="hidden sm:inline text-amber-2">·</span>
+          <span>Últimos 5, 10 ou 15 jogos</span>
+          <span className="hidden sm:inline text-amber-2">·</span>
+          <span>Injury report diário</span>
+          <span className="hidden sm:inline text-amber-2">·</span>
+          <span>Linha agregada das casas</span>
+        </div>
+      </section>
+
+      {/* O que tem dentro — lista editorial numerada */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-24">
+        <div className="grid md:grid-cols-[minmax(220px,300px)_1fr] gap-10 md:gap-16">
+          <div className="md:sticky md:top-24 self-start">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
+              O que tem dentro
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button size="lg" onClick={() => navigate(dashboardPath)} className="hover:opacity-90 gap-2 text-lg px-8 py-6 bg-[#5b9bd5] hover:bg-[#4a8ac4]">
-                <PlayCircle className="h-5 w-5" />
-                Experimente a análise grátis
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="gap-2 text-lg px-8 py-6">
-                Criar conta
-              </Button>
+            <h2 className="font-display text-3xl sm:text-4xl font-black text-ink leading-tight mb-4">
+              Tudo que você abriria em dez abas, numa só
+            </h2>
+            <p className="text-[14px] text-ink-2 leading-relaxed">
+              Quem analisa prop bets na mão sabe o ritual: site de stats, site de odds,
+              twitter de lesão, planilha. A plataforma junta as quatro pontas.
+            </p>
+          </div>
+
+          <div>
+            {[
+              {
+                num: '01',
+                title: 'Oportunidades por desfalque',
+                text: 'Saiu o injury report, a gente cruza quem tá fora com o histórico de quem fica em quadra. Onde a linha não acompanhou o desfalque, tem janela — ela chega pra você como o insight do exemplo lá em cima.',
+              },
+              {
+                num: '02',
+                title: 'Dashboard por jogador',
+                text: '12 mercados de props — pontos, assistências, rebotes e combos — contra a linha, nos últimos 5, 10 ou 15 jogos, casa e fora.',
+              },
+              {
+                num: '03',
+                title: 'Injury report',
+                text: 'Quem tá fora, quem é dúvida e o que isso muda na linha de quem fica. Antes de você apostar, não depois.',
+              },
+              {
+                num: '04',
+                title: 'Análise 360°',
+                text: 'Escolhe o jogador e recebe a leitura completa do confronto numa tela só — desempenho, contexto e companheiros.',
+              },
+            ].map((f) => (
+              <div key={f.num} className="grid grid-cols-[56px_1fr] sm:grid-cols-[88px_1fr] gap-4 sm:gap-8 py-7 border-t border-line last:border-b">
+                <span className="font-mono text-3xl sm:text-5xl font-black text-amber leading-none tabular-nums">{f.num}</span>
+                <div>
+                  <h3 className="text-lg font-bold text-ink mb-1.5">{f.title}</h3>
+                  <p className="text-[14px] text-ink-2 leading-relaxed max-w-xl">{f.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* O combinado — faixa manifesto em verde-mata, de ponta a ponta */}
+      <section className="bg-forest text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(212,160,23,0.10),transparent_50%)] pointer-events-none" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-3">
+            Transparência
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl font-black leading-tight mb-10 sm:mb-12 max-w-2xl">
+            O combinado que a gente assina
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-x-16 gap-y-10">
+            <div>
+              <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-white/60 pb-3 border-b border-white/15">
+                O que você nunca vai ver aqui
+              </h3>
+              {[
+                'Promessa de ganho garantido',
+                'Palpite às cegas, sem o dado junto',
+                'Taxa de acerto de marketing',
+                'Depoimento inventado',
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white/85">
+                  <XCircle className="w-4 h-4 text-white/40 shrink-0" />
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div>
+              <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber pb-3 border-b border-white/15">
+                O que você sempre vai ter
+              </h3>
+              {[
+                'O dado e a linha, lado a lado',
+                'O porquê de cada insight — gatilho, números e contexto',
+                'Linha agregada das principais casas',
+                'A decisão sempre na sua mão',
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
+                  <CheckCircle2 className="w-4 h-4 text-amber shrink-0" />
+                  {item}
+                </div>
+              ))}
             </div>
           </div>
-        </section>
-      </div>
+
+          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
+            — Smart Betting · combinado válido desde o primeiro dia
+          </p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
+        <div className="text-center mb-8">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
+            Perguntas frequentes
+          </p>
+          <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
+        </div>
+        <div className="space-y-3">
+          {[
+            {
+              q: 'Vocês dão dica de aposta?',
+              a: 'Quase. A gente mapeia e publica as principais oportunidades do dia com base no injury report — cada uma com o gatilho, o histórico e a linha do lado. O que a gente não faz é mandar "entrada garantida" sem o dado junto. Quem bate o martelo é sempre você.',
+            },
+            {
+              q: 'É grátis pra testar?',
+              a: `É, em dois níveis. Sem login: os dashboards do ${FREE_PLAYERS.join(' e do ')} ficam abertos. Com conta grátis: você vê as principais oportunidades de cada dia. O Premium libera a lista completa de oportunidades e o dashboard de todos os jogadores.`,
+            },
+            {
+              q: 'De onde vêm os dados?',
+              a: 'Estatísticas oficiais da NBA e a linha agregada das principais casas de aposta, atualizadas todos os dias de jogo.',
+            },
+            {
+              q: 'Preciso entender de estatística?',
+              a: 'Não. O dashboard mostra o que importa: quantas vezes o jogador passou da linha. Verde passou, vermelho não. Se quiser ir mais fundo, o dado completo tá lá.',
+            },
+            {
+              q: 'Qual a taxa de acerto de vocês?',
+              a: 'Não publicamos taxa de acerto — nem de marketing, nem nenhuma. O que você recebe é o dado por trás de cada insight antes de apostar: o gatilho, o histórico do jogador e a linha. Quem avalia se a janela vale é você, com o número na frente.',
+            },
+          ].map((item) => (
+            <details
+              key={item.q}
+              className="group rounded-rebrand-md border border-line bg-white px-5 py-4 cursor-pointer hover:border-line-2 transition-colors"
+            >
+              <summary className="flex items-center justify-between gap-3 list-none font-bold text-[14px] text-ink">
+                {item.q}
+                <ArrowRight className="w-4 h-4 text-ink-3 group-open:rotate-90 transition-transform shrink-0" />
+              </summary>
+              <p className="text-[13px] text-ink-2 mt-3 leading-relaxed">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA — fechamento editorial */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="border-t border-line py-14 sm:py-20 grid md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-center">
+          <div>
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-ink leading-tight mb-3">
+              Tira a prova agora.
+            </h2>
+            <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg">
+              O dashboard do {firstFreePlayerName} tá aberto, sem login.
+              Se gostar do que ver, a conta grátis leva um minuto.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row md:flex-col gap-3 md:min-w-[240px]">
+            <button
+              type="button"
+              onClick={() => navigate(dashboardPath)}
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
+            >
+              <PlayCircle className="h-5 w-5" />
+              Ver a análise real
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/auth")}
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-bold text-[15px] transition-colors"
+            >
+              Criar conta grátis
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
