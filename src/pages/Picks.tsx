@@ -449,6 +449,11 @@ export default function Picks() {
               <span className="text-[10px] bg-terminal-gray border border-terminal-border-subtle px-2 py-1 rounded">
                 {gamesCount} jogos • {totalOpps} oportunidades
               </span>
+              {opportunities[0]?.loaded_at && (
+                <span className="text-[10px] text-terminal-text/30">
+                  Atualizado às {new Date(opportunities[0].loaded_at + 'Z').toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })} (Horário de Brasília)
+                </span>
+              )}
               {highConfidence > 0 && (
                 <button
                   onClick={() => setMinScore(prev => prev === 80 ? 0 : 80)}
