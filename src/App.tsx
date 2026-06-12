@@ -9,6 +9,7 @@ import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Picks from "./pages/Picks";
 import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -89,6 +90,9 @@ const App = () => (
                 <Auth />
               </ProtectedRoute>
             } />
+            {/* Sem ProtectedRoute: a sessão de recovery conta como "logado" e
+                seria expulsa pra /onboarding antes de trocar a senha. */}
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={
               <ProtectedRoute>
                 <Onboarding />

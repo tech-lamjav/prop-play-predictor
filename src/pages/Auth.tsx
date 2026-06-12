@@ -55,6 +55,9 @@ const Auth = () => {
   const [referralCode, setReferralCode] = useState("");
   const [phoneCountryCode, setPhoneCountryCode] = useState("+55");
   const [phoneNumber, setPhoneNumber] = useState("");
+  // Fluxo "esqueci minha senha": inline na aba Entrar.
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const supabase = createClient();
 
@@ -73,6 +76,25 @@ const Auth = () => {
       setReferralCode(refParam.toUpperCase());
     }
   }, [searchParams]);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: "Erro", description: "Informe seu e-mail", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      // Mensagem neutra sempre: não revela se o e-mail existe (anti-enumeração).
+      if (error) console.error("resetPasswordForEmail:", error.message);
+      setForgotSent(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -326,50 +348,122 @@ const Auth = () => {
               {/* ─── SignIn ─── */}
               <TabsContent value="signin" className="mt-0">
                 <div className="bg-white border border-line rounded-rebrand-xl p-6 sm:p-7 shadow-sm">
-                  <h3 className="font-display text-[20px] font-extrabold text-ink mb-1">
-                    Entrar
-                  </h3>
-                  <p className="text-[13px] text-ink-2 mb-5">
-                    Bom te ver de volta. Coloca os dados aí.
-                  </p>
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="email" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        E-mail
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
-                        placeholder="seu@email.com"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        Senha
-                      </Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      variant="forest"
-                      size="lg"
-                      disabled={loading}
-                      className="w-full rounded-rebrand-md h-11"
-                    >
-                      {loading ? "Entrando..." : "Entrar"}
-                    </Button>
-                  </form>
+                  {forgotMode ? (
+                    forgotSent ? (
+                      <>
+                        <h3 className="font-display text-[20px] font-extrabold text-ink mb-1">
+                          Cheque seu e-mail
+                        </h3>
+                        <p className="text-[13px] text-ink-2 mb-5">
+                          Se houver uma conta com <span className="font-semibold text-ink">{email}</span>, enviamos um link pra redefinir a senha. Pode levar alguns minutos — confira também o spam.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="forest"
+                          size="lg"
+                          onClick={() => { setForgotMode(false); setForgotSent(false); }}
+                          className="w-full rounded-rebrand-md h-11"
+                        >
+                          Voltar pro login
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-display text-[20px] font-extrabold text-ink mb-1">
+                          Redefinir senha
+                        </h3>
+                        <p className="text-[13px] text-ink-2 mb-5">
+                          Coloca seu e-mail que a gente manda um link pra criar uma nova senha.
+                        </p>
+                        <form onSubmit={handleForgotPassword} className="space-y-4">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="forgot-email" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
+                              E-mail
+                            </Label>
+                            <Input
+                              id="forgot-email"
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                              className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
+                              placeholder="seu@email.com"
+                            />
+                          </div>
+                          <Button
+                            type="submit"
+                            variant="forest"
+                            size="lg"
+                            disabled={loading}
+                            className="w-full rounded-rebrand-md h-11"
+                          >
+                            {loading ? "Enviando..." : "Enviar link"}
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => setForgotMode(false)}
+                            className="w-full text-[13px] text-ink-2 hover:text-ink font-semibold"
+                          >
+                            Voltar pro login
+                          </button>
+                        </form>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <h3 className="font-display text-[20px] font-extrabold text-ink mb-1">
+                        Entrar
+                      </h3>
+                      <p className="text-[13px] text-ink-2 mb-5">
+                        Bom te ver de volta. Coloca os dados aí.
+                      </p>
+                      <form onSubmit={handleSignIn} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="email" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
+                            E-mail
+                          </Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
+                            placeholder="seu@email.com"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
+                            Senha
+                          </Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          variant="forest"
+                          size="lg"
+                          disabled={loading}
+                          className="w-full rounded-rebrand-md h-11"
+                        >
+                          {loading ? "Entrando..." : "Entrar"}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => { setForgotMode(true); setForgotSent(false); }}
+                          className="w-full text-[13px] text-ink-2 hover:text-ink font-semibold"
+                        >
+                          Esqueci minha senha
+                        </button>
+                      </form>
+                    </>
+                  )}
                 </div>
               </TabsContent>
 
