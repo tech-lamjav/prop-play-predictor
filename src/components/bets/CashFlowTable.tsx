@@ -28,7 +28,7 @@ interface CashFlowEntry {
   date: string;
   dateSort: number;
   description: string;
-  type: 'win' | 'loss' | 'cashout' | 'half_win' | 'half_loss' | 'initial' | 'deposit' | 'withdrawal';
+  type: 'win' | 'loss' | 'cashout' | 'half_win' | 'half_loss' | 'void' | 'initial' | 'deposit' | 'withdrawal';
   amount: number;
   balance: number;
   affectsBalance: boolean;
@@ -50,7 +50,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
     const startBalance = initialBankroll || 0;
 
     const betEntries: Omit<CashFlowEntry, 'balance' | 'affectsBalance'>[] = bets
-      .filter((bet) => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(bet.status))
+      .filter((bet) => ['won', 'lost', 'cashout', 'half_won', 'half_lost', 'void'].includes(bet.status))
       .map((bet) => {
         let amount = 0;
         let type: CashFlowEntry['type'] = 'loss';
@@ -69,6 +69,9 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         } else if (bet.status === 'half_lost') {
           amount = bet.stake_amount / 2 - bet.stake_amount;
           type = 'half_loss';
+        } else if (bet.status === 'void') {
+          amount = 0;
+          type = 'void';
         }
         return {
           id: bet.id,
@@ -142,6 +145,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         return '1/2 GREEN';
       case 'half_loss':
         return '1/2 RED';
+      case 'void':
+        return 'ANULADA';
       case 'initial':
         return 'INICIAL';
       case 'deposit':
@@ -163,6 +168,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         return 'text-terminal-green opacity-80';
       case 'half_loss':
         return 'text-terminal-red opacity-80';
+      case 'void':
+        return 'text-terminal-text opacity-50';
       case 'initial':
         return 'text-terminal-text opacity-70';
       case 'deposit':

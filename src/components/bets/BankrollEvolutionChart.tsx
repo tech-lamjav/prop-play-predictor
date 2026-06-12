@@ -51,7 +51,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
     const startAmount = initialBankroll || 0;
 
     const betEvents: { date: Date; profit: number; label: string }[] = bets
-      .filter((bet) => ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(bet.status))
+      .filter((bet) => ['won', 'lost', 'cashout', 'half_won', 'half_lost', 'void'].includes(bet.status))
       .map((bet) => {
         let profit = 0;
         if (bet.status === 'won') profit = bet.potential_return - bet.stake_amount;
@@ -59,6 +59,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
         else if (bet.status === 'cashout' && bet.cashout_amount) profit = bet.cashout_amount - bet.stake_amount;
         else if (bet.status === 'half_won') profit = (bet.stake_amount + bet.potential_return) / 2 - bet.stake_amount;
         else if (bet.status === 'half_lost') profit = bet.stake_amount / 2 - bet.stake_amount;
+        // void: profit = 0 (dinheiro devolvido)
         return { date: new Date(bet.bet_date), profit, label: bet.bet_description };
       });
 
