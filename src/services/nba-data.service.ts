@@ -94,6 +94,12 @@ export interface Team {
   next_opponent_team_rating_rank: number;
   next_opponent_team_offensive_rating_rank: number;
   next_opponent_team_defensive_rating_rank: number;
+  next_opponent_opp_pts_rank: number | null;
+  next_opponent_opp_reb_rank: number | null;
+  next_opponent_opp_ast_rank: number | null;
+  next_opponent_opp_fg3_pct_rank: number | null;
+  next_opponent_def_rating_rank: number | null;
+  next_opponent_opp_pts_paint_rank: number | null;
   team_injury_report_time_brasilia: string;
   next_game_injury_report_time_brasilia: string;
   loaded_at: string;
@@ -109,6 +115,93 @@ export interface TeamPlayer {
   age: number;
   current_status: string;
   rating_stars: number;
+}
+
+export interface OpponentRankings {
+  team_id: number;
+  team_name: string;
+  team_abbreviation: string;
+  opp_pts: number;
+  opp_pts_rank: number;
+  opp_reb: number;
+  opp_reb_rank: number;
+  opp_ast: number;
+  opp_ast_rank: number;
+  opp_fg3_pct: number;
+  opp_fg3_pct_rank: number;
+  opp_stl: number;
+  opp_stl_rank: number;
+  opp_blk: number;
+  opp_blk_rank: number;
+  opp_pts_paint: number;
+  opp_pts_paint_rank: number;
+  def_rating: number;
+  def_rating_rank: number;
+}
+
+/**
+ * Perfil de passing/playmaking do jogador na temporada.
+ * balldontlie nao expoe potential_ast game-by-game — so season — entao
+ * usamos esse perfil como info complementar no grafico de assistencias.
+ */
+export interface PlayerPassingSeason {
+  player_id: number;
+  season: number;
+  games_played: number;
+  ast: number;
+  potential_ast: number;
+  potential_ast_rank: number;
+  passes_made: number;
+  secondary_ast: number;
+  ft_ast: number;
+  ast_to_pass_pct: number;
+}
+
+/**
+ * Defesa do adversario por zona de arremesso — o que o time CEDE em
+ * cada zona. Usado pra cruzar com o ShootingZonesCard do jogador
+ * (matchup overlay verde/amarelo/vermelho por rank).
+ */
+export interface TeamOppShootingZones {
+  team_id: number;
+  team_name: string;
+  team_abbreviation: string;
+
+  opp_restricted_area_fg_pct: number;
+  opp_restricted_area_fga: number;
+  opp_restricted_area_fg_pct_rank: number;
+
+  opp_in_the_paint_non_ra_fg_pct: number;
+  opp_in_the_paint_non_ra_fga: number;
+  opp_in_the_paint_non_ra_fg_pct_rank: number;
+
+  opp_mid_range_fg_pct: number;
+  opp_mid_range_fga: number;
+  opp_mid_range_fg_pct_rank: number;
+
+  opp_corner_3_fg_pct: number;
+  opp_corner_3_fga: number;
+  opp_corner_3_fg_pct_rank: number;
+
+  opp_above_the_break_3_fg_pct: number;
+  opp_above_the_break_3_fga: number;
+  opp_above_the_break_3_fg_pct_rank: number;
+}
+
+export interface TeamPlaytypes {
+  team_id: number;
+  team_name: string;
+  team_abbreviation: string;
+  iso_ppp: number; iso_poss_pct: number; iso_percentile: number; iso_ppp_rank: number;
+  spotup_ppp: number; spotup_poss_pct: number; spotup_percentile: number; spotup_ppp_rank: number;
+  pnr_bh_ppp: number; pnr_bh_poss_pct: number; pnr_bh_percentile: number; pnr_bh_ppp_rank: number;
+  pnr_rm_ppp: number; pnr_rm_poss_pct: number; pnr_rm_percentile: number; pnr_rm_ppp_rank: number;
+  postup_ppp: number; postup_poss_pct: number; postup_percentile: number; postup_ppp_rank: number;
+  transition_ppp: number; transition_poss_pct: number; transition_percentile: number; transition_ppp_rank: number;
+  handoff_ppp: number; handoff_poss_pct: number; handoff_percentile: number; handoff_ppp_rank: number;
+  cut_ppp: number; cut_poss_pct: number; cut_percentile: number; cut_ppp_rank: number;
+  offscreen_ppp: number; offscreen_poss_pct: number; offscreen_percentile: number; offscreen_ppp_rank: number;
+  putback_ppp: number; putback_poss_pct: number; putback_percentile: number; putback_ppp_rank: number;
 }
 
 export interface GamePlayerStats {
@@ -127,6 +220,8 @@ export interface GamePlayerStats {
   player_team_score: number | null;
   opponent_score: number | null;
   game_won: boolean | null;
+  season?: number;
+  season_type?: string;
 }
 
 export interface Game {
@@ -228,6 +323,7 @@ export interface B2BBoxScorePlayer {
   previous_team_score: number | null;
   previous_opponent_score: number | null;
   previous_home_away: string;
+  previous_game_datetime_brasilia: string | null;
 }
 
 export interface DailyOpportunity {
@@ -374,6 +470,68 @@ export const nbaDataService = {
 
       if (error) throw error;
       return (data || []) as GamePlayerStats[];
+    });
+  },
+
+  async getPlayerPeriodStats(playerId: number, limit = 100): Promise<GamePlayerStats[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_period_stats', { p_player_id: playerId, p_limit: limit });
+      if (error) throw error;
+      return (data || []) as GamePlayerStats[];
+    });
+  },
+
+  async getPlayerHistoricalStats(
+    playerId: number,
+    season?: number,
+    seasonType?: 'regular' | 'playoffs' | 'playin'
+  ): Promise<GamePlayerStats[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_historical_stats', {
+          p_player_id: playerId,
+          p_season: season ?? null,
+          p_season_type: seasonType ?? null,
+        });
+      if (error) throw error;
+      return (data || []) as GamePlayerStats[];
+    });
+  },
+
+  async getOpponentRankings(teamId: number): Promise<OpponentRankings | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_opponent_rankings', { p_team_id: teamId });
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] as OpponentRankings : null;
+    });
+  },
+
+  async getTeamPlaytypes(teamId: number): Promise<TeamPlaytypes | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_team_playtypes', { p_team_id: teamId });
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] as TeamPlaytypes : null;
+    });
+  },
+
+  async getTeamOppShootingZones(teamId: number): Promise<TeamOppShootingZones | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_team_opp_shooting_zones', { p_team_id: teamId });
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] as TeamOppShootingZones : null;
+    });
+  },
+
+  async getPlayerPassingSeason(playerId: number): Promise<PlayerPassingSeason | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient
+        .rpc('get_player_passing_season', { p_player_id: playerId });
+      if (error) throw error;
+      return data && data.length > 0 ? data[0] as PlayerPassingSeason : null;
     });
   },
 

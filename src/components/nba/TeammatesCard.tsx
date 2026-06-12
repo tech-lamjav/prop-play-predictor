@@ -12,30 +12,57 @@ interface TeammatesCardProps {
   isLoading?: boolean;
 }
 
+function StarRow({ n }: { n: number }) {
+  const filled = Math.max(0, Math.min(3, n));
+  return (
+    <div className="flex items-center gap-0.5 shrink-0">
+      {[0, 1, 2].map(i => (
+        <Star
+          key={i}
+          className={`w-3 h-3 ${i < filled ? 'text-amber-400 fill-amber-400' : 'text-ink-3'}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function statusLabel(status: string | undefined): { label: string; cls: string } | null {
+  if (!status) return null;
+  const s = status.toLowerCase();
+  if (s === 'active' || s === '') return null;
+  if (s.includes('out for season')) return { label: 'Out For Season', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+  if (s === 'out' || s.includes('out')) return { label: 'Out', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+  if (s.includes('doubtful')) return { label: 'Doubtful', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
+  if (s.includes('probable')) return { label: 'Probable', cls: 'bg-emerald-50 text-forest border-emerald-200' };
+  if (s.includes('questionable')) return { label: 'Questionable', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+  return { label: status, cls: 'bg-canvas-2 text-ink-2 border-line' };
+}
+
 export const TeammatesCard: React.FC<TeammatesCardProps> = ({
   teammates,
   currentPlayerId,
   teamName,
-  isLoading
+  isLoading,
 }) => {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
   if (isLoading) {
     return (
-      <div className="terminal-container p-4">
-        <h3 className="section-title mb-3">COMPANHEIROS</h3>
-        <Skeleton className="h-4 w-32 mb-4 bg-terminal-gray" />
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-12 w-full bg-terminal-gray" />
+      <div className="rounded-lg bg-white border border-line overflow-hidden">
+        <div className="px-4 py-3 border-b border-line">
+          <Skeleton className="h-3 w-24 mb-1" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+        <div className="p-4 space-y-2">
+          {[1, 2, 3, 4, 5].map(i => (
+            <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
       </div>
     );
   }
 
-  // Filter out current player and limit to top 5 teammates
   const displayTeammates = teammates
     .filter(p => p.player_id !== currentPlayerId)
     .slice(0, 5);
@@ -46,82 +73,81 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
   };
 
   return (
-    <div className="terminal-container p-4">
-      {/* Header — clicável só no mobile */}
+    <div className="rounded-lg bg-white border border-line overflow-hidden">
+      {/* Header: COMPANHEIROS + team name */}
       <button
-        className="w-full flex items-center justify-between md:cursor-default"
-        onClick={() => setExpanded(prev => !prev)}
+        type="button"
+        className="w-full px-4 py-3 flex items-center justify-between border-b border-line md:cursor-default"
+        onClick={() => setExpanded(v => !v)}
       >
-        <h3 className="section-title">COMPANHEIROS</h3>
+        <div className="text-left">
+          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Companheiros</div>
+          {teamName && (
+            <div className="text-[11px] mt-0.5 text-ink-dim">{teamName}</div>
+          )}
+        </div>
         <ChevronDown
-          className={`w-4 h-4 text-terminal-text/40 transition-transform md:hidden ${expanded ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-ink-dim transition-transform md:hidden ${expanded ? 'rotate-180' : ''}`}
         />
       </button>
 
-      {/* Conteúdo: sempre visível em desktop, colapsável no mobile */}
       <div className={`${expanded ? 'block' : 'hidden'} md:block`}>
-        <div className="text-xs data-label mt-2 mb-2">{teamName}</div>
-
         {displayTeammates.length === 0 ? (
-          <div className="text-sm opacity-50">Nenhum dado de companheiros disponível</div>
+          <div className="p-4 text-[12px] text-ink-dim">Nenhum dado de companheiros disponível</div>
         ) : (
-          <div className="space-y-2">
-            {displayTeammates.map((player) => {
-            const photoUrl = getPlayerPhotoUrl(player.player_name, teamName);
-            const initials = player.player_name.split(' ').map(w => w[0]).join('').slice(0, 2);
+          displayTeammates.map((player, i) => {
+            const initials = player.player_name
+              .split(/\s+/)
+              .filter(Boolean)
+              .map(w => w[0])
+              .slice(0, 2)
+              .join('')
+              .toUpperCase();
+            const status = statusLabel(player.current_status);
+
             return (
               <button
                 key={player.player_id}
+                type="button"
                 onClick={() => handlePlayerClick(player.player_name)}
-                className="w-full text-left p-2 rounded border border-terminal-blue/20 hover:border-terminal-blue/50 hover:bg-terminal-blue/5 transition-all group"
+                className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-canvas-2/40 transition-colors ${i > 0 ? 'border-t border-line' : ''}`}
               >
-                <div className="flex items-center gap-2">
-                  {/* Avatar */}
-                  <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-terminal-dark-gray border border-terminal-blue/20">
-                    {photoUrl ? (
-                      <img
-                        src={photoUrl}
-                        alt={player.player_name}
-                        className="w-full h-full object-cover object-top"
-                        onError={(e) => {
-                          if (!tryNextPlayerPhotoUrl(e.currentTarget, player.player_name, teamName)) {
-                            e.currentTarget.style.display = 'none';
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-terminal-blue/60">
-                        {initials}
-                      </div>
+                <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 bg-canvas-2 grid place-items-center">
+                  <img
+                    src={getPlayerPhotoUrl(player.player_name, teamName)}
+                    alt={player.player_name}
+                    className="w-full h-full object-cover object-top"
+                    loading="lazy"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      const didTry = tryNextPlayerPhotoUrl(target, player.player_name, teamName);
+                      if (!didTry) {
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `<span class="text-[11px] font-semibold text-ink-2">${initials}</span>`;
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-semibold tracking-tight truncate text-ink">
+                    {player.player_name}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] mt-0.5 text-ink-dim">
+                    <span>{player.position}</span>
+                    {status && (
+                      <span className={`px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold border ${status.cls}`}>
+                        {status.label}
+                      </span>
                     )}
                   </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-terminal-blue group-hover:text-terminal-blue truncate">
-                      {player.player_name}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs opacity-50">{player.position}</span>
-                      {player.current_status && player.current_status.toLowerCase() !== 'active' && (
-                        <span className="text-xs text-terminal-red">{player.current_status}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stars */}
-                  {player.rating_stars > 0 && (
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      {Array.from({ length: player.rating_stars }).map((_, i) => (
-                        <Star key={i} className="w-3 h-3 fill-terminal-yellow text-terminal-yellow" />
-                      ))}
-                    </div>
-                  )}
                 </div>
+                <StarRow n={player.rating_stars ?? 0} />
               </button>
             );
-          })}
-          </div>
+          })
         )}
       </div>
     </div>
