@@ -76,16 +76,16 @@ RankingShareImage.displayName = 'RankingShareImage';
 // ════════════════════════════════════════════════════════════════
 
 const Header: React.FC<{ bolaoName: string }> = ({ bolaoName }) => (
-  <header className="flex items-center justify-between" style={{ marginBottom: 30, gap: 24 }}>
+  <header className="flex items-center justify-between" style={{ marginBottom: 30, gap: 24, minHeight: 88 }}>
     <span
       style={{
         fontSize: 52,
         fontWeight: 800,
         color: C_WHITE,
         letterSpacing: '-0.02em',
-        lineHeight: 1.6,
-        paddingTop: 14,
-        paddingBottom: 14,
+        lineHeight: 1.5,
+        paddingTop: 12,
+        paddingBottom: 12,
         maxWidth: 700,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -162,36 +162,41 @@ const Top5Row: React.FC<{ rank: number; entry: BolaoRankingEntry | null }> = ({ 
   const isFirst = rank === 1 && !isEmpty;
 
   const cardStyle: React.CSSProperties = isFirst
-    ? { background: C_GOLD_CARD, border: '1.5px solid rgba(212,160,23,0.4)', borderRadius: 16, padding: '22px 28px' }
-    : { padding: '18px 28px', borderBottom: `1px solid ${C_LINE}` };
+    ? { background: C_GOLD_CARD, border: '1.5px solid rgba(212,160,23,0.4)', borderRadius: 16, padding: '0 28px', minHeight: 150 }
+    : { padding: '0 28px', borderBottom: `1px solid ${C_LINE}`, minHeight: 132 };
+
+  // Subtítulo tem altura fixa SUB_H; um espaçador igual ACIMA do nome deixa o
+  // nome no centro vertical da coluna. Como a linha é items-center, o número e
+  // os pontos passam a alinhar exatamente com o NOME (não com o bloco
+  // nome+subtítulo). minHeight + items-center centram o conjunto no card.
+  const SUB_H = 30;
 
   return (
-    <div style={{ opacity: isEmpty ? 0.35 : 1, ...cardStyle }}>
-      {/* TOP-ROW: rank · nome · pontos — todos numa linha, centrados */}
-      <div className="flex items-center" style={{ gap: ROW_GAP }}>
-        <span
-          style={{
-            fontSize: isFirst ? 54 : 40,
-            fontWeight: 800,
-            color: isFirst ? C_GOLD : C_GOLD_MUT,
-            minWidth: RANK_W,
-            lineHeight: 1.2,
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {rank}
-        </span>
+    <div className="flex items-center" style={{ gap: ROW_GAP, opacity: isEmpty ? 0.35 : 1, ...cardStyle }}>
+      <span
+        style={{
+          fontSize: isFirst ? 54 : 40,
+          fontWeight: 800,
+          color: isFirst ? C_GOLD : C_GOLD_MUT,
+          minWidth: RANK_W,
+          lineHeight: 1.2,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {rank}
+      </span>
+      <div className="flex-1 min-w-0">
+        {!isEmpty && <div aria-hidden="true" style={{ height: SUB_H }} />}
         <p
-          className="flex-1 min-w-0"
           style={{
             fontSize: isFirst ? 34 : 30,
             fontWeight: isFirst ? 800 : 700,
             color: isEmpty ? C_GREEN_MUT : C_WHITE,
             letterSpacing: '-0.01em',
             margin: 0,
-            lineHeight: 1.7,
-            paddingTop: 10,
-            paddingBottom: 10,
+            lineHeight: 1.6,
+            paddingTop: 8,
+            paddingBottom: 8,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -199,34 +204,32 @@ const Top5Row: React.FC<{ rank: number; entry: BolaoRankingEntry | null }> = ({ 
         >
           {isEmpty ? 'Aguardando jogador' : entry.user_name}
         </p>
-        <span
-          style={{
-            fontSize: isFirst ? 52 : 40,
-            fontWeight: 800,
-            color: isEmpty ? C_GREEN_MUT : isFirst ? C_GOLD : C_WHITE,
-            lineHeight: 1.2,
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {entry?.total_points ?? 0}
-        </span>
+        {!isEmpty && (
+          <p
+            style={{
+              margin: 0,
+              height: SUB_H,
+              fontSize: 18,
+              fontWeight: 500,
+              color: C_GREEN_MUT,
+              lineHeight: `${SUB_H}px`,
+            }}
+          >
+            {metricsLabel(entry)}
+          </p>
+        )}
       </div>
-      {/* SUBTITLE: linha separada, indentada sob o nome */}
-      {!isEmpty && (
-        <p
-          style={{
-            marginTop: 4,
-            paddingLeft: RANK_W + ROW_GAP,
-            fontSize: 18,
-            fontWeight: 500,
-            color: C_GREEN_MUT,
-            lineHeight: 1.4,
-            paddingBottom: 2,
-          }}
-        >
-          {metricsLabel(entry)}
-        </p>
-      )}
+      <span
+        style={{
+          fontSize: isFirst ? 52 : 40,
+          fontWeight: 800,
+          color: isEmpty ? C_GREEN_MUT : isFirst ? C_GOLD : C_WHITE,
+          lineHeight: 1.2,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {entry?.total_points ?? 0}
+      </span>
     </div>
   );
 };
