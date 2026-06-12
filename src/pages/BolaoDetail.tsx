@@ -267,6 +267,9 @@ const BolaoDetail: React.FC = () => {
     ? `${window.location.origin}/bolao/${bolao.id}`
     : undefined;
 
+  // Modo da imagem de ranking compartilhada: Top 5 (pódio) ou Todos (geral).
+  const [shareMode, setShareMode] = useState<'top5' | 'all'>('top5');
+
   const rankingShareFeed = useRankingShareImage({
     bolaoName: bolao?.name ?? 'Bolão',
     filenameSlug: bolao?.invite_code,
@@ -724,6 +727,20 @@ const BolaoDetail: React.FC = () => {
               <div role="tabpanel" id="bolao-tab-panel-ranking" aria-labelledby="bolao-tab-ranking">
                 {ranking && ranking.length > 1 && (
                   <div className="flex items-center justify-end gap-3 mb-3 flex-wrap text-[12px] text-ink-2">
+                    <div className="inline-flex items-center rounded-rebrand-sm border border-line overflow-hidden mr-1" role="group" aria-label="Conteúdo da imagem">
+                      <button
+                        onClick={() => setShareMode('top5')}
+                        className={`px-2.5 py-1 font-semibold transition-colors ${shareMode === 'top5' ? 'bg-forest text-white' : 'text-ink-2 hover:bg-canvas-2'}`}
+                      >
+                        Top 5
+                      </button>
+                      <button
+                        onClick={() => setShareMode('all')}
+                        className={`px-2.5 py-1 font-semibold transition-colors ${shareMode === 'all' ? 'bg-forest text-white' : 'text-ink-2 hover:bg-canvas-2'}`}
+                      >
+                        Todos
+                      </button>
+                    </div>
                     <span className="text-ink-3">Compartilhar:</span>
                     <button
                       onClick={handleShareRanking}
@@ -967,6 +984,7 @@ const BolaoDetail: React.FC = () => {
             ranking={ranking}
             currentUserId={currentUserId}
             myChampionPick={myChampionPick}
+            mode={shareMode}
           />
           <RankingShareImageStories
             ref={rankingShareStories.captureRef}
