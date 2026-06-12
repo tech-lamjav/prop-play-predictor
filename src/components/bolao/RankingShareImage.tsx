@@ -24,7 +24,7 @@ const C_GOLD     = '#d4a017';
 const C_FOREST   = '#0a3d2e';
 const C_ME_BG    = '#f6faf8';
 
-const FONT = '"Space Grotesk Variable", "Space Grotesk", system-ui, sans-serif';
+const FONT = '"Manrope", system-ui, -apple-system, sans-serif';
 
 /** Quantas linhas cabem no modo "all" antes de truncar com "+N jogadores". */
 const ALL_MAX_ROWS = 15;
@@ -43,7 +43,8 @@ function metricsLabel(entry: BolaoRankingEntry): string {
 
 /**
  * Card 1080×1080 (feed) do ranking do bolão. Renderizado off-screen e
- * capturado via html2canvas → PNG. Estilo "Minimal Clean" / Space Grotesk.
+ * capturado via html2canvas → PNG. Estilo "Minimal Clean" / Manrope (carregada
+ * via Google Fonts no index.html — sem dependência npm).
  *
  * mode="top5" → 5 primeiros (subtítulo com cravadas/acertos) + sua posição
  *               se estiver fora do top 5.

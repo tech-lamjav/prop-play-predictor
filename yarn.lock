@@ -238,11 +238,6 @@
   resolved "https://registry.npmjs.org/@fontsource-variable/inter/-/inter-5.2.8.tgz"
   integrity sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==
 
-"@fontsource-variable/space-grotesk@^5.2.10":
-  version "5.2.10"
-  resolved "https://registry.npmjs.org/@fontsource-variable/space-grotesk/-/space-grotesk-5.2.10.tgz"
-  integrity sha512-yJQO/o35/hAP3CFnpdFTwQku2yzJOae2HIpBmqkOVoxhhXJaQP3g+b6Jrz7u+eI7A5ZdCIf88uMWpBJdFiGr5w==
-
 "@google-cloud/paginator@^5.0.0":
   version "5.0.2"
   resolved "https://registry.npmjs.org/@google-cloud/paginator/-/paginator-5.0.2.tgz"
