@@ -64,6 +64,8 @@ Prioridade por valor/esforço:
 4. ~~**Taxas de mercado no confronto**~~ ✅ FEITO (RPC `get_futebol_matchup_markets` + card "Tendências · temporada" no detalhe do Jogo: %Over2.5, %BTTS, médias de gols feitos/sofridos dos 2 times, com disclaimer descritivo).
 5. ~~**xG over/under-performance**~~ ✅ FEITO (`avg_xg_against` no `get_futebol_team_profile` via CTE de total de xG por jogo + card "Eficiência · gols × xG" no perfil do Time: feitos×xG e sofridos×xG com Δ, por geral/casa/fora). **Nota FDW:** self-join com `<>` quebra; usar CTE agregada + join por igualdade de `fixture_id`.
 6. ~~**Artilheiros / líderes de cartões**~~ ✅ FEITO (RPC `get_futebol_leaders` + segmento "Artilheiros" na tela Jogos: ranking de gols + cartões amarelos/vermelhos).
+7. ~~**Classificação oficial + zonas**~~ ✅ FEITO (tabelas 9/10 do dev). `fact_standings_snapshot` → RPC `get_futebol_standings_official` (último snapshot via `max(snapshot_date)` em variável; rank/pontos/SG oficiais + `rank_description`). `StandingsTable` (Jogos) e mini-tabela (Home) com **faixa de zona colorida** (Libertadores=forest / Sul-Americana=info / Rebaixamento=danger; helper `futebolZone` + `FUTEBOL_ZONE_COLOR` no service). Substituiu a classificação computada.
+8. ~~**Raio-X da temporada no Time**~~ ✅ FEITO. `fact_team_season_stats` → RPC `get_futebol_team_season` (jsonb) + card "Raio-X" em `FutebolTime`: forma, clean sheets/% , não marcou/%, médias gols casa×fora, V-E-D casa/fora, sequências, pênaltis (% conv.). **Caveat:** `fact_standings_snapshot.form` veio NULL (a forma boa está no team_season_stats — avisar o dev).
 
 Telas que habilita: enriquecer **Jogo**; nova tela **Time** (perfil); **Home** com tabela + próximos + artilheiros.
 

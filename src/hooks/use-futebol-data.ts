@@ -7,6 +7,7 @@ import {
   type FutebolFixtureExtras,
   type FutebolStandingRow,
   type FutebolTeamProfile,
+  type FutebolTeamSeason,
   type FutebolMatchupMarkets,
   type FutebolLeaders,
 } from '@/services/futebol-data.service';
@@ -70,6 +71,17 @@ export function useFutebolLeaders(competition: Competition, season: number, enab
     queryKey: ['futebol', 'leaders', competition, season],
     queryFn: () => futebolDataService.getLeaders(competition, season),
     enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolTeamSeason(teamId: number | undefined, competition: Competition, season: number) {
+  return useQuery<FutebolTeamSeason | null>({
+    queryKey: ['futebol', 'team-season', teamId, competition, season],
+    queryFn: () => futebolDataService.getTeamSeason(teamId as number, competition, season),
+    enabled: !!teamId,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,

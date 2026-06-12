@@ -164,15 +164,54 @@ export interface FutebolFixtureExtras {
 export interface FutebolStandingRow {
   team_id: number;
   team_name: string;
-  team_logo: string | null;
+  rank: number;
+  points: number;
   played: number;
   wins: number;
   draws: number;
-  losses: number;
+  loses: number;
   goals_for: number;
   goals_against: number;
-  goal_diff: number;
-  points: number;
+  goals_diff: number;
+  rank_description: string | null;
+}
+
+export type FutebolZone = 'libertadores' | 'sula' | 'rebaixamento' | null;
+
+/** Classifica a zona da tabela a partir do rank_description oficial. */
+export function futebolZone(desc: string | null | undefined): FutebolZone {
+  if (!desc) return null;
+  const d = desc.toLowerCase();
+  if (d.includes('libertadores')) return 'libertadores';
+  if (d.includes('sudamericana')) return 'sula';
+  if (d.includes('relegation')) return 'rebaixamento';
+  return null;
+}
+
+// Cores das zonas (hex espelhando forest / status-info / status-danger do tema)
+export const FUTEBOL_ZONE_COLOR: Record<Exclude<FutebolZone, null>, string> = {
+  libertadores: '#0a3d2e',
+  sula: '#1a5fb4',
+  rebaixamento: '#b8341c',
+};
+export const FUTEBOL_ZONE_LABEL: Record<Exclude<FutebolZone, null>, string> = {
+  libertadores: 'Libertadores',
+  sula: 'Sul-Americana',
+  rebaixamento: 'Rebaixamento',
+};
+
+export interface FutebolTeamSeason {
+  form: string | null;
+  played_total: number | null; played_home: number | null; played_away: number | null;
+  wins_total: number | null; wins_home: number | null; wins_away: number | null;
+  draws_total: number | null; draws_home: number | null; draws_away: number | null;
+  loses_total: number | null; loses_home: number | null; loses_away: number | null;
+  goals_for_avg_total: number | null; goals_for_avg_home: number | null; goals_for_avg_away: number | null;
+  goals_against_avg_total: number | null; goals_against_avg_home: number | null; goals_against_avg_away: number | null;
+  clean_sheet_total: number | null; clean_sheet_home: number | null; clean_sheet_away: number | null;
+  failed_to_score_total: number | null;
+  biggest_streak_wins: number | null; biggest_streak_loses: number | null;
+  penalty_total: number | null; penalty_scored_pct: number | null;
 }
 
 export type ProfileScope = 'geral' | 'casa' | 'fora';
@@ -279,7 +318,7 @@ export const futebolDataService = {
 
   async getStandings(competition: Competition, season: number): Promise<FutebolStandingRow[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_standings', {
+      const { data, error } = await supabaseClient.rpc('get_futebol_standings_official', {
         p_competition: competition,
         p_season: season,
       });
@@ -315,6 +354,18 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || {}) as FutebolMatchupMarkets;
+    });
+  },
+
+  async getTeamSeason(teamId: number, competition: Competition, season: number): Promise<FutebolTeamSeason | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_team_season', {
+        p_team_id: teamId,
+        p_competition: competition,
+        p_season: season,
+      });
+      if (error) throw error;
+      return (data && Object.keys(data).length ? data : null) as FutebolTeamSeason | null;
     });
   },
 

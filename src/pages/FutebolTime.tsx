@@ -3,9 +3,34 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolTeamProfile } from '@/hooks/use-futebol-data';
+import { useFutebolTeamProfile, useFutebolTeamSeason } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type { Competition, FutebolScopeResult, FutebolScopeStats } from '@/services/futebol-data.service';
+
+const FORM_CHIP: Record<string, string> = {
+  W: 'bg-status-success text-canvas',
+  D: 'bg-canvas-2 text-ink-2 border border-line',
+  L: 'bg-status-danger text-canvas',
+};
+
+function pct(part: number | null, total: number | null): string {
+  if (!part || !total) return '—';
+  return `${Math.round((part / total) * 100)}%`;
+}
+
+function fmtAvg(v: number | null | undefined): string {
+  return v == null ? '—' : String(v);
+}
+
+function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="bg-canvas-2 rounded-rebrand-sm p-2 text-center">
+      <div className="text-lg font-bold text-ink tabular-nums leading-tight">{value}</div>
+      <div className="text-[10px] text-ink-3 uppercase tracking-wide">{label}</div>
+      {sub ? <div className="text-[10px] text-forest font-medium">{sub}</div> : null}
+    </div>
+  );
+}
 
 const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo' };
 const SCOPE_LABEL: Record<string, string> = { geral: 'Geral', casa: 'Em casa', fora: 'Fora' };
@@ -48,6 +73,7 @@ export default function FutebolTime() {
   const season = Number(params.get('s')) || 2025;
 
   const { data, isLoading, isError } = useFutebolTeamProfile(teamId ? Number(teamId) : undefined, competition, season);
+  const { data: raiox } = useFutebolTeamSeason(teamId ? Number(teamId) : undefined, competition, season);
 
   const results = (data?.results || []).slice().sort((a, b) => SCOPE_ORDER.indexOf(a.scope) - SCOPE_ORDER.indexOf(b.scope));
   const stats = (data?.stats_avg || []).slice().sort((a, b) => SCOPE_ORDER.indexOf(a.scope) - SCOPE_ORDER.indexOf(b.scope));
@@ -88,6 +114,47 @@ export default function FutebolTime() {
                 <p className="text-xs text-ink-3">{COMP_LABEL[competition] || competition} · {season}</p>
               </div>
             </div>
+
+            {/* Raio-X da temporada (oficial) */}
+            {raiox && (
+              <div className="mt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3 mb-2 px-1">Raio-X da temporada</p>
+                <div className={`${CARD} p-4 space-y-4`}>
+                  {raiox.form && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-ink-3 uppercase tracking-wide shrink-0">Forma</span>
+                      <div className="flex gap-1 flex-wrap">
+                        {raiox.form.slice(-10).split('').map((c, i) => (
+                          <span key={i} className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center ${FORM_CHIP[c] || 'bg-canvas-2 text-ink-3'}`}>{c}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <Tile label="Clean sheets" value={`${raiox.clean_sheet_total ?? '—'}`} sub={pct(raiox.clean_sheet_total, raiox.played_total)} />
+                    <Tile label="Não marcou" value={`${raiox.failed_to_score_total ?? '—'}`} sub={pct(raiox.failed_to_score_total, raiox.played_total)} />
+                    <Tile label="Seq. vitórias" value={`${raiox.biggest_streak_wins ?? '—'}`} sub="máx." />
+                    <Tile label="Pênaltis" value={`${raiox.penalty_total ?? '—'}`} sub={raiox.penalty_scored_pct != null ? `${Math.round(raiox.penalty_scored_pct)}% conv.` : undefined} />
+                  </div>
+
+                  <div className="grid grid-cols-[1fr_56px_56px] gap-1 text-sm items-center">
+                    <span />
+                    <span className="text-center text-[10px] text-ink-3 uppercase">Casa</span>
+                    <span className="text-center text-[10px] text-ink-3 uppercase">Fora</span>
+                    <span className="text-[11px] text-ink-3">Gols feitos/jogo</span>
+                    <span className="text-center text-ink tabular-nums">{fmtAvg(raiox.goals_for_avg_home)}</span>
+                    <span className="text-center text-ink tabular-nums">{fmtAvg(raiox.goals_for_avg_away)}</span>
+                    <span className="text-[11px] text-ink-3">Gols sofridos/jogo</span>
+                    <span className="text-center text-ink tabular-nums">{fmtAvg(raiox.goals_against_avg_home)}</span>
+                    <span className="text-center text-ink tabular-nums">{fmtAvg(raiox.goals_against_avg_away)}</span>
+                    <span className="text-[11px] text-ink-3">V-E-D</span>
+                    <span className="text-center text-ink-2 tabular-nums">{raiox.wins_home}-{raiox.draws_home}-{raiox.loses_home}</span>
+                    <span className="text-center text-ink-2 tabular-nums">{raiox.wins_away}-{raiox.draws_away}-{raiox.loses_away}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Resultados por mando */}
             <div className="mt-4">

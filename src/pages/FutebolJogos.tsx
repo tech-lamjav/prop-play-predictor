@@ -4,7 +4,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixtures, useFutebolStandings, useFutebolLeaders } from '@/hooks/use-futebol-data';
-import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders } from '@/services/futebol-data.service';
+import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders, FutebolZone } from '@/services/futebol-data.service';
+import { futebolZone, FUTEBOL_ZONE_COLOR as ZONE_COLOR, FUTEBOL_ZONE_LABEL as ZONE_LABEL } from '@/services/futebol-data.service';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 
 const COMPETITIONS: { value: Competition; label: string }[] = [
@@ -94,34 +95,51 @@ function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]
   if (!rows?.length) {
     return <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-ink-3">Sem classificação pra esse filtro.</div>;
   }
+  const zonesPresent = Array.from(new Set(rows.map((r) => futebolZone(r.rank_description)).filter(Boolean))) as Exclude<FutebolZone, null>[];
   return (
-    <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
-      <div className={`${GRID} px-3 py-2 text-[10px] uppercase tracking-wide text-ink-3 border-b border-line`}>
-        <span>#</span><span>Time</span>
-        <span className="text-center">P</span><span className="text-center">V</span>
-        <span className="text-center">E</span><span className="text-center">D</span>
-        <span className="text-center">SG</span><span className="text-center">Pts</span>
+    <>
+      <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
+        <div className={`${GRID} px-3 py-2 text-[10px] uppercase tracking-wide text-ink-3 border-b border-line`}>
+          <span>#</span><span>Time</span>
+          <span className="text-center">P</span><span className="text-center">V</span>
+          <span className="text-center">E</span><span className="text-center">D</span>
+          <span className="text-center">SG</span><span className="text-center">Pts</span>
+        </div>
+        {rows.map((r) => {
+          const zone = futebolZone(r.rank_description);
+          return (
+            <button
+              key={r.team_id}
+              onClick={() => onTeam(r.team_id)}
+              style={{ borderLeftColor: zone ? ZONE_COLOR[zone] : 'transparent' }}
+              className={`${GRID} w-full px-3 py-2 text-sm hover:bg-canvas-2 border-b border-line last:border-b-0 border-l-4`}
+            >
+              <span className="text-ink-3 text-xs tabular-nums text-left">{r.rank}</span>
+              <span className="flex items-center gap-2 min-w-0">
+                <Crest name={r.team_name} logo={getFutebolTeamLogoUrl(r.team_id)} />
+                <span className="truncate text-ink text-left">{r.team_name}</span>
+              </span>
+              <span className="text-center text-ink-2 tabular-nums">{r.played}</span>
+              <span className="text-center text-ink-2 tabular-nums">{r.wins}</span>
+              <span className="text-center text-ink-2 tabular-nums">{r.draws}</span>
+              <span className="text-center text-ink-2 tabular-nums">{r.loses}</span>
+              <span className="text-center text-ink-2 tabular-nums">{r.goals_diff > 0 ? `+${r.goals_diff}` : r.goals_diff}</span>
+              <span className="text-center font-bold text-ink tabular-nums">{r.points}</span>
+            </button>
+          );
+        })}
       </div>
-      {rows.map((r, i) => (
-        <button
-          key={r.team_id}
-          onClick={() => onTeam(r.team_id)}
-          className={`${GRID} w-full px-3 py-2 text-sm hover:bg-canvas-2 border-b border-line last:border-0`}
-        >
-          <span className="text-ink-3 text-xs tabular-nums text-left">{i + 1}</span>
-          <span className="flex items-center gap-2 min-w-0">
-            <Crest name={r.team_name} logo={getFutebolTeamLogoUrl(r.team_id)} />
-            <span className="truncate text-ink text-left">{r.team_name}</span>
-          </span>
-          <span className="text-center text-ink-2 tabular-nums">{r.played}</span>
-          <span className="text-center text-ink-2 tabular-nums">{r.wins}</span>
-          <span className="text-center text-ink-2 tabular-nums">{r.draws}</span>
-          <span className="text-center text-ink-2 tabular-nums">{r.losses}</span>
-          <span className="text-center text-ink-2 tabular-nums">{r.goal_diff > 0 ? `+${r.goal_diff}` : r.goal_diff}</span>
-          <span className="text-center font-bold text-ink tabular-nums">{r.points}</span>
-        </button>
-      ))}
-    </div>
+      {zonesPresent.length > 0 && (
+        <div className="flex flex-wrap gap-3 mt-2 px-1">
+          {zonesPresent.map((z) => (
+            <span key={z} className="flex items-center gap-1.5 text-[10px] text-ink-3">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: ZONE_COLOR[z] }} />
+              {ZONE_LABEL[z]}
+            </span>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 

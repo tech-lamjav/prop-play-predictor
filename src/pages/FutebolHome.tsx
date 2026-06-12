@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixtures, useFutebolStandings, useFutebolLeaders } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type { FutebolFixture } from '@/services/futebol-data.service';
+import { futebolZone, FUTEBOL_ZONE_COLOR } from '@/services/futebol-data.service';
 
 const COMPETITION = 'brasileirao' as const;
 const SEASON = 2026;
@@ -115,16 +116,20 @@ export default function FutebolHome() {
               <Skeleton className="h-56 w-full bg-canvas-2 rounded-rebrand-md" />
             ) : (
               <div className={`${CARD} overflow-hidden`}>
-                {topTabela.map((r, i) => (
-                  <button key={r.team_id} onClick={() => navigate(`/futebol/time/${r.team_id}?c=${COMPETITION}&s=${SEASON}`)}
-                    className="w-full flex items-center gap-2 px-3 py-2 border-b border-line last:border-0 hover:bg-canvas-2 text-sm">
-                    <span className="w-4 text-xs text-ink-3 tabular-nums">{i + 1}</span>
-                    <Crest teamId={r.team_id} name={r.team_name} />
-                    <span className="flex-1 truncate text-ink text-left">{r.team_name}</span>
-                    <span className="text-xs text-ink-3 tabular-nums">{r.played}j</span>
-                    <span className="w-8 text-right font-bold text-ink tabular-nums">{r.points}</span>
-                  </button>
-                ))}
+                {topTabela.map((r) => {
+                  const zone = futebolZone(r.rank_description);
+                  return (
+                    <button key={r.team_id} onClick={() => navigate(`/futebol/time/${r.team_id}?c=${COMPETITION}&s=${SEASON}`)}
+                      style={{ borderLeftColor: zone ? FUTEBOL_ZONE_COLOR[zone] : 'transparent' }}
+                      className="w-full flex items-center gap-2 px-3 py-2 border-b border-line last:border-b-0 border-l-4 hover:bg-canvas-2 text-sm">
+                      <span className="w-4 text-xs text-ink-3 tabular-nums">{r.rank}</span>
+                      <Crest teamId={r.team_id} name={r.team_name} />
+                      <span className="flex-1 truncate text-ink text-left">{r.team_name}</span>
+                      <span className="text-xs text-ink-3 tabular-nums">{r.played}j</span>
+                      <span className="w-8 text-right font-bold text-ink tabular-nums">{r.points}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
