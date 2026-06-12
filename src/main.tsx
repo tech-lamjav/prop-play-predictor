@@ -7,6 +7,8 @@ import './lib/i18n'
 // Display usa peso alto + tracking apertado em vez de serif, mantendo coesão
 // com a identidade "data/profissional" do Smart Betting.
 import '@fontsource-variable/inter'
+// Space Grotesk — fonte da imagem de compartilhamento do ranking (Minimal Clean).
+import '@fontsource-variable/space-grotesk'
 import posthog from 'posthog-js'
 import { PostHogProvider } from '@posthog/react'
 import { config } from './config/environment'
