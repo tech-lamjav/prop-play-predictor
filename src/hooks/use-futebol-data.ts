@@ -5,6 +5,7 @@ import {
   type FutebolFixture,
   type FutebolFixtureDetail,
   type FutebolFixtureExtras,
+  type FutebolH2HMeeting,
   type FutebolStandingRow,
   type FutebolTeamProfile,
   type FutebolTeamSeason,
@@ -38,6 +39,17 @@ export function useFutebolFixtureExtras(fixtureId: number | undefined) {
     queryKey: ['futebol', 'fixture-extras', fixtureId],
     queryFn: () => futebolDataService.getFixtureExtras(fixtureId as number),
     enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolH2H(homeId: number | undefined, awayId: number | undefined) {
+  return useQuery<FutebolH2HMeeting[]>({
+    queryKey: ['futebol', 'h2h', homeId, awayId],
+    queryFn: () => futebolDataService.getH2H(homeId as number, awayId as number),
+    enabled: !!homeId && !!awayId,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,

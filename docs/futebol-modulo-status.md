@@ -66,6 +66,7 @@ Prioridade por valor/esforço:
 6. ~~**Artilheiros / líderes de cartões**~~ ✅ FEITO (RPC `get_futebol_leaders` + segmento "Artilheiros" na tela Jogos: ranking de gols + cartões amarelos/vermelhos).
 7. ~~**Classificação oficial + zonas**~~ ✅ FEITO (tabelas 9/10 do dev). `fact_standings_snapshot` → RPC `get_futebol_standings_official` (último snapshot via `max(snapshot_date)` em variável; rank/pontos/SG oficiais + `rank_description`). `StandingsTable` (Jogos) e mini-tabela (Home) com **faixa de zona colorida** (Libertadores=forest / Sul-Americana=info / Rebaixamento=danger; helper `futebolZone` + `FUTEBOL_ZONE_COLOR` no service). Substituiu a classificação computada.
 8. ~~**Raio-X da temporada no Time**~~ ✅ FEITO. `fact_team_season_stats` → RPC `get_futebol_team_season` (jsonb) + card "Raio-X" em `FutebolTime`: forma, clean sheets/% , não marcou/%, médias gols casa×fora, V-E-D casa/fora, sequências, pênaltis (% conv.). **Caveat:** `fact_standings_snapshot.form` veio NULL (a forma boa está no team_season_stats — avisar o dev).
+9. ~~**H2H oficial**~~ ✅ FEITO (tabela 11 do dev: `fact_h2h`, `pair_key = least(a,b)-greatest(a,b)`). RPC `get_futebol_h2h(home,away)` (filtro por pair_key — sem OR; histórico completo cross-temporada/competição + winner). Bloco "Confrontos diretos" no Jogo: resumo agregado (V mandante × empates × V visitante, barra) + lista. Removido o h2h computado do bundle `extras` (mais leve).
 
 Telas que habilita: enriquecer **Jogo**; nova tela **Time** (perfil); **Home** com tabela + próximos + artilheiros.
 

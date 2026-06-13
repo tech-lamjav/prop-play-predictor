@@ -156,9 +156,20 @@ export interface FutebolFixtureExtras {
   player_stats: FutebolPlayerStat[];
   form_home: FutebolFormResult[];
   form_away: FutebolFormResult[];
-  h2h: FutebolH2H[];
   lineups: FutebolLineup[];
   lineup_players: FutebolLineupPlayer[];
+}
+
+export interface FutebolH2HMeeting {
+  fixture_id: number;
+  date_utc: string;
+  competition: string;
+  season: number;
+  home_team_name: string;
+  away_team_name: string;
+  goals_home: number | null;
+  goals_away: number | null;
+  winner_team_id: number | null;
 }
 
 export interface FutebolStandingRow {
@@ -303,6 +314,17 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || { fixture: null }) as FutebolFixtureDetail;
+    });
+  },
+
+  async getH2H(homeId: number, awayId: number): Promise<FutebolH2HMeeting[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_h2h', {
+        p_home_id: homeId,
+        p_away_id: awayId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolH2HMeeting[];
     });
   },
 

@@ -4,7 +4,7 @@ import { ChevronLeft, Info, MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolH2H } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type {
   FutebolEvent, FutebolFormResult, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
@@ -217,6 +217,12 @@ export default function FutebolJogo() {
   const { data: markets } = useFutebolMatchupMarkets(
     fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
   );
+  const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
+  const h2hHomeWins = h2h?.filter((m) => m.winner_team_id === fixture?.home_team_id).length ?? 0;
+  const h2hAwayWins = h2h?.filter((m) => m.winner_team_id === fixture?.away_team_id).length ?? 0;
+  const h2hDraws = h2h?.filter((m) => m.winner_team_id == null).length ?? 0;
+  const h2hTotal = h2h?.length ?? 0;
+  const h2hPct = (n: number) => (h2hTotal ? (n / h2hTotal) * 100 : 0);
   const stats = data?.stats || [];
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
@@ -379,21 +385,42 @@ export default function FutebolJogo() {
 
                   <div className={`${CARD} p-4`}>
                     <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-2">Confrontos diretos</p>
-                    {extrasLoading ? (
+                    {h2hLoading ? (
                       <p className="text-xs text-ink-3">Carregando…</p>
-                    ) : extras?.h2h?.length ? (
-                      <div className="space-y-1">
-                        {extras.h2h.map((h) => (
-                          <div key={h.fixture_id} className="flex items-center justify-between text-sm text-ink">
-                            <span className="text-[11px] text-ink-3 w-16">{fmtDate(h.date_utc)}</span>
-                            <span className="flex-1 text-right truncate">{h.home_team_name}</span>
-                            <span className="px-2 font-bold tabular-nums">{h.goals_home}-{h.goals_away}</span>
-                            <span className="flex-1 truncate">{h.away_team_name}</span>
+                    ) : h2h && h2h.length ? (
+                      <>
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="font-bold text-forest tabular-nums">{h2hHomeWins}</span>
+                            <span className="text-[11px] text-ink-3">{h2hDraws} empate{h2hDraws === 1 ? '' : 's'}</span>
+                            <span className="font-bold text-amber-2 tabular-nums">{h2hAwayWins}</span>
                           </div>
-                        ))}
-                      </div>
+                          <div className="flex h-1.5 rounded overflow-hidden bg-canvas-2">
+                            <div className="bg-forest" style={{ width: `${h2hPct(h2hHomeWins)}%` }} />
+                            <div className="bg-ink-3" style={{ width: `${h2hPct(h2hDraws)}%`, opacity: 0.4 }} />
+                            <div className="bg-amber" style={{ width: `${h2hPct(h2hAwayWins)}%` }} />
+                          </div>
+                          <p className="text-[10px] text-ink-3 mt-1">
+                            {h2hTotal} confronto{h2hTotal === 1 ? '' : 's'} — vitórias de {fixture.home_team_name} × {fixture.away_team_name}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          {h2h.map((m) => {
+                            const homeWon = (m.goals_home ?? 0) > (m.goals_away ?? 0);
+                            const awayWon = (m.goals_away ?? 0) > (m.goals_home ?? 0);
+                            return (
+                              <div key={m.fixture_id} className="flex items-center gap-2 text-sm">
+                                <span className="text-[11px] text-ink-3 w-12 shrink-0">{fmtDate(m.date_utc)}</span>
+                                <span className={`flex-1 text-right truncate ${homeWon ? 'text-ink font-semibold' : 'text-ink-2'}`}>{m.home_team_name}</span>
+                                <span className="px-2 font-bold tabular-nums text-ink">{m.goals_home}-{m.goals_away}</span>
+                                <span className={`flex-1 truncate ${awayWon ? 'text-ink font-semibold' : 'text-ink-2'}`}>{m.away_team_name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
                     ) : (
-                      <p className="text-xs text-ink-3">Sem confrontos diretos no histórico carregado.</p>
+                      <p className="text-xs text-ink-3">Sem confrontos diretos no histórico.</p>
                     )}
                   </div>
                 </TabsContent>
