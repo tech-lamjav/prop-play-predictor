@@ -1,29 +1,35 @@
 # Módulo Futebol (value bet) — status de implementação e roadmap
 
 > **Branch:** `feat/futebol-value-bet` (criada a partir de `origin/main`).
-> **Natureza:** protótipo **dev-only** lendo BigQuery via FDW. Nada disto vai pra prod ainda.
-> **Atualizado:** 2026-06-08. Direção de produto: `docs/futebol-direcao-produto.md`.
+> **Natureza:** protótipo **dev-only**. Dados **materializados** no Postgres (schema `futebol`), sincronizados do BigQuery por job agendado (padrão NBA). Nada disto vai pra prod ainda.
+> **Atualizado:** 2026-06-15. Direção de produto: `docs/futebol-direcao-produto.md`.
 
-## 1. Arquitetura atual (protótipo)
+## 1. Arquitetura atual (protótipo) — MATERIALIZADA (2026-06-15)
 
 ```
 BigQuery smartbetting-dados.futebol (dataset, location us-east1)
-  → FDW (schema bq_futebol no Supabase DEV kpbjuplcwiyrymafhehz)
-  → RPCs public.get_futebol_* (SECURITY DEFINER, lêem bq_futebol.*)
+  → FDW (schema bq_futebol no Supabase DEV) — usado SÓ como fonte do sync
+  → futebol.sync_all() (procedure) copia BQ → tabelas NATIVAS no schema `futebol`
+     [pg_cron job 'futebol-sync-daily' às 09:00 UTC]
+  → RPCs public.get_futebol_* (SECURITY DEFINER) leem `futebol.*` (Postgres local)
   → src/services/futebol-data.service.ts
   → src/hooks/use-futebol-data.ts (React Query)
-  → src/pages/FutebolJogos.tsx + FutebolJogo.tsx
+  → src/pages/FutebolJogos.tsx + FutebolJogo.tsx + FutebolHome.tsx + FutebolTime.tsx
 ```
 
-⚠️ **O FDW e as RPCs existem só no DEV** (aplicados via `execute_sql`, **NÃO** commitados como migration, de propósito — não podem vazar pra prod). Pra produção, depois: sync BQ→tabela nativa Supabase + RPCs repontadas (padrão NBA, migrations 055/057). O frontend lê o dev porque `.env.local` aponta pra `kpbjuplcwiyrymafhehz`.
+**Por que materializou:** ler o BQ ao vivo via FDW custava **1–6s por RPC** (a tela de detalhe fazia 7 → ~6,3s de relógio de parede). Cada chamada FDW = um job no BigQuery (round-trip + scan). Copiando pra tabelas nativas, as RPCs leem Postgres local: **detalhe caiu de ~6,3s → ~620ms** (piso ≈ latência de rede pro dev remoto). Mesmo conceito do `sync-bq-to-postgres` da NBA.
+
+⚠️ **Tudo isto existe só no DEV** (aplicado via `execute_sql`, **NÃO** commitado como migration, de propósito). O frontend lê o dev porque `.env.local` aponta pra `kpbjuplcwiyrymafhehz`. Pra prod: replicar schema `futebol` + `sync_all` + cron como migrations (e o sync rodar contra o BQ a partir do projeto de prod).
 
 ## 2. Objetos criados no banco DEV (não versionados — recriar se resetar)
 
 - `wrappers` ext (já instalada); FDW `bigquery_wrapper` (handler `extensions.big_query_fdw_handler`).
 - Server `bigquery_server` OPTIONS(`sa_key_id '12e87cbd-1309-4d85-99a6-e2096a5aac20'`, `project_id 'smartbetting-dados'`, `dataset_id 'futebol'`). Chave SA reaproveitada do vault (secret `bigquery_wrapper_sa_key_id`; SA `smartbetting-dev@...`).
 - `CREATE USER MAPPING FOR postgres ... OPTIONS (user 'public')`.
-- Schema `bq_futebol` com foreign tables (todas `OPTIONS(table '<x>', location 'us-east1')`): `dim_leagues, dim_teams, fact_fixtures (+venue_name add column), fact_fixture_stats, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_events`.
-- RPCs `public`: `get_futebol_fixtures(p_competition, p_season, p_round)`, `get_futebol_fixture_detail(p_fixture_id)` (JSONB bundle), `get_futebol_standings(p_competition, p_season)` (classificação via UNION home/away — cast `sum()::bigint`), `get_futebol_team_profile(p_team_id, p_competition, p_season)` (JSONB: results+stats_avg por geral/casa/fora, via UNION + GROUPING SETS), helper `_futebol_team_form(...)`. GRANT EXECUTE a `authenticated, anon`.
+- Schema `bq_futebol` com foreign tables (todas `OPTIONS(table '<x>', location 'us-east1')`): `dim_leagues, dim_teams, fact_fixtures (+venue_name), fact_fixture_stats, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_events, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats`. **Hoje servem só de fonte pro sync** (as RPCs não leem mais o FDW direto).
+- **Schema `futebol` (NATIVO) — onde as RPCs leem.** 12 tabelas espelho das de `bq_futebol`, criadas via `CREATE TABLE futebol.x AS SELECT * FROM bq_futebol.x` + índices nas colunas de filtro (`fixture_id`, `team_id`, `(competition,season,round)`, `(competition,season,snapshot_date)`, `h2h_pair_key`, etc.).
+- **`futebol.sync_all()` (PROCEDURE, SECURITY DEFINER):** `truncate + insert ... select` de cada tabela com `commit` por tabela. Agendada por **pg_cron** (`futebol-sync-daily`, `0 9 * * *`). Refresh manual: `CALL futebol.sync_all();`.
+- RPCs `public` (todas leem `futebol.*`): `get_futebol_fixtures`, `get_futebol_fixture_detail` (core JSONB), `get_futebol_fixture_extras`, `get_futebol_fixture_injuries`, `get_futebol_h2h`, `get_futebol_standings_official`, `get_futebol_team_profile`, `get_futebol_team_season`, `get_futebol_matchup_markets`, `get_futebol_leaders`, `get_futebol_teams`, helper `_futebol_team_form`. GRANT EXECUTE a `authenticated, anon`. (As RPCs mantêm os workarounds da época do FDW — UNION ALL no lugar de OR, etc. — inofensivos em tabela nativa.)
 
 ## 3. Gotchas do FDW BigQuery (importantes — custaram tempo)
 
@@ -32,7 +38,7 @@ BigQuery smartbetting-dados.futebol (dataset, location us-east1)
 - **Coluna reservada do BQ** (ex.: `current`) quebra o pushdown → evitar/omitir.
 - **`execute_sql` roda em transação** → erro de um SELECT no lote dá rollback no DDL anterior. Aplicar ALTER/CREATE sozinhos.
 - Dataset é **`futebol`** (não `apifootball_raw` como dizia o ClickUp), location **us-east1**.
-- **Latência do detalhe do Jogo (otimizado):** o bundle único fazia ~14 leituras ao BQ em série (~7s) e estourava o `statement_timeout` do `anon` (3s). **Dividido em 2 RPCs paralelas:** `get_futebol_fixture_detail` (core: fixture sem joins de dim_teams + stats, **~1,5s** → cabeçalho + Estatísticas) e `get_futebol_fixture_extras` (events, form, h2h, lineups, player_stats — ~6s, em paralelo, atrás das abas). Cabeçalho + aba padrão aparecem em ~1,5s. Timeout dev mantido em 15s (`ALTER ROLE ... statement_timeout` + `NOTIFY pgrst, 'reload config'`) como folga. **A lentidão de fundo é inerente ao FDW** — o sync pra tabela nativa (prod) elimina de vez.
+- **Latência: RESOLVIDA pela materialização (2026-06-15).** Os gotchas abaixo só importam pra quem for editar o **sync** ou criar nova foreign table — as RPCs já leem Postgres local. Histórico: o detalhe fazia 7 RPCs FDW (~6,3s) e estourava o `statement_timeout`; chegou a ser dividido em core/extras paralelas (~1,5s percebido). Agora, lendo `futebol.*` nativo, o detalhe todo carrega em **~620ms** (3 RPCs de bundle ~620ms + as leves no piso de rede ~200ms). Timeout dev em 15s mantido como folga (`ALTER ROLE ... statement_timeout` + `NOTIFY pgrst, 'reload config'`).
 
 ## 4. Dados validados (2026-06-08)
 
