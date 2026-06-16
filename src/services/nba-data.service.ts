@@ -271,6 +271,27 @@ export interface DailyOpportunity {
   rating_stars: number;
   spread: number | null;
   blowout_deflator: number | null;
+  loaded_at: string | null;
+}
+
+export interface TeammateImpact360 {
+  trigger_player_id: number;
+  trigger_name: string;
+  trigger_team_id: number;
+  trigger_team_abbr: string;
+  trigger_status: string;
+  teammate_player_id: number;
+  teammate_name: string;
+  teammate_position: string;
+  stat_type: string;
+  avg_com: number;
+  avg_sem: number;
+  stddev_sem: number | null;
+  gap: number;
+  gap_pct: number;
+  jogos_com: number;
+  jogos_sem: number;
+  teammate_avg_minutes: number;
 }
 
 export const nbaDataService = {
@@ -471,6 +492,16 @@ export const nbaDataService = {
       });
       if (error) throw error;
       return (data || []) as B2BBoxScorePlayer[];
+    });
+  },
+
+  async getTeammateImpact360(triggerPlayerId: number): Promise<TeammateImpact360[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_teammate_impact_360', {
+        p_trigger_player_id: triggerPlayerId,
+      });
+      if (error) throw error;
+      return (data || []) as TeammateImpact360[];
     });
   },
 

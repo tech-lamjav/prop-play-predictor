@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Radar, Star, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName } from '@/utils/team-logos';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useAnalise360Data } from '@/hooks/use-analise360';
+import { useTeammateImpact360, useAnalise360Data } from '@/hooks/use-analise360';
+import { TeammateImpact360 } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
 
 // --- Types ---
@@ -141,9 +142,10 @@ function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: 
     md: 'text-sm',
     sm: 'text-[10px]',
   }[size];
+  const bgClass = size === 'center' ? 'bg-white' : 'bg-terminal-gray';
 
   return (
-    <div className={`${sizeClass} rounded-full overflow-hidden bg-terminal-gray shrink-0 flex items-center justify-center relative`}>
+    <div className={`${sizeClass} rounded-full overflow-hidden ${bgClass} shrink-0 flex items-center justify-center relative`}>
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
         alt={name}
@@ -505,85 +507,85 @@ export default function Analise360Detail() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const { data, isLoading, error } = useAnalise360Data();
-  const opportunities = data?.opportunities ?? [];
-  const playerStarsMap = data?.playerStarsMap ?? new Map<number, number>();
+  const triggerIdNum = Number(triggerPlayerId);
+  const { data: impactData, isLoading: impactLoading, error: impactError } = useTeammateImpact360(triggerIdNum || null);
+  const { data: oppData, isLoading: oppLoading } = useAnalise360Data();
+  const impacts = impactData ?? [];
+  const isLoading = impactLoading || oppLoading;
+  const error = impactError;
   const [selectedStat, setSelectedStat] = useState<string>('player_points');
   const [selectedBackup, setSelectedBackup] = useState<BackupSatellite | null>(null);
 
-  const triggerIdNum = Number(triggerPlayerId);
-
-  const triggerOpps = useMemo(() => {
-    return opportunities.filter(o => o.trigger_player_id === triggerIdNum);
-  }, [opportunities, triggerIdNum]);
+  // Enriquecer trigger info com dados de jogo do daily opportunities
+  const gameInfo = useMemo(() => {
+    const opps = oppData?.opportunities ?? [];
+    return opps.find(o => o.trigger_player_id === triggerIdNum) ?? null;
+  }, [oppData, triggerIdNum]);
 
   const triggerInfo = useMemo((): TriggerInfo | null => {
-    if (triggerOpps.length === 0) return null;
-    const first = triggerOpps[0];
+    if (impacts.length === 0) return null;
+    const first = impacts[0];
+    const playerStarsMap = oppData?.playerStarsMap ?? new Map<number, number>();
     return {
       triggerPlayerId: first.trigger_player_id,
       triggerName: first.trigger_name,
       triggerStatus: first.trigger_status,
       triggerTeamAbbr: first.trigger_team_abbr,
-      triggerDaysOut: first.trigger_days_out,
+      triggerDaysOut: gameInfo?.trigger_days_out ?? null,
       ratingStars: playerStarsMap.get(first.trigger_player_id) ?? 0,
-      gameLabel: `${first.home_team_abbr} vs ${first.visitor_team_abbr}`,
-      gameDate: first.game_date,
-      homeTeamAbbr: first.home_team_abbr,
-      visitorTeamAbbr: first.visitor_team_abbr,
-      opponentAbbr: first.opponent_abbr,
-      opponentDefRank: first.opponent_def_rank,
-      opponentOffRank: first.opponent_off_rank,
-      isHome: first.is_home,
-      isB2b: first.is_b2b,
-      gameTime: first.game_time,
+      gameLabel: gameInfo ? `${gameInfo.home_team_abbr} vs ${gameInfo.visitor_team_abbr}` : first.trigger_team_abbr,
+      gameDate: gameInfo?.game_date ?? '',
+      homeTeamAbbr: gameInfo?.home_team_abbr ?? first.trigger_team_abbr,
+      visitorTeamAbbr: gameInfo?.visitor_team_abbr ?? '',
+      opponentAbbr: gameInfo?.opponent_abbr ?? null,
+      opponentDefRank: gameInfo?.opponent_def_rank ?? null,
+      opponentOffRank: gameInfo?.opponent_off_rank ?? null,
+      isHome: gameInfo?.is_home ?? false,
+      isB2b: gameInfo?.is_b2b ?? false,
+      gameTime: gameInfo?.game_time ?? null,
     };
-  }, [triggerOpps, playerStarsMap]);
+  }, [impacts, gameInfo, oppData]);
 
   const satellites = useMemo((): BackupSatellite[] => {
-    const byBackup = new Map<number, DailyOpportunity[]>();
-    triggerOpps.forEach(o => {
-      if (o.backup_player_id == null) return;
-      if (!byBackup.has(o.backup_player_id)) byBackup.set(o.backup_player_id, []);
-      byBackup.get(o.backup_player_id)!.push(o);
+    const byTeammate = new Map<number, TeammateImpact360[]>();
+    impacts.forEach(o => {
+      if (!byTeammate.has(o.teammate_player_id)) byTeammate.set(o.teammate_player_id, []);
+      byTeammate.get(o.teammate_player_id)!.push(o);
     });
 
     const sats: BackupSatellite[] = [];
-    byBackup.forEach((opps, backupId) => {
-      let pick = opps.find(o => o.stat_type === selectedStat);
-      const isFallback = !pick;
-      if (!pick) {
-        pick = opps.reduce((best, o) => (o.gap_pct > (best?.gap_pct ?? -Infinity) ? o : best), opps[0]);
-      }
+    byTeammate.forEach((rows, teammateId) => {
+      const pick = rows.find(o => o.stat_type === selectedStat);
+      if (!pick) return; // Com a nova tabela, PTS/AST/REB sempre existem
       sats.push({
-        backupPlayerId: backupId,
-        backupPlayerName: pick.backup_player_name,
+        backupPlayerId: teammateId,
+        backupPlayerName: pick.teammate_name,
         avgCom: pick.avg_com,
         avgSem: pick.avg_sem,
         gap: pick.gap,
         gapPct: pick.gap_pct,
-        score: pick.score,
+        score: null,
         jogosCom: pick.jogos_com,
         jogosSem: pick.jogos_sem,
-        lineValue: pick.line_value,
-        gapVsLine: pick.gap_vs_line,
-        gapVsLinePct: pick.gap_vs_line_pct,
-        cvSem: pick.cv_sem,
+        lineValue: null,
+        gapVsLine: null,
+        gapVsLinePct: null,
+        cvSem: null,
         stddevSem: pick.stddev_sem,
-        ratingStars: pick.rating_stars,
+        ratingStars: 0,
         statType: pick.stat_type,
-        isFallback,
+        isFallback: false,
       });
     });
 
     sats.sort((a, b) => b.gapPct - a.gapPct);
     return sats;
-  }, [triggerOpps, selectedStat]);
+  }, [impacts, selectedStat]);
 
   const availableTabs = useMemo(() => {
-    const statTypes = new Set(triggerOpps.map(o => o.stat_type));
+    const statTypes = new Set(impacts.map(o => o.stat_type));
     return STAT_TABS.filter(t => statTypes.has(t.key));
-  }, [triggerOpps]);
+  }, [impacts]);
 
   useEffect(() => {
     setSelectedBackup(null);
