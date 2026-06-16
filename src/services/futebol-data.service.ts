@@ -160,6 +160,14 @@ export interface FutebolFixtureExtras {
   lineup_players: FutebolLineupPlayer[];
 }
 
+export interface FutebolInjury {
+  team_id: number;
+  player_id: number;
+  player_name: string;
+  injury_type: string;
+  injury_reason: string;
+}
+
 export interface FutebolH2HMeeting {
   fixture_id: number;
   date_utc: string;
@@ -314,6 +322,16 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || { fixture: null }) as FutebolFixtureDetail;
+    });
+  },
+
+  async getFixtureInjuries(fixtureId: number): Promise<FutebolInjury[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_injuries', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolInjury[];
     });
   },
 

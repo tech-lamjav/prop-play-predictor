@@ -6,6 +6,7 @@ import {
   type FutebolFixtureDetail,
   type FutebolFixtureExtras,
   type FutebolH2HMeeting,
+  type FutebolInjury,
   type FutebolStandingRow,
   type FutebolTeamProfile,
   type FutebolTeamSeason,
@@ -38,6 +39,17 @@ export function useFutebolFixtureExtras(fixtureId: number | undefined) {
   return useQuery<FutebolFixtureExtras>({
     queryKey: ['futebol', 'fixture-extras', fixtureId],
     queryFn: () => futebolDataService.getFixtureExtras(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolFixtureInjuries(fixtureId: number | undefined) {
+  return useQuery<FutebolInjury[]>({
+    queryKey: ['futebol', 'injuries', fixtureId],
+    queryFn: () => futebolDataService.getFixtureInjuries(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,

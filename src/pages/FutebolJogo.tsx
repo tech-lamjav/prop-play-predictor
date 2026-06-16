@@ -4,11 +4,45 @@ import { ChevronLeft, Info, MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolH2H } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import type {
-  FutebolEvent, FutebolFormResult, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
+  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
 } from '@/services/futebol-data.service';
+
+const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
+  'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
+  Questionable: { label: 'Dúvida', cls: 'bg-amber text-canvas' },
+};
+const INJURY_REASON_PT: Record<string, string> = {
+  Rest: 'Poupado', 'Yellow Cards': 'Suspenso', 'Red Card': 'Suspenso', Suspended: 'Suspenso',
+  'Loan agreement': 'Empréstimo', Inactive: 'Inativo', "Coach's decision": 'Decisão técnica',
+  'National selection': 'Seleção', 'Personal problems': 'Pessoal',
+};
+function injuryReason(r: string): string {
+  if (INJURY_REASON_PT[r]) return INJURY_REASON_PT[r];
+  if (/injury/i.test(r)) return 'Lesão';
+  return r;
+}
+
+function InjuryCol({ injuries, teamId, teamName }: { injuries: FutebolInjury[]; teamId: number; teamName: string }) {
+  const list = injuries.filter((i) => i.team_id === teamId);
+  return (
+    <div>
+      <p className="text-sm font-semibold text-ink mb-2">{teamName} <span className="text-ink-3 text-xs font-normal">({list.length})</span></p>
+      {list.length ? list.map((i) => {
+        const t = INJURY_TYPE[i.injury_type];
+        return (
+          <div key={i.player_id} className="flex items-center gap-2 py-1 text-sm">
+            <span className={`text-[9px] font-bold rounded px-1 py-0.5 shrink-0 ${t ? t.cls : 'bg-canvas-2 text-ink-3'}`}>{t ? t.label : i.injury_type}</span>
+            <span className="truncate text-ink">{i.player_name}</span>
+            <span className="ml-auto text-[10px] text-ink-3 truncate">{injuryReason(i.injury_reason)}</span>
+          </div>
+        );
+      }) : <p className="text-xs text-ink-3">Sem desfalques.</p>}
+    </div>
+  );
+}
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
@@ -218,6 +252,7 @@ export default function FutebolJogo() {
     fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
   );
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
+  const { data: injuries } = useFutebolFixtureInjuries(fid);
   const h2hHomeWins = h2h?.filter((m) => m.winner_team_id === fixture?.home_team_id).length ?? 0;
   const h2hAwayWins = h2h?.filter((m) => m.winner_team_id === fixture?.away_team_id).length ?? 0;
   const h2hDraws = h2h?.filter((m) => m.winner_team_id == null).length ?? 0;
@@ -439,6 +474,15 @@ export default function FutebolJogo() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+                  {injuries && injuries.length > 0 && (
+                    <div className={`${CARD} p-4`}>
+                      <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-2">Desfalques</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <InjuryCol injuries={injuries} teamId={fixture.home_team_id} teamName={fixture.home_team_name} />
+                        <InjuryCol injuries={injuries} teamId={fixture.away_team_id} teamName={fixture.away_team_name} />
                       </div>
                     </div>
                   )}
