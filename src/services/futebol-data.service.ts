@@ -278,6 +278,11 @@ export interface FutebolMatchupMarkets {
   away?: FutebolTeamMarket;
 }
 
+export interface FutebolMatchupTendencies {
+  home: FutebolTeamSeason | null;
+  away: FutebolTeamSeason | null;
+}
+
 export interface FutebolScorer {
   player_id: number;
   player_name: string;
@@ -407,6 +412,21 @@ export const futebolDataService = {
       if (error) throw error;
       return (data && Object.keys(data).length ? data : null) as FutebolTeamSeason | null;
     });
+  },
+
+  // Tendências por mercado: reusa as season stats oficiais dos dois times (em
+  // paralelo). O modelo Poisson roda no front (utils/futebol-tendencias.ts).
+  async getMatchupTendencies(
+    homeId: number,
+    awayId: number,
+    competition: Competition,
+    season: number
+  ): Promise<FutebolMatchupTendencies> {
+    const [home, away] = await Promise.all([
+      this.getTeamSeason(homeId, competition, season),
+      this.getTeamSeason(awayId, competition, season),
+    ]);
+    return { home, away };
   },
 
   async getLeaders(competition: Competition, season: number): Promise<FutebolLeaders> {

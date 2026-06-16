@@ -1,11 +1,15 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Info, MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolMatchupTendencies, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
+import {
+  computeMatchupTendencies, headlineMarket, STRENGTH_LABEL,
+  type MarketTendency, type Strength,
+} from '@/utils/futebol-tendencias';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
 } from '@/services/futebol-data.service';
@@ -228,6 +232,39 @@ function EventRow({ e }: { e: FutebolEvent }) {
   );
 }
 
+const STRENGTH_CHIP: Record<Strength, string> = {
+  alta: 'bg-forest text-canvas',
+  media: 'bg-amber text-canvas',
+  baixa: 'bg-canvas-2 text-ink-3 border border-line',
+};
+const STRENGTH_BAR: Record<Strength, string> = {
+  alta: 'bg-forest',
+  media: 'bg-amber',
+  baixa: 'bg-ink-3',
+};
+
+function TendencyRow({ m }: { m: MarketTendency }) {
+  const pct = Math.round(m.prob * 100);
+  return (
+    <div className="py-2">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-sm text-ink font-medium truncate">{m.label}</span>
+        <span className="flex items-center gap-2 shrink-0 tabular-nums">
+          <span className="text-sm font-bold text-ink">{pct}%</span>
+          <span className="text-[10px] text-ink-3">justa {m.fairOdds.toFixed(2)}</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded overflow-hidden bg-canvas-2">
+          <div className={`h-full ${STRENGTH_BAR[m.strength]}`} style={{ width: `${pct}%` }} />
+        </div>
+        <span className={`text-[9px] font-bold rounded px-1 py-0.5 shrink-0 ${STRENGTH_CHIP[m.strength]}`}>{STRENGTH_LABEL[m.strength]}</span>
+      </div>
+      <p className="text-[10px] text-ink-3 mt-1">{m.reading}</p>
+    </div>
+  );
+}
+
 function MarketCmp({ label, home, away, suffix = '' }: { label: string; home: number | null | undefined; away: number | null | undefined; suffix?: string }) {
   return (
     <div className="flex items-center justify-between py-1.5 text-sm">
@@ -253,6 +290,14 @@ export default function FutebolJogo() {
   );
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
+  const { data: tend } = useFutebolMatchupTendencies(
+    fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
+  );
+  const tendencies = useMemo(() => {
+    if (!fixture || !tend?.home || !tend?.away) return null;
+    return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
+  }, [tend, fixture]);
+  const head = tendencies ? headlineMarket(tendencies.markets) : null;
   const h2hHomeWins = h2h?.filter((m) => m.winner_team_id === fixture?.home_team_id).length ?? 0;
   const h2hAwayWins = h2h?.filter((m) => m.winner_team_id === fixture?.away_team_id).length ?? 0;
   const h2hDraws = h2h?.filter((m) => m.winner_team_id == null).length ?? 0;
@@ -333,17 +378,61 @@ export default function FutebolJogo() {
               </div>
             </div>
 
-            {/* Slot de Oportunidade (placeholder — depende do modelo) */}
-            <div className="mt-3 flex items-start gap-2 rounded-rebrand-md border border-dashed border-line bg-canvas-2 p-3">
-              <Info className="w-4 h-4 text-amber-2 mt-0.5 shrink-0" />
-              <p className="text-xs text-ink-2">
-                Sem oportunidade mapeada nos mercados monitorados — dados abaixo pra você tirar suas
-                próprias conclusões. <span className="text-ink-3">(Análise de valor entra quando o modelo estiver pronto.)</span>
-              </p>
-            </div>
+            {/* Leitura do Jogo — tendências por mercado (modelo de gols) */}
+            {tendencies ? (
+              <div className={`${CARD} mt-3 p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-bold text-ink">Leitura do Jogo</span>
+                  <span className="text-[10px] uppercase tracking-wide text-ink-3">tendências por mercado</span>
+                </div>
 
-            {/* Tendências de gols do confronto (descritivo) */}
-            {markets?.home && markets?.away && (
+                {head && (
+                  <div className="rounded-rebrand-sm bg-canvas-2 border border-line p-3 mb-3">
+                    <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Leitura principal · {head.group}</p>
+                    <div className="flex items-end justify-between gap-2">
+                      <span className="text-base font-bold text-ink leading-tight">{head.label}</span>
+                      <span className="text-2xl font-extrabold text-forest tabular-nums leading-none">{Math.round(head.prob * 100)}%</span>
+                    </div>
+                    <p className="text-xs text-ink-2 mt-1">{head.reading}</p>
+                    <p className="text-[10px] text-ink-3 mt-1">Odd justa {head.fairOdds.toFixed(2)} — referência neutra do modelo.</p>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-ink-3 mb-1">
+                  Gols esperados (modelo): <b className="text-forest">{fixture.home_team_name} {tendencies.lambdas.lh.toFixed(1)}</b>
+                  {' × '}
+                  <b className="text-amber-2">{tendencies.lambdas.la.toFixed(1)} {fixture.away_team_name}</b>
+                </p>
+
+                <div className="divide-y divide-line">
+                  {tendencies.markets.filter((m) => m.key !== head?.key).map((m) => (
+                    <TendencyRow key={m.key} m={m} />
+                  ))}
+                </div>
+
+                {markets?.home && markets?.away && (
+                  <div className="mt-3 pt-3 border-t border-line">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-ink-3">Comparativo · temporada</span>
+                      <span className="text-[11px] font-bold text-amber-2 truncate text-right">{fixture.away_team_name}</span>
+                    </div>
+                    <MarketCmp label="Mais de 2.5 gols" home={markets.home.over25_pct} away={markets.away.over25_pct} suffix="%" />
+                    <MarketCmp label="Ambos marcam (BTTS)" home={markets.home.btts_pct} away={markets.away.btts_pct} suffix="%" />
+                    <MarketCmp label="Média de gols feitos" home={markets.home.avg_gf} away={markets.away.avg_gf} />
+                    <MarketCmp label="Média de gols sofridos" home={markets.home.avg_ga} away={markets.away.avg_ga} />
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2 mt-3 pt-3 border-t border-line">
+                  <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
+                  <p className="text-[10px] text-ink-3 leading-snug">
+                    Estimativa do nosso modelo de gols sobre as médias oficiais da temporada (com mando).
+                    Não é recomendação — o comparativo de <b className="text-ink-2">valor</b> contra a odd da casa entra quando as odds forem integradas.
+                  </p>
+                </div>
+              </div>
+            ) : markets?.home && markets?.away ? (
               <div className={`${CARD} mt-3 p-4`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
@@ -356,7 +445,7 @@ export default function FutebolJogo() {
                 <MarketCmp label="Média de gols sofridos" home={markets.home.avg_ga} away={markets.away.avg_ga} />
                 <p className="text-[10px] text-ink-3 mt-2">Frequência na temporada — descritivo, não é recomendação.</p>
               </div>
-            )}
+            ) : null}
 
             {/* Estatística descritiva */}
             <div className="mt-4">
