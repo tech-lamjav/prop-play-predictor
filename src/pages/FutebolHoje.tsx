@@ -91,19 +91,18 @@ function TopValueHero({ o, onClick }: { o: Opportunity; onClick: () => void }) {
           </div>
           <div className="text-[12px] mt-1 text-white/55">{COMP_LABEL[o.competition] || o.competition} · {fmtDayTime(o.kickoffUtc)}</div>
 
-          {/* a aposta, explícita */}
+          {/* a aposta, explícita e em linguagem clara */}
           <div className="mt-4">
             <div className="text-[11px] uppercase tracking-[0.16em] text-white/50">{o.marketLabel}</div>
             <div className="text-[22px] md:text-[26px] font-bold leading-tight mt-1">{o.outcomeLabel}</div>
-            <p className="text-[13px] text-white/75 mt-1.5">
-              Melhor preço <b className="text-white">{o.bestOdd.toFixed(2)}</b> na <b className="text-white">{o.bestBook}</b> · {fmtEdge(o.edge)} acima da linha justa ({fmtPct(o.fairProb)}).
+            <p className="text-[13px] text-white/75 mt-2 leading-relaxed">
+              O mercado dá <b className="text-white">~{fmtPct(o.fairProb)} de chance</b> desse resultado. A odd disponível, <b className="text-white">{o.bestOdd.toFixed(2)}</b>, paga acima dessa chance — é aí que está o valor.
             </p>
           </div>
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <div className="mt-3">
             <span className="px-2.5 h-7 inline-flex items-center rounded-md text-[11px] font-semibold" style={{ background: 'rgba(251,191,36,0.18)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.35)' }}>
-              Stake ½ Kelly · {fmtStake(o.stake)} da banca
+              Gestão de banca · arriscar até {fmtStake(o.stake)}
             </span>
-            <span className="px-2.5 h-7 inline-flex items-center rounded-md text-[11px] font-semibold bg-white/10 text-white/85">{o.nBooks} casas</span>
           </div>
         </div>
 
@@ -152,19 +151,18 @@ function OppCard({ o, onClick }: { o: Opportunity; onClick: () => void }) {
       </div>
       <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-line">
         <div>
-          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Melhor odd</div>
+          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</div>
           <div className="text-base font-bold tabular-nums text-ink mt-0.5">{o.bestOdd.toFixed(2)}</div>
-          <div className="text-[10px] text-ink-3 truncate">{o.bestBook}</div>
         </div>
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Valor</div>
           <div className="text-base font-bold tabular-nums text-forest mt-0.5">{fmtEdge(o.edge)}</div>
-          <div className="text-[10px] text-ink-3">justa {fmtPct(o.fairProb)}</div>
+          <div className="text-[10px] text-ink-3">chance {fmtPct(o.fairProb)}</div>
         </div>
         <div className="text-right">
-          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Stake ½K</div>
+          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Banca</div>
           <div className="text-base font-bold tabular-nums text-ink mt-0.5">{fmtStake(o.stake)}</div>
-          <div className="text-[10px] text-ink-3">da banca</div>
+          <div className="text-[10px] text-ink-3">sugerido</div>
         </div>
       </div>
     </button>

@@ -283,15 +283,14 @@ function ValueRow({ o }: { o: ValueOutcome }) {
         {o.outcomeLabel}
         {o.suspect && <AlertTriangle className="inline w-3 h-3 text-amber-2 ml-1 align-[-1px]" />}
       </span>
-      <span className="text-[10px] text-ink-3 tabular-nums hidden sm:inline">justa {fmtPct(o.fairProb)}</span>
+      <span className="text-[10px] text-ink-3 tabular-nums hidden sm:inline">chance {fmtPct(o.fairProb)}</span>
       {o.moveDir && (
-        <span className={`text-[10px] ${o.moveDir === 'up' ? 'text-status-success' : 'text-status-danger'}`} title="movimento da linha Pinnacle">
+        <span className={`text-[10px] ${o.moveDir === 'up' ? 'text-status-success' : 'text-status-danger'}`} title="movimento da linha sharp">
           {o.moveDir === 'up' ? '▲' : '▼'}
         </span>
       )}
       <span className="text-right tabular-nums">
         <span className="font-bold text-ink">{o.bestOdd.toFixed(2)}</span>
-        <span className="text-[10px] text-ink-3 ml-1">{o.bestBook}</span>
       </span>
       <span className="text-[10px] text-ink-3 tabular-nums w-12 text-right">{fmtEdge(o.edge)}</span>
       <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums w-9 text-center ${VALUE_TIER[o.tier]}`} title="Score de Confiabilidade (0–100)">
@@ -424,7 +423,7 @@ export default function FutebolJogo() {
               <div className={`${CARD} mt-3 p-4`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-bold text-ink">Mercado &amp; Valor</span>
-                  <span className="text-[10px] uppercase tracking-wide text-ink-3">melhor odd × linha justa</span>
+                  <span className="text-[10px] uppercase tracking-wide text-ink-3">valor por mercado</span>
                 </div>
 
                 {value.best && value.best.score >= HERO_MIN_SCORE && !value.best.suspect ? (
@@ -438,7 +437,7 @@ export default function FutebolJogo() {
                       </span>
                     </div>
                     <p className="text-xs text-ink-2 mt-1">
-                      <b>{value.best.bestOdd.toFixed(2)}</b> na <b>{value.best.bestBook}</b> · valor {fmtEdge(value.best.edge)} · justa {fmtPct(value.best.fairProb)} · stake ½K {fmtStake(value.best.stake)}
+                      odd <b>{value.best.bestOdd.toFixed(2)}</b> · valor {fmtEdge(value.best.edge)} · chance {fmtPct(value.best.fairProb)} · banca {fmtStake(value.best.stake)}
                     </p>
                   </div>
                 ) : (
@@ -455,7 +454,7 @@ export default function FutebolJogo() {
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="text-[11px] font-bold text-ink-2">{m.label}</span>
                         <span className="text-[10px] text-ink-3">
-                          {m.anchor === 'pinnacle' ? 'justa: Pinnacle' : 'justa: consenso'} · margem {(m.margin * 100).toFixed(1)}%
+                          chance: {m.anchor === 'pinnacle' ? 'linha sharp' : 'consenso'}
                         </span>
                       </div>
                       <div className="divide-y divide-line">

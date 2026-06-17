@@ -57,7 +57,7 @@ function OpportunityCard({ o, onClick }: { o: Opportunity; onClick: () => void }
             {o.suspect && <span className="ml-1.5 inline-flex items-center gap-0.5 text-amber-2"><AlertTriangle className="w-3 h-3" /> linha suspeita</span>}
           </p>
           <p className="text-[11px] text-ink-3 mt-0.5">
-            <b className="text-ink">{o.bestOdd.toFixed(2)}</b> na <b className="text-ink">{o.bestBook}</b> · valor {fmtEdge(o.edge)} · justa {fmtPct(o.fairProb)} · stake ½K {fmtStake(o.stake)}
+            odd <b className="text-ink">{o.bestOdd.toFixed(2)}</b> · valor {fmtEdge(o.edge)} · chance {fmtPct(o.fairProb)} · banca {fmtStake(o.stake)}
           </p>
         </div>
         <div className="flex flex-col items-center gap-1 shrink-0">
@@ -134,7 +134,7 @@ export default function FutebolOportunidades() {
             <div className="flex items-start gap-2 mt-4">
               <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
               <p className="text-[10px] text-ink-3 leading-snug">
-O <b className="text-ink-2">Score (0–100)</b> combina valor (edge vs linha justa devigada da Pinnacle), gestão de banca (Kelly), odd numa banda sã e confirmação entre casas — por isso uma zebra com edge alto mas 1 casa só fica com score baixo. Stake ½K = meio-Kelly sugerido. Odds em T-24h/T-1h (não ao vivo). Mercados: Resultado, Mais/Menos 2,5 gols e Ambos marcam. Não é recomendação de aposta.
+O <b className="text-ink-2">Score (0–100)</b> mede a confiabilidade da oportunidade: combina o tamanho do valor, a gestão de banca, uma odd em faixa sã e a consistência do preço entre as casas — por isso uma zebra com "valor" alto puxado por uma casa só fica com score baixo. <b className="text-ink-2">Chance</b> = probabilidade estimada pela linha sharp do mercado. <b className="text-ink-2">Banca</b> = quanto arriscar (gestão conservadora). Odds em T-24h/T-1h (não ao vivo). Mercados: Resultado, Mais/Menos 2,5 gols e Ambos marcam. Não é recomendação de aposta.
               </p>
             </div>
           </>
