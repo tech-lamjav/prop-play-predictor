@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Info, ChevronRight } from 'lucide-react';
+import { Info, ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolOddsBoard } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { computeBoardOpportunities, fmtPct, fmtEdge, type Opportunity } from '@/utils/futebol-value';
+import { computeBoardOpportunities, fmtPct, fmtEdge, fmtStake, HERO_MIN_SCORE, type Opportunity } from '@/utils/futebol-value';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo' };
@@ -30,9 +30,10 @@ function Crest({ teamId, name }: { teamId: number; name: string }) {
 
 const CARD = 'bg-white border border-line rounded-rebrand-md';
 
-function edgeCls(edge: number): string {
-  if (edge >= 0.015) return 'bg-forest text-canvas';
-  if (edge >= 0) return 'bg-forest/15 text-forest border border-forest/40';
+function scoreCls(score: number, suspect: boolean): string {
+  if (suspect) return 'bg-canvas-2 text-ink-3 border border-line';
+  if (score >= 55) return 'bg-forest text-canvas';
+  if (score >= HERO_MIN_SCORE) return 'bg-forest/15 text-forest border border-forest/40';
   return 'bg-canvas-2 text-ink-3 border border-line';
 }
 
@@ -53,14 +54,15 @@ function OpportunityCard({ o, onClick }: { o: Opportunity; onClick: () => void }
           </div>
           <p className="text-xs text-ink-2">
             <span className="text-ink-3">{o.marketLabel}:</span> <b className="text-ink">{o.outcomeLabel}</b>
+            {o.suspect && <span className="ml-1.5 inline-flex items-center gap-0.5 text-amber-2"><AlertTriangle className="w-3 h-3" /> linha suspeita</span>}
           </p>
           <p className="text-[11px] text-ink-3 mt-0.5">
-            melhor odd <b className="text-ink">{o.bestOdd.toFixed(2)}</b> na <b className="text-ink">{o.bestBook}</b> · justa {fmtPct(o.fairProb)} · {o.nBooks} casas
+            <b className="text-ink">{o.bestOdd.toFixed(2)}</b> na <b className="text-ink">{o.bestBook}</b> · valor {fmtEdge(o.edge)} · justa {fmtPct(o.fairProb)} · stake ½K {fmtStake(o.stake)}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className={`text-sm font-extrabold rounded px-1.5 py-0.5 tabular-nums ${edgeCls(o.edge)}`}>{fmtEdge(o.edge)}</span>
-          <ChevronRight className="w-4 h-4 text-ink-3" />
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          <span className={`text-base font-extrabold rounded px-2 py-1 tabular-nums ${scoreCls(o.score, o.suspect)}`} title="Score de Confiabilidade (0–100)">{o.score}</span>
+          <span className="text-[9px] uppercase tracking-wide text-ink-3">score</span>
         </div>
       </div>
     </button>
@@ -81,7 +83,7 @@ export default function FutebolOportunidades() {
         <div className="mb-5">
           <h1 className="font-display text-2xl font-extrabold text-ink">Oportunidades</h1>
           <p className="text-sm text-ink-2">
-            Onde a melhor odd do mercado está acima da linha justa (sharp). Ordenado por valor (+EV).
+            Ordenado pelo <b className="text-ink">Score de Confiabilidade</b> — combina valor, gestão de banca (Kelly), odd sã e confirmação da linha sharp.
           </p>
         </div>
 
@@ -95,7 +97,7 @@ export default function FutebolOportunidades() {
         ) : (
           <>
             <p className="text-[11px] text-ink-3 mb-3">
-              {board.fixtures} jogo{board.fixtures === 1 ? '' : 's'} com odds · {board.opportunities.length} oportunidade{board.opportunities.length === 1 ? '' : 's'} com valor
+              {board.fixtures} jogo{board.fixtures === 1 ? '' : 's'} com odds · {board.opportunities.length} oportunidade{board.opportunities.length === 1 ? '' : 's'} monitorada{board.opportunities.length === 1 ? '' : 's'}
             </p>
 
             {board.opportunities.length > 0 ? (
@@ -106,7 +108,7 @@ export default function FutebolOportunidades() {
               </div>
             ) : (
               <div className={`${CARD} p-5 text-center text-sm text-ink-2`}>
-                Nenhum mercado com valor claro agora — as melhores odds estão abaixo da linha justa. Veja os jogos monitorados abaixo.
+                Sem valor claro agora — as melhores odds estão perto da linha justa. Veja os jogos monitorados abaixo.
               </div>
             )}
 
@@ -119,7 +121,11 @@ export default function FutebolOportunidades() {
                   <Crest teamId={m.homeId} name={m.homeName} />
                   <span className="flex-1 truncate text-ink text-left">{m.homeName} <span className="text-ink-3">x</span> {m.awayName}</span>
                   <span className="text-[10px] text-ink-3 hidden sm:inline">{fmtKickoff(m.kickoffUtc)}</span>
-                  <span className={`text-[11px] font-bold tabular-nums w-14 text-right ${m.bestEdge >= 0 ? 'text-forest' : 'text-ink-3'}`}>{fmtEdge(m.bestEdge)}</span>
+                  {m.best && m.best.score >= HERO_MIN_SCORE ? (
+                    <span className="text-[10px] font-bold rounded px-1.5 py-0.5 bg-forest text-canvas shrink-0">Valor {m.best.score}</span>
+                  ) : (
+                    <span className="text-[10px] text-ink-3 shrink-0">sem valor</span>
+                  )}
                   <ChevronRight className="w-4 h-4 text-ink-3" />
                 </button>
               ))}
@@ -128,7 +134,7 @@ export default function FutebolOportunidades() {
             <div className="flex items-start gap-2 mt-4">
               <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
               <p className="text-[10px] text-ink-3 leading-snug">
-                "Justa" = probabilidade do mercado após remover a margem (devig) da linha sharp da Pinnacle (ou do consenso quando a Pinnacle não cobre). Valor = melhor odd acima da justa. Odds coletadas em T-24h e T-1h (não ao vivo). Mercados: Resultado, Mais/Menos 2,5 gols e Ambos marcam. Não é recomendação de aposta.
+O <b className="text-ink-2">Score (0–100)</b> combina valor (edge vs linha justa devigada da Pinnacle), gestão de banca (Kelly), odd numa banda sã e confirmação entre casas — por isso uma zebra com edge alto mas 1 casa só fica com score baixo. Stake ½K = meio-Kelly sugerido. Odds em T-24h/T-1h (não ao vivo). Mercados: Resultado, Mais/Menos 2,5 gols e Ambos marcam. Não é recomendação de aposta.
               </p>
             </div>
           </>

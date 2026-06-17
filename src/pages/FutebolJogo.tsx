@@ -1,6 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Info, MapPin } from 'lucide-react';
+import { ChevronLeft, Info, MapPin, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -11,7 +11,7 @@ import {
   type MarketTendency, type Strength,
 } from '@/utils/futebol-tendencias';
 import {
-  computeFixtureValue, fmtPct, fmtEdge,
+  computeFixtureValue, fmtPct, fmtEdge, fmtStake, HERO_MIN_SCORE,
   type ValueOutcome, type ValueTier,
 } from '@/utils/futebol-value';
 import type {
@@ -269,19 +269,20 @@ function TendencyRow({ m }: { m: MarketTendency }) {
   );
 }
 
-const VALUE_TIER: Record<ValueTier, { label: string; cls: string }> = {
-  value: { label: '+EV', cls: 'bg-forest text-canvas' },
-  slight: { label: '+EV', cls: 'bg-forest/15 text-forest border border-forest/40' },
-  fair: { label: 'justo', cls: 'bg-canvas-2 text-ink-3 border border-line' },
-  low: { label: 'abaixo', cls: 'text-ink-3' },
+const VALUE_TIER: Record<ValueTier, string> = {
+  value: 'bg-forest text-canvas',
+  slight: 'bg-forest/15 text-forest border border-forest/40',
+  fair: 'bg-canvas-2 text-ink-3 border border-line',
+  low: 'bg-canvas-2 text-ink-3 border border-line',
 };
 
 function ValueRow({ o }: { o: ValueOutcome }) {
-  const t = VALUE_TIER[o.tier];
-  const showEdge = o.tier === 'value' || o.tier === 'slight';
   return (
     <div className="flex items-center gap-2 py-2">
-      <span className="flex-1 min-w-0 truncate text-sm text-ink">{o.outcomeLabel}</span>
+      <span className="flex-1 min-w-0 truncate text-sm text-ink">
+        {o.outcomeLabel}
+        {o.suspect && <AlertTriangle className="inline w-3 h-3 text-amber-2 ml-1 align-[-1px]" />}
+      </span>
       <span className="text-[10px] text-ink-3 tabular-nums hidden sm:inline">justa {fmtPct(o.fairProb)}</span>
       {o.moveDir && (
         <span className={`text-[10px] ${o.moveDir === 'up' ? 'text-status-success' : 'text-status-danger'}`} title="movimento da linha Pinnacle">
@@ -292,8 +293,9 @@ function ValueRow({ o }: { o: ValueOutcome }) {
         <span className="font-bold text-ink">{o.bestOdd.toFixed(2)}</span>
         <span className="text-[10px] text-ink-3 ml-1">{o.bestBook}</span>
       </span>
-      <span className={`text-[9px] font-bold rounded px-1 py-0.5 shrink-0 tabular-nums w-14 text-center ${t.cls}`}>
-        {showEdge ? fmtEdge(o.edge) : t.label}
+      <span className="text-[10px] text-ink-3 tabular-nums w-12 text-right">{fmtEdge(o.edge)}</span>
+      <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums w-9 text-center ${VALUE_TIER[o.tier]}`} title="Score de Confiabilidade (0–100)">
+        {o.score}
       </span>
     </div>
   );
@@ -425,24 +427,25 @@ export default function FutebolJogo() {
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">melhor odd × linha justa</span>
                 </div>
 
-                {value.best && (
-                  <div className={`rounded-rebrand-sm border p-3 mb-3 ${value.best.edge >= 0.015 ? 'bg-forest/10 border-forest/40' : 'bg-canvas-2 border-line'}`}>
-                    {value.best.edge >= 0 ? (
-                      <>
-                        <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Melhor valor agora · {value.best.marketLabel}</p>
-                        <div className="flex items-end justify-between gap-2">
-                          <span className="text-base font-bold text-ink leading-tight">{value.best.outcomeLabel}</span>
-                          <span className="text-2xl font-extrabold text-forest tabular-nums leading-none">{fmtEdge(value.best.edge)}</span>
-                        </div>
-                        <p className="text-xs text-ink-2 mt-1">
-                          <b>{value.best.bestOdd.toFixed(2)}</b> na <b>{value.best.bestBook}</b> · justa {fmtPct(value.best.fairProb)} ({value.best.nBooks} casas)
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-xs text-ink-2">
-                        Sem valor claro nos mercados monitorados agora — as melhores odds estão abaixo da linha justa do mercado. Preços de referência abaixo.
-                      </p>
-                    )}
+                {value.best && value.best.score >= HERO_MIN_SCORE && !value.best.suspect ? (
+                  <div className="rounded-rebrand-sm border p-3 mb-3 bg-forest/10 border-forest/40">
+                    <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Melhor valor · {value.best.marketLabel}</p>
+                    <div className="flex items-end justify-between gap-2">
+                      <span className="text-base font-bold text-ink leading-tight">{value.best.outcomeLabel}</span>
+                      <span className="flex items-baseline gap-0.5">
+                        <span className="text-2xl font-extrabold text-forest tabular-nums leading-none">{value.best.score}</span>
+                        <span className="text-[11px] text-ink-3">/100</span>
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-2 mt-1">
+                      <b>{value.best.bestOdd.toFixed(2)}</b> na <b>{value.best.bestBook}</b> · valor {fmtEdge(value.best.edge)} · justa {fmtPct(value.best.fairProb)} · stake ½K {fmtStake(value.best.stake)}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-rebrand-sm border p-3 mb-3 bg-canvas-2 border-line">
+                    <p className="text-xs text-ink-2">
+                      Sem valor claro neste jogo — as melhores odds estão perto da linha justa do mercado. Preços e score por mercado abaixo.
+                    </p>
                   </div>
                 )}
 
@@ -465,7 +468,7 @@ export default function FutebolJogo() {
                 <div className="flex items-start gap-2 mt-3 pt-3 border-t border-line">
                   <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
                   <p className="text-[10px] text-ink-3 leading-snug">
-                    Odds coletadas em T-24h e T-1h (não ao vivo). "Justa" = probabilidade após remover a margem (devig) da linha sharp da <b className="text-ink-2">Pinnacle</b> (ou do consenso quando a Pinnacle não cobre o mercado). Valor = melhor odd acima da justa. Não é recomendação de aposta.
+    O <b className="text-ink-2">Score (0–100)</b> combina valor (edge vs linha justa devigada da Pinnacle), gestão de banca (Kelly), odd numa banda sã e confirmação entre casas — zebra com edge alto mas 1 casa só fica com score baixo (linha suspeita). Odds em T-24h/T-1h (não ao vivo). Não é recomendação de aposta.
                   </p>
                 </div>
               </div>
