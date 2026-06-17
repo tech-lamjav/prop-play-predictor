@@ -19,10 +19,11 @@
 // ============================================================
 
 export interface FutebolOddsRow {
-  market_key: 'match_winner' | 'over_under_25' | 'btts' | 'double_chance';
+  market_key: 'match_winner' | 'over_under' | 'btts' | 'double_chance';
   market_label: string;
   outcome_label: string;
   outcome_order: number;
+  line: number | null;   // linha do Over/Under (ex.: 2.5); null nos demais
   pinnacle_odd: number | null;
   avg_odd: number | null;
   best_odd: number;
@@ -67,12 +68,8 @@ export interface FixtureValue {
   best: ValueOutcome | null; // maior SCORE do jogo (não maior edge)
 }
 
-const MARKET_LABEL: Record<string, string> = {
-  match_winner: 'Vencedor (1X2)',
-  over_under_25: 'Mais/Menos 2,5 gols',
-  btts: 'Ambos marcam',
-};
-const VALUE_MARKETS = ['match_winner', 'over_under_25', 'btts'];
+// Linhas de Over/Under expostas (as acionáveis; 0,5 e 4,5 quase nunca dão valor)
+const OU_LINES = [1.5, 2.5, 3.5];
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -81,12 +78,18 @@ function outcomePt(key: string, homeName: string, awayName: string): string {
     case 'Home': return homeName;
     case 'Away': return awayName;
     case 'Draw': return 'Empate';
-    case 'Over 2.5': return 'Mais de 2,5';
-    case 'Under 2.5': return 'Menos de 2,5';
     case 'Yes': return 'Sim';
     case 'No': return 'Não';
-    default: return key;
+    case 'Home/Draw': return `${homeName} ou empate`;
+    case 'Home/Away': return `${homeName} ou ${awayName}`;
+    case 'Draw/Away': return `empate ou ${awayName}`;
   }
+  const m = key.match(/^(Over|Under)\s+([\d.]+)$/);
+  if (m) {
+    const n = m[2].replace('.', ',');
+    return m[1] === 'Over' ? `Mais de ${n}` : `Menos de ${n}`;
+  }
+  return key;
 }
 
 // Crédito cheio em odds "sãs"; decai em zebra (>4) e em juice (<1.4)
@@ -127,24 +130,25 @@ export function computeFixtureValue(
 ): FixtureValue {
   const markets: ValueMarket[] = [];
 
-  for (const key of VALUE_MARKETS) {
-    const group = rows.filter((r) => r.market_key === key).sort((a, b) => a.outcome_order - b.outcome_order);
-    if (group.length < 2) continue;
-
-    const hasPinAll = group.every((r) => r.pinnacle_odd != null && r.pinnacle_odd > 1);
+  // Constrói um mercado (devig por normalização). normTarget=1 p/ partição limpa
+  // (1X2, O/U, BTTS); normTarget=2 p/ Dupla Chance (cada outcome cobre 2 dos 3 resultados).
+  const build = (key: string, label: string, group: FutebolOddsRow[], normTarget: number) => {
+    if (group.length < 2) return;
+    const sorted = [...group].sort((a, b) => a.outcome_order - b.outcome_order);
+    const hasPinAll = sorted.every((r) => r.pinnacle_odd != null && r.pinnacle_odd > 1);
     const anchor: 'pinnacle' | 'consensus' = hasPinAll ? 'pinnacle' : 'consensus';
     const anchorOdd = (r: FutebolOddsRow) => (anchor === 'pinnacle' ? r.pinnacle_odd : r.avg_odd) ?? null;
 
-    const implied = group.map((r) => {
+    const implied = sorted.map((r) => {
       const o = anchorOdd(r);
       return o && o > 1 ? 1 / o : null;
     });
-    if (implied.some((p) => p == null)) continue;
+    if (implied.some((p) => p == null)) return;
     const sum = implied.reduce((s, p) => s + (p as number), 0);
-    if (sum <= 0) continue;
+    if (sum <= 0) return;
 
-    const outcomes: ValueOutcome[] = group.map((r, i) => {
-      const fairProb = (implied[i] as number) / sum;
+    const outcomes: ValueOutcome[] = sorted.map((r, i) => {
+      const fairProb = ((implied[i] as number) / sum) * normTarget;
       const edge = r.best_odd * fairProb - 1;
       const kelly = r.best_odd > 1 ? Math.max(0, edge / (r.best_odd - 1)) : 0;
       const avgOdd = r.avg_odd ?? r.best_odd;
@@ -166,7 +170,7 @@ export function computeFixtureValue(
 
       return {
         marketKey: key,
-        marketLabel: MARKET_LABEL[key],
+        marketLabel: label,
         outcomeKey: r.outcome_label,
         outcomeLabel: outcomePt(r.outcome_label, homeName, awayName),
         fairProb,
@@ -185,8 +189,19 @@ export function computeFixtureValue(
       };
     });
 
-    markets.push({ key, label: MARKET_LABEL[key], anchor, margin: sum - 1, outcomes });
+    markets.push({ key, label, anchor, margin: sum / normTarget - 1, outcomes });
+  };
+
+  build('match_winner', 'Vencedor (1X2)', rows.filter((r) => r.market_key === 'match_winner'), 1);
+
+  const ouRows = rows.filter((r) => r.market_key === 'over_under');
+  for (const L of OU_LINES) {
+    const lineRows = ouRows.filter((r) => r.line === L);
+    if (lineRows.length >= 2) build(`ou_${L}`, `Mais/Menos ${String(L).replace('.', ',')} gols`, lineRows, 1);
   }
+
+  build('btts', 'Ambos marcam', rows.filter((r) => r.market_key === 'btts'), 1);
+  build('double_chance', 'Dupla chance', rows.filter((r) => r.market_key === 'double_chance'), 2);
 
   // hero = maior SCORE do jogo (não maior edge)
   const best = markets

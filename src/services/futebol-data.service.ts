@@ -284,10 +284,11 @@ export interface FutebolMatchupTendencies {
 }
 
 export interface FutebolOddsRow {
-  market_key: 'match_winner' | 'over_under_25' | 'btts' | 'double_chance';
+  market_key: 'match_winner' | 'over_under' | 'btts' | 'double_chance';
   market_label: string;
   outcome_label: string;
   outcome_order: number;
+  line: number | null;
   pinnacle_odd: number | null;
   avg_odd: number | null;
   best_odd: number;
