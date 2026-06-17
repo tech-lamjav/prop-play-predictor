@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Zap, ArrowRight } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
-import FutebolSubNav from '@/components/FutebolSubNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixtures, useFutebolOddsBoard } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
@@ -244,7 +243,6 @@ export default function FutebolHoje() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <FutebolSubNav />
       <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-6 md:gap-8 flex-1">
 
         {/* Briefing */}

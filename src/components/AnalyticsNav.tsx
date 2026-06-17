@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Radar,
   Trophy,
+  Goal,
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
@@ -178,6 +179,12 @@ export default function AnalyticsNav({
     { name: 'Relatório', href: '/report', icon: FileText },
   ];
 
+  const futebolItems = [
+    { name: 'Hoje', href: '/futebol', icon: Calendar },
+    { name: 'Oportunidades', href: '/futebol/oportunidades', icon: Zap },
+    { name: 'Jogos', href: '/futebol/jogos', icon: Goal },
+  ];
+
   const betinhoModuleItems = [
     { name: 'Apostas', href: '/bets', icon: Target },
     { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
@@ -187,7 +194,7 @@ export default function AnalyticsNav({
     return location.pathname === path;
   };
 
-  const activeModuleName = analysisItems.some((i) => isActive(i.href))
+  const activeModuleName = analysisItems.some((i) => isActive(i.href)) || location.pathname.startsWith('/futebol')
     ? 'Análises'
     : betinhoModuleItems.some((i) => isActive(i.href))
     ? 'Betinho'
@@ -275,6 +282,23 @@ export default function AnalyticsNav({
                     </DropdownMenuItem>
                   );
                 })}
+                <DropdownMenuSeparator className={t.dropdownBorder} />
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wide opacity-70">Futebol</DropdownMenuLabel>
+                {futebolItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={item.href}
+                      onClick={() => handleNavigation(item.href)}
+                      className={`cursor-pointer ${t.dropdownItemFocus} ${
+                        isActive(item.href) ? t.textAccent : ''
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {item.name}
+                    </DropdownMenuItem>
+                  );
+                })}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -327,20 +351,6 @@ export default function AnalyticsNav({
                 <span className="text-xs font-semibold uppercase tracking-wide">Bolão Copa 2026</span>
               </Button>
             )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/futebol')}
-              className={`flex items-center gap-2 px-4 h-9 ${
-                location.pathname.startsWith('/futebol')
-                  ? `${t.textAccent} ${t.ghostHoverBg}`
-                  : t.ghostBtn
-              }`}
-            >
-              <Target className="w-3.5 h-3.5" />
-              <span className="text-xs font-semibold uppercase tracking-wide">Futebol</span>
-            </Button>
           </div>
 
           {/* Right side - Auth & Premium */}
@@ -456,20 +466,32 @@ export default function AnalyticsNav({
                 </>
               )}
 
-              {/* Futebol */}
+              {/* Seção Futebol */}
               <div>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleNavigation('/futebol')}
-                  className={`w-full justify-start h-10 ${
-                    location.pathname.startsWith('/futebol')
-                      ? `${t.activeBg} ${t.textAccent}`
-                      : t.ghostBtn
-                  }`}
-                >
-                  <Target className="w-4 h-4 mr-3" />
-                  <span className="text-sm">Futebol</span>
-                </Button>
+                <p className={`px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider ${t.text} opacity-50`}>
+                  Futebol
+                </p>
+                <div className="flex flex-col gap-1">
+                  {futebolItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <Button
+                        key={item.href}
+                        variant="ghost"
+                        onClick={() => handleNavigation(item.href)}
+                        className={`w-full justify-start h-10 ${
+                          active
+                            ? `${t.activeBg} ${t.textAccent}`
+                            : t.ghostBtn
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 mr-3" />
+                        <span className="text-sm">{item.name}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Divisor */}

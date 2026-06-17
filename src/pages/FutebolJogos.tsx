@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
-import FutebolSubNav from '@/components/FutebolSubNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixtures, useFutebolStandings, useFutebolLeaders } from '@/hooks/use-futebol-data';
 import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders, FutebolZone } from '@/services/futebol-data.service';
@@ -293,7 +292,6 @@ export default function FutebolJogos() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <FutebolSubNav />
       <div className="max-w-3xl w-full mx-auto px-4 py-6 flex-1">
         <div className="mb-4">
           <h1 className="font-display text-2xl font-extrabold text-ink">Jogos</h1>
