@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Info, ChevronRight } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import FutebolSubNav from '@/components/FutebolSubNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolOddsBoard } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
@@ -77,6 +78,7 @@ export default function FutebolOportunidades() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
+      <FutebolSubNav />
       <div className="max-w-3xl w-full mx-auto px-4 py-6 flex-1">
         <div className="mb-5">
           <h1 className="font-display text-2xl font-extrabold text-ink">Oportunidades</h1>

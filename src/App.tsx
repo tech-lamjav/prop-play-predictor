@@ -48,7 +48,7 @@ const SharePage = lazyWithRetry(() => import("./pages/SharePage"));
 const Analise360List = lazyWithRetry(() => import("./pages/Analise360List"));
 const Analise360Detail = lazyWithRetry(() => import("./pages/Analise360Detail"));
 const HomeNBA = lazyWithRetry(() => import("./pages/HomeNBA"));
-const FutebolHome = lazyWithRetry(() => import("./pages/FutebolHome"));
+const FutebolHoje = lazyWithRetry(() => import("./pages/FutebolHoje"));
 const FutebolOportunidades = lazyWithRetry(() => import("./pages/FutebolOportunidades"));
 const FutebolJogos = lazyWithRetry(() => import("./pages/FutebolJogos"));
 const FutebolJogo = lazyWithRetry(() => import("./pages/FutebolJogo"));
@@ -135,7 +135,7 @@ const App = () => (
             <Route path="/game/:gameId" element={<GameDetail />} />
             {/* Futebol (value bet) — protótipo lendo BigQuery via FDW no dev.
                 Rotas públicas por enquanto, igual /home-games. */}
-            <Route path="/futebol" element={<FutebolHome />} />
+            <Route path="/futebol" element={<FutebolHoje />} />
             <Route path="/futebol/oportunidades" element={<FutebolOportunidades />} />
             <Route path="/futebol/jogos" element={<FutebolJogos />} />
             <Route path="/futebol/jogo/:fixtureId" element={<FutebolJogo />} />
