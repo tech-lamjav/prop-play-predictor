@@ -13,6 +13,7 @@ import {
   type FutebolMatchupMarkets,
   type FutebolMatchupTendencies,
   type FutebolOddsRow,
+  type FutebolOddsBoardRow,
   type FutebolLeaders,
 } from '@/services/futebol-data.service';
 
@@ -113,6 +114,16 @@ export function useFutebolFixtureOdds(fixtureId: number | undefined) {
     queryKey: ['futebol', 'odds', fixtureId],
     queryFn: () => futebolDataService.getFixtureOdds(fixtureId as number),
     enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolOddsBoard() {
+  return useQuery<FutebolOddsBoardRow[]>({
+    queryKey: ['futebol', 'odds-board'],
+    queryFn: () => futebolDataService.getOddsBoard(),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,

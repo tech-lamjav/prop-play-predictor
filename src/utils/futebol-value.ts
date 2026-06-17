@@ -144,3 +144,81 @@ export function computeFixtureValue(
 
 export const fmtPct = (p: number) => `${(p * 100).toFixed(0)}%`;
 export const fmtEdge = (e: number) => `${e >= 0 ? '+' : ''}${(e * 100).toFixed(1)}%`;
+
+// ---------- Board de oportunidades (todos os jogos com odds) ----------
+
+export interface BoardRow extends FutebolOddsRow {
+  fixture_id: number;
+  home_team_id: number;
+  away_team_id: number;
+  home_team_name: string;
+  away_team_name: string;
+  competition: string;
+  kickoff_utc: string | null;
+  status_short: string | null;
+}
+
+export interface Opportunity extends ValueOutcome {
+  fixtureId: number;
+  homeId: number;
+  awayId: number;
+  homeName: string;
+  awayName: string;
+  competition: string;
+  kickoffUtc: string | null;
+}
+
+export interface MonitoredFixture {
+  fixtureId: number;
+  homeId: number;
+  awayId: number;
+  homeName: string;
+  awayName: string;
+  competition: string;
+  kickoffUtc: string | null;
+  bestEdge: number;
+}
+
+export interface BoardResult {
+  fixtures: number;
+  opportunities: Opportunity[]; // edge >= 0, ordenadas desc
+  monitored: MonitoredFixture[]; // todos os jogos com odds (cobertura), ordenados por melhor edge
+}
+
+export function computeBoardOpportunities(rows: BoardRow[]): BoardResult {
+  const byFixture = new Map<number, BoardRow[]>();
+  for (const r of rows) {
+    const arr = byFixture.get(r.fixture_id);
+    if (arr) arr.push(r);
+    else byFixture.set(r.fixture_id, [r]);
+  }
+
+  const opportunities: Opportunity[] = [];
+  const monitored: MonitoredFixture[] = [];
+
+  for (const [fid, frows] of byFixture) {
+    const meta = frows[0];
+    const fv = computeFixtureValue(frows, meta.home_team_name, meta.away_team_name);
+    const outs = fv.markets.flatMap((m) => m.outcomes);
+    const bestEdge = outs.reduce((b, o) => Math.max(b, o.edge), -Infinity);
+    monitored.push({
+      fixtureId: fid, homeId: meta.home_team_id, awayId: meta.away_team_id,
+      homeName: meta.home_team_name, awayName: meta.away_team_name,
+      competition: meta.competition, kickoffUtc: meta.kickoff_utc,
+      bestEdge: Number.isFinite(bestEdge) ? bestEdge : 0,
+    });
+    for (const o of outs) {
+      if (o.edge >= 0) {
+        opportunities.push({
+          ...o, fixtureId: fid, homeId: meta.home_team_id, awayId: meta.away_team_id,
+          homeName: meta.home_team_name, awayName: meta.away_team_name,
+          competition: meta.competition, kickoffUtc: meta.kickoff_utc,
+        });
+      }
+    }
+  }
+
+  opportunities.sort((a, b) => b.edge - a.edge);
+  monitored.sort((a, b) => b.bestEdge - a.bestEdge);
+  return { fixtures: byFixture.size, opportunities, monitored };
+}

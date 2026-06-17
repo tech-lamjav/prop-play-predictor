@@ -297,6 +297,17 @@ export interface FutebolOddsRow {
   pin_close: number | null;
 }
 
+export interface FutebolOddsBoardRow extends FutebolOddsRow {
+  fixture_id: number;
+  home_team_id: number;
+  away_team_id: number;
+  home_team_name: string;
+  away_team_name: string;
+  competition: string;
+  kickoff_utc: string | null;
+  status_short: string | null;
+}
+
 export interface FutebolScorer {
   player_id: number;
   player_name: string;
@@ -450,6 +461,14 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolOddsRow[];
+    });
+  },
+
+  async getOddsBoard(): Promise<FutebolOddsBoardRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_odds_board');
+      if (error) throw error;
+      return (data || []) as FutebolOddsBoardRow[];
     });
   },
 

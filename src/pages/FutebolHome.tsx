@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Target } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixtures, useFutebolStandings, useFutebolLeaders } from '@/hooks/use-futebol-data';
@@ -79,6 +79,19 @@ export default function FutebolHome() {
           <h1 className="font-display text-2xl font-extrabold text-ink">Futebol</h1>
           <p className="text-sm text-ink-2">Brasileirão Série A · {SEASON}</p>
         </div>
+
+        {/* CTA Oportunidades (value bet) */}
+        <button
+          onClick={() => navigate('/futebol/oportunidades')}
+          className="w-full mb-6 flex items-center gap-3 rounded-rebrand-md bg-forest text-canvas px-4 py-3 hover:bg-forest-2 transition-colors text-left"
+        >
+          <Target className="w-5 h-5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold">Oportunidades</p>
+            <p className="text-[11px] text-canvas/80">Onde a melhor odd está acima da linha justa — ordenado por valor (+EV).</p>
+          </div>
+          <ChevronRight className="w-4 h-4 shrink-0" />
+        </button>
 
         {/* Próximos jogos */}
         <div className="mb-6">
