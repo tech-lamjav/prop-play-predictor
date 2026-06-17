@@ -79,7 +79,10 @@ Prioridade por valor/esforço:
 
 13. ~~**Tela Oportunidades**~~ ✅ FEITO (`/futebol/oportunidades`, `FutebolOportunidades.tsx`). RPC `get_futebol_odds_board()` (mesma lógica do detalhe, board-wide: todos os jogos com odds + metadados/team_ids). Util `computeBoardOpportunities` (reusa `computeFixtureValue` por jogo) → lista de oportunidades com edge ≥ 0 ranqueada por valor, + lista de jogos monitorados (cobertura, ordenada por melhor edge). Card por oportunidade: jogo (brasões), competição, kickoff, mercado+resultado, melhor odd+casa, prob. justa, selo +EV. CTA verde "Oportunidades" no topo da Home. Banner honesto. Mercados: Resultado, O/U 2,5, BTTS (Dupla Chance fora).
 
-Telas que habilita: enriquecer **Jogo**; nova tela **Time** (perfil); **Home** com tabela + próximos + artilheiros + CTA Oportunidades; **Oportunidades** (value board).
+14. ~~**Metodologia v2 (Score de Confiabilidade)**~~ ✅ FEITO. Ranquear por **edge cru** enganava (zebra Iraq +6,4% @15.75 era "hero"). `futebol-value.ts` agora calcula **Score 0–100** = Kelly (acionabilidade, pune longshot) × banda de odds (~1.4–4.0) × corroboração (melhor odd vs média; outlier de 1 casa = "linha suspeita") × âncora sharp (Pinnacle) × movimento. Stake = **½ Kelly**. Ranking/hero por score; abaixo da régua = "sem valor claro". Storytelling reescrito: mercado rotulado ("Vencedor (1X2)"), **sem casa de aposta** (direção do produto), "justa"→**"chance"** explicada, sem "N casas". Hero virou Argentina @1.50 (score 61); Iraq caiu da lista.
+15. ~~**Onda B — expansão de mercados**~~ ✅ FEITO. RPCs (`get_futebol_fixture_odds`/`get_futebol_odds_board`) retornam **O/U em várias linhas (campo `line`)** + **Dupla Chance**; motor generalizado num builder único com devig por normalização: **soma-1** nas partições (1X2, O/U por linha [1,5/2,5/3,5], BTTS) e **soma-2** na Dupla Chance. Surgiram novas oportunidades (ex.: O/U 1,5/3,5). **Asian Handicap fica de fora** (linha de quarto = push/meia-vitória, risco de erro). Telas não mudaram (renderizam os mercados do motor).
+
+Telas que habilita: enriquecer **Jogo**; nova tela **Time** (perfil); **Home** com tabela + próximos + artilheiros + CTA Oportunidades; **Oportunidades** (value board). Nav: **dropdown por produto** (NBA/Futebol/Betinho/Bolão), mobile acordeão.
 
 ## 7. Bloqueado (precisa de ingestão nova ou do modelo)
 
