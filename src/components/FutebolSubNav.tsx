@@ -16,7 +16,7 @@ export default function FutebolSubNav() {
 
   return (
     <div className="border-b border-line bg-white">
-      <div className="max-w-3xl w-full mx-auto px-4 flex gap-1">
+      <div className="max-w-6xl w-full mx-auto px-4 md:px-6 flex gap-1">
         {TABS.map((t) => {
           const active = isActive(t.to);
           const Icon = t.icon;
