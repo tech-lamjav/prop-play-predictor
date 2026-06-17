@@ -76,6 +76,11 @@ export function computeMatchupTendencies(
   homeName: string,
   awayName: string
 ): MatchupTendencies | null {
+  // Sem amostra suficiente (ex.: seleções de Copa sem season stats no dataset) o
+  // modelo gera λ≈0 e cospe "100%" sem sentido — melhor não exibir.
+  const MIN_GAMES = 5;
+  if ((home.played_total ?? 0) < MIN_GAMES || (away.played_total ?? 0) < MIN_GAMES) return null;
+
   const lam = lambdasFromSeason(home, away);
   if (!lam) return null;
   const { lh, la } = lam;

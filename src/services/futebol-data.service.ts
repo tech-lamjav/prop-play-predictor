@@ -283,6 +283,20 @@ export interface FutebolMatchupTendencies {
   away: FutebolTeamSeason | null;
 }
 
+export interface FutebolOddsRow {
+  market_key: 'match_winner' | 'over_under_25' | 'btts' | 'double_chance';
+  market_label: string;
+  outcome_label: string;
+  outcome_order: number;
+  pinnacle_odd: number | null;
+  avg_odd: number | null;
+  best_odd: number;
+  best_book: string;
+  n_books: number;
+  pin_open: number | null;
+  pin_close: number | null;
+}
+
 export interface FutebolScorer {
   player_id: number;
   player_name: string;
@@ -427,6 +441,16 @@ export const futebolDataService = {
       this.getTeamSeason(awayId, competition, season),
     ]);
     return { home, away };
+  },
+
+  async getFixtureOdds(fixtureId: number): Promise<FutebolOddsRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_odds', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolOddsRow[];
+    });
   },
 
   async getLeaders(competition: Competition, season: number): Promise<FutebolLeaders> {

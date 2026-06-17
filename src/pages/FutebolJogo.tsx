@@ -4,12 +4,16 @@ import { ChevronLeft, Info, MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolMatchupTendencies, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolMatchupTendencies, useFutebolFixtureOdds, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies, headlineMarket, STRENGTH_LABEL,
   type MarketTendency, type Strength,
 } from '@/utils/futebol-tendencias';
+import {
+  computeFixtureValue, fmtPct, fmtEdge,
+  type ValueOutcome, type ValueTier,
+} from '@/utils/futebol-value';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
 } from '@/services/futebol-data.service';
@@ -265,6 +269,36 @@ function TendencyRow({ m }: { m: MarketTendency }) {
   );
 }
 
+const VALUE_TIER: Record<ValueTier, { label: string; cls: string }> = {
+  value: { label: '+EV', cls: 'bg-forest text-canvas' },
+  slight: { label: '+EV', cls: 'bg-forest/15 text-forest border border-forest/40' },
+  fair: { label: 'justo', cls: 'bg-canvas-2 text-ink-3 border border-line' },
+  low: { label: 'abaixo', cls: 'text-ink-3' },
+};
+
+function ValueRow({ o }: { o: ValueOutcome }) {
+  const t = VALUE_TIER[o.tier];
+  const showEdge = o.tier === 'value' || o.tier === 'slight';
+  return (
+    <div className="flex items-center gap-2 py-2">
+      <span className="flex-1 min-w-0 truncate text-sm text-ink">{o.outcomeLabel}</span>
+      <span className="text-[10px] text-ink-3 tabular-nums hidden sm:inline">justa {fmtPct(o.fairProb)}</span>
+      {o.moveDir && (
+        <span className={`text-[10px] ${o.moveDir === 'up' ? 'text-status-success' : 'text-status-danger'}`} title="movimento da linha Pinnacle">
+          {o.moveDir === 'up' ? '▲' : '▼'}
+        </span>
+      )}
+      <span className="text-right tabular-nums">
+        <span className="font-bold text-ink">{o.bestOdd.toFixed(2)}</span>
+        <span className="text-[10px] text-ink-3 ml-1">{o.bestBook}</span>
+      </span>
+      <span className={`text-[9px] font-bold rounded px-1 py-0.5 shrink-0 tabular-nums w-14 text-center ${t.cls}`}>
+        {showEdge ? fmtEdge(o.edge) : t.label}
+      </span>
+    </div>
+  );
+}
+
 function MarketCmp({ label, home, away, suffix = '' }: { label: string; home: number | null | undefined; away: number | null | undefined; suffix?: string }) {
   return (
     <div className="flex items-center justify-between py-1.5 text-sm">
@@ -298,6 +332,11 @@ export default function FutebolJogo() {
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   const head = tendencies ? headlineMarket(tendencies.markets) : null;
+  const { data: oddsRows } = useFutebolFixtureOdds(fid);
+  const value = useMemo(() => {
+    if (!fixture || !oddsRows?.length) return null;
+    return computeFixtureValue(oddsRows, fixture.home_team_name, fixture.away_team_name);
+  }, [oddsRows, fixture]);
   const h2hHomeWins = h2h?.filter((m) => m.winner_team_id === fixture?.home_team_id).length ?? 0;
   const h2hAwayWins = h2h?.filter((m) => m.winner_team_id === fixture?.away_team_id).length ?? 0;
   const h2hDraws = h2h?.filter((m) => m.winner_team_id == null).length ?? 0;
@@ -377,6 +416,60 @@ export default function FutebolJogo() {
                 </button>
               </div>
             </div>
+
+            {/* Mercado & Valor — odds reais (devig vs linha sharp) */}
+            {value && value.markets.length > 0 && (
+              <div className={`${CARD} mt-3 p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-bold text-ink">Mercado &amp; Valor</span>
+                  <span className="text-[10px] uppercase tracking-wide text-ink-3">melhor odd × linha justa</span>
+                </div>
+
+                {value.best && (
+                  <div className={`rounded-rebrand-sm border p-3 mb-3 ${value.best.edge >= 0.015 ? 'bg-forest/10 border-forest/40' : 'bg-canvas-2 border-line'}`}>
+                    {value.best.edge >= 0 ? (
+                      <>
+                        <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Melhor valor agora · {value.best.marketLabel}</p>
+                        <div className="flex items-end justify-between gap-2">
+                          <span className="text-base font-bold text-ink leading-tight">{value.best.outcomeLabel}</span>
+                          <span className="text-2xl font-extrabold text-forest tabular-nums leading-none">{fmtEdge(value.best.edge)}</span>
+                        </div>
+                        <p className="text-xs text-ink-2 mt-1">
+                          <b>{value.best.bestOdd.toFixed(2)}</b> na <b>{value.best.bestBook}</b> · justa {fmtPct(value.best.fairProb)} ({value.best.nBooks} casas)
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-ink-2">
+                        Sem valor claro nos mercados monitorados agora — as melhores odds estão abaixo da linha justa do mercado. Preços de referência abaixo.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {value.markets.map((m) => (
+                    <div key={m.key}>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[11px] font-bold text-ink-2">{m.label}</span>
+                        <span className="text-[10px] text-ink-3">
+                          {m.anchor === 'pinnacle' ? 'justa: Pinnacle' : 'justa: consenso'} · margem {(m.margin * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="divide-y divide-line">
+                        {m.outcomes.map((o) => <ValueRow key={o.outcomeKey} o={o} />)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-start gap-2 mt-3 pt-3 border-t border-line">
+                  <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
+                  <p className="text-[10px] text-ink-3 leading-snug">
+                    Odds coletadas em T-24h e T-1h (não ao vivo). "Justa" = probabilidade após remover a margem (devig) da linha sharp da <b className="text-ink-2">Pinnacle</b> (ou do consenso quando a Pinnacle não cobre o mercado). Valor = melhor odd acima da justa. Não é recomendação de aposta.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Leitura do Jogo — tendências por mercado (modelo de gols) */}
             {tendencies ? (
