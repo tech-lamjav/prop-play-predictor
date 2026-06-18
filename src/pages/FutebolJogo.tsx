@@ -310,7 +310,7 @@ function MarketCmp({ label, home, away, suffix = '' }: { label: string; home: nu
   );
 }
 
-const CARD = 'bg-white border border-line rounded-rebrand-md';
+const CARD = 'bg-white border border-line rounded-rebrand-xl';
 
 export default function FutebolJogo() {
   const { fixtureId } = useParams<{ fixtureId: string }>();
@@ -382,7 +382,7 @@ export default function FutebolJogo() {
         ) : (
           <>
             {/* Header */}
-            <div className="bg-white border border-line rounded-2xl p-5 md:p-6">
+            <div className="bg-white border border-line rounded-rebrand-xl p-5 md:p-6">
               <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
                 <span>{prettyRound(fixture.round)}</span>
                 {fixture.venue_name && (
@@ -423,7 +423,7 @@ export default function FutebolJogo() {
 
             {/* Mercado & Valor — odds reais (devig vs linha sharp) */}
             {value && value.markets.length > 0 && (
-              <div className={`${CARD} mt-3 p-4`}>
+              <div className={`${CARD} mt-4 p-5`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-bold text-ink">Mercado &amp; Valor</span>
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">valor por mercado</span>
@@ -478,7 +478,7 @@ export default function FutebolJogo() {
 
             {/* Segunda opinião — modelo da própria API-Football (referência, não recomendação) */}
             {pred?.has_prediction && (
-              <div className={`${CARD} mt-3 p-4`}>
+              <div className={`${CARD} mt-4 p-5`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-bold text-ink">Segunda opinião</span>
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">modelo da API · referência</span>
@@ -547,7 +547,7 @@ export default function FutebolJogo() {
 
             {/* Leitura do Jogo — tendências por mercado (modelo de gols) */}
             {tendencies ? (
-              <div className={`${CARD} mt-3 p-4`}>
+              <div className={`${CARD} mt-4 p-5`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-bold text-ink">Leitura do Jogo</span>
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">tendências por mercado</span>
@@ -600,7 +600,7 @@ export default function FutebolJogo() {
                 </div>
               </div>
             ) : markets?.home && markets?.away ? (
-              <div className={`${CARD} mt-3 p-4`}>
+              <div className={`${CARD} mt-4 p-5`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">Tendências · temporada</span>
@@ -625,7 +625,7 @@ export default function FutebolJogo() {
                 </TabsList>
 
                 <TabsContent value="stats" className="mt-3">
-                  <div className={`${CARD} p-4`}>
+                  <div className={`${CARD} p-5`}>
                     {home || away ? (
                       <>
                         <div className="flex items-center justify-between text-[11px] mb-2">
@@ -648,7 +648,7 @@ export default function FutebolJogo() {
                 </TabsContent>
 
                 <TabsContent value="lances" className="mt-3">
-                  <div className={`${CARD} p-4`}>
+                  <div className={`${CARD} p-5`}>
                     {extrasLoading ? (
                       <p className="text-sm text-ink-3 text-center py-4">Carregando lances…</p>
                     ) : extras?.events?.length ? (
@@ -674,7 +674,7 @@ export default function FutebolJogo() {
                     </div>
                   </div>
 
-                  <div className={`${CARD} p-4`}>
+                  <div className={`${CARD} p-5`}>
                     <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-2">Confrontos diretos</p>
                     {h2hLoading ? (
                       <p className="text-xs text-ink-3">Carregando…</p>
@@ -734,7 +734,7 @@ export default function FutebolJogo() {
                     </div>
                   )}
                   {injuries && injuries.length > 0 && (
-                    <div className={`${CARD} p-4`}>
+                    <div className={`${CARD} p-5`}>
                       <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-2">Desfalques</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <InjuryCol injuries={injuries} teamId={fixture.home_team_id} teamName={fixture.home_team_name} />
@@ -742,7 +742,7 @@ export default function FutebolJogo() {
                       </div>
                     </div>
                   )}
-                  <div className={`${CARD} p-4`}>
+                  <div className={`${CARD} p-5`}>
                     {extrasLoading ? (
                       <p className="text-sm text-ink-3 text-center py-4">Carregando escalação…</p>
                     ) : extras?.lineup_players?.length ? (
