@@ -4,7 +4,7 @@ import { ChevronLeft, Info, MapPin, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolMatchupTendencies, useFutebolFixtureOdds, useFutebolFixturePrediction, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureOdds, useFutebolFixturePrediction, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies, headlineMarket, STRENGTH_LABEL,
@@ -12,7 +12,7 @@ import {
 } from '@/utils/futebol-tendencias';
 import {
   computeFixtureValue, fmtPct, fmtEdge, fmtStake, HERO_MIN_SCORE,
-  type ValueOutcome, type ValueTier,
+  type ValueMarket, type ValueOutcome,
 } from '@/utils/futebol-value';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
@@ -269,43 +269,94 @@ function TendencyRow({ m }: { m: MarketTendency }) {
   );
 }
 
-const VALUE_TIER: Record<ValueTier, string> = {
-  value: 'bg-forest text-canvas',
-  slight: 'bg-forest/15 text-forest border border-forest/40',
-  fair: 'bg-canvas-2 text-ink-3 border border-line',
-  low: 'bg-canvas-2 text-ink-3 border border-line',
-};
 
-function ValueRow({ o }: { o: ValueOutcome }) {
+function scoreBadgeCls(score: number, suspect: boolean): string {
+  if (suspect) return 'bg-canvas-2 text-ink-3 border border-line';
+  if (score >= 55) return 'bg-forest text-canvas';
+  if (score >= HERO_MIN_SCORE) return 'bg-forest/15 text-forest border border-forest/40';
+  return 'bg-canvas-2 text-ink-3 border border-line';
+}
+
+const COLOR_1X2: Record<string, string> = { Home: 'bg-forest', Draw: 'bg-ink-3', Away: 'bg-amber' };
+
+// Barra de probabilidade 1X2 — a "cara do jogo" num gráfico (não 3 linhas de tabela)
+function Prob1X2Bar({ m }: { m: ValueMarket }) {
   return (
-    <div className="flex items-center gap-2 py-2">
-      <span className="flex-1 min-w-0 truncate text-sm text-ink">
-        {o.outcomeLabel}
-        {o.suspect && <AlertTriangle className="inline w-3 h-3 text-amber-2 ml-1 align-[-1px]" />}
-      </span>
-      <span className="text-[10px] text-ink-3 tabular-nums hidden sm:inline">chance {fmtPct(o.fairProb)}</span>
-      {o.moveDir && (
-        <span className={`text-[10px] ${o.moveDir === 'up' ? 'text-status-success' : 'text-status-danger'}`} title="movimento da linha sharp">
-          {o.moveDir === 'up' ? '▲' : '▼'}
-        </span>
-      )}
-      <span className="text-right tabular-nums">
-        <span className="font-bold text-ink">{o.bestOdd.toFixed(2)}</span>
-      </span>
-      <span className="text-[10px] text-ink-3 tabular-nums w-12 text-right">{fmtEdge(o.edge)}</span>
-      <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums w-9 text-center ${VALUE_TIER[o.tier]}`} title="Score de Confiabilidade (0–100)">
-        {o.score}
-      </span>
+    <div>
+      <div className="flex h-9 rounded-rebrand-sm overflow-hidden border border-line">
+        {m.outcomes.map((o) => (
+          <div key={o.outcomeKey} className={`${COLOR_1X2[o.outcomeKey] || 'bg-ink-3'} grid place-items-center`} style={{ width: `${Math.max(7, o.fairProb * 100)}%` }}>
+            <span className="text-[10px] font-bold text-white/95 tabular-nums">{fmtPct(o.fairProb)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-2 mt-2.5">
+        {m.outcomes.map((o) => (
+          <div key={o.outcomeKey} className="text-center">
+            <div className="text-[12px] font-semibold text-ink truncate">{o.outcomeLabel}</div>
+            <div className="text-lg font-bold text-ink tabular-nums leading-tight">{o.bestOdd.toFixed(2)}</div>
+            <span className={`text-[9px] font-bold rounded px-1.5 py-0.5 inline-block mt-1 tabular-nums ${scoreBadgeCls(o.score, o.suspect)}`}>
+              {o.score > 0 ? fmtEdge(o.edge) : 'sem valor'}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-function MarketCmp({ label, home, away, suffix = '' }: { label: string; home: number | null | undefined; away: number | null | undefined; suffix?: string }) {
+// Mini-card visual por mercado (O/U, BTTS, dupla chance): barra de chance + odd + score
+function MarketMiniCard({ m }: { m: ValueMarket }) {
   return (
-    <div className="flex items-center justify-between py-1.5 text-sm">
-      <span className="w-14 font-bold text-ink tabular-nums">{home ?? '—'}{home != null ? suffix : ''}</span>
-      <span className="flex-1 text-center text-[11px] text-ink-3 uppercase tracking-wide">{label}</span>
-      <span className="w-14 text-right font-bold text-ink tabular-nums">{away ?? '—'}{away != null ? suffix : ''}</span>
+    <div className="border border-line rounded-rebrand-md p-3.5">
+      <div className="text-[11px] font-bold text-ink-2 mb-2.5">{m.label}</div>
+      <div className="space-y-2.5">
+        {m.outcomes.map((o) => {
+          const pct = Math.min(100, Math.round(o.fairProb * 100));
+          return (
+            <div key={o.outcomeKey}>
+              <div className="flex items-center justify-between text-[12px] mb-1">
+                <span className="text-ink truncate flex items-center gap-1">
+                  {o.outcomeLabel}
+                  {o.suspect && <AlertTriangle className="w-3 h-3 text-amber-2" />}
+                </span>
+                <span className="flex items-center gap-2 tabular-nums shrink-0">
+                  <span className="font-bold text-ink">{o.bestOdd.toFixed(2)}</span>
+                  <span className={`text-[9px] font-bold rounded px-1 py-0.5 w-8 text-center ${scoreBadgeCls(o.score, o.suspect)}`}>{o.score}</span>
+                </span>
+              </div>
+              <div className="h-1.5 rounded bg-canvas-2 overflow-hidden">
+                <div className="h-full bg-forest/70" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Distribuição de gols do jogo (Poisson sobre λ total) — gráfico de barras vertical
+function GoalDistChart({ lh, la }: { lh: number; la: number }) {
+  const lambda = lh + la;
+  const fact = (n: number) => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
+  const pois = (k: number) => (Math.exp(-lambda) * Math.pow(lambda, k)) / fact(k);
+  const bars = [0, 1, 2, 3].map((k) => ({ k: String(k), p: pois(k) }));
+  const acc = bars.reduce((s, b) => s + b.p, 0);
+  bars.push({ k: '4+', p: Math.max(0, 1 - acc) });
+  const max = Math.max(...bars.map((b) => b.p), 0.001);
+  return (
+    <div>
+      <div className="flex items-end gap-2 h-24">
+        {bars.map((b) => (
+          <div key={b.k} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
+            <span className="text-[9px] text-ink-3 tabular-nums">{Math.round(b.p * 100)}%</span>
+            <div className="w-full bg-forest/80 rounded-t" style={{ height: `${(b.p / max) * 100}%` }} />
+            <span className="text-[10px] text-ink-2 font-semibold">{b.k}</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-ink-3 mt-1.5 text-center">distribuição de gols no jogo (modelo) · esperado {lambda.toFixed(1)}</p>
     </div>
   );
 }
@@ -320,9 +371,6 @@ export default function FutebolJogo() {
   const { data: extras, isLoading: extrasLoading } = useFutebolFixtureExtras(fid);
 
   const fixture = data?.fixture;
-  const { data: markets } = useFutebolMatchupMarkets(
-    fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
-  );
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
   const { data: tend } = useFutebolMatchupTendencies(
@@ -339,6 +387,7 @@ export default function FutebolJogo() {
     return computeFixtureValue(oddsRows, fixture.home_team_name, fixture.away_team_name);
   }, [oddsRows, fixture]);
   const { data: pred } = useFutebolFixturePrediction(fid);
+  const hasRail = !!(pred?.has_prediction || tendencies);
   const h2hHomeWins = h2h?.filter((m) => m.winner_team_id === fixture?.home_team_id).length ?? 0;
   const h2hAwayWins = h2h?.filter((m) => m.winner_team_id === fixture?.away_team_id).length ?? 0;
   const h2hDraws = h2h?.filter((m) => m.winner_team_id == null).length ?? 0;
@@ -361,7 +410,7 @@ export default function FutebolJogo() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <div className="max-w-4xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
+      <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         <button
           onClick={() => navigate('/futebol/jogos')}
           className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink mb-4"
@@ -421,64 +470,71 @@ export default function FutebolJogo() {
               </div>
             </div>
 
-            {/* Mercado & Valor — odds reais (devig vs linha sharp) */}
-            {value && value.markets.length > 0 && (
-              <div className={`${CARD} mt-4 p-5`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-bold text-ink">Mercado &amp; Valor</span>
-                  <span className="text-[10px] uppercase tracking-wide text-ink-3">valor por mercado</span>
-                </div>
-
-                {value.best && value.best.score >= HERO_MIN_SCORE && !value.best.suspect ? (
-                  <div className="rounded-rebrand-sm border p-3 mb-3 bg-forest/10 border-forest/40">
-                    <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Melhor valor · {value.best.marketLabel}</p>
-                    <div className="flex items-end justify-between gap-2">
-                      <span className="text-base font-bold text-ink leading-tight">{value.best.outcomeLabel}</span>
-                      <span className="flex items-baseline gap-0.5">
-                        <span className="text-2xl font-extrabold text-forest tabular-nums leading-none">{value.best.score}</span>
-                        <span className="text-[11px] text-ink-3">/100</span>
-                      </span>
-                    </div>
-                    <p className="text-xs text-ink-2 mt-1">
-                      odd <b>{value.best.bestOdd.toFixed(2)}</b> · valor {fmtEdge(value.best.edge)} · chance {fmtPct(value.best.fairProb)} · banca {fmtStake(value.best.stake)}
-                    </p>
+            {/* Hero do valor */}
+            {value?.best && value.best.score >= HERO_MIN_SCORE && !value.best.suspect && (
+              <div className="mt-4 rounded-rebrand-xl overflow-hidden relative text-white" style={{ background: 'linear-gradient(135deg, #0a3d2e 0%, #08321f 60%, #051f12 100%)' }}>
+                <div className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)', transform: 'translate(70px,-70px)' }} />
+                <div className="relative p-5 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <span className="inline-flex items-center gap-1.5 px-2 h-6 rounded-md text-[10px] uppercase tracking-[0.16em] font-bold" style={{ background: '#fbbf24', color: '#1a1d1a' }}>Melhor valor</span>
+                    <div className="text-xl font-bold mt-2 leading-tight">{value.best.outcomeLabel}</div>
+                    <div className="text-[12px] text-white/70 mt-0.5">{value.best.marketLabel} · odd {value.best.bestOdd.toFixed(2)} · {fmtEdge(value.best.edge)} acima da chance {fmtPct(value.best.fairProb)}</div>
+                    <span className="inline-block mt-2.5 px-2.5 h-7 leading-7 rounded-md text-[11px] font-semibold" style={{ background: 'rgba(251,191,36,0.18)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.35)' }}>Gestão de banca · arriscar até {fmtStake(value.best.stake)}</span>
                   </div>
-                ) : (
-                  <div className="rounded-rebrand-sm border p-3 mb-3 bg-canvas-2 border-line">
-                    <p className="text-xs text-ink-2">
-                      Sem valor claro neste jogo — as melhores odds estão perto da linha justa do mercado. Preços e score por mercado abaixo.
-                    </p>
+                  <div className="text-right shrink-0">
+                    <div className="text-[10px] uppercase tracking-[0.16em] text-white/50">Confiabilidade</div>
+                    <div className="flex items-baseline justify-end gap-1 mt-1"><span className="text-5xl font-bold tabular-nums leading-none" style={{ color: '#fbbf24' }}>{value.best.score}</span><span className="text-sm text-white/40">/100</span></div>
                   </div>
-                )}
-
-                <div className="space-y-3">
-                  {value.markets.map((m) => (
-                    <div key={m.key}>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[11px] font-bold text-ink-2">{m.label}</span>
-                        <span className="text-[10px] text-ink-3">
-                          chance: {m.anchor === 'pinnacle' ? 'linha sharp' : 'consenso'}
-                        </span>
-                      </div>
-                      <div className="divide-y divide-line">
-                        {m.outcomes.map((o) => <ValueRow key={o.outcomeKey} o={o} />)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-start gap-2 mt-3 pt-3 border-t border-line">
-                  <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
-                  <p className="text-[10px] text-ink-3 leading-snug">
-    O <b className="text-ink-2">Score (0–100)</b> combina valor (edge vs linha justa devigada da Pinnacle), gestão de banca (Kelly), odd numa banda sã e confirmação entre casas — zebra com edge alto mas 1 casa só fica com score baixo (linha suspeita). Odds em T-24h/T-1h (não ao vivo). Não é recomendação de aposta.
-                  </p>
                 </div>
               </div>
             )}
 
-            {/* Segunda opinião — modelo da própria API-Football (referência, não recomendação) */}
-            {pred?.has_prediction && (
-              <div className={`${CARD} mt-4 p-5`}>
+            {/* Conteúdo principal — 2 colunas */}
+            <div className="mt-4 grid lg:grid-cols-12 gap-4 items-start">
+              {/* Esquerda: Mercado & Valor (visual) */}
+              {value && value.markets.length > 0 && (
+                <div className={hasRail ? 'lg:col-span-8' : 'lg:col-span-12'}>
+                  <div className={`${CARD} p-5`}>
+                    <div className="mb-4">
+                      <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Odds reais · devig vs linha sharp</div>
+                      <div className="text-lg font-bold tracking-tight text-ink">Mercado &amp; Valor</div>
+                    </div>
+                    {(() => {
+                      const mw = value.markets.find((mk) => mk.key === 'match_winner');
+                      const others = value.markets.filter((mk) => mk.key !== 'match_winner');
+                      return (
+                        <>
+                          {mw && (
+                            <div className="mb-5">
+                              <div className="text-[11px] font-bold text-ink-2 mb-2">{mw.label}</div>
+                              <Prob1X2Bar m={mw} />
+                            </div>
+                          )}
+                          {others.length > 0 && (
+                            <div className="grid sm:grid-cols-2 gap-3">
+                              {others.map((mk) => <MarketMiniCard key={mk.key} m={mk} />)}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                    <div className="flex items-start gap-2 mt-4 pt-3 border-t border-line">
+                      <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
+                      <p className="text-[10px] text-ink-3 leading-snug">
+                        <b className="text-ink-2">Score (0–100)</b> combina valor (edge vs chance justa devigada da Pinnacle), gestão de banca (Kelly), odd numa banda sã e confirmação entre casas. Odds em T-24h/T-1h (não ao vivo). Não é recomendação.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Direita: contexto (modelo da API + nossa leitura) */}
+              {hasRail && (
+              <div className={`${value && value.markets.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-4`}>
+
+                {/* Segunda opinião — modelo da própria API-Football (referência) */}
+                {pred?.has_prediction && (
+              <div className={`${CARD} p-5`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-bold text-ink">Segunda opinião</span>
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">modelo da API · referência</span>
@@ -545,74 +601,37 @@ export default function FutebolJogo() {
               </div>
             )}
 
-            {/* Leitura do Jogo — tendências por mercado (modelo de gols) */}
-            {tendencies ? (
-              <div className={`${CARD} mt-4 p-5`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-bold text-ink">Leitura do Jogo</span>
-                  <span className="text-[10px] uppercase tracking-wide text-ink-3">tendências por mercado</span>
-                </div>
-
-                {head && (
-                  <div className="rounded-rebrand-sm bg-canvas-2 border border-line p-3 mb-3">
-                    <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Leitura principal · {head.group}</p>
-                    <div className="flex items-end justify-between gap-2">
-                      <span className="text-base font-bold text-ink leading-tight">{head.label}</span>
-                      <span className="text-2xl font-extrabold text-forest tabular-nums leading-none">{Math.round(head.prob * 100)}%</span>
+                {/* Leitura do Jogo — nosso modelo de gols */}
+                {tendencies && (
+                  <div className={`${CARD} p-5`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-bold text-ink">Leitura do Jogo</span>
+                      <span className="text-[10px] uppercase tracking-wide text-ink-3">nosso modelo</span>
                     </div>
-                    <p className="text-xs text-ink-2 mt-1">{head.reading}</p>
-                    <p className="text-[10px] text-ink-3 mt-1">Odd justa {head.fairOdds.toFixed(2)} — referência neutra do modelo.</p>
+                    <GoalDistChart lh={tendencies.lambdas.lh} la={tendencies.lambdas.la} />
+                    {head && (
+                      <div className="rounded-rebrand-sm bg-canvas-2 border border-line p-3 mt-3">
+                        <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Leitura principal · {head.group}</p>
+                        <div className="flex items-end justify-between gap-2">
+                          <span className="text-base font-bold text-ink leading-tight">{head.label}</span>
+                          <span className="text-2xl font-extrabold text-forest tabular-nums leading-none">{Math.round(head.prob * 100)}%</span>
+                        </div>
+                        <p className="text-xs text-ink-2 mt-1">{head.reading}</p>
+                      </div>
+                    )}
+                    <div className="divide-y divide-line mt-2">
+                      {tendencies.markets.filter((mk) => mk.key !== head?.key).map((mk) => (
+                        <TendencyRow key={mk.key} m={mk} />
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-ink-3 mt-3 leading-snug">
+                      Estimativa do nosso modelo de gols sobre as médias oficiais (com mando). Referência, não recomendação.
+                    </p>
                   </div>
                 )}
-
-                <p className="text-[10px] text-ink-3 mb-1">
-                  Gols esperados (modelo): <b className="text-forest">{fixture.home_team_name} {tendencies.lambdas.lh.toFixed(1)}</b>
-                  {' × '}
-                  <b className="text-amber-2">{tendencies.lambdas.la.toFixed(1)} {fixture.away_team_name}</b>
-                </p>
-
-                <div className="divide-y divide-line">
-                  {tendencies.markets.filter((m) => m.key !== head?.key).map((m) => (
-                    <TendencyRow key={m.key} m={m} />
-                  ))}
-                </div>
-
-                {markets?.home && markets?.away && (
-                  <div className="mt-3 pt-3 border-t border-line">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
-                      <span className="text-[10px] uppercase tracking-wide text-ink-3">Comparativo · temporada</span>
-                      <span className="text-[11px] font-bold text-amber-2 truncate text-right">{fixture.away_team_name}</span>
-                    </div>
-                    <MarketCmp label="Mais de 2.5 gols" home={markets.home.over25_pct} away={markets.away.over25_pct} suffix="%" />
-                    <MarketCmp label="Ambos marcam (BTTS)" home={markets.home.btts_pct} away={markets.away.btts_pct} suffix="%" />
-                    <MarketCmp label="Média de gols feitos" home={markets.home.avg_gf} away={markets.away.avg_gf} />
-                    <MarketCmp label="Média de gols sofridos" home={markets.home.avg_ga} away={markets.away.avg_ga} />
-                  </div>
-                )}
-
-                <div className="flex items-start gap-2 mt-3 pt-3 border-t border-line">
-                  <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
-                  <p className="text-[10px] text-ink-3 leading-snug">
-                    Estimativa do nosso modelo de gols sobre as médias oficiais da temporada (com mando).
-                    Não é recomendação — o comparativo de <b className="text-ink-2">valor</b> contra a odd da casa entra quando as odds forem integradas.
-                  </p>
-                </div>
               </div>
-            ) : markets?.home && markets?.away ? (
-              <div className={`${CARD} mt-4 p-5`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
-                  <span className="text-[10px] uppercase tracking-wide text-ink-3">Tendências · temporada</span>
-                  <span className="text-[11px] font-bold text-amber-2 truncate text-right">{fixture.away_team_name}</span>
-                </div>
-                <MarketCmp label="Mais de 2.5 gols" home={markets.home.over25_pct} away={markets.away.over25_pct} suffix="%" />
-                <MarketCmp label="Ambos marcam (BTTS)" home={markets.home.btts_pct} away={markets.away.btts_pct} suffix="%" />
-                <MarketCmp label="Média de gols feitos" home={markets.home.avg_gf} away={markets.away.avg_gf} />
-                <MarketCmp label="Média de gols sofridos" home={markets.home.avg_ga} away={markets.away.avg_ga} />
-                <p className="text-[10px] text-ink-3 mt-2">Frequência na temporada — descritivo, não é recomendação.</p>
-              </div>
-            ) : null}
+              )}
+            </div>
 
             {/* Estatística descritiva */}
             <div className="mt-4">
