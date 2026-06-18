@@ -421,7 +421,7 @@ function WhatToWatch({ value }: { value: FixtureValue }) {
 
   if (!top) {
     return (
-      <div className="rounded-rebrand-xl border border-line bg-white p-5">
+      <div className="rounded-rebrand-xl border border-line border-l-4 border-l-amber bg-white p-5">
         <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
         <div className="text-lg font-bold text-ink mt-1.5">Sem valor relevante</div>
         <p className="text-sm text-ink-2 mt-1">As melhores odds estão alinhadas à chance justa do mercado — nada que se destaque pra apostar aqui.</p>
@@ -461,7 +461,7 @@ function WhatToWatch({ value }: { value: FixtureValue }) {
 
   // valor pequeno → card branco, sem drama
   return (
-    <div className="rounded-rebrand-xl border border-line bg-white p-5">
+    <div className="rounded-rebrand-xl border border-line border-l-4 border-l-amber bg-white p-5">
       <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
       <div className="flex items-center gap-2 mt-1.5">
         <span className="text-[10px] font-bold rounded px-1.5 py-0.5 bg-amber/15 text-amber-2 border border-amber/30 uppercase tracking-[0.1em]">{verdict}</span>
@@ -479,7 +479,7 @@ function WhatToWatch({ value }: { value: FixtureValue }) {
 function ExploreMarkets({ markets }: { markets: ValueMarket[] }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`${CARD} p-5 mt-4`}>
+    <div className="bg-white border border-line border-l-4 border-l-forest/40 rounded-rebrand-xl p-5 mt-4">
       <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between text-left">
         <div>
           <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Odds reais · devig vs linha sharp</div>
@@ -570,7 +570,7 @@ export default function FutebolJogo() {
         ) : (
           <>
             {/* Header */}
-            <div className="bg-white border border-line rounded-rebrand-xl p-5 md:p-6">
+            <div className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
               <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
                 <span>{prettyRound(fixture.round)}</span>
                 {fixture.venue_name && (
@@ -625,7 +625,7 @@ export default function FutebolJogo() {
 
                 {/* Segunda opinião — modelo da própria API-Football (referência) */}
                 {pred?.has_prediction && (
-              <div className={`${CARD} p-5`}>
+              <div className="bg-amber/[0.04] border border-amber/25 rounded-rebrand-xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-bold text-ink">Segunda opinião</span>
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">modelo da API · referência</span>
@@ -694,7 +694,7 @@ export default function FutebolJogo() {
 
                 {/* Leitura do Jogo — nosso modelo de gols */}
                 {tendencies && (
-                  <div className={`${CARD} p-5`}>
+                  <div className="bg-forest/[0.04] border border-forest/25 rounded-rebrand-xl p-5">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-bold text-ink">Leitura do Jogo</span>
                       <span className="text-[10px] uppercase tracking-wide text-ink-3">nosso modelo</span>
