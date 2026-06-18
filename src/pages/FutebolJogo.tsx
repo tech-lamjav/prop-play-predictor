@@ -361,7 +361,7 @@ export default function FutebolJogo() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <div className="max-w-3xl w-full mx-auto px-4 py-6 flex-1">
+      <div className="max-w-4xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         <button
           onClick={() => navigate('/futebol/jogos')}
           className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink mb-4"
@@ -382,39 +382,41 @@ export default function FutebolJogo() {
         ) : (
           <>
             {/* Header */}
-            <div className={`${CARD} p-4`}>
-              <div className="flex items-center justify-center gap-2 mb-3 text-[10px] uppercase tracking-wide text-ink-3">
+            <div className="bg-white border border-line rounded-2xl p-5 md:p-6">
+              <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
                 <span>{prettyRound(fixture.round)}</span>
                 {fixture.venue_name && (
                   <><span>•</span><MapPin className="w-3 h-3" /><span>{fixture.venue_name}{fixture.venue_city ? `, ${fixture.venue_city}` : ''}</span></>
                 )}
               </div>
-              <div className="flex items-center justify-between">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
                 <button
                   onClick={() => navigate(`/futebol/time/${fixture.home_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
-                  className="flex-1 flex flex-col items-center gap-2 group"
+                  className="flex flex-col items-center gap-2 group"
                 >
                   <Crest name={fixture.home_team_name} logo={getFutebolTeamLogoUrl(fixture.home_team_id)} />
-                  <span className="text-sm text-ink font-medium text-center group-hover:text-forest">{fixture.home_team_name}</span>
+                  <span className="text-base font-semibold text-ink text-center group-hover:text-forest leading-tight">{fixture.home_team_name}</span>
+                  {!extrasLoading && <FormChips form={extras?.form_home || []} />}
                 </button>
-                <div className="px-4 text-center">
+                <div className="px-2 md:px-4 text-center pt-1">
                   {finished ? (
-                    <div className="text-3xl font-extrabold text-ink tabular-nums">
+                    <div className="text-4xl md:text-5xl font-extrabold text-ink tabular-nums leading-none">
                       {fixture.goals_home ?? '-'} <span className="text-ink-3">:</span> {fixture.goals_away ?? '-'}
                     </div>
                   ) : (
-                    <div className="text-sm font-semibold text-ink-2">{fmtDateTime(fixture.kickoff_utc)}</div>
+                    <div className="text-lg md:text-xl font-bold text-ink tabular-nums leading-none">{fmtDateTime(fixture.kickoff_utc)}</div>
                   )}
-                  <div className="text-[10px] text-ink-3 mt-1">
+                  <div className="text-[10px] uppercase tracking-wide text-ink-3 mt-2">
                     {finished ? 'Encerrado' : (fixture.status_long || 'Agendado')}
                   </div>
                 </div>
                 <button
                   onClick={() => navigate(`/futebol/time/${fixture.away_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
-                  className="flex-1 flex flex-col items-center gap-2 group"
+                  className="flex flex-col items-center gap-2 group"
                 >
                   <Crest name={fixture.away_team_name} logo={getFutebolTeamLogoUrl(fixture.away_team_id)} />
-                  <span className="text-sm text-ink font-medium text-center group-hover:text-forest">{fixture.away_team_name}</span>
+                  <span className="text-base font-semibold text-ink text-center group-hover:text-forest leading-tight">{fixture.away_team_name}</span>
+                  {!extrasLoading && <FormChips form={extras?.form_away || []} />}
                 </button>
               </div>
             </div>
