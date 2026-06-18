@@ -270,13 +270,6 @@ function TendencyRow({ m }: { m: MarketTendency }) {
 }
 
 
-function scoreBadgeCls(score: number, suspect: boolean): string {
-  if (suspect) return 'bg-canvas-2 text-ink-3 border border-line';
-  if (score >= 55) return 'bg-forest text-canvas';
-  if (score >= HERO_MIN_SCORE) return 'bg-forest/15 text-forest border border-forest/40';
-  return 'bg-canvas-2 text-ink-3 border border-line';
-}
-
 const COLOR_1X2: Record<string, string> = { Home: 'bg-forest', Draw: 'bg-ink-3', Away: 'bg-amber' };
 
 // Barra de probabilidade 1X2 — a "cara do jogo" num gráfico (não 3 linhas de tabela)
@@ -291,47 +284,95 @@ function Prob1X2Bar({ m }: { m: ValueMarket }) {
         ))}
       </div>
       <div className="grid grid-cols-3 gap-2 mt-2.5">
-        {m.outcomes.map((o) => (
-          <div key={o.outcomeKey} className="text-center">
-            <div className="text-[12px] font-semibold text-ink truncate">{o.outcomeLabel}</div>
-            <div className="text-lg font-bold text-ink tabular-nums leading-tight">{o.bestOdd.toFixed(2)}</div>
-            <span className={`text-[9px] font-bold rounded px-1.5 py-0.5 inline-block mt-1 tabular-nums ${scoreBadgeCls(o.score, o.suspect)}`}>
-              {o.score > 0 ? fmtEdge(o.edge) : 'sem valor'}
-            </span>
-          </div>
-        ))}
+        {m.outcomes.map((o) => {
+          const hasValue = o.score > 0 && !o.suspect;
+          return (
+            <div key={o.outcomeKey} className="text-center">
+              <div className="text-[12px] font-semibold text-ink truncate">{o.outcomeLabel}</div>
+              <div className="text-lg font-bold text-ink tabular-nums leading-tight">{o.bestOdd.toFixed(2)}</div>
+              {hasValue ? (
+                <span className="text-[10px] font-bold rounded px-1.5 py-0.5 inline-block mt-1 bg-forest text-canvas tabular-nums">valor {fmtEdge(o.edge)}</span>
+              ) : (
+                <span className="text-[10px] text-ink-3 inline-block mt-1">sem valor</span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// Mini-card visual por mercado (O/U, BTTS, dupla chance): barra de chance + odd + score
-function MarketMiniCard({ m }: { m: ValueMarket }) {
+// Linha de resultado: chance (barra) + odd + tag de valor (só quando há valor)
+function ValueOutcomeRow({ o }: { o: ValueOutcome }) {
+  const pct = Math.min(100, Math.round(o.fairProb * 100));
+  const hasValue = o.score > 0 && !o.suspect;
   return (
-    <div className="border border-line rounded-rebrand-md p-3.5">
-      <div className="text-[11px] font-bold text-ink-2 mb-2.5">{m.label}</div>
-      <div className="space-y-2.5">
-        {m.outcomes.map((o) => {
-          const pct = Math.min(100, Math.round(o.fairProb * 100));
-          return (
-            <div key={o.outcomeKey}>
-              <div className="flex items-center justify-between text-[12px] mb-1">
-                <span className="text-ink truncate flex items-center gap-1">
-                  {o.outcomeLabel}
-                  {o.suspect && <AlertTriangle className="w-3 h-3 text-amber-2" />}
-                </span>
-                <span className="flex items-center gap-2 tabular-nums shrink-0">
-                  <span className="font-bold text-ink">{o.bestOdd.toFixed(2)}</span>
-                  <span className={`text-[9px] font-bold rounded px-1 py-0.5 w-8 text-center ${scoreBadgeCls(o.score, o.suspect)}`}>{o.score}</span>
-                </span>
-              </div>
-              <div className="h-1.5 rounded bg-canvas-2 overflow-hidden">
-                <div className="h-full bg-forest/70" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          );
-        })}
+    <div className="py-2.5 border-t border-line first:border-t-0">
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <span className="text-sm text-ink truncate flex items-center gap-1">
+          {o.outcomeLabel}
+          {o.suspect && <AlertTriangle className="w-3 h-3 text-amber-2" />}
+        </span>
+        <span className="flex items-center gap-2.5 shrink-0">
+          {hasValue && <span className="text-[10px] font-bold rounded px-1.5 py-0.5 bg-forest text-canvas tabular-nums">valor {fmtEdge(o.edge)}</span>}
+          <span className="text-base font-bold text-ink tabular-nums">{o.bestOdd.toFixed(2)}</span>
+        </span>
       </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-2 rounded-full bg-canvas-2 overflow-hidden">
+          <div className={`h-full ${hasValue ? 'bg-forest' : 'bg-forest/40'}`} style={{ width: `${pct}%` }} />
+        </div>
+        <span className="text-[10px] text-ink-3 tabular-nums w-20 text-right">chance {fmtPct(o.fairProb)}</span>
+      </div>
+    </div>
+  );
+}
+
+const MARKET_TABS: { id: string; label: string; match: (k: string) => boolean }[] = [
+  { id: 'resultado', label: 'Resultado', match: (k) => k === 'match_winner' },
+  { id: 'gols', label: 'Gols', match: (k) => k.startsWith('ou_') },
+  { id: 'btts', label: 'Ambos marcam', match: (k) => k === 'btts' },
+  { id: 'dupla', label: 'Dupla chance', match: (k) => k === 'double_chance' },
+];
+
+// Board de mercados com NAVEGAÇÃO por abas (não grid de cards)
+function ValueMarketBoard({ markets }: { markets: ValueMarket[] }) {
+  const tabs = MARKET_TABS.filter((t) => markets.some((m) => t.match(m.key)));
+  const golsLines = markets.filter((m) => m.key.startsWith('ou_'));
+  const [tab, setTab] = useState(tabs[0]?.id ?? 'resultado');
+  const [line, setLine] = useState(golsLines.find((m) => m.key === 'ou_2.5')?.key ?? golsLines[0]?.key ?? '');
+
+  const active = tabs.find((t) => t.id === tab) ?? tabs[0];
+  const shown = active?.id === 'gols'
+    ? (golsLines.find((m) => m.key === line) ?? golsLines[0])
+    : markets.find((m) => active?.match(m.key));
+
+  return (
+    <div>
+      <div className="flex gap-1 mb-4 bg-canvas-2 border border-line rounded-rebrand-md p-1 w-fit max-w-full overflow-x-auto">
+        {tabs.map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)} className={`h-8 px-3 rounded-rebrand-sm text-xs font-semibold whitespace-nowrap transition-colors ${tab === t.id ? 'bg-white text-ink shadow-sm' : 'text-ink-2 hover:text-ink'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {active?.id === 'gols' && golsLines.length > 1 && (
+        <div className="flex gap-1.5 mb-3">
+          {golsLines.map((m) => (
+            <button key={m.key} onClick={() => setLine(m.key)} className={`h-7 px-3 rounded-rebrand-sm text-[11px] font-semibold border transition-colors ${line === m.key ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink-2 border-line hover:text-ink'}`}>
+              {m.label.replace('Mais/Menos ', '').replace(' gols', '')}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {shown && active?.id === 'resultado' ? (
+        <Prob1X2Bar m={shown} />
+      ) : shown ? (
+        <div>{shown.outcomes.map((o) => <ValueOutcomeRow key={o.outcomeKey} o={o} />)}</div>
+      ) : null}
     </div>
   );
 }
@@ -406,6 +447,12 @@ export default function FutebolJogo() {
     .filter((p) => p.rating != null)
     .sort((a, b) => (b.rating as number) - (a.rating as number))
     .slice(0, 3);
+
+  const hasDescriptive = !!(
+    home || away ||
+    extras?.events?.length || extras?.lineup_players?.length ||
+    (h2h && h2h.length) || extras?.form_home?.length || extras?.form_away?.length
+  );
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
@@ -499,29 +546,11 @@ export default function FutebolJogo() {
                       <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Odds reais · devig vs linha sharp</div>
                       <div className="text-lg font-bold tracking-tight text-ink">Mercado &amp; Valor</div>
                     </div>
-                    {(() => {
-                      const mw = value.markets.find((mk) => mk.key === 'match_winner');
-                      const others = value.markets.filter((mk) => mk.key !== 'match_winner');
-                      return (
-                        <>
-                          {mw && (
-                            <div className="mb-5">
-                              <div className="text-[11px] font-bold text-ink-2 mb-2">{mw.label}</div>
-                              <Prob1X2Bar m={mw} />
-                            </div>
-                          )}
-                          {others.length > 0 && (
-                            <div className="grid sm:grid-cols-2 gap-3">
-                              {others.map((mk) => <MarketMiniCard key={mk.key} m={mk} />)}
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
+                    <ValueMarketBoard markets={value.markets} />
                     <div className="flex items-start gap-2 mt-4 pt-3 border-t border-line">
                       <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
                       <p className="text-[10px] text-ink-3 leading-snug">
-                        <b className="text-ink-2">Score (0–100)</b> combina valor (edge vs chance justa devigada da Pinnacle), gestão de banca (Kelly), odd numa banda sã e confirmação entre casas. Odds em T-24h/T-1h (não ao vivo). Não é recomendação.
+                        <b className="text-ink-2">Chance</b> = probabilidade justa do mercado (devig da linha sharp da Pinnacle). <b className="text-ink-2">Valor</b> = quando a melhor odd paga acima dessa chance. O destaque no topo é a aposta de maior <b className="text-ink-2">confiabilidade</b> (Score, que pondera valor + gestão de banca + odd sã). Odds em T-24h/T-1h, não ao vivo. Não é recomendação.
                       </p>
                     </div>
                   </div>
@@ -633,7 +662,8 @@ export default function FutebolJogo() {
               )}
             </div>
 
-            {/* Estatística descritiva */}
+            {/* Estatística descritiva (só quando há dado) */}
+            {hasDescriptive && (
             <div className="mt-4">
               <Tabs defaultValue="stats">
                 <TabsList className="bg-canvas-2 border border-line">
@@ -796,6 +826,7 @@ export default function FutebolJogo() {
                 </TabsContent>
               </Tabs>
             </div>
+            )}
           </>
         )}
       </div>
