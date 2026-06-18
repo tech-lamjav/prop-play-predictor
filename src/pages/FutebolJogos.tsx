@@ -292,7 +292,7 @@ export default function FutebolJogos() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <div className="max-w-3xl w-full mx-auto px-4 py-6 flex-1">
+      <div className="max-w-4xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         <div className="mb-4">
           <h1 className="font-display text-2xl font-extrabold text-ink">Jogos</h1>
           <p className="text-sm text-ink-2">Rodadas, classificação e artilheiros por competição.</p>

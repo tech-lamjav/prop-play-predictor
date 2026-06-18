@@ -79,7 +79,7 @@ export default function FutebolOportunidades() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <div className="max-w-3xl w-full mx-auto px-4 py-6 flex-1">
+      <div className="max-w-4xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         <div className="mb-5">
           <h1 className="font-display text-2xl font-extrabold text-ink">Oportunidades</h1>
           <p className="text-sm text-ink-2">
@@ -101,7 +101,7 @@ export default function FutebolOportunidades() {
             </p>
 
             {board.opportunities.length > 0 ? (
-              <div className="space-y-2">
+              <div className="grid sm:grid-cols-2 gap-3">
                 {board.opportunities.map((o) => (
                   <OpportunityCard key={`${o.fixtureId}-${o.marketKey}-${o.outcomeKey}`} o={o} onClick={() => go(o.fixtureId)} />
                 ))}
