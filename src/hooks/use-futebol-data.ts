@@ -14,6 +14,7 @@ import {
   type FutebolMatchupTendencies,
   type FutebolOddsRow,
   type FutebolOddsBoardRow,
+  type FutebolPrediction,
   type FutebolLeaders,
 } from '@/services/futebol-data.service';
 
@@ -113,6 +114,17 @@ export function useFutebolFixtureOdds(fixtureId: number | undefined) {
   return useQuery<FutebolOddsRow[]>({
     queryKey: ['futebol', 'odds', fixtureId],
     queryFn: () => futebolDataService.getFixtureOdds(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolFixturePrediction(fixtureId: number | undefined) {
+  return useQuery<FutebolPrediction | null>({
+    queryKey: ['futebol', 'prediction', fixtureId],
+    queryFn: () => futebolDataService.getFixturePrediction(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,

@@ -4,7 +4,7 @@ import { ChevronLeft, Info, MapPin, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolMatchupTendencies, useFutebolFixtureOdds, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupMarkets, useFutebolMatchupTendencies, useFutebolFixtureOdds, useFutebolFixturePrediction, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies, headlineMarket, STRENGTH_LABEL,
@@ -338,6 +338,7 @@ export default function FutebolJogo() {
     if (!fixture || !oddsRows?.length) return null;
     return computeFixtureValue(oddsRows, fixture.home_team_name, fixture.away_team_name);
   }, [oddsRows, fixture]);
+  const { data: pred } = useFutebolFixturePrediction(fid);
   const h2hHomeWins = h2h?.filter((m) => m.winner_team_id === fixture?.home_team_id).length ?? 0;
   const h2hAwayWins = h2h?.filter((m) => m.winner_team_id === fixture?.away_team_id).length ?? 0;
   const h2hDraws = h2h?.filter((m) => m.winner_team_id == null).length ?? 0;
@@ -470,6 +471,34 @@ export default function FutebolJogo() {
     O <b className="text-ink-2">Score (0–100)</b> combina valor (edge vs linha justa devigada da Pinnacle), gestão de banca (Kelly), odd numa banda sã e confirmação entre casas — zebra com edge alto mas 1 casa só fica com score baixo (linha suspeita). Odds em T-24h/T-1h (não ao vivo). Não é recomendação de aposta.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Segunda opinião — modelo da própria API-Football (referência, não recomendação) */}
+            {pred?.has_prediction && (
+              <div className={`${CARD} mt-3 p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-bold text-ink">Segunda opinião</span>
+                  <span className="text-[10px] uppercase tracking-wide text-ink-3">modelo da API · referência</span>
+                </div>
+                {[
+                  { label: fixture.home_team_name, pct: pred.prob_home_pct ?? 0 },
+                  { label: 'Empate', pct: pred.prob_draw_pct ?? 0 },
+                  { label: fixture.away_team_name, pct: pred.prob_away_pct ?? 0 },
+                ].map((r) => (
+                  <div key={r.label} className="py-1.5">
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-ink truncate">{r.label}</span>
+                      <span className="font-bold text-ink tabular-nums">{Math.round(r.pct)}%</span>
+                    </div>
+                    <div className="h-1.5 rounded bg-canvas-2 overflow-hidden">
+                      <div className="h-full bg-forest" style={{ width: `${Math.max(0, Math.min(100, r.pct))}%` }} />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-[10px] text-ink-3 mt-2 leading-snug">
+                  Probabilidades do modelo da própria API-Football, separado do nosso. Usamos como <b className="text-ink-2">referência</b> pra checar se o valor do mercado tem respaldo — não é recomendação.
+                </p>
               </div>
             )}
 

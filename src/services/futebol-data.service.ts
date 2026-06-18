@@ -298,6 +298,15 @@ export interface FutebolOddsRow {
   pin_close: number | null;
 }
 
+export interface FutebolPrediction {
+  has_prediction: boolean;
+  predicted_winner_name: string | null;
+  advice: string | null;
+  prob_home_pct: number | null;
+  prob_draw_pct: number | null;
+  prob_away_pct: number | null;
+}
+
 export interface FutebolOddsBoardRow extends FutebolOddsRow {
   fixture_id: number;
   home_team_id: number;
@@ -453,6 +462,17 @@ export const futebolDataService = {
       this.getTeamSeason(awayId, competition, season),
     ]);
     return { home, away };
+  },
+
+  async getFixturePrediction(fixtureId: number): Promise<FutebolPrediction | null> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_prediction', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      const row = (data || [])[0];
+      return (row || null) as FutebolPrediction | null;
+    });
   },
 
   async getFixtureOdds(fixtureId: number): Promise<FutebolOddsRow[]> {
