@@ -1,6 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Info, MapPin, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Info, MapPin, AlertTriangle, ChevronDown } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -12,7 +12,7 @@ import {
 } from '@/utils/futebol-tendencias';
 import {
   computeFixtureValue, fmtPct, fmtEdge, fmtStake, HERO_MIN_SCORE,
-  type ValueMarket, type ValueOutcome,
+  type FixtureValue, type ValueMarket, type ValueOutcome,
 } from '@/utils/futebol-value';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
@@ -404,6 +404,98 @@ function GoalDistChart({ lh, la }: { lh: number; la: number }) {
 
 const CARD = 'bg-white border border-line rounded-rebrand-xl';
 
+// Síntese "O que olhar neste jogo" — decide e mostra a melhor aposta em palavras
+function WhatToWatch({ value }: { value: FixtureValue }) {
+  const ranked = value.markets
+    .flatMap((m) => m.outcomes)
+    .filter((o) => o.score > 0 && !o.suspect)
+    .sort((a, b) => b.score - a.score);
+  const top = ranked[0];
+  const second = ranked[1];
+  const score = top?.score ?? 0;
+  const e = (top?.edge ?? 0) * 100;
+  // palavra descreve o TAMANHO do valor (edge); a Confiabilidade (Score) é o número à parte
+  const verdict = e >= 4 ? 'Valor forte' : e >= 2 ? 'Valor moderado' : e >= 0.8 ? 'Valor pequeno' : 'Valor marginal';
+  const tinted = score >= HERO_MIN_SCORE;
+  const ruler = 'Régua do valor: acima de ~4% é raro/forte · 1–3% é o normal do dia · abaixo de ~1% é ruído. A Confiabilidade (Score) pondera valor + gestão de banca + odd sã.';
+
+  if (!top) {
+    return (
+      <div className="rounded-rebrand-xl border border-line bg-white p-5">
+        <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
+        <div className="text-lg font-bold text-ink mt-1.5">Sem valor relevante</div>
+        <p className="text-sm text-ink-2 mt-1">As melhores odds estão alinhadas à chance justa do mercado — nada que se destaque pra apostar aqui.</p>
+        <p className="text-[10px] text-ink-3 mt-3">{ruler}</p>
+      </div>
+    );
+  }
+
+  if (tinted) {
+    return (
+      <div className="rounded-rebrand-xl overflow-hidden relative text-white" style={{ background: 'linear-gradient(135deg, #0a3d2e 0%, #08321f 60%, #051f12 100%)' }}>
+        <div className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)', transform: 'translate(70px,-70px)' }} />
+        <div className="relative p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/50 font-semibold">O que olhar neste jogo</div>
+              <span className="inline-flex items-center px-2 h-6 rounded-md text-[10px] uppercase tracking-[0.12em] font-bold mt-2" style={{ background: '#fbbf24', color: '#1a1d1a' }}>{verdict}</span>
+              <div className="text-xl font-bold mt-2 leading-tight">{top.outcomeLabel} <span className="text-white/50 text-sm font-normal">· {top.marketLabel}</span></div>
+              <p className="text-[13px] text-white/75 mt-1">Odd {top.bestOdd.toFixed(2)} · paga {fmtEdge(top.edge)} acima da chance justa ({fmtPct(top.fairProb)}).</p>
+              <span className="inline-block mt-2.5 px-2.5 h-7 leading-7 rounded-md text-[11px] font-semibold" style={{ background: 'rgba(251,191,36,0.18)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.35)' }}>Gestão de banca · arriscar até {fmtStake(top.stake)}</span>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/50">Confiabilidade</div>
+              <div className="flex items-baseline justify-end gap-1 mt-1"><span className="text-5xl font-bold tabular-nums leading-none" style={{ color: '#fbbf24' }}>{score}</span><span className="text-sm text-white/40">/100</span></div>
+            </div>
+          </div>
+          {second && (
+            <div className="mt-4 pt-3 border-t border-white/10 text-[12px] text-white/70">
+              2ª opção: <b className="text-white">{second.outcomeLabel}</b> ({second.marketLabel}) · odd {second.bestOdd.toFixed(2)} · {fmtEdge(second.edge)} · score {second.score}
+            </div>
+          )}
+          <p className="text-[10px] text-white/45 mt-3 leading-snug">{ruler}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // valor pequeno → card branco, sem drama
+  return (
+    <div className="rounded-rebrand-xl border border-line bg-white p-5">
+      <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
+      <div className="flex items-center gap-2 mt-1.5">
+        <span className="text-[10px] font-bold rounded px-1.5 py-0.5 bg-amber/15 text-amber-2 border border-amber/30 uppercase tracking-[0.1em]">{verdict}</span>
+        <span className="text-xs text-ink-3 tabular-nums">score {score}/100</span>
+      </div>
+      <div className="text-lg font-bold text-ink mt-2 leading-tight">{top.outcomeLabel} <span className="text-ink-3 text-sm font-normal">· {top.marketLabel}</span></div>
+      <p className="text-sm text-ink-2 mt-1">Odd {top.bestOdd.toFixed(2)} · paga {fmtEdge(top.edge)} acima da chance justa ({fmtPct(top.fairProb)}). Existe, mas é pequeno.</p>
+      {second && <p className="text-[12px] text-ink-3 mt-2">2ª opção: <b className="text-ink-2">{second.outcomeLabel}</b> ({second.marketLabel}) · odd {second.bestOdd.toFixed(2)} · {fmtEdge(second.edge)}</p>}
+      <p className="text-[10px] text-ink-3 mt-3">{ruler}</p>
+    </div>
+  );
+}
+
+// "Explorar mercados" — board completo por abas, recolhido por padrão
+function ExploreMarkets({ markets }: { markets: ValueMarket[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`${CARD} p-5 mt-4`}>
+      <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between text-left">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Odds reais · devig vs linha sharp</div>
+          <div className="text-base font-bold text-ink">Explorar mercados</div>
+        </div>
+        <ChevronDown className={`w-5 h-5 text-ink-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open ? (
+        <div className="mt-4"><ValueMarketBoard markets={markets} /></div>
+      ) : (
+        <p className="text-[11px] text-ink-3 mt-1">Resultado, gols (over/under), ambos marcam e dupla chance — odds e chance por mercado.</p>
+      )}
+    </div>
+  );
+}
+
 export default function FutebolJogo() {
   const { fixtureId } = useParams<{ fixtureId: string }>();
   const navigate = useNavigate();
@@ -517,43 +609,13 @@ export default function FutebolJogo() {
               </div>
             </div>
 
-            {/* Hero do valor */}
-            {value?.best && value.best.score >= HERO_MIN_SCORE && !value.best.suspect && (
-              <div className="mt-4 rounded-rebrand-xl overflow-hidden relative text-white" style={{ background: 'linear-gradient(135deg, #0a3d2e 0%, #08321f 60%, #051f12 100%)' }}>
-                <div className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)', transform: 'translate(70px,-70px)' }} />
-                <div className="relative p-5 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <span className="inline-flex items-center gap-1.5 px-2 h-6 rounded-md text-[10px] uppercase tracking-[0.16em] font-bold" style={{ background: '#fbbf24', color: '#1a1d1a' }}>Melhor valor</span>
-                    <div className="text-xl font-bold mt-2 leading-tight">{value.best.outcomeLabel}</div>
-                    <div className="text-[12px] text-white/70 mt-0.5">{value.best.marketLabel} · odd {value.best.bestOdd.toFixed(2)} · {fmtEdge(value.best.edge)} acima da chance {fmtPct(value.best.fairProb)}</div>
-                    <span className="inline-block mt-2.5 px-2.5 h-7 leading-7 rounded-md text-[11px] font-semibold" style={{ background: 'rgba(251,191,36,0.18)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.35)' }}>Gestão de banca · arriscar até {fmtStake(value.best.stake)}</span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-[10px] uppercase tracking-[0.16em] text-white/50">Confiabilidade</div>
-                    <div className="flex items-baseline justify-end gap-1 mt-1"><span className="text-5xl font-bold tabular-nums leading-none" style={{ color: '#fbbf24' }}>{value.best.score}</span><span className="text-sm text-white/40">/100</span></div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Conteúdo principal — 2 colunas */}
             <div className="mt-4 grid lg:grid-cols-12 gap-4 items-start">
-              {/* Esquerda: Mercado & Valor (visual) */}
+              {/* Esquerda: o que olhar (síntese) + explorar mercados */}
               {value && value.markets.length > 0 && (
                 <div className={hasRail ? 'lg:col-span-8' : 'lg:col-span-12'}>
-                  <div className={`${CARD} p-5`}>
-                    <div className="mb-4">
-                      <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Odds reais · devig vs linha sharp</div>
-                      <div className="text-lg font-bold tracking-tight text-ink">Mercado &amp; Valor</div>
-                    </div>
-                    <ValueMarketBoard markets={value.markets} />
-                    <div className="flex items-start gap-2 mt-4 pt-3 border-t border-line">
-                      <Info className="w-3.5 h-3.5 text-amber-2 mt-0.5 shrink-0" />
-                      <p className="text-[10px] text-ink-3 leading-snug">
-                        <b className="text-ink-2">Chance</b> = probabilidade justa do mercado (devig da linha sharp da Pinnacle). <b className="text-ink-2">Valor</b> = quando a melhor odd paga acima dessa chance. O destaque no topo é a aposta de maior <b className="text-ink-2">confiabilidade</b> (Score, que pondera valor + gestão de banca + odd sã). Odds em T-24h/T-1h, não ao vivo. Não é recomendação.
-                      </p>
-                    </div>
-                  </div>
+                  <WhatToWatch value={value} />
+                  <ExploreMarkets markets={value.markets} />
                 </div>
               )}
 
