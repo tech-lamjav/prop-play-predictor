@@ -305,6 +305,13 @@ export interface FutebolPrediction {
   prob_home_pct: number | null;
   prob_draw_pct: number | null;
   prob_away_pct: number | null;
+  cmp_form_home: number | null; cmp_form_away: number | null;
+  cmp_att_home: number | null; cmp_att_away: number | null;
+  cmp_def_home: number | null; cmp_def_away: number | null;
+  cmp_poisson_home: number | null; cmp_poisson_away: number | null;
+  cmp_h2h_home: number | null; cmp_h2h_away: number | null;
+  cmp_goals_home: number | null; cmp_goals_away: number | null;
+  cmp_total_home: number | null; cmp_total_away: number | null;
 }
 
 export interface FutebolOddsBoardRow extends FutebolOddsRow {

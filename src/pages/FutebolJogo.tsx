@@ -481,6 +481,7 @@ export default function FutebolJogo() {
                   <span className="text-sm font-bold text-ink">Segunda opinião</span>
                   <span className="text-[10px] uppercase tracking-wide text-ink-3">modelo da API · referência</span>
                 </div>
+                <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Quem vence (1X2)</p>
                 {[
                   { label: fixture.home_team_name, pct: pred.prob_home_pct ?? 0 },
                   { label: 'Empate', pct: pred.prob_draw_pct ?? 0 },
@@ -496,8 +497,48 @@ export default function FutebolJogo() {
                     </div>
                   </div>
                 ))}
-                <p className="text-[10px] text-ink-3 mt-2 leading-snug">
-                  Probabilidades do modelo da própria API-Football, separado do nosso. Usamos como <b className="text-ink-2">referência</b> pra checar se o valor do mercado tem respaldo — não é recomendação.
+
+                {(() => {
+                  const dims = [
+                    { label: 'Forma', h: pred.cmp_form_home, a: pred.cmp_form_away },
+                    { label: 'Ataque', h: pred.cmp_att_home, a: pred.cmp_att_away },
+                    { label: 'Defesa', h: pred.cmp_def_home, a: pred.cmp_def_away },
+                    { label: 'Tendência', h: pred.cmp_poisson_home, a: pred.cmp_poisson_away },
+                    { label: 'Confronto direto', h: pred.cmp_h2h_home, a: pred.cmp_h2h_away },
+                    { label: 'Gols', h: pred.cmp_goals_home, a: pred.cmp_goals_away },
+                    { label: 'Geral', h: pred.cmp_total_home, a: pred.cmp_total_away },
+                  ].filter((d) => (d.h ?? 0) + (d.a ?? 0) > 0);
+                  if (!dims.length) return null;
+                  return (
+                    <div className="mt-3 pt-3 border-t border-line">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
+                        <span className="text-[10px] uppercase tracking-wide text-ink-3">comparativo do modelo</span>
+                        <span className="text-[11px] font-bold text-amber-2 truncate text-right">{fixture.away_team_name}</span>
+                      </div>
+                      {dims.map((d) => {
+                        const h = d.h ?? 0, a = d.a ?? 0;
+                        const hPct = h + a > 0 ? (h / (h + a)) * 100 : 50;
+                        return (
+                          <div key={d.label} className="py-1.5">
+                            <div className="flex items-center justify-between text-[11px] mb-1 tabular-nums">
+                              <span className="font-bold text-ink w-8">{Math.round(h)}</span>
+                              <span className="text-[10px] text-ink-3 uppercase tracking-wide">{d.label}</span>
+                              <span className="font-bold text-ink w-8 text-right">{Math.round(a)}</span>
+                            </div>
+                            <div className="flex h-1.5 rounded overflow-hidden bg-canvas-2">
+                              <div className="bg-forest" style={{ width: `${hPct}%` }} />
+                              <div className="bg-amber" style={{ width: `${100 - hPct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                <p className="text-[10px] text-ink-3 mt-3 leading-snug">
+                  Probabilidades e comparativo do modelo da própria API-Football, separado do nosso. Usamos como <b className="text-ink-2">referência</b> pra checar se o valor do mercado tem respaldo — não é recomendação.
                 </p>
               </div>
             )}
