@@ -88,7 +88,7 @@ export default function FutebolTime() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <div className="max-w-3xl w-full mx-auto px-4 py-6 flex-1">
+      <div className="max-w-4xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         <button
           onClick={() => navigate('/futebol/jogos')}
           className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink mb-4"
@@ -107,12 +107,22 @@ export default function FutebolTime() {
         ) : (
           <>
             {/* Header */}
-            <div className={`${CARD} p-4 flex items-center gap-3`}>
-              <Crest name={data.team.team_name || ''} logo={getFutebolTeamLogoUrl(data.team.team_id)} />
-              <div>
-                <h1 className="font-display text-xl font-extrabold text-ink">{data.team.team_name}</h1>
-                <p className="text-xs text-ink-3">{COMP_LABEL[competition] || competition} · {season}</p>
+            <div className="bg-white border border-line rounded-2xl p-5 md:p-6">
+              <div className="flex items-center gap-4">
+                <Crest name={data.team.team_name || ''} logo={getFutebolTeamLogoUrl(data.team.team_id)} />
+                <div>
+                  <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">{data.team.team_name}</h1>
+                  <p className="text-xs text-ink-3">{COMP_LABEL[competition] || competition} · {season}</p>
+                </div>
               </div>
+              {raiox && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+                  <Tile label="Jogos" value={`${raiox.played_total ?? '—'}`} />
+                  <Tile label="V-E-D" value={`${raiox.wins_total ?? 0}-${raiox.draws_total ?? 0}-${raiox.loses_total ?? 0}`} />
+                  <Tile label="Gols feitos/jogo" value={fmtAvg(raiox.goals_for_avg_total)} />
+                  <Tile label="Gols sofridos/jogo" value={fmtAvg(raiox.goals_against_avg_total)} />
+                </div>
+              )}
             </div>
 
             {/* Raio-X da temporada (oficial) */}
