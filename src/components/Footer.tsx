@@ -36,7 +36,7 @@ const Footer = () => {
       };
 
   return (
-    <footer className={t.wrapper}>
+    <footer aria-label="Rodapé do site" className={t.wrapper}>
       <div className={`container mx-auto px-4 sm:px-6 py-12 ${t.body}`}>
         <div className="grid md:grid-cols-3 gap-8">
           {/* Brand */}
