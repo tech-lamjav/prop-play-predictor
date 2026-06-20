@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
-import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity } from '@/services/nba-data.service';
-import AnalyticsNav from '@/components/AnalyticsNav';
+import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones, PlayerPassingSeason } from '@/services/nba-data.service';
+import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
 import { PlayerHeader } from '@/components/nba/PlayerHeader';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShootingZonesCard } from '@/components/nba/ShootingZonesCard';
+import { MatchupZonesCard } from '@/components/nba/MatchupZonesCard';
 import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useAuth } from '@/hooks/use-auth';
@@ -69,6 +70,17 @@ export default function NBADashboard() {
   const [teammateGameIds, setTeammateGameIds] = useState<Map<number, Set<number>> | null>(null);
   const [teammateFilterLoading, setTeammateFilterLoading] = useState(!!initialTrigger);
   const [b2bOnly, setB2bOnly] = useState(false);
+  const [gamePeriod, setGamePeriod] = useState<'full' | 'q1' | 'h1'>('full');
+  const [periodStats, setPeriodStats] = useState<GamePlayerStats[]>([]);
+  const [periodStatsLoaded, setPeriodStatsLoaded] = useState(false);
+  const [oppRankings, setOppRankings] = useState<OpponentRankings | null>(null);
+  const [oppPlaytypes, setOppPlaytypes] = useState<TeamPlaytypes | null>(null);
+  const [oppShootingZones, setOppShootingZones] = useState<TeamOppShootingZones | null>(null);
+  const [passingSeason, setPassingSeason] = useState<PlayerPassingSeason | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<number | 'current'>('current');
+  const [seasonType, setSeasonType] = useState<'all' | 'regular' | 'playoffs' | 'playin'>('all');
+  const [historicalStats, setHistoricalStats] = useState<Map<number, GamePlayerStats[]>>(new Map());
+  const [historicalLoading, setHistoricalLoading] = useState(false);
 
   // React to URL param changes (stat type only — trigger handled below)
   useEffect(() => {
@@ -157,9 +169,76 @@ export default function NBADashboard() {
   // Ref to scroll chart into view when insight is clicked
   const chartRef = React.useRef<HTMLDivElement>(null);
 
+  // Lazy-load period stats when user switches to Q1/H1
+  useEffect(() => {
+    if (gamePeriod === 'full' || periodStatsLoaded || !player) return;
+    let cancelled = false;
+    nbaDataService.getPlayerPeriodStats(player.player_id, 100).then(data => {
+      if (!cancelled) {
+        setPeriodStats(data);
+        setPeriodStatsLoaded(true);
+      }
+    }).catch(e => console.error('Error loading period stats:', e));
+    return () => { cancelled = true; };
+  }, [gamePeriod, periodStatsLoaded, player]);
+
+  // Lazy-load historical stats for past seasons
+  useEffect(() => {
+    if (selectedSeason === 'current' || !player) return;
+    if (historicalStats.has(selectedSeason)) return;
+    let cancelled = false;
+    setHistoricalLoading(true);
+    nbaDataService.getPlayerHistoricalStats(player.player_id, selectedSeason).then(data => {
+      if (!cancelled) {
+        setHistoricalStats(prev => {
+          const next = new Map(prev);
+          next.set(selectedSeason, data);
+          return next;
+        });
+        setHistoricalLoading(false);
+      }
+    }).catch(e => {
+      console.error('Error loading historical stats:', e);
+      if (!cancelled) setHistoricalLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [selectedSeason, player, historicalStats]);
+
+  // Reset period to 'full' when switching to past season
+  useEffect(() => {
+    if (selectedSeason !== 'current' && gamePeriod !== 'full') {
+      setGamePeriod('full');
+    }
+  }, [selectedSeason]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync selectedStatType with gamePeriod (Q1/H1 tabs also change period)
+  useEffect(() => {
+    if (selectedStatType.startsWith('player_q1_')) {
+      if (gamePeriod !== 'q1') setGamePeriod('q1');
+    } else if (selectedStatType.startsWith('player_h1_')) {
+      if (gamePeriod !== 'h1') setGamePeriod('h1');
+    } else {
+      if (gamePeriod !== 'full') setGamePeriod('full');
+    }
+  }, [selectedStatType]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filter game stats based on selected filters
   const filteredGameStats = useMemo(() => {
-    let filtered = gameStats.filter(g => g.stat_type === selectedStatType);
+    let sourceStats: GamePlayerStats[];
+    if (selectedSeason !== 'current') {
+      sourceStats = historicalStats.get(selectedSeason) || [];
+    } else if (gamePeriod !== 'full') {
+      sourceStats = periodStats;
+    } else {
+      sourceStats = gameStats;
+    }
+
+    let filtered = sourceStats.filter(g => g.stat_type === selectedStatType);
+
+    // Apply season_type filter (historical only)
+    if (selectedSeason !== 'current' && seasonType !== 'all') {
+      filtered = filtered.filter(g => g.season_type === seasonType);
+    }
 
     // Apply home/away filter
     if (homeAway !== 'all') {
@@ -204,21 +283,33 @@ export default function NBADashboard() {
     }
 
     return filtered;
-  }, [gameStats, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds, b2bOnly, h2hOnly, teamData]);
+  }, [gameStats, periodStats, historicalStats, selectedSeason, seasonType, gamePeriod, selectedStatType, homeAway, lastNGames, teammateFilter, teammateGameIds, b2bOnly, h2hOnly, teamData]);
 
   // Get current betting line for selected stat type
+  // For periods/historical without market lines: fallback to player average rounded to .5
   const currentLine = useMemo(() => {
-    // Get the most recent game's line_most_recent for the selected stat type
-    const statsForType = gameStats.filter(g => g.stat_type === selectedStatType);
+    let sourceStats: GamePlayerStats[];
+    if (selectedSeason !== 'current') {
+      sourceStats = historicalStats.get(selectedSeason) || [];
+    } else if (gamePeriod !== 'full') {
+      sourceStats = periodStats;
+    } else {
+      sourceStats = gameStats;
+    }
+    const statsForType = sourceStats.filter(g => g.stat_type === selectedStatType);
     if (statsForType.length === 0) return null;
 
-    // Sort by date descending and get the first one's line_most_recent
+    // Try market line first
     const sortedStats = [...statsForType].sort((a, b) =>
       new Date(b.game_date).getTime() - new Date(a.game_date).getTime()
     );
+    const marketLine = sortedStats[0]?.line_most_recent ?? null;
+    if (marketLine !== null) return marketLine;
 
-    return sortedStats[0]?.line_most_recent ?? null;
-  }, [gameStats, selectedStatType]);
+    // Fallback: player average rounded down to nearest .5
+    const avg = statsForType.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / statsForType.length;
+    return Math.floor(avg) + 0.5;
+  }, [gameStats, periodStats, historicalStats, selectedSeason, gamePeriod, selectedStatType]);
 
   // Early returns (after all hooks)
   if (!authLoading && !user && player && !isFree && !isPicksTrial) {
@@ -249,6 +340,27 @@ export default function NBADashboard() {
       setTeammatesLoading(false);
       setTeamLoading(false);
       setShootingZonesLoading(false);
+
+      // Cache doesn't include opponent rankings/playtypes/zones — fetch in background
+      if (cached.teamData?.next_opponent_id) {
+        nbaDataService.getOpponentRankings(cached.teamData.next_opponent_id)
+          .then(data => setOppRankings(data))
+          .catch(e => console.error('Error loading opponent rankings:', e));
+        nbaDataService.getTeamPlaytypes(cached.teamData.next_opponent_id)
+          .then(data => setOppPlaytypes(data))
+          .catch(e => console.error('Error loading opponent playtypes:', e));
+        nbaDataService.getTeamOppShootingZones(cached.teamData.next_opponent_id)
+          .then(data => setOppShootingZones(data))
+          .catch(e => console.error('Error loading opponent shooting zones:', e));
+      }
+
+      // Passing season profile — tambem nao vem do cache
+      if (cached.player?.player_id) {
+        nbaDataService.getPlayerPassingSeason(cached.player.player_id)
+          .then(data => setPassingSeason(data))
+          .catch(e => console.error('Error loading passing season:', e));
+      }
+
       return;
     }
 
@@ -283,6 +395,11 @@ export default function NBADashboard() {
 
       setPlayer(playerData);
       setPlayerLookupDone(true);
+
+      // Passing season (perfil de playmaking) — non-blocking, paralelo
+      nbaDataService.getPlayerPassingSeason(playerData.player_id)
+        .then(data => setPassingSeason(data))
+        .catch(e => console.error('Error loading passing season:', e));
 
       // Each call sequential — component appears as soon as its data arrives
       let loadedStats: GamePlayerStats[] = [];
@@ -323,6 +440,19 @@ export default function NBADashboard() {
       try {
         loadedTeam = await nbaDataService.getTeamById(playerData.team_id);
         setTeamData(loadedTeam);
+
+        // Load opponent rankings + playtypes + zones in parallel (non-blocking)
+        if (loadedTeam?.next_opponent_id) {
+          nbaDataService.getOpponentRankings(loadedTeam.next_opponent_id)
+            .then(data => setOppRankings(data))
+            .catch(e => console.error('Error loading opponent rankings:', e));
+          nbaDataService.getTeamPlaytypes(loadedTeam.next_opponent_id)
+            .then(data => setOppPlaytypes(data))
+            .catch(e => console.error('Error loading opponent playtypes:', e));
+          nbaDataService.getTeamOppShootingZones(loadedTeam.next_opponent_id)
+            .then(data => setOppShootingZones(data))
+            .catch(e => console.error('Error loading opponent shooting zones:', e));
+        }
 
         if (loadedTeam) {
           const teamId = Number(playerData.team_id);
@@ -461,11 +591,11 @@ export default function NBADashboard() {
 
   if (!player && playerLookupDone) {
     return (
-      <div className="w-full min-h-screen bg-terminal-black text-terminal-text flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-terminal-text opacity-80">Jogador não encontrado.</p>
+      <div className="w-full min-h-screen bg-canvas text-ink flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-ink opacity-80">Jogador não encontrado.</p>
         <Button
           variant="outline"
-          className="terminal-button"
+          className="bg-white border border-line text-ink hover:border-forest/30"
           onClick={() => navigate(-1)}
         >
           Voltar
@@ -475,91 +605,99 @@ export default function NBADashboard() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-terminal-black text-terminal-text">
-      <AnalyticsNav showBack title={player?.player_name} />
+    <div className="w-full min-h-screen bg-canvas text-ink">
+      <NBAHomeNav showBack />
       <main className="container mx-auto px-3 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          {/* Left Sidebar */}
-          <div className="lg:col-span-1 space-y-3">
-            {/* Player Header */}
+        {(() => {
+          const playerHeaderEl = (
             <PlayerHeader
               player={player || undefined}
               seasonAverages={seasonAverages}
               isLoading={statsLoading}
             />
+          );
 
-            {/* Next Game Card */}
+          const nextGameEl = (
             <NextGamesCard
               team={teamData || undefined}
               isLoading={teamLoading}
               isTeamB2B={isTeamB2B}
               isOpponentB2B={isOpponentB2B}
               nextGameTime={nextGameTime}
+              opponentRankings={oppRankings}
+              opponentPlaytypes={oppPlaytypes}
+              selectedStatType={selectedStatType}
             />
+          );
 
-            {/* Oportunidades do Dia (mesma fonte dos Picks) ou fallback para Insights */}
-            {dailyOpps.length > 0 ? (
-              <div className="terminal-container p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-bold text-terminal-blue uppercase tracking-widest">
-                    Oportunidades do Dia
+          const opportunitiesEl = dailyOpps.length > 0 ? (
+              <div className="rounded-lg bg-white border border-line overflow-hidden">
+                <div className="px-4 py-3 flex items-center justify-between border-b border-line">
+                  <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
+                    Oportunidades do dia
                   </span>
-                  <span className="text-[9px] opacity-40">mesma análise da tela de Picks</span>
+                  <span className="text-[10px] text-ink-dim">mesma análise da tela de Picks</span>
                 </div>
-                <div className="space-y-2">
-                  {dailyOpps.map((opp, i) => {
-                    const triggerLastName = opp.trigger_name.split(' ').pop();
-                    const statusBadge = opp.trigger_status.toLowerCase().includes('out') ? { text: 'OUT', cls: 'bg-terminal-red/20 text-terminal-red border-terminal-red/30' }
-                      : opp.trigger_status.toLowerCase().includes('doubtful') ? { text: 'DTD', cls: 'bg-orange-400/20 text-orange-400 border-orange-400/30' }
-                      : { text: 'Q', cls: 'bg-yellow-400/20 text-yellow-400 border-yellow-400/30' };
-                    const statLabel = { player_points: 'Pontos', player_assists: 'Assistências', player_rebounds: 'Rebotes', player_points_rebounds_assists: 'PRA', player_threes: '3 Pontos', player_steals: 'Roubos', player_blocks: 'Bloqueios' }[opp.stat_type] || opp.stat_type;
-                    const isClickable = !!handleInsightClick;
+                {dailyOpps.map((opp, i) => {
+                  const triggerLastName = opp.trigger_name.split(' ').pop() ?? opp.trigger_name;
+                  const status = opp.trigger_status.toLowerCase();
+                  const statusBadge = status.includes('out')
+                    ? 'OUT'
+                    : status.includes('doubtful')
+                      ? 'DTD'
+                      : 'Q';
+                  const statLabel: Record<string, string> = {
+                    player_points: 'Pontos',
+                    player_assists: 'Assistências',
+                    player_rebounds: 'Rebotes',
+                    player_points_rebounds_assists: 'PRA',
+                    player_threes: '3 Pontos',
+                    player_steals: 'Roubos',
+                    player_blocks: 'Bloqueios',
+                  };
+                  const label = statLabel[opp.stat_type] || opp.stat_type;
+                  const isClickable = !!handleInsightClick;
+                  const score = opp.score ?? 0;
+                  const scoreColor = score >= 80 ? 'text-forest' : score >= 70 ? 'text-forest' : 'text-amber-700';
 
-                    return (
-                      <button
-                        key={i}
-                        className={`w-full text-left bg-terminal-dark-gray rounded border border-terminal-blue/20 p-3 transition-all ${
-                          isClickable ? 'hover:border-terminal-blue/50 hover:bg-terminal-blue/5 cursor-pointer' : 'cursor-default'
-                        }`}
-                        onClick={() => handleInsightClick?.(opp.stat_type, opp.trigger_name)}
-                      >
-                        {/* Header: stat + trigger + score */}
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-terminal-text uppercase">{statLabel}</span>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded border ${statusBadge.cls}`}>
-                              SEM {triggerLastName} ({statusBadge.text})
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleInsightClick?.(opp.stat_type, opp.trigger_name)}
+                      className={`w-full text-left px-4 py-3.5 ${i > 0 ? 'border-t border-line' : ''} ${
+                        isClickable ? 'hover:bg-canvas-2/40 cursor-pointer transition-colors' : 'cursor-default'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[12px] font-semibold tracking-tight text-ink">{label}</span>
+                            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              Sem {triggerLastName} ({statusBadge})
                             </span>
                           </div>
-                          <span className={`text-sm font-black tabular-nums ${
-                            (opp.score ?? 0) >= 80 ? 'text-terminal-green' : (opp.score ?? 0) >= 70 ? 'text-terminal-yellow' : 'text-orange-400'
-                          }`}>
-                            {opp.score}
-                          </span>
+                          <div className="text-[12px] tabular mt-1.5 text-ink-2 flex items-center gap-1.5 flex-wrap">
+                            <span>{opp.avg_com?.toFixed(1) ?? '—'}</span>
+                            <span className="text-ink-dim">→</span>
+                            <span className="font-semibold text-[14px] text-ink">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
+                            {opp.gap_pct != null && (
+                              <span className="ml-1 font-semibold text-forest">+{opp.gap_pct.toFixed(1)}%</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] mt-1.5 text-ink-dim">
+                            {opp.line_value != null ? `Linha: ${opp.line_value.toFixed(1)} · ` : ''}
+                            clique para filtrar o gráfico
+                          </div>
                         </div>
-
-                        {/* Numbers */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm opacity-50">{opp.avg_com?.toFixed(1)}</span>
-                          <span className="text-xs opacity-30">→</span>
-                          <span className="text-lg font-bold text-terminal-text leading-none">{opp.avg_sem?.toFixed(1)}</span>
-                          {opp.gap_pct > 0 && (
-                            <span className="text-[11px] font-semibold text-terminal-text bg-terminal-text/10 px-1.5 py-0.5 rounded">
-                              +{opp.gap_pct?.toFixed(1)}%
-                            </span>
-                          )}
-                          {opp.line_value && (
-                            <span className="text-[11px] opacity-40 ml-auto">Linha: {opp.line_value?.toFixed(1)}</span>
-                          )}
+                        <div className="text-right shrink-0">
+                          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-dim">Score</div>
+                          <div className={`text-[24px] font-semibold tabular tracking-tight ${scoreColor}`}>{opp.score ?? '—'}</div>
                         </div>
-
-                        <div className="text-[9px] opacity-40 mt-1">
-                          com {triggerLastName} → sem {triggerLastName} • Clique para filtrar o gráfico
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <PropInsightsCard
@@ -568,32 +706,44 @@ export default function NBADashboard() {
                 isLoading={propsLoading}
                 onInsightClick={handleInsightClick}
               />
-            )}
+            );
 
-            {/* Teammates */}
+          const teammatesEl = (
             <TeammatesCard
               teammates={teammates}
               currentPlayerId={player?.player_id || 0}
               teamName={player?.team_name || ''}
               isLoading={teammatesLoading}
             />
-          </div>
+          );
 
-          {/* Main Content Area */}
-          <div className="lg:col-span-2" ref={chartRef}>
-            {/* Game Chart (stat tabs integrated inside) */}
-            {statsLoading ? (
-              <Skeleton className="h-[400px] w-full bg-terminal-gray mb-6" />
+          const gameChartEl = statsLoading ? (
+              <Skeleton className="h-[400px] w-full bg-canvas-2 mb-6" />
             ) : (
               <GameChart
+                chartLoading={
+                  (gamePeriod !== 'full' && selectedSeason === 'current' && !periodStatsLoaded)
+                  || (selectedSeason !== 'current' && historicalLoading && !historicalStats.has(selectedSeason))
+                }
                 gameStats={filteredGameStats}
                 currentLine={currentLine}
-                seasonAvg={(() => { const s = gameStats.filter(g => g.stat_type === selectedStatType); return s.length > 0 ? s.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / s.length : 0; })()}
+                seasonAvg={(() => {
+                  const src = selectedSeason !== 'current'
+                    ? (historicalStats.get(selectedSeason) || [])
+                    : (gamePeriod === 'full' ? gameStats : periodStats);
+                  const s = src.filter(g => g.stat_type === selectedStatType && (selectedSeason === 'current' || seasonType === 'all' || g.season_type === seasonType));
+                  return s.length > 0 ? s.reduce((sum, g) => sum + (g.stat_value ?? 0), 0) / s.length : 0;
+                })()}
                 lastNGames={lastNGames}
                 homeAway={homeAway}
                 onLastNGamesChange={setLastNGames}
                 onHomeAwayChange={setHomeAway}
-                totalGamesAvailable={gameStats.filter(g => g.stat_type === selectedStatType).length}
+                totalGamesAvailable={(() => {
+                  const src = selectedSeason !== 'current'
+                    ? (historicalStats.get(selectedSeason) || [])
+                    : (gamePeriod === 'full' ? gameStats : periodStats);
+                  return src.filter(g => g.stat_type === selectedStatType && (selectedSeason === 'current' || seasonType === 'all' || g.season_type === seasonType)).length;
+                })()}
                 teammates={teammates}
                 currentPlayerId={player?.player_id || 0}
                 teamName={player?.team_name || ''}
@@ -607,27 +757,77 @@ export default function NBADashboard() {
                 h2hOnly={h2hOnly}
                 onH2HChange={setH2hOnly}
                 nextOpponent={teamData?.next_opponent_abbreviation || undefined}
+                selectedSeason={selectedSeason}
+                onSeasonChange={setSelectedSeason}
+                seasonType={seasonType}
+                onSeasonTypeChange={setSeasonType}
+                potentialAstSeason={passingSeason?.potential_ast ?? null}
+                potentialAstSeasonRank={passingSeason?.potential_ast_rank ?? null}
               />
-            )}
+            );
 
-            {/* Recent Games + Shooting Zones side by side */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
-              {statsLoading ? (
-                <Skeleton className="h-[300px] w-full bg-terminal-gray" />
-              ) : (
-                <ComparisonTable
-                  gameStats={filteredGameStats}
-                  playerName={player?.player_name || ''}
-                />
-              )}
-              <ShootingZonesCard
-                data={shootingZones}
-                isLoading={shootingZonesLoading}
-                playerName={player?.player_name || ''}
-              />
-            </div>
-          </div>
-        </div>
+          const recentGamesEl = statsLoading ? (
+            <Skeleton className="h-[300px] w-full bg-canvas-2" />
+          ) : (
+            <ComparisonTable
+              gameStats={filteredGameStats}
+              playerName={player?.player_name || ''}
+            />
+          );
+
+          const zonesEl = (
+            <ShootingZonesCard
+              data={shootingZones}
+              isLoading={shootingZonesLoading}
+              playerName={player?.player_name || ''}
+              oppShootingZones={oppShootingZones}
+              opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
+            />
+          );
+
+          const matchupEl = (
+            <MatchupZonesCard
+              data={shootingZones}
+              oppShootingZones={oppShootingZones}
+              opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
+              playerName={player?.player_name}
+            />
+          );
+
+          return (
+            <>
+              {/* Mobile layout — single column reordered */}
+              <div className="lg:hidden flex flex-col gap-3" ref={chartRef}>
+                {playerHeaderEl}
+                {nextGameEl}
+                {opportunitiesEl}
+                {gameChartEl}
+                {zonesEl}
+                {matchupEl}
+                {recentGamesEl}
+                {teammatesEl}
+              </div>
+
+              {/* Desktop layout — 3-col grid */}
+              <div className="hidden lg:grid lg:grid-cols-3 gap-3">
+                <div className="lg:col-span-1 space-y-3">
+                  {playerHeaderEl}
+                  {nextGameEl}
+                  {opportunitiesEl}
+                  {teammatesEl}
+                </div>
+                <div className="lg:col-span-2 space-y-3">
+                  {gameChartEl}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
+                    {recentGamesEl}
+                    {zonesEl}
+                  </div>
+                  {matchupEl}
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </main>
 
     </div>

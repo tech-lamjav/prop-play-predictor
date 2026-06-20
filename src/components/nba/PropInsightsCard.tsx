@@ -34,8 +34,8 @@ const STAT_LABELS_SHORT: Record<string, { article: string; name: string }> = {
 };
 
 const STATUS_CONFIG: Record<string, { badge: string; badgeClass: string; color: string }> = {
-  out: { badge: 'OUT', badgeClass: 'bg-terminal-red/20 text-terminal-red', color: 'text-terminal-red' },
-  'out for season': { badge: 'OFS', badgeClass: 'bg-terminal-red/20 text-terminal-red', color: 'text-terminal-red' },
+  out: { badge: 'OUT', badgeClass: 'bg-rose-100 text-rose-700', color: 'text-rose-700' },
+  'out for season': { badge: 'OFS', badgeClass: 'bg-rose-100 text-rose-700', color: 'text-rose-700' },
   doubtful: { badge: 'DTD', badgeClass: 'bg-orange-400/20 text-orange-400', color: 'text-orange-400' },
   questionable: { badge: 'Q', badgeClass: 'bg-yellow-400/20 text-yellow-400', color: 'text-yellow-400' },
 };
@@ -56,13 +56,13 @@ interface PropInsightsCardProps {
 export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers, playerName, isLoading, onInsightClick }) => {
   if (isLoading) {
     return (
-      <div className="terminal-container p-4">
+      <div className="rounded-lg bg-white border border-line p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Skeleton className="h-4 w-32 bg-terminal-gray" />
+          <Skeleton className="h-4 w-32 bg-canvas-2" />
         </div>
         <div className="space-y-2">
           {[1, 2].map((i) => (
-            <Skeleton key={i} className="h-20 w-full bg-terminal-gray" />
+            <Skeleton key={i} className="h-20 w-full bg-canvas-2" />
           ))}
         </div>
       </div>
@@ -103,7 +103,7 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
     .sort((a, b) => statusOrder(a.status) - statusOrder(b.status));
 
   return (
-    <div className="terminal-container p-4">
+    <div className="rounded-lg bg-white border border-line p-4">
       <div className="space-y-4">
         {triggerGroups.map((group) => {
           const triggerLastName = group.name.split(' ').pop();
@@ -116,11 +116,11 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
               {/* Header */}
               <div className="flex items-center gap-2 mb-1">
                 {confirmed ? (
-                  <Lightbulb className="w-3.5 h-3.5 text-terminal-yellow shrink-0" />
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                 ) : (
                   <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
                 )}
-                <span className="text-[10px] font-bold text-terminal-yellow uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
                   {confirmed ? 'Insight' : 'Alerta'}
                 </span>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${config.badgeClass}`}>
@@ -129,7 +129,7 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
               </div>
 
               {/* Storytelling */}
-              <p className="text-xs text-terminal-text opacity-80 mb-3 leading-relaxed">
+              <p className="text-xs text-ink opacity-80 mb-3 leading-relaxed">
                 {confirmed ? (
                   <>
                     Com <span className={`font-bold ${config.color}`}>{triggerLastName}</span> fora,{' '}
@@ -149,15 +149,15 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
                   return (
                     <>
                       {article}{' '}
-                      <span className="font-bold text-terminal-green">{name}</span>
+                      <span className="font-bold text-forest">{name}</span>
                       {' '}de {playerLastName} {confirmed ? 'sobem' : 'podem subir'}{' '}
-                      <span className="font-bold text-terminal-green">+{pct}%</span>
+                      <span className="font-bold text-forest">+{pct}%</span>
                     </>
                   );
                 })() : (
                   <>
                     as médias de {playerLastName} {confirmed ? 'sobem' : 'podem subir'} em{' '}
-                    <span className="font-bold text-terminal-green">
+                    <span className="font-bold text-forest">
                       {group.props.length} categorias
                     </span>
                   </>
@@ -177,24 +177,24 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
                   return (
                     <button
                       key={i}
-                      className={`w-full text-left bg-terminal-dark-gray rounded border p-3 transition-all ${
-                        confirmed ? 'border-terminal-yellow/20' : 'border-yellow-400/15'
-                      } ${isClickable ? 'hover:border-terminal-yellow/50 hover:bg-terminal-yellow/5 cursor-pointer' : 'cursor-default'}`}
+                      className={`w-full text-left bg-canvas-2 rounded border p-3 transition-all ${
+                        confirmed ? 'border-amber-200/20' : 'border-yellow-400/15'
+                      } ${isClickable ? 'hover:border-amber-200/50 hover:bg-amber-50 cursor-pointer' : 'cursor-default'}`}
                       onClick={() => onInsightClick?.(prop.stat_type, group.name)}
                     >
                       {/* Stat + estrelas */}
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-terminal-text uppercase">{statLabel}</span>
+                        <span className="text-xs font-bold text-ink uppercase">{statLabel}</span>
                         <div className="flex items-center gap-1.5">
                           {prop.rating_stars > 0 && (
                             <div className="flex items-center gap-0.5">
                               {Array.from({ length: prop.rating_stars }).map((_, j) => (
-                                <Star key={j} className="w-3 h-3 fill-terminal-yellow text-terminal-yellow" />
+                                <Star key={j} className="w-3 h-3 fill-amber-400 text-amber-700" />
                               ))}
                             </div>
                           )}
                           {isClickable && (
-                            <ChevronRight className="w-4 h-4 text-terminal-yellow" />
+                            <ChevronRight className="w-4 h-4 text-amber-700" />
                           )}
                         </div>
                       </div>
@@ -207,11 +207,11 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
                         {normal > 0 && (
                           <span className="text-xs opacity-30">→</span>
                         )}
-                        <span className="text-lg font-bold text-terminal-green leading-none">
+                        <span className="text-lg font-bold text-forest leading-none">
                           {semEle.toFixed(1)}
                         </span>
                         {gapPct > 0 && (
-                          <span className="text-[11px] font-semibold text-terminal-green bg-terminal-green/10 px-1.5 py-0.5 rounded">
+                          <span className="text-[11px] font-semibold text-forest bg-emerald-50 px-1.5 py-0.5 rounded">
                             +{gapPct}%
                           </span>
                         )}
@@ -233,7 +233,7 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
 
       {/* CTA hint */}
       {onInsightClick && (
-        <div className="text-[9px] text-terminal-yellow/40 mt-2 text-center">
+        <div className="text-[9px] text-amber-700/40 mt-2 text-center">
           Clique para filtrar o gráfico
         </div>
       )}

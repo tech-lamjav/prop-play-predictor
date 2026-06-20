@@ -4,14 +4,18 @@ import { useLocation } from 'react-router-dom';
  * Footer global do app. Renderizado uma vez no App.tsx, aparece em todas
  * as rotas (incluindo /auth e /bolao*).
  *
- * Aplica tema rebrand (canvas/forest/amber/ink) nas rotas /bolao* e /auth
- * pra ficar consistente com a IDV do bolão. Resto do app continua no tema
- * dark padrão (terminal).
+ * Aplica tema rebrand (canvas/forest/amber/ink) nas landings públicas
+ * (/, /nba, /bolao*) e /auth pra ficar consistente com a IDV nova. Resto
+ * do app continua no tema dark padrão (terminal).
  */
 const Footer = () => {
   const location = useLocation();
   const useRebrand =
-    location.pathname.startsWith('/bolao') || location.pathname.startsWith('/auth');
+    location.pathname === '/' ||
+    location.pathname === '/nba' ||
+    location.pathname.startsWith('/betinho') ||
+    location.pathname.startsWith('/bolao') ||
+    location.pathname.startsWith('/auth');
 
   // Paleta condicional. Cores literais em vez de CSS vars pra evitar problemas
   // de scope (var(--ink) só existe dentro de .theme-bolao).
@@ -36,7 +40,7 @@ const Footer = () => {
       };
 
   return (
-    <footer className={t.wrapper}>
+    <footer aria-label="Rodapé do site" className={t.wrapper}>
       <div className={`container mx-auto px-4 sm:px-6 py-12 ${t.body}`}>
         <div className="grid md:grid-cols-3 gap-8">
           {/* Brand */}

@@ -31,3 +31,11 @@ dist-ssr
 supabase/functions/.env
 
 CLAUDE.md
+
+# Screenshots / artefatos de audit soltos na raiz (não são assets do produto —
+# esses ficam em public/ e src/). Ancorado na raiz pra não pegar imagens reais.
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+.playwright-mcp/

@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
-import { FileText, Loader2, AlertCircle, Calendar as CalendarIcon, Lock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { AlertCircle, ArrowRight, Calendar as CalendarIcon, ExternalLink, FileText, Loader2, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import AnalyticsNav from '@/components/AnalyticsNav';
+import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useReportAccess } from '@/hooks/use-report-access';
@@ -33,7 +33,7 @@ function formatDateLabel(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
-  return `${weekday}, ${day}/${month}/${year}`;
+  return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${day}/${month}/${year}`;
 }
 
 interface ReportEntry {
@@ -42,7 +42,7 @@ interface ReportEntry {
   label: string;
 }
 
-export default function WeeklyReport() {
+export default function Report() {
   const { hasAccess, isLoading: accessLoading } = useReportAccess();
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportEntry[]>([]);
@@ -54,7 +54,7 @@ export default function WeeklyReport() {
   const [noReportForDate, setNoReportForDate] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // Set of date-strings (YYYY-MM-DD) that have reports — used to highlight calendar days
+  // Set de date-strings (YYYY-MM-DD) que têm relatório — destaca dias no calendário.
   const availableDateSet = useMemo(() => {
     const set = new Set<string>();
     reports.forEach((r) => {
@@ -64,7 +64,7 @@ export default function WeeklyReport() {
     return set;
   }, [reports]);
 
-  // Fetch available reports from the bucket
+  // Lista relatórios disponíveis no bucket
   useEffect(() => {
     async function fetchReports() {
       setLoading(true);
@@ -84,29 +84,20 @@ export default function WeeklyReport() {
         .map((file) => {
           const date = parseReportDate(file.name);
           if (!date) return null;
-          return {
-            filename: file.name,
-            date,
-            label: formatDateLabel(date),
-          };
+          return { filename: file.name, date, label: formatDateLabel(date) };
         })
         .filter((entry): entry is ReportEntry => entry !== null)
         .sort((a, b) => b.date.getTime() - a.date.getTime());
 
       setReports(entries);
-
-      // Auto-select the most recent report
-      if (entries.length > 0) {
-        setSelectedDate(entries[0].date);
-      }
-
+      if (entries.length > 0) setSelectedDate(entries[0].date);
       setLoading(false);
     }
 
     fetchReports();
   }, []);
 
-  // Fetch signed URL when selected date changes
+  // Busca signed URL quando a data muda
   useEffect(() => {
     if (!selectedDate) return;
 
@@ -114,7 +105,6 @@ export default function WeeklyReport() {
     const match = reports.find((r) => r.filename === filename);
 
     if (!match) {
-      // No report exists for this date
       setPdfUrl(null);
       setNoReportForDate(true);
       return;
@@ -150,7 +140,6 @@ export default function WeeklyReport() {
     setCalendarOpen(false);
   };
 
-  // Modifier to add a dot indicator on days that have reports
   const reportDayModifier = (date: Date) => {
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     return availableDateSet.has(key);
@@ -158,12 +147,14 @@ export default function WeeklyReport() {
 
   const isLoading = loading || loadingPdf;
 
+  // ── Estados auxiliares (loading do auth, sem acesso) ──────────────────
+
   if (accessLoading) {
     return (
-      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav showBack />
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-terminal-green" />
+      <div className="theme-rebrand min-h-screen bg-canvas">
+        <NBAHomeNav showBack backTo="/home-nba" />
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <Loader2 className="w-6 h-6 animate-spin text-forest opacity-70" />
         </div>
       </div>
     );
@@ -171,194 +162,191 @@ export default function WeeklyReport() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav showBack />
-        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center px-4">
-          <div className="w-16 h-16 bg-terminal-yellow/10 border border-terminal-yellow/30 rounded-full flex items-center justify-center">
-            <Lock className="w-8 h-8 text-terminal-yellow" />
+      <div className="theme-rebrand min-h-screen bg-canvas">
+        <NBAHomeNav showBack backTo="/home-nba" />
+        <div className="max-w-md mx-auto px-4 py-24 flex flex-col items-center text-center gap-4">
+          <div className="w-16 h-16 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center">
+            <Lock className="w-7 h-7 text-amber-700" />
           </div>
-          <h2 className="text-lg font-bold text-terminal-yellow tracking-wider">
-            ACESSO RESTRITO
-          </h2>
-          <p className="text-terminal-text opacity-60 text-sm max-w-md">
+          <h2 className="text-[20px] font-semibold tracking-tight text-ink">Acesso restrito</h2>
+          <p className="text-[13px] text-ink-2 max-w-md leading-relaxed">
             Os relatórios estão disponíveis para assinantes premium e novos usuários em período de teste.
           </p>
-          <Button
+          <button
+            type="button"
             onClick={() => navigate('/paywall')}
-            className="mt-2 bg-terminal-green text-terminal-black hover:bg-terminal-green/90 font-bold tracking-wider"
+            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-forest text-white text-[13px] font-semibold hover:bg-forest-soft transition-colors"
           >
-            VER PLANOS
-          </Button>
+            Ver planos
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-      <AnalyticsNav showBack />
+    <>
+      <Helmet>
+        <title>Relatório do dia — Smart Betting</title>
+      </Helmet>
 
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 bg-terminal-blue/20 border border-terminal-blue/50 rounded flex items-center justify-center">
-              <FileText className="w-4 h-4 text-terminal-blue" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold tracking-wider text-terminal-blue">
-                RELATÓRIO
-              </h1>
-              <p className="text-[10px] sm:text-xs text-terminal-text opacity-60">
-                Atualizado periodicamente pela equipe Smartbetting
-              </p>
+      <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+        <NBAHomeNav showBack backTo="/home-nba" />
+
+        {/* Page header (bg-white) */}
+        <div className="bg-white border-b border-line">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-md bg-forest-tint border border-forest/20 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-forest" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink leading-none">
+                    Relatório do dia
+                  </h1>
+                  <p className="text-[13px] text-ink-2 mt-1.5">
+                    Atualizado periodicamente pela equipe Smart Betting
+                  </p>
+                </div>
+              </div>
+
+              {reports.length > 0 && (
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 border border-line bg-white rounded-md text-[12px] text-ink hover:border-forest/40 transition-colors shrink-0"
+                    >
+                      <CalendarIcon className="w-3.5 h-3.5 text-ink-2" />
+                      <span>{selectedDate ? formatDateLabel(selectedDate) : 'Selecione a data'}</span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="theme-rebrand w-auto p-0 bg-white border border-line text-ink" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate || undefined}
+                      onSelect={handleDateSelect}
+                      initialFocus
+                      modifiers={{ hasReport: reportDayModifier }}
+                      modifiersClassNames={{ hasReport: 'report-day-dot' }}
+                      classNames={{
+                        caption_label: 'text-sm font-semibold text-ink',
+                        head_cell: 'text-ink-2 w-9 font-medium text-[0.75rem]',
+                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md relative',
+                        day_selected: 'bg-forest text-white hover:bg-forest-soft hover:text-white focus:bg-forest focus:text-white',
+                        day_today: 'bg-forest-tint text-forest font-semibold',
+                        day_outside: 'text-ink-2/40',
+                        nav_button: 'h-7 w-7 bg-white p-0 border border-line text-ink-2 hover:text-ink hover:bg-canvas-2',
+                      }}
+                    />
+                    <style>{`
+                      .report-day-dot::after {
+                        content: '';
+                        position: absolute;
+                        bottom: 2px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        width: 4px;
+                        height: 4px;
+                        border-radius: 50%;
+                        background-color: #0a3d2e;
+                      }
+                      .report-day-dot[aria-selected="true"]::after {
+                        background-color: #ffffff;
+                      }
+                    `}</style>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           </div>
-
-          {/* Calendar date picker */}
-          {reports.length > 0 && (
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="terminal-input h-9 text-sm w-full sm:w-[240px] justify-start border-terminal-border-subtle bg-terminal-gray/30 hover:bg-terminal-gray/40"
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2 opacity-70" />
-                  {selectedDate ? formatDateLabel(selectedDate) : 'Selecione a data'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto p-0 bg-terminal-dark-gray border-terminal-border-subtle"
-                align="end"
-              >
-                <Calendar
-                  mode="single"
-                  selected={selectedDate || undefined}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                  modifiers={{ hasReport: reportDayModifier }}
-                  modifiersClassNames={{
-                    hasReport: 'report-day-dot',
-                  }}
-                  className="bg-terminal-dark-gray text-terminal-text"
-                  classNames={{
-                    caption_label: 'text-sm font-semibold text-terminal-text',
-                    head_cell: 'text-terminal-text/60 rounded-md w-9 font-medium text-[0.75rem]',
-                    day: 'h-9 w-9 p-0 font-normal text-terminal-text hover:bg-terminal-gray/40 relative',
-                    day_selected: 'bg-terminal-green text-terminal-black hover:bg-terminal-green/90',
-                    day_today: 'bg-terminal-gray text-terminal-text',
-                    nav_button:
-                      'h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 border border-terminal-border-subtle',
-                  }}
-                />
-                <style>{`
-                  .report-day-dot::after {
-                    content: '';
-                    position: absolute;
-                    bottom: 2px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    width: 4px;
-                    height: 4px;
-                    border-radius: 50%;
-                    background-color: #00ff88;
-                  }
-                  .report-day-dot[aria-selected="true"]::after {
-                    background-color: #000;
-                  }
-                `}</style>
-              </PopoverContent>
-            </Popover>
-          )}
         </div>
 
-        {/* Content */}
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-terminal-green" />
-            <p className="text-terminal-text opacity-60">Carregando relatório...</p>
-          </div>
-        )}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          {/* Estados ─────────────────────────────────────── */}
+          {isLoading && (
+            <div className="bg-white border border-line rounded-xl p-16 flex flex-col items-center gap-3">
+              <Loader2 className="w-6 h-6 animate-spin text-forest opacity-70" />
+              <p className="text-[13px] text-ink-2">Carregando relatório...</p>
+            </div>
+          )}
 
-        {error && !isLoading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-            <AlertCircle className="w-10 h-10 text-terminal-red" />
-            <p className="text-terminal-red font-medium">{error}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.reload()}
-              className="terminal-button"
-            >
-              Tentar novamente
-            </Button>
-          </div>
-        )}
-
-        {!loading && !error && reports.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-            <FileText className="w-10 h-10 text-terminal-text opacity-40" />
-            <p className="text-terminal-text opacity-60 font-medium">Nenhum relatório disponível</p>
-          </div>
-        )}
-
-        {!isLoading && !error && noReportForDate && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-            <CalendarIcon className="w-10 h-10 text-terminal-yellow opacity-70" />
-            <p className="text-terminal-yellow font-medium">
-              Não há relatório para esse dia
-            </p>
-            <p className="text-terminal-text opacity-50 text-xs">
-              Selecione uma data com o indicador verde no calendário
-            </p>
-          </div>
-        )}
-
-        {pdfUrl && !isLoading && !error && !noReportForDate && (
-          <div>
-            {/* Mobile fallback: direct link to open PDF in native viewer */}
-            <div className="sm:hidden mb-3">
-              <a
-                href={pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-terminal-green bg-terminal-green/10 text-terminal-green text-sm font-semibold hover:bg-terminal-green/20 transition-colors"
+          {error && !isLoading && (
+            <div className="bg-white border border-status-danger/30 rounded-xl p-12 flex flex-col items-center gap-3 text-center">
+              <AlertCircle className="w-8 h-8 text-status-danger" />
+              <p className="text-[13px] text-status-danger font-medium">{error}</p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-line bg-white text-[12px] text-ink hover:border-forest/40 transition-colors"
               >
-                <FileText className="w-4 h-4" />
-                Abrir PDF em tela cheia
-              </a>
+                Tentar novamente
+              </button>
             </div>
+          )}
 
-            {/*
-              iOS Safari expands iframes to their content height, ignoring CSS height.
-              Fix: position the iframe absolutely inside a fixed-height container.
-              The wrapper clips overflow so the PDF scrolls inside, not the page.
-            */}
-            <div
-              className="rounded-lg border border-terminal-border-subtle overflow-hidden bg-white relative"
-              style={{
-                height: 'calc(100vh - 220px)',
-                minHeight: '400px',
-                WebkitOverflowScrolling: 'touch',
-                overflow: 'auto',
-              }}
-            >
-              <iframe
-                src={pdfUrl}
-                title="Relatório"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                }}
-              />
+          {!loading && !error && reports.length === 0 && (
+            <div className="bg-white border border-line rounded-xl p-16 flex flex-col items-center gap-3 text-center">
+              <FileText className="w-8 h-8 text-ink-2/50" />
+              <p className="text-[13px] text-ink-2">Nenhum relatório disponível ainda.</p>
             </div>
-          </div>
-        )}
+          )}
+
+          {!isLoading && !error && noReportForDate && (
+            <div className="bg-white border border-amber-200 rounded-xl p-12 flex flex-col items-center gap-3 text-center">
+              <CalendarIcon className="w-8 h-8 text-amber-700" />
+              <p className="text-[13px] text-amber-800 font-semibold">Não há relatório para essa data.</p>
+              <p className="text-[12px] text-ink-2">Selecione uma data com o indicador verde no calendário.</p>
+            </div>
+          )}
+
+          {pdfUrl && !isLoading && !error && !noReportForDate && (
+            <div>
+              {/* Mobile fallback: link direto pro PDF native viewer */}
+              <div className="sm:hidden mb-3">
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-forest text-white text-[13px] font-semibold hover:bg-forest-soft transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Abrir PDF em tela cheia
+                </a>
+              </div>
+
+              {/*
+                iOS Safari expande iframes pra altura do conteúdo, ignorando CSS height.
+                Fix: container com altura fixa + iframe absoluto dentro.
+              */}
+              <div
+                className="rounded-xl border border-line overflow-hidden bg-white relative"
+                style={{
+                  height: 'calc(100vh - 240px)',
+                  minHeight: '480px',
+                  WebkitOverflowScrolling: 'touch',
+                  overflow: 'auto',
+                }}
+              >
+                <iframe
+                  src={pdfUrl}
+                  title="Relatório"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </main>
       </div>
-    </div>
+    </>
   );
 }

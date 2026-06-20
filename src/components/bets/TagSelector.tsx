@@ -20,23 +20,25 @@ interface TagSelectorProps {
   availableTags?: Tag[];
 }
 
+// Paleta Direção A — cores saturadas/escuras pra contraste em fundo branco.
+// Sem neons; tons que combinam com forest+amber sem brigar visualmente.
 const TAG_COLORS = [
-  '#00d4ff', // terminal-blue
-  '#00ff9d', // terminal-green
-  '#ff6b6b', // terminal-red
-  '#ffd93d', // yellow
-  '#a78bfa', // purple
-  '#fb923c', // orange
-  '#ec4899', // pink
-  '#14b8a6', // teal
-  '#84cc16', // lime
-  '#6366f1', // indigo
-  '#f43f5e', // rose
-  '#f59e0b', // amber
-  '#0ea5e9', // sky
-  '#10b981', // emerald
-  '#64748b', // slate
-  '#d946ef', // fuchsia
+  '#0a3d2e', // forest (brand)
+  '#1f5640', // forest soft
+  '#92400e', // amber dark (brown)
+  '#b8870f', // amber escuro
+  '#7a3030', // wine
+  '#9f1239', // rose escuro
+  '#86198f', // fuchsia escuro
+  '#5b4a8a', // purple muted
+  '#3a4e8e', // navy
+  '#0c4a6e', // sky escuro
+  '#1c6f6f', // teal escuro
+  '#065f46', // emerald escuro
+  '#5a7838', // olive
+  '#c97a1a', // burnt orange
+  '#475569', // slate
+  '#1a1d1a', // ink (preto)
 ];
 
 export const TagSelector: React.FC<TagSelectorProps> = ({
@@ -155,18 +157,22 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
         {selectedTags.map(tag => (
           <Popover key={tag.id}>
             <span
-              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium"
+              className="group inline-flex items-center gap-1.5 pl-1.5 pr-0.5 h-[22px] rounded-md border text-[10px] font-semibold transition-colors"
               style={{
-                backgroundColor: `${tag.color}20`,
-                color: tag.color,
-                border: `1px solid ${tag.color}40`
+                backgroundColor: `${tag.color}1A`, // ~10% opacity
+                borderColor: `${tag.color}66`, // ~40% opacity
+                color: '#1a1d1a', // ink — sempre escuro pra contraste
               }}
             >
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: tag.color }}
+              />
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   aria-label={`Alterar cor da tag ${tag.name}`}
-                  className="hover:opacity-70 cursor-pointer"
+                  className="hover:opacity-80 cursor-pointer"
                 >
                   {tag.name}
                 </button>
@@ -174,18 +180,18 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
               <button
                 type="button"
                 onClick={() => handleTagToggle(tag)}
-                className="hover:opacity-70"
+                className="opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:!opacity-100 hover:!text-status-danger transition-all -mr-0.5 inline-flex items-center justify-center w-5 h-5 md:w-auto md:h-auto md:px-0.5"
                 aria-label={`Remover tag ${tag.name}`}
               >
-                <X className="w-3 h-3" />
+                <X className="w-3 h-3 md:w-2.5 md:h-2.5" />
               </button>
             </span>
             <PopoverContent
               align="start"
               sideOffset={4}
-              className="w-auto p-2 bg-terminal-dark-gray border-terminal-border text-terminal-text shadow-lg rounded"
+              className="theme-rebrand w-auto p-2 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] rounded-md"
             >
-              <p className="text-xs opacity-50 uppercase mb-2">Cor da tag</p>
+              <p className="text-[10px] text-ink-2 uppercase tracking-[0.12em] font-semibold mb-2">Cor da tag</p>
               <div className="flex flex-wrap gap-1.5 max-w-[168px]">
                 {TAG_COLORS.map(color => (
                   <button
@@ -194,7 +200,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                     onClick={() => updateTagColor(tag.id, color)}
                     aria-label={`Definir cor ${color} para ${tag.name}`}
                     className={`w-5 h-5 rounded-full border-2 transition-all ${
-                      tag.color === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                      tag.color === color ? 'border-ink scale-110' : 'border-transparent opacity-60 hover:opacity-100'
                     }`}
                     style={{ backgroundColor: color }}
                   />
@@ -218,7 +224,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] border border-terminal-border hover:border-terminal-blue transition-colors opacity-60 hover:opacity-100"
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] border border-line text-ink-2 hover:border-forest hover:text-forest transition-colors"
               >
                 <Plus className="w-2.5 h-2.5" />
                 <span>Tag</span>
@@ -227,13 +233,13 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
             <PopoverContent
               align="start"
               sideOffset={4}
-              className="w-64 p-3 bg-terminal-dark-gray border-terminal-border text-terminal-text shadow-lg rounded"
+              className="theme-rebrand w-64 p-3 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] rounded-md"
             >
               {/* Create New Tag */}
               <div className="mb-3">
                 <div className="flex items-start gap-2 mb-2">
-                  <Info className="w-4 h-4 text-terminal-blue mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-terminal-text opacity-70">
+                  <Info className="w-4 h-4 text-forest mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-ink-2">
                     Crie tags para organizar suas apostas como preferir. Exemplos: Casa de Aposta, Banca, Tipster, Estratégia, etc.
                   </p>
                 </div>
@@ -244,14 +250,14 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                     onChange={(e) => setNewTagName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && createTag()}
                     placeholder="Nova tag..."
-                    className="flex-1 bg-terminal-black border border-terminal-border text-terminal-text text-xs px-2 py-1 rounded"
+                    className="flex-1 bg-canvas border border-line text-ink text-xs px-2 py-1 rounded-md focus:border-forest focus:bg-white outline-none"
                     maxLength={50}
                   />
                   <button
                     type="button"
                     onClick={createTag}
                     disabled={!newTagName.trim() || isCreating}
-                    className="px-2 py-1 bg-terminal-blue text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50"
+                    className="px-2 py-1 bg-forest text-white text-xs rounded-md hover:bg-forest-soft disabled:opacity-50"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -264,7 +270,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                       onClick={() => setSelectedColor(color)}
                       aria-label={`Cor ${color}`}
                       className={`w-5 h-5 rounded-full border-2 transition-all ${
-                        selectedColor === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                        selectedColor === color ? 'border-ink scale-110' : 'border-transparent opacity-60 hover:opacity-100'
                       }`}
                       style={{ backgroundColor: color }}
                     />
@@ -274,12 +280,12 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
 
               {/* Available Tags */}
               {availableTags.length > 0 && (
-                <div className="border-t border-terminal-border-subtle pt-2">
-                  <div className="text-xs opacity-50 uppercase mb-2">Selecionar</div>
+                <div className="border-t border-line pt-2">
+                  <div className="text-[10px] text-ink-2 uppercase tracking-[0.12em] font-semibold mb-2">Selecionar</div>
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {availableTags.map(tag => (
                       <div key={tag.id} className="space-y-1">
-                        <div className="flex items-center justify-between p-1 hover:bg-terminal-black rounded group">
+                        <div className="flex items-center justify-between p-1 hover:bg-ink-3/40 rounded-md group">
                           <div className="flex-1 flex items-center gap-2 min-w-0">
                             <button
                               type="button"
@@ -289,14 +295,14 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                               }}
                               aria-label={`Alterar cor da tag ${tag.name}`}
                               className={`w-3 h-3 rounded-full flex-shrink-0 border-2 transition-all ${
-                                editingColorTagId === tag.id ? 'border-white scale-110' : 'border-transparent'
+                                editingColorTagId === tag.id ? 'border-ink scale-110' : 'border-transparent'
                               }`}
                               style={{ backgroundColor: tag.color }}
                             />
                             <button
                               type="button"
                               onClick={() => handleTagToggle(tag)}
-                              className="flex-1 text-left text-xs truncate"
+                              className="flex-1 text-left text-xs truncate text-ink"
                             >
                               {tag.name}
                             </button>
@@ -304,7 +310,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                           <button
                             type="button"
                             onClick={() => deleteTag(tag.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:text-terminal-red transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-ink-2 hover:text-status-danger transition-opacity"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -318,7 +324,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                                 onClick={() => updateTagColor(tag.id, color)}
                                 aria-label={`Definir cor ${color} para ${tag.name}`}
                                 className={`w-5 h-5 rounded-full border-2 transition-all ${
-                                  tag.color === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                                  tag.color === color ? 'border-ink scale-110' : 'border-transparent opacity-60 hover:opacity-100'
                                 }`}
                                 style={{ backgroundColor: color }}
                               />
@@ -333,7 +339,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
 
               {/* Tag Limit Warning */}
               {selectedTags.length >= 10 && (
-                <div className="mt-2 text-xs text-terminal-red opacity-70">
+                <div className="mt-2 text-xs text-status-danger">
                   Máximo de 10 tags por aposta
                 </div>
               )}

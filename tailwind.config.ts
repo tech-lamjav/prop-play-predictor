@@ -19,6 +19,35 @@ export default {
 		},
 		extend: {
 			colors: {
+				/* ─── Direção A — rebrand tokens (light theme floresta + âmbar) ───
+				   Globais, usados sob .theme-rebrand. Variantes Tailwind (/30, hover:, focus:)
+				   funcionam nativamente. Coexistem com terminal-* do tema dark. */
+				canvas: {
+					DEFAULT: '#f6f7f5',
+					'2': '#eef0eb',
+				},
+				ink: {
+					DEFAULT: '#1a1d1a',
+					'2': '#5a625a',
+					'3': '#eef0ec',
+					dim: '#9aa097',
+				},
+				line: {
+					DEFAULT: '#e3e6e0',
+					'2': '#d4d8d0',
+				},
+				forest: {
+					DEFAULT: '#0a3d2e',
+					soft: '#1f5640',
+					tint: '#e7efe9',
+				},
+				status: {
+					success: '#2f7d50',
+					warning: '#c97a1a',
+					danger: '#b8341c',
+					info: '#1a5fb4',
+				},
+
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

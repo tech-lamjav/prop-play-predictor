@@ -1,6 +1,6 @@
-import React from 'react';
-import { Team } from '@/services/nba-data.service';
-import { Calendar, MapPin, TrendingUp, TrendingDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Team, OpponentRankings, TeamPlaytypes } from '@/services/nba-data.service';
+import { Calendar, ChevronDown } from 'lucide-react';
 import { getTeamLogoUrl } from '@/utils/team-logos';
 
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,17 +11,107 @@ interface NextGamesCardProps {
   isTeamB2B?: boolean;
   isOpponentB2B?: boolean;
   nextGameTime?: string | null;
+  opponentRankings?: OpponentRankings | null;
+  opponentPlaytypes?: TeamPlaytypes | null;
+  selectedStatType?: string;
 }
 
-export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, isTeamB2B = false, isOpponentB2B = false, nextGameTime }) => {
+const STAT_TO_OPP: Record<string, { rankKey: keyof OpponentRankings; valueKey: keyof OpponentRankings; label: string; unit: string }> = {
+  player_points:              { rankKey: 'opp_pts_rank',     valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+  player_rebounds:            { rankKey: 'opp_reb_rank',     valueKey: 'opp_reb',     label: 'Rebotes cedidos', unit: 'reb/jogo' },
+  player_assists:             { rankKey: 'opp_ast_rank',     valueKey: 'opp_ast',     label: 'Assists cedidas', unit: 'ast/jogo' },
+  player_threes:              { rankKey: 'opp_fg3_pct_rank', valueKey: 'opp_fg3_pct', label: '3PT% cedido',     unit: '%' },
+  player_steals:              { rankKey: 'opp_stl_rank',     valueKey: 'opp_stl',     label: 'Roubos cedidos',  unit: 'stl/jogo' },
+  player_blocks:              { rankKey: 'opp_blk_rank',     valueKey: 'opp_blk',     label: 'Bloqueios cedidos', unit: 'blk/jogo' },
+  player_points_rebounds:     { rankKey: 'opp_pts_rank',     valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+  player_points_assists:      { rankKey: 'opp_pts_rank',     valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+  player_rebounds_assists:    { rankKey: 'opp_reb_rank',     valueKey: 'opp_reb',     label: 'Rebotes cedidos', unit: 'reb/jogo' },
+  player_points_rebounds_assists: { rankKey: 'opp_pts_rank', valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
+};
+
+const DEFAULT_OPP = { rankKey: 'def_rating_rank' as keyof OpponentRankings, valueKey: 'def_rating' as keyof OpponentRankings, label: 'Def Rating', unit: '' };
+
+function getMatchupColor(rank: number) {
+  if (rank >= 21) return { chipBg: 'bg-emerald-100', chipText: 'text-forest', rankText: 'text-forest', label: 'Defesa fraca' };
+  if (rank >= 11) return { chipBg: 'bg-amber-100',   chipText: 'text-amber-700', rankText: 'text-amber-700', label: 'Defesa média' };
+  return { chipBg: 'bg-rose-100', chipText: 'text-rose-700', rankText: 'text-rose-700', label: 'Defesa forte' };
+}
+
+function renderLastFiveWithColors(lastFive: string | null) {
+  if (!lastFive) return <span className="text-ink-dim">N/A</span>;
+  const chars = lastFive.split('');
+  const total = chars.length;
+  return (
+    <span className="inline-flex items-center gap-0.5 shrink-0">
+      {chars.map((result, index) => {
+        const isWin = result === 'V' || result === 'W';
+        const opacityValue = total <= 1 ? 1 : 0.4 + (index / (total - 1)) * 0.6;
+        return (
+          <span
+            key={index}
+            className={`text-xs font-semibold tabular ${isWin ? 'text-forest' : 'text-rose-700'}`}
+            style={{ opacity: opacityValue }}
+          >
+            {result}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function TeamBlock({ logo, abbr, record, b2b }: { logo: string; abbr: string; record: string; b2b: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5 shrink-0">
+      <div className="w-12 h-12 relative">
+        <img
+          src={logo}
+          alt={abbr}
+          className="w-full h-full object-contain"
+          loading="lazy"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const parent = target.parentElement;
+            if (parent) {
+              parent.innerHTML = `<span class="text-[11px] font-bold text-ink">${abbr}</span>`;
+              parent.className = "w-12 h-12 flex items-center justify-center bg-canvas-2 rounded-full border border-line";
+            }
+          }}
+        />
+      </div>
+      <div className="text-[11px] font-semibold tabular text-ink flex items-center gap-1">
+        <span>{record}</span>
+        {b2b && (
+          <span className="text-[8px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded leading-none font-bold">B2B</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export const NextGamesCard: React.FC<NextGamesCardProps> = ({
+  team,
+  isLoading,
+  isTeamB2B = false,
+  isOpponentB2B = false,
+  nextGameTime,
+  opponentRankings,
+  opponentPlaytypes,
+  selectedStatType = 'player_points',
+}) => {
+  const [defenseExpanded, setDefenseExpanded] = useState(false);
+  const [playtypesExpanded, setPlaytypesExpanded] = useState(false);
+
   if (isLoading) {
     return (
-      <div className="terminal-container p-4">
-        <h3 className="section-title mb-3">PRÓXIMO JOGO</h3>
-        <div className="space-y-2">
-          <Skeleton className="h-24 w-full bg-terminal-gray" />
-          <Skeleton className="h-10 w-full bg-terminal-gray" />
-          <Skeleton className="h-10 w-full bg-terminal-gray" />
+      <div className="rounded-lg bg-white border border-line overflow-hidden">
+        <div className="px-4 py-3 border-b border-line">
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <div className="p-4 space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
       </div>
     );
@@ -29,177 +119,181 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({ team, isLoading, i
 
   if (!team) return null;
 
-  // index 0 = jogo mais antigo, último index = mais recente
-  // opacidade cresce da esquerda para a direita
-  const renderLastFiveWithColors = (lastFive: string | null) => {
-    if (!lastFive) return <span className="opacity-50">N/A</span>;
-    const chars = lastFive.split('');
-    const total = chars.length;
-    return (
-      <div className="flex items-center gap-0.5">
-        {chars.map((result, index) => {
-          const isWin = result === 'V' || result === 'W';
-          // opacity: oldest=40% → newest=100%
-          const opacityValue = total <= 1 ? 1 : 0.4 + (index / (total - 1)) * 0.6;
-          return (
-            <span
-              key={index}
-              className={`text-xs font-medium ${isWin ? 'text-terminal-green' : 'text-terminal-red'}`}
-              style={{ opacity: opacityValue }}
-            >
-              {result}
-            </span>
-          );
-        })}
-      </div>
-    );
-  };
+  const teamRecord = `${team.wins}-${team.losses}`;
+  const opponentRecord =
+    team.next_opponent_wins != null && team.next_opponent_losses != null
+      ? `${team.next_opponent_wins}-${team.next_opponent_losses}`
+      : 'N/A';
+
+  const teamOffRank = team.team_offensive_rating_rank;
+  const teamDefRank = team.team_defensive_rating_rank;
+  const oppOffRank = team.next_opponent_team_offensive_rating_rank;
+  const oppDefRank = team.next_opponent_team_defensive_rating_rank;
+
+  const matchup = (() => {
+    if (!opponentRankings) return null;
+    const mapping = STAT_TO_OPP[selectedStatType] || DEFAULT_OPP;
+    const rank = opponentRankings[mapping.rankKey] as number;
+    const value = opponentRankings[mapping.valueKey] as number;
+    if (!rank) return null;
+    const color = getMatchupColor(rank);
+    const formatted = mapping.unit === '%' ? `${(value * 100).toFixed(1)}%` : value.toFixed(1);
+    return { rank, formatted, label: mapping.label, color };
+  })();
 
   return (
-    <div className="terminal-container p-4">
-      <h3 className="section-title mb-2">PRÓXIMO JOGO</h3>
-
-      <div className="space-y-2">
-        {/* Matchup */}
-        <div className="p-2.5 rounded bg-terminal-blue/5 border border-terminal-blue/20">
-          {/* Top row: home/away + time */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <MapPin className="w-3 h-3 text-terminal-blue" />
-              <span className="text-[10px] data-label">
-                {team.is_next_game_home ? 'CASA' : 'FORA'}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {nextGameTime && (
-                <span className="text-[10px] font-semibold text-terminal-blue">{nextGameTime}</span>
-              )}
-              <Calendar className="w-3 h-3 opacity-40" />
-            </div>
-          </div>
-
-          {isTeamB2B && isOpponentB2B && (
-            <div className="text-center text-[9px] bg-terminal-yellow/10 text-terminal-yellow border border-terminal-yellow/20 rounded px-2 py-0.5 mb-2">
-              ⚠ AMBOS TIMES B2B
-            </div>
-          )}
-
-          {/* Teams row */}
-          <div className="flex items-center justify-center gap-4 relative">
-            {/* Current Team */}
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-10 h-10 relative">
-                <img
-                  src={getTeamLogoUrl(team.team_name)}
-                  alt={team.team_name}
-                  className="w-full h-full object-contain"
-                  loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = `<span class="text-xs font-bold text-terminal-text">${team.team_abbreviation}</span>`;
-                      parent.className = "w-10 h-10 flex items-center justify-center bg-terminal-gray rounded-full border border-terminal-border-subtle";
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-bold text-terminal-text">{team.team_abbreviation}</span>
-                {isTeamB2B && (
-                  <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 py-0.5 rounded leading-none">B2B</span>
-                )}
-              </div>
-            </div>
-
-            <span className="text-lg font-black text-terminal-blue italic">VS</span>
-
-            {/* Opponent Team */}
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-10 h-10 relative">
-                <img
-                  src={getTeamLogoUrl(team.next_opponent_name)}
-                  alt={team.next_opponent_name}
-                  className="w-full h-full object-contain"
-                  loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = `<span class="text-xs font-bold text-terminal-text">${team.next_opponent_abbreviation}</span>`;
-                      parent.className = "w-10 h-10 flex items-center justify-center bg-terminal-gray rounded-full border border-terminal-border-subtle";
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-bold text-terminal-text">{team.next_opponent_abbreviation}</span>
-                {isOpponentB2B && (
-                  <span className="text-[8px] bg-terminal-yellow/20 text-terminal-yellow px-1 py-0.5 rounded leading-none">B2B</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Injury Report — canto inferior esquerdo do card, apenas em B2B */}
-          {(isTeamB2B || isOpponentB2B) && team.next_game_injury_report_time_brasilia && (
-            <div className="mt-2 text-[9px] opacity-50">
-              <span className="data-label">INJURY REPORT:</span>{' '}{team.next_game_injury_report_time_brasilia}
-            </div>
-          )}
-        </div>
-
-        {/* Records + Last 5 + Rankings — one compact row per team */}
-        <div className="space-y-1 text-xs">
-          {/* Player's team */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-terminal-text w-7 shrink-0">{team.team_abbreviation}</span>
-            <span className="opacity-60 shrink-0">{team.wins}-{team.losses}</span>
-            <span className="opacity-30">·</span>
-            {renderLastFiveWithColors(team.team_last_five_games)}
-            {(team.team_offensive_rating_rank || team.team_defensive_rating_rank) && (
-              <>
-                <span className="opacity-30">·</span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking ofensivo">
-                  <TrendingUp className="w-3 h-3 text-terminal-blue shrink-0" />
-                  <span className="font-medium"><span className="opacity-50">OFF</span> #{team.team_offensive_rating_rank || '—'}</span>
-                </span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking defensivo">
-                  <TrendingDown className="w-3 h-3 text-terminal-red shrink-0" />
-                  <span className="font-medium"><span className="opacity-50">DEF</span> #{team.team_defensive_rating_rank || '—'}</span>
-                </span>
-              </>
-            )}
-          </div>
-          {/* Opponent */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-terminal-text w-7 shrink-0">{team.next_opponent_abbreviation}</span>
-            <span className="opacity-60 shrink-0">
-              {team.next_opponent_wins != null && team.next_opponent_losses != null
-                ? `${team.next_opponent_wins}-${team.next_opponent_losses}`
-                : 'N/A'}
-            </span>
-            <span className="opacity-30">·</span>
-            {renderLastFiveWithColors(team.next_opponent_team_last_five_games)}
-            {(team.next_opponent_team_offensive_rating_rank || team.next_opponent_team_defensive_rating_rank) && (
-              <>
-                <span className="opacity-30">·</span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking ofensivo">
-                  <TrendingUp className="w-3 h-3 opacity-60 shrink-0" />
-                  <span className="font-medium opacity-80"><span className="opacity-50">OFF</span> #{team.next_opponent_team_offensive_rating_rank || '—'}</span>
-                </span>
-                <span className="flex items-center gap-0.5 text-[10px] shrink-0" title="Ranking defensivo">
-                  <TrendingDown className="w-3 h-3 opacity-60 shrink-0" />
-                  <span className="font-medium opacity-80"><span className="opacity-50">DEF</span> #{team.next_opponent_team_defensive_rating_rank || '—'}</span>
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
+    <div className="rounded-lg bg-white border border-line overflow-hidden">
+      {/* Header: label + data */}
+      <div className="px-4 py-3 flex items-center justify-between border-b border-line">
+        <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Próximo jogo</span>
+        {nextGameTime && (
+          <span className="text-[11px] tabular flex items-center gap-1.5 text-ink-dim">
+            <Calendar className="w-3 h-3" />
+            <span>{nextGameTime}</span>
+          </span>
+        )}
       </div>
+
+      {/* B2B alert */}
+      {isTeamB2B && isOpponentB2B && (
+        <div className="text-center text-[10px] bg-amber-50 text-amber-700 border-b border-amber-200 py-1.5">
+          ⚠ Ambos os times em B2B
+        </div>
+      )}
+
+      {/* Matchup row: logos + VS + records */}
+      <div className="px-4 py-4 grid grid-cols-[1fr_50px_1fr] gap-3 items-center">
+        <TeamBlock
+          logo={getTeamLogoUrl(team.team_name)}
+          abbr={team.team_abbreviation}
+          record={teamRecord}
+          b2b={isTeamB2B}
+        />
+        <span className="text-center text-[10px] uppercase tracking-[0.16em] font-bold text-ink-dim">vs</span>
+        <TeamBlock
+          logo={getTeamLogoUrl(team.next_opponent_name)}
+          abbr={team.next_opponent_abbreviation}
+          record={opponentRecord}
+          b2b={isOpponentB2B}
+        />
+      </div>
+
+      {/* Form + ranks row */}
+      <div className="grid grid-cols-2 gap-3 px-4 pb-3 text-[11px] tabular text-ink-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {renderLastFiveWithColors(team.team_last_five_games)}
+          {(teamOffRank || teamDefRank) && (
+            <span className="text-ink-dim truncate">
+              Off #{teamOffRank || '—'} · Def #{teamDefRank || '—'}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 min-w-0">
+          {(oppOffRank || oppDefRank) && (
+            <span className="text-ink-dim truncate">
+              Off #{oppOffRank || '—'} · Def #{oppDefRank || '—'}
+            </span>
+          )}
+          {renderLastFiveWithColors(team.next_opponent_team_last_five_games)}
+        </div>
+      </div>
+
+      {/* Matchup highlight (stat-specific) */}
+      {matchup && (
+        <div className="mx-4 mb-4 rounded-lg bg-canvas-2/50 border border-line p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2 truncate">
+                {team.next_opponent_abbreviation} · {matchup.label}
+              </div>
+              <div className="flex items-baseline gap-2 mt-1 flex-wrap">
+                <span className="text-[20px] font-semibold tabular tracking-tight text-ink">{matchup.formatted}</span>
+                <span className={`text-[10px] uppercase tracking-[0.14em] font-bold px-1.5 h-4 inline-flex items-center rounded ${matchup.color.chipBg} ${matchup.color.chipText}`}>
+                  {matchup.color.label}
+                </span>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-dim">Rank</div>
+              <div className={`text-[20px] font-semibold tabular tracking-tight ${matchup.color.rankText}`}>#{matchup.rank}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Defesa do adversário — colapsável */}
+      {opponentRankings && (
+        <div className="border-t border-line">
+          <button
+            onClick={() => setDefenseExpanded(v => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-canvas-2/40 transition-colors"
+          >
+            <span className="text-[12px] font-semibold text-ink">
+              Defesa de {team.next_opponent_abbreviation}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-ink-dim transition-transform ${defenseExpanded ? 'rotate-180' : ''}`} />
+          </button>
+          {defenseExpanded && (
+            <div className="px-4 pb-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+              {([
+                { label: 'Pontos cedidos', value: opponentRankings.opp_pts, rank: opponentRankings.opp_pts_rank },
+                { label: 'Rebotes cedidos', value: opponentRankings.opp_reb, rank: opponentRankings.opp_reb_rank },
+                { label: 'Assists cedidas', value: opponentRankings.opp_ast, rank: opponentRankings.opp_ast_rank },
+                { label: '3PT% cedido', value: opponentRankings.opp_fg3_pct, rank: opponentRankings.opp_fg3_pct_rank, isPct: true },
+                { label: 'Pts no garrafão', value: opponentRankings.opp_pts_paint, rank: opponentRankings.opp_pts_paint_rank },
+                { label: 'Rtg defensivo', value: opponentRankings.def_rating, rank: opponentRankings.def_rating_rank },
+              ] as { label: string; value: number; rank: number; isPct?: boolean }[]).map(item => {
+                const color = item.rank >= 21 ? 'text-forest' : item.rank >= 11 ? 'text-amber-700' : 'text-rose-700';
+                const formatted = item.isPct ? `${(item.value * 100).toFixed(1)}%` : item.value.toFixed(1);
+                return (
+                  <div key={item.label} className="flex items-center justify-between text-[11px] tabular text-ink-2">
+                    <span className="text-ink-dim">{item.label}</span>
+                    <span>
+                      {formatted} <span className={`font-bold ${color}`}>#{item.rank}</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tipos de jogada do adversário — colapsável */}
+      {opponentPlaytypes && (
+        <div className="border-t border-line">
+          <button
+            onClick={() => setPlaytypesExpanded(v => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-canvas-2/40 transition-colors"
+          >
+            <span className="text-[12px] font-semibold text-ink">
+              Tipos de jogada de {team.next_opponent_abbreviation}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-ink-dim transition-transform ${playtypesExpanded ? 'rotate-180' : ''}`} />
+          </button>
+          {playtypesExpanded && (
+            <div className="px-4 pb-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+              {([
+                { label: 'Isolamento', ppp: opponentPlaytypes.iso_ppp, rank: opponentPlaytypes.iso_ppp_rank },
+                { label: 'Arremesso aberto', ppp: opponentPlaytypes.spotup_ppp, rank: opponentPlaytypes.spotup_ppp_rank },
+                { label: 'Pick & Roll (bola)', ppp: opponentPlaytypes.pnr_bh_ppp, rank: opponentPlaytypes.pnr_bh_ppp_rank },
+                { label: 'Pick & Roll (roll)', ppp: opponentPlaytypes.pnr_rm_ppp, rank: opponentPlaytypes.pnr_rm_ppp_rank },
+                { label: 'Jogo de costas', ppp: opponentPlaytypes.postup_ppp, rank: opponentPlaytypes.postup_ppp_rank },
+                { label: 'Transição', ppp: opponentPlaytypes.transition_ppp, rank: opponentPlaytypes.transition_ppp_rank },
+                { label: 'Entrega de mão', ppp: opponentPlaytypes.handoff_ppp, rank: opponentPlaytypes.handoff_ppp_rank },
+                { label: 'Corte', ppp: opponentPlaytypes.cut_ppp, rank: opponentPlaytypes.cut_ppp_rank },
+              ] as { label: string; ppp: number; rank: number }[]).map(item => (
+                <div key={item.label} className="flex items-center justify-between text-[11px] tabular text-ink-2">
+                  <span className="text-ink-dim">{item.label}</span>
+                  <span>
+                    {item.ppp.toFixed(2)} <span className="font-bold text-ink-2">#{item.rank}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
