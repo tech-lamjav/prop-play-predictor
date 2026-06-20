@@ -54,6 +54,7 @@ const BolaoPalpites = lazyWithRetry(() => import("./pages/BolaoPalpites"));
 const BolaoJoin = lazyWithRetry(() => import("./pages/BolaoJoin"));
 const BolaoWelcome = lazyWithRetry(() => import("./pages/BolaoWelcome"));
 const BolaoLP = lazyWithRetry(() => import("./pages/BolaoLP"));
+const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
 
 const queryClient = new QueryClient();
 
@@ -181,6 +182,9 @@ const App = () => (
                 </ProtectedRoute>
               } />
             </Route>
+            {/* Termos de Uso + Política de Privacidade — público, sem auth */}
+            <Route path="/privacidade" element={<Privacidade />} />
+            <Route path="/termos" element={<Privacidade />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

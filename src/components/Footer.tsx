@@ -15,6 +15,8 @@ const Footer = () => {
     location.pathname === '/nba' ||
     location.pathname.startsWith('/betinho') ||
     location.pathname.startsWith('/bolao') ||
+    location.pathname.startsWith('/privacidade') ||
+    location.pathname.startsWith('/termos') ||
     location.pathname.startsWith('/auth');
 
   // Paleta condicional. Cores literais em vez de CSS vars pra evitar problemas
@@ -126,7 +128,15 @@ const Footer = () => {
         </div>
 
         <div className={`border-t ${t.divider} mt-8 pt-8 text-center text-sm ${t.muted}`}>
-          &copy; {new Date().getFullYear()} Smart Betting. Todos os direitos reservados.
+          <a
+            href="/privacidade"
+            className={`${t.hover} transition-colors underline underline-offset-4`}
+          >
+            Termos de Uso e Política de Privacidade
+          </a>
+          <p className="mt-2">
+            &copy; {new Date().getFullYear()} Smart Betting. Todos os direitos reservados.
+          </p>
         </div>
       </div>
     </footer>
