@@ -284,7 +284,7 @@ export interface FutebolMatchupTendencies {
 }
 
 export interface FutebolOddsRow {
-  market_key: 'match_winner' | 'over_under' | 'btts' | 'double_chance';
+  market_key: 'match_winner' | 'over_under' | 'btts' | 'double_chance' | 'asian_handicap';
   market_label: string;
   outcome_label: string;
   outcome_order: number;
@@ -323,6 +323,63 @@ export interface FutebolOddsBoardRow extends FutebolOddsRow {
   competition: string;
   kickoff_utc: string | null;
   status_short: string | null;
+}
+
+// ── Motor de Score (backend / BigQuery → fact_value_opportunities) ──
+// O Score agora é calculado no backend (pipeline dbt do Mateus). O front lê pronto.
+export interface FutebolValueBoardRow {
+  fixture_id: number;
+  home_team_id: number;
+  away_team_id: number;
+  home_team_name: string;
+  away_team_name: string;
+  competition: string;
+  kickoff_utc: string | null;
+  status_short: string | null;
+  market: string;          // 'match_winner' | 'goals_over_under'
+  outcome: string;         // 'Home'|'Draw'|'Away' | 'Over'|'Under'
+  line_value: number | null; // linha do Over/Under; null no 1X2
+  edge: number;
+  best_odd: number;
+  best_book: string;
+  avg_odd: number;
+  n_casas: number;
+  janela_usada: string;    // t15m | t1h | t24h
+  pts_valor: number;
+  pts_premissas: number;
+  pts_corroboracao: number;
+  penalidades: number;
+  score: number;           // 0..100
+  faixa: string;           // 'Alta' | 'Média' | 'Baixa'
+  evidencias: string[];    // "por quê" (montado no backend); usar a 1ª na lista
+}
+
+export interface FutebolFixtureValueRow {
+  market: string;            // 'match_winner' | 'goals_over_under'
+  outcome: string;
+  outcome_order: number;
+  line_value: number | null;
+  edge: number;
+  best_odd: number;
+  best_book: string;
+  avg_odd: number;
+  n_casas: number;
+  janela_usada: string;
+  prob_justa_fechamento: number;
+  pts_valor: number;
+  pts_premissas: number;
+  pts_corroboracao: number;
+  penalidades: number;
+  penalidades_globais_pts: number;
+  penalidades_especificas_pts: number;
+  score: number;
+  faixa: string;
+  modelo_api_concorda: boolean;
+  linha_sharp_confirma: boolean;
+  // "por quê", avisos e contras já vêm prontos do backend (montados a partir dos flags das premissas)
+  evidencias: string[];
+  avisos: string[];
+  contras: string[];        // premissas-chave que NÃO bateram (pontos de atenção)
 }
 
 export interface FutebolScorer {
@@ -497,6 +554,24 @@ export const futebolDataService = {
       const { data, error } = await supabaseClient.rpc('get_futebol_odds_board');
       if (error) throw error;
       return (data || []) as FutebolOddsBoardRow[];
+    });
+  },
+
+  async getValueBoard(): Promise<FutebolValueBoardRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_value_board');
+      if (error) throw error;
+      return (data || []) as FutebolValueBoardRow[];
+    });
+  },
+
+  async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValueRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_value', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureValueRow[];
     });
   },
 

@@ -16,6 +16,8 @@ import {
   type FutebolOddsBoardRow,
   type FutebolPrediction,
   type FutebolLeaders,
+  type FutebolValueBoardRow,
+  type FutebolFixtureValueRow,
 } from '@/services/futebol-data.service';
 
 export function useFutebolFixtures(competition: Competition, season: number, round?: string | null) {
@@ -136,6 +138,27 @@ export function useFutebolOddsBoard() {
   return useQuery<FutebolOddsBoardRow[]>({
     queryKey: ['futebol', 'odds-board'],
     queryFn: () => futebolDataService.getOddsBoard(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolValueBoard() {
+  return useQuery<FutebolValueBoardRow[]>({
+    queryKey: ['futebol', 'value-board'],
+    queryFn: () => futebolDataService.getValueBoard(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useFutebolFixtureValue(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureValueRow[]>({
+    queryKey: ['futebol', 'fixture-value', fixtureId],
+    queryFn: () => futebolDataService.getFixtureValue(fixtureId as number),
+    enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,

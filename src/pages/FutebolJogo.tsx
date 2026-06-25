@@ -1,21 +1,21 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Info, MapPin, AlertTriangle, ChevronDown } from 'lucide-react';
+import { ChevronLeft, MapPin, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureOdds, useFutebolFixturePrediction, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies, headlineMarket, STRENGTH_LABEL,
   type MarketTendency, type Strength,
 } from '@/utils/futebol-tendencias';
 import {
-  computeFixtureValue, fmtPct, fmtEdge, fmtStake, HERO_MIN_SCORE,
-  type FixtureValue, type ValueMarket, type ValueOutcome,
-} from '@/utils/futebol-value';
+  pickLabel, marketLabel, valorVerdict, freqEmDez, fmtEdgeScore,
+  faixaWord, faixaBadgeCls, SCORE_ALTA, SCORE_MEDIA,
+} from '@/utils/futebol-score';
 import type {
-  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats,
+  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow,
 } from '@/services/futebol-data.service';
 
 const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
@@ -270,112 +270,6 @@ function TendencyRow({ m }: { m: MarketTendency }) {
 }
 
 
-const COLOR_1X2: Record<string, string> = { Home: 'bg-forest', Draw: 'bg-ink-3', Away: 'bg-amber' };
-
-// Barra de probabilidade 1X2 — a "cara do jogo" num gráfico (não 3 linhas de tabela)
-function Prob1X2Bar({ m }: { m: ValueMarket }) {
-  return (
-    <div>
-      <div className="flex h-9 rounded-rebrand-sm overflow-hidden border border-line">
-        {m.outcomes.map((o) => (
-          <div key={o.outcomeKey} className={`${COLOR_1X2[o.outcomeKey] || 'bg-ink-3'} grid place-items-center`} style={{ width: `${Math.max(7, o.fairProb * 100)}%` }}>
-            <span className="text-[10px] font-bold text-white/95 tabular-nums">{fmtPct(o.fairProb)}</span>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-3 gap-2 mt-2.5">
-        {m.outcomes.map((o) => {
-          const hasValue = o.score > 0 && !o.suspect;
-          return (
-            <div key={o.outcomeKey} className="text-center">
-              <div className="text-[12px] font-semibold text-ink truncate">{o.outcomeLabel}</div>
-              <div className="text-lg font-bold text-ink tabular-nums leading-tight">{o.bestOdd.toFixed(2)}</div>
-              {hasValue ? (
-                <span className="text-[10px] font-bold rounded px-1.5 py-0.5 inline-block mt-1 bg-forest text-canvas tabular-nums">valor {fmtEdge(o.edge)}</span>
-              ) : (
-                <span className="text-[10px] text-ink-3 inline-block mt-1">sem valor</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// Linha de resultado: chance (barra) + odd + tag de valor (só quando há valor)
-function ValueOutcomeRow({ o }: { o: ValueOutcome }) {
-  const pct = Math.min(100, Math.round(o.fairProb * 100));
-  const hasValue = o.score > 0 && !o.suspect;
-  return (
-    <div className="py-2.5 border-t border-line first:border-t-0">
-      <div className="flex items-center justify-between gap-3 mb-1.5">
-        <span className="text-sm text-ink truncate flex items-center gap-1">
-          {o.outcomeLabel}
-          {o.suspect && <AlertTriangle className="w-3 h-3 text-amber-2" />}
-        </span>
-        <span className="flex items-center gap-2.5 shrink-0">
-          {hasValue && <span className="text-[10px] font-bold rounded px-1.5 py-0.5 bg-forest text-canvas tabular-nums">valor {fmtEdge(o.edge)}</span>}
-          <span className="text-base font-bold text-ink tabular-nums">{o.bestOdd.toFixed(2)}</span>
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-2 rounded-full bg-canvas-2 overflow-hidden">
-          <div className={`h-full ${hasValue ? 'bg-forest' : 'bg-forest/40'}`} style={{ width: `${pct}%` }} />
-        </div>
-        <span className="text-[10px] text-ink-3 tabular-nums w-20 text-right">chance {fmtPct(o.fairProb)}</span>
-      </div>
-    </div>
-  );
-}
-
-const MARKET_TABS: { id: string; label: string; match: (k: string) => boolean }[] = [
-  { id: 'resultado', label: 'Resultado', match: (k) => k === 'match_winner' },
-  { id: 'gols', label: 'Gols', match: (k) => k.startsWith('ou_') },
-  { id: 'btts', label: 'Ambos marcam', match: (k) => k === 'btts' },
-  { id: 'dupla', label: 'Dupla chance', match: (k) => k === 'double_chance' },
-];
-
-// Board de mercados com NAVEGAÇÃO por abas (não grid de cards)
-function ValueMarketBoard({ markets }: { markets: ValueMarket[] }) {
-  const tabs = MARKET_TABS.filter((t) => markets.some((m) => t.match(m.key)));
-  const golsLines = markets.filter((m) => m.key.startsWith('ou_'));
-  const [tab, setTab] = useState(tabs[0]?.id ?? 'resultado');
-  const [line, setLine] = useState(golsLines.find((m) => m.key === 'ou_2.5')?.key ?? golsLines[0]?.key ?? '');
-
-  const active = tabs.find((t) => t.id === tab) ?? tabs[0];
-  const shown = active?.id === 'gols'
-    ? (golsLines.find((m) => m.key === line) ?? golsLines[0])
-    : markets.find((m) => active?.match(m.key));
-
-  return (
-    <div>
-      <div className="flex gap-1 mb-4 bg-canvas-2 border border-line rounded-rebrand-md p-1 w-fit max-w-full overflow-x-auto">
-        {tabs.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`h-8 px-3 rounded-rebrand-sm text-xs font-semibold whitespace-nowrap transition-colors ${tab === t.id ? 'bg-white text-ink shadow-sm' : 'text-ink-2 hover:text-ink'}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {active?.id === 'gols' && golsLines.length > 1 && (
-        <div className="flex gap-1.5 mb-3">
-          {golsLines.map((m) => (
-            <button key={m.key} onClick={() => setLine(m.key)} className={`h-7 px-3 rounded-rebrand-sm text-[11px] font-semibold border transition-colors ${line === m.key ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink-2 border-line hover:text-ink'}`}>
-              {m.label.replace('Mais/Menos ', '').replace(' gols', '')}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {shown && active?.id === 'resultado' ? (
-        <Prob1X2Bar m={shown} />
-      ) : shown ? (
-        <div>{shown.outcomes.map((o) => <ValueOutcomeRow key={o.outcomeKey} o={o} />)}</div>
-      ) : null}
-    </div>
-  );
-}
 
 // Distribuição de gols do jogo (Poisson sobre λ total) — gráfico de barras vertical
 function GoalDistChart({ lh, la }: { lh: number; la: number }) {
@@ -404,93 +298,188 @@ function GoalDistChart({ lh, la }: { lh: number; la: number }) {
 
 const CARD = 'bg-white border border-line rounded-rebrand-xl';
 
-// Síntese "O que olhar neste jogo" — decide e mostra a melhor aposta em palavras
-function WhatToWatch({ value }: { value: FixtureValue }) {
-  const ranked = value.markets
-    .flatMap((m) => m.outcomes)
-    .filter((o) => o.score > 0 && !o.suspect)
-    .sort((a, b) => b.score - a.score);
+
+// ---------- "O que olhar": Score vem PRONTO do backend (fact_value_opportunities) ----------
+function PorQueList({ items, dark, warn }: { items: string[]; dark?: boolean; warn?: boolean }) {
+  if (!items.length) return null;
+  const Icon = warn ? AlertTriangle : Check;
+  const ic = dark ? (warn ? 'text-amber-200' : 'text-emerald-300') : (warn ? 'text-status-warning' : 'text-status-success');
+  return (
+    <ul className="mt-3 space-y-1.5">
+      {items.map((t, i) => (
+        <li key={i} className={`flex items-start gap-2 text-[13px] ${dark ? 'text-white/85' : 'text-ink-2'}`}>
+          <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${ic}`} />
+          <span>{t}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Síntese "O que olhar neste jogo" — decide e PROVA a melhor aposta (Score do backend)
+function WhatToWatch({ rows, homeName, awayName }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string }) {
+  const ranked = [...rows].sort((a, b) => b.score - a.score);
   const top = ranked[0];
   const second = ranked[1];
-  const score = top?.score ?? 0;
-  const e = (top?.edge ?? 0) * 100;
-  // palavra descreve o TAMANHO do valor (edge); a Confiabilidade (Score) é o número à parte
-  const verdict = e >= 4 ? 'Valor forte' : e >= 2 ? 'Valor moderado' : e >= 0.8 ? 'Valor pequeno' : 'Valor marginal';
-  const tinted = score >= HERO_MIN_SCORE;
-  const ruler = 'Régua do valor: acima de ~4% é raro/forte · 1–3% é o normal do dia · abaixo de ~1% é ruído. A Confiabilidade (Score) pondera valor + gestão de banca + odd sã.';
+  const note = 'Leitura de risco, não recomendação de aposta.';
 
   if (!top) {
     return (
       <div className="rounded-rebrand-xl border border-line border-l-4 border-l-amber bg-white p-5">
         <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
-        <div className="text-lg font-bold text-ink mt-1.5">Sem valor relevante</div>
-        <p className="text-sm text-ink-2 mt-1">As melhores odds estão alinhadas à chance justa do mercado — nada que se destaque pra apostar aqui.</p>
-        <p className="text-[10px] text-ink-3 mt-3">{ruler}</p>
+        <div className="text-lg font-bold text-ink mt-1.5">Sem valor claro nos mercados</div>
+        <p className="text-sm text-ink-2 mt-1">As melhores odds estão alinhadas ao risco real — nada que se destaque aqui. Os dados abaixo seguem pra você tirar sua própria conclusão.</p>
+        <p className="text-[10px] text-ink-3 mt-3">{note}</p>
       </div>
     );
+  }
+
+  const pick = pickLabel(top.market, top.outcome, top.line_value, homeName, awayName);
+  const verdict = valorVerdict(top.edge);
+  const tinted = top.score >= SCORE_ALTA;
+  const x10 = freqEmDez(top.best_odd);
+  const freq = `Na odd ${top.best_odd.toFixed(2)}, essa aposta se paga se acontecer ${x10} em cada 10 vezes ou mais — e a leitura do jogo aponta nessa direção:`;
+  const porque = top.evidencias ?? [];
+  // Pontos de atenção: contras (premissas que não bateram) + avisos (penalidades)
+  const atencao = [...(top.contras ?? []), ...(top.avisos ?? [])];
+  const secondLine = second && (
+    <>2ª opção: <b>{pickLabel(second.market, second.outcome, second.line_value, homeName, awayName)}</b> <span className="opacity-70">({marketLabel(second.market)})</span> a {second.best_odd.toFixed(2)}</>
+  );
+
+  // Contexto entre mercados: por que o valor está NESTE mercado e não nos outros
+  const otherMarket = Array.from(new Set(rows.map((r) => r.market))).find((m) => m !== top.market);
+  let crossNote: string | null = null;
+  if (otherMarket) {
+    const ob = rows.filter((r) => r.market === otherMarket).reduce((b, r) => (r.score > b.score ? r : b));
+    const obPick = pickLabel(ob.market, ob.outcome, ob.line_value, homeName, awayName);
+    crossNote =
+      ob.score >= SCORE_MEDIA
+        ? `Neste jogo o valor está em ${marketLabel(top.market)}, mas também há valor em ${marketLabel(otherMarket)}: ${obPick} (score ${ob.score}).`
+        : `Neste jogo o valor está em ${marketLabel(top.market)}. Em ${marketLabel(otherMarket)} as odds estão mais equilibradas — nada se destaca (melhor opção: ${obPick}, score ${ob.score}).`;
   }
 
   if (tinted) {
     return (
       <div className="rounded-rebrand-xl overflow-hidden relative text-white" style={{ background: 'linear-gradient(135deg, #0a3d2e 0%, #08321f 60%, #051f12 100%)' }}>
         <div className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)', transform: 'translate(70px,-70px)' }} />
-        <div className="relative p-5">
+        <div className="relative p-5 md:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-[0.16em] text-white/50 font-semibold">O que olhar neste jogo</div>
               <span className="inline-flex items-center px-2 h-6 rounded-md text-[10px] uppercase tracking-[0.12em] font-bold mt-2" style={{ background: '#fbbf24', color: '#1a1d1a' }}>{verdict}</span>
-              <div className="text-xl font-bold mt-2 leading-tight">{top.outcomeLabel} <span className="text-white/50 text-sm font-normal">· {top.marketLabel}</span></div>
-              <p className="text-[13px] text-white/75 mt-1">Odd {top.bestOdd.toFixed(2)} · paga {fmtEdge(top.edge)} acima da chance justa ({fmtPct(top.fairProb)}).</p>
-              <span className="inline-block mt-2.5 px-2.5 h-7 leading-7 rounded-md text-[11px] font-semibold" style={{ background: 'rgba(251,191,36,0.18)', color: '#fde68a', border: '1px solid rgba(251,191,36,0.35)' }}>Gestão de banca · arriscar até {fmtStake(top.stake)}</span>
+              <div className="text-xl font-bold mt-2 leading-tight">{pick} <span className="text-white/50 text-sm font-normal">· {marketLabel(top.market)}</span></div>
             </div>
             <div className="text-right shrink-0">
               <div className="text-[10px] uppercase tracking-[0.16em] text-white/50">Confiabilidade</div>
-              <div className="flex items-baseline justify-end gap-1 mt-1"><span className="text-5xl font-bold tabular-nums leading-none" style={{ color: '#fbbf24' }}>{score}</span><span className="text-sm text-white/40">/100</span></div>
+              <div className="flex items-baseline justify-end gap-1 mt-1"><span className="text-5xl font-bold tabular-nums leading-none" style={{ color: '#fbbf24' }}>{top.score}</span><span className="text-sm text-white/40">/100</span></div>
+              <div className="text-[10px] font-bold uppercase tracking-wide mt-1" style={{ color: '#fbbf24' }}>{faixaWord(top.faixa)}</div>
             </div>
           </div>
-          {second && (
-            <div className="mt-4 pt-3 border-t border-white/10 text-[12px] text-white/70">
-              2ª opção: <b className="text-white">{second.outcomeLabel}</b> ({second.marketLabel}) · odd {second.bestOdd.toFixed(2)} · {fmtEdge(second.edge)} · score {second.score}
+          <p className="text-[13px] text-white/75 mt-2.5">{freq}</p>
+          {porque.length > 0 && (
+            <div className="mt-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold">Por que</div>
+              <PorQueList items={porque} dark />
             </div>
           )}
-          <p className="text-[10px] text-white/45 mt-3 leading-snug">{ruler}</p>
+          {atencao.length > 0 && (
+            <div className="mt-3">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold">Pontos de atenção</div>
+              <PorQueList items={atencao} dark warn />
+            </div>
+          )}
+          {crossNote && <p className="mt-4 pt-3 border-t border-white/10 text-[12px] text-white/65">{crossNote}</p>}
+          {second && <div className="mt-3 text-[12px] text-white/70">{secondLine}</div>}
+          <p className="text-[10px] text-white/45 mt-3">{note}</p>
         </div>
       </div>
     );
   }
 
-  // valor pequeno → card branco, sem drama
   return (
     <div className="rounded-rebrand-xl border border-line border-l-4 border-l-amber bg-white p-5">
-      <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
-      <div className="flex items-center gap-2 mt-1.5">
-        <span className="text-[10px] font-bold rounded px-1.5 py-0.5 bg-amber/15 text-amber-2 border border-amber/30 uppercase tracking-[0.1em]">{verdict}</span>
-        <span className="text-xs text-ink-3 tabular-nums">score {score}/100</span>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
+          <span className="inline-block mt-1.5 text-[10px] font-bold rounded px-1.5 py-0.5 bg-amber/15 text-amber-2 border border-amber/30 uppercase tracking-[0.1em]">{verdict}</span>
+          <div className="text-lg font-bold text-ink mt-2 leading-tight">{pick} <span className="text-ink-3 text-sm font-normal">· {marketLabel(top.market)}</span></div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-[10px] uppercase tracking-[0.14em] text-ink-3">Confiab.</div>
+          <div className="text-3xl font-bold tabular-nums text-ink leading-none mt-0.5">{top.score}<span className="text-sm text-ink-3 font-normal">/100</span></div>
+          <span className={`inline-block mt-1 text-[10px] font-bold rounded px-1.5 py-0.5 ${faixaBadgeCls(top.faixa)}`}>{faixaWord(top.faixa)}</span>
+        </div>
       </div>
-      <div className="text-lg font-bold text-ink mt-2 leading-tight">{top.outcomeLabel} <span className="text-ink-3 text-sm font-normal">· {top.marketLabel}</span></div>
-      <p className="text-sm text-ink-2 mt-1">Odd {top.bestOdd.toFixed(2)} · paga {fmtEdge(top.edge)} acima da chance justa ({fmtPct(top.fairProb)}). Existe, mas é pequeno.</p>
-      {second && <p className="text-[12px] text-ink-3 mt-2">2ª opção: <b className="text-ink-2">{second.outcomeLabel}</b> ({second.marketLabel}) · odd {second.bestOdd.toFixed(2)} · {fmtEdge(second.edge)}</p>}
-      <p className="text-[10px] text-ink-3 mt-3">{ruler}</p>
+      <p className="text-sm text-ink-2 mt-2">{freq}</p>
+      {porque.length > 0 && (
+        <div className="mt-3">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Por que</div>
+          <PorQueList items={porque} />
+        </div>
+      )}
+      {atencao.length > 0 && (
+        <div className="mt-3">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Pontos de atenção</div>
+          <PorQueList items={atencao} warn />
+        </div>
+      )}
+      {crossNote && <p className="text-[12px] text-ink-3 mt-3 pt-3 border-t border-line">{crossNote}</p>}
+      {second && <p className="text-[12px] text-ink-3 mt-2">{secondLine}</p>}
+      <p className="text-[10px] text-ink-3 mt-3">{note}</p>
     </div>
   );
 }
 
-// "Explorar mercados" — board completo por abas, recolhido por padrão
-function ExploreMarkets({ markets }: { markets: ValueMarket[] }) {
-  const [open, setOpen] = useState(false);
+// "Explorar opções" — todas as apostas com valor por mercado, recolhido.
+function ResultExplorer({ rows, homeName, awayName }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string }) {
+  const [open, setOpen] = useState(true);
+  // agrupa por mercado, preservando a ordem (1X2 antes de Gols) e ordenando outcomes
+  const markets = [...new Set(rows.map((r) => r.market))];
   return (
-    <div className="bg-white border border-line border-l-4 border-l-forest/40 rounded-rebrand-xl p-5 mt-4">
+    <div className="bg-white border border-line border-l-4 border-l-forest/40 rounded-rebrand-xl p-5">
       <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between text-left">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Odds reais · devig vs linha sharp</div>
-          <div className="text-base font-bold text-ink">Explorar mercados</div>
+          <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3 font-semibold">Valor por opção</div>
+          <div className="text-base font-bold text-ink">Explorar opções</div>
         </div>
         <ChevronDown className={`w-5 h-5 text-ink-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open ? (
-        <div className="mt-4"><ValueMarketBoard markets={markets} /></div>
+        <div className="mt-3">
+          {/* Cabeçalho de colunas */}
+          <div className="flex items-center justify-between gap-3 pb-2 border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3 font-semibold">
+            <span>Aposta</span>
+            <div className="flex items-center gap-3">
+              <span className="w-14 text-right">Odd</span>
+              <span className="w-16 text-right">Valor</span>
+              <span className="w-10 text-center" title="Score de Confiabilidade (0–100)">Score</span>
+            </div>
+          </div>
+          <div className="space-y-4 mt-1">
+          {markets.map((mk) => {
+            const list = rows.filter((r) => r.market === mk).sort((a, b) => a.outcome_order - b.outcome_order);
+            return (
+              <div key={mk}>
+                <div className="text-[11px] uppercase tracking-[0.12em] text-forest font-semibold mb-1 mt-2">{marketLabel(mk)}</div>
+                <div className="divide-y divide-line">
+                  {list.map((r) => (
+                    <div key={`${r.outcome}-${r.line_value}`} className="flex items-center justify-between gap-3 py-2.5">
+                      <span className="text-sm font-semibold text-ink">{pickLabel(r.market, r.outcome, r.line_value, homeName, awayName)}</span>
+                      <div className="flex items-center gap-3 text-[12px] tabular-nums">
+                        <span className="text-ink-2 w-14 text-right">{r.best_odd.toFixed(2)}</span>
+                        <span className="text-forest font-semibold w-16 text-right">{fmtEdgeScore(r.edge)}</span>
+                        <span className={`text-[11px] font-bold rounded px-1.5 py-0.5 w-10 text-center ${faixaBadgeCls(r.faixa)}`} title="Score de Confiabilidade">{r.score}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          </div>
+        </div>
       ) : (
-        <p className="text-[11px] text-ink-3 mt-1">Resultado, gols (over/under), ambos marcam e dupla chance — odds e chance por mercado.</p>
+        <p className="text-[11px] text-ink-3 mt-1">Todas as apostas com valor (Resultado, Gols, Handicap e Ambos marcam), com score e odd. Outros mercados entram conforme liberados no backend.</p>
       )}
     </div>
   );
@@ -514,13 +503,8 @@ export default function FutebolJogo() {
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   const head = tendencies ? headlineMarket(tendencies.markets) : null;
-  const { data: oddsRows } = useFutebolFixtureOdds(fid);
-  const value = useMemo(() => {
-    if (!fixture || !oddsRows?.length) return null;
-    return computeFixtureValue(oddsRows, fixture.home_team_name, fixture.away_team_name);
-  }, [oddsRows, fixture]);
-  const { data: pred } = useFutebolFixturePrediction(fid);
-  const hasRail = !!(pred?.has_prediction || tendencies);
+  // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
+  const { data: valueRows } = useFutebolFixtureValue(fid);
   const h2hHomeWins = h2h?.filter((m) => m.winner_team_id === fixture?.home_team_id).length ?? 0;
   const h2hAwayWins = h2h?.filter((m) => m.winner_team_id === fixture?.away_team_id).length ?? 0;
   const h2hDraws = h2h?.filter((m) => m.winner_team_id == null).length ?? 0;
@@ -530,6 +514,8 @@ export default function FutebolJogo() {
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
   const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
+  // jogo encerrado/iniciado não é mais oportunidade: esconde o "O que olhar" (vira só descritivo)
+  const showValue = !finished && !!valueRows && valueRows.length > 0;
 
   const playerStats = extras?.player_stats || [];
   const statsById = new Map<number, FutebolPlayerStat>(
@@ -609,90 +595,18 @@ export default function FutebolJogo() {
               </div>
             </div>
 
-            {/* Conteúdo principal — 2 colunas */}
+            {/* Conteúdo principal — veredito (esq) + rail (modelo + explorar opções) */}
+            {(showValue || tendencies) && (
             <div className="mt-4 grid lg:grid-cols-12 gap-4 items-start">
-              {/* Esquerda: o que olhar (síntese) + explorar mercados */}
-              {value && value.markets.length > 0 && (
-                <div className={hasRail ? 'lg:col-span-8' : 'lg:col-span-12'}>
-                  <WhatToWatch value={value} />
-                  <ExploreMarkets markets={value.markets} />
+              {/* Veredito: o que olhar (síntese) */}
+              {showValue && valueRows && (
+                <div className="lg:col-span-7">
+                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
                 </div>
               )}
 
-              {/* Direita: contexto (modelo da API + nossa leitura) */}
-              {hasRail && (
-              <div className={`${value && value.markets.length > 0 ? 'lg:col-span-4' : 'lg:col-span-12'} space-y-4`}>
-
-                {/* Segunda opinião — modelo da própria API-Football (referência) */}
-                {pred?.has_prediction && (
-              <div className="bg-amber/[0.04] border border-amber/25 rounded-rebrand-xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-bold text-ink">Segunda opinião</span>
-                  <span className="text-[10px] uppercase tracking-wide text-ink-3">modelo da API · referência</span>
-                </div>
-                <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Quem vence (1X2)</p>
-                {[
-                  { label: fixture.home_team_name, pct: pred.prob_home_pct ?? 0 },
-                  { label: 'Empate', pct: pred.prob_draw_pct ?? 0 },
-                  { label: fixture.away_team_name, pct: pred.prob_away_pct ?? 0 },
-                ].map((r) => (
-                  <div key={r.label} className="py-1.5">
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-ink truncate">{r.label}</span>
-                      <span className="font-bold text-ink tabular-nums">{Math.round(r.pct)}%</span>
-                    </div>
-                    <div className="h-1.5 rounded bg-canvas-2 overflow-hidden">
-                      <div className="h-full bg-forest" style={{ width: `${Math.max(0, Math.min(100, r.pct))}%` }} />
-                    </div>
-                  </div>
-                ))}
-
-                {(() => {
-                  const dims = [
-                    { label: 'Forma', h: pred.cmp_form_home, a: pred.cmp_form_away },
-                    { label: 'Ataque', h: pred.cmp_att_home, a: pred.cmp_att_away },
-                    { label: 'Defesa', h: pred.cmp_def_home, a: pred.cmp_def_away },
-                    { label: 'Tendência', h: pred.cmp_poisson_home, a: pred.cmp_poisson_away },
-                    { label: 'Confronto direto', h: pred.cmp_h2h_home, a: pred.cmp_h2h_away },
-                    { label: 'Gols', h: pred.cmp_goals_home, a: pred.cmp_goals_away },
-                    { label: 'Geral', h: pred.cmp_total_home, a: pred.cmp_total_away },
-                  ].filter((d) => (d.h ?? 0) + (d.a ?? 0) > 0);
-                  if (!dims.length) return null;
-                  return (
-                    <div className="mt-3 pt-3 border-t border-line">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-bold text-forest truncate">{fixture.home_team_name}</span>
-                        <span className="text-[10px] uppercase tracking-wide text-ink-3">comparativo do modelo</span>
-                        <span className="text-[11px] font-bold text-amber-2 truncate text-right">{fixture.away_team_name}</span>
-                      </div>
-                      {dims.map((d) => {
-                        const h = d.h ?? 0, a = d.a ?? 0;
-                        const hPct = h + a > 0 ? (h / (h + a)) * 100 : 50;
-                        return (
-                          <div key={d.label} className="py-1.5">
-                            <div className="flex items-center justify-between text-[11px] mb-1 tabular-nums">
-                              <span className="font-bold text-ink w-8">{Math.round(h)}</span>
-                              <span className="text-[10px] text-ink-3 uppercase tracking-wide">{d.label}</span>
-                              <span className="font-bold text-ink w-8 text-right">{Math.round(a)}</span>
-                            </div>
-                            <div className="flex h-1.5 rounded overflow-hidden bg-canvas-2">
-                              <div className="bg-forest" style={{ width: `${hPct}%` }} />
-                              <div className="bg-amber" style={{ width: `${100 - hPct}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-
-                <p className="text-[10px] text-ink-3 mt-3 leading-snug">
-                  Probabilidades e comparativo do modelo da própria API-Football, separado do nosso. Usamos como <b className="text-ink-2">referência</b> pra checar se o valor do mercado tem respaldo — não é recomendação.
-                </p>
-              </div>
-            )}
-
-                {/* Leitura do Jogo — nosso modelo de gols */}
+              {/* Rail: nosso modelo de gols (quando há amostra) + explorar opções */}
+              <div className={`${showValue ? 'lg:col-span-5' : 'lg:col-span-12'} space-y-4`}>
                 {tendencies && (
                   <div className="bg-forest/[0.04] border border-forest/25 rounded-rebrand-xl p-5">
                     <div className="flex items-center justify-between mb-3">
@@ -720,9 +634,12 @@ export default function FutebolJogo() {
                     </p>
                   </div>
                 )}
+                {showValue && valueRows && (
+                  <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                )}
               </div>
-              )}
             </div>
+            )}
 
             {/* Estatística descritiva (só quando há dado) */}
             {hasDescriptive && (
