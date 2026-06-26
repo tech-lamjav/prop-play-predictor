@@ -106,6 +106,11 @@ export function freqEmDez(odd: number): number {
 export const fmtPctScore = (p: number) => `${Math.round(p * 100)}%`;
 export const fmtEdgeScore = (e: number) => `${e >= 0 ? '+' : ''}${(e * 100).toFixed(1)}%`;
 
+/** "Chance" (%) a partir da prob justa devigada (0..1). null se ausente. */
+export function chancePct(prob: number | null | undefined): number | null {
+  return typeof prob === 'number' && isFinite(prob) && prob > 0 ? Math.round(prob * 100) : null;
+}
+
 /** Melhor outcome do jogo (maior Score). */
 export function bestOf(rows: FutebolFixtureValueRow[]): FutebolFixtureValueRow | null {
   return rows.reduce<FutebolFixtureValueRow | null>((b, r) => (b == null || r.score > b.score ? r : b), null);

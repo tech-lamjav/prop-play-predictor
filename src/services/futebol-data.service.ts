@@ -345,6 +345,7 @@ export interface FutebolValueBoardRow {
   avg_odd: number;
   n_casas: number;
   janela_usada: string;    // t15m | t1h | t24h
+  prob_justa_fechamento: number; // "Chance" (prob justa devigada) 0..1
   pts_valor: number;
   pts_premissas: number;
   pts_corroboracao: number;

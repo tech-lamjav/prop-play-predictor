@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Zap, ArrowRight, Check } from 'lucide-react';
+import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtures, useFutebolValueBoard } from '@/hooks/use-futebol-data';
+import { useFutebolFixtures, useFutebolValueBoard, useFutebolFixtureValue } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   pickLabel, marketLabel, fmtEdgeScore, freqEmDez, groupBoardByFixture,
-  faixaBadgeCls, faixaWord, topEvidencia, SCORE_ALTA, SCORE_MEDIA,
+  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -56,10 +56,12 @@ const CARD = 'bg-white border border-line rounded-rebrand-md';
 const LABEL = 'text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3';
 
 // ── KPI ───────────────────────────────────────────────────
-function Kpi({ label, value, sub, tone = 'ink' }: { label: string; value: string | number; sub: string; tone?: 'ink' | 'green' | 'amber' }) {
-  const color = tone === 'green' ? 'text-forest' : tone === 'amber' ? 'text-amber-2' : 'text-ink';
+function Kpi({ label, value, sub, tone = 'ink', anchor }: { label: string; value: string | number; sub: string; tone?: 'ink' | 'green' | 'amber'; anchor?: boolean }) {
+  const color = anchor ? 'text-amber-2' : tone === 'green' ? 'text-forest' : tone === 'amber' ? 'text-amber-2' : 'text-ink';
   return (
-    <div className={`${CARD} p-4`}>
+    <div className="rounded-rebrand-md p-4" style={anchor
+      ? { background: '#fef7df', border: '1px solid #fde68a' }
+      : { background: '#fff', border: '1px solid var(--line)' }}>
       <div className={LABEL}>{label}</div>
       <div className={`text-2xl md:text-[28px] font-bold tabular-nums leading-none mt-2 ${color}`}>{value}</div>
       <div className="text-[11px] mt-1.5 text-ink-3">{sub}</div>
@@ -67,96 +69,96 @@ function Kpi({ label, value, sub, tone = 'ink' }: { label: string; value: string
   );
 }
 
-// ── Hero: melhor Score do dia. Alta = forest gradient; Média = claro/âmbar ──
-function TopValueHero({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => void }) {
+// Número do hero (Chance / Odd / Se paga em / Valor)
+function HeroStat({ label, value, dark }: { label: string; value: string; dark?: boolean }) {
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.5)' : undefined }}>
+        <span className={dark ? '' : 'text-ink-3'}>{label}</span>
+      </div>
+      <div className={`text-[20px] font-bold tabular-nums leading-none mt-1 ${dark ? '' : 'text-ink'}`}>{value}</div>
+    </div>
+  );
+}
+
+// ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
+// Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
+function TopValueHero({ o, onClick, atencao }: { o: FutebolValueBoardRow; onClick: () => void; atencao?: string | null }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
-  const alta = o.score >= SCORE_ALTA;
+  const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
+  const chance = chancePct(o.prob_justa_fechamento);
+  const porque = chance != null
+    ? <>O mercado dá <b className={d ? 'text-white' : 'text-ink'}>~{chance}% de chance</b>; na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b> isso paga acima do risco real — é aí que está o valor.</>
+    : <>Na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b>, se paga se acontecer ~{freqEmDez(o.best_odd)} em cada 10 vezes ou mais — e a leitura do jogo aponta nessa direção.</>;
 
-  if (alta) {
-    return (
-      <div className="rounded-2xl overflow-hidden relative text-white" style={{ background: 'linear-gradient(135deg, #0a3d2e 0%, #08321f 60%, #051f12 100%)' }}>
-        <div className="absolute top-0 right-0 w-[280px] h-[280px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)', transform: 'translate(90px,-90px)' }} />
-        <div className="relative px-6 md:px-8 py-7 grid md:grid-cols-12 gap-6 md:gap-8">
-          <div className="md:col-span-7 flex flex-col">
-            <span className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[10px] uppercase tracking-[0.16em] font-bold w-fit" style={{ background: '#fbbf24', color: '#1a1d1a' }}>
-              <Zap className="w-3 h-3" /> Melhor valor do dia
-            </span>
-            <div className="flex items-center gap-2.5 mt-4">
-              <Crest teamId={o.home_team_id} name={o.home_team_name} size={28} />
-              <span className="text-lg md:text-xl font-bold tracking-tight">{o.home_team_name} <span className="text-white/50 font-normal">x</span> {o.away_team_name}</span>
-              <Crest teamId={o.away_team_id} name={o.away_team_name} size={28} />
-            </div>
-            <div className="text-[12px] mt-1 text-white/55">{COMP_LABEL[o.competition] || o.competition} · {fmtDayTime(o.kickoff_utc)}</div>
-            <div className="mt-4">
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/50">{marketLabel(o.market)}</div>
-              <div className="text-[22px] md:text-[26px] font-bold leading-tight mt-1">{pick}</div>
-              <p className="text-[13px] text-white/75 mt-2 leading-relaxed">
-                Na odd <b className="text-white">{o.best_odd.toFixed(2)}</b>, essa aposta se paga se acontecer <b className="text-white">~{freqEmDez(o.best_odd)} em cada 10 vezes</b> ou mais — e a leitura do jogo aponta nessa direção.
-              </p>
-              {ev && (
-                <p className="flex items-start gap-1.5 text-[12px] text-white/80 mt-2">
-                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-300" /><span>{ev}</span>
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="md:col-span-5 flex flex-col justify-between">
-            <div className="md:text-right">
-              <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-white/50">Confiabilidade</div>
-              <div className="flex items-baseline md:justify-end gap-1 mt-1">
-                <span className="text-[56px] md:text-[68px] font-bold tabular-nums leading-none" style={{ color: '#fbbf24' }}>{o.score}</span>
-                <span className="text-[18px] text-white/40">/100</span>
-              </div>
-              <div className="text-[11px] mt-1 text-white/55">valor {fmtEdgeScore(o.edge)} · odd {o.best_odd.toFixed(2)}</div>
-            </div>
-            <button onClick={onClick} className="h-11 mt-5 rounded-md text-[13px] font-semibold inline-flex items-center justify-center gap-2" style={{ background: '#fbbf24', color: '#1a1d1a' }}>
-              Abrir jogo <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Média — destaque honesto, claro com acento âmbar (não vende como Alta)
   return (
-    <div className="rounded-2xl border border-line border-l-4 border-l-amber bg-white px-6 md:px-8 py-7 grid md:grid-cols-12 gap-6 md:gap-8">
-      <div className="md:col-span-7 flex flex-col">
-        <span className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[10px] uppercase tracking-[0.16em] font-bold w-fit bg-amber/15 text-amber-2 border border-amber/30">
-          <Zap className="w-3 h-3" /> Melhor do dia · Média
-        </span>
-        <div className="flex items-center gap-2.5 mt-4">
-          <Crest teamId={o.home_team_id} name={o.home_team_name} size={28} />
-          <span className="text-lg md:text-xl font-bold tracking-tight text-ink">{o.home_team_name} <span className="text-ink-3 font-normal">x</span> {o.away_team_name}</span>
-          <Crest teamId={o.away_team_id} name={o.away_team_name} size={28} />
+    <div className={`rounded-2xl overflow-hidden relative ${d ? 'text-white' : 'bg-white border border-line border-l-4 border-l-amber'}`}
+      style={d ? { background: 'linear-gradient(135deg, #0a3d2e 0%, #08321f 60%, #051f12 100%)' } : undefined}>
+      {d && <div className="absolute top-0 right-0 w-[320px] h-[320px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.16), transparent 70%)', transform: 'translate(90px,-90px)' }} />}
+      <div className="relative px-6 md:px-8 py-7 grid md:grid-cols-12 gap-6 md:gap-8">
+
+        {/* Esquerda — identidade do pick + CTA */}
+        <div className="md:col-span-4 flex flex-col">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[10px] uppercase tracking-[0.18em] font-bold w-fit ${d ? '' : 'bg-amber/15 text-amber-2 border border-amber/30'}`}
+            style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
+            <Zap className="w-3 h-3" /> {d ? 'Melhor valor do dia' : 'Melhor do dia · Média'}
+          </span>
+          <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {COMP_LABEL[o.competition] || o.competition}</div>
+          <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}>{pick}</div>
+          <div className={`flex items-center gap-1.5 text-[13px] mt-2 ${d ? 'text-white/70' : 'text-ink-2'}`}>
+            <Crest teamId={o.home_team_id} name={o.home_team_name} size={18} />
+            <span>{o.home_team_name} × {o.away_team_name}</span>
+            <Crest teamId={o.away_team_id} name={o.away_team_name} size={18} />
+            <span className="opacity-70">· {fmtDayTime(o.kickoff_utc)}</span>
+          </div>
+          <button onClick={onClick} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
+            style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
+            Abrir análise do jogo <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
-        <div className="text-[12px] mt-1 text-ink-3">{COMP_LABEL[o.competition] || o.competition} · {fmtDayTime(o.kickoff_utc)}</div>
-        <div className="mt-4">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-ink-3">{marketLabel(o.market)}</div>
-          <div className="text-[22px] md:text-[26px] font-bold leading-tight mt-1 text-ink">{pick}</div>
-          <p className="text-[13px] text-ink-2 mt-2 leading-relaxed">
-            Na odd <b className="text-ink">{o.best_odd.toFixed(2)}</b>, essa aposta se paga se acontecer <b className="text-ink">~{freqEmDez(o.best_odd)} em cada 10 vezes</b> ou mais — e a leitura do jogo aponta nessa direção.
-          </p>
+
+        {/* Meio — por quê + ponto de atenção */}
+        <div className="md:col-span-5 flex flex-col">
+          <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
+          <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}>{porque}</p>
           {ev && (
-            <p className="flex items-start gap-1.5 text-[12px] text-ink-2 mt-2">
-              <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-status-success" /><span>{ev}</span>
+            <p className={`flex items-start gap-1.5 text-[12px] mt-3 ${d ? 'text-white/80' : 'text-ink-2'}`}>
+              <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${d ? 'text-emerald-300' : 'text-status-success'}`} /><span>{ev}</span>
             </p>
           )}
+          {atencao && (
+            <div className="mt-4 rounded-lg p-3 flex items-start gap-2"
+              style={d ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' } : { background: '#fef7df', border: '1px solid #fde68a' }}>
+              <span style={{ color: d ? '#fde68a' : '#9a6c00' }} className="mt-0.5 shrink-0"><AlertTriangle className="w-3.5 h-3.5" /></span>
+              <div className={`text-[12px] leading-relaxed ${d ? 'text-white/80' : ''}`} style={d ? undefined : { color: '#5a3c00' }}>
+                <span className="font-semibold" style={{ color: d ? '#fde68a' : '#9a6c00' }}>Ponto de atenção · </span>{atencao}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-      <div className="md:col-span-5 flex flex-col justify-between">
-        <div className="md:text-right">
-          <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">Confiabilidade</div>
-          <div className="flex items-baseline md:justify-end gap-1 mt-1">
-            <span className="text-[56px] md:text-[68px] font-bold tabular-nums leading-none text-amber-2">{o.score}</span>
-            <span className="text-[18px] text-ink-3">/100</span>
+
+        {/* Direita — confiabilidade + números */}
+        <div className={`md:col-span-3 flex flex-col justify-between md:pl-6 ${d ? '' : 'md:border-l md:border-line'}`}
+          style={d ? { borderLeft: '1px solid rgba(255,255,255,0.1)' } : undefined}>
+          <div>
+            <div className={`text-[10px] uppercase tracking-[0.16em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Confiabilidade</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className={`text-[56px] md:text-[64px] font-bold tabular-nums leading-none ${d ? '' : 'text-amber-2'}`} style={d ? { color: '#fbbf24' } : undefined}>{o.score}</span>
+              <span className={`text-[16px] ${d ? 'text-white/40' : 'text-ink-3'}`}>/100</span>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 mt-2 px-2 h-6 rounded text-[10px] uppercase tracking-[0.14em] font-bold ${d ? '' : 'bg-amber/15 text-amber-2'}`}
+              style={d ? { background: 'rgba(220,239,226,0.15)', color: '#dcefe2' } : undefined}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />Faixa {faixaWord(o.faixa)}
+            </span>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-3 mt-5">
+              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} />}
+              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} />
+              <HeroStat label="Se paga em" value={`~${freqEmDez(o.best_odd)}/10`} dark={d} />
+              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} />
+            </div>
           </div>
-          <div className="text-[11px] mt-1 text-ink-3">valor {fmtEdgeScore(o.edge)} · odd {o.best_odd.toFixed(2)}</div>
         </div>
-        <button onClick={onClick} className="h-11 mt-5 rounded-md text-[13px] font-semibold inline-flex items-center justify-center gap-2 bg-ink text-canvas hover:bg-ink-2 transition">
-          Abrir jogo <ArrowRight className="w-4 h-4" />
-        </button>
       </div>
     </div>
   );
@@ -165,42 +167,38 @@ function TopValueHero({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => 
 // ── Card de oportunidade ───────────────────────────────────
 function OppCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => void }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
-  const ev = topEvidencia(o.evidencias);
+  const chance = chancePct(o.prob_justa_fechamento);
   return (
     <button onClick={onClick} className={`${CARD} p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-[10px] text-ink-3">{COMP_LABEL[o.competition] || o.competition} · {fmtDayTime(o.kickoff_utc)}</div>
-          <div className="flex items-center gap-1.5 mt-1 min-w-0">
-            <Crest teamId={o.home_team_id} name={o.home_team_name} size={18} />
-            <span className="text-sm font-semibold text-ink truncate">{o.home_team_name} <span className="text-ink-3 font-normal">x</span> {o.away_team_name}</span>
-            <Crest teamId={o.away_team_id} name={o.away_team_name} size={18} />
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
+          <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
         </div>
-        <div className="text-center shrink-0">
-          <span className={`text-sm font-extrabold rounded px-1.5 py-0.5 tabular-nums ${faixaBadgeCls(o.faixa)}`} title="Score de Confiabilidade (0–100)">{o.score}</span>
-          <div className="text-[9px] uppercase tracking-wide text-ink-3 mt-0.5">{faixaWord(o.faixa)}</div>
+        <div className="text-right shrink-0">
+          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
+          <div className="text-[26px] font-bold tabular-nums tracking-tight leading-none mt-0.5 text-forest">{o.score}</div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-        <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
-        <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold bg-canvas-2 text-ink">{pick}</span>
+      <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink">{pick}</div>
+      <div className="flex items-center gap-1.5 text-[12px] mt-1 text-ink-3">
+        <Crest teamId={o.home_team_id} name={o.home_team_name} size={16} />
+        <span className="truncate">{o.home_team_name} × {o.away_team_name}</span>
+        <Crest teamId={o.away_team_id} name={o.away_team_name} size={16} />
+        <span className="shrink-0 opacity-80">· {fmtDayTime(o.kickoff_utc)}</span>
       </div>
-      {ev && (
-        <p className="flex items-start gap-1.5 text-[12px] text-ink-2 mt-2">
-          <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-status-success" /><span>{ev}</span>
-        </p>
-      )}
-      <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-line">
+      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
+        <div>
+          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
+          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{chance != null ? `${chance}%` : '—'}</div>
+        </div>
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</div>
-          <div className="text-base font-bold tabular-nums text-ink mt-0.5">{o.best_odd.toFixed(2)}</div>
-          <div className="text-[10px] text-ink-3">se paga em ~{freqEmDez(o.best_odd)} de 10</div>
+          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{o.best_odd.toFixed(2)}</div>
         </div>
-        <div className="text-right">
+        <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Valor</div>
-          <div className="text-base font-bold tabular-nums text-forest mt-0.5">{fmtEdgeScore(o.edge)}</div>
-          <div className="text-[10px] text-ink-3">acima do risco real</div>
+          <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5">{fmtEdgeScore(o.edge)}</div>
         </div>
       </div>
     </button>
@@ -289,38 +287,65 @@ export default function FutebolHoje() {
 
   const oppsByFixture = useMemo(() => board.map((bf) => bf.best), [board]);
   const heroOpp = oppsByFixture[0] && oppsByFixture[0].score >= SCORE_MEDIA ? oppsByFixture[0] : null;
-  const bestScore = oppsByFixture[0]?.score ?? null;
+  // "Ponto de atenção" do hero: vem do detalhe (contras/avisos) do jogo em destaque
+  const { data: heroRows } = useFutebolFixtureValue(heroOpp?.fixture_id);
+  const heroAtencao = useMemo(() => {
+    if (!heroOpp || !heroRows?.length) return null;
+    const row = heroRows.find((r) => r.market === heroOpp.market && r.outcome === heroOpp.outcome && (r.line_value ?? null) === (heroOpp.line_value ?? null));
+    const list = row ? [...(row.contras ?? []), ...(row.avisos ?? [])] : [];
+    return list[0] ?? null;
+  }, [heroOpp, heroRows]);
   const moreOpps = (heroOpp ? oppsByFixture.slice(1) : oppsByFixture).filter((o) => o.score >= SCORE_MEDIA).slice(0, 4);
   const nOpps = dayRows.length;
   const gameList = dayGames;
-  const comValor = dayGames.filter((f) => (bestByFixture.get(f.fixture_id)?.score ?? 0) >= SCORE_MEDIA).length;
+  const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
+  // melhor valor entre as oportunidades realmente exibidas (score ≥ Média), não o edge bruto de longshots
+  const surfaced = oppsByFixture.filter((o) => o.score >= SCORE_MEDIA);
+  const melhorValor = surfaced.length ? Math.round(Math.max(...surfaced.map((o) => o.edge)) * 100) : null;
+
+  // contagem de jogos por dia (BRT) — pros chips do stepper
+  const gamesByDay = useMemo(() => {
+    const m: Record<string, number> = {};
+    allGames.forEach((f) => { const d = parseUtc(f.kickoff_utc || f.date_utc); if (d) { const k = brtDateStr(d); m[k] = (m[k] ?? 0) + 1; } });
+    return m;
+  }, [allGames]);
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
-      <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-6 md:gap-8 flex-1">
+      {!loading && days.length > 0 && (
+        <div className="bg-white border-b border-line">
+          <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
+            <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
+          </div>
+        </div>
+      )}
+      <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 md:py-7 flex flex-col gap-6 md:gap-7 flex-1">
 
         {/* Briefing */}
         <div className="grid md:grid-cols-12 gap-5">
           <div className="md:col-span-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className={LABEL}>{isToday ? 'Hoje no futebol' : 'No futebol'}</div>
-              {!loading && days.length > 0 && (
-                <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} />
-              )}
-            </div>
+            <div className={LABEL}>{isToday ? 'Hoje no futebol' : 'No futebol'}</div>
             <h1 className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
-            <p className="text-sm mt-2 text-ink-2">
-              {dayGames.length > 0
-                ? <><span className="font-semibold text-ink">{dayGames.length} jogo{dayGames.length === 1 ? '' : 's'}{isToday ? ' hoje' : ''}</span>{comValor ? <> · <span className="font-semibold text-forest">{comValor} com valor</span></> : ''}</>
-                : 'Sem jogos nesse dia'}
+            <p className="text-sm mt-2.5 text-ink-2">
+              {dayGames.length > 0 ? (
+                <>
+                  <span className="font-semibold text-ink">{dayGames.length} jogo{dayGames.length === 1 ? '' : 's'}</span>
+                  {nOpps > 0 && <> · {nOpps} oportunidade{nOpps === 1 ? '' : 's'} de valor</>}
+                  {alta > 0 && <> · <span className="font-semibold text-forest">{alta} de faixa Alta</span></>}
+                </>
+              ) : 'Sem jogos nesse dia'}
             </p>
+            <div className="flex items-center gap-2 mt-3 text-[11px] tabular-nums text-ink-3">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-forest" />
+              <span>Odds revisadas de hora em hora</span>
+            </div>
           </div>
           <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Kpi label="Jogos" value={loading ? '—' : dayGames.length} sub="na agenda" />
-            <Kpi label="Com valor" value={loading ? '—' : comValor} sub="score ≥ 40" tone="green" />
-            <Kpi label="Melhor score" value={loading || bestScore == null ? '—' : bestScore} sub="confiabilidade /100" tone="amber" />
-            <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="mercados monitorados" tone="green" />
+            <Kpi label="Jogos hoje" value={loading ? '—' : dayGames.length} sub={isToday ? 'na agenda' : 'no dia'} />
+            <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="com valor (+EV)" tone="green" />
+            <Kpi label="Faixa Alta" value={loading ? '—' : alta} sub="maior confiança" anchor />
+            <Kpi label="Melhor valor" value={loading || melhorValor == null ? '—' : `+${melhorValor}%`} sub="destaque do dia" tone="green" />
           </div>
         </div>
 
@@ -328,7 +353,7 @@ export default function FutebolHoje() {
         {loading ? (
           <Skeleton className="h-64 w-full bg-canvas-2 rounded-2xl" />
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} />
+          <TopValueHero o={heroOpp} atencao={heroAtencao} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
@@ -368,6 +393,9 @@ export default function FutebolHoje() {
                 <div className={LABEL}>{isToday ? 'Jogos de hoje' : 'Jogos do dia'}</div>
                 <div className="text-lg font-bold tracking-tight text-ink mt-0.5">{gameList.length} partida{gameList.length === 1 ? '' : 's'}</div>
               </div>
+              <button onClick={() => navigate('/futebol/jogos')} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
+                Ver todos <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
             {loading ? (
               <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
@@ -383,14 +411,13 @@ export default function FutebolHoje() {
           </div>
         </div>
 
-        {/* Explorar */}
-        <button onClick={() => navigate('/futebol/jogos')} className={`${CARD} w-full flex items-center gap-3 px-5 py-4 hover:border-line-2 transition text-left`}>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-ink">Explorar jogos</p>
-            <p className="text-[11px] text-ink-3">Rodadas, classificação e artilheiros por competição</p>
+        {/* Banner honesto */}
+        <div className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
+          <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
+          <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
+            <span className="font-semibold">Não é recomendação.</span> Mostramos onde a odd paga acima da chance estimada (valor). Score e faixa medem confiabilidade, não garantia.
           </div>
-          <ChevronRight className="w-4 h-4 text-ink-3" />
-        </button>
+        </div>
       </div>
     </div>
   );

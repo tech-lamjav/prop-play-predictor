@@ -11,3 +11,14 @@ export function getFutebolTeamLogoUrl(teamId: number | null | undefined): string
   const { data } = supabase.storage.from('futebol-team-logos').getPublicUrl(`${teamId}.png`);
   return data.publicUrl;
 }
+
+/**
+ * URL pública da foto do jogador no nosso Storage (bucket futebol-player-photos),
+ * espelhada da API-Sports pela edge function mirror-futebol-player-photos. Por player_id.
+ * 404 → o componente cai pras iniciais (onError).
+ */
+export function getFutebolPlayerPhotoUrl(playerId: number | null | undefined): string | null {
+  if (!playerId) return null;
+  const { data } = supabase.storage.from('futebol-player-photos').getPublicUrl(`${playerId}.png`);
+  return data.publicUrl;
+}
