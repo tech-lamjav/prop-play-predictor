@@ -291,3 +291,43 @@ grant execute on function public.get_futebol_fixture_value(bigint) to authentica
 -- ── Cron: sync horário ───────────────────────────────────────────────────────
 -- select cron.schedule('futebol-sync-daily', '0 * * * *', $$CALL futebol.sync_all()$$);
 -- (no dev já existe o job; em prod, criar após o passo 7 do runbook.)
+
+-- ============================================================================
+-- Reverse trial do Futebol (7 dias, sem cartão) — paywall = blur nas oportunidades
+-- SKU separado do analytics. Colunas no public.users (nullable/seguras).
+-- ============================================================================
+alter table public.users add column if not exists futebol_trial_started_at timestamptz;
+alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
+
+-- Estado de acesso: inicia o relógio no 1º acesso logado e devolve o estado.
+create or replace function public.get_futebol_access()
+ returns jsonb
+ language plpgsql security definer set search_path to ''
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_started timestamptz; v_status text;
+  v_trial_days int := 7; v_ends timestamptz; v_days_left int;
+begin
+  if v_uid is null then
+    return jsonb_build_object('state','anon','unlocked',false,'days_left',null,'trial_ends_at',null);
+  end if;
+  select u.futebol_trial_started_at, coalesce(u.futebol_subscription_status,'free')
+    into v_started, v_status from public.users u where u.id = v_uid;
+  if v_status = 'premium' then
+    return jsonb_build_object('state','subscribed','unlocked',true,'days_left',null,'trial_ends_at',null);
+  end if;
+  if v_started is null then
+    update public.users set futebol_trial_started_at = now() where id = v_uid;
+    v_started := now();
+  end if;
+  v_ends := v_started + make_interval(days => v_trial_days);
+  v_days_left := greatest(0, ceil(extract(epoch from (v_ends - now())) / 86400.0)::int);
+  if now() < v_ends then
+    return jsonb_build_object('state','trial','unlocked',true,'days_left',v_days_left,'trial_ends_at',v_ends);
+  else
+    return jsonb_build_object('state','expired','unlocked',false,'days_left',0,'trial_ends_at',v_ends);
+  end if;
+end $function$;
+grant execute on function public.get_futebol_access() to authenticated, anon;
+-- Fase 2 (pagamento): webhook do Stripe seta users.futebol_subscription_status='premium'.

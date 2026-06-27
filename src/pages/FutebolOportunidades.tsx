@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Filter, ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolValueBoard } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolAccess } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
+import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
@@ -63,7 +64,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 // Linha da tabela (desktop)
-function OppRow({ o, onClick, muted }: { o: FutebolValueBoardRow; onClick: () => void; muted?: boolean }) {
+function OppRow({ o, onClick, muted, locked }: { o: FutebolValueBoardRow; onClick: () => void; muted?: boolean; locked?: boolean }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   return (
@@ -76,7 +77,7 @@ function OppRow({ o, onClick, muted }: { o: FutebolValueBoardRow; onClick: () =>
           <Crest teamId={o.away_team_id} name={o.away_team_name} size={20} />
         </div>
         <div className="min-w-0">
-          <div className="text-[13px] font-semibold tracking-tight text-ink truncate">{pick}</div>
+          <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pick}</Blur></div>
           <div className="text-[11px] text-ink-3 truncate">{o.home_team_name} × {o.away_team_name}</div>
         </div>
       </div>
@@ -84,16 +85,16 @@ function OppRow({ o, onClick, muted }: { o: FutebolValueBoardRow; onClick: () =>
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
         <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{COMP_LABEL[o.competition] || o.competition} · {fmtHour(o.kickoff_utc)}</div>
       </div>
-      <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{chance != null ? `${chance}%` : '—'}</div>
-      <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{o.best_odd.toFixed(2)}</div>
-      <div className="text-right tabular-nums text-[14px] font-bold text-forest">{fmtEdgeScore(o.edge)}</div>
+      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={!!locked}>{chance != null ? `${chance}%` : '—'}</Blur></div>
+      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={!!locked}>{o.best_odd.toFixed(2)}</Blur></div>
+      <div className="text-right tabular-nums text-[14px] font-bold text-forest"><Blur active={!!locked}>{fmtEdgeScore(o.edge)}</Blur></div>
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
     </button>
   );
 }
 
 // Card (mobile)
-function OppMobileCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => void }) {
+function OppMobileCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () => void; locked?: boolean }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   return (
@@ -108,7 +109,7 @@ function OppMobileCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () =>
             <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
             <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
           </div>
-          <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink">{pick}</div>
+          <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink"><Blur active={!!locked}>{pick}</Blur></div>
           <div className="text-[11px] text-ink-3 truncate">{o.home_team_name} × {o.away_team_name} · {fmtHour(o.kickoff_utc)}</div>
         </div>
         <div className="text-right shrink-0">
@@ -120,7 +121,7 @@ function OppMobileCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () =>
         {[['Chance', chance != null ? `${chance}%` : '—'], ['Odd', o.best_odd.toFixed(2)], ['Valor', fmtEdgeScore(o.edge)]].map(([l, v], i) => (
           <div key={l}>
             <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{l}</div>
-            <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${i === 2 ? 'text-forest' : 'text-ink'}`}>{v}</div>
+            <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${i === 2 ? 'text-forest' : 'text-ink'}`}><Blur active={!!locked}>{v}</Blur></div>
           </div>
         ))}
       </div>
@@ -151,6 +152,8 @@ const Regua = () => (
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
   const { data: rows, isLoading } = useFutebolValueBoard();
+  const { data: access } = useFutebolAccess();
+  const locked = !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
   const [faixa, setFaixa] = useState<FaixaFilter>('all');
   const [comp, setComp] = useState<CompFilter>('all');
@@ -232,6 +235,8 @@ export default function FutebolOportunidades() {
       </div>
 
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
+        <FutebolAccessBanner access={access} />
+
         {/* Filtros */}
         <div className="rounded-rebrand-md p-3 flex items-center gap-2 flex-wrap bg-white border border-line">
           <Filter className="w-4 h-4 text-ink-2 ml-1" />
@@ -269,20 +274,20 @@ export default function FutebolOportunidades() {
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
                 <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
               </div>
-              {comValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} />)}
+              {comValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} locked={locked} />)}
               {semValor.length > 0 && <Regua />}
-              {semValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} muted />)}
+              {semValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} muted locked={locked} />)}
             </div>
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o) => <OppMobileCard key={key(o)} o={o} onClick={() => go(o.fixture_id)} />)}
+              {comValor.map((o) => <OppMobileCard key={key(o)} o={o} onClick={() => go(o.fixture_id)} locked={locked} />)}
               {semValor.length > 0 && (
                 <div className="flex items-center gap-2 py-1">
                   <span className="flex-1 h-px bg-line" /><span className="text-[11px] text-ink-3">sem valor claro</span><span className="flex-1 h-px bg-line" />
                 </div>
               )}
-              {semValor.map((o) => <div key={key(o)} className="opacity-60"><OppMobileCard o={o} onClick={() => go(o.fixture_id)} /></div>)}
+              {semValor.map((o) => <div key={key(o)} className="opacity-60"><OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} /></div>)}
             </div>
           </>
         )}

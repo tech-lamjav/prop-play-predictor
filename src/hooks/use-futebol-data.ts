@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/use-auth';
 import {
   futebolDataService,
+  type FutebolAccess,
   type Competition,
   type FutebolFixture,
   type FutebolFixtureDetail,
@@ -19,6 +21,22 @@ import {
   type FutebolValueBoardRow,
   type FutebolFixtureValueRow,
 } from '@/services/futebol-data.service';
+
+/**
+ * Acesso ao módulo Futebol (reverse trial 7 dias, sem cartão).
+ * O RPC inicia o relógio no 1º acesso logado e devolve o estado atual.
+ * Key por usuário pra refazer ao logar/deslogar.
+ */
+export function useFutebolAccess() {
+  const { user } = useAuth();
+  return useQuery<FutebolAccess>({
+    queryKey: ['futebol', 'access', user?.id ?? 'anon'],
+    queryFn: () => futebolDataService.getAccess(),
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
 
 export function useFutebolFixtures(competition: Competition, season: number, round?: string | null) {
   return useQuery<FutebolFixture[]>({

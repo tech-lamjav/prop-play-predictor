@@ -2,9 +2,10 @@ import { useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolTeamProfile } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies, headlineMarket, STRENGTH_LABEL,
@@ -301,7 +302,7 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 
 // ---------- "O que olhar": Score vem PRONTO do backend (fact_value_opportunities) ----------
 // Síntese "O que olhar neste jogo" — decide e PROVA a melhor aposta (Score do backend)
-function WhatToWatch({ rows, homeName, awayName }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string }) {
+function WhatToWatch({ rows, homeName, awayName, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; locked?: boolean }) {
   const ranked = [...rows].sort((a, b) => b.score - a.score);
   const top = ranked[0];
   const second = ranked[1];
@@ -353,13 +354,13 @@ function WhatToWatch({ rows, homeName, awayName }: { rows: FutebolFixtureValueRo
             <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(top.market)}</span>
             <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(top.faixa)}`}>Faixa {faixaWord(top.faixa)}</span>
           </div>
-          <div className="text-2xl md:text-[30px] font-bold tracking-tight mt-2 text-ink leading-tight">{pick}</div>
+          <div className="text-2xl md:text-[30px] font-bold tracking-tight mt-2 text-ink leading-tight"><Blur active={!!locked} strength={9}>{pick}</Blur></div>
           {porque.length > 0 && (
             <div className="mt-4">
               <div className="text-[10px] uppercase tracking-[0.16em] font-bold mb-2 text-forest">Por quê</div>
               <ul className="flex flex-col gap-1.5">
                 {porque.map((p, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-ink-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 bg-forest" /><span>{p}</span></li>
+                  <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-ink-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 bg-forest" /><span><Blur active={!!locked}>{p}</Blur></span></li>
                 ))}
               </ul>
             </div>
@@ -374,7 +375,7 @@ function WhatToWatch({ rows, homeName, awayName }: { rows: FutebolFixtureValueRo
               </ul>
             </div>
           )}
-          {crossNote && <p className="text-[12px] text-ink-3 mt-4 pt-3 border-t border-line">{crossNote}</p>}
+          {crossNote && <p className="text-[12px] text-ink-3 mt-4 pt-3 border-t border-line"><Blur active={!!locked}>{crossNote}</Blur></p>}
         </div>
 
         {/* Painel de confiabilidade + 2ª opção */}
@@ -386,8 +387,8 @@ function WhatToWatch({ rows, homeName, awayName }: { rows: FutebolFixtureValueRo
               <span className="text-[13px] text-white/40">/100</span>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">
-              {chance != null && <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Chance</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1">{chance}%</div></div>}
-              <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Odd</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1">{top.best_odd.toFixed(2)}</div></div>
+              {chance != null && <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Chance</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1"><Blur active={!!locked}>{chance}%</Blur></div></div>}
+              <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Odd</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1"><Blur active={!!locked}>{top.best_odd.toFixed(2)}</Blur></div></div>
             </div>
           </div>
           {second && (
@@ -395,8 +396,8 @@ function WhatToWatch({ rows, homeName, awayName }: { rows: FutebolFixtureValueRo
               <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">2ª opção</div>
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold tracking-tight text-ink truncate">{pickLabel(second.market, second.outcome, second.line_value, homeName, awayName)}</div>
-                  <div className="text-[10px] text-ink-3 truncate">{marketLabel(second.market)}{secondChance != null ? ` · ${secondChance}%` : ''} · {second.best_odd.toFixed(2)}</div>
+                  <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pickLabel(second.market, second.outcome, second.line_value, homeName, awayName)}</Blur></div>
+                  <div className="text-[10px] text-ink-3 truncate">{marketLabel(second.market)}<Blur active={!!locked}>{secondChance != null ? ` · ${secondChance}%` : ''} · {second.best_odd.toFixed(2)}</Blur></div>
                 </div>
                 <span className="text-[18px] font-semibold tabular-nums text-forest shrink-0">{second.score}</span>
               </div>
@@ -410,7 +411,7 @@ function WhatToWatch({ rows, homeName, awayName }: { rows: FutebolFixtureValueRo
 }
 
 // "Explorar mercados" — todas as opções por mercado (Chance · Odd · Valor · ★ melhor)
-function ResultExplorer({ rows, homeName, awayName }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string }) {
+function ResultExplorer({ rows, homeName, awayName, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; locked?: boolean }) {
   const markets = [...new Set(rows.map((r) => r.market))];
   return (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
@@ -440,7 +441,7 @@ function ResultExplorer({ rows, homeName, awayName }: { rows: FutebolFixtureValu
                   </div>
                   <div className="text-right tabular-nums text-[12px] text-ink-2">{chance != null ? `${chance}%` : '—'}</div>
                   <div className="text-right tabular-nums text-[12px] font-semibold text-ink">{r.best_odd.toFixed(2)}</div>
-                  <div className="text-right tabular-nums text-[12px] font-semibold" style={{ color: r.edge > 0 ? 'var(--forest)' : '#9aa097' }}>{r.edge > 0 ? fmtEdgeScore(r.edge) : 'sem valor'}</div>
+                  <div className="text-right tabular-nums text-[12px] font-semibold" style={{ color: r.edge > 0 ? 'var(--forest)' : '#9aa097' }}><Blur active={!!locked}>{r.edge > 0 ? fmtEdgeScore(r.edge) : 'sem valor'}</Blur></div>
                 </div>
               );
             })}
@@ -585,6 +586,8 @@ export default function FutebolJogo() {
   const head = tendencies ? headlineMarket(tendencies.markets) : null;
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
   const { data: valueRows } = useFutebolFixtureValue(fid);
+  const { data: access } = useFutebolAccess();
+  const locked = !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"
   const { data: homeProfile } = useFutebolTeamProfile(fixture?.home_team_id, fixture?.competition as Competition, fixture?.season as number);
   const { data: awayProfile } = useFutebolTeamProfile(fixture?.away_team_id, fixture?.competition as Competition, fixture?.season as number);
@@ -671,11 +674,13 @@ export default function FutebolJogo() {
               </div>
             </div>
 
+            {showValue && <FutebolAccessBanner access={access} className="mt-5" />}
+
             {/* Veredito + nosso modelo de gols (lado a lado) */}
             {(showValue || tendencies) && (
               <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
                 {showValue && valueRows && (
-                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
                 )}
                 {tendencies && (
                   <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
@@ -686,7 +691,7 @@ export default function FutebolJogo() {
             {/* Explorar mercados — largura total */}
             {showValue && valueRows && (
               <div className="mt-5">
-                <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
               </div>
             )}
 

@@ -219,6 +219,15 @@ export const FUTEBOL_ZONE_LABEL: Record<Exclude<FutebolZone, null>, string> = {
   rebaixamento: 'Rebaixamento',
 };
 
+/** Estado de acesso ao módulo Futebol (reverse trial 7 dias, sem cartão). */
+export type FutebolAccessState = 'anon' | 'trial' | 'expired' | 'subscribed';
+export interface FutebolAccess {
+  state: FutebolAccessState;
+  unlocked: boolean;
+  days_left: number | null;
+  trial_ends_at: string | null;
+}
+
 export interface FutebolTeamSeason {
   form: string | null;
   played_total: number | null; played_home: number | null; played_away: number | null;
@@ -458,6 +467,14 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || { events: [], player_stats: [], form_home: [], form_away: [], h2h: [], lineups: [], lineup_players: [] }) as FutebolFixtureExtras;
+    });
+  },
+
+  async getAccess(): Promise<FutebolAccess> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_access');
+      if (error) throw error;
+      return (data || { state: 'anon', unlocked: false, days_left: null, trial_ends_at: null }) as FutebolAccess;
     });
   },
 

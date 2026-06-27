@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtures, useFutebolValueBoard, useFutebolFixtureValue } from '@/hooks/use-futebol-data';
+import { useFutebolFixtures, useFutebolValueBoard, useFutebolFixtureValue, useFutebolAccess } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
+import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   pickLabel, marketLabel, fmtEdgeScore, freqEmDez, groupBoardByFixture,
@@ -72,20 +73,20 @@ function Kpi({ label, value, sub, tone = 'ink', anchor }: { label: string; value
 }
 
 // Número do hero (Chance / Odd / Se paga em / Valor)
-function HeroStat({ label, value, dark }: { label: string; value: string; dark?: boolean }) {
+function HeroStat({ label, value, dark, locked }: { label: string; value: string; dark?: boolean; locked?: boolean }) {
   return (
     <div>
       <div className="text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.5)' : undefined }}>
         <span className={dark ? '' : 'text-ink-3'}>{label}</span>
       </div>
-      <div className={`text-[20px] font-bold tabular-nums leading-none mt-1 ${dark ? '' : 'text-ink'}`}>{value}</div>
+      <div className={`text-[20px] font-bold tabular-nums leading-none mt-1 ${dark ? '' : 'text-ink'}`}><Blur active={!!locked}>{value}</Blur></div>
     </div>
   );
 }
 
 // ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
-function TopValueHero({ o, onClick, atencao }: { o: FutebolValueBoardRow; onClick: () => void; atencao?: string | null }) {
+function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow; onClick: () => void; atencao?: string | null; locked?: boolean }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
@@ -107,7 +108,7 @@ function TopValueHero({ o, onClick, atencao }: { o: FutebolValueBoardRow; onClic
             <Zap className="w-3 h-3" /> {d ? 'Melhor valor do dia' : 'Melhor do dia · Média'}
           </span>
           <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {COMP_LABEL[o.competition] || o.competition}</div>
-          <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}>{pick}</div>
+          <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}><Blur active={!!locked} strength={9}>{pick}</Blur></div>
           <div className={`flex items-center gap-1.5 text-[13px] mt-2 ${d ? 'text-white/70' : 'text-ink-2'}`}>
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={18} />
             <span>{o.home_team_name} × {o.away_team_name}</span>
@@ -123,7 +124,7 @@ function TopValueHero({ o, onClick, atencao }: { o: FutebolValueBoardRow; onClic
         {/* Meio — por quê + ponto de atenção */}
         <div className="md:col-span-5 flex flex-col">
           <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
-          <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}>{porque}</p>
+          <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}><Blur active={!!locked}>{porque}</Blur></p>
           {ev && (
             <p className={`flex items-start gap-1.5 text-[12px] mt-3 ${d ? 'text-white/80' : 'text-ink-2'}`}>
               <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${d ? 'text-emerald-300' : 'text-status-success'}`} /><span>{ev}</span>
@@ -154,10 +155,10 @@ function TopValueHero({ o, onClick, atencao }: { o: FutebolValueBoardRow; onClic
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />Faixa {faixaWord(o.faixa)}
             </span>
             <div className="grid grid-cols-2 gap-x-5 gap-y-3 mt-5">
-              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} />}
-              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} />
-              <HeroStat label="Se paga em" value={`~${freqEmDez(o.best_odd)}/10`} dark={d} />
-              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} />
+              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} locked={locked} />}
+              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} locked={locked} />
+              <HeroStat label="Se paga em" value={`~${freqEmDez(o.best_odd)}/10`} dark={d} locked={locked} />
+              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} locked={locked} />
             </div>
           </div>
         </div>
@@ -167,7 +168,7 @@ function TopValueHero({ o, onClick, atencao }: { o: FutebolValueBoardRow; onClic
 }
 
 // ── Card de oportunidade ───────────────────────────────────
-function OppCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => void }) {
+function OppCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () => void; locked?: boolean }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   return (
@@ -182,7 +183,7 @@ function OppCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => void 
           <div className="text-[26px] font-bold tabular-nums tracking-tight leading-none mt-0.5 text-forest">{o.score}</div>
         </div>
       </div>
-      <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink">{pick}</div>
+      <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink"><Blur active={!!locked}>{pick}</Blur></div>
       <div className="flex items-center gap-1.5 text-[12px] mt-1 text-ink-3">
         <Crest teamId={o.home_team_id} name={o.home_team_name} size={16} />
         <span className="truncate">{o.home_team_name} × {o.away_team_name}</span>
@@ -192,15 +193,15 @@ function OppCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => void 
       <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
-          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{chance != null ? `${chance}%` : '—'}</div>
+          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5"><Blur active={!!locked}>{chance != null ? `${chance}%` : '—'}</Blur></div>
         </div>
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</div>
-          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{o.best_odd.toFixed(2)}</div>
+          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5"><Blur active={!!locked}>{o.best_odd.toFixed(2)}</Blur></div>
         </div>
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Valor</div>
-          <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5">{fmtEdgeScore(o.edge)}</div>
+          <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5"><Blur active={!!locked}>{fmtEdgeScore(o.edge)}</Blur></div>
         </div>
       </div>
     </button>
@@ -236,6 +237,8 @@ export default function FutebolHoje() {
   const { data: brasil, isLoading: l1 } = useFutebolFixtures('brasileirao', 2026);
   const { data: copa, isLoading: l2 } = useFutebolFixtures('copa_mundo', 2026);
   const { data: valueRows, isLoading: l3 } = useFutebolValueBoard();
+  const { data: access } = useFutebolAccess();
+  const locked = !access?.unlocked;
   const loading = l1 || l2 || l3;
 
   const todayStr = brtDateStr(new Date());
@@ -356,11 +359,13 @@ export default function FutebolHoje() {
           </div>
         </div>
 
+        <FutebolAccessBanner access={access} />
+
         {/* Hero / sem valor */}
         {loading ? (
           <Skeleton className="h-64 w-full bg-canvas-2 rounded-2xl" />
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} atencao={heroAtencao} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} />
+          <TopValueHero o={heroOpp} atencao={heroAtencao} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} locked={locked} />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
@@ -387,7 +392,7 @@ export default function FutebolHoje() {
               <div className="grid sm:grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
             ) : moreOpps.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
-                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} onClick={() => navigate(`/futebol/jogo/${o.fixture_id}`)} />)}
+                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} onClick={() => navigate(`/futebol/jogo/${o.fixture_id}`)} locked={locked} />)}
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>

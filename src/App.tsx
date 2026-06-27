@@ -53,6 +53,7 @@ const FutebolOportunidades = lazyWithRetry(() => import("./pages/FutebolOportuni
 const FutebolJogos = lazyWithRetry(() => import("./pages/FutebolJogos"));
 const FutebolJogo = lazyWithRetry(() => import("./pages/FutebolJogo"));
 const FutebolTime = lazyWithRetry(() => import("./pages/FutebolTime"));
+const FutebolAssinar = lazyWithRetry(() => import("./pages/FutebolAssinar"));
 const BolaoEntry = lazyWithRetry(() => import("./pages/BolaoEntry"));
 const BolaoHome = lazyWithRetry(() => import("./pages/BolaoHome"));
 const BolaoDetail = lazyWithRetry(() => import("./pages/BolaoDetail"));
@@ -140,6 +141,7 @@ const App = () => (
             <Route path="/futebol/jogos" element={<FutebolJogos />} />
             <Route path="/futebol/jogo/:fixtureId" element={<FutebolJogo />} />
             <Route path="/futebol/time/:teamId" element={<FutebolTime />} />
+            <Route path="/futebol/assinar" element={<FutebolAssinar />} />
             <Route path="/nba-players" element={
               <ProtectedRoute>
                 <PlayerSelection />
