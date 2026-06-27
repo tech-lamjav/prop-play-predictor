@@ -83,7 +83,7 @@ export default function FutebolAssinar() {
               Aposte onde a odd paga<br className="hidden md:block" /> mais do que o risco real.
             </h1>
             <p className="text-[15px] md:text-[16px] text-white/80 mt-3 leading-relaxed">
-              Nosso Score de Confiabilidade cruza valor (+EV), as premissas do jogo e o movimento das casas pra te mostrar onde está a vantagem — sem tipster, sem stake, sem promessa de lucro.
+              Nosso Score de Confiabilidade cruza valor (+EV), as premissas do jogo e o movimento das casas pra te mostrar onde está a vantagem.
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-5">
               {['7 dias grátis', 'sem cartão', 'cancela quando quiser'].map((c) => (
