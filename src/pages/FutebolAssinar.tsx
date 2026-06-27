@@ -135,19 +135,6 @@ export default function FutebolAssinar() {
             </div>
           </div>
         </section>
-
-        {/* Confiança / pagamento */}
-        <section className="rounded-2xl bg-white border border-line px-6 py-5 flex flex-wrap items-center gap-x-6 gap-y-3">
-          {[
-            { icon: ShieldCheck, t: 'Sem tipster, sem stake' },
-            { icon: TrendingUp, t: 'Score auditável + CLV' },
-            { icon: Sparkles, t: 'Pagamento via PIX (em breve)' },
-          ].map(({ icon: Icon, t }) => (
-            <span key={t} className="inline-flex items-center gap-2 text-[12px] text-ink-2">
-              <Icon className="w-4 h-4 text-forest shrink-0" /> {t}
-            </span>
-          ))}
-        </section>
       </div>
     </div>
   );
