@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useFutebolValueBoard, useFutebolAccess } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
@@ -63,13 +64,32 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-// Linha de filtro: label fixo + chips com rolagem horizontal (limpo no mobile).
-function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+// Dropdown compacto de filtro (label + valor atual + opções). Limpo no mobile.
+function FilterSelect({ label, value, options, onChange }: {
+  label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void;
+}) {
+  const current = options.find((o) => o.value === value);
   return (
-    <div className="flex items-center gap-2.5">
-      <span className={`${LABEL} w-[68px] sm:w-20 shrink-0`}>{label}</span>
-      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide flex-1 -my-1 py-1">{children}</div>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="inline-flex items-center gap-1.5 h-9 px-3 rounded-rebrand-sm border border-line bg-white text-[12px] font-semibold text-ink hover:bg-canvas-2 transition shrink-0">
+          <span className="text-ink-3 font-medium uppercase tracking-[0.1em] text-[10px]">{label}</span>
+          <span>{current?.label ?? '—'}</span>
+          <ChevronDown className="w-3.5 h-3.5 text-ink-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="theme-bolao bg-white border-line min-w-[160px]">
+        {options.map((o) => (
+          <DropdownMenuItem
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={`cursor-pointer text-[13px] ${o.value === value ? 'text-forest font-semibold' : 'text-ink'}`}
+          >
+            {o.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -192,6 +212,13 @@ export default function FutebolOportunidades() {
     return s;
   }, [timeUpcoming, selectedDay]);
 
+  const faixaOptions = [{ value: 'all', label: 'Todas' }, { value: 'alta', label: 'Alta' }, { value: 'media', label: 'Média' }];
+  const compOptions = [
+    { value: 'all', label: 'Todas' },
+    ...(compsOnDay.has('brasileirao') ? [{ value: 'brasileirao', label: 'Brasileirão' }] : []),
+    ...(compsOnDay.has('copa_mundo') ? [{ value: 'copa_mundo', label: 'Copa' }] : []),
+  ];
+
   const filtered = useMemo(
     () => timeUpcoming.filter((r) => {
       if (brtDayStr(r.kickoff_utc) !== selectedDay) return false;
@@ -247,28 +274,20 @@ export default function FutebolOportunidades() {
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
         <FutebolAccessBanner access={access} />
 
-        {/* Filtros — grupos rotulados com rolagem horizontal (limpo no mobile) */}
-        <div className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col gap-2.5">
-          <FilterRow label="Mercado">
+        {/* Filtros — Mercado em chips (rola) + Faixa/Competição em dropdowns */}
+        <div className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -my-1 py-1">
             <Chip active={mercado === 'all'} onClick={() => setMercado('all')}>Todos</Chip>
             <Chip active={mercado === 'match_winner'} onClick={() => setMercado('match_winner')}>Resultado</Chip>
             <Chip active={mercado === 'goals_over_under'} onClick={() => setMercado('goals_over_under')}>Gols</Chip>
             <Chip active={mercado === 'btts'} onClick={() => setMercado('btts')}>Ambos marcam</Chip>
             <Chip active={mercado === 'asian_handicap'} onClick={() => setMercado('asian_handicap')}>Handicap</Chip>
             <Chip active={mercado === 'double_chance'} onClick={() => setMercado('double_chance')}>Dupla chance</Chip>
-          </FilterRow>
-          <div className="h-px bg-line/70" />
-          <FilterRow label="Faixa">
-            <Chip active={faixa === 'all'} onClick={() => setFaixa('all')}>Todas</Chip>
-            <Chip active={faixa === 'alta'} onClick={() => setFaixa('alta')}>Alta</Chip>
-            <Chip active={faixa === 'media'} onClick={() => setFaixa('media')}>Média</Chip>
-          </FilterRow>
-          <div className="h-px bg-line/70" />
-          <FilterRow label="Competição">
-            <Chip active={comp === 'all'} onClick={() => setComp('all')}>Todas</Chip>
-            {compsOnDay.has('brasileirao') && <Chip active={comp === 'brasileirao'} onClick={() => setComp('brasileirao')}>Brasileirão</Chip>}
-            {compsOnDay.has('copa_mundo') && <Chip active={comp === 'copa_mundo'} onClick={() => setComp('copa_mundo')}>Copa</Chip>}
-          </FilterRow>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap pt-2.5 border-t border-line/70">
+            <FilterSelect label="Faixa" value={faixa} options={faixaOptions} onChange={(v) => setFaixa(v as FaixaFilter)} />
+            <FilterSelect label="Competição" value={comp} options={compOptions} onChange={(v) => setComp(v as CompFilter)} />
+          </div>
         </div>
 
         {isLoading ? (
