@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Filter, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolValueBoard, useFutebolAccess } from '@/hooks/use-futebol-data';
@@ -60,6 +60,16 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       className={`h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0 ${active ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink border-line hover:bg-canvas-2'}`}>
       {children}
     </button>
+  );
+}
+
+// Linha de filtro: label fixo + chips com rolagem horizontal (limpo no mobile).
+function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className={`${LABEL} w-[68px] sm:w-20 shrink-0`}>{label}</span>
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide flex-1 -my-1 py-1">{children}</div>
+    </div>
   );
 }
 
@@ -237,26 +247,28 @@ export default function FutebolOportunidades() {
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
         <FutebolAccessBanner access={access} />
 
-        {/* Filtros */}
-        <div className="rounded-rebrand-md p-3 flex items-center gap-2 flex-wrap bg-white border border-line">
-          <Filter className="w-4 h-4 text-ink-2 ml-1" />
-          <span className={`${LABEL} mr-1`}>Mercado</span>
-          <Chip active={mercado === 'all'} onClick={() => setMercado('all')}>Todos</Chip>
-          <Chip active={mercado === 'match_winner'} onClick={() => setMercado('match_winner')}>Resultado</Chip>
-          <Chip active={mercado === 'goals_over_under'} onClick={() => setMercado('goals_over_under')}>Gols</Chip>
-          <Chip active={mercado === 'btts'} onClick={() => setMercado('btts')}>Ambos marcam</Chip>
-          <Chip active={mercado === 'asian_handicap'} onClick={() => setMercado('asian_handicap')}>Handicap</Chip>
-          <Chip active={mercado === 'double_chance'} onClick={() => setMercado('double_chance')}>Dupla chance</Chip>
-          <div className="w-px h-5 mx-1 bg-line" />
-          <span className={`${LABEL} mr-1`}>Faixa</span>
-          <Chip active={faixa === 'all'} onClick={() => setFaixa('all')}>Todas</Chip>
-          <Chip active={faixa === 'alta'} onClick={() => setFaixa('alta')}>Alta</Chip>
-          <Chip active={faixa === 'media'} onClick={() => setFaixa('media')}>Média</Chip>
-          <div className="flex-1 min-w-2" />
-          <span className={`${LABEL} mr-1`}>Competição</span>
-          <Chip active={comp === 'all'} onClick={() => setComp('all')}>Todas</Chip>
-          {compsOnDay.has('brasileirao') && <Chip active={comp === 'brasileirao'} onClick={() => setComp('brasileirao')}>Brasileirão</Chip>}
-          {compsOnDay.has('copa_mundo') && <Chip active={comp === 'copa_mundo'} onClick={() => setComp('copa_mundo')}>Copa</Chip>}
+        {/* Filtros — grupos rotulados com rolagem horizontal (limpo no mobile) */}
+        <div className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col gap-2.5">
+          <FilterRow label="Mercado">
+            <Chip active={mercado === 'all'} onClick={() => setMercado('all')}>Todos</Chip>
+            <Chip active={mercado === 'match_winner'} onClick={() => setMercado('match_winner')}>Resultado</Chip>
+            <Chip active={mercado === 'goals_over_under'} onClick={() => setMercado('goals_over_under')}>Gols</Chip>
+            <Chip active={mercado === 'btts'} onClick={() => setMercado('btts')}>Ambos marcam</Chip>
+            <Chip active={mercado === 'asian_handicap'} onClick={() => setMercado('asian_handicap')}>Handicap</Chip>
+            <Chip active={mercado === 'double_chance'} onClick={() => setMercado('double_chance')}>Dupla chance</Chip>
+          </FilterRow>
+          <div className="h-px bg-line/70" />
+          <FilterRow label="Faixa">
+            <Chip active={faixa === 'all'} onClick={() => setFaixa('all')}>Todas</Chip>
+            <Chip active={faixa === 'alta'} onClick={() => setFaixa('alta')}>Alta</Chip>
+            <Chip active={faixa === 'media'} onClick={() => setFaixa('media')}>Média</Chip>
+          </FilterRow>
+          <div className="h-px bg-line/70" />
+          <FilterRow label="Competição">
+            <Chip active={comp === 'all'} onClick={() => setComp('all')}>Todas</Chip>
+            {compsOnDay.has('brasileirao') && <Chip active={comp === 'brasileirao'} onClick={() => setComp('brasileirao')}>Brasileirão</Chip>}
+            {compsOnDay.has('copa_mundo') && <Chip active={comp === 'copa_mundo'} onClick={() => setComp('copa_mundo')}>Copa</Chip>}
+          </FilterRow>
         </div>
 
         {isLoading ? (
