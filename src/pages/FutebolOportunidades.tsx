@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -61,6 +61,52 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       className={`h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0 ${active ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink border-line hover:bg-canvas-2'}`}>
       {children}
     </button>
+  );
+}
+
+const MARKET_ITEMS: { value: MarketFilter; label: string }[] = [
+  { value: 'all', label: 'Todos' },
+  { value: 'match_winner', label: 'Resultado' },
+  { value: 'goals_over_under', label: 'Gols' },
+  { value: 'btts', label: 'Ambos marcam' },
+  { value: 'asian_handicap', label: 'Handicap' },
+  { value: 'double_chance', label: 'Dupla chance' },
+];
+
+// Mercado: label + chips com rolagem horizontal + bolinha-seta quando há mais à direita.
+function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: MarketFilter) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    check();
+    el.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check);
+    return () => { el.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
+  }, []);
+  return (
+    <div className="flex items-center gap-2.5 min-w-0 sm:flex-1">
+      <span className={`${LABEL} shrink-0`}>Mercado</span>
+      <div className="relative min-w-0 flex-1">
+        <div ref={ref} className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -my-1 py-1 pr-7">
+          {MARKET_ITEMS.map((m) => (
+            <Chip key={m.value} active={value === m.value} onClick={() => onChange(m.value)}>{m.label}</Chip>
+          ))}
+        </div>
+        {more && (
+          <button
+            type="button"
+            aria-label="Ver mais mercados"
+            onClick={() => ref.current?.scrollBy({ left: 160, behavior: 'smooth' })}
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white border border-line grid place-items-center shadow-sm hover:bg-canvas-2"
+          >
+            <ChevronRight className="w-3.5 h-3.5 text-ink-2" />
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -274,17 +320,11 @@ export default function FutebolOportunidades() {
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
         <FutebolAccessBanner access={access} />
 
-        {/* Filtros — Mercado em chips (rola) + Faixa/Competição em dropdowns */}
-        <div className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col gap-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -my-1 py-1">
-            <Chip active={mercado === 'all'} onClick={() => setMercado('all')}>Todos</Chip>
-            <Chip active={mercado === 'match_winner'} onClick={() => setMercado('match_winner')}>Resultado</Chip>
-            <Chip active={mercado === 'goals_over_under'} onClick={() => setMercado('goals_over_under')}>Gols</Chip>
-            <Chip active={mercado === 'btts'} onClick={() => setMercado('btts')}>Ambos marcam</Chip>
-            <Chip active={mercado === 'asian_handicap'} onClick={() => setMercado('asian_handicap')}>Handicap</Chip>
-            <Chip active={mercado === 'double_chance'} onClick={() => setMercado('double_chance')}>Dupla chance</Chip>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap pt-2.5 border-t border-line/70">
+        {/* Filtros — desktop: 1 linha (Mercado à esq · dropdowns à dir); mobile: 2 linhas */}
+        <div className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
+          <MarketChips value={mercado} onChange={setMercado} />
+          <div className="h-px bg-line/70 sm:hidden" />
+          <div className="flex items-center gap-2 shrink-0">
             <FilterSelect label="Faixa" value={faixa} options={faixaOptions} onChange={(v) => setFaixa(v as FaixaFilter)} />
             <FilterSelect label="Competição" value={comp} options={compOptions} onChange={(v) => setComp(v as CompFilter)} />
           </div>
