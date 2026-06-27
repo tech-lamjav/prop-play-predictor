@@ -216,7 +216,11 @@ function GameRailRow({ f, best, onClick }: { f: FutebolFixture & { competition?:
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <Crest teamId={f.home_team_id} name={f.home_team_name} size={20} />
         <span className="text-[13px] text-ink truncate">{f.home_team_name}</span>
-        <span className="text-[10px] text-ink-3 px-0.5">x</span>
+        {finished ? (
+          <span className="text-[12px] font-semibold text-ink tabular-nums px-1 shrink-0">{f.goals_home ?? '-'} <span className="text-ink-3">×</span> {f.goals_away ?? '-'}</span>
+        ) : (
+          <span className="text-[10px] text-ink-3 px-0.5">x</span>
+        )}
         <Crest teamId={f.away_team_id} name={f.away_team_name} size={20} />
         <span className="text-[13px] text-ink truncate">{f.away_team_name}</span>
       </div>
