@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
 import UserNav from './UserNav';
+import { FutebolTrialChip } from './futebol/FutebolGate';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -334,6 +335,7 @@ export default function AnalyticsNav({
 
           {/* Right - Auth & Premium */}
           <div className="flex items-center gap-2">
+            {futebolActive && <FutebolTrialChip />}
             {user && isPremium && (
               <div className={`hidden sm:flex items-center gap-1 ${t.premiumBg} border ${t.premiumBorder} px-2 py-1 rounded`}>
                 <Zap className={`w-3 h-3 ${t.premiumIcon}`} />
