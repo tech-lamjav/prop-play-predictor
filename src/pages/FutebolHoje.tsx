@@ -211,8 +211,8 @@ function OppCard({ o, onClick }: { o: FutebolValueBoardRow; onClick: () => void 
 function GameRailRow({ f, best, onClick }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; onClick: () => void }) {
   const finished = isFinished(f.status_short);
   return (
-    <button onClick={onClick} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
-      <span className="w-10 text-[11px] font-semibold text-ink-2 tabular-nums shrink-0">{finished ? 'fim' : fmtTime(f.kickoff_utc)}</span>
+    <button onClick={onClick} className={`w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left ${finished ? 'bg-canvas-2/60' : ''}`}>
+      <span className={`w-10 text-[11px] font-semibold tabular-nums shrink-0 ${finished ? 'text-ink-3 uppercase tracking-wide' : 'text-ink-2'}`}>{finished ? 'fim' : fmtTime(f.kickoff_utc)}</span>
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <Crest teamId={f.home_team_id} name={f.home_team_name} size={20} />
         <span className="text-[13px] text-ink truncate">{f.home_team_name}</span>
