@@ -47,7 +47,7 @@ function Crest({ teamId, name, size = 20 }: { teamId: number; name: string; size
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
-type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts';
+type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 type FaixaFilter = 'all' | 'alta' | 'media';
 type CompFilter = 'all' | 'brasileirao' | 'copa_mundo';
 
@@ -239,6 +239,7 @@ export default function FutebolOportunidades() {
           <Chip active={mercado === 'goals_over_under'} onClick={() => setMercado('goals_over_under')}>Gols</Chip>
           <Chip active={mercado === 'btts'} onClick={() => setMercado('btts')}>Ambos marcam</Chip>
           <Chip active={mercado === 'asian_handicap'} onClick={() => setMercado('asian_handicap')}>Handicap</Chip>
+          <Chip active={mercado === 'double_chance'} onClick={() => setMercado('double_chance')}>Dupla chance</Chip>
           <div className="w-px h-5 mx-1 bg-line" />
           <span className={`${LABEL} mr-1`}>Faixa</span>
           <Chip active={faixa === 'all'} onClick={() => setFaixa('all')}>Todas</Chip>
@@ -308,7 +309,7 @@ export default function FutebolOportunidades() {
               <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Baixa')}`}>&lt;40</span> Baixa — não sinaliza</li>
             </ul>
             <p className="text-[10px] text-ink-3 mt-3 leading-snug">
-              Odds pré-jogo (não ao vivo). Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático e Ambos marcam; outros entram conforme liberados.
+              Odds pré-jogo (não ao vivo). Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance; outros entram conforme liberados.
             </p>
           </div>
         </div>

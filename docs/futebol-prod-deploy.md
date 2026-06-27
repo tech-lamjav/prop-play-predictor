@@ -31,7 +31,7 @@ Tudo no schema `bq_futebol` (foreign/leitura do BQ) e `futebol` (cópia material
 
 - Dimensões: `dim_leagues`, `dim_teams`
 - Fatos base: `fact_fixtures`, `fact_fixture_stats`, `fact_fixture_events`, `fact_fixture_lineups`, `fact_fixture_lineups_players`, `fact_fixture_player_stats`, `fact_h2h`, `fact_injuries_snapshot`, `fact_standings_snapshot`, `fact_team_season_stats`, `fact_odds_snapshot`, `fact_predictions_api`
-- **Camada de valor:** `fact_value_opportunities`, `int_futebol_premissas_1x2`, `int_futebol_premissas_ou`, `int_futebol_premissas_ah`, `int_futebol_premissas_btts`, `int_futebol_odds_devig`
+- **Camada de valor:** `fact_value_opportunities`, `int_futebol_premissas_1x2`, `int_futebol_premissas_ou`, `int_futebol_premissas_ah`, `int_futebol_premissas_btts`, `int_futebol_premissas_dc`, `int_futebol_odds_devig`
 - Helper de introspecção: `_cols` (lê `INFORMATION_SCHEMA.COLUMNS` do dataset)
 
 > ⚠️ **Limitação do FDW:** o wrapper **não lê `ARRAY<STRING>` do BigQuery**. As foreign tables das premissas/`fact_value_opportunities` são criadas **excluindo** as colunas array (`evidencias`, `avisos`). As evidências/avisos exibidas no app são **remontadas no SQL das RPCs** a partir dos booleanos das premissas (ver §4).
@@ -97,14 +97,14 @@ where n.nspname='bq_futebol' group by c.relname, ft.ftoptions;
 ---
 
 ## 5. Padrão pra novos mercados (referência)
-Quando o Mateus subir um mercado novo no BQ (ex.: Dupla chance): criar a foreign table → `CREATE TABLE futebol.<t> AS SELECT *` → adicionar a tabela no array de `sync_all()` → estender as 2 RPCs de valor (join gateado por `market` + strings de evidência/contra) → `pickLabel`/`marketLabel` + chip no front. Mercados ativos hoje: **1X2, Gols (O/U), Handicap asiático, Ambos marcam (BTTS)**.
+Quando o Mateus subir um mercado novo no BQ: criar a foreign table → `CREATE TABLE futebol.<t> AS SELECT *` → adicionar a tabela no array de `sync_all()` → estender as 2 RPCs de valor (join gateado por `market` + strings de evidência/contra) → `pickLabel`/`marketLabel` + chip no front. Mercados ativos hoje: **1X2, Gols (O/U), Handicap asiático, Ambos marcam (BTTS) e Dupla chance (1X/X2)**.
 
 ---
 
 ## 6. Smoke test em PROD (read-only)
 ```sql
 select count(*) from futebol.fact_value_opportunities;          -- > 0
-select market, count(*) from futebol.fact_value_opportunities group by 1;  -- 4 mercados
+select market, count(*) from futebol.fact_value_opportunities group by 1;  -- até 5 mercados
 select * from get_futebol_value_board() limit 3;                 -- retorna linhas + evidencias[]
 select * from get_futebol_fixture_value(<algum_fixture_id>) limit 5;
 ```

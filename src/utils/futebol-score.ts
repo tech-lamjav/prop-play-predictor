@@ -4,7 +4,7 @@
 // O Score, edge, premissas, evidências e avisos vêm prontos da
 // fact_value_opportunities (pipeline dbt no BigQuery). Aqui só ROTULAMOS
 // (mercado, pick com linha) e ajudamos a ranquear/agrupar. Nada de cálculo.
-// Mercados: Resultado (1X2), Gols (Over/Under) e Handicap asiático.
+// Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance.
 // ============================================================
 import type { FutebolFixtureValueRow, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -53,6 +53,7 @@ export function marketLabel(market: string): string {
   if (market === 'goals_over_under') return 'Gols (Over/Under)';
   if (market === 'asian_handicap') return 'Handicap asiático';
   if (market === 'btts') return 'Ambos marcam';
+  if (market === 'double_chance') return 'Dupla chance';
   return market;
 }
 
@@ -86,6 +87,10 @@ export function pickLabel(market: string, outcome: string, line: number | null, 
   }
   if (market === 'btts') {
     return outcome === 'Yes' ? 'Sim' : 'Não';
+  }
+  if (market === 'double_chance') {
+    // 1X = mandante ou empate · X2 = empate ou visitante (aposta de proteção)
+    return outcome === '1X' ? `${homeName} ou empate` : `Empate ou ${awayName}`;
   }
   return outcomePt(outcome, homeName, awayName);
 }

@@ -6,11 +6,15 @@
 -- BigQuery no Vault + FDW `bigquery_server` + schemas bq_futebol/futebol + as
 -- foreign/native tables base + as outras 15 RPCs (exportar do dev, §3 do runbook).
 --
--- Este arquivo contém só o que ESTA entrega construiu/alterou:
---   * foreign tables + nativas das premissas Handicap (ah) e Ambos marcam (btts)
---   * procedure futebol.sync_all() (com ah + btts no array)
---   * RPCs get_futebol_value_board e get_futebol_fixture_value (4 mercados)
+-- Este arquivo contém o que a entrega da CAMADA DE VALOR construiu/alterou:
+--   * foreign tables + nativas das premissas Handicap (ah), Ambos marcam (btts)
+--     e Dupla chance (dc)
+--   * procedure futebol.sync_all() (com ah + btts + dc no array)
+--   * RPCs get_futebol_value_board e get_futebol_fixture_value (5 mercados,
+--     com prob_justa_fechamento)
 --   * cron de sync horário
+-- Mercados cobertos: Resultado (1X2), Gols (Over/Under), Handicap asiático,
+-- Ambos marcam (BTTS) e Dupla chance (1X / X2).
 -- Projeto dev de origem: kpbjuplcwiyrymafhehz.
 -- ============================================================================
 
@@ -34,15 +38,24 @@ create foreign table bq_futebol.int_futebol_premissas_btts (
   pts_premissas bigint, penalidades_btts_pts bigint
 ) server bigquery_server options (table 'int_futebol_premissas_btts', location 'us-east1');
 
+drop foreign table if exists bq_futebol.int_futebol_premissas_dc;
+create foreign table bq_futebol.int_futebol_premissas_dc (
+  fixture_id bigint, competition text, season bigint, outcome text,
+  lado_coberto_forte boolean, equilibrio_defensivo boolean, adversario_limitado boolean, invicto_recente boolean,
+  pts_premissas bigint, penalidades_dc_pts bigint
+) server bigquery_server options (table 'int_futebol_premissas_dc', location 'us-east1');
+
 -- ── Tabelas nativas (materializa + popula) ──────────────────────────────────
 drop table if exists futebol.int_futebol_premissas_ah;
 create table futebol.int_futebol_premissas_ah as select * from bq_futebol.int_futebol_premissas_ah;
 drop table if exists futebol.int_futebol_premissas_btts;
 create table futebol.int_futebol_premissas_btts as select * from bq_futebol.int_futebol_premissas_btts;
+drop table if exists futebol.int_futebol_premissas_dc;
+create table futebol.int_futebol_premissas_dc as select * from bq_futebol.int_futebol_premissas_dc;
 -- (refrescar também as demais da camada de valor já existentes:)
 -- truncate+insert de fact_value_opportunities, int_futebol_premissas_1x2/ou, int_futebol_odds_devig
 
--- ── Procedure de sync (inclui ah + btts) ────────────────────────────────────
+-- ── Procedure de sync (inclui ah + btts + dc) ───────────────────────────────
 create or replace procedure futebol.sync_all()
  language plpgsql security definer set search_path to ''
 as $procedure$
@@ -54,7 +67,7 @@ declare
     'fact_fixture_player_stats','fact_h2h','fact_injuries_snapshot',
     'fact_standings_snapshot','fact_team_season_stats','fact_odds_snapshot',
     'fact_predictions_api',
-    'fact_value_opportunities','int_futebol_premissas_1x2','int_futebol_premissas_ou','int_futebol_premissas_ah','int_futebol_premissas_btts','int_futebol_odds_devig'
+    'fact_value_opportunities','int_futebol_premissas_1x2','int_futebol_premissas_ou','int_futebol_premissas_ah','int_futebol_premissas_btts','int_futebol_premissas_dc','int_futebol_odds_devig'
   ];
 begin
   foreach t in array tables loop
@@ -73,13 +86,14 @@ returns table(
   market text, outcome text, line_value double precision,
   edge double precision, best_odd double precision, best_book text,
   avg_odd double precision, n_casas int, janela_usada text,
+  prob_justa_fechamento double precision,
   pts_valor int, pts_premissas int, pts_corroboracao int, penalidades int, score int, faixa text,
   evidencias text[]
 )
 language sql security definer set search_path = '' as $$
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
-    v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada,
+    v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int, v.score::int, v.faixa,
     array_remove(array[
       case when p.forca_mismatch then 'Ataque forte contra defesa frágil do adversário' end,
@@ -125,6 +139,12 @@ language sql security definer set search_path = '' as $$
       case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
     ], null)
     || array_remove(array[
+      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
+      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
+      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
+      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
+    ], null)
+    || array_remove(array[
       case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
            when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
            when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
@@ -135,6 +155,7 @@ language sql security definer set search_path = '' as $$
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
+  left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   order by v.score desc, v.edge desc;
 $$;
 grant execute on function public.get_futebol_value_board() to authenticated, anon;
@@ -157,6 +178,8 @@ language sql security definer set search_path to '' as $function$
           then (1000 + (case v.outcome when 'Home' then 0 else 500 end) + (coalesce(v.line_value,0)*10))::int
           when v.market = 'btts'
           then (2000 + case when v.outcome in ('Yes') then 0 else 1 end)
+          when v.market = 'double_chance'
+          then (3000 + case v.outcome when '1X' then 1 else 2 end)
           else 0 end),
     v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int,
@@ -206,6 +229,12 @@ language sql security definer set search_path to '' as $function$
       case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
     ], null)
     || array_remove(array[
+      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
+      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
+      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
+      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
+    ], null)
+    || array_remove(array[
       case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
            when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
            when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
@@ -214,7 +243,7 @@ language sql security definer set search_path to '' as $function$
       case when d.pen_odd_outlier then 'Só uma casa paga essa odd — pode ser linha furada' end,
       case when d.pen_poucas_casas then 'Poucas casas cotando esse mercado' end,
       case when d.pen_odd_longshot then 'Odd alta (zebra) — entra com cautela' end,
-      case when d.pen_odd_juice then 'Odd baixa — retorno pequeno pro risco' end,
+      case when d.pen_odd_juice and v.market <> 'double_chance' then 'Odd baixa — retorno pequeno pro risco' end,
       case when p.pick_empate then 'Empate é o resultado mais difícil de prever' end,
       case when p.desfalque_proprio then 'Time apostado com desfalque de titular importante' end,
       case when o.linha_extrema then 'Linha extrema — pouco confiável' end,
@@ -237,16 +266,19 @@ language sql security definer set search_path to '' as $function$
       case when v.outcome='Yes' and not coalesce(bt.ambos_marcam, true) then 'Nem sempre os dois marcam' end,
       case when v.outcome='Yes' and not coalesce(bt.defesas_vazaveis, true) then 'As defesas não são tão vazadas' end,
       case when v.outcome='No' and not coalesce(bt.defesa_forte, true) then 'Nenhuma defesa é tão sólida' end,
-      case when v.outcome='No' and not coalesce(bt.ataque_trava, true) then 'Os dois ataques costumam marcar' end
+      case when v.outcome='No' and not coalesce(bt.ataque_trava, true) then 'Os dois ataques costumam marcar' end,
+      case when not coalesce(dc.lado_coberto_forte, true) then 'O lado coberto não é claramente o mais forte' end,
+      case when not coalesce(dc.adversario_limitado, true) then 'Adversário não é tão limitado' end
     ], null))[1:3]
   from futebol.fact_value_opportunities v
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
+  left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   left join d on d.fixture_id = v.fixture_id and d.outcome_side = v.outcome and d.line_value is not distinct from v.line_value
   where v.fixture_id = p_fixture_id
-  order by (case v.market when 'match_winner' then 1 when 'goals_over_under' then 2 when 'asian_handicap' then 3 when 'btts' then 4 else 9 end), 3;
+  order by (case v.market when 'match_winner' then 1 when 'goals_over_under' then 2 when 'asian_handicap' then 3 when 'btts' then 4 when 'double_chance' then 5 else 9 end), 3;
 $function$;
 grant execute on function public.get_futebol_fixture_value(bigint) to authenticated, anon;
 
