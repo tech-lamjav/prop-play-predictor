@@ -18,12 +18,13 @@ function dayLabel(s: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-/** Dia da semana curto (ter, qua…) e número do dia, a partir de YYYY-MM-DD (BRT). */
-function dayParts(s: string): { wd: string; d: string } {
+/** Dia da semana curto (ter, qua…), número e mês curto, a partir de YYYY-MM-DD (BRT). */
+function dayParts(s: string): { wd: string; d: string; mon: string } {
   const date = new Date(`${s}T12:00:00Z`);
   const wd = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'short' }).format(date).replace('.', '');
   const d = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit' }).format(date);
-  return { wd, d };
+  const mon = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, month: 'short' }).format(date).replace('.', '');
+  return { wd, d, mon };
 }
 
 /**
@@ -48,7 +49,7 @@ export default function FutebolDayStepper({
       </button>
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
         {days.map((s) => {
-          const { wd, d } = dayParts(s);
+          const { wd, d, mon } = dayParts(s);
           const isToday = s === today;
           const active = s === value;
           return (
@@ -63,6 +64,7 @@ export default function FutebolDayStepper({
             >
               <span className="text-[10px] uppercase tracking-[0.16em] font-semibold opacity-70">{wd}</span>
               <span className="text-[14px] font-semibold tabular-nums tracking-tight">{d}</span>
+              <span className="text-[10px] uppercase tracking-[0.12em] font-semibold opacity-70">{mon}</span>
               {isToday && <span className="text-[9px] uppercase tracking-[0.16em] font-bold">Hoje</span>}
               {counts && counts[s] != null && <span className="text-[10px] tabular-nums opacity-60">· {counts[s]}</span>}
             </button>

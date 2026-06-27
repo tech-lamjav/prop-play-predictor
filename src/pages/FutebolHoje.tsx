@@ -14,6 +14,8 @@ import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-da
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo' };
+// Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
+const DAY_WINDOW = 8;
 
 function parseUtc(raw: string | null): Date | null {
   if (!raw) return null;
@@ -241,6 +243,7 @@ export default function FutebolHoje() {
   }, [brasil, copa]);
 
   // dias (BRT) com jogos ainda não começados — base da navegação por dias.
+  // Limita aos próximos dias (não varre a temporada inteira do Brasileirão).
   const days = useMemo(() => {
     const now = Date.now();
     const set = new Set<string>();
@@ -249,7 +252,7 @@ export default function FutebolHoje() {
       const t = d?.getTime();
       if (d && t != null && t > now && !isFinished(f.status_short)) set.add(brtDateStr(d));
     });
-    return [...set].sort();
+    return [...set].sort().slice(0, DAY_WINDOW);
   }, [allGames]);
   const selectedDay = (day && days.includes(day)) ? day : (days.includes(todayStr) ? todayStr : days[0] ?? todayStr);
   const selectedDate = new Date(`${selectedDay}T12:00:00Z`);

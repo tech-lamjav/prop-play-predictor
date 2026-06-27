@@ -46,6 +46,8 @@ function Crest({ teamId, name, size = 20 }: { teamId: number; name: string; size
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
+// Janela curta da navegação por dias (não varre a temporada inteira).
+const DAY_WINDOW = 8;
 
 type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 type FaixaFilter = 'all' | 'alta' | 'media';
@@ -167,7 +169,7 @@ export default function FutebolOportunidades() {
   const days = useMemo(() => {
     const set = new Set<string>();
     timeUpcoming.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
-    return [...set].sort();
+    return [...set].sort().slice(0, DAY_WINDOW);
   }, [timeUpcoming]);
   const selectedDay = (day && days.includes(day)) ? day : (days.includes(TODAY_BRT) ? TODAY_BRT : days[0]);
 
