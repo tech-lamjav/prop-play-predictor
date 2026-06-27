@@ -1,6 +1,6 @@
 import { useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, MapPin, AlertTriangle, ChevronDown, Check } from 'lucide-react';
+import { MapPin, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -617,15 +617,8 @@ export default function FutebolJogo() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      <AnalyticsNav variant="rebrand" />
+      <AnalyticsNav variant="rebrand" showBack />
       <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
-        <button
-          onClick={() => navigate('/futebol/jogos')}
-          className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink mb-4"
-        >
-          <ChevronLeft className="w-4 h-4" /> Voltar pros jogos
-        </button>
-
         {isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-28 w-full bg-canvas-2 rounded-rebrand-md" />

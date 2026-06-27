@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolTeamProfile, useFutebolTeamSeason, useFutebolStandings, useFutebolFixtures } from '@/hooks/use-futebol-data';
@@ -91,7 +90,6 @@ function trailingStreak(form: string | null | undefined, keep: (c: string) => bo
 
 export default function FutebolTime() {
   const { teamId } = useParams<{ teamId: string }>();
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const competition = (params.get('c') as Competition) || 'brasileirao';
   const season = Number(params.get('s')) || 2026;
@@ -170,12 +168,8 @@ export default function FutebolTime() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      <AnalyticsNav variant="rebrand" />
+      <AnalyticsNav variant="rebrand" showBack />
       <div className="max-w-5xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
-        <button onClick={() => navigate('/futebol/jogos')} className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink mb-4">
-          <ChevronLeft className="w-4 h-4" /> Voltar
-        </button>
-
         {isLoading ? (
           <div className="space-y-5">
             <Skeleton className="h-44 w-full bg-canvas-2 rounded-2xl" />
