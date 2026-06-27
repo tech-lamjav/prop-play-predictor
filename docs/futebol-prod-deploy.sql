@@ -56,6 +56,13 @@ create table futebol.int_futebol_premissas_dc as select * from bq_futebol.int_fu
 -- truncate+insert de fact_value_opportunities, int_futebol_premissas_1x2/ou, int_futebol_odds_devig
 
 -- ── Procedure de sync (inclui ah + btts + dc) ───────────────────────────────
+-- IMPORTANTE: NÃO usar COMMIT dentro da procedure. O pg_cron roda `CALL` dentro
+-- de uma transação e COMMIT dispara "invalid transaction termination" → a sync
+-- falha TODA hora e as tabelas nativas ficam stale (parecendo "BQ desatualizado").
+-- Rodar tudo numa transação única (também permite CALL via SQL editor/MCP).
+-- Atenção a DRIFT de schema: se o Mateus mudar colunas de uma tabela no BQ, o
+-- `select *` da foreign quebra ("Unrecognized name: <col>"); realinhar a foreign
+-- table (e a nativa) ao schema atual do BQ.
 create or replace procedure futebol.sync_all()
  language plpgsql security definer set search_path to ''
 as $procedure$
@@ -73,7 +80,6 @@ begin
   foreach t in array tables loop
     execute format('truncate table futebol.%I', t);
     execute format('insert into futebol.%I select * from bq_futebol.%I', t, t);
-    commit;
   end loop;
 end $procedure$;
 
