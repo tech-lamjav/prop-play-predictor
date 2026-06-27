@@ -236,7 +236,7 @@ export default function FutebolTime() {
               <div className={CARD}>
                 <div className="px-5 py-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                   <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Eficiência · gols × xG</div>
-                  <div className="text-[10px] mt-0.5 text-ink-3">Acima do esperado tende a regredir à média</div>
+                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">xG = qualidade das chances criadas. Quem faz muito mais gol do que o xG tende a cair pro normal — cuidado com sequência "quente".</div>
                 </div>
                 {efic ? (
                   <div className="p-5 flex flex-col gap-5">
@@ -298,6 +298,24 @@ export default function FutebolTime() {
   );
 }
 
+// Veredito mastigado da eficiência (relativo, escala com totais ou médias).
+function eficVerdict(good: boolean, real: number, esperado: number): string {
+  const ratio = esperado > 0 ? (real - esperado) / esperado : 0;
+  const emLinha = Math.abs(ratio) <= 0.1;
+  if (good) {
+    // Ataque: real = gols feitos
+    if (emLinha) return 'Marca em linha com as chances que cria — número sustentável.';
+    return ratio > 0
+      ? 'Marca acima das chances que cria — costuma normalizar (esfriar).'
+      : 'Marca menos do que as chances valem — tende a melhorar.';
+  }
+  // Defesa: real = gols sofridos
+  if (emLinha) return 'Sofre em linha com as chances do adversário — número sustentável.';
+  return ratio > 0
+    ? 'Sofre mais do que as chances mereciam — tende a melhorar.'
+    : 'Sofre menos do que as chances do adversário — pode subir (regride à média).';
+}
+
 // Barra Real vs Esperado (gols × xG)
 function EficBar({ label, real, esperado, good }: { label: string; real: number; esperado: number; good: boolean }) {
   const delta = +(real - esperado).toFixed(1);
@@ -314,16 +332,17 @@ function EficBar({ label, real, esperado, good }: { label: string; real: number;
       </div>
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] uppercase tracking-[0.12em] font-bold w-14 shrink-0 text-ink-3">Real</span>
+          <span className="text-[10px] font-semibold w-[74px] shrink-0 text-ink-3">Real</span>
           <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: C.lineSoft }}><div style={{ width: `${(real / max) * 100}%`, height: '100%', background: C.forest }} /></div>
           <span className="text-[12px] tabular-nums font-semibold w-8 text-right text-ink">{real}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] uppercase tracking-[0.12em] font-bold w-14 shrink-0 text-ink-3">Esperado</span>
+          <span className="text-[10px] font-semibold w-[74px] shrink-0 text-ink-3">Esperado (xG)</span>
           <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: C.lineSoft }}><div style={{ width: `${(esperado / max) * 100}%`, height: '100%', background: C.ink3 }} /></div>
           <span className="text-[12px] tabular-nums w-8 text-right text-ink-2">{esperado}</span>
         </div>
       </div>
+      <p className="text-[11px] text-ink-2 mt-2 leading-snug">{eficVerdict(good, real, esperado)}</p>
     </div>
   );
 }
