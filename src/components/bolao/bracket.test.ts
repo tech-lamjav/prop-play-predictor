@@ -117,9 +117,11 @@ describe('resolveBracket', () => {
     // ko com códigos REAIS já gravados (preferRealCodes)
     const koReal = (n: number, stage: string, home: string, away: string, hc: string, ac: string): WcMatch =>
       ({ id: n, match_number: n, stage, group_name: null, home_team: home, away_team: away, home_team_code: hc, away_team_code: ac } as unknown as WcMatch);
+    // Em produção o backfill sobrescreve home_team/away_team com o NOME real
+    // ("Brasil"), que NÃO casa com o descritor — o código real é a fonte da verdade.
     const matches = [
-      koReal(1, 'round_of_32', '1º Grupo A', '2º Grupo B', 'BRA', 'ARG'),
-      koReal(2, 'round_of_32', '1º Grupo C', '3º Grupo ABC', 'GER', 'FRA'),
+      koReal(1, 'round_of_32', 'Brasil', 'Argentina', 'BRA', 'ARG'),
+      koReal(2, 'round_of_32', 'Alemanha', 'França', 'GER', 'FRA'),
       ko(3, 'round_of_16', 'Vencedor J1', 'Vencedor J2'),
     ];
     const picks: BracketPicks = { ...emptyPicks, round_of_16: ['BRA', 'GER'], quarterfinalist: ['BRA'] };
