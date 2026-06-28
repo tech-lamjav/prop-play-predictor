@@ -193,20 +193,20 @@ export function resolveBracket(
     const homeRef = parseSlot(m.home_team);
     const awayRef = parseSlot(m.away_team);
 
-    // Slots de ENTRADA (16 avos): "1º Grupo X" / "3º Grupo XXXXX". No modo real,
-    // preferimos o código real já gravado no jogo. Fases seguintes ("Vencedor Jxx")
-    // continuam resolvendo pelo caminho previsto nos picks.
-    const homeIsEntry = homeRef.kind === 'group_pos' || homeRef.kind === 'third';
-    const awayIsEntry = awayRef.kind === 'group_pos' || awayRef.kind === 'third';
+    // Round de ENTRADA (16 avos). No modo real preferimos o código real já gravado
+    // no jogo — independente do texto do slot, que pode ter sido sobrescrito pelo
+    // nome real do time (ex: "Brasil") e não casar mais com o descritor. As fases
+    // seguintes ("Vencedor Jxx") continuam resolvendo pelo caminho previsto nos picks.
+    const isEntryRound = m.stage === 'round_of_32';
 
     const homeCode =
-      preferReal && homeIsEntry && realCode(m.home_team_code)
+      preferReal && isEntryRound && realCode(m.home_team_code)
         ? realCode(m.home_team_code)
         : homeRef.kind === 'third'
           ? thirdByMatch?.get(m.match_number) ?? null
           : resolveRef(homeRef);
     const awayCode =
-      preferReal && awayIsEntry && realCode(m.away_team_code)
+      preferReal && isEntryRound && realCode(m.away_team_code)
         ? realCode(m.away_team_code)
         : awayRef.kind === 'third'
           ? thirdByMatch?.get(m.match_number) ?? null
