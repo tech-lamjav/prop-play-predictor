@@ -60,6 +60,20 @@ describe('specialDeadline', () => {
     // tipos sem override seguem o preset normal
     expect(specialDeadline('round_of_32', MATCHES, cfg)?.toISOString()).toBe('2026-06-28T19:00:00.000Z');
   });
+
+  it('modo real: bracket de quem avança (16 avos → finalistas) trava no início do mata-mata', () => {
+    const KO = '2026-06-28T19:00:00.000Z'; // 1º round_of_32
+    expect(specialDeadline('round_of_32', MATCHES, null, true)?.toISOString()).toBe(KO);
+    expect(specialDeadline('quarterfinalist', MATCHES, null, true)?.toISOString()).toBe(KO);
+    expect(specialDeadline('finalist', MATCHES, null, true)?.toISOString()).toBe(KO);
+    // campeão fica de fora: mantém o prazo próprio (rolling → 1º jogo da final)
+    expect(specialDeadline('champion', MATCHES, null, true)?.toISOString()).toBe('2026-07-19T19:00:00.000Z');
+    // prêmios de jogador não são bracket → seguem abertura da Copa
+    expect(specialDeadline('top_scorer', MATCHES, null, true)?.toISOString()).toBe('2026-06-11T19:00:00.000Z');
+    // override ainda vence, mesmo no modo real
+    const cfg = { overrides: { finalist: '2026-07-15T20:00:00-03:00' } };
+    expect(specialDeadline('finalist', MATCHES, cfg, true)?.toISOString()).toBe('2026-07-15T23:00:00.000Z');
+  });
 });
 
 describe('isSpecialLocked', () => {

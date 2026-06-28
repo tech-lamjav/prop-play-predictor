@@ -15,17 +15,19 @@ const STAGE_COLS: { stage: string; label: string }[] = [
 
 interface Props {
   matches: WcMatch[];
-  projection: ProjectionResult;
+  projection: ProjectionResult | null;
   picks: BracketPicks;
   /** Avança (ou troca) o vencedor de um jogo. Sem isso, render é read-only. */
   onAdvance?: (match: ResolvedMatch, winnerCode: string) => void;
   busy?: boolean;
+  /** Modo "chaveamento real": 16 avos vêm dos times reais do wc_matches. */
+  realMode?: boolean;
 }
 
-export const KnockoutBracket: React.FC<Props> = ({ matches, projection, picks, onAdvance, busy }) => {
+export const KnockoutBracket: React.FC<Props> = ({ matches, projection, picks, onAdvance, busy, realMode }) => {
   const resolved = React.useMemo(
-    () => resolveBracket(matches, projection, picks),
-    [matches, projection, picks]
+    () => resolveBracket(matches, projection, picks, { preferRealCodes: realMode }),
+    [matches, projection, picks, realMode]
   );
   const byStage = React.useMemo(() => {
     const map = new Map<string, ResolvedMatch[]>();
