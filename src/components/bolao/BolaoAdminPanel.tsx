@@ -546,7 +546,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
     updateSettings.mutate(
       { bolaoId, settings: { knockout_real_predictions_enabled: newVal } },
       {
-        onSuccess: () => toast({ title: newVal ? 'Mata-mata por jogo real habilitado' : 'Mata-mata por jogo real desabilitado' }),
+        onSuccess: () => toast({ title: newVal ? 'Chaveamento com times reais habilitado' : 'Chaveamento com times reais desabilitado' }),
         onError: (err: any) => {
           setKnockoutReal(!newVal);
           toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -1390,22 +1390,22 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
       </Card>
 
       <Card
-        title="Mata-mata por jogo real"
-        sub="Substitui o funil de projeção: membros palpitam o PLACAR dos jogos reais do mata-mata, liberados conforme os confrontos se definem. O Campeão continua valendo."
+        title="Chaveamento com times reais"
+        sub="Os 16 avos já saem com os times reais classificados. Os membros montam o bracket — clicam em quem avança até a final + campeão — numa janela curta, que fecha no início do mata-mata."
         action={
           <Toggle
             on={knockoutReal}
             onClick={handleToggleKnockoutReal}
-            ariaLabel="Toggle mata-mata por jogo real"
+            ariaLabel="Toggle chaveamento com times reais"
             disabled={!isOwner}
           />
         }
       >
         {knockoutReal && (
           <p className="text-[12px] text-ink-2 leading-snug">
-            Ligado: o funil de projeção abaixo fica desativado e os palpites de
-            placar do mata-mata aparecem na aba de Jogos conforme os confrontos
-            se definem.
+            Ligado: o funil de projeção abaixo fica desativado e o chaveamento
+            aparece já com os times reais. Os palpites do bracket inteiro travam
+            no início do mata-mata (1º jogo dos 16 avos).
           </p>
         )}
       </Card>
@@ -1413,7 +1413,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
       <Card title="Palpites Especiais" sub="Cada modalidade pode ser ativada e ter pontos próprios">
         {knockoutReal && (
           <p className="text-[12px] text-ink-3 leading-snug pb-2">
-            Desativado enquanto o <span className="font-semibold">mata-mata por jogo real</span> estiver ligado.
+            Desativado enquanto o <span className="font-semibold">chaveamento com times reais</span> estiver ligado.
           </p>
         )}
         {Object.entries(SPECIAL_TYPES).map(([type, label]) => (

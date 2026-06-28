@@ -112,4 +112,30 @@ describe('resolveBracket', () => {
     expect(r[0].winner).toBeNull();
     expect(r[0].home.code).toBe('A1');
   });
+
+  it('modo real: 16 avos saem dos times reais (sem projeção); fases seguintes seguem os picks', () => {
+    // ko com códigos REAIS já gravados (preferRealCodes)
+    const koReal = (n: number, stage: string, home: string, away: string, hc: string, ac: string): WcMatch =>
+      ({ id: n, match_number: n, stage, group_name: null, home_team: home, away_team: away, home_team_code: hc, away_team_code: ac } as unknown as WcMatch);
+    const matches = [
+      koReal(1, 'round_of_32', '1º Grupo A', '2º Grupo B', 'BRA', 'ARG'),
+      koReal(2, 'round_of_32', '1º Grupo C', '3º Grupo ABC', 'GER', 'FRA'),
+      ko(3, 'round_of_16', 'Vencedor J1', 'Vencedor J2'),
+    ];
+    const picks: BracketPicks = { ...emptyPicks, round_of_16: ['BRA', 'GER'], quarterfinalist: ['BRA'] };
+    // projeção null — no modo real ela é irrelevante pros 16 avos
+    const r = resolveBracket(matches, null, picks, { preferRealCodes: true });
+    const byNum = new Map(r.map((m) => [m.match_number, m]));
+
+    expect(byNum.get(1)!.home.code).toBe('BRA');
+    expect(byNum.get(1)!.away.code).toBe('ARG');
+    expect(byNum.get(1)!.winner).toBe('BRA'); // está em round_of_16
+    expect(byNum.get(2)!.home.code).toBe('GER');
+    expect(byNum.get(2)!.away.code).toBe('FRA'); // terceiro vem do código real, não do emparelhamento
+    expect(byNum.get(2)!.winner).toBe('GER');
+    // oitavas: participantes = vencedores previstos dos 16 avos
+    expect(byNum.get(3)!.home.code).toBe('BRA');
+    expect(byNum.get(3)!.away.code).toBe('GER');
+    expect(byNum.get(3)!.winner).toBe('BRA'); // BRA em quarterfinalist
+  });
 });
