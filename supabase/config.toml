@@ -23,6 +23,10 @@ verify_jwt = false
 # Job de cron — sem JWT de usuário. Protegida pelo header x-cron-secret (CRON_SECRET).
 verify_jwt = false
 
+[functions.notify-kickoff]
+# Job de cron (aviso de kickoff no Telegram do dono) — header x-cron-secret (CRON_SECRET).
+verify_jwt = false
+
 [functions.ingest-wc-squads]
 # Ingestão de elencos sob demanda — protegida pelo header x-cron-secret (CRON_SECRET).
 verify_jwt = false

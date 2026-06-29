@@ -41,6 +41,8 @@ export interface Bolao {
   custom_banner_url: string | null;
   champion_enabled: boolean;
   knockout_real_predictions_enabled: boolean;
+  /** Opt-in do dono: avisar no Telegram dele quando cada jogo começa. */
+  kickoff_notify_telegram: boolean;
   special_predictions_enabled: boolean;
   special_predictions_config: {
     finalist: boolean;
@@ -784,6 +786,7 @@ export const bolaoService = {
       description?: string | null;
       champion_enabled?: boolean;
       knockout_real_predictions_enabled?: boolean;
+      kickoff_notify_telegram?: boolean;
       special_predictions_enabled?: boolean;
       special_predictions_config?: Record<string, boolean>;
       special_predictions_points?: Record<string, number>;

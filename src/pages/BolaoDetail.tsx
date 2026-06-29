@@ -432,6 +432,7 @@ const BolaoDetail: React.FC = () => {
             customBannerUrl={bolao.custom_banner_url ?? null}
             championEnabled={bolao.champion_enabled ?? true}
             knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
+            kickoffNotifyTelegram={bolao.kickoff_notify_telegram ?? false}
             specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
             specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
             specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
