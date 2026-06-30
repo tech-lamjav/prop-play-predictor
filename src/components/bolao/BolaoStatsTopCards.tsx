@@ -40,8 +40,8 @@ interface PredictionFront {
 
 const STAGE_LABELS: { key: WcMatch['stage']; label: string }[] = [
   { key: 'group', label: 'Fase de grupos' },
-  { key: 'round_of_32', label: 'Oitavas' },
-  { key: 'round_of_16', label: '16 Avos' },
+  { key: 'round_of_32', label: '16 avos' },
+  { key: 'round_of_16', label: 'Oitavas' },
   { key: 'quarter', label: 'Quartas' },
   { key: 'semi', label: 'Semis' },
   { key: 'final', label: 'Final' },
