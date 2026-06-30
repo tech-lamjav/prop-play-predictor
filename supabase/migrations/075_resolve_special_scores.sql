@@ -139,11 +139,13 @@ BEGIN
   LEFT JOIN auth.users au ON au.id = bm.user_id
   LEFT JOIN bolao_predictions bp ON bp.bolao_id = bm.bolao_id AND bp.user_id = bm.user_id
   LEFT JOIN (
-    SELECT user_id, COALESCE(SUM(points_earned), 0) AS special_pts
-    FROM bolao_special_predictions
-    WHERE bolao_id = p_bolao_id
-    GROUP BY user_id
-  ) sp ON sp.user_id = bm.user_id
+    -- alias explícito: a função tem um OUT param `user_id`, então a coluna
+    -- precisa ser qualificada (bsp.) e renomeada (uid) pra não dar ambiguidade.
+    SELECT bsp.user_id AS uid, COALESCE(SUM(bsp.points_earned), 0) AS special_pts
+    FROM bolao_special_predictions bsp
+    WHERE bsp.bolao_id = p_bolao_id
+    GROUP BY bsp.user_id
+  ) sp ON sp.uid = bm.user_id
   WHERE bm.bolao_id = p_bolao_id
   GROUP BY bm.user_id, u.name, u.email, au.raw_user_meta_data, b.scoring_exact, b.scoring_result
   ORDER BY total_points DESC, exact_scores DESC, correct_results DESC;
