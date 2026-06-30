@@ -225,7 +225,7 @@ export default function FutebolJogos() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      <AnalyticsNav variant="rebrand" />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Header */}
       <div className="bg-white border-b border-line">

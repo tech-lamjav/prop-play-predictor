@@ -7,6 +7,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useFutebolValueBoard, useFutebolAccess } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
+import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
+import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
@@ -288,7 +290,7 @@ export default function FutebolOportunidades() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      <AnalyticsNav variant="rebrand" />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Day stepper */}
       {!isLoading && days.length > 0 && (
@@ -345,14 +347,28 @@ export default function FutebolOportunidades() {
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
                 <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
               </div>
-              {comValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} locked={locked} />)}
+              {comValor.map((o) => (
+                <div key={key(o)}>
+                  <OppRow o={o} onClick={() => go(o.fixture_id)} locked={locked} />
+                  {!locked && (
+                    <div className="px-5 pb-2 -mt-0.5">
+                      <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
+                    </div>
+                  )}
+                </div>
+              ))}
               {semValor.length > 0 && <Regua />}
               {semValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} muted locked={locked} />)}
             </div>
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o) => <OppMobileCard key={key(o)} o={o} onClick={() => go(o.fixture_id)} locked={locked} />)}
+              {comValor.map((o) => (
+                <div key={key(o)}>
+                  <OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} />
+                  {!locked && <div className="px-1 pt-1.5"><RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} /></div>}
+                </div>
+              ))}
               {semValor.length > 0 && (
                 <div className="flex items-center gap-2 py-1">
                   <span className="flex-1 h-px bg-line" /><span className="text-[11px] text-ink-3">sem valor claro</span><span className="flex-1 h-px bg-line" />

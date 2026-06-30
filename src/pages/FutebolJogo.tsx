@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
+import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
@@ -302,7 +303,7 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 
 // ---------- "O que olhar": Score vem PRONTO do backend (fact_value_opportunities) ----------
 // Síntese "O que olhar neste jogo" — decide e PROVA a melhor aposta (Score do backend)
-function WhatToWatch({ rows, homeName, awayName, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; locked?: boolean }) {
+function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; competition: string; kickoffUtc: string | null; locked?: boolean }) {
   const ranked = [...rows].sort((a, b) => b.score - a.score);
   const top = ranked[0];
   const second = ranked[1];
@@ -406,6 +407,12 @@ function WhatToWatch({ rows, homeName, awayName, locked }: { rows: FutebolFixtur
           <p className="text-[10px] text-ink-3 leading-snug">{note}</p>
         </div>
       </div>
+      {!locked && (
+        <RegistrarApostaCTA
+          variant="footer"
+          draft={{ homeName, awayName, competition, kickoffUtc, market: top.market, outcome: top.outcome, lineValue: top.line_value, bestOdd: top.best_odd }}
+        />
+      )}
     </div>
   );
 }
@@ -680,7 +687,7 @@ export default function FutebolJogo() {
             {(showValue || tendencies) && (
               <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
                 {showValue && valueRows && (
-                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
+                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
                 )}
                 {tendencies && (
                   <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />

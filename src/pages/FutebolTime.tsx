@@ -138,6 +138,7 @@ export default function FutebolTime() {
     const xgAga = geral.s?.avg_xg_against;
     if (!games || stand == null || xgFor == null || xgAga == null) return null;
     return {
+      games,
       ataque: { real: stand.goals_for, esperado: +(xgFor * games).toFixed(1) },
       defesa: { real: stand.goals_against, esperado: +(xgAga * games).toFixed(1) },
     };
@@ -235,8 +236,11 @@ export default function FutebolTime() {
               {/* Eficiência */}
               <div className={CARD}>
                 <div className="px-5 py-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
-                  <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Eficiência · gols × xG</div>
-                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">xG = qualidade das chances criadas. Quem faz muito mais gol do que o xG tende a cair pro normal — cuidado com sequência "quente".</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Eficiência · gols × xG</div>
+                    {efic && <span className="text-[10px] font-semibold text-ink-3 whitespace-nowrap">totais · {efic.games} {efic.games === 1 ? 'jogo' : 'jogos'}</span>}
+                  </div>
+                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar — e os dois tendem a se normalizar.</div>
                 </div>
                 {efic ? (
                   <div className="p-5 flex flex-col gap-5">
