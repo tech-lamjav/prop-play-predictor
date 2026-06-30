@@ -78,8 +78,11 @@ const App = () => (
             <Route path="/" element={<LandingEcossistema />} />
             <Route path="/nba" element={<Landing />} />
             <Route path="/home-nba" element={<HomeNBA />} />
-            {/* TEMP: ProtectedRoute removido pra screenshot do rebrand. RESTAURAR antes do merge. */}
-            <Route path="/oportunidades" element={<Picks />} />
+            <Route path="/oportunidades" element={
+              <ProtectedRoute>
+                <Picks />
+              </ProtectedRoute>
+            } />
             <Route path="/betinho" element={<Betinho />} />
             {/* Variante da LP do Betinho pra usuários vindos do bolão da Copa.
                 Mesmo componente; useLocation detecta a rota e troca hero +
