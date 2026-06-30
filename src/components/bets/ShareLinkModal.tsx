@@ -115,10 +115,11 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text max-w-md">
+      <DialogContent className="theme-rebrand bg-white border-line text-ink max-w-md shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
         <DialogHeader>
-          <DialogTitle className="text-terminal-blue flex items-center gap-2">
-            <Link2 className="w-5 h-5" />
+          <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Compartilhar</div>
+          <DialogTitle className="flex items-center gap-2 text-[18px] font-semibold tracking-tight text-ink">
+            <Link2 className="w-4 h-4 text-forest" />
             Compartilhar apostas
           </DialogTitle>
         </DialogHeader>
@@ -129,7 +130,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                 <Badge
                   key={i}
                   variant="secondary"
-                  className="bg-terminal-gray border-terminal-border text-terminal-text text-xs"
+                  className="bg-ink-3 border-line text-ink text-xs"
                 >
                   {chip.label}
                 </Badge>
@@ -137,24 +138,24 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
             </div>
           )}
           {!activeFilters && (
-            <p className="text-xs text-terminal-yellow/90">
+            <p className="text-xs text-status-warning">
               Este link compartilhará todas as suas apostas.
             </p>
           )}
           {/* Período */}
           <div className="space-y-1.5">
-            <p className="text-xs font-bold text-terminal-text opacity-70 uppercase">Período</p>
+            <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">Período</p>
             <div className="flex gap-2">
               <Popover open={isDateFromOpen} onOpenChange={setIsDateFromOpen} modal>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 terminal-input text-xs justify-start h-auto py-1.5">
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  <Button variant="outline" className="flex-1 h-10 bg-canvas border-line text-ink rounded-md hover:bg-ink-3/40 hover:text-ink text-xs justify-start py-1.5">
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-forest" />
                     {localDateFrom
                       ? format(new Date(localDateFrom + 'T12:00:00'), 'dd/MM/yyyy')
                       : 'Data inicial'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                <PopoverContent className="theme-rebrand w-auto p-0 bg-white border-line shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                   <Calendar
                     mode="single"
                     selected={localDateFrom ? new Date(localDateFrom + 'T12:00:00') : undefined}
@@ -163,21 +164,31 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                       setIsDateFromOpen(false);
                       if (!localDateTo) setIsDateToOpen(true);
                     }}
-                    className="bg-terminal-dark-gray"
+                    className="bg-white"
+                    classNames={{
+                      caption_label: 'text-sm font-semibold text-ink',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_outside: 'text-ink-2 opacity-40',
+                      day_disabled: 'text-ink-2 opacity-30',
+                    }}
                   />
                 </PopoverContent>
               </Popover>
 
               <Popover open={isDateToOpen} onOpenChange={setIsDateToOpen} modal>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 terminal-input text-xs justify-start h-auto py-1.5">
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  <Button variant="outline" className="flex-1 h-10 bg-canvas border-line text-ink rounded-md hover:bg-ink-3/40 hover:text-ink text-xs justify-start py-1.5">
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-forest" />
                     {localDateTo
                       ? format(new Date(localDateTo + 'T12:00:00'), 'dd/MM/yyyy')
                       : 'Data final'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-terminal-dark-gray border-terminal-border">
+                <PopoverContent className="theme-rebrand w-auto p-0 bg-white border-line shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                   <Calendar
                     mode="single"
                     selected={localDateTo ? new Date(localDateTo + 'T12:00:00') : undefined}
@@ -186,7 +197,17 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                       setLocalDateTo(date ? format(date, 'yyyy-MM-dd') : '');
                       setIsDateToOpen(false);
                     }}
-                    className="bg-terminal-dark-gray"
+                    className="bg-white"
+                    classNames={{
+                      caption_label: 'text-sm font-semibold text-ink',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_outside: 'text-ink-2 opacity-40',
+                      day_disabled: 'text-ink-2 opacity-30',
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -198,7 +219,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                     setLocalDateFrom('');
                     setLocalDateTo('');
                   }}
-                  className="p-1.5 terminal-button border-terminal-border hover:border-terminal-red text-terminal-text hover:text-terminal-red transition-colors"
+                  className="p-1.5 rounded-md border border-line bg-white hover:border-status-danger text-ink-2 hover:text-status-danger transition-colors"
                   aria-label="Limpar período"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -210,7 +231,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
           {/* Tags */}
           {userTags.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs font-bold text-terminal-text opacity-70 uppercase">Tags</p>
+              <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">Tags</p>
               <div className="flex flex-wrap gap-1.5">
                 {userTags.map((tag) => {
                   const selected = localTags.includes(tag.id);
@@ -223,10 +244,10 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                           selected ? prev.filter((id) => id !== tag.id) : [...prev, tag.id]
                         )
                       }
-                      className={`px-2 py-1 text-xs rounded border transition-colors ${
+                      className={`px-2 py-1 text-xs rounded-md border transition-colors ${
                         selected
-                          ? 'border-terminal-green bg-terminal-green/10 text-terminal-green'
-                          : 'border-terminal-border text-terminal-text hover:border-terminal-green/50'
+                          ? 'border-forest bg-forest/10 text-forest'
+                          : 'border-line bg-canvas text-ink hover:border-forest/50'
                       }`}
                       style={selected && tag.color ? { borderColor: tag.color, color: tag.color } : {}}
                     >
@@ -242,7 +263,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
             <Button
               onClick={handleGenerate}
               disabled={isLoading}
-              className="w-full terminal-button border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black"
+              className="w-full h-10 bg-forest hover:bg-forest-soft text-white font-semibold"
             >
               {isLoading ? (
                 <>
@@ -261,13 +282,13 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
               <Input
                 readOnly
                 value={shareUrl}
-                className="bg-terminal-black border-terminal-border text-terminal-text text-xs"
+                className="h-10 bg-canvas border-line text-ink rounded-md text-xs"
               />
               <Button
                 onClick={handleCopy}
                 variant="outline"
                 size="icon"
-                className="shrink-0 terminal-button border-terminal-green text-terminal-green hover:bg-terminal-green hover:text-terminal-black"
+                className="shrink-0 h-10 w-10 border-line bg-white text-forest hover:bg-forest hover:text-white"
               >
                 <Copy className="w-4 h-4" />
               </Button>

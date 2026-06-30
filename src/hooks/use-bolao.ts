@@ -369,6 +369,8 @@ export function useUpdateBolaoSettings() {
         name?: string;
         description?: string | null;
         champion_enabled?: boolean;
+        knockout_real_predictions_enabled?: boolean;
+        kickoff_notify_telegram?: boolean;
         special_predictions_enabled?: boolean;
         special_predictions_config?: Record<string, boolean>;
         special_predictions_points?: Record<string, number>;

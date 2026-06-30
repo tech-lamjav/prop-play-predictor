@@ -15,6 +15,7 @@ import {
   Target,
   Pencil,
   Trash2,
+  Send,
 } from 'lucide-react';
 import {
   Dialog,
@@ -38,6 +39,8 @@ import { ToastAction } from '@/components/ui/toast';
 import { ConfirmDialog } from '@/components/bolao/ConfirmDialog';
 import type { BolaoRankingEntry, WcMatch, SpecialDeadlinesConfig } from '@/services/bolao.service';
 import { specialDeadline } from '@/components/bolao/special-deadlines';
+import { useTelegramLink } from '@/hooks/use-telegram-link';
+import { telegramBotUrl } from '@/config/environment';
 
 interface BolaoAdminPanelProps {
   open: boolean;
@@ -53,6 +56,8 @@ interface BolaoAdminPanelProps {
   scoringWeights: Record<string, number> | null;
   customBannerUrl: string | null;
   championEnabled: boolean;
+  knockoutRealEnabled: boolean;
+  kickoffNotifyTelegram: boolean;
   specialPredictionsEnabled: boolean;
   specialPredictionsConfig: Record<string, boolean>;
   specialPredictionsPoints: Record<string, number>;
@@ -317,6 +322,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   scoringWeights,
   customBannerUrl,
   championEnabled,
+  knockoutRealEnabled,
+  kickoffNotifyTelegram,
   specialPredictionsEnabled,
   specialPredictionsConfig,
   specialPredictionsPoints,
@@ -368,6 +375,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
   // Modalidades state
   const [champEnabled, setChampEnabled] = useState(championEnabled);
+  const [knockoutReal, setKnockoutReal] = useState(knockoutRealEnabled);
+  const [kickoffNotify, setKickoffNotify] = useState(kickoffNotifyTelegram);
   const [specialConfig, setSpecialConfig] = useState<Record<string, boolean>>(specialPredictionsConfig);
   const [specialPoints, setSpecialPoints] = useState<Record<string, number>>(specialPredictionsPoints);
   const [champPoints, setChampPoints] = useState(championPoints);
@@ -397,6 +406,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const updateDeadlineMode = useUpdateBolaoDeadlineMode();
   const deleteBolao = useDeleteBolao();
   const { data: bolaoStats } = useBolaoStats(bolaoId, open && currentUserId === ownerUserId);
+  // Status do link de Telegram do dono — decide entre o switch e o "Conectar".
+  const { data: tgLink, refetch: refetchTg } = useTelegramLink(open ? currentUserId : undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Modo read-only pra membros (nao-dono): mostra config mas tudo disabled,
@@ -531,6 +542,36 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         onSuccess: () => toast({ title: newVal ? 'Palpite de campeão habilitado' : 'Palpite de campeão desabilitado' }),
         onError: (err: any) => {
           setChampEnabled(!newVal);
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
+  };
+
+  const handleToggleKnockoutReal = () => {
+    const newVal = !knockoutReal;
+    setKnockoutReal(newVal);
+    updateSettings.mutate(
+      { bolaoId, settings: { knockout_real_predictions_enabled: newVal } },
+      {
+        onSuccess: () => toast({ title: newVal ? 'Chaveamento com times reais habilitado' : 'Chaveamento com times reais desabilitado' }),
+        onError: (err: any) => {
+          setKnockoutReal(!newVal);
+          toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+        },
+      }
+    );
+  };
+
+  const handleToggleKickoffNotify = () => {
+    const newVal = !kickoffNotify;
+    setKickoffNotify(newVal);
+    updateSettings.mutate(
+      { bolaoId, settings: { kickoff_notify_telegram: newVal } },
+      {
+        onSuccess: () => toast({ title: newVal ? 'Aviso no Telegram ligado' : 'Aviso no Telegram desligado' }),
+        onError: (err: any) => {
+          setKickoffNotify(!newVal);
           toast({ title: 'Erro', description: err.message, variant: 'destructive' });
         },
       }
@@ -1371,7 +1412,76 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         )}
       </Card>
 
+      <Card
+        title="Chaveamento com times reais"
+        sub="Os 16 avos já saem com os times reais classificados. Os membros montam o bracket — clicam em quem avança até a final + campeão — numa janela curta, que fecha no início do mata-mata."
+        action={
+          <Toggle
+            on={knockoutReal}
+            onClick={handleToggleKnockoutReal}
+            ariaLabel="Toggle chaveamento com times reais"
+            disabled={!isOwner}
+          />
+        }
+      >
+        {knockoutReal && (
+          <p className="text-[12px] text-ink-2 leading-snug">
+            Ligado: o funil de projeção abaixo fica desativado e o chaveamento
+            aparece já com os times reais. Os palpites do bracket inteiro travam
+            no início do mata-mata (1º jogo dos 16 avos).
+          </p>
+        )}
+      </Card>
+
+      <Card
+        title="Avisar no meu Telegram quando o jogo começar"
+        sub="No início de cada jogo, você (dono) recebe no seu Telegram os palpites de todos os membros — placar, quem cada um acha que avança e o campeão. Só você recebe."
+        action={
+          tgLink?.linked ? (
+            <Toggle
+              on={kickoffNotify}
+              onClick={handleToggleKickoffNotify}
+              ariaLabel="Toggle aviso de kickoff no Telegram"
+              disabled={!isOwner}
+            />
+          ) : undefined
+        }
+      >
+        {!tgLink?.linked ? (
+          <div className="space-y-2">
+            <p className="text-[12px] text-ink-2 leading-snug">
+              Conecte seu Telegram pra ativar o aviso.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.open(`${telegramBotUrl}?start=force_contact`, '_blank')}
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-rebrand-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-2 transition-colors"
+              >
+                <Send className="w-3.5 h-3.5" /> Conectar Telegram
+              </button>
+              <button
+                type="button"
+                onClick={() => refetchTg()}
+                className="h-9 px-3 rounded-rebrand-md border border-line text-[12px] font-semibold text-ink-2 hover:bg-canvas-2 transition-colors"
+              >
+                Já conectei
+              </button>
+            </div>
+          </div>
+        ) : kickoffNotify ? (
+          <p className="text-[12px] text-ink-2 leading-snug">
+            Ligado: você recebe no Telegram{tgLink?.username ? ` (@${tgLink.username})` : ''} no início de cada jogo.
+          </p>
+        ) : null}
+      </Card>
+
       <Card title="Palpites Especiais" sub="Cada modalidade pode ser ativada e ter pontos próprios">
+        {knockoutReal && (
+          <p className="text-[12px] text-ink-3 leading-snug pb-2">
+            Desativado enquanto o <span className="font-semibold">chaveamento com times reais</span> estiver ligado.
+          </p>
+        )}
         {Object.entries(SPECIAL_TYPES).map(([type, label]) => (
           <SettingsRow
             key={type}

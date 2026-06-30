@@ -46,6 +46,12 @@ interface Props {
   onSuggestChampion?: (teamCode: string) => void;
   /** Config de prazo dos especiais (preset + overrides) — pra badges e lock. */
   specialDeadlines?: SpecialDeadlinesConfig | null;
+  /**
+   * Modo "mata-mata por jogo real" ligado: esconde o funil de projeção. O
+   * palpite de placar dos jogos reais vai pra aba de Jogos. O palpite de
+   * Campeão continua (é renderizado pelo Modal, fora desta seção).
+   */
+  knockoutRealMode?: boolean;
 }
 
 const TYPE_META: Record<
@@ -370,6 +376,7 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
   championPick,
   onSuggestChampion,
   specialDeadlines,
+  knockoutRealMode,
 }) => {
   const { data: myPreds } = useMySpecialPredictions(bolaoId);
   const { data: summary } = useSpecialSummary(bolaoId);
@@ -420,11 +427,11 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     const locked: Record<string, boolean> = {};
     const label: Record<string, string | null> = {};
     for (const t of types) {
-      locked[t] = isSpecialLocked(t, matches, specialDeadlines);
-      label[t] = formatDeadlineLabel(t, matches, specialDeadlines);
+      locked[t] = isSpecialLocked(t, matches, specialDeadlines, Date.now(), knockoutRealMode);
+      label[t] = formatDeadlineLabel(t, matches, specialDeadlines, Date.now(), knockoutRealMode);
     }
     return { locked, label };
-  }, [matches, specialDeadlines]);
+  }, [matches, specialDeadlines, knockoutRealMode]);
 
   const myPicksByType = useMemo(() => {
     const map: Record<string, string[]> = {
@@ -517,7 +524,10 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
   const handleAdvance = (match: ResolvedMatch, winnerCode: string) => {
     const ns = nextStageOf(match.stage);
     if (!ns) return;
-    if (isSpecialLocked(ns, matches, specialDeadlines)) {
+    // No modo real, o campeão é mantido como o pessoal escolheu no início — o
+    // clique na final NÃO altera o campeão (ele segue no card lá em cima).
+    if (knockoutRealMode && ns === 'champion') return;
+    if (isSpecialLocked(ns, matches, specialDeadlines, Date.now(), knockoutRealMode)) {
       projToast({ title: 'Prazo encerrado', description: 'Os palpites desta fase já fecharam.' });
       return;
     }
@@ -531,6 +541,38 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
     }
   };
   const canBracket = !!projection?.complete;
+
+  // Modo "chaveamento com times reais": os 16 avos já saem com os times REAIS
+  // que se classificaram. O jogador clica em quem avança em cada confronto, dos
+  // 16 avos até a final + campeão. Janela curta — trava no início do mata-mata.
+  if (knockoutRealMode) {
+    const koLabel = deadlineInfo.label.round_of_32;
+    const koLocked = deadlineInfo.locked.round_of_32;
+    return (
+      <div className="space-y-3">
+        <div className="rounded-rebrand-md border border-line bg-canvas-2 p-3">
+          <p className="text-[12px] text-ink leading-snug">
+            <span className="font-semibold">Chaveamento com times reais.</span>{' '}
+            Clique no time que avança em cada confronto, dos 16 avos até a final.
+            O campeão segue o que você já escolheu lá em cima.{' '}
+            {koLocked ? (
+              <span className="font-semibold text-status-danger">Prazo encerrado.</span>
+            ) : koLabel ? (
+              <>Você palpita até o início do mata-mata (<span className="font-semibold">{koLabel.replace('fecha ', '')}</span>).</>
+            ) : null}
+          </p>
+        </div>
+        <KnockoutBracket
+          matches={matches}
+          projection={projection}
+          picks={bracketPicks}
+          onAdvance={koLocked ? undefined : handleAdvance}
+          busy={bracketBusy}
+          realMode
+        />
+      </div>
+    );
+  }
 
   // Palpites Especiais agora são liberados pra todo bolão (Free e Premium).
   // A diferença Premium vs Free é APENAS quantidade de participantes (>20).
@@ -627,7 +669,16 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
         .map((type, idx) => {
           // Funil: cada fase só lista os times escolhidos na fase anterior (pai).
           // União com os picks próprios garante que picks legados sempre apareçam.
-          const parent = PARENT_STAGE[type];
+          //
+          // Pai EFETIVO = ancestral HABILITADO mais próximo. Se o dono desligou a
+          // fase-pai estrutural, sobe na cadeia até achar uma habilitada; se nenhuma
+          // estiver habilitada, a fase abre para todas as seleções (parent = null).
+          // Sem isso, desligar uma fase do meio deixava as de baixo sem pool de
+          // candidatos — deadlock em "preencha primeiro X" apontando pra fase oculta.
+          let parent = PARENT_STAGE[type];
+          while (parent && enabledTypes && enabledTypes[parent] === false) {
+            parent = PARENT_STAGE[parent];
+          }
           const stageTeams = parent
             ? teams.filter((t) => {
                 const pool = new Set([...(myPicksByType[parent] || []), ...(myPicksByType[type] || [])]);

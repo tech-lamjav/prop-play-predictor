@@ -32,6 +32,7 @@ import { UserPredictionsModal } from '@/components/bolao/UserPredictionsModal';
 import { BolaoShareButton } from '@/components/bolao/BolaoShareButton';
 import { BolaoAdminPanel } from '@/components/bolao/BolaoAdminPanel';
 import { SpecialPredictionsModal } from '@/components/bolao/SpecialPredictionsModal';
+import { normalizeSpecialConfig } from '@/components/bolao/special-config';
 import { PlayerAwardsModal } from '@/components/bolao/PlayerAwardsModal';
 import { PredictionsModal } from '@/components/bolao/PredictionsModal';
 
@@ -266,6 +267,9 @@ const BolaoDetail: React.FC = () => {
     ? `${window.location.origin}/bolao/${bolao.id}`
     : undefined;
 
+  // Modo da imagem de ranking compartilhada: Top 5 (pódio) ou Todos (geral).
+  const [shareMode, setShareMode] = useState<'top5' | 'all'>('top5');
+
   const rankingShareFeed = useRankingShareImage({
     bolaoName: bolao?.name ?? 'Bolão',
     filenameSlug: bolao?.invite_code,
@@ -389,10 +393,11 @@ const BolaoDetail: React.FC = () => {
           currentUserId={currentUserId}
           championEnabled={bolao.champion_enabled ?? true}
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
-          enabledTypes={bolao.special_predictions_config ?? undefined}
+          enabledTypes={normalizeSpecialConfig(bolao.special_predictions_config)}
           championPoints={bolao.champion_points ?? 25}
           pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
           specialDeadlines={bolao.special_deadlines ?? null}
+          knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
         />
 
         {playerAwardsAnyEnabled && (
@@ -426,8 +431,10 @@ const BolaoDetail: React.FC = () => {
             specialDeadlines={bolao.special_deadlines ?? null}
             customBannerUrl={bolao.custom_banner_url ?? null}
             championEnabled={bolao.champion_enabled ?? true}
+            knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
+            kickoffNotifyTelegram={bolao.kickoff_notify_telegram ?? false}
             specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
-            specialPredictionsConfig={bolao.special_predictions_config ?? { finalist: true, semifinalist: true, quarterfinalist: true, round_of_16: true, round_of_32: true }}
+            specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
             specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
             championPoints={bolao.champion_points ?? 10}
             playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
@@ -464,12 +471,17 @@ const BolaoDetail: React.FC = () => {
                   {(() => {
                     const labels: string[] = [];
                     if (bolao.champion_enabled ?? true) labels.push('Campeão');
-                    const cfg = bolao.special_predictions_config;
-                    if (bolao.special_predictions_enabled ?? true) {
-                      if (!cfg || cfg.finalist) labels.push('Finalistas');
-                      if (!cfg || cfg.semifinalist) labels.push('Semis');
-                      if (!cfg || cfg.quarterfinalist) labels.push('Quartas');
-                      if (!cfg || cfg.round_of_32) labels.push('Mata-mata');
+                    if (bolao.knockout_real_predictions_enabled) {
+                      labels.push('Mata-mata (jogo real)');
+                    } else {
+                      const cfg = normalizeSpecialConfig(bolao.special_predictions_config);
+                      if (bolao.special_predictions_enabled ?? true) {
+                        if (cfg.finalist) labels.push('Finalistas');
+                        if (cfg.semifinalist) labels.push('Semis');
+                        if (cfg.quarterfinalist) labels.push('Quartas');
+                        if (cfg.round_of_16) labels.push('Oitavas');
+                        if (cfg.round_of_32) labels.push('16 avos');
+                      }
                     }
                     return labels.join(', ') || 'Nenhum habilitado';
                   })()}
@@ -716,6 +728,20 @@ const BolaoDetail: React.FC = () => {
               <div role="tabpanel" id="bolao-tab-panel-ranking" aria-labelledby="bolao-tab-ranking">
                 {ranking && ranking.length > 1 && (
                   <div className="flex items-center justify-end gap-3 mb-3 flex-wrap text-[12px] text-ink-2">
+                    <div className="inline-flex items-center rounded-rebrand-sm border border-line overflow-hidden mr-1" role="group" aria-label="Conteúdo da imagem">
+                      <button
+                        onClick={() => setShareMode('top5')}
+                        className={`px-2.5 py-1 font-semibold transition-colors ${shareMode === 'top5' ? 'bg-forest text-white' : 'text-ink-2 hover:bg-canvas-2'}`}
+                      >
+                        Top 5
+                      </button>
+                      <button
+                        onClick={() => setShareMode('all')}
+                        className={`px-2.5 py-1 font-semibold transition-colors ${shareMode === 'all' ? 'bg-forest text-white' : 'text-ink-2 hover:bg-canvas-2'}`}
+                      >
+                        Todos
+                      </button>
+                    </div>
                     <span className="text-ink-3">Compartilhar:</span>
                     <button
                       onClick={handleShareRanking}
@@ -795,10 +821,11 @@ const BolaoDetail: React.FC = () => {
         currentUserId={currentUserId}
         championEnabled={bolao.champion_enabled ?? true}
         specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
-        enabledTypes={bolao.special_predictions_config ?? undefined}
+        enabledTypes={normalizeSpecialConfig(bolao.special_predictions_config)}
         championPoints={bolao.champion_points ?? 25}
         pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
         specialDeadlines={bolao.special_deadlines ?? null}
+        knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
       />
 
       {playerAwardsAnyEnabled && (
@@ -841,8 +868,9 @@ const BolaoDetail: React.FC = () => {
           specialDeadlines={bolao.special_deadlines ?? null}
           customBannerUrl={bolao.custom_banner_url ?? null}
           championEnabled={bolao.champion_enabled ?? true}
+          knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
-          specialPredictionsConfig={bolao.special_predictions_config ?? { finalist: true, semifinalist: true, quarterfinalist: true, round_of_16: true, round_of_32: true }}
+          specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
           specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
           championPoints={bolao.champion_points ?? 10}
           playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
@@ -957,6 +985,7 @@ const BolaoDetail: React.FC = () => {
             ranking={ranking}
             currentUserId={currentUserId}
             myChampionPick={myChampionPick}
+            mode={shareMode}
           />
           <RankingShareImageStories
             ref={rankingShareStories.captureRef}

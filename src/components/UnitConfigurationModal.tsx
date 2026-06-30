@@ -178,71 +178,80 @@ export function UnitConfigurationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Configurar Sistema de Unidades</DialogTitle>
-          <DialogDescription>
-            Configure o valor de uma unidade para visualizar suas métricas em unidades além dos valores monetários.
+          <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Sistema de unidades</div>
+          <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">Configurar unidade</DialogTitle>
+          <DialogDescription className="text-ink-2 text-[13px]">
+            Configure o valor de 1 unidade pra visualizar suas métricas em unidades além dos valores monetários.
           </DialogDescription>
         </DialogHeader>
 
         {(error || localError) && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error || localError}</AlertDescription>
-          </Alert>
+          <div className="flex items-start gap-2 p-3 bg-status-danger/10 border border-status-danger/30 rounded-md text-[12px] text-status-danger">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{error || localError}</span>
+          </div>
         )}
 
         {saveSuccess && (
-          <Alert className="border-green-500 bg-green-50">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              Configuração salva com sucesso!
-            </AlertDescription>
-          </Alert>
+          <div className="flex items-start gap-2 p-3 bg-status-success/10 border border-status-success/30 rounded-md text-[12px] text-status-success">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>Configuração salva com sucesso!</span>
+          </div>
         )}
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'direct' | 'division')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="direct">Valor Direto</TabsTrigger>
-            <TabsTrigger value="division">Divisão da Banca</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 h-9 bg-ink-3 border border-line p-0.5 rounded-md">
+            <TabsTrigger
+              value="direct"
+              className="h-7 text-[12px] font-semibold rounded text-ink-2 data-[state=active]:bg-white data-[state=active]:text-ink data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-line"
+            >
+              Valor direto
+            </TabsTrigger>
+            <TabsTrigger
+              value="division"
+              className="h-7 text-[12px] font-semibold rounded text-ink-2 data-[state=active]:bg-white data-[state=active]:text-ink data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-line"
+            >
+              Divisão da banca
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="direct" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="directValue">Valor de 1 Unidade (R$)</Label>
-              <Input
-                id="directValue"
-                type="number"
-                step="0.01"
-                min="0.01"
-                placeholder="Ex: 100.00"
-                value={formData.directValue}
-                onChange={(e) => handleInputChange('directValue', e.target.value)}
-                disabled={isSaving || isLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Informe diretamente quanto vale 1 unidade em reais.
-              </p>
-            </div>
+          <TabsContent value="direct" className="space-y-2 mt-4">
+            <Label htmlFor="directValue" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor de 1 unidade (R$)</Label>
+            <Input
+              id="directValue"
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="Ex: 100,00"
+              value={formData.directValue}
+              onChange={(e) => handleInputChange('directValue', e.target.value)}
+              disabled={isSaving || isLoading}
+              className="h-10 bg-canvas border-line text-ink tabular focus:border-forest"
+            />
+            <p className="text-[11px] text-ink-2">
+              Informe diretamente quanto vale 1 unidade em reais.
+            </p>
           </TabsContent>
 
-          <TabsContent value="division" className="space-y-4 mt-4">
+          <TabsContent value="division" className="space-y-3 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="bankAmount">Valor da Banca (R$)</Label>
+              <Label htmlFor="bankAmount" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor da banca (R$)</Label>
               <Input
                 id="bankAmount"
                 type="number"
                 step="0.01"
                 min="0.01"
-                placeholder="Ex: 10000.00"
+                placeholder="Ex: 10.000,00"
                 value={formData.bankAmount}
                 onChange={(e) => handleInputChange('bankAmount', e.target.value)}
                 disabled={isSaving || isLoading}
+                className="h-10 bg-canvas border-line text-ink tabular focus:border-forest"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="divisor">Divisor</Label>
+              <Label htmlFor="divisor" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Divisor</Label>
               <Input
                 id="divisor"
                 type="number"
@@ -252,18 +261,19 @@ export function UnitConfigurationModal({
                 value={formData.divisor}
                 onChange={(e) => handleInputChange('divisor', e.target.value)}
                 disabled={isSaving || isLoading}
+                className="h-10 bg-canvas border-line text-ink tabular focus:border-forest"
               />
-              <p className="text-xs text-muted-foreground">
-                A banca será dividida por este número para calcular o valor de 1 unidade.
+              <p className="text-[11px] text-ink-2">
+                A banca será dividida por este número pra calcular o valor de 1 unidade.
               </p>
             </div>
           </TabsContent>
         </Tabs>
 
         {calculatedUnitValue !== null && (
-          <div className="rounded-lg bg-muted p-3">
-            <p className="text-sm font-medium">Valor Calculado de 1 Unidade:</p>
-            <p className="text-lg font-bold text-green-600">
+          <div className="rounded-md bg-forest-tint border border-forest/20 p-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-forest font-semibold">Valor calculado de 1 unidade</p>
+            <p className="text-[20px] font-semibold text-forest tabular tracking-tight mt-0.5">
               {new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
@@ -278,30 +288,30 @@ export function UnitConfigurationModal({
               variant="outline"
               onClick={handleClear}
               disabled={isSaving || isLoading}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto h-10 border-line bg-white text-ink-2 hover:bg-ink-3/40 hover:text-ink"
             >
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Limpando...
+                  Limpando…
                 </>
               ) : (
-                'Limpar Configuração'
+                'Limpar configuração'
               )}
             </Button>
           )}
           <Button
             onClick={handleSave}
             disabled={isSaving || isLoading || calculatedUnitValue === null}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto h-10 bg-forest hover:bg-forest-soft text-white font-semibold disabled:opacity-50"
           >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
+                Salvando…
               </>
             ) : (
-              'Salvar Configuração'
+              'Salvar configuração'
             )}
           </Button>
         </DialogFooter>

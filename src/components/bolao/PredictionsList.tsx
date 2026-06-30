@@ -263,21 +263,28 @@ export const PredictionsList: React.FC<PredictionsListProps> = ({
     return { total, palpitated };
   }, [filterMode, dateFilter, matches, predictionsByMatch]);
 
-  // Auto-seleciona o primeiro dia com pendências quando entra no modo "date"
-  // pela primeira vez. User pode mudar pra "Todos" ou outro dia depois.
+  // Auto-seleciona o DIA DE HOJE quando entra no modo "date" pela primeira vez
+  // (ou o próximo dia com jogos, se hoje não tiver). User pode mudar depois.
+  // Antes caía no "primeiro dia pendente", o que obrigava o user a arrastar de
+  // volta pra achar o dia atual depois que os primeiros dias da Copa já tinham
+  // passado — ninguém quer rolar a Copa inteira pra ver o jogo de hoje.
   useEffect(() => {
     if (autoSelected) return;
     if (filterMode !== 'date') return;
     if (!matches || matches.length === 0) return;
     if (dates.length === 0) return;
 
-    // Primeiro dia que tem ao menos um jogo pendente
-    const firstPendingDate = dates.find((d) => (pendingByDate.get(d) ?? 0) > 0);
-    if (firstPendingDate) {
-      setDateFilter(firstPendingDate);
+    // Data local do dispositivo no mesmo formato do match_date ('YYYY-MM-DD').
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    // dates está ordenado asc: pega hoje se houver jogo, senão o próximo dia com
+    // jogos; se a Copa já acabou (tudo no passado), cai no último dia.
+    const target = dates.find((d) => d >= today) ?? dates[dates.length - 1];
+    if (target) {
+      setDateFilter(target);
     }
     setAutoSelected(true);
-  }, [autoSelected, filterMode, matches, dates, pendingByDate]);
+  }, [autoSelected, filterMode, matches, dates]);
 
   // Auto-focus no primeiro input "mandante" do primeiro card aberto pendente
   // ao trocar de dia. Skip quando todos do dia já foram palpitados.

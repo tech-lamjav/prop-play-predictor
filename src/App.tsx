@@ -9,7 +9,6 @@ import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
-import Home from "./pages/Home";
 import Picks from "./pages/Picks";
 import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -62,6 +61,7 @@ const BolaoPalpites = lazyWithRetry(() => import("./pages/BolaoPalpites"));
 const BolaoJoin = lazyWithRetry(() => import("./pages/BolaoJoin"));
 const BolaoWelcome = lazyWithRetry(() => import("./pages/BolaoWelcome"));
 const BolaoLP = lazyWithRetry(() => import("./pages/BolaoLP"));
+const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
 
 const queryClient = new QueryClient();
 
@@ -85,12 +85,8 @@ const App = () => (
             <Route path="/" element={<LandingEcossistema />} />
             <Route path="/nba" element={<Landing />} />
             <Route path="/home-nba" element={<HomeNBA />} />
-            <Route path="/home-players" element={<Home />} />
-            <Route path="/oportunidades" element={
-              <ProtectedRoute>
-                <Picks />
-              </ProtectedRoute>
-            } />
+            {/* TEMP: ProtectedRoute removido pra screenshot do rebrand. RESTAURAR antes do merge. */}
+            <Route path="/oportunidades" element={<Picks />} />
             <Route path="/betinho" element={<Betinho />} />
             {/* Variante da LP do Betinho pra usuários vindos do bolão da Copa.
                 Mesmo componente; useLocation detecta a rota e troca hero +
@@ -123,9 +119,7 @@ const App = () => (
             } />
             <Route path="/betting-dashboard" element={
               <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-dashboard">
-                  <BettingDashboard />
-                </PremiumRoute>
+                <BettingDashboard />
               </ProtectedRoute>
             } />
             <Route path="/analysis" element={
@@ -144,11 +138,6 @@ const App = () => (
             <Route path="/futebol/jogo/:fixtureId" element={<FutebolJogo />} />
             <Route path="/futebol/time/:teamId" element={<FutebolTime />} />
             <Route path="/futebol/assinar" element={<FutebolAssinar />} />
-            <Route path="/nba-players" element={
-              <ProtectedRoute>
-                <PlayerSelection />
-              </ProtectedRoute>
-            } />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/paywall" element={<Paywall />} />
@@ -209,6 +198,9 @@ const App = () => (
                 </ProtectedRoute>
               } />
             </Route>
+            {/* Termos de Uso + Política de Privacidade — público, sem auth */}
+            <Route path="/privacidade" element={<Privacidade />} />
+            <Route path="/termos" element={<Privacidade />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

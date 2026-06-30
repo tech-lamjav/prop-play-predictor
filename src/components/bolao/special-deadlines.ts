@@ -40,6 +40,22 @@ function kickoffMs(m: WcMatch): number {
 }
 
 /**
+ * Tipos do chaveamento (palpite de quem avança). No modo "chaveamento real" todos
+ * travam de uma vez, no início do mata-mata (1º jogo dos 16 avos) — janela curta:
+ * o jogador preenche quem avança em cada fase até a final antes de começar.
+ *
+ * O CAMPEÃO fica de fora: o pessoal já escolheu lá no início (e ninguém aponta
+ * campeão que nem passou dos 16 avos), então mantém o prazo próprio dele.
+ */
+const BRACKET_TYPES = new Set<SpecialDeadlineType>([
+  'round_of_32',
+  'round_of_16',
+  'quarterfinalist',
+  'semifinalist',
+  'finalist',
+]);
+
+/**
  * Prazo (Date) do tipo, ou null se ainda não há jogos da fase decisiva.
  * Espelha o SQL: override por tipo vence; senão segue o preset do `config.mode`
  * ('opening' = abertura da Copa; 'rolling'/ausente = rodada que decide o tipo).
@@ -47,7 +63,8 @@ function kickoffMs(m: WcMatch): number {
 export function specialDeadline(
   type: SpecialDeadlineType,
   matches: WcMatch[],
-  config?: SpecialDeadlinesConfig | null
+  config?: SpecialDeadlinesConfig | null,
+  knockoutRealMode = false
 ): Date | null {
   // 1) Override explícito por tipo vence tudo.
   const override = config?.overrides?.[type];
@@ -56,6 +73,14 @@ export function specialDeadline(
     return Number.isNaN(d.getTime()) ? null : d;
   }
   if (!matches?.length) return null;
+  // 1.5) Modo "chaveamento real": todo o bracket trava no início do mata-mata.
+  if (knockoutRealMode && BRACKET_TYPES.has(type)) {
+    const times = matches
+      .filter((m) => m.stage === 'round_of_32')
+      .map(kickoffMs)
+      .filter((t) => Number.isFinite(t));
+    return times.length ? new Date(Math.min(...times)) : null;
+  }
   // 2) Preset: 'opening' usa todos os jogos; 'rolling' (default) usa a fase decisiva.
   const mode = config?.mode ?? 'rolling';
   const stage = mode === 'opening' ? null : DECIDING_STAGE[type];
@@ -70,9 +95,10 @@ export function isSpecialLocked(
   type: SpecialDeadlineType,
   matches: WcMatch[],
   config?: SpecialDeadlinesConfig | null,
-  now: number = Date.now()
+  now: number = Date.now(),
+  knockoutRealMode = false
 ): boolean {
-  const d = specialDeadline(type, matches, config);
+  const d = specialDeadline(type, matches, config, knockoutRealMode);
   return d != null && now >= d.getTime();
 }
 
@@ -81,9 +107,10 @@ export function formatDeadlineLabel(
   type: SpecialDeadlineType,
   matches: WcMatch[],
   config?: SpecialDeadlinesConfig | null,
-  now: number = Date.now()
+  now: number = Date.now(),
+  knockoutRealMode = false
 ): string | null {
-  const d = specialDeadline(type, matches, config);
+  const d = specialDeadline(type, matches, config, knockoutRealMode);
   if (!d) return null;
   if (now >= d.getTime()) return 'encerrado';
   const fmt = new Intl.DateTimeFormat('pt-BR', {

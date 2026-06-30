@@ -7,100 +7,62 @@ interface RankingShareImageProps {
   ranking: BolaoRankingEntry[];
   currentUserId?: string;
   myChampionPick?: ChampionPrediction | null;
+  /** "top5" (pódio) | "all" (classificação geral compacta). Default top5. */
+  mode?: 'top5' | 'all';
 }
 
 // ════════════════════════════════════════════════════════════════
-// Constantes de cor (paleta "Direção A")
+// Paleta "Dark Stadium" — verde-mata + dourado (Copa)
 // ════════════════════════════════════════════════════════════════
-const C_CANVAS    = '#f6f7f5';
-const C_CANVAS_2  = '#eef0eb';
-const C_INK       = '#1a1d1a';
-const C_INK_2     = '#4a4f48';
-const C_INK_3     = '#8a8f86';
-const C_LINE      = 'rgba(26,29,26,0.10)';
-const C_FOREST    = '#0a3d2e';
-const C_AMBER     = '#d4a017';
-const C_AMBER_2   = '#b8870f';
-const C_CREAM     = '#fffaf0';
-const C_AMBER_30  = 'rgba(212, 160, 23, 0.30)';
-const C_AMBER_15  = 'rgba(212, 160, 23, 0.14)';
-const C_AMBER_50  = 'rgba(212, 160, 23, 0.50)';
+const C_BG_GRAD  = 'radial-gradient(120% 80% at 50% 0%, #0d5440 0%, #062318 60%, #03150e 100%)';
+const C_CREAM    = '#f4f1e8';
+const C_WHITE    = '#ffffff';
+const C_GREEN_MUT = '#9fc3b3';   // textos secundários / subtítulos
+const C_GOLD     = '#d4a017';
+const C_GOLD_LT  = '#e9c766';
+const C_GOLD_MUT = '#cbb06a';    // ranks 2..5
+const C_LINE     = 'rgba(255,255,255,0.09)';
+const C_LINE_2   = 'rgba(255,255,255,0.06)';
+const C_GOLD_CARD = 'linear-gradient(90deg, rgba(212,160,23,0.18), rgba(212,160,23,0.04))';
+
+const FONT = '"Manrope", system-ui, -apple-system, sans-serif';
+
+/** Largura do número de rank — usada pra indentar o subtítulo sob o nome. */
+const RANK_W = 64;
+const ROW_GAP = 26;
+
+/** Quantas linhas cabem no modo "all" antes de truncar com "+N jogadores". */
+const ALL_MAX_ROWS = 15;
+
+/** Métrica de acerto corrigida: cravar o placar conta como cravada E acerto. */
+function metricsLabel(entry: BolaoRankingEntry): string {
+  const cravadas = entry.exact_scores ?? 0;
+  const acertos = (entry.exact_scores ?? 0) + (entry.correct_results ?? 0);
+  return `${cravadas} cravada${cravadas !== 1 ? 's' : ''} · ${acertos} acerto${acertos !== 1 ? 's' : ''}`;
+}
 
 /**
- * Card visual 1080×1080 (Instagram-friendly) com o ranking do bolão.
- * Renderizado off-screen no DOM e capturado via html2canvas → PNG.
+ * Card 1080×1080 (feed) do ranking do bolão. Renderizado off-screen e
+ * capturado via html2canvas → PNG. Estilo "Dark Stadium" (verde + dourado) /
+ * Manrope (Google Fonts no index.html, sem dependência npm).
  *
- * ┌─ Layout principles ──────────────────────────────────────────┐
- * │ 1. Cada card tem 2 áreas: TOP-ROW (rank+nome+pontos) e       │
- * │    SUBTITLE (placares · resultados, abaixo).                 │
- * │ 2. TOP-ROW usa flex items-center com TODOS os elementos com  │
- * │    lineHeight: 1 (garante que o cap visual center === line   │
- * │    box center, e centers alinham automaticamente).           │
- * │ 3. SUBTITLE fica numa linha separada, indentada pra começar  │
- * │    onde o nome começa.                                       │
- * │ 4. Pill do header usa inline-block + verticalAlign: middle.  │
- * │                                                              │
- * │ Estilo: "Editorial Light" — fundo off-white, números         │
- * │ dourados, card-você em verde-mata.                           │
- * └──────────────────────────────────────────────────────────────┘
+ * É uma imagem impessoal (pra compartilhar): NÃO destaca o usuário logado.
+ *
+ * Alinhamento: cada linha é uma TOP-ROW (rank · nome · pontos, items-center) com
+ * o subtítulo numa linha separada abaixo, indentado sob o nome — assim os
+ * números ficam centrados com o nome, não puxados pra baixo pelo subtítulo.
+ * Anti-clip html2canvas: line-height folgado + padding vertical nos textos.
  */
 export const RankingShareImage = forwardRef<HTMLDivElement, RankingShareImageProps>(
-  ({ bolaoName, inviteCode, ranking, currentUserId }, ref) => {
-    const top5 = ranking.slice(0, 5);
-    const filledTop5: (BolaoRankingEntry | null)[] = [...top5];
-    while (filledTop5.length < 5) filledTop5.push(null);
-
-    const myPosition = currentUserId ? ranking.find((r) => r.user_id === currentUserId) : null;
-    const myInTop5 = top5.some((r) => r.user_id === currentUserId);
-
+  ({ bolaoName, inviteCode, ranking, mode = 'top5' }, ref) => {
     return (
       <div
         ref={ref}
-        className="absolute -left-[9999px] top-0 w-[1080px] h-[1080px] flex flex-col p-14 overflow-hidden"
-        style={{
-          background: C_CANVAS,
-          fontFamily: '"Inter Variable", "Inter", system-ui, sans-serif',
-          color: C_INK,
-        }}
+        className="absolute -left-[9999px] top-0 w-[1080px] h-[1080px] flex flex-col overflow-hidden"
+        style={{ background: C_BG_GRAD, color: C_CREAM, fontFamily: FONT, padding: 72 }}
       >
-        <Header />
-        <Eyebrow text="Ranking" />
-        <Title text={bolaoName} />
-        <DividerWithLabel label="Top 5" />
-
-        {/* Top 3 — pódio em destaque */}
-        <div className="flex flex-col gap-3 mb-3">
-          {filledTop5.slice(0, 3).map((entry, idx) => (
-            <PodiumCardBig
-              key={entry?.user_id ?? `empty-${idx}`}
-              rank={idx + 1}
-              entry={entry}
-              isMe={entry?.user_id === currentUserId}
-            />
-          ))}
-        </div>
-
-        {/* Top 4-5 — compacto */}
-        <div className="flex flex-col gap-1">
-          {filledTop5.slice(3, 5).map((entry, idx) => (
-            <PodiumRowSmall
-              key={entry?.user_id ?? `empty-${idx + 3}`}
-              rank={idx + 4}
-              entry={entry}
-              isMe={entry?.user_id === currentUserId}
-            />
-          ))}
-        </div>
-
-        {/* Sua posição se fora do top 5 */}
-        {!myInTop5 && myPosition && (
-          <>
-            <Divider />
-            <PodiumRowSmall rank={Number(myPosition.rank)} entry={myPosition} isMe />
-          </>
-        )}
-
-        {/* Footer URL */}
+        <Header bolaoName={bolaoName} />
+        {mode === 'all' ? <AllList ranking={ranking} /> : <Top5List ranking={ranking} />}
         <FooterUrl inviteCode={inviteCode} />
       </div>
     );
@@ -110,205 +72,131 @@ export const RankingShareImage = forwardRef<HTMLDivElement, RankingShareImagePro
 RankingShareImage.displayName = 'RankingShareImage';
 
 // ════════════════════════════════════════════════════════════════
-// Componentes do header / divider / footer
+// Header / Eyebrow / Footer
 // ════════════════════════════════════════════════════════════════
 
-const Header: React.FC = () => (
-  <header className="flex items-center justify-between mb-7">
-    {/* Pill com logo completo (já inclui o texto "Smart Betting") */}
+const Header: React.FC<{ bolaoName: string }> = ({ bolaoName }) => (
+  <header className="flex items-center justify-between" style={{ marginBottom: 30, gap: 24, minHeight: 88 }}>
     <span
       style={{
-        display: 'inline-block',
-        background: C_FOREST,
-        padding: '12px 22px',
-        borderRadius: 999,
-        lineHeight: 0,  // remove space below inline-block image
+        fontSize: 52,
+        fontWeight: 800,
+        color: C_WHITE,
+        letterSpacing: '-0.02em',
+        lineHeight: 1.5,
+        paddingTop: 12,
+        paddingBottom: 12,
+        maxWidth: 700,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
       }}
     >
-      <img
-        src="/logo.png"
-        alt="Smart Betting"
-        style={{
-          display: 'block',
-          height: 32,
-          width: 'auto',
-          objectFit: 'contain',
-        }}
-        crossOrigin="anonymous"
-      />
+      {bolaoName}
     </span>
     <span
       style={{
-        display: 'inline-block',
-        fontSize: 11,
+        flexShrink: 0,
+        fontSize: 18,
         fontWeight: 800,
-        color: C_AMBER_2,
-        letterSpacing: '0.18em',
-        textTransform: 'uppercase',
-        background: C_AMBER_15,
-        border: `1.5px solid ${C_AMBER_50}`,
-        padding: '11px 18px',
+        color: C_GOLD_LT,
+        letterSpacing: '0.14em',
+        border: '1.5px solid rgba(212,160,23,0.45)',
         borderRadius: 999,
+        padding: '12px 20px',
         lineHeight: 1,
         whiteSpace: 'nowrap',
       }}
     >
-      Bolão · Copa 2026
+      COPA 2026
     </span>
   </header>
 );
 
 const Eyebrow: React.FC<{ text: string }> = ({ text }) => (
-  <p
+  <div
     style={{
-      fontSize: 12,
+      fontSize: 22,
       fontWeight: 800,
-      color: C_INK_2,
-      letterSpacing: '0.4em',
-      textTransform: 'uppercase',
-      marginBottom: 14,
-      lineHeight: 1.5,
+      letterSpacing: '0.18em',
+      color: C_GREEN_MUT,
+      borderBottom: `2px solid ${C_LINE}`,
+      paddingBottom: 18,
+      marginBottom: 6,
     }}
   >
     {text}
-  </p>
-);
-
-const Title: React.FC<{ text: string }> = ({ text }) => (
-  <h1
-    style={{
-      fontSize: 60,
-      fontWeight: 900,
-      color: C_INK,
-      letterSpacing: '-0.028em',
-      lineHeight: 1.2,
-      paddingBottom: '16px',
-      marginBottom: 18,
-      wordBreak: 'break-word',
-      overflowWrap: 'anywhere',
-      maxHeight: '230px',
-      overflow: 'hidden',
-    }}
-  >
-    {text}
-  </h1>
-);
-
-const DividerWithLabel: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex items-center gap-4 mb-5">
-    <div style={{ flex: 1, height: 1, background: C_INK }} />
-    <span
-      style={{
-        fontSize: 11,
-        fontWeight: 800,
-        color: C_INK,
-        letterSpacing: '0.4em',
-        textTransform: 'uppercase',
-        lineHeight: 1.4,
-      }}
-    >
-      {label}
-    </span>
-    <div style={{ flex: 1, height: 1, background: C_INK }} />
-  </div>
-);
-
-const Divider: React.FC = () => (
-  <div className="flex items-center justify-center gap-4 mt-3 mb-2" style={{ opacity: 0.4 }}>
-    <div style={{ width: 24, height: 1, background: C_INK }} />
-    <span style={{ fontSize: 10, letterSpacing: '0.3em', color: C_INK }}>•••</span>
-    <div style={{ width: 24, height: 1, background: C_INK }} />
   </div>
 );
 
 const FooterUrl: React.FC<{ inviteCode: string }> = ({ inviteCode }) => (
-  <div className="mt-auto pt-6" style={{ borderTop: `1px solid ${C_LINE}` }}>
-    <p
-      style={{
-        fontSize: 15,
-        fontWeight: 700,
-        color: C_FOREST,
-        letterSpacing: '0.02em',
-        lineHeight: 1.5,
-        paddingBottom: '6px',
-        textAlign: 'center',
-      }}
-    >
-      smartbetting.app/bolao/entrar/{inviteCode}
+  <div style={{ marginTop: 'auto', paddingTop: 28, borderTop: `1px solid ${C_LINE}` }}>
+    <p style={{ fontSize: 22, fontWeight: 600, color: C_GREEN_MUT, letterSpacing: '0.01em', paddingTop: 6 }}>
+      smartbetting.app/bolao/entrar/<span style={{ color: C_GOLD_LT, fontWeight: 700 }}>{inviteCode}</span>
     </p>
   </div>
 );
 
 // ════════════════════════════════════════════════════════════════
-// PodiumCardBig — top 3
+// Top 5
 // ════════════════════════════════════════════════════════════════
 
-const PodiumCardBig: React.FC<{
-  rank: number;
-  entry: BolaoRankingEntry | null;
-  isMe?: boolean;
-}> = ({ rank, entry, isMe }) => {
-  const isEmpty = !entry;
-
-  // Estilo visual do card
-  const cardStyle: React.CSSProperties =
-    isMe && !isEmpty
-      ? {
-          background: C_FOREST,
-          borderRadius: 16,
-          padding: '20px 24px',
-          color: '#ffffff',
-        }
-      : {
-          background: C_CREAM,
-          border: `1.5px solid ${C_AMBER_30}`,
-          borderRadius: 16,
-          padding: '20px 24px',
-          opacity: isEmpty ? 0.45 : 1,
-        };
-
-  const numberColor = isMe && !isEmpty ? C_AMBER : C_AMBER_2;
-  const nameColor   = isMe && !isEmpty ? '#ffffff' : C_INK;
-  const subtitleColor = isMe && !isEmpty ? 'rgba(255,255,255,0.65)' : C_INK_3;
-  const ptsColor    = isMe && !isEmpty ? C_AMBER : C_INK;
-  const ptsLabelColor = isMe && !isEmpty ? 'rgba(255,255,255,0.55)' : C_INK_3;
+const Top5List: React.FC<{ ranking: BolaoRankingEntry[] }> = ({ ranking }) => {
+  const filled: (BolaoRankingEntry | null)[] = ranking.slice(0, 5);
+  while (filled.length < 5) filled.push(null);
 
   return (
-    <div style={cardStyle}>
-      {/* TOP ROW — rank + nome + pontos
-          Princípio: todos com lineHeight 1, items-center → cap centers alinham. */}
-      <div className="flex items-center gap-4">
-        <span
-          style={{
-            display: 'inline-block',
-            fontSize: 56,
-            fontWeight: 900,
-            color: numberColor,
-            letterSpacing: '-0.04em',
-            lineHeight: 1,
-            minWidth: 70,
-            textAlign: 'center',
-          }}
-        >
-          {rank}
-        </span>
+    <>
+      <Eyebrow text="RANKING · TOP 5" />
+      <div className="flex flex-col" style={{ flex: 1, gap: 6 }}>
+        {filled.map((entry, idx) => (
+          <Top5Row key={entry?.user_id ?? `empty-${idx}`} rank={idx + 1} entry={entry} />
+        ))}
+      </div>
+    </>
+  );
+};
 
+const Top5Row: React.FC<{ rank: number; entry: BolaoRankingEntry | null }> = ({ rank, entry }) => {
+  const isEmpty = !entry;
+  const isFirst = rank === 1 && !isEmpty;
+
+  const cardStyle: React.CSSProperties = isFirst
+    ? { background: C_GOLD_CARD, border: '1.5px solid rgba(212,160,23,0.4)', borderRadius: 16, padding: '0 28px', minHeight: 150 }
+    : { padding: '0 28px', borderBottom: `1px solid ${C_LINE}`, minHeight: 132 };
+
+  // Subtítulo tem altura fixa SUB_H; um espaçador igual ACIMA do nome deixa o
+  // nome no centro vertical da coluna. Como a linha é items-center, o número e
+  // os pontos passam a alinhar exatamente com o NOME (não com o bloco
+  // nome+subtítulo). minHeight + items-center centram o conjunto no card.
+  const SUB_H = 30;
+
+  return (
+    <div className="flex items-center" style={{ gap: ROW_GAP, opacity: isEmpty ? 0.35 : 1, ...cardStyle }}>
+      <span
+        style={{
+          fontSize: isFirst ? 54 : 40,
+          fontWeight: 800,
+          color: isFirst ? C_GOLD : C_GOLD_MUT,
+          minWidth: RANK_W,
+          lineHeight: 1.2,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {rank}
+      </span>
+      <div className="flex-1 min-w-0">
+        {!isEmpty && <div aria-hidden="true" style={{ height: SUB_H }} />}
         <p
-          className="flex-1 min-w-0"
           style={{
-            fontSize: 26,
-            fontWeight: 800,
-            color: isEmpty ? subtitleColor : nameColor,
-            fontStyle: isEmpty ? 'italic' : 'normal',
+            fontSize: isFirst ? 34 : 30,
+            fontWeight: isFirst ? 800 : 700,
+            color: isEmpty ? C_GREEN_MUT : C_WHITE,
             letterSpacing: '-0.01em',
-            // lineHeight 1.6 + padding vertical pra evitar clipping com
-            // overflow:hidden (necessário pra ellipsis). html2canvas tem
-            // pequenas variações de rendering, então damos folga generosa.
-            // Cap visual center continua na line box center → alinhamento OK.
-            lineHeight: 1.6,
             margin: 0,
-            paddingTop: 4,
-            paddingBottom: 4,
+            lineHeight: 1.6,
+            paddingTop: 8,
+            paddingBottom: 8,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -316,127 +204,28 @@ const PodiumCardBig: React.FC<{
         >
           {isEmpty ? 'Aguardando jogador' : entry.user_name}
         </p>
-
-        <span
-          style={{
-            display: 'inline-block',
-            fontSize: 56,
-            fontWeight: 900,
-            color: ptsColor,
-            letterSpacing: '-0.04em',
-            lineHeight: 1,
-            fontVariantNumeric: 'tabular-nums',
-            paddingBottom: 6,  // respiro pra alinhar visualmente com o número do nome
-          }}
-        >
-          {entry?.total_points ?? 0}
-          <span
+        {!isEmpty && (
+          <p
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: ptsLabelColor,
-              letterSpacing: '0.25em',
-              textTransform: 'uppercase',
-              marginLeft: 8,
-              verticalAlign: 'baseline',
+              margin: 0,
+              height: SUB_H,
+              fontSize: 18,
+              fontWeight: 500,
+              color: C_GREEN_MUT,
+              lineHeight: `${SUB_H}px`,
             }}
           >
-            pts
-          </span>
-        </span>
+            {metricsLabel(entry)}
+          </p>
+        )}
       </div>
-
-      {/* SUBTITLE — linha separada abaixo, indentada pra alinhar com o nome */}
-      {!isEmpty && (
-        <p
-          style={{
-            marginTop: 8,
-            paddingLeft: 70 + 16,  // largura do rank (70) + gap (16)
-            fontSize: 13,
-            lineHeight: 1.4,
-            color: subtitleColor,
-          }}
-        >
-          {entry.exact_scores} placar{entry.exact_scores !== 1 ? 'es' : ''} ·{' '}
-          {entry.correct_results} resultado{entry.correct_results !== 1 ? 's' : ''}
-        </p>
-      )}
-    </div>
-  );
-};
-
-// ════════════════════════════════════════════════════════════════
-// PodiumRowSmall — top 4-5 (e fora do top 5)
-// ════════════════════════════════════════════════════════════════
-
-const PodiumRowSmall: React.FC<{
-  rank: number;
-  entry: BolaoRankingEntry | null;
-  isMe?: boolean;
-}> = ({ rank, entry, isMe }) => {
-  const isEmpty = !entry;
-
-  const containerStyle: React.CSSProperties =
-    isMe && !isEmpty
-      ? {
-          background: 'rgba(10, 61, 46, 0.06)',
-          borderRadius: 12,
-          padding: '14px 24px',
-        }
-      : {
-          padding: '14px 24px',
-          borderBottom: `1px solid ${C_LINE}`,
-          opacity: isEmpty ? 0.45 : 1,
-        };
-
-  return (
-    <div className="flex items-center gap-4" style={containerStyle}>
       <span
         style={{
-          display: 'inline-block',
-          fontSize: 28,
-          fontWeight: 600,
-          color: C_AMBER_2,
-          letterSpacing: '-0.02em',
-          lineHeight: 1,
-          minWidth: 40,
-          textAlign: 'center',
-          paddingBottom: 4,
-        }}
-      >
-        {rank}
-      </span>
-
-      <p
-        className="flex-1 min-w-0"
-        style={{
-          fontSize: 20,
-          fontWeight: 700,
-          color: isEmpty ? C_INK_3 : C_INK,
-          fontStyle: isEmpty ? 'italic' : 'normal',
-          letterSpacing: '-0.01em',
-          lineHeight: 1.6,
-          margin: 0,
-          paddingTop: 3,
-          paddingBottom: 3,
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
-        {isEmpty ? 'Aguardando jogador' : entry.user_name}
-      </p>
-
-      <span
-        style={{
-          display: 'inline-block',
-          fontSize: 28,
+          fontSize: isFirst ? 52 : 40,
           fontWeight: 800,
-          color: isEmpty ? C_INK_3 : C_INK,
-          letterSpacing: '-0.03em',
-          lineHeight: 1,
+          color: isEmpty ? C_GREEN_MUT : isFirst ? C_GOLD : C_WHITE,
+          lineHeight: 1.2,
           fontVariantNumeric: 'tabular-nums',
-          paddingBottom: 4,
         }}
       >
         {entry?.total_points ?? 0}
@@ -444,3 +233,66 @@ const PodiumRowSmall: React.FC<{
     </div>
   );
 };
+
+// ════════════════════════════════════════════════════════════════
+// Todos (classificação geral compacta)
+// ════════════════════════════════════════════════════════════════
+
+const AllList: React.FC<{ ranking: BolaoRankingEntry[] }> = ({ ranking }) => {
+  const total = ranking.length;
+  const visible = ranking.slice(0, ALL_MAX_ROWS);
+  const overflow = total - visible.length;
+
+  return (
+    <>
+      <Eyebrow text={`CLASSIFICAÇÃO GERAL · ${total} ${total === 1 ? 'JOGADOR' : 'JOGADORES'}`} />
+      <div className="flex flex-col" style={{ flex: 1 }}>
+        {visible.map((entry) => (
+          <AllRow key={entry.user_id} rank={Number(entry.rank)} entry={entry} />
+        ))}
+        {overflow > 0 && (
+          <div style={{ padding: '14px 12px', color: C_GREEN_MUT, fontSize: 22, fontWeight: 600 }}>
+            + {overflow} {overflow === 1 ? 'jogador' : 'jogadores'}
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+const AllRow: React.FC<{ rank: number; entry: BolaoRankingEntry }> = ({ rank, entry }) => (
+  <div
+    className="flex items-center"
+    style={{ gap: 20, padding: '13px 12px', borderBottom: `1px solid ${C_LINE_2}`, fontSize: 26 }}
+  >
+    <span
+      style={{
+        minWidth: 56,
+        fontWeight: rank <= 3 ? 800 : 700,
+        color: rank === 1 ? C_GOLD : rank <= 5 ? C_GOLD_MUT : C_GREEN_MUT,
+        lineHeight: 1.2,
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {rank}
+    </span>
+    <span
+      className="flex-1 min-w-0"
+      style={{
+        fontWeight: rank <= 5 ? 700 : 600,
+        color: rank <= 5 ? C_WHITE : C_CREAM,
+        lineHeight: 1.7,
+        paddingTop: 7,
+        paddingBottom: 7,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}
+    >
+      {entry.user_name}
+    </span>
+    <span style={{ fontWeight: 800, color: C_WHITE, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums' }}>
+      {entry.total_points}
+    </span>
+  </div>
+);

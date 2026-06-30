@@ -126,15 +126,23 @@ export function nextStageOf(stage: string): string | null {
  */
 export function resolveBracket(
   matches: WcMatch[],
-  projection: ProjectionResult,
-  picks: BracketPicks
+  projection: ProjectionResult | null,
+  picks: BracketPicks,
+  opts?: { preferRealCodes?: boolean }
 ): ResolvedMatch[] {
   const ko = matches
     .filter((m) => m.stage !== 'group')
     .sort((a, b) => a.match_number - b.match_number);
 
-  // projeção: grupo → standings ordenadas
-  const groupStandings = new Map(projection.groups.map((g) => [g.group, g.standings]));
+  // Modo "chaveamento real": os 16 avos vêm dos times REAIS já gravados no
+  // wc_matches (home_team_code/away_team_code != 'TBD'), não da projeção. As
+  // fases seguintes seguem o caminho que o usuário prevê (via picks).
+  const preferReal = opts?.preferRealCodes ?? false;
+  const realCode = (c: string | null | undefined): string | null =>
+    c && c !== 'TBD' ? c : null;
+
+  // projeção: grupo → standings ordenadas (pode ser null no modo real)
+  const groupStandings = new Map((projection?.groups ?? []).map((g) => [g.group, g.standings]));
 
   // emparelhamento dos terceiros
   const thirdSlots = ko
@@ -142,7 +150,7 @@ export function resolveBracket(
     .map((m) => ({ m, ref: parseSlot(m.away_team) }))
     .filter((x) => x.ref.kind === 'third')
     .map((x) => ({ matchNumber: x.m.match_number, groups: (x.ref as { groups: string[] }).groups }));
-  const qualifyingThirds = projection.thirdsRanked
+  const qualifyingThirds = (projection?.thirdsRanked ?? [])
     .filter((t) => t.in)
     .map((t) => ({ code: t.code, group: t.group }));
   const thirdByMatch =
@@ -185,10 +193,24 @@ export function resolveBracket(
     const homeRef = parseSlot(m.home_team);
     const awayRef = parseSlot(m.away_team);
 
+    // Round de ENTRADA (16 avos). No modo real preferimos o código real já gravado
+    // no jogo — independente do texto do slot, que pode ter sido sobrescrito pelo
+    // nome real do time (ex: "Brasil") e não casar mais com o descritor. As fases
+    // seguintes ("Vencedor Jxx") continuam resolvendo pelo caminho previsto nos picks.
+    const isEntryRound = m.stage === 'round_of_32';
+
     const homeCode =
-      homeRef.kind === 'third' ? thirdByMatch?.get(m.match_number) ?? null : resolveRef(homeRef);
+      preferReal && isEntryRound && realCode(m.home_team_code)
+        ? realCode(m.home_team_code)
+        : homeRef.kind === 'third'
+          ? thirdByMatch?.get(m.match_number) ?? null
+          : resolveRef(homeRef);
     const awayCode =
-      awayRef.kind === 'third' ? thirdByMatch?.get(m.match_number) ?? null : resolveRef(awayRef);
+      preferReal && isEntryRound && realCode(m.away_team_code)
+        ? realCode(m.away_team_code)
+        : awayRef.kind === 'third'
+          ? thirdByMatch?.get(m.match_number) ?? null
+          : resolveRef(awayRef);
 
     // vencedor = participante presente na fase seguinte (ou campeão)
     let winner: string | null = null;

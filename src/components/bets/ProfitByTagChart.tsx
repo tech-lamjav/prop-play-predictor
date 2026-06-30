@@ -1,148 +1,115 @@
 import React, { useMemo, useState } from 'react';
-import {
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { Sparkles } from 'lucide-react';
 import { Bet } from '@/hooks/use-bets';
-import { formatChartAxis } from '@/utils/chartFormatters';
+import { aggregateTagPivot, type BetWithTags } from '@/utils/dashboardAggregations';
 
-const FILL_POSITIVE = '#5b9bd5';
-const FILL_NEGATIVE = '#e57373';
-const MAX_BARS_DEFAULT = 10;
-const MAX_BARS_FILTERED = 20;
-
-export interface BetWithTags extends Bet {
-  tags?: { id: string; name: string; color?: string }[];
-}
-
-interface TagEntry {
-  name: string;
-  profit: number;
-  color?: string;
-}
-
-function profitForBet(bet: Bet): number {
-  if (bet.status === 'won') return bet.potential_return - bet.stake_amount;
-  if (bet.status === 'lost') return -bet.stake_amount;
-  if (bet.status === 'cashout' && bet.cashout_amount != null)
-    return bet.cashout_amount - bet.stake_amount;
-  if (bet.status === 'half_won')
-    return (bet.stake_amount + bet.potential_return) / 2 - bet.stake_amount;
-  if (bet.status === 'half_lost') return bet.stake_amount / 2 - bet.stake_amount;
-  return 0;
-}
+export type { BetWithTags };
 
 interface ProfitByTagChartProps {
   bets: BetWithTags[];
   formatValue?: (value: number) => string;
+  /** @deprecated mantido pra compatibilidade; o componente agora dimensiona-se pelo número de linhas. */
   chartHeight?: number;
+  /** Quando passado, mostra "Analisar X tag(s)" ao selecionar ≥1 tag. */
+  onAnalyzeTags?: (tagNames: string[]) => void;
 }
+
+const MAX_DEFAULT = 8;
 
 export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
   bets,
-  formatValue = (v) => `R$ ${v.toFixed(2)}`,
-  chartHeight = 280,
+  formatValue = (v) => `R$ ${v.toFixed(0)}`,
+  onAnalyzeTags,
 }) => {
+  const allEntries = useMemo(() => aggregateTagPivot(bets), [bets]);
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
 
-  const fullSeries = useMemo(() => {
-    const settled = bets.filter((b) =>
-      ['won', 'lost', 'cashout', 'half_won', 'half_lost'].includes(b.status)
-    );
-    const byTag = new Map<string, { profit: number; color?: string }>();
-    settled.forEach((bet) => {
-      const profit = profitForBet(bet);
-      const tags = (bet as BetWithTags).tags ?? [];
-      if (tags.length === 0) {
-        const key = 'Sem tag';
-        const prev = byTag.get(key);
-        byTag.set(key, {
-          profit: (prev?.profit ?? 0) + profit,
-          color: prev?.color,
-        });
-      } else {
-        tags.forEach((tag) => {
-          const name = tag.name || tag.id;
-          const prev = byTag.get(name);
-          byTag.set(name, {
-            profit: (prev?.profit ?? 0) + profit,
-            color: prev?.color ?? tag.color,
-          });
-        });
-      }
-    });
-    return Array.from(byTag.entries())
-      .map(([name, { profit, color }]) => ({
-        name,
-        profit: Number(profit.toFixed(2)),
-        color,
-      }))
-      .sort((a, b) => b.profit - a.profit);
-  }, [bets]);
-
-  const availableTags = fullSeries;
-
-  const chartData = useMemo(() => {
+  const displayEntries = useMemo(() => {
     if (selectedTagNames.length === 0) {
-      return fullSeries.slice(0, MAX_BARS_DEFAULT);
+      // top by absolute profit
+      return [...allEntries]
+        .sort((a, b) => Math.abs(b.profit) - Math.abs(a.profit))
+        .slice(0, MAX_DEFAULT);
     }
-    const filtered = fullSeries.filter((entry) =>
-      selectedTagNames.includes(entry.name)
-    );
-    return filtered.slice(0, MAX_BARS_FILTERED);
-  }, [fullSeries, selectedTagNames]);
+    return allEntries.filter((e) => selectedTagNames.includes(e.name));
+  }, [allEntries, selectedTagNames]);
+
+  const maxAbsProfit = useMemo(
+    () => Math.max(...displayEntries.map((e) => Math.abs(e.profit)), 1),
+    [displayEntries]
+  );
 
   const toggleTag = (name: string) => {
     setSelectedTagNames((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+      prev.includes(name) ? prev.filter((n) => n !== name) : prev.length >= 8 ? prev : [...prev, name]
     );
   };
 
   const clearSelection = () => setSelectedTagNames([]);
 
-  if (fullSeries.length === 0) {
+  if (allEntries.length === 0) {
     return (
-      <div className="terminal-container p-4 mb-6">
-        <h3 className="section-title mb-2">LUCRO POR TAG</h3>
-        <p className="text-xs opacity-60">Nenhuma aposta encerrada no período</p>
+      <div className="bg-white border border-line rounded-xl p-5">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Pivot dinâmico</div>
+        <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Performance pelas tags que você criou</h2>
+        <p className="text-[13px] text-ink-2 py-8 text-center">Nenhuma aposta com tag no período</p>
       </div>
     );
   }
 
   const hasSelection = selectedTagNames.length > 0;
-  const showEmptyFilteredMessage = hasSelection && chartData.length === 0;
 
   return (
-    <div className="terminal-container p-4 mb-6">
-      <h3 className="section-title mb-4">LUCRO POR TAG</h3>
+    <div className="bg-white border border-line rounded-xl p-5">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-1">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Pivot dinâmico</div>
+          <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Performance pelas tags que você criou</h2>
+          <p className="text-[12px] text-ink-2 mt-0.5">
+            {hasSelection
+              ? `${selectedTagNames.length} ${selectedTagNames.length === 1 ? 'tag selecionada' : 'tags selecionadas'} (máx 8)`
+              : `Top ${Math.min(MAX_DEFAULT, allEntries.length)} por valor absoluto. Selecione tags pra comparar.`}
+          </p>
+        </div>
+        {hasSelection && onAnalyzeTags && (
+          <button
+            type="button"
+            onClick={() => onAnalyzeTags(selectedTagNames)}
+            className="h-9 px-3 inline-flex items-center gap-1.5 text-[12px] font-extrabold text-forest bg-amber-400 hover:bg-amber-300 rounded-md transition-colors shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Analisar{' '}
+            {selectedTagNames.length === 1
+              ? selectedTagNames[0]
+              : `${selectedTagNames.length} tags`}
+          </button>
+        )}
+      </div>
 
-      <div className="flex flex-wrap gap-2 mb-3">
-        {availableTags.map((entry) => {
+      {/* Tag chips */}
+      <div className="flex flex-wrap gap-1.5 my-4 pb-4 border-b border-line">
+        {allEntries.map((entry) => {
           const selected = selectedTagNames.includes(entry.name);
           return (
             <button
               key={entry.name}
               type="button"
               onClick={() => toggleTag(entry.name)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
                 selected
-                  ? 'bg-terminal-dark-gray border-terminal-green text-terminal-text'
-                  : 'border-terminal-border text-terminal-text opacity-70 hover:opacity-100 hover:border-terminal-border/80'
+                  ? 'bg-forest text-white border-forest'
+                  : 'bg-white text-ink border-line hover:border-forest/50'
               }`}
             >
-              {entry.color != null && (
+              {selected && <span aria-hidden="true">✓</span>}
+              {entry.color && (
                 <span
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: entry.color }}
                 />
               )}
               <span>{entry.name}</span>
+              <span className={`tabular text-[9px] ${selected ? 'text-amber-300' : 'text-ink-2'}`}>n={entry.n}</span>
             </button>
           );
         })}
@@ -150,63 +117,124 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
           <button
             type="button"
             onClick={clearSelection}
-            className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium border border-terminal-border text-terminal-text opacity-70 hover:opacity-100 hover:border-terminal-green transition-colors"
+            className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border border-line bg-white text-ink-2 hover:text-status-danger hover:border-status-danger transition-colors"
           >
             Limpar
           </button>
         )}
       </div>
 
-      {showEmptyFilteredMessage ? (
-        <p className="text-xs opacity-60 py-4">Nenhum dado para as tags selecionadas</p>
-      ) : (
-        <div style={{ height: chartHeight }} className="w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
-              <XAxis
-                type="number"
-                stroke="#666"
-                tick={{ fill: 'var(--terminal-text)', fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v) => formatChartAxis(v)}
-              />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={100}
-                stroke="#666"
-                tick={{ fill: 'var(--terminal-text)', fontSize: 10 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#0a0a0a',
-                  border: '1px solid #333',
-                  borderRadius: '4px',
-                  color: '#e5e5e5',
-                }}
-                labelStyle={{ color: '#e5e5e5' }}
-                itemStyle={{ color: '#e5e5e5' }}
-                formatter={(value: number) => [formatValue(value), 'Lucro']}
-                labelFormatter={(label) => label}
-              />
-              <Bar
-                dataKey="profit"
-                radius={[0, 4, 4, 0]}
-                name="Lucro"
-                animationDuration={400}
-                animationEasing="ease-out"
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={index} fill={entry.profit >= 0 ? FILL_POSITIVE : FILL_NEGATIVE} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Mini-legenda: ponto da tag = identidade da tag, cor da barra = desempenho */}
+      {displayEntries.length > 0 && (
+        <div className="flex items-center justify-end gap-3 text-[10px] text-ink-2 mb-2 -mt-1">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-ink-3 border border-line" /> identidade da tag
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2.5 h-1.5 rounded-sm bg-forest" /> lucro
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2.5 h-1.5 rounded-sm bg-rose-700" /> prejuízo
+          </span>
         </div>
+      )}
+
+      {/* Bars */}
+      {displayEntries.length === 0 ? (
+        <p className="text-[12px] text-ink-2 py-4 text-center">Nenhum dado para as tags selecionadas</p>
+      ) : (
+        <>
+          {/* Desktop: diverging bars (centered on zero) */}
+          <div className="hidden md:block space-y-2">
+            {displayEntries.map((entry) => {
+              const pct = (Math.abs(entry.profit) / maxAbsProfit) * 50; // half of bar
+              const positive = entry.profit >= 0;
+              return (
+                <div
+                  key={entry.name}
+                  className="grid items-center gap-3 text-[11px]"
+                  style={{ gridTemplateColumns: '140px 1fr 80px 50px' }}
+                >
+                  <div className="text-ink font-bold truncate flex items-center gap-1.5" title={entry.name}>
+                    {entry.color && (
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: entry.color }}
+                      />
+                    )}
+                    <span className="truncate">{entry.name}</span>
+                  </div>
+                  <div className="relative h-5 bg-ink-3/40 rounded overflow-hidden">
+                    <div className="absolute top-0 bottom-0 left-1/2 w-px bg-line" />
+                    {positive ? (
+                      <div
+                        className="absolute top-0.5 bottom-0.5 bg-forest rounded-r"
+                        style={{ left: '50%', width: `${pct}%` }}
+                      />
+                    ) : (
+                      <div
+                        className="absolute top-0.5 bottom-0.5 bg-rose-700 rounded-l"
+                        style={{ right: '50%', width: `${pct}%` }}
+                      />
+                    )}
+                  </div>
+                  <div
+                    className={`text-right tabular font-bold ${
+                      positive ? 'text-forest' : 'text-rose-700'
+                    }`}
+                    title={`${entry.profit > 0 ? '+' : ''}${formatValue(entry.profit)} · ROI ${entry.roi.toFixed(1)}%`}
+                  >
+                    {entry.roi > 0 ? '+' : ''}{entry.roi.toFixed(1)}%
+                  </div>
+                  <div className="text-right text-ink-2 tabular">n={entry.n}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Mobile: stacked layout (single-direction bar, color indica sinal) */}
+          <div className="md:hidden space-y-3">
+            {displayEntries.map((entry) => {
+              const maxRoi = Math.max(...displayEntries.map((e) => Math.abs(e.roi)), 1);
+              const width = (Math.abs(entry.roi) / maxRoi) * 100;
+              const positive = entry.roi >= 0;
+              return (
+                <div key={entry.name}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {entry.color && (
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                      )}
+                      <span className="text-[12px] font-bold text-ink truncate">{entry.name}</span>
+                    </div>
+                    <span
+                      className={`text-[12px] font-bold tabular shrink-0 ${
+                        positive ? 'text-forest' : 'text-rose-700'
+                      }`}
+                    >
+                      {entry.roi > 0 ? '+' : ''}{entry.roi.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-ink-3/60 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${positive ? 'bg-forest' : 'bg-rose-700'}`}
+                      style={{ width: `${width}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-1 text-[10px] text-ink-2 tabular">
+                    <span>n={entry.n}</span>
+                    <span title={`Lucro · ROI ${entry.roi.toFixed(1)}%`}>
+                      {entry.profit > 0 ? '+' : ''}{formatValue(entry.profit)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
