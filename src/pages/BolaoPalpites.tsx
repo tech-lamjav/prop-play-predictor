@@ -163,9 +163,17 @@ const BolaoPalpites: React.FC = () => {
     );
   };
 
-  // Stats
-  const totalMatches = matches?.filter((m) => !m.is_finished && m.home_team_code !== 'TBD').length || 0;
-  const totalPredictions = predictions?.length || 0;
+  // Stats — progresso conta só os jogos ABERTOS e os palpites DESSES jogos
+  // (palpites de jogos encerrados não entram no numerador; ver PredictionsModal).
+  const openMatchIds = useMemo(
+    () => new Set((matches ?? []).filter((m) => !m.is_finished && m.home_team_code !== 'TBD').map((m) => m.id)),
+    [matches]
+  );
+  const totalMatches = openMatchIds.size;
+  const totalPredictions = useMemo(
+    () => (predictions ?? []).filter((p) => openMatchIds.has(p.match_id)).length,
+    [predictions, openMatchIds]
+  );
 
   // Filter matches by group for the "next pending" lookup
   const filteredMatchesForNext = useMemo(() => {
