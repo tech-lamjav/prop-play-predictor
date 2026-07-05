@@ -223,7 +223,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
       if (enabled.finalist !== false) items.push({ label: 'Finalistas (2)', pts: pointsConfig.finalist * 2 });
       if (enabled.semifinalist !== false) items.push({ label: 'Semis (4)', pts: pointsConfig.semifinalist * 4 });
       if (enabled.quarterfinalist !== false) items.push({ label: 'Quartas (8)', pts: pointsConfig.quarterfinalist * 8 });
-      if (enabled.round_of_16 !== false) items.push({ label: 'Oitavas (16)', pts: (pointsConfig.round_of_16 ?? 2) * 16 });
+      if (enabled.round_of_16 !== false) items.push({ label: 'Oitavas (16)', pts: (pointsConfig.round_of_16 ?? 1) * 16 });
       if (enabled.round_of_32 !== false) items.push({ label: '16 avos (32)', pts: (pointsConfig.round_of_32 ?? 1) * 32 });
     }
     const total = items.reduce((acc, i) => acc + i.pts, 0);
