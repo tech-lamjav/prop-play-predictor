@@ -76,6 +76,15 @@ serve(async (req) => {
     for (const t of teamMapRows ?? []) codeByApiTeam.set(Number(t.api_team_id), t.team_code);
 
     const byFixture = new Map<number, any>();
+    // código → nome de exibição (pt-BR), a partir das linhas da fase de grupos.
+    // Usado pra propagar também o NOME (home_team/away_team) — a UI exibe esse
+    // texto; sem isso o card fica "Vencedor Jxx" mesmo com o código preenchido.
+    const nameByCode = new Map<string, string>();
+    for (const r of rows ?? []) {
+      if (r.stage !== "group") continue;
+      if (r.home_team_code && r.home_team) nameByCode.set(r.home_team_code, r.home_team);
+      if (r.away_team_code && r.away_team) nameByCode.set(r.away_team_code, r.away_team);
+    }
     // index de jogos do mata-mata NÃO linkados, por (stage + par de times)
     const unlinkedKo = new Map<string, any>();
     for (const r of rows ?? []) {
@@ -93,7 +102,11 @@ serve(async (req) => {
     let updated = 0;
     let linked = 0;
     let skippedUnlinked = 0;
-    let koFinished = false; // algum jogo de mata-mata (re)finalizou neste ciclo?
+    // Recalcular os especiais neste ciclo? Vale quando um jogo de mata-mata
+    // (re)finalizou OU quando a propagação preencheu algum slot (a fase seguinte
+    // pode ter acabado de ficar 100% decidida — ex.: deploy tardio captura o
+    // winner de jogos já encerrados sem nunca marcá-los como "refinalizados").
+    let koFinished = false;
 
     for (const fx of fixtures) {
       const fid = Number(fx?.fixture?.id);
@@ -161,7 +174,8 @@ serve(async (req) => {
       if (isFinished && winnerCode && row.stage !== "group") {
         const loserCode = winnerCode === row.home_team_code ? row.away_team_code
           : winnerCode === row.away_team_code ? row.home_team_code : null;
-        await propagate(supabase, rows ?? [], row.match_number, winnerCode, loserCode);
+        const wrote = await propagate(supabase, rows ?? [], row.match_number, winnerCode, loserCode, nameByCode);
+        if (wrote) koFinished = true;
       }
     }
 
@@ -197,31 +211,49 @@ serve(async (req) => {
   }
 });
 
-// Preenche o time real nas linhas que dependem deste jogo:
+// Preenche o time real (código + NOME de exibição) nas linhas que dependem deste jogo:
 //   "Vencedor J{n}" → vencedor;  "Perdedor J{n}" → perdedor (disputa de 3º).
 // Só escreve onde ainda está TBD (não clobbera correção manual). Idempotente.
+// Retorna true se escreveu algo (gatilho pra recalcular os especiais).
 async function propagate(
   supabase: any,
   rows: any[],
   matchNumber: number,
   winnerCode: string,
-  loserCode: string | null
-) {
+  loserCode: string | null,
+  nameByCode: Map<string, string>
+): Promise<boolean> {
   const winLabel = `Vencedor J${matchNumber}`;
   const loseLabel = `Perdedor J${matchNumber}`;
+  const nameOf = (code: string) => nameByCode.get(code) ?? null;
+  let wrote = false;
   for (const r of rows) {
     if (r.stage === "group") continue;
     const patch: Record<string, unknown> = {};
-    if (r.home_team === winLabel && r.home_team_code === "TBD") patch.home_team_code = winnerCode;
-    if (r.away_team === winLabel && r.away_team_code === "TBD") patch.away_team_code = winnerCode;
-    if (loserCode && r.home_team === loseLabel && r.home_team_code === "TBD") patch.home_team_code = loserCode;
-    if (loserCode && r.away_team === loseLabel && r.away_team_code === "TBD") patch.away_team_code = loserCode;
+    if (r.home_team === winLabel && r.home_team_code === "TBD") {
+      patch.home_team_code = winnerCode;
+      if (nameOf(winnerCode)) patch.home_team = nameOf(winnerCode);
+    }
+    if (r.away_team === winLabel && r.away_team_code === "TBD") {
+      patch.away_team_code = winnerCode;
+      if (nameOf(winnerCode)) patch.away_team = nameOf(winnerCode);
+    }
+    if (loserCode && r.home_team === loseLabel && r.home_team_code === "TBD") {
+      patch.home_team_code = loserCode;
+      if (nameOf(loserCode)) patch.home_team = nameOf(loserCode);
+    }
+    if (loserCode && r.away_team === loseLabel && r.away_team_code === "TBD") {
+      patch.away_team_code = loserCode;
+      if (nameOf(loserCode)) patch.away_team = nameOf(loserCode);
+    }
     if (Object.keys(patch).length === 0) continue;
     // reflete no objeto em memória (caso outra propagação no mesmo run o use)
     Object.assign(r, patch);
     const { error } = await supabase.from("wc_matches").update(patch).eq("id", r.id);
     if (error) throw error;
+    wrote = true;
   }
+  return wrote;
 }
 
 function json(body: unknown, status = 200): Response {
