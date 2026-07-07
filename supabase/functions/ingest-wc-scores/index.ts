@@ -11,6 +11,8 @@
 //
 // Placar = goals.home/away (AET incluso; pênaltis à parte) → empate nos 120 quando
 // vai pra pênaltis, como manda a FIFA. O vencedor da disputa vai em winner_team_code.
+// Placar dos 90' = score.fulltime → fulltime_home/away. É a base de liquidação de
+// apostas (ML/over-under valem o tempo normal), usada pelo notify-settlement.
 //
 // Proteção: header `x-cron-secret` == env CRON_SECRET.
 // Segredos (env): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, API_SPORTS_KEY, CRON_SECRET.
@@ -65,7 +67,7 @@ serve(async (req) => {
     // 2) Nosso estado: todos os jogos + mapa de times (api_team_id → código)
     const { data: rows, error: selErr } = await supabase
       .from("wc_matches")
-      .select("id, match_number, stage, home_team, away_team, home_team_code, away_team_code, home_score, away_score, is_finished, api_fixture_id, winner_team_code");
+      .select("id, match_number, stage, home_team, away_team, home_team_code, away_team_code, home_score, away_score, fulltime_home, fulltime_away, is_finished, api_fixture_id, winner_team_code");
     if (selErr) throw selErr;
 
     const { data: teamMapRows, error: tmErr } = await supabase
@@ -133,13 +135,19 @@ serve(async (req) => {
       // Alinha o placar ao NOSSO mandante/visitante (a ordem da API pode diferir).
       const goalsHome = fx?.goals?.home ?? null;
       const goalsAway = fx?.goals?.away ?? null;
+      const ftHome = fx?.score?.fulltime?.home ?? null; // 90 minutos (sem prorrogação)
+      const ftAway = fx?.score?.fulltime?.away ?? null;
       let homeScore: number | null, awayScore: number | null;
+      let fulltimeHome: number | null, fulltimeAway: number | null;
       if (apiHome && apiHome === row.home_team_code) {
         homeScore = goalsHome; awayScore = goalsAway;
+        fulltimeHome = ftHome; fulltimeAway = ftAway;
       } else if (apiHome && apiHome === row.away_team_code) {
         homeScore = goalsAway; awayScore = goalsHome; // ordem invertida
+        fulltimeHome = ftAway; fulltimeAway = ftHome;
       } else {
         homeScore = goalsHome; awayScore = goalsAway; // fallback (grupo / linkado na mesma ordem)
+        fulltimeHome = ftHome; fulltimeAway = ftAway;
       }
 
       const status = fx?.fixture?.status?.short ?? "";
@@ -153,6 +161,8 @@ serve(async (req) => {
       if (justLinked) patch.api_fixture_id = fid;
       if (row.home_score !== homeScore) patch.home_score = homeScore;
       if (row.away_score !== awayScore) patch.away_score = awayScore;
+      if (row.fulltime_home !== fulltimeHome) patch.fulltime_home = fulltimeHome;
+      if (row.fulltime_away !== fulltimeAway) patch.fulltime_away = fulltimeAway;
       if (row.is_finished !== isFinished) patch.is_finished = isFinished;
       if (winnerCode && row.winner_team_code !== winnerCode) patch.winner_team_code = winnerCode;
 
