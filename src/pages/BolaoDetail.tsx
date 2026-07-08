@@ -28,6 +28,7 @@ import {
   computeMatchDeadline,
 } from '@/hooks/use-bolao';
 import { BolaoRankingTable } from '@/components/bolao/BolaoRankingTable';
+import { BolaoHandoffCard } from '@/components/bolao/BolaoHandoffCard';
 import { UserPredictionsModal } from '@/components/bolao/UserPredictionsModal';
 import { BolaoShareButton } from '@/components/bolao/BolaoShareButton';
 import { BolaoAdminPanel } from '@/components/bolao/BolaoAdminPanel';
@@ -230,6 +231,23 @@ const BolaoDetail: React.FC = () => {
   const totalAvailableMatches = useMemo(
     () => matches?.filter(m => !m.is_finished && m.home_team_code !== 'TBD').length ?? 0,
     [matches]
+  );
+
+  // ── Passagem de bastão (H1): cartão de encerramento na aba Ranking ──
+  // Só quando a FINAL está encerrada (o bolão acabou de verdade); ?handoff
+  // na URL força a exibição pra preview/QA sem esperar o dia 19.
+  const finalOver = useMemo(
+    () => (matches ?? []).some(m => m.stage === 'final' && m.is_finished),
+    [matches]
+  );
+  const handoffForced = useMemo(
+    () => new URLSearchParams(window.location.search).has('handoff'),
+    []
+  );
+  const showHandoff = finalOver || handoffForced;
+  const myRankingEntry = useMemo(
+    () => ranking?.find(r => r.user_id === currentUserId) ?? null,
+    [ranking, currentUserId]
   );
 
   const predictionsByMatch = useMemo(
@@ -726,6 +744,14 @@ const BolaoDetail: React.FC = () => {
             {/* Tab: Ranking */}
             {activeTab === 'ranking' && (
               <div role="tabpanel" id="bolao-tab-panel-ranking" aria-labelledby="bolao-tab-ranking">
+                {showHandoff && bolao && (
+                  <BolaoHandoffCard
+                    bolaoId={bolao.id}
+                    bolaoName={bolao.name}
+                    myRank={myRankingEntry?.rank ?? null}
+                    totalPlayers={ranking?.length ?? 0}
+                  />
+                )}
                 {ranking && ranking.length > 1 && (
                   <div className="flex items-center justify-end gap-3 mb-3 flex-wrap text-[12px] text-ink-2">
                     <div className="inline-flex items-center rounded-rebrand-sm border border-line overflow-hidden mr-1" role="group" aria-label="Conteúdo da imagem">
