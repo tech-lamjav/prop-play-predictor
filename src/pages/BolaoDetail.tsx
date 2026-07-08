@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { usePostHog } from '@posthog/react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -93,6 +94,7 @@ const BolaoDetail: React.FC = () => {
     });
   };
   const [activeTab, setActiveTab] = useState<Tab>('ranking');
+  const posthog = usePostHog();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [showAdmin, setShowAdmin] = useState(false);
   const [showPremiumWelcome, setShowPremiumWelcome] = useState(false);
@@ -106,6 +108,14 @@ const BolaoDetail: React.FC = () => {
       setCurrentUserId(data.user?.id);
     });
   }, []);
+
+  // Analytics: visualização do ranking do bolão. Marca "usuário ativo no bolão" — base da
+  // coorte de migração para Betinho/Futebol no handoff de 19/jul (métrica E4 do plano).
+  useEffect(() => {
+    if (id && activeTab === 'ranking') {
+      posthog?.capture('bolao_ranking_viewed', { bolao_id: id });
+    }
+  }, [id, activeTab, posthog]);
 
   const [predictionsModalOpen, setPredictionsModalOpen] = useState(false);
   const [specialPredictionsOpen, setSpecialPredictionsOpen] = useState(false);
