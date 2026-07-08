@@ -14,6 +14,7 @@ import { useCapitalMovements } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { MultiSelectFilter } from '../components/ui/multi-select-filter';
 import { 
   RefreshCw, 
@@ -619,6 +620,10 @@ const BetCard = React.memo(function BetCard({
 
 const DAILY_BET_LIMIT = 3;
 
+// Status finais (não-pending): marcam que a aposta foi liquidada. Base do evento bet_settled
+// — a métrica central de retenção (recompensa variável do loop). Ver docs/plano-metricas-retencao.md.
+const FINAL_BET_STATUSES = ['won', 'lost', 'void', 'cashout', 'half_won', 'half_lost'];
+
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
@@ -627,6 +632,7 @@ export default function Bets() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bets, setBets] = useState<Bet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -926,6 +932,8 @@ export default function Bets() {
   // For brevity, I'm keeping the logic but ensuring it uses the toast for notifications instead of local error state where appropriate
   
   const updateBetStatus = useCallback(async (betId: string, newStatus: string) => {
+    const prevBet = bets.find(b => b.id === betId);
+    const isSettling = prevBet?.status === 'pending' && FINAL_BET_STATUSES.includes(newStatus);
     if (isMountedRef.current) {
       setBets(prev => prev.map(b => b.id === betId ? { ...b, status: newStatus as Bet['status'] } : b));
     }
@@ -936,6 +944,18 @@ export default function Bets() {
         .eq('id', betId);
 
       if (error) throw error;
+      // Analytics: liquidação via mudança de status por linha (pending → status final).
+      if (isSettling && prevBet) {
+        posthog?.capture('bet_settled', {
+          channel: prevBet.channel ?? null,
+          status: newStatus,
+          days_to_settle: prevBet.created_at
+            ? Math.round((Date.now() - new Date(prevBet.created_at).getTime()) / 86400000)
+            : null,
+          settled_by: 'user_manual',
+          batch: false,
+        });
+      }
       if (isMountedRef.current) {
         toast({ title: 'Success', description: 'Bet status updated' });
       }
@@ -945,7 +965,7 @@ export default function Bets() {
         toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
       }
     }
-  }, [supabase, toast]);
+  }, [bets, posthog, supabase, toast]);
 
   // Estado da confirmação de exclusão (single ou bulk).
   // null quando fechado; { type, ... } quando o usuário pede pra excluir.
@@ -1015,6 +1035,17 @@ export default function Bets() {
         .eq('id', betId);
 
       if (error) throw error;
+
+      // Analytics: cashout é uma forma de liquidação (pending → cashout).
+      posthog?.capture('bet_settled', {
+        channel: cashoutModal.bet.channel ?? null,
+        status: 'cashout',
+        days_to_settle: cashoutModal.bet.created_at
+          ? Math.round((Date.now() - new Date(cashoutModal.bet.created_at).getTime()) / 86400000)
+          : null,
+        settled_by: 'user_manual',
+        batch: false,
+      });
 
       if (isMountedRef.current) {
         toast({ title: 'Success', description: 'Cashout processed' });
@@ -1087,6 +1118,19 @@ export default function Bets() {
 
       if (error) throw error;
 
+      // Analytics: liquidação via edição individual (pending → status final).
+      if (editModal.bet.status === 'pending' && FINAL_BET_STATUSES.includes(editModal.formData.status)) {
+        posthog?.capture('bet_settled', {
+          channel: editModal.bet.channel ?? null,
+          status: editModal.formData.status,
+          days_to_settle: editModal.bet.created_at
+            ? Math.round((Date.now() - new Date(editModal.bet.created_at).getTime()) / 86400000)
+            : null,
+          settled_by: 'user_manual',
+          batch: false,
+        });
+      }
+
       if (isMountedRef.current) {
         toast({ title: 'Success', description: 'Bet updated' });
       }
@@ -1141,6 +1185,16 @@ export default function Bets() {
         .single();
 
       if (error) throw error;
+
+      // Analytics: aposta criada pela web (os webhooks Telegram/WhatsApp já emitem bet_created;
+      // este fecha a lacuna do canal web, antes cego no funil). channel já gravado como 'web'.
+      posthog?.capture('bet_created', {
+        channel: 'web',
+        bet_type: 'single',
+        sport: data.sport || 'Outros',
+        has_odds: !isNaN(odds),
+        is_credit_bet: isCreditBet,
+      });
 
       const tagIds = data.selectedTagIds ?? [];
       for (const tagId of tagIds) {
@@ -1585,17 +1639,33 @@ export default function Bets() {
 
   const bulkUpdateStatus = useCallback(async (status: string) => {
     const ids = Array.from(selectedBetIds);
+    // Apostas que estavam pending e agora vão a um status final = liquidação em lote (o caminho
+    // manual que o diagnóstico apontou como gargalo). Capturado a partir do estado anterior.
+    const nowSettled = FINAL_BET_STATUSES.includes(status)
+      ? bets.filter(b => ids.includes(b.id) && b.status === 'pending')
+      : [];
     setBets(prev => prev.map(b => ids.includes(b.id) ? { ...b, status: status as Bet['status'] } : b));
     try {
       const { error } = await supabase.from('bets').update({ status }).in('id', ids);
       if (error) throw error;
+      const settledAt = Date.now();
+      nowSettled.forEach(b => posthog?.capture('bet_settled', {
+        channel: b.channel ?? null,
+        status,
+        days_to_settle: b.created_at
+          ? Math.round((settledAt - new Date(b.created_at).getTime()) / 86400000)
+          : null,
+        settled_by: 'user_manual',
+        batch: true,
+        batch_size: ids.length,
+      }));
       toast({ title: 'Sucesso', description: `${ids.length} apostas atualizadas` });
       clearSelection();
     } catch {
       toast({ title: 'Erro', description: 'Falha ao atualizar apostas', variant: 'destructive' });
       fetchBets();
     }
-  }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
+  }, [selectedBetIds, bets, posthog, supabase, toast, clearSelection, fetchBets]);
 
   const bulkAddTag = useCallback(async (tag: Tag) => {
     const ids = Array.from(selectedBetIds);
