@@ -409,7 +409,7 @@ async function handleCallbackQuery(
 
     const { data: bet } = await supabase
       .from("bets")
-      .select("id, user_id, status, bet_description, match_description, stake_amount, potential_return, odds")
+      .select("id, user_id, status, bet_description, match_description, stake_amount, potential_return, odds, created_at, channel")
       .eq("id", betId)
       .maybeSingle()
 
@@ -443,6 +443,25 @@ async function handleCallbackQuery(
     await trackEvent(
       "settlement_settled_via_bot",
       { bet_id: betId, outcome, channel: "telegram" },
+      user.id,
+      traceId
+    ).catch(() => {})
+    // Evento canônico da métrica central de retenção (mesmo schema dos 4 caminhos da web em
+    // Bets.tsx). O settlement_settled_via_bot acima fica por continuidade de histórico.
+    await trackEvent(
+      "bet_settled",
+      {
+        product: "betinho",
+        channel: bet.channel ?? "telegram",
+        status: outcome,
+        days_to_settle: bet.created_at
+          ? Math.round((Date.now() - new Date(bet.created_at).getTime()) / 86400000)
+          : null,
+        settled_by: "user_manual",
+        via: "bot_reminder",
+        batch: false,
+        count: 1,
+      },
       user.id,
       traceId
     ).catch(() => {})
