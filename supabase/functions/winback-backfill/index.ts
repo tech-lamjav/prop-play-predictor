@@ -163,7 +163,7 @@ async function parseBetsWithLLM(bets: OldBet[]): Promise<Map<string, ParsedBet>>
 
 Para cada item, classifique kind:
 - "nba_prop": UMA prop de UM jogador da NBA (ex: "wemby over 27,5 pts" → Victor Wembanyama, player_points, 27.5, over). Resolva apelidos para o NOME COMPLETO oficial do jogador ("jb"→"Jaylen Brown", "wemby"→"Victor Wembanyama", "fox"→"De'Aaron Fox", "maxey"→"Tyrese Maxey", "tatum"→"Jayson Tatum"). "N+ pontos" = over com line N-0.5. Props de quarto/tempo parcial ("q1", "1st half"): period="partial". Stats SEM chave disponível (field goals, minutos, %): kind="unparseable".
-- "football_single": UMA aposta simples de futebol com os DOIS times identificáveis. market: ml_home/ml_away/ml_draw (vencedor no tempo normal), over_goals/under_goals (com goals_line), btts_yes/btts_no. Handicap, escanteios, cartões, gols de jogador, 1º tempo, "para se classificar": market="other".
+- "football_single": UMA aposta simples de futebol com os DOIS times identificáveis. Expanda abreviações e apelidos de clube para o nome oficial internacional ("PSG"→"Paris Saint Germain", "City"→"Manchester City", "Atleti"→"Atletico Madrid", "Barça"→"Barcelona", "Fla"→"Flamengo"). market: ml_home/ml_away/ml_draw (vencedor no tempo normal), over_goals/under_goals (com goals_line), btts_yes/btts_no. Handicap, escanteios, cartões, gols de jogador, 1º tempo, "para se classificar": market="other".
 - "combo_or_multi": mais de uma seleção na mesma descrição (ex: "20 pts tatum e 20 pts brown").
 - "unparseable": não dá pra estruturar com confiança.
 
@@ -335,7 +335,11 @@ async function buildDecisions(supabase: any): Promise<{ decisions: Decision[]; t
   const all: OldBet[] = betsData ?? [];
 
   const decisions: Decision[] = [];
-  const singles = all.filter((b) => b.bet_type === "single" && (b.sport === "Basquete" || b.sport === "Futebol"));
+  // esporte por nome normalizado: registros antigos têm "NBA" (em vez de
+  // "Basquete") e até vazio — o kind final quem decide é o LLM, então o filtro
+  // só corta o que certamente não é NBA/futebol
+  const PARSE_SPORTS = new Set(["basquete", "futebol", "nba", ""]);
+  const singles = all.filter((b) => b.bet_type === "single" && PARSE_SPORTS.has(norm(b.sport ?? "")));
   for (const b of all) {
     if (!singles.includes(b)) {
       decisions.push({
