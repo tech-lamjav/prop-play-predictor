@@ -1075,9 +1075,11 @@ export default function GameDetail() {
   }, [game?.game_id, finished]);
 
   // Analytics: visualização do detalhe de jogo NBA (Marco 3 — retenção por superfície, N3).
+  // Rota é pública e o componente redireciona deslogado pra /auth — captura só logado.
   useEffect(() => {
-    posthog?.capture('nba_game_viewed', { game_id: gameId });
-  }, [gameId, posthog]);
+    if (authLoading || !user) return;
+    posthog?.capture('nba_game_viewed', { product: 'nba', game_id: gameId });
+  }, [gameId, posthog, user, authLoading]);
 
   useEffect(() => {
     if (!authLoading && user && !hasLoaded.current) {

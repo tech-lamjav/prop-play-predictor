@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePostHog } from '@posthog/react';
+import { useAuth } from '@/hooks/use-auth';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, Star, FileText, LayoutGrid, ArrowRight } from 'lucide-react';
@@ -100,6 +101,7 @@ function SectionHeader({ eyebrow, title, count, actionLabel, onAction, actionHre
 export default function HomeNBA() {
   const navigate = useNavigate();
   const posthog = usePostHog();
+  const { user, isLoading: authLoading } = useAuth();
   const { data, isLoading } = useHomeNBAData();
   const games = data?.games ?? [];
   const players = data?.players ?? [];
@@ -109,10 +111,12 @@ export default function HomeNBA() {
   const [searchTerm, setSearchTerm] = useState('');
   const [injuryModalOpen, setInjuryModalOpen] = useState(false);
 
-  // Analytics: visualização da home NBA. Baseline de offseason; régua pronta para a temporada (Marco 3).
+  // Analytics: visualização da home NBA (Marco 3 — retenção por superfície, N3).
+  // Rota é pública: captura só logado, pra manter denominador comparável com Picks/Analise360.
   useEffect(() => {
-    posthog?.capture('nba_home_viewed');
-  }, [posthog]);
+    if (authLoading || !user) return;
+    posthog?.capture('nba_home_viewed', { product: 'nba' });
+  }, [posthog, user, authLoading]);
 
   // --- Derived data ---
 

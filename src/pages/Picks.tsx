@@ -427,7 +427,7 @@ export default function Picks() {
 
   // Analytics: visualização da tela de Picks NBA (Marco 3 — retenção por superfície, N3).
   useEffect(() => {
-    posthog?.capture('nba_picks_viewed');
+    posthog?.capture('nba_picks_viewed', { product: 'nba' });
   }, [posthog]);
 
   useEffect(() => {
