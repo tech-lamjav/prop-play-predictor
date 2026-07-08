@@ -42,5 +42,7 @@ jobs:
           supabase functions deploy notify-settlement --no-verify-jwt
           supabase functions deploy winback-backfill --no-verify-jwt
           supabase functions deploy notify-handoff --no-verify-jwt
+          supabase functions deploy notify-opportunities --no-verify-jwt
+          supabase functions deploy go --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { usePostHog } from '@posthog/react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -402,6 +403,7 @@ type ViewMode = 'score' | 'trigger';
 
 export default function Picks() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const { isPremium } = useSubscription();
 
   const [opportunities, setOpportunities] = useState<DailyOpportunity[]>([]);
@@ -422,6 +424,11 @@ export default function Picks() {
   const FREE_VISIBLE_COUNT = 2;
   const isRowFree = (idx: number) => isPremium || idx < FREE_VISIBLE_COUNT;
   const getBlur = (idx: number) => isRowFree(idx) ? '' : 'blur-sm select-none pointer-events-none';
+
+  // Analytics: visualização da tela de Picks NBA (Marco 3 — retenção por superfície, N3).
+  useEffect(() => {
+    posthog?.capture('nba_picks_viewed');
+  }, [posthog]);
 
   useEffect(() => {
     const load = async () => {
