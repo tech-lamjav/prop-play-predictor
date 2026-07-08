@@ -138,7 +138,7 @@ Superfícies a instrumentar: `HomeNBA`, `Analise360List/Detail`, `Picks`, `Games
 | B2 | Tempo até liquidar | mediana criação → status final | SQL |
 | B3 | Ativação | % de novos usuários com 1ª aposta **liquidada** em ≤7 dias da conta | SQL |
 | B4 | Apostas/usuário ativo/semana | intensidade de uso | SQL |
-| B5 | Registro por canal | telegram vs whatsapp vs web vs futebol (`channel`) | SQL |
+| B5 | Registro por canal | telegram vs web vs futebol (`channel`; WhatsApp descontinuado — legado tem canal nulo) | SQL |
 
 > **Fricção estrutural encontrada no código:** a liquidação do Betinho é **manual** — o usuário atualiza o status em lote na UI web (`Bets.tsx`). O `bet_created` chega por 3 canais, mas a recompensa exige disciplina manual. Isso explica mecanicamente por que o novato liquida só 17% (§1.1): sem o hábito, ninguém volta pra fechar a aposta. Reforça as apostas do roadmap (nudge de resultado, liquidação em lote no winback, auto-liquidação por liga no futebol) — todas atacam justamente essa disciplina manual.
 
@@ -167,6 +167,8 @@ Não otimizar produto que morre em 13 dias. Medir apenas: participação no rank
 5. **Futebol: eventos do produto real** ainda não existem (o PR #180 não inclui analytics de produto) — precisam nascer **junto com o lançamento**, não depois.
 6. **Identify consistente:** conferir que o `distinct_id` dos webhooks (server) é o mesmo `auth.users.id` do front — senão funis cross-canal quebram. (Verificação da Fase 1.)
 
+> **Atualização (2026-07-08, branch `feat/metrics-fase1`):** lacunas **1, 2 e 4 fechadas** — `bet_created` web; `bet_settled` nos 4 caminhos da web **+ settle ✅/❌ do bot (`telegram-webhook`) + `winback-backfill` (auto)**, os dois caminhos server-side que a revisão de código pegou como invisíveis. Lacuna **3 (NBA) instrumentada** (4 telas, capturas só logado). **5 segue no PR #180.** **6 verificada** (ambos usam `auth.users.id`). Notas: WhatsApp foi **descontinuado** (webhook legado permanece, sem apostas novas); **cadastro só existe no web** — o bot exige conta vinculada (`telegram_user_missing`), então `signed_up` cobre 100% da aquisição.
+
 ---
 
 ## 7. Spec de instrumentação
@@ -174,33 +176,35 @@ Não otimizar produto que morre em 13 dias. Medir apenas: participação no rank
 ### Convenções
 
 - **Prefixo por produto:** `futebol_*`, `nba_*`, `betinho_*`, `bolao_*`. Exceção: `bet_created` (server) **mantém o nome** — tem histórico; padronizamos via propriedade.
-- **Propriedades comuns em todo evento:** `product` (`futebol|nba|betinho|bolao`), `channel` quando aplicável (`telegram|whatsapp|web|futebol`).
+- **Propriedades comuns em todo evento:** `product` (`futebol|nba|betinho|bolao`), `channel` quando aplicável (`telegram|web|futebol` — WhatsApp descontinuado; apostas legadas têm `channel` nulo).
 - **`distinct_id` = `auth.users.id`** em front e edge, sempre.
 - **Nunca renomear evento com histórico**; deprecia e cria novo se precisar.
 - Snake_case, verbo no particípio (`_viewed`, `_created`, `_settled`).
 
 ### Eventos novos — Betinho/core (Fase 1)
 
+*(Tabela reflete o **implementado** na branch `feat/metrics-fase1` — é o contrato dos dashboards.)*
+
 | Evento | Propriedades | Dispara em | Camada |
 |---|---|---|---|
-| `bet_created` (estender ao web) | `channel:'web'`, `bet_type`, `has_odds`, `stake_range` | `Bets.tsx` → `createBet` (sucesso do insert) | front |
-| `bet_settled` ⭐ | `channel`, `status:'won\|lost\|void'`, `days_to_settle`, `count` (lote), `settled_by:'user_manual\|auto'` | `Bets.tsx` → update de status em lote; futura auto-liquidação | front (dep. edge) |
-| `bolao_palpite_saved` | `mode:'single\|batch'`, `count`, `fixture_ids` | `use-bolao.ts` → `useUpsertPrediction(sBatch)` onSuccess | front |
-| `bolao_palpite_settled` | `points`, `exact_score:boolean` | `ingest-wc-scores` (após pontuar) | edge |
-| `bolao_ranking_viewed` | `bolao_id`, `position_range` | `BolaoHome/Detail` (tela de ranking) | front |
+| `bet_created` (estendido ao web) | `product:'betinho'`, `channel:'web'`, `bet_type`, `sport`, `is_credit_bet` | `Bets.tsx` → `createBet` (sucesso do insert). *Sem `has_odds`: odds inválida lança antes do insert, a prop seria sempre true.* | front |
+| `bet_settled` ⭐ | `product`, `channel`, `status` (6 finais = `SETTLED`), `days_to_settle`, `settled_by:'user_manual\|auto'`, `batch`, `count` (nº que **realmente** liquidou na ação), `via` (`bot_reminder\|winback_backfill`, só edge) | helper único `captureBetSettled` em `Bets.tsx` (4 caminhos: linha, lote, edição, cashout) · settle ✅/❌ do bot (`telegram-webhook`) · `winback-backfill` (`auto`) | front + edge |
+| `bolao_palpite_saved` | `product:'bolao'`, `mode:'single\|batch'`, `count`, `bolao_id` | `use-bolao.ts` → onSuccess das mutations. *Undo do Quick Pick passa `silent` e não conta como engajamento.* | front |
+| `bolao_palpite_settled` | — | **descartado por decisão**: bolão encerra 19/jul; a recompensa já é observável via `bolao_ranking_viewed` e exigiria query por-usuário no edge | — |
+| `bolao_ranking_viewed` | `product:'bolao'`, `bolao_id` | `BolaoDetail` (aba Ranking) — **1x por bolão/visita, só participante com ranking carregado** (não-membro/id inválido não contamina a coorte E4; troca de aba não re-dispara) | front |
 
-⭐ = destrava a métrica central (E2, B1, F2.2).
+⭐ = destrava a métrica central (E2, B1, F2.2). O bot mantém o evento legado `settlement_settled_via_bot` por continuidade de histórico.
 
 ### Eventos novos — NBA (Fase 3, antes de outubro)
 
 | Evento | Propriedades | Dispara em |
 |---|---|---|
-| `nba_analise360_viewed` | `player_id`, `entry_point` | `Analise360Detail` |
-| `nba_game_viewed` | `game_id`, `has_odds` | `GameDetail` |
-| `nba_picks_viewed` | `date`, `picks_count` | `Picks` |
-| `nba_home_viewed` | `game_day:boolean` | `HomeNBA` |
+| `nba_analise360_viewed` | `product:'nba'`, `player_id` | `Analise360Detail` |
+| `nba_game_viewed` | `product:'nba'`, `game_id` | `GameDetail` |
+| `nba_picks_viewed` | `product:'nba'` | `Picks` |
+| `nba_home_viewed` | `product:'nba'` | `HomeNBA` |
 
-*(4 eventos bastam para N1–N4; não instrumentar micro-interações agora.)*
+*(4 eventos bastam para N1–N3; **todos capturam só logado** — `/home-nba` e `/game/:id` são rotas públicas, e sem esse gate os denominadores das 4 superfícies ficariam incomparáveis. Props ricas — `game_day`, `picks_count`, `entry_point` — ficam pra quando a temporada voltar, se fizerem falta: as capturas são de mount, antes dos dados carregarem. N4 (`game_day`) por ora sai por SQL/calendário de jogos.)*
 
 ### Eventos novos — Futebol (Fase 2, embarca no lançamento / PR #180)
 
@@ -257,7 +261,7 @@ group by 1, 2 order by 1 desc;
 -- B3: ativação — 1ª aposta liquidada em ≤7 dias da conta
 -- F1.1/F1.2: trial→pago e ativação no trial (users.futebol_* × bets.channel='futebol')
 -- F0.1: supply — oportunidades/dia (fact_value_opportunities)
--- (queries completas na pasta analytics/ quando criarmos — ver Fase 1)
+-- (queries versionadas em analytics/retencao.sql)
 ```
 
 > ⚠️ **`days_to_settle` histórico está contaminado** pelo backfill de 31/jan/2026 (`updated_at` reescrito em lote). A janela "≤7d" só é confiável para apostas criadas **após** essa data — daqui pra frente, com `bet_settled` emitindo `settled_by` (`user_manual|auto`), a medição fica limpa.
@@ -285,14 +289,15 @@ Cohorts a criar: **Sharp** (ativo em futebol/NBA), **Casual** (só bolão), **Tr
 *Destrava a medição do Marco 0 antes da Copa acabar.*
 
 - [x] **`distinct_id` consistente verificado (lacuna 6):** front chama `posthog.identify(user.id)` (`Auth.tsx`) e webhooks usam `distinctId = userId` → ambos = `auth.users.id`. Web e bot contam como a mesma pessoa. *(Spot-check pendente: confirmar que o `userId` passado nos webhooks é o uuid do `auth.users`, não um id de chat.)*
-- [x] **`bet_created` web + `bet_settled` instrumentados em `Bets.tsx`** (aguarda verificação live no PostHog): `bet_created` com `channel:'web'` em `createBet`; `bet_settled` cobrindo os **4 caminhos** de liquidação manual — lote (`bulkUpdateStatus`), por linha (`updateBetStatus`), edição (`updateBet`) e cashout (`processCashout`) — com `status`, `days_to_settle`, `settled_by:'user_manual'`, `channel`, `batch`. tsc + eslint limpos.
-- [ ] `bet_created` no web + `bet_settled` (manual, com `count` do lote) — `Bets.tsx`
-- [ ] `bolao_palpite_saved` (`use-bolao.ts`) + `bolao_palpite_settled` (`ingest-wc-scores`)
-- [ ] `bolao_ranking_viewed`
+- [x] **`bet_created` web + `bet_settled` instrumentados** (aguardam verificação live no PostHog): schema único via helper `captureBetSettled` (`Bets.tsx`, 4 caminhos: linha, lote, edição, cashout) **+ settle do bot (`telegram-webhook`) + `winback-backfill` com `settled_by:'auto'`** — props conforme tabela §7 (`product`, `count` correto, sem `batch_size`). tsc + eslint limpos.
+- [x] **`bolao_palpite_saved`** (`use-bolao.ts`, single+batch; Undo do Quick Pick é `silent`) — `bolao_palpite_settled` **descartado por decisão** (ver §7).
+- [x] **`bolao_ranking_viewed`** (`BolaoDetail`, 1x por bolão/visita, só participante).
+- [x] **Eventos `nba_*`** antecipados da Fase 3 (4 telas, capturas só logado).
 - [x] **Baseline registrado (§1.1)** — puxado do banco prod 2026-07-08: base 110 users / 6 ativos 30d; liquidação de novos ~17% (o número que importa); viés de sobrevivência documentado.
 - [x] **Dashboard PostHog starter no ar** ([id 1814242](https://us.posthog.com/project/242542/dashboard/1814242)): pulso de apostas, aquisição web, retenção de apostadores, apostadores únicos/sem, nº do mês + cartão de baseline honesto.
-- [ ] Criar pasta `analytics/` no repo com as queries versionadas (as de §7 já validadas contra o schema)
-- **Pronto quando:** eventos `bet_settled`/web aparecendo no PostHog Live Events; coorte de liquidação de novos passa a atualizar sozinha.
+- [x] **Pasta `analytics/` criada** com as queries versionadas (`analytics/retencao.sql`, validadas contra o schema prod).
+- [x] **Revisão de código pré-PR** (8 ângulos + verificação independente): 10 achados corrigidos — incluindo os 2 caminhos server-side de liquidação que estavam invisíveis (bot e winback).
+- **Pronto quando:** eventos `bet_settled`/web aparecendo no PostHog Live Events (pendente: exige deploy das edge functions `telegram-webhook` e `winback-backfill` + front em produção); aí a coorte de liquidação de novos passa a atualizar sozinha.
 
 ### Fase 2 — Dashboards + futebol (semana de 13/jul, antes do lançamento)
 - [ ] Montar Dashboards 1 e 3 na UI do PostHog + Cohorts
@@ -302,7 +307,7 @@ Cohorts a criar: **Sharp** (ativo em futebol/NBA), **Casual** (só bolão), **Tr
 - **Pronto quando:** dashboard do ecossistema mostra a semana atual sem query manual; futebol lança instrumentado no dia 1.
 
 ### Fase 3 — NBA + ritual (agosto)
-- [ ] 4 eventos `nba_*` + Dashboard 4 (baseline no offseason, régua pronta pra outubro)
+- [x] 4 eventos `nba_*` (antecipados na Fase 1) — falta só o Dashboard 4 (baseline no offseason, régua pronta pra outubro)
 - [ ] Preparar coorte de ressurreição N2 (ativos 25-26)
 - [ ] **Instituir o ritual semanal** (30 min, toda segunda): E1, E2, curva da última coorte, funil do futebol, supply. Uma pergunta fixa: *"o que lançamos semana passada moveu qual métrica?"*
 - **Pronto quando:** primeira revisão semanal feita com dados, não com feeling.
