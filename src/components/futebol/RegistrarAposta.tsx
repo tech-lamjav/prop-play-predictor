@@ -17,7 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { pickLabel, marketLabel } from '@/utils/futebol-score';
 import type { FutebolBetDraft } from './registrar-aposta-utils';
 
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo' };
+const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
 
 function kickoffDate(raw: string | null): string | null {
   if (!raw) return null;

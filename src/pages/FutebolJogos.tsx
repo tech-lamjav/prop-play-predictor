@@ -11,9 +11,10 @@ import { groupBoardByFixture, faixaWord, faixaBadgeCls } from '@/utils/futebol-s
 
 const COMPETITIONS: { value: Competition; label: string }[] = [
   { value: 'brasileirao', label: 'Brasileirão' },
+  { value: 'serie_b', label: 'Série B' },
   { value: 'copa_mundo', label: 'Copa do Mundo' },
 ];
-const SEASONS: Record<Competition, number[]> = { brasileirao: [2024, 2025, 2026], copa_mundo: [2026] };
+const SEASONS: Record<Competition, number[]> = { brasileirao: [2024, 2025, 2026], copa_mundo: [2026], serie_b: [2024, 2025, 2026] };
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const TODAY = new Date();
 

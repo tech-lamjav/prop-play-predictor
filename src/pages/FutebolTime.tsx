@@ -20,7 +20,7 @@ const C = {
   roseBg: '#fbe3e8', roseFg: '#be123c',
 };
 
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão Série A', copa_mundo: 'Copa do Mundo' };
+const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão Série A', copa_mundo: 'Copa do Mundo', serie_b: 'Brasileirão Série B' };
 const SCOPE_ORDER = ['geral', 'casa', 'fora'] as const;
 const FINISHED = new Set(['FT', 'AET', 'PEN']);
 const CARD = 'rounded-2xl overflow-hidden bg-white border border-line';

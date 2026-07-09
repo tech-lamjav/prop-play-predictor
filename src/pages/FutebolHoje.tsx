@@ -14,7 +14,7 @@ import {
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo' };
+const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
 const DAY_WINDOW = 8;
 
@@ -236,18 +236,19 @@ export default function FutebolHoje() {
   const navigate = useNavigate();
   const { data: brasil, isLoading: l1 } = useFutebolFixtures('brasileirao', 2026);
   const { data: copa, isLoading: l2 } = useFutebolFixtures('copa_mundo', 2026);
+  const { data: serieB, isLoading: l2b } = useFutebolFixtures('serie_b', 2026);
   const { data: valueRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: access } = useFutebolAccess();
   const locked = !access?.unlocked;
-  const loading = l1 || l2 || l3;
+  const loading = l1 || l2 || l2b || l3;
 
   const todayStr = brtDateStr(new Date());
   const [day, setDay] = useState<string | null>(null);
 
   const allGames = useMemo(() => {
     const tag = (arr: FutebolFixture[] | undefined, c: string) => (arr || []).map((f) => ({ ...f, competition: c }));
-    return [...tag(brasil, 'brasileirao'), ...tag(copa, 'copa_mundo')];
-  }, [brasil, copa]);
+    return [...tag(brasil, 'brasileirao'), ...tag(copa, 'copa_mundo'), ...tag(serieB, 'serie_b')];
+  }, [brasil, copa, serieB]);
 
   // dias (BRT) com jogos ainda não começados — base da navegação por dias.
   // Limita aos próximos dias (não varre a temporada inteira do Brasileirão).

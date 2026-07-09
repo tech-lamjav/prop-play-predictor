@@ -17,7 +17,7 @@ import {
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo' };
+const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
 function kickoffMs(raw: string | null): number | null {
@@ -55,7 +55,7 @@ const DAY_WINDOW = 8;
 
 type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 type FaixaFilter = 'all' | 'alta' | 'media';
-type CompFilter = 'all' | 'brasileirao' | 'copa_mundo';
+type CompFilter = 'all' | 'brasileirao' | 'copa_mundo' | 'serie_b';
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -264,6 +264,7 @@ export default function FutebolOportunidades() {
   const compOptions = [
     { value: 'all', label: 'Todas' },
     ...(compsOnDay.has('brasileirao') ? [{ value: 'brasileirao', label: 'Brasileirão' }] : []),
+    ...(compsOnDay.has('serie_b') ? [{ value: 'serie_b', label: 'Série B' }] : []),
     ...(compsOnDay.has('copa_mundo') ? [{ value: 'copa_mundo', label: 'Copa' }] : []),
   ];
 

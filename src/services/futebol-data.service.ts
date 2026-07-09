@@ -29,7 +29,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1200): Pr
   throw lastError;
 }
 
-export type Competition = 'brasileirao' | 'copa_mundo';
+export type Competition = 'brasileirao' | 'copa_mundo' | 'serie_b';
 
 export interface FutebolFixture {
   fixture_id: number;
