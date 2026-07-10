@@ -399,6 +399,73 @@ async function handleCallbackQuery(
     return ok("reminders muted")
   }
 
+  // ↩️ fix:<bet_id> — desfaz a AUTO-liquidação (notify-settlement): volta pra
+  // pendente e devolve os botões clássicos pro usuário dizer o resultado certo
+  if (data.startsWith("fix:")) {
+    const betId = data.slice("fix:".length)
+
+    const { data: bet } = await supabase
+      .from("bets")
+      .select("id, user_id, status, bet_description, match_description, stake_amount, potential_return, processed_data")
+      .eq("id", betId)
+      .maybeSingle()
+
+    if (!bet || bet.user_id !== user.id) {
+      await answerCallbackQuery(cq.id, "Não achei essa aposta na sua conta.")
+      return ok("fix: bet not found or not owner")
+    }
+    const REVERTIBLE = ["won", "lost", "void", "half_won", "half_lost"] // nunca cashout
+    if (!REVERTIBLE.includes(bet.status)) {
+      await answerCallbackQuery(cq.id, "Essa aposta não está mais liquidada 👍")
+      return ok("fix: invalid status")
+    }
+
+    const pd = bet.processed_data && typeof bet.processed_data === "object" && !Array.isArray(bet.processed_data)
+      ? bet.processed_data
+      : {}
+    const { error: fixErr } = await supabase
+      .from("bets")
+      .update({
+        status: "pending",
+        processed_data: {
+          ...pd,
+          auto_settle: { ...((pd as any).auto_settle ?? {}), corrected_at: new Date().toISOString() },
+        },
+      })
+      .eq("id", betId)
+      .in("status", ["won", "lost", "void", "half_won", "half_lost"]) // nunca reverte cashout
+
+    if (fixErr) {
+      await answerCallbackQuery(cq.id, "Deu ruim ao desfazer — tenta de novo.")
+      return ok("fix: update failed")
+    }
+
+    await telegramCall("editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
+      text: `↩️ Desfeito — voltou pra pendente.\n\n<b>${escHtml(bet.bet_description)}</b>${bet.match_description ? `\n${escHtml(bet.match_description)}` : ""}\n\nComo foi essa?`,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Green", callback_data: `settle:${betId}:won` },
+            { text: "❌ Red", callback_data: `settle:${betId}:lost` }
+          ],
+          [{ text: "Outras opções ↗", url: BETS_DASHBOARD_URL }]
+        ]
+      }
+    })
+    await answerCallbackQuery(cq.id, "↩️ Desfeito.")
+    await trackEvent(
+      "auto_settle_corrected",
+      { bet_id: betId, previous_status: bet.status, channel: "telegram" },
+      user.id,
+      traceId
+    ).catch(() => {})
+    return ok("auto settle corrected")
+  }
+
   // ✅/❌ settle:<bet_id>:<won|lost>
   if (data.startsWith("settle:")) {
     const [, betId, outcome] = data.split(":")

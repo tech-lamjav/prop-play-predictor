@@ -8,10 +8,12 @@
 //
 // Duas classes de lembrete:
 //   • COPA — aposta casada com um wc_matches encerrado (por nome dos dois times
-//     na descrição): a mensagem chega COM o placar e, quando o mercado é
-//     computável (ML/1x2, over-under de gols, ambas marcam), com o veredito
-//     sugerido: "pelo placar, essa bateu ✅". Liquidação usa o placar dos 90'
-//     (fulltime_*); o placar final (com prorrogação) aparece só como contexto.
+//     na descrição). Quando o mercado é computável (ML/1x2, over-under de gols,
+//     ambas marcam), o veredito sai pelo placar dos 90' (fulltime_*) e a aposta
+//     é AUTO-LIQUIDADA (decisão de produto 09/07): grava won/lost + evidência
+//     em processed_data.auto_settle e avisa com botão [↩️ Corrigir] (handler
+//     fix:<bet_id> no telegram-webhook, que desfaz pra pendente). Sem veredito
+//     computável, a mensagem chega com o placar e PERGUNTA com os botões.
 //   • GENÉRICA — sem placar no banco: jogo já deve ter acabado (match_date
 //     passou, ou aposta com 24h+), pergunta com os mesmos botões, sem veredito.
 //     Respeita janela de silêncio (09h–23h BRT); a da Copa sai na hora do apito
@@ -190,7 +192,30 @@ interface Candidate {
 
 // ── Veredito pelo placar dos 90' ─────────────────────────────
 // Só para mercados diretos; qualquer ambiguidade → null (pergunta sem afirmar).
-type Verdict = "won" | "lost" | null;
+// Handicap asiático (quick win do parecer do coletor) pode devolver void
+// (push em linha inteira) e meio-resultados (linha quarter ±0.25/±0.75) —
+// os status half_won/half_lost/void já existem no banco e no dashboard.
+type Verdict = "won" | "lost" | "void" | "half_won" | "half_lost" | null;
+
+// meia-aposta do handicap: ajustado >0 ganha, <0 perde, =0 devolve (push)
+function settleAhHalf(adjusted: number): "won" | "lost" | "void" {
+  if (adjusted > 0.001) return "won";
+  if (adjusted < -0.001) return "lost";
+  return "void";
+}
+
+// Handicap asiático pelos 90': margin = gols do time apostado − adversário;
+// line = handicap NA ÓTICA do time apostado (como escrito na aposta).
+// Linha quarter (x.25/x.75) decompõe em duas metades — padrão do mercado.
+function settleAsianHandicap(margin: number, line: number): Verdict {
+  const isQuarter = Math.abs((line * 4) % 2) === 1;
+  if (!isQuarter) return settleAhHalf(margin + line);
+  const a = settleAhHalf(margin + (line - 0.25));
+  const b = settleAhHalf(margin + (line + 0.25));
+  if (a === b) return a;                              // won+won / lost+lost
+  if (a === "won" || b === "won") return "half_won";  // won + push
+  return "half_lost";                                 // push + lost
+}
 
 function computeVerdict(bet: Candidate, wc: WcMatch): Verdict {
   // múltipla/sistema: pernas em jogos diversos, nunca decidível por 1 placar
@@ -237,8 +262,12 @@ function computeVerdict(bet: Candidate, wc: WcMatch): Verdict {
     return (betNo ? !both : both) ? "won" : "lost";
   }
 
+  // linha com sinal ("−1,5", "-0.5", "+0,25") — presença dela indica handicap;
+  // também desarma o ML (um "Vencedor: Belgium -1.5" não é money line puro)
+  const lineMatch = desc.replace(/−/g, "-").match(/([+-])\s*(\d+(?:[.,]\d+)?)/);
+
   // Money Line / 1x2 — em qual time a aposta foi?
-  if (market === "money line" || /\bml\b|money\s?line|vencedor|para vencer|vence\b|1x2/.test(desc)) {
+  if (!lineMatch && (market === "money line" || /\bml\b|money\s?line|vencedor|para vencer|vence\b|1x2/.test(desc))) {
     const homeNames = teamNames(wc.home_team, wc.home_team_code);
     const awayNames = teamNames(wc.away_team, wc.away_team_code);
     const isDraw = /empate/.test(desc);
@@ -249,6 +278,24 @@ function computeVerdict(bet: Candidate, wc: WcMatch): Verdict {
     if (pickedHome && !pickedAway) return ftH > ftA ? "won" : "lost";
     if (pickedAway && !pickedHome) return ftA > ftH ? "won" : "lost";
     return null; // ambíguo (dois times citados / nenhum) → não afirmar
+  }
+
+  // Handicap asiático — "Belgium −1,5", "Handicap -0.5 Atletico" (aritmética
+  // dos 90' como os demais). Europeu ("empate (-1)") fica fora: regra diverge.
+  if (lineMatch && !/empate/.test(desc)) {
+    const raw = parseFloat(lineMatch[2].replace(",", "."));
+    const line = (lineMatch[1] === "-" ? -1 : 1) * raw;
+    // sanidade: linha múltipla de 0.25 e dentro do plausível
+    if (!Number.isInteger(line * 4) || Math.abs(line) > 6) return null;
+
+    const homeNames = teamNames(wc.home_team, wc.home_team_code);
+    const awayNames = teamNames(wc.away_team, wc.away_team_code);
+    const pickedHome = hasTeam(desc, homeNames);
+    const pickedAway = hasTeam(desc, awayNames);
+    if (pickedHome === pickedAway) return null; // nenhum ou os dois → ambíguo
+
+    const margin = pickedHome ? ftH - ftA : ftA - ftH;
+    return settleAsianHandicap(margin, line);
   }
 
   return null;
@@ -285,6 +332,95 @@ function buildWcMessage(bet: Candidate, wc: WcMatch, verdict: Verdict): string {
 function buildGenericMessage(bet: Candidate): string {
   const jogo = bet.match_description ? `<b>${esc(bet.match_description)}</b>\n` : "";
   return `⏱️ Seu jogo já deve ter terminado:\n\n${jogo}${betLine(bet)}\n\nComo foi?`;
+}
+
+// ── Auto-liquidação (match perfeito → fecha sozinho + Corrigir) ──
+function placarLine(wc: WcMatch): string {
+  const wentExtra =
+    wc.fulltime_home != null &&
+    (wc.home_score !== wc.fulltime_home || wc.away_score !== wc.fulltime_away);
+  const extra = wentExtra ? ` <i>(${wc.fulltime_home}×${wc.fulltime_away} no tempo normal)</i>` : "";
+  return `🏁 ${esc(wc.home_team)} <b>${wc.home_score ?? "?"}×${wc.away_score ?? "?"}</b> ${esc(wc.away_team)} — encerrado${extra}`;
+}
+
+type SettleStatus = Exclude<Verdict, null>;
+
+async function sendAutoSettleDm(bet: Candidate, wc: WcMatch, verdict: SettleStatus): Promise<void> {
+  const profit = bet.potential_return - bet.stake_amount;
+  const COPY: Record<SettleStatus, { header: string; resultado: string }> = {
+    won: {
+      header: "✅ <b>Fechei sua aposta: green!</b>",
+      resultado: `Lucro: <b>+${money(profit)}</b> · banca atualizada 📊`,
+    },
+    lost: {
+      header: "❌ <b>Fechei sua aposta: red.</b>",
+      resultado: `Prejuízo: <b>−${money(bet.stake_amount)}</b> · faz parte. Banca atualizada 📊`,
+    },
+    void: {
+      header: "↔️ <b>Fechei sua aposta: anulada (push).</b>",
+      resultado: `A linha bateu em cheio — valor devolvido: <b>${money(bet.stake_amount)}</b>`,
+    },
+    half_won: {
+      header: "✅ <b>Fechei sua aposta: meio green!</b>",
+      resultado: `Metade ganhou, metade voltou. Lucro: <b>+${money(profit / 2)}</b> · banca atualizada 📊`,
+    },
+    half_lost: {
+      header: "❌ <b>Fechei sua aposta: meio red.</b>",
+      resultado: `Metade voltou, metade perdeu. Prejuízo: <b>−${money(bet.stake_amount / 2)}</b> · banca atualizada 📊`,
+    },
+  };
+  const header = COPY[verdict].header;
+  const resultado = COPY[verdict].resultado;
+  const text = [
+    header,
+    placarLine(wc),
+    "",
+    `<b>${esc(bet.bet_description)}</b> · ${money(bet.stake_amount)} · odd ${bet.odds}`,
+    resultado,
+    "",
+    `<i>Liquidei pelo placar dos 90 minutos. Errei? Toca em Corrigir.</i>`,
+  ].join("\n");
+
+  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: bet.chat_id,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [[
+          { text: "↩️ Corrigir", callback_data: `fix:${bet.bet_id}` },
+          { text: "Ver minha banca", url: BETS_URL },
+        ]],
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+}
+
+// Liquida com guarda otimista (status='pending'); false = não liquidou (cai no
+// fluxo de pergunta). Ordem deliberada: grava ANTES de avisar — o valor está
+// na banca certa; a DM falhar não desfaz a liquidação.
+async function autoSettle(supabase: any, bet: Candidate, wc: WcMatch, verdict: SettleStatus): Promise<boolean> {
+  const evidence = `${wc.home_team} ${wc.fulltime_home}×${wc.fulltime_away} ${wc.away_team} (90') · wc_matches ${wc.id}`;
+  const { data: cur } = await supabase.from("bets").select("processed_data").eq("id", bet.bet_id).maybeSingle();
+  const pd = cur?.processed_data && typeof cur.processed_data === "object" && !Array.isArray(cur.processed_data)
+    ? cur.processed_data : {};
+  const { data: upd, error } = await supabase
+    .from("bets")
+    .update({
+      status: verdict,
+      processed_data: { ...pd, auto_settle: { evidence, settled_at: new Date().toISOString(), source: "auto_settlement_v1" } },
+    })
+    .eq("id", bet.bet_id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (error || !upd) return false;
+  await sendAutoSettleDm(bet, wc, verdict);
+  return true;
 }
 
 // ── Utilidades de tempo ──────────────────────────────────────
@@ -386,6 +522,31 @@ serve(async (req) => {
       list.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "wc" ? -1 : 1));
       for (const d of list.slice(0, MAX_PER_USER_PER_RUN)) {
         try {
+          // Match perfeito (jogo casado + mercado direto) → liquida sozinho e
+          // avisa com [↩️ Corrigir]. Qualquer outra situação → pergunta.
+          if (d.kind === "wc" && d.verdict) {
+            const settled = await autoSettle(supabase, d.bet, d.wc!, d.verdict);
+            if (settled) {
+              sent++;
+              await trackEvent(
+                "bet_auto_settled",
+                {
+                  bet_id: d.bet.bet_id,
+                  verdict: d.verdict,
+                  betting_market: d.bet.betting_market,
+                  sport: d.bet.sport,
+                  league: d.bet.league,
+                  wc_match_id: d.wc?.id ?? null,
+                  channel: "telegram",
+                },
+                d.bet.user_id,
+                traceId
+              ).catch(() => {});
+              continue;
+            }
+            // não liquidou (estado mudou no meio) → segue pro fluxo de pergunta
+          }
+
           const text = d.kind === "wc" ? buildWcMessage(d.bet, d.wc!, d.verdict) : buildGenericMessage(d.bet);
           await sendReminder(d.bet.chat_id, text, d.bet.bet_id);
 
