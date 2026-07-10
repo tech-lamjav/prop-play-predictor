@@ -8,10 +8,12 @@
 //
 // Duas classes de lembrete:
 //   • COPA — aposta casada com um wc_matches encerrado (por nome dos dois times
-//     na descrição): a mensagem chega COM o placar e, quando o mercado é
-//     computável (ML/1x2, over-under de gols, ambas marcam), com o veredito
-//     sugerido: "pelo placar, essa bateu ✅". Liquidação usa o placar dos 90'
-//     (fulltime_*); o placar final (com prorrogação) aparece só como contexto.
+//     na descrição). Quando o mercado é computável (ML/1x2, over-under de gols,
+//     ambas marcam), o veredito sai pelo placar dos 90' (fulltime_*) e a aposta
+//     é AUTO-LIQUIDADA (decisão de produto 09/07): grava won/lost + evidência
+//     em processed_data.auto_settle e avisa com botão [↩️ Corrigir] (handler
+//     fix:<bet_id> no telegram-webhook, que desfaz pra pendente). Sem veredito
+//     computável, a mensagem chega com o placar e PERGUNTA com os botões.
 //   • GENÉRICA — sem placar no banco: jogo já deve ter acabado (match_date
 //     passou, ou aposta com 24h+), pergunta com os mesmos botões, sem veredito.
 //     Respeita janela de silêncio (09h–23h BRT); a da Copa sai na hora do apito
@@ -287,6 +289,73 @@ function buildGenericMessage(bet: Candidate): string {
   return `⏱️ Seu jogo já deve ter terminado:\n\n${jogo}${betLine(bet)}\n\nComo foi?`;
 }
 
+// ── Auto-liquidação (match perfeito → fecha sozinho + Corrigir) ──
+function placarLine(wc: WcMatch): string {
+  const wentExtra =
+    wc.fulltime_home != null &&
+    (wc.home_score !== wc.fulltime_home || wc.away_score !== wc.fulltime_away);
+  const extra = wentExtra ? ` <i>(${wc.fulltime_home}×${wc.fulltime_away} no tempo normal)</i>` : "";
+  return `🏁 ${esc(wc.home_team)} <b>${wc.home_score ?? "?"}×${wc.away_score ?? "?"}</b> ${esc(wc.away_team)} — encerrado${extra}`;
+}
+
+async function sendAutoSettleDm(bet: Candidate, wc: WcMatch, verdict: "won" | "lost"): Promise<void> {
+  const profit = bet.potential_return - bet.stake_amount;
+  const header = verdict === "won" ? "✅ <b>Fechei sua aposta: green!</b>" : "❌ <b>Fechei sua aposta: red.</b>";
+  const resultado = verdict === "won"
+    ? `Lucro: <b>+${money(profit)}</b> · banca atualizada 📊`
+    : `Prejuízo: <b>−${money(bet.stake_amount)}</b> · faz parte. Banca atualizada 📊`;
+  const text = [
+    header,
+    placarLine(wc),
+    "",
+    `<b>${esc(bet.bet_description)}</b> · ${money(bet.stake_amount)} · odd ${bet.odds}`,
+    resultado,
+    "",
+    `<i>Liquidei pelo placar dos 90 minutos. Errei? Toca em Corrigir.</i>`,
+  ].join("\n");
+
+  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: bet.chat_id,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [[
+          { text: "↩️ Corrigir", callback_data: `fix:${bet.bet_id}` },
+          { text: "Ver minha banca", url: BETS_URL },
+        ]],
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+}
+
+// Liquida com guarda otimista (status='pending'); false = não liquidou (cai no
+// fluxo de pergunta). Ordem deliberada: grava ANTES de avisar — o valor está
+// na banca certa; a DM falhar não desfaz a liquidação.
+async function autoSettle(supabase: any, bet: Candidate, wc: WcMatch, verdict: "won" | "lost"): Promise<boolean> {
+  const evidence = `${wc.home_team} ${wc.fulltime_home}×${wc.fulltime_away} ${wc.away_team} (90') · wc_matches ${wc.id}`;
+  const { data: cur } = await supabase.from("bets").select("processed_data").eq("id", bet.bet_id).maybeSingle();
+  const pd = cur?.processed_data && typeof cur.processed_data === "object" && !Array.isArray(cur.processed_data)
+    ? cur.processed_data : {};
+  const { data: upd, error } = await supabase
+    .from("bets")
+    .update({
+      status: verdict,
+      processed_data: { ...pd, auto_settle: { evidence, settled_at: new Date().toISOString(), source: "auto_settlement_v1" } },
+    })
+    .eq("id", bet.bet_id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+  if (error || !upd) return false;
+  await sendAutoSettleDm(bet, wc, verdict);
+  return true;
+}
+
 // ── Utilidades de tempo ──────────────────────────────────────
 // BRT é UTC-3 fixo (sem horário de verão desde 2019)
 const kickoffUtc = (wc: WcMatch) => new Date(`${wc.match_date}T${wc.match_time_brasilia}-03:00`);
@@ -386,6 +455,31 @@ serve(async (req) => {
       list.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "wc" ? -1 : 1));
       for (const d of list.slice(0, MAX_PER_USER_PER_RUN)) {
         try {
+          // Match perfeito (jogo casado + mercado direto) → liquida sozinho e
+          // avisa com [↩️ Corrigir]. Qualquer outra situação → pergunta.
+          if (d.kind === "wc" && d.verdict) {
+            const settled = await autoSettle(supabase, d.bet, d.wc!, d.verdict);
+            if (settled) {
+              sent++;
+              await trackEvent(
+                "bet_auto_settled",
+                {
+                  bet_id: d.bet.bet_id,
+                  verdict: d.verdict,
+                  betting_market: d.bet.betting_market,
+                  sport: d.bet.sport,
+                  league: d.bet.league,
+                  wc_match_id: d.wc?.id ?? null,
+                  channel: "telegram",
+                },
+                d.bet.user_id,
+                traceId
+              ).catch(() => {});
+              continue;
+            }
+            // não liquidou (estado mudou no meio) → segue pro fluxo de pergunta
+          }
+
           const text = d.kind === "wc" ? buildWcMessage(d.bet, d.wc!, d.verdict) : buildGenericMessage(d.bet);
           await sendReminder(d.bet.chat_id, text, d.bet.bet_id);
 

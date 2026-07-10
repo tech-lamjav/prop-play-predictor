@@ -40,10 +40,15 @@ sugerido** ("pelo placar, essa bateu ✅").
 ## Regras de produto (implementadas)
 
 - **Cadência**: máx. **2 lembretes por aposta**, gap de 20h; máx. **3 mensagens por usuário por run**.
-- **Copa** (casada com `wc_matches` encerrado): sai na hora do apito, com placar.
-  Veredito só em mercado direto — ML/1x2, over/under de **gols**, ambas marcam —
-  sempre pelo **placar dos 90'**. Múltipla, handicap, 1º tempo, classificação,
-  escanteios etc. → pergunta sem afirmar. Linha exata (push) → sem veredito.
+- **AUTO-LIQUIDAÇÃO** (decisão de produto 09/07): **match perfeito** — jogo casado
+  com `wc_matches` encerrado + mercado direto (ML/1x2, over/under de **gols**,
+  ambas marcam), sempre pelo **placar dos 90'** — a aposta é **liquidada sozinha**
+  (won/lost + evidência em `processed_data.auto_settle`) e o usuário recebe
+  "✅ Fechei sua aposta: green! ... [↩️ Corrigir]". O **Corrigir** desfaz (volta
+  pra pendente) e devolve os botões clássicos.
+- **Sem match perfeito** — múltipla, handicap, 1º tempo, classificação, escanteios,
+  props, linha exata (push), jogo ambíguo → **pergunta sem afirmar** (botões
+  Green/Red), como sempre.
 - **Genérica** (sem placar no banco): `match_date` passou há 3h+ (ou aposta com 24h+
   quando sem data de jogo), só entre **09h–23h BRT**.
 - **Opt-out**: botão 🔕 na mensagem ou `/silenciar`; `/lembretes` reativa
@@ -63,6 +68,8 @@ apareçam na descrição da aposta.
 
 ## Métricas (PostHog)
 
+- `bet_auto_settled` — {bet_id, verdict, betting_market} (match perfeito, fechada sozinha)
+- `auto_settle_corrected` — {bet_id, previous_status} (usuário tocou em Corrigir — **taxa de erro do motor**)
 - `settlement_reminder_sent` — {kind: wc|generic, verdict, betting_market, reminder_number}
 - `settlement_settled_via_bot` — {bet_id, outcome}
 - `settlement_reminders_muted` / `_unmuted` — {via: button|command}
