@@ -414,7 +414,8 @@ async function handleCallbackQuery(
       await answerCallbackQuery(cq.id, "Não achei essa aposta na sua conta.")
       return ok("fix: bet not found or not owner")
     }
-    if (bet.status !== "won" && bet.status !== "lost") {
+    const REVERTIBLE = ["won", "lost", "void", "half_won", "half_lost"] // nunca cashout
+    if (!REVERTIBLE.includes(bet.status)) {
       await answerCallbackQuery(cq.id, "Essa aposta não está mais liquidada 👍")
       return ok("fix: invalid status")
     }
@@ -432,7 +433,7 @@ async function handleCallbackQuery(
         },
       })
       .eq("id", betId)
-      .in("status", ["won", "lost"]) // nunca reverte cashout/void
+      .in("status", ["won", "lost", "void", "half_won", "half_lost"]) // nunca reverte cashout
 
     if (fixErr) {
       await answerCallbackQuery(cq.id, "Deu ruim ao desfazer — tenta de novo.")

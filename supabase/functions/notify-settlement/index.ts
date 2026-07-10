@@ -192,7 +192,30 @@ interface Candidate {
 
 // ── Veredito pelo placar dos 90' ─────────────────────────────
 // Só para mercados diretos; qualquer ambiguidade → null (pergunta sem afirmar).
-type Verdict = "won" | "lost" | null;
+// Handicap asiático (quick win do parecer do coletor) pode devolver void
+// (push em linha inteira) e meio-resultados (linha quarter ±0.25/±0.75) —
+// os status half_won/half_lost/void já existem no banco e no dashboard.
+type Verdict = "won" | "lost" | "void" | "half_won" | "half_lost" | null;
+
+// meia-aposta do handicap: ajustado >0 ganha, <0 perde, =0 devolve (push)
+function settleAhHalf(adjusted: number): "won" | "lost" | "void" {
+  if (adjusted > 0.001) return "won";
+  if (adjusted < -0.001) return "lost";
+  return "void";
+}
+
+// Handicap asiático pelos 90': margin = gols do time apostado − adversário;
+// line = handicap NA ÓTICA do time apostado (como escrito na aposta).
+// Linha quarter (x.25/x.75) decompõe em duas metades — padrão do mercado.
+function settleAsianHandicap(margin: number, line: number): Verdict {
+  const isQuarter = Math.abs((line * 4) % 2) === 1;
+  if (!isQuarter) return settleAhHalf(margin + line);
+  const a = settleAhHalf(margin + (line - 0.25));
+  const b = settleAhHalf(margin + (line + 0.25));
+  if (a === b) return a;                              // won+won / lost+lost
+  if (a === "won" || b === "won") return "half_won";  // won + push
+  return "half_lost";                                 // push + lost
+}
 
 function computeVerdict(bet: Candidate, wc: WcMatch): Verdict {
   // múltipla/sistema: pernas em jogos diversos, nunca decidível por 1 placar
@@ -239,8 +262,12 @@ function computeVerdict(bet: Candidate, wc: WcMatch): Verdict {
     return (betNo ? !both : both) ? "won" : "lost";
   }
 
+  // linha com sinal ("−1,5", "-0.5", "+0,25") — presença dela indica handicap;
+  // também desarma o ML (um "Vencedor: Belgium -1.5" não é money line puro)
+  const lineMatch = desc.replace(/−/g, "-").match(/([+-])\s*(\d+(?:[.,]\d+)?)/);
+
   // Money Line / 1x2 — em qual time a aposta foi?
-  if (market === "money line" || /\bml\b|money\s?line|vencedor|para vencer|vence\b|1x2/.test(desc)) {
+  if (!lineMatch && (market === "money line" || /\bml\b|money\s?line|vencedor|para vencer|vence\b|1x2/.test(desc))) {
     const homeNames = teamNames(wc.home_team, wc.home_team_code);
     const awayNames = teamNames(wc.away_team, wc.away_team_code);
     const isDraw = /empate/.test(desc);
@@ -251,6 +278,24 @@ function computeVerdict(bet: Candidate, wc: WcMatch): Verdict {
     if (pickedHome && !pickedAway) return ftH > ftA ? "won" : "lost";
     if (pickedAway && !pickedHome) return ftA > ftH ? "won" : "lost";
     return null; // ambíguo (dois times citados / nenhum) → não afirmar
+  }
+
+  // Handicap asiático — "Belgium −1,5", "Handicap -0.5 Atletico" (aritmética
+  // dos 90' como os demais). Europeu ("empate (-1)") fica fora: regra diverge.
+  if (lineMatch && !/empate/.test(desc)) {
+    const raw = parseFloat(lineMatch[2].replace(",", "."));
+    const line = (lineMatch[1] === "-" ? -1 : 1) * raw;
+    // sanidade: linha múltipla de 0.25 e dentro do plausível
+    if (!Number.isInteger(line * 4) || Math.abs(line) > 6) return null;
+
+    const homeNames = teamNames(wc.home_team, wc.home_team_code);
+    const awayNames = teamNames(wc.away_team, wc.away_team_code);
+    const pickedHome = hasTeam(desc, homeNames);
+    const pickedAway = hasTeam(desc, awayNames);
+    if (pickedHome === pickedAway) return null; // nenhum ou os dois → ambíguo
+
+    const margin = pickedHome ? ftH - ftA : ftA - ftH;
+    return settleAsianHandicap(margin, line);
   }
 
   return null;
@@ -298,12 +343,34 @@ function placarLine(wc: WcMatch): string {
   return `🏁 ${esc(wc.home_team)} <b>${wc.home_score ?? "?"}×${wc.away_score ?? "?"}</b> ${esc(wc.away_team)} — encerrado${extra}`;
 }
 
-async function sendAutoSettleDm(bet: Candidate, wc: WcMatch, verdict: "won" | "lost"): Promise<void> {
+type SettleStatus = Exclude<Verdict, null>;
+
+async function sendAutoSettleDm(bet: Candidate, wc: WcMatch, verdict: SettleStatus): Promise<void> {
   const profit = bet.potential_return - bet.stake_amount;
-  const header = verdict === "won" ? "✅ <b>Fechei sua aposta: green!</b>" : "❌ <b>Fechei sua aposta: red.</b>";
-  const resultado = verdict === "won"
-    ? `Lucro: <b>+${money(profit)}</b> · banca atualizada 📊`
-    : `Prejuízo: <b>−${money(bet.stake_amount)}</b> · faz parte. Banca atualizada 📊`;
+  const COPY: Record<SettleStatus, { header: string; resultado: string }> = {
+    won: {
+      header: "✅ <b>Fechei sua aposta: green!</b>",
+      resultado: `Lucro: <b>+${money(profit)}</b> · banca atualizada 📊`,
+    },
+    lost: {
+      header: "❌ <b>Fechei sua aposta: red.</b>",
+      resultado: `Prejuízo: <b>−${money(bet.stake_amount)}</b> · faz parte. Banca atualizada 📊`,
+    },
+    void: {
+      header: "↔️ <b>Fechei sua aposta: anulada (push).</b>",
+      resultado: `A linha bateu em cheio — valor devolvido: <b>${money(bet.stake_amount)}</b>`,
+    },
+    half_won: {
+      header: "✅ <b>Fechei sua aposta: meio green!</b>",
+      resultado: `Metade ganhou, metade voltou. Lucro: <b>+${money(profit / 2)}</b> · banca atualizada 📊`,
+    },
+    half_lost: {
+      header: "❌ <b>Fechei sua aposta: meio red.</b>",
+      resultado: `Metade voltou, metade perdeu. Prejuízo: <b>−${money(bet.stake_amount / 2)}</b> · banca atualizada 📊`,
+    },
+  };
+  const header = COPY[verdict].header;
+  const resultado = COPY[verdict].resultado;
   const text = [
     header,
     placarLine(wc),
@@ -336,7 +403,7 @@ async function sendAutoSettleDm(bet: Candidate, wc: WcMatch, verdict: "won" | "l
 // Liquida com guarda otimista (status='pending'); false = não liquidou (cai no
 // fluxo de pergunta). Ordem deliberada: grava ANTES de avisar — o valor está
 // na banca certa; a DM falhar não desfaz a liquidação.
-async function autoSettle(supabase: any, bet: Candidate, wc: WcMatch, verdict: "won" | "lost"): Promise<boolean> {
+async function autoSettle(supabase: any, bet: Candidate, wc: WcMatch, verdict: SettleStatus): Promise<boolean> {
   const evidence = `${wc.home_team} ${wc.fulltime_home}×${wc.fulltime_away} ${wc.away_team} (90') · wc_matches ${wc.id}`;
   const { data: cur } = await supabase.from("bets").select("processed_data").eq("id", bet.bet_id).maybeSingle();
   const pd = cur?.processed_data && typeof cur.processed_data === "object" && !Array.isArray(cur.processed_data)
