@@ -503,7 +503,8 @@ export const SpecialPredictionsSection: React.FC<Props> = ({
   }, [summary]);
 
   // Merge com defaults — bolões criados antes das Oitavas não têm round_of_16 no points.
-  const pts: PointsConfig = { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1, ...(pointsConfig ?? {}) };
+  // round_of_16: 1 = mesmo fallback do BolaoAdminPanel e do backfill (migration 077).
+  const pts: PointsConfig = { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1, ...(pointsConfig ?? {}) };
   const POINTS_LABEL: Record<SpecialType, string> = {
     finalist: `+${pts.finalist} pts cada`,
     semifinalist: `+${pts.semifinalist} pts cada`,

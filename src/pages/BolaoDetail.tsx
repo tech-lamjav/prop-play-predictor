@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { usePostHog } from '@posthog/react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -28,6 +29,7 @@ import {
   computeMatchDeadline,
 } from '@/hooks/use-bolao';
 import { BolaoRankingTable } from '@/components/bolao/BolaoRankingTable';
+import { BolaoHandoffCard } from '@/components/bolao/BolaoHandoffCard';
 import { UserPredictionsModal } from '@/components/bolao/UserPredictionsModal';
 import { BolaoShareButton } from '@/components/bolao/BolaoShareButton';
 import { BolaoAdminPanel } from '@/components/bolao/BolaoAdminPanel';
@@ -93,6 +95,7 @@ const BolaoDetail: React.FC = () => {
     });
   };
   const [activeTab, setActiveTab] = useState<Tab>('ranking');
+  const posthog = usePostHog();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [showAdmin, setShowAdmin] = useState(false);
   const [showPremiumWelcome, setShowPremiumWelcome] = useState(false);
@@ -106,6 +109,14 @@ const BolaoDetail: React.FC = () => {
       setCurrentUserId(data.user?.id);
     });
   }, []);
+
+  // Analytics: visualização do ranking do bolão. Marca "usuário ativo no bolão" — base da
+  // coorte de migração para Betinho/Futebol no handoff de 19/jul (métrica E4 do plano).
+  useEffect(() => {
+    if (id && activeTab === 'ranking') {
+      posthog?.capture('bolao_ranking_viewed', { bolao_id: id });
+    }
+  }, [id, activeTab, posthog]);
 
   const [predictionsModalOpen, setPredictionsModalOpen] = useState(false);
   const [specialPredictionsOpen, setSpecialPredictionsOpen] = useState(false);
@@ -230,6 +241,23 @@ const BolaoDetail: React.FC = () => {
   const totalAvailableMatches = useMemo(
     () => matches?.filter(m => !m.is_finished && m.home_team_code !== 'TBD').length ?? 0,
     [matches]
+  );
+
+  // ── Passagem de bastão (H1): cartão de encerramento na aba Ranking ──
+  // Só quando a FINAL está encerrada (o bolão acabou de verdade); ?handoff
+  // na URL força a exibição pra preview/QA sem esperar o dia 19.
+  const finalOver = useMemo(
+    () => (matches ?? []).some(m => m.stage === 'final' && m.is_finished),
+    [matches]
+  );
+  const handoffForced = useMemo(
+    () => new URLSearchParams(window.location.search).has('handoff'),
+    []
+  );
+  const showHandoff = finalOver || handoffForced;
+  const myRankingEntry = useMemo(
+    () => ranking?.find(r => r.user_id === currentUserId) ?? null,
+    [ranking, currentUserId]
   );
 
   const predictionsByMatch = useMemo(
@@ -726,6 +754,14 @@ const BolaoDetail: React.FC = () => {
             {/* Tab: Ranking */}
             {activeTab === 'ranking' && (
               <div role="tabpanel" id="bolao-tab-panel-ranking" aria-labelledby="bolao-tab-ranking">
+                {showHandoff && bolao && (
+                  <BolaoHandoffCard
+                    bolaoId={bolao.id}
+                    bolaoName={bolao.name}
+                    myRank={myRankingEntry?.rank ?? null}
+                    totalPlayers={ranking?.length ?? 0}
+                  />
+                )}
                 {ranking && ranking.length > 1 && (
                   <div className="flex items-center justify-end gap-3 mb-3 flex-wrap text-[12px] text-ink-2">
                     <div className="inline-flex items-center rounded-rebrand-sm border border-line overflow-hidden mr-1" role="group" aria-label="Conteúdo da imagem">

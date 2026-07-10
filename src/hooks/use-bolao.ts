@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePostHog } from '@posthog/react';
 import { bolaoService } from '@/services/bolao.service';
 import type { WcMatch } from '@/services/bolao.service';
 
@@ -122,6 +123,7 @@ export function useBolaoPredictions(bolaoId: string | undefined, userId?: string
 
 export function useUpsertPrediction() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
 
   return useMutation({
     mutationFn: (params: {
@@ -131,6 +133,7 @@ export function useUpsertPrediction() {
       predicted_away_score: number;
     }) => bolaoService.upsertPrediction(params),
     onSuccess: (_data, variables) => {
+      posthog?.capture('bolao_palpite_saved', { mode: 'single', count: 1, bolao_id: variables.bolao_id });
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolao_id] });
       // user_predictions/pending_predictions na home dependem disso
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
@@ -153,6 +156,7 @@ export function useDeletePrediction() {
 
 export function useUpsertPredictionsBatch() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
 
   return useMutation({
     mutationFn: (params: {
@@ -160,6 +164,7 @@ export function useUpsertPredictionsBatch() {
       predictions: { match_id: number; predicted_home_score: number; predicted_away_score: number }[];
     }) => bolaoService.upsertPredictionsBatch(params.bolaoId, params.predictions),
     onSuccess: (_data, variables) => {
+      posthog?.capture('bolao_palpite_saved', { mode: 'batch', count: variables.predictions.length, bolao_id: variables.bolaoId });
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['bolao-ranking', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
