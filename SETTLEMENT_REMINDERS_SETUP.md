@@ -42,13 +42,15 @@ sugerido** ("pelo placar, essa bateu ✅").
 - **Cadência**: máx. **2 lembretes por aposta**, gap de 20h; máx. **3 mensagens por usuário por run**.
 - **AUTO-LIQUIDAÇÃO** (decisão de produto 09/07): **match perfeito** — jogo casado
   com `wc_matches` encerrado + mercado direto (ML/1x2, over/under de **gols**,
-  ambas marcam), sempre pelo **placar dos 90'** — a aposta é **liquidada sozinha**
-  (won/lost + evidência em `processed_data.auto_settle`) e o usuário recebe
-  "✅ Fechei sua aposta: green! ... [↩️ Corrigir]". O **Corrigir** desfaz (volta
-  pra pendente) e devolve os botões clássicos.
-- **Sem match perfeito** — múltipla, handicap, 1º tempo, classificação, escanteios,
-  props, linha exata (push), jogo ambíguo → **pergunta sem afirmar** (botões
-  Green/Red), como sempre.
+  ambas marcam e **handicap asiático**), sempre pelo **placar dos 90'** — a aposta
+  é **liquidada sozinha** (won/lost/void/half_won/half_lost + evidência em
+  `processed_data.auto_settle`) e o usuário recebe "✅ Fechei sua aposta: green!
+  ... [↩️ Corrigir]". O **Corrigir** desfaz (volta pra pendente) e devolve os
+  botões clássicos. Handicap: linha inteira pode dar push → **void** (anulada,
+  stake devolvido); linha quarter (±0.25/±0.75) → **meio green/meio red**.
+- **Sem match perfeito** — múltipla, 1º tempo, classificação, escanteios, props,
+  handicap europeu ("empate −1"), O/U em linha exata, jogo ambíguo → **pergunta
+  sem afirmar** (botões Green/Red), como sempre.
 - **Genérica** (sem placar no banco): `match_date` passou há 3h+ (ou aposta com 24h+
   quando sem data de jogo), só entre **09h–23h BRT**.
 - **Opt-out**: botão 🔕 na mensagem ou `/silenciar`; `/lembretes` reativa
