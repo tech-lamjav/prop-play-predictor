@@ -189,9 +189,10 @@ const Auth = () => {
       }
 
       toast({ title: "Conta criada!", description: "Você já pode começar a usar a plataforma." });
-      // Fix: antes era hard-coded /onboarding, ignorando state.from. Agora
-      // respeita o redirect target (ex: vindo da LP do bolão).
-      navigate(getRedirectTarget(location.state));
+      // state.from explícito continua vencendo (ex: vindo da LP do bolão), mas o
+      // fallback do CADASTRO é o onboarding do Betinho (decisão D1, 2026-07-08 —
+      // docs/onboarding-betinho-redesign.md): o antigo /bolao expira com a Copa.
+      navigate(getRedirectTarget(location.state, '/onboarding?src=signup'));
     } catch (error) {
       toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
     } finally {

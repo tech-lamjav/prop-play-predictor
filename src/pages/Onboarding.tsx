@@ -1,456 +1,294 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { telegramBotUrl } from '@/config/environment';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { Progress } from '../components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import UserNav from '../components/UserNav';
-import AnalyticsNav from '../components/AnalyticsNav';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import {
-  CheckCircle,
-  ArrowRight,
-  ArrowLeft,
-  Smartphone,
-  Shield,
-  BarChart3,
+  Camera,
+  LineChart,
+  Megaphone,
   Send,
-  Gamepad2
+  Check,
+  Loader2,
+  ArrowRight,
+  RefreshCw,
 } from 'lucide-react';
+import AnalyticsNav from '../components/AnalyticsNav';
+import { telegramBotUsername } from '../config/environment';
 import { createClient } from '../integrations/supabase/client';
+
+// Onboarding do Betinho — redesign benefit-led (docs/onboarding-betinho-redesign.md).
+// Momento 1: valor (3 benefícios, CTA único). Momento 2: conexão por deep-link com
+// token de uso único + polling até o vínculo confirmar — nunca um "Finalizar" cego.
+// O telefone continua sendo coletado no cadastro (CRM), mas NÃO participa do vínculo.
+
+type Stage = 'value' | 'connecting' | 'connected' | 'timeout';
+
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 40; // ~2 min
+
+const BENEFITS = [
+  {
+    icon: Camera,
+    title: 'Registre sem digitar',
+    description: 'Manda um print, texto ou áudio da aposta no Telegram — o Betinho entende e registra.',
+  },
+  {
+    icon: LineChart,
+    title: 'Seu ROI de verdade',
+    description: 'Liquidação, banca e resultado real por esporte — sem planilha, sem autoengano.',
+  },
+  {
+    icon: Megaphone,
+    title: 'O dia chega até você',
+    description: 'Oportunidades do dia, avisos de resultado e novidades direto no seu Telegram.',
+  },
+] as const;
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
   const supabase = createClient();
-  const isBetinhoOnly = searchParams.get('product') === 'betinho' || (location.state as { onboardingProduct?: string })?.onboardingProduct === 'betinho';
 
-  const [currentStep, setCurrentStep] = useState(isBetinhoOnly ? 1 : 0);
-  const [formData, setFormData] = useState({
-    whatsappNumber: '',
-    countryCode: '+55' // Default to Brazil
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
-  const [whatsappSynced, setWhatsappSynced] = useState(false);
+  const [stage, setStage] = useState<Stage>('value');
+  const [error, setError] = useState('');
 
-  // Steps 1 (number) and 2 (telegram) — name/email já vêm do cadastro
-  const steps = [
-    {
-      id: 1,
-      title: 'Número para o Betinho',
-      description: 'Confirme ou altere seu número para conectar ao bot no Telegram',
-      icon: Send
-    },
-    {
-      id: 2,
-      title: 'Finalização',
-      description: 'Conecte com o bot no Telegram',
-      icon: CheckCircle
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const connectStartedAt = useRef<number | null>(null);
+  const viewedFired = useRef(false);
+
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
     }
-  ];
+  }, []);
 
-  const progress = currentStep === 0 ? 0 : (currentStep / 2) * 100;
-  const showChoiceStep = currentStep === 0;
+  useEffect(() => () => stopPolling(), [stopPolling]);
 
-  // Parse stored whatsapp_number into country code + local number for pre-fill
-  const parseStoredPhone = (stored: string | null): { countryCode: string; number: string } => {
-    if (!stored) return { countryCode: '+55', number: '' };
-    const digits = stored.replace(/\D/g, '');
-    const codes = ['55', '1', '54', '56', '57', '351', '34', '39'];
-    for (const c of codes) {
-      if (digits.startsWith(c)) {
-        return { countryCode: `+${c}`, number: digits.slice(c.length) };
-      }
-    }
-    return { countryCode: '+55', number: digits };
-  };
-
+  // Auth + estado inicial: quem já está vinculado não refaz o fluxo.
   useEffect(() => {
-    // Check if user is already authenticated
-    const checkUser = async () => {
+    const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        // Check if user already completed onboarding (include whatsapp_number for pre-fill)
-        const { data: userData } = await supabase
-          .from('users')
-          .select('name, email, whatsapp_number, whatsapp_synced')
-          .eq('id', user.id)
-          .single();
-        
-        if (userData?.name && userData?.email) {
-          const { countryCode, number } = parseStoredPhone(userData.whatsapp_number ?? null);
-          setFormData({
-            whatsappNumber: number,
-            countryCode,
-          });
-          setWhatsappSynced(!!userData.whatsapp_synced);
-        }
-      } else {
-        navigate('/auth');
+      if (!user) {
+        navigate('/auth', { state: { from: { pathname: '/onboarding' } } });
+        return;
+      }
+      setUserId(user.id);
+
+      const { data: row } = await supabase
+        .from('users')
+        .select('telegram_chat_id')
+        .eq('id', user.id)
+        .single();
+      const alreadySynced = !!row?.telegram_chat_id;
+      if (alreadySynced) setStage('connected');
+
+      if (!viewedFired.current) {
+        viewedFired.current = true;
+        posthog?.capture('betinho_onboarding_viewed', {
+          product: 'betinho',
+          source: searchParams.get('src') ?? 'direct',
+          already_synced: alreadySynced,
+        });
       }
     };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    checkUser();
-  }, [navigate, supabase.auth]);
-
-  const handleStep1Submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      if (!userId) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      const cleanNumber = formData.whatsappNumber.replace(/\D/g, '');
-      if (cleanNumber.length < 8) {
-        throw new Error('Número de telefone inválido');
-      }
-
-      const fullNumber = formData.countryCode.replace(/\D/g, '') + cleanNumber;
-
-      const { error } = await supabase
+  const startPolling = useCallback(() => {
+    stopPolling();
+    let attempts = 0;
+    pollTimer.current = setInterval(async () => {
+      attempts++;
+      const { data: row } = await supabase
         .from('users')
-        .update({ whatsapp_number: fullNumber })
-        .eq('id', userId);
-
-      if (error) {
-        throw error;
+        .select('telegram_chat_id')
+        .eq('id', userId!)
+        .single();
+      if (row?.telegram_chat_id) {
+        stopPolling();
+        setStage('connected');
+        posthog?.capture('betinho_onboarding_synced', {
+          product: 'betinho',
+          elapsed_s: connectStartedAt.current
+            ? Math.round((Date.now() - connectStartedAt.current) / 1000)
+            : null,
+        });
+        return;
       }
+      if (attempts >= POLL_MAX_ATTEMPTS) {
+        stopPolling();
+        setStage('timeout');
+      }
+    }, POLL_INTERVAL_MS);
+  }, [posthog, stopPolling, supabase, userId]);
 
-      setCurrentStep(2);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar número');
-    } finally {
-      setIsLoading(false);
+  const handleConnect = async () => {
+    if (!userId) return;
+    setError('');
+    posthog?.capture('betinho_onboarding_link_clicked', { product: 'betinho' });
+    try {
+      const { data: token, error: rpcError } = await supabase.rpc('get_telegram_link_token');
+      if (rpcError || !token) throw rpcError ?? new Error('token vazio');
+      connectStartedAt.current = Date.now();
+      window.open(`https://t.me/${telegramBotUsername}?start=link_${token}`, '_blank');
+      setStage('connecting');
+      startPolling();
+    } catch {
+      setError('Não consegui gerar seu link agora. Tenta de novo em instantes.');
     }
   };
 
-  const handleTelegramOpen = () => {
-    window.open(telegramBotUrl, '_blank');
-  };
-
-  const handleComplete = () => {
+  const handleWebFallback = () => {
+    posthog?.capture('betinho_onboarding_web_fallback', { product: 'betinho' });
     navigate('/bets');
   };
 
-  const renderStep0 = () => (
-    <div className="max-w-md mx-auto">
-      <div className="terminal-container p-6 rounded-lg">
-        <h2 className="section-title text-base md:text-lg text-center mb-2 text-terminal-blue">
-          O que você quer fazer primeiro?
-        </h2>
-        <p className="text-center text-sm text-terminal-text opacity-70 mb-6">
-          Escolha como começar no Smartbetting
-        </p>
-        <div className="space-y-4">
-          <button
-            type="button"
-            onClick={() => navigate('/home-nba')}
-            className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
-          >
-            <Gamepad2 className="w-8 h-8 text-terminal-blue" />
-            <span className="font-semibold text-terminal-blue">Conhecer análises</span>
-            <span className="text-sm text-terminal-text opacity-80 font-normal">
-              Ver jogos, props e dashboards da NBA
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => whatsappSynced ? navigate('/bets') : setCurrentStep(1)}
-            className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
-          >
-            <Send className="w-8 h-8 text-terminal-blue" />
-            <span className="font-semibold text-terminal-blue">
-              {whatsappSynced ? 'Acessar Betinho' : 'Configurar Betinho (Telegram)'}
-            </span>
-            <span className="text-sm text-terminal-text opacity-80 font-normal">
-              {whatsappSynced ? 'Ir para suas apostas' : 'Registrar apostas via bot no Telegram'}
-            </span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStep1 = () => (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-          <Send className="w-6 h-6 text-blue-600" />
-        </div>
-        <CardTitle>Número para o Betinho</CardTitle>
-        <CardDescription>
-          Confirme ou altere seu número. Este número será usado para conectar ao bot no Telegram.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleStep1Submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp">Telefone</Label>
-            <div className="flex gap-2">
-              <Select
-                value={formData.countryCode}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, countryCode: value }))}
-              >
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="+55">🇧🇷 +55</SelectItem>
-                  <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                  <SelectItem value="+54">🇦🇷 +54</SelectItem>
-                  <SelectItem value="+56">🇨🇱 +56</SelectItem>
-                  <SelectItem value="+57">🇨🇴 +57</SelectItem>
-                  <SelectItem value="+351">🇵🇹 +351</SelectItem>
-                  <SelectItem value="+34">🇪🇸 +34</SelectItem>
-                  <SelectItem value="+39">🇮🇹 +39</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                id="whatsapp"
-                type="tel"
-                placeholder="(11) 99999-9999"
-                value={formData.whatsappNumber}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  setFormData(prev => ({ ...prev, whatsappNumber: value }));
-                }}
-                className="flex-1"
-                required
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Código do país selecionado: {formData.countryCode}
-            </p>
-          </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex space-x-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setCurrentStep(0)}
-              className="flex-1"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-            <Button type="submit" className="flex-1" disabled={isLoading}>
-              {isLoading ? 'Salvando...' : 'Continuar'}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
-
-  const renderStep2 = () => (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-          <CheckCircle className="w-6 h-6 text-green-600" />
-        </div>
-        <CardTitle>Conecte com o bot</CardTitle>
-        <CardDescription>
-          Abra o bot no Telegram e compartilhe seu número
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="bg-muted p-4 rounded-lg">
-          <p className="text-sm text-foreground mb-2">
-            <strong>Instruções:</strong>
-          </p>
-          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-            <li>Clique no botão abaixo</li>
-            <li>No Telegram, toque em <em>Start</em> (/start)</li>
-            <li>Toque em “Enviar meu número” para sincronizar</li>
-            <li>Depois, finalize aqui</li>
-          </ol>
-        </div>
-
-        <Button 
-          onClick={handleTelegramOpen}
-          className="w-full bg-blue-600 hover:bg-blue-700"
-        >
-          <Send className="w-4 h-4 mr-2" />
-          Abrir bot no Telegram
-        </Button>
-
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setCurrentStep(1)}
-            className="flex-1"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-          <Button 
-            onClick={handleComplete} 
-            className="flex-1"
-          >
-            Finalizar
-            <CheckCircle className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   if (!userId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-terminal-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green"></div>
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-forest animate-spin" />
       </div>
     );
   }
 
-  // Step 0: choice screen — same design system as analytics platform (terminal theme)
-  if (showChoiceStep) {
-    return (
-      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav />
-        <div className="container mx-auto px-4 py-8 md:py-12">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-terminal-blue mb-2">
-              BEM-VINDO AO SMARTBETTING
-            </h1>
-            <p className="text-sm text-terminal-text opacity-70">
-              Escolha como começar
-            </p>
-          </div>
-          {renderStep0()}
-        </div>
-      </div>
-    );
-  }
-
-  // Betinho onboarding steps (1–3): original Smartbetting layout
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-white" />
+    <div className="theme-bolao min-h-screen bg-canvas">
+      <AnalyticsNav />
+
+      <div className="container mx-auto px-4 py-10 md:py-16 max-w-lg">
+        {/* ── Momento 1: valor ─────────────────────────────────── */}
+        {stage === 'value' && (
+          <>
+            <div className="text-center mb-8">
+              <h1 className="text-2xl md:text-3xl font-bold text-ink mb-2">
+                Conheça o Betinho
+              </h1>
+              <p className="text-[15px] text-ink-2">
+                Seu assistente de apostas no Telegram — registro, resultado e as oportunidades do dia num lugar só.
+              </p>
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
-          </div>
-          <UserNav />
-        </div>
-      </nav>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Bem-vindo ao Smartbetting
-          </h1>
-          <p className="text-muted-foreground">
-            Vamos configurar sua conta em poucos passos
-          </p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-foreground">
-              Passo {currentStep} de 2
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {Math.round(progress)}% concluído
-            </span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-
-        {/* Steps Navigation */}
-        <div className="flex justify-center mb-8">
-          <div className="flex space-x-4">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-              
-              return (
+            <div className="space-y-3 mb-8">
+              {BENEFITS.map(({ icon: Icon, title, description }) => (
                 <div
-                  key={step.id}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isActive 
-                      ? 'bg-primary/10 text-primary border border-primary/20' 
-                      : isCompleted 
-                        ? 'bg-green-100 text-green-700 border border-green-200' 
-                        : 'bg-muted text-muted-foreground border border-border'
-                  }`}
+                  key={title}
+                  className="flex items-start gap-4 bg-white border border-line rounded-xl p-4"
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{step.title}</span>
+                  <div className="w-10 h-10 rounded-lg bg-forest-tint flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-forest" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
+                    <p className="text-[13px] text-ink-2 leading-snug">{description}</p>
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            {error && (
+              <p className="text-[13px] text-status-danger text-center mb-4">{error}</p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleConnect}
+              className="w-full h-12 rounded-lg bg-forest hover:bg-forest-soft text-white text-[15px] font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              Conectar meu Telegram
+            </button>
+            <p className="text-center text-[12px] text-ink-2 mt-3">
+              Abre o Telegram, toca em <strong>Iniciar</strong> e pronto — sem digitar nada.
+            </p>
+
+            <div className="text-center mt-6">
+              <button
+                type="button"
+                onClick={handleWebFallback}
+                className="text-[13px] text-ink-2 underline underline-offset-2 hover:text-ink transition-colors"
+              >
+                Não uso Telegram — registrar pela web
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── Momento 2: aguardando conexão ────────────────────── */}
+        {stage === 'connecting' && (
+          <div className="text-center pt-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-forest-tint flex items-center justify-center mb-5">
+              <Loader2 className="w-7 h-7 text-forest animate-spin" />
+            </div>
+            <h1 className="text-xl font-bold text-ink mb-2">Aguardando o Telegram…</h1>
+            <p className="text-[14px] text-ink-2 mb-6 max-w-sm mx-auto">
+              No Telegram que abriu, toca em <strong>Iniciar</strong> (/start). Assim que conectar, esta tela confirma sozinha.
+            </p>
+            <button
+              type="button"
+              onClick={handleConnect}
+              className="text-[13px] text-forest font-semibold underline underline-offset-2"
+            >
+              O Telegram não abriu? Gerar link de novo
+            </button>
           </div>
-        </div>
+        )}
 
-        {/* Step Content */}
-        <div className="flex justify-center">
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-        </div>
+        {/* ── Conectado ────────────────────────────────────────── */}
+        {stage === 'connected' && (
+          <div className="text-center pt-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-forest flex items-center justify-center mb-5">
+              <Check className="w-7 h-7 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-ink mb-2">Conectado!</h1>
+            <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
+              O Betinho já te mandou uma mensagem — <strong>manda sua primeira aposta pra ele</strong> (print ou texto) e ela aparece aqui na hora.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/bets')}
+              className="w-full h-12 rounded-lg bg-forest hover:bg-forest-soft text-white text-[15px] font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              Ver minhas apostas
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
-        {/* Features Preview */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <Smartphone className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Telegram Integration</h3>
-              <p className="text-sm text-muted-foreground">
-                Envie apostas via texto, áudio ou imagem
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Shield className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Segurança</h3>
-              <p className="text-sm text-muted-foreground">
-                Seus dados protegidos com criptografia
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                <BarChart3 className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Analytics</h3>
-              <p className="text-sm text-muted-foreground">
-                Acompanhe sua performance em tempo real
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* ── Timeout do polling ───────────────────────────────── */}
+        {stage === 'timeout' && (
+          <div className="text-center pt-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mb-5">
+              <RefreshCw className="w-7 h-7 text-amber-600" />
+            </div>
+            <h1 className="text-xl font-bold text-ink mb-2">Ainda não conectou</h1>
+            <p className="text-[14px] text-ink-2 mb-6 max-w-sm mx-auto">
+              Sem problema — clica de novo abaixo e toca em <strong>Iniciar</strong> no Telegram.
+            </p>
+            {error && (
+              <p className="text-[13px] text-status-danger mb-4">{error}</p>
+            )}
+            <button
+              type="button"
+              onClick={handleConnect}
+              className="w-full h-12 rounded-lg bg-forest hover:bg-forest-soft text-white text-[15px] font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              Tentar de novo
+            </button>
+            <div className="text-center mt-6">
+              <button
+                type="button"
+                onClick={handleWebFallback}
+                className="text-[13px] text-ink-2 underline underline-offset-2 hover:text-ink transition-colors"
+              >
+                Registrar pela web
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
