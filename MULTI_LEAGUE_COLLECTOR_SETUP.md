@@ -37,6 +37,9 @@ Fora de janela de jogo: **zero** invocação — o gate é SQL no próprio cron.
 ```sql
 update leagues_config set enabled = true where league_id = 39; -- Premier volta 15/08
 ```
+⚠️ Ao habilitar liga no meio do dia, rode 1 curl de `?mode=calendar` na sequência —
+os jogos dela só entrariam sozinhos no calendário das 04h, e sem fixtures no banco
+o gate do live não abre pra ela.
 
 ## Plano de rollout (dual-run — decidido no parecer)
 

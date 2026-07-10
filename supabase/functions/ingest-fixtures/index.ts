@@ -34,7 +34,10 @@ const API_SPORTS_KEY = Deno.env.get("API_SPORTS_KEY") || "";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const ADMIN_CHAT_ID = Deno.env.get("ADMIN_TELEGRAM_CHAT_ID") || "";
 
-const TERMINAL = new Set(["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO"]);
+// PST (adiado) incluído: o portão do cron já o ignora, e sem ele aqui a
+// confirmação re-consultaria o jogo adiado a cada rodada enquanto outro
+// jogo mantivesse a janela aberta (achado da revisão do PR)
+const TERMINAL = new Set(["FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"]);
 const ALERT_AFTER_FAILURES = 5;
 
 function json(body: unknown, status = 200): Response {
@@ -160,11 +163,16 @@ serve(async (req) => {
       if (pErr) throw pErr;
       const enabledKey = new Set(leagues.map((l) => `${l.league_id}:${l.season}`));
       const toConfirm = (pendData ?? [])
-        .filter((f: any) =>
-          enabledKey.has(`${f.league_id}:${f.season}`) &&
-          !TERMINAL.has(f.status_short ?? "NS") &&
-          !liveIds.has(f.fixture_id)
-        )
+        .filter((f: any) => {
+          if (!enabledKey.has(`${f.league_id}:${f.season}`)) return false;
+          if (TERMINAL.has(f.status_short ?? "NS")) return false;
+          if (liveIds.has(f.fixture_id)) return false;
+          // jogo que nunca apareceu no live (NS/TBD): início atrasado é comum —
+          // espera 45min do kickoff antes de gastar chamada conferindo
+          const neverStarted = (f.status_short ?? "NS") === "NS" || f.status_short === "TBD";
+          if (neverStarted && new Date(f.kickoff_utc).getTime() > Date.now() - 45 * 60_000) return false;
+          return true;
+        })
         .map((f: any) => f.fixture_id);
 
       for (let i = 0; i < toConfirm.length; i += 20) {
