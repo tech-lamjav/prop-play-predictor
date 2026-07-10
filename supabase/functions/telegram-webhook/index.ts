@@ -14,6 +14,7 @@ const TELEGRAM_API_BASE = TELEGRAM_BOT_TOKEN
 
 const DAILY_BET_LIMIT = 3
 const TIMEZONE_GMT3 = "America/Cuiaba"
+const BETS_DASHBOARD_URL = "https://www.smartbetting.app/bets"
 
 // Simple in-memory guard to avoid reprocessing the same update_id on retries
 const processedUpdateIds = new Set<number>()
@@ -49,6 +50,14 @@ interface TelegramMessage {
   document?: TelegramFile
   // Telegram sends thumbnails as "thumbnail" in documents; not used directly
   thumbnail?: TelegramFile
+}
+
+// Toque num botão inline (lembrete de liquidação do notify-settlement)
+interface TelegramCallbackQuery {
+  id: string
+  from?: TelegramUser
+  message?: { message_id: number; chat: { id: number } }
+  data?: string
 }
 
 interface ProcessedBet {
@@ -291,6 +300,224 @@ async function sendConfirmationMessageTelegram(
   ].join("\n")
 
   await sendTelegramMessage(chatId, confirmationMessage)
+}
+
+// ============================================================
+// Liquidação por botão — [✅ Green] [❌ Red] do lembrete (notify-settlement)
+// ============================================================
+
+// Escapa HTML (os lembretes e suas edições usam parse_mode HTML)
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
+const formatBRL = (v: number) => `R$ ${Number(v ?? 0).toFixed(2).replace(".", ",")}`
+
+async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
+  await telegramCall("answerCallbackQuery", { callback_query_id: callbackQueryId, text })
+}
+
+// Reescreve a mensagem do lembrete como recibo da liquidação (some o teclado)
+async function editSettledMessage(chatId: string | number, messageId: number, html: string): Promise<void> {
+  await telegramCall("editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text: html,
+    parse_mode: "HTML",
+    disable_web_page_preview: true
+  })
+}
+
+function settledHtml(bet: any, status: string): string {
+  const jogo = bet.match_description ? `\n${escHtml(bet.match_description)}` : ""
+  const base = `<b>${escHtml(bet.bet_description)}</b>${jogo}`
+  if (status === "won") {
+    const lucro = (bet.potential_return ?? 0) - (bet.stake_amount ?? 0)
+    return `✅ <b>Green registrado!</b>\n\n${base}\nLucro: +${formatBRL(lucro)}\n\nBanca atualizada 📊 ${BETS_DASHBOARD_URL}`
+  }
+  if (status === "lost") {
+    return `❌ <b>Red registrado.</b>\n\n${base}\nPrejuízo: −${formatBRL(bet.stake_amount)}\n\nFaz parte. Banca atualizada 📊 ${BETS_DASHBOARD_URL}`
+  }
+  return `Registrada como <b>${escHtml(status)}</b>.\n\n${base}`
+}
+
+async function handleCallbackQuery(
+  supabase: any,
+  cq: TelegramCallbackQuery,
+  traceId: string
+): Promise<Response> {
+  const ok = (msg: string) =>
+    new Response(JSON.stringify({ success: true, message: msg }), {
+      headers: { "Content-Type": "application/json" },
+      status: 200
+    })
+
+  const data = cq.data || ""
+  const chatId = cq.message?.chat?.id
+  const messageId = cq.message?.message_id
+
+  if (!chatId || !messageId) {
+    await answerCallbackQuery(cq.id).catch(() => {})
+    return ok("callback without message")
+  }
+
+  const user = await findUserByTelegram(
+    supabase,
+    cq.from?.id ? String(cq.from.id) : undefined,
+    String(chatId),
+    traceId
+  )
+  if (!user) {
+    await answerCallbackQuery(cq.id, "Não achei sua conta. Manda /start pra sincronizar.")
+    return ok("callback user not found")
+  }
+
+  // 🔕 mute:<bet_id> — para os lembretes; mantém os botões de liquidar desta aposta
+  if (data.startsWith("mute:")) {
+    const betId = data.slice("mute:".length)
+    await supabase.from("users").update({ settlement_reminders_muted: true }).eq("id", user.id)
+    await telegramCall("editMessageReplyMarkup", {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Green", callback_data: `settle:${betId}:won` },
+            { text: "❌ Red", callback_data: `settle:${betId}:lost` }
+          ],
+          [{ text: "Outras opções ↗", url: BETS_DASHBOARD_URL }]
+        ]
+      }
+    })
+    await answerCallbackQuery(cq.id, "🔕 Ok, sem mais lembretes. Reative mandando /lembretes.")
+    await trackEvent(
+      "settlement_reminders_muted",
+      { via: "button", channel: "telegram" },
+      user.id,
+      traceId
+    ).catch(() => {})
+    return ok("reminders muted")
+  }
+
+  // ↩️ fix:<bet_id> — desfaz a AUTO-liquidação (notify-settlement): volta pra
+  // pendente e devolve os botões clássicos pro usuário dizer o resultado certo
+  if (data.startsWith("fix:")) {
+    const betId = data.slice("fix:".length)
+
+    const { data: bet } = await supabase
+      .from("bets")
+      .select("id, user_id, status, bet_description, match_description, stake_amount, potential_return, processed_data")
+      .eq("id", betId)
+      .maybeSingle()
+
+    if (!bet || bet.user_id !== user.id) {
+      await answerCallbackQuery(cq.id, "Não achei essa aposta na sua conta.")
+      return ok("fix: bet not found or not owner")
+    }
+    const REVERTIBLE = ["won", "lost", "void", "half_won", "half_lost"] // nunca cashout
+    if (!REVERTIBLE.includes(bet.status)) {
+      await answerCallbackQuery(cq.id, "Essa aposta não está mais liquidada 👍")
+      return ok("fix: invalid status")
+    }
+
+    const pd = bet.processed_data && typeof bet.processed_data === "object" && !Array.isArray(bet.processed_data)
+      ? bet.processed_data
+      : {}
+    const { error: fixErr } = await supabase
+      .from("bets")
+      .update({
+        status: "pending",
+        processed_data: {
+          ...pd,
+          auto_settle: { ...((pd as any).auto_settle ?? {}), corrected_at: new Date().toISOString() },
+        },
+      })
+      .eq("id", betId)
+      .in("status", ["won", "lost", "void", "half_won", "half_lost"]) // nunca reverte cashout
+
+    if (fixErr) {
+      await answerCallbackQuery(cq.id, "Deu ruim ao desfazer — tenta de novo.")
+      return ok("fix: update failed")
+    }
+
+    await telegramCall("editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
+      text: `↩️ Desfeito — voltou pra pendente.\n\n<b>${escHtml(bet.bet_description)}</b>${bet.match_description ? `\n${escHtml(bet.match_description)}` : ""}\n\nComo foi essa?`,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Green", callback_data: `settle:${betId}:won` },
+            { text: "❌ Red", callback_data: `settle:${betId}:lost` }
+          ],
+          [{ text: "Outras opções ↗", url: BETS_DASHBOARD_URL }]
+        ]
+      }
+    })
+    await answerCallbackQuery(cq.id, "↩️ Desfeito.")
+    await trackEvent(
+      "auto_settle_corrected",
+      { bet_id: betId, previous_status: bet.status, channel: "telegram" },
+      user.id,
+      traceId
+    ).catch(() => {})
+    return ok("auto settle corrected")
+  }
+
+  // ✅/❌ settle:<bet_id>:<won|lost>
+  if (data.startsWith("settle:")) {
+    const [, betId, outcome] = data.split(":")
+    if (!betId || (outcome !== "won" && outcome !== "lost")) {
+      await answerCallbackQuery(cq.id, "Não entendi esse toque 🤔")
+      return ok("bad callback data")
+    }
+
+    const { data: bet } = await supabase
+      .from("bets")
+      .select("id, user_id, status, bet_description, match_description, stake_amount, potential_return, odds")
+      .eq("id", betId)
+      .maybeSingle()
+
+    // dono confere? (callback vem do Telegram; a aposta TEM que ser deste usuário)
+    if (!bet || bet.user_id !== user.id) {
+      await answerCallbackQuery(cq.id, "Não achei essa aposta na sua conta.")
+      return ok("bet not found or not owner")
+    }
+
+    if (bet.status !== "pending") {
+      await answerCallbackQuery(cq.id, "Essa já estava registrada 👍")
+      await editSettledMessage(chatId, messageId, settledHtml(bet, bet.status)).catch(() => {})
+      return ok("already settled")
+    }
+
+    const { data: updated, error: updErr } = await supabase
+      .from("bets")
+      .update({ status: outcome })
+      .eq("id", betId)
+      .eq("status", "pending") // guarda otimista: dois toques ≠ duas liquidações
+      .select()
+      .maybeSingle()
+
+    if (updErr || !updated) {
+      await answerCallbackQuery(cq.id, "Deu ruim ao registrar — tenta de novo.")
+      return ok("settle update failed")
+    }
+
+    await editSettledMessage(chatId, messageId, settledHtml(updated, outcome)).catch(() => {})
+    await answerCallbackQuery(cq.id, outcome === "won" ? "✅ Green registrado!" : "❌ Red registrado.")
+    await trackEvent(
+      "settlement_settled_via_bot",
+      { bet_id: betId, outcome, channel: "telegram" },
+      user.id,
+      traceId
+    ).catch(() => {})
+    return ok("bet settled")
+  }
+
+  await answerCallbackQuery(cq.id).catch(() => {})
+  return ok("unknown callback")
 }
 
 async function getDailyBetCount(supabase: any, userId: string, traceId?: string): Promise<number> {
@@ -1484,6 +1711,25 @@ serve(async (req) => {
       processedUpdateIds.add(updateId)
     }
 
+    // Toque em botão inline (lembrete de liquidação) — trata e sai antes do fluxo
+    // de mensagem. Requer setWebhook com allowed_updates incluindo callback_query.
+    if (payload.callback_query) {
+      const cbSupabaseUrl = Deno.env.get("SUPABASE_URL")
+      const cbServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      if (!cbSupabaseUrl || !cbServiceKey) {
+        console.error("Missing Supabase configuration (callback_query)")
+        return new Response(
+          JSON.stringify({ success: false, error: "Server configuration error" }),
+          { headers: { "Content-Type": "application/json" }, status: 500 }
+        )
+      }
+      return await handleCallbackQuery(
+        createClient(cbSupabaseUrl, cbServiceKey),
+        payload.callback_query as TelegramCallbackQuery,
+        generateTraceId()
+      )
+    }
+
     const updateMessage: TelegramMessage | undefined = payload.message || payload.edited_message || payload.channel_post
 
     // Log raw payload (truncate to avoid huge logs)
@@ -1668,6 +1914,29 @@ serve(async (req) => {
       user.id,
       traceId
     ).catch(() => {})
+
+    // Preferência dos lembretes de liquidação (par do botão 🔕 do notify-settlement)
+    const command = text.trim().toLowerCase()
+    if (command === "/silenciar" || command === "/lembretes") {
+      const mute = command === "/silenciar"
+      await supabase.from("users").update({ settlement_reminders_muted: mute }).eq("id", user.id)
+      await sendTelegramMessage(
+        chatId,
+        mute
+          ? "🔕 Beleza — parei com os lembretes de liquidação. Pra voltar, é só mandar /lembretes."
+          : "🔔 Lembretes reativados! Quando um jogo seu terminar, eu te chamo aqui pra fechar a aposta."
+      )
+      await trackEvent(
+        mute ? "settlement_reminders_muted" : "settlement_reminders_unmuted",
+        { via: "command", channel: "telegram" },
+        user.id,
+        traceId
+      ).catch(() => {})
+      return new Response(
+        JSON.stringify({ success: true, message: "Reminder preference updated" }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      )
+    }
 
     let actualContent = text
     let mediaUrl: string | null = null
