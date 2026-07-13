@@ -53,6 +53,7 @@ import { useRankingShareImage } from '@/components/bolao/useRankingShareImage';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { WcMatch, BolaoRankingEntry } from '@/services/bolao.service';
+import { applyScoreBasis } from '@/services/bolao.service';
 
 type Tab = 'ranking' | 'estatisticas';
 
@@ -139,7 +140,13 @@ const BolaoDetail: React.FC = () => {
 
   const { data: bolao, isLoading: loadingBolao } = useBolao(id);
   const { data: ranking, isLoading: loadingRanking } = useBolaoRanking(id);
-  const { data: matches } = useWcMatches();
+  const { data: rawMatches } = useWcMatches();
+  // Placar exibido segue a base do bolão: 'regulation' troca o placar do
+  // mata-mata pelo dos 90 min (coerente com a pontuação — migration 084).
+  const matches = useMemo(
+    () => applyScoreBasis(rawMatches, bolao?.knockout_score_basis),
+    [rawMatches, bolao?.knockout_score_basis]
+  );
   const { data: myPredictions } = useBolaoPredictions(id, currentUserId);
   const { data: championPredictions } = useChampionPredictions(id);
 
@@ -423,7 +430,7 @@ const BolaoDetail: React.FC = () => {
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
           enabledTypes={normalizeSpecialConfig(bolao.special_predictions_config)}
           championPoints={bolao.champion_points ?? 25}
-          pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+          pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
           specialDeadlines={bolao.special_deadlines ?? null}
           knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
         />
@@ -461,9 +468,10 @@ const BolaoDetail: React.FC = () => {
             championEnabled={bolao.champion_enabled ?? true}
             knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
             kickoffNotifyTelegram={bolao.kickoff_notify_telegram ?? false}
+            knockoutScoreBasis={bolao.knockout_score_basis ?? 'full'}
             specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
             specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
-            specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+            specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
             championPoints={bolao.champion_points ?? 10}
             playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
             playerAwardPoints={bolao.player_award_points ?? undefined}
@@ -859,7 +867,7 @@ const BolaoDetail: React.FC = () => {
         specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
         enabledTypes={normalizeSpecialConfig(bolao.special_predictions_config)}
         championPoints={bolao.champion_points ?? 25}
-        pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+        pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
         specialDeadlines={bolao.special_deadlines ?? null}
         knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
       />
@@ -905,9 +913,10 @@ const BolaoDetail: React.FC = () => {
           customBannerUrl={bolao.custom_banner_url ?? null}
           championEnabled={bolao.champion_enabled ?? true}
           knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
+          knockoutScoreBasis={bolao.knockout_score_basis ?? 'full'}
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
           specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
-          specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+          specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
           championPoints={bolao.champion_points ?? 10}
           playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
           playerAwardPoints={bolao.player_award_points ?? undefined}
