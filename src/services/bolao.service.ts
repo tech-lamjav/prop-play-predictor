@@ -19,7 +19,27 @@ export interface WcMatch {
   city: string | null;
   home_score: number | null;
   away_score: number | null;
+  /** Placar dos 90 minutos (sem prorrogação) — capturado pela ingestão (078). */
+  fulltime_home: number | null;
+  fulltime_away: number | null;
   is_finished: boolean;
+}
+
+/**
+ * Aplica a base de placar do bolão aos jogos: quando o bolão pontua pelo
+ * TEMPO NORMAL ('regulation'), o placar exibido/pontuado do mata-mata passa
+ * a ser o dos 90 minutos (prorrogação vira empate). Grupos não mudam.
+ */
+export function applyScoreBasis(
+  matches: WcMatch[] | undefined,
+  basis: string | null | undefined
+): WcMatch[] | undefined {
+  if (!matches || basis !== 'regulation') return matches;
+  return matches.map((m) =>
+    m.stage !== 'group' && m.fulltime_home != null && m.fulltime_away != null
+      ? { ...m, home_score: m.fulltime_home, away_score: m.fulltime_away }
+      : m
+  );
 }
 
 export interface Bolao {
@@ -43,6 +63,8 @@ export interface Bolao {
   knockout_real_predictions_enabled: boolean;
   /** Opt-in do dono: avisar no Telegram dele quando cada jogo começa. */
   kickoff_notify_telegram: boolean;
+  /** Placar que vale no mata-mata: 'full' = com prorrogação; 'regulation' = só 90 min. */
+  knockout_score_basis: 'full' | 'regulation';
   special_predictions_enabled: boolean;
   special_predictions_config: {
     finalist: boolean;
@@ -272,7 +294,7 @@ export const bolaoService = {
   async getMatches(params?: { stage?: string; groupName?: string }): Promise<WcMatch[]> {
     let query = supabase
       .from('wc_matches')
-      .select('id, match_number, stage, group_name, home_team, away_team, home_team_code, away_team_code, match_date, match_time_brasilia, venue, city, home_score, away_score, is_finished')
+      .select('id, match_number, stage, group_name, home_team, away_team, home_team_code, away_team_code, match_date, match_time_brasilia, venue, city, home_score, away_score, fulltime_home, fulltime_away, is_finished')
       .order('match_date', { ascending: true })
       .order('match_time_brasilia', { ascending: true });
 
@@ -291,7 +313,7 @@ export const bolaoService = {
   async getMatchById(matchId: number): Promise<WcMatch | null> {
     const { data, error } = await supabase
       .from('wc_matches')
-      .select('id, match_number, stage, group_name, home_team, away_team, home_team_code, away_team_code, match_date, match_time_brasilia, venue, city, home_score, away_score, is_finished')
+      .select('id, match_number, stage, group_name, home_team, away_team, home_team_code, away_team_code, match_date, match_time_brasilia, venue, city, home_score, away_score, fulltime_home, fulltime_away, is_finished')
       .eq('id', matchId)
       .single();
 
@@ -787,6 +809,7 @@ export const bolaoService = {
       champion_enabled?: boolean;
       knockout_real_predictions_enabled?: boolean;
       kickoff_notify_telegram?: boolean;
+      knockout_score_basis?: 'full' | 'regulation';
       special_predictions_enabled?: boolean;
       special_predictions_config?: Record<string, boolean>;
       special_predictions_points?: Record<string, number>;
@@ -800,6 +823,12 @@ export const bolaoService = {
       .from('boloes')
       .update(settings as any)
       .eq('id', bolaoId);
+    if (error) throw error;
+  },
+
+  /** Recalcula os pontos de placar de todo o mata-mata (após trocar a base de placar). */
+  async recalcKnockoutScores(): Promise<void> {
+    const { error } = await supabase.rpc('recalc_finished_ko_scores');
     if (error) throw error;
   },
 };

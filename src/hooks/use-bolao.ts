@@ -380,6 +380,7 @@ export function useUpdateBolaoSettings() {
         champion_enabled?: boolean;
         knockout_real_predictions_enabled?: boolean;
         kickoff_notify_telegram?: boolean;
+        knockout_score_basis?: 'full' | 'regulation';
         special_predictions_enabled?: boolean;
         special_predictions_config?: Record<string, boolean>;
         special_predictions_points?: Record<string, number>;
@@ -391,6 +392,26 @@ export function useUpdateBolaoSettings() {
     }) => bolaoService.updateBolaoSettings(params.bolaoId, params.settings),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bolao', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
+    },
+  });
+}
+
+/**
+ * Recalcula os pontos de placar de todo o mata-mata — usado quando o dono
+ * troca a base de placar (com prorrogação ↔ só 90 min). Invalida ranking e
+ * palpites de todos os bolões (o recálculo é global).
+ */
+export function useRecalcKnockoutScores() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => bolaoService.recalcKnockoutScores(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bolao-ranking'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-round-ranking'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-predictions'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-personal-stats'] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
     },
   });

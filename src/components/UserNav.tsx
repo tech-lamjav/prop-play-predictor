@@ -18,9 +18,16 @@ import { useNavigate } from 'react-router-dom';
 
 interface UserNavProps {
   className?: string;
+  /** 'rebrand' aplica o dropdown claro (Direção A) — o Portal renderiza fora do
+   * .theme-bolao, então precisa da classe + bg/texto explícitos. Default = terminal (dark). */
+  variant?: 'terminal' | 'rebrand';
 }
 
-export default function UserNav({ className }: UserNavProps) {
+export default function UserNav({ className, variant = 'terminal' }: UserNavProps) {
+  const rebrand = variant === 'rebrand';
+  const contentCls = rebrand ? 'theme-bolao bg-white border-line text-ink' : '';
+  const itemCls = rebrand ? 'focus:bg-canvas-2 focus:text-forest cursor-pointer' : 'cursor-pointer';
+  const mutedCls = rebrand ? 'text-ink-2' : 'text-muted-foreground';
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -63,26 +70,26 @@ export default function UserNav({ className }: UserNavProps) {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className={`w-56 ${contentCls}`} align="end" forceMount>
           <div className="flex items-center justify-start gap-2 p-2">
             <div className="flex flex-col space-y-1 leading-none">
               <p className="font-medium">{user?.user_metadata?.name || 'Usuário'}</p>
-              <p className="w-[200px] truncate text-sm text-muted-foreground">
+              <p className={`w-[200px] truncate text-sm ${mutedCls}`}>
                 {user?.email}
               </p>
             </div>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => navigate('/bets')}>
+          <DropdownMenuItem className={itemCls} onClick={() => navigate('/bets')}>
             <User className="mr-2 h-4 w-4" />
             <span>Dashboard</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/settings')}>
+          <DropdownMenuItem className={itemCls} onClick={() => navigate('/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configurações</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleSignOut}>
+          <DropdownMenuItem className={itemCls} onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Sair</span>
           </DropdownMenuItem>
