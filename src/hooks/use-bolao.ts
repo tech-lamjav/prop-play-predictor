@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePostHog } from '@posthog/react';
 import { bolaoService } from '@/services/bolao.service';
 import type { WcMatch } from '@/services/bolao.service';
 
@@ -122,6 +123,7 @@ export function useBolaoPredictions(bolaoId: string | undefined, userId?: string
 
 export function useUpsertPrediction() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
 
   return useMutation({
     mutationFn: (params: {
@@ -131,6 +133,7 @@ export function useUpsertPrediction() {
       predicted_away_score: number;
     }) => bolaoService.upsertPrediction(params),
     onSuccess: (_data, variables) => {
+      posthog?.capture('bolao_palpite_saved', { mode: 'single', count: 1, bolao_id: variables.bolao_id });
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolao_id] });
       // user_predictions/pending_predictions na home dependem disso
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
@@ -153,6 +156,7 @@ export function useDeletePrediction() {
 
 export function useUpsertPredictionsBatch() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
 
   return useMutation({
     mutationFn: (params: {
@@ -160,6 +164,7 @@ export function useUpsertPredictionsBatch() {
       predictions: { match_id: number; predicted_home_score: number; predicted_away_score: number }[];
     }) => bolaoService.upsertPredictionsBatch(params.bolaoId, params.predictions),
     onSuccess: (_data, variables) => {
+      posthog?.capture('bolao_palpite_saved', { mode: 'batch', count: variables.predictions.length, bolao_id: variables.bolaoId });
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['bolao-ranking', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
@@ -371,6 +376,7 @@ export function useUpdateBolaoSettings() {
         champion_enabled?: boolean;
         knockout_real_predictions_enabled?: boolean;
         kickoff_notify_telegram?: boolean;
+        knockout_score_basis?: 'full' | 'regulation';
         special_predictions_enabled?: boolean;
         special_predictions_config?: Record<string, boolean>;
         special_predictions_points?: Record<string, number>;
@@ -382,6 +388,26 @@ export function useUpdateBolaoSettings() {
     }) => bolaoService.updateBolaoSettings(params.bolaoId, params.settings),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bolao', variables.bolaoId] });
+      queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
+    },
+  });
+}
+
+/**
+ * Recalcula os pontos de placar de todo o mata-mata — usado quando o dono
+ * troca a base de placar (com prorrogação ↔ só 90 min). Invalida ranking e
+ * palpites de todos os bolões (o recálculo é global).
+ */
+export function useRecalcKnockoutScores() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => bolaoService.recalcKnockoutScores(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bolao-ranking'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-round-ranking'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-predictions'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['bolao-personal-stats'] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
     },
   });

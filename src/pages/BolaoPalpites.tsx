@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { applyScoreBasis } from '@/services/bolao.service';
 import { useParams, useNavigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { ArrowLeft } from 'lucide-react';
@@ -40,7 +41,13 @@ const BolaoPalpites: React.FC = () => {
   }, []);
 
   const { data: bolao } = useBolao(id);
-  const { data: matches, isLoading: loadingMatches } = useWcMatches();
+  const { data: rawMatches, isLoading: loadingMatches } = useWcMatches();
+  // Placar exibido segue a base do bolão (migration 084): 'regulation' troca o
+  // placar do mata-mata pelo dos 90 min, coerente com a pontuação.
+  const matches = useMemo(
+    () => applyScoreBasis(rawMatches, bolao?.knockout_score_basis),
+    [rawMatches, bolao?.knockout_score_basis]
+  );
   const { data: predictions } = useBolaoPredictions(id, currentUserId);
   const upsertPrediction = useUpsertPrediction();
   const upsertPredictionsBatch = useUpsertPredictionsBatch();

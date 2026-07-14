@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { usePostHog } from '@posthog/react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -1048,6 +1049,7 @@ export default function GameDetail() {
   const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const posthog = usePostHog();
 
   const initCache = gameId ? gameDetailCache.get(gameId) : undefined;
   const [game, setGame] = useState<Game | null>(initCache?.game ?? null);
@@ -1071,6 +1073,11 @@ export default function GameDetail() {
   useEffect(() => {
     if (game) setActiveTab(finished ? 'boxscore' : 'lineups');
   }, [game?.game_id, finished]);
+
+  // Analytics: visualização do detalhe de jogo NBA (Marco 3 — retenção por superfície, N3).
+  useEffect(() => {
+    posthog?.capture('nba_game_viewed', { game_id: gameId });
+  }, [gameId, posthog]);
 
   useEffect(() => {
     if (!authLoading && user && !hasLoaded.current) {

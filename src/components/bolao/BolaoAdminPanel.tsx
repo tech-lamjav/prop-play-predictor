@@ -30,6 +30,7 @@ import {
   useUpdateBolaoTheme,
   useUploadBolaoLogo,
   useUpdateBolaoSettings,
+  useRecalcKnockoutScores,
   useUpdateBolaoDeadlineMode,
   useBolaoStats,
   useDeleteBolao,
@@ -58,6 +59,8 @@ interface BolaoAdminPanelProps {
   championEnabled: boolean;
   knockoutRealEnabled: boolean;
   kickoffNotifyTelegram: boolean;
+  /** Placar que vale no mata-mata: 'full' (com prorrogação) | 'regulation' (só 90 min). */
+  knockoutScoreBasis?: 'full' | 'regulation';
   specialPredictionsEnabled: boolean;
   specialPredictionsConfig: Record<string, boolean>;
   specialPredictionsPoints: Record<string, number>;
@@ -324,6 +327,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   championEnabled,
   knockoutRealEnabled,
   kickoffNotifyTelegram,
+  knockoutScoreBasis = 'full',
   specialPredictionsEnabled,
   specialPredictionsConfig,
   specialPredictionsPoints,
@@ -377,6 +381,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const [champEnabled, setChampEnabled] = useState(championEnabled);
   const [knockoutReal, setKnockoutReal] = useState(knockoutRealEnabled);
   const [kickoffNotify, setKickoffNotify] = useState(kickoffNotifyTelegram);
+  const [scoreBasis, setScoreBasis] = useState<'full' | 'regulation'>(knockoutScoreBasis);
   const [specialConfig, setSpecialConfig] = useState<Record<string, boolean>>(specialPredictionsConfig);
   const [specialPoints, setSpecialPoints] = useState<Record<string, number>>(specialPredictionsPoints);
   const [champPoints, setChampPoints] = useState(championPoints);
@@ -403,6 +408,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
   const updateTheme = useUpdateBolaoTheme();
   const uploadLogo = useUploadBolaoLogo();
   const updateSettings = useUpdateBolaoSettings();
+  const recalcKnockout = useRecalcKnockoutScores();
   const updateDeadlineMode = useUpdateBolaoDeadlineMode();
   const deleteBolao = useDeleteBolao();
   const { data: bolaoStats } = useBolaoStats(bolaoId, open && currentUserId === ownerUserId);
@@ -517,6 +523,35 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
       return;
     }
     applyDeadlineModeChange(mode);
+  };
+
+  // Base de placar do mata-mata — salva na hora e recalcula os pontos de
+  // TODOS os jogos finalizados (recalc é global e determinístico por bolão).
+  const handleScoreBasisChange = (next: 'full' | 'regulation') => {
+    if (next === scoreBasis || !isOwner) return;
+    const prev = scoreBasis;
+    setScoreBasis(next);
+    updateSettings.mutate(
+      { bolaoId, settings: { knockout_score_basis: next } },
+      {
+        onSuccess: () => {
+          recalcKnockout.mutate(undefined, {
+            onSuccess: () =>
+              toast({ title: 'Base de placar atualizada', description: 'Pontos do mata-mata recalculados.' }),
+            onError: (err: any) =>
+              toast({
+                title: 'Base salva, mas o recálculo falhou',
+                description: err?.message ?? 'Tente de novo em instantes',
+                variant: 'destructive',
+              }),
+          });
+        },
+        onError: (err: any) => {
+          setScoreBasis(prev);
+          toast({ title: 'Erro ao salvar', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+        },
+      }
+    );
   };
 
   const handleSaveScoring = () => {
@@ -1120,6 +1155,34 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 ariaLabel={useWeighted ? 'Desabilitar multiplicador' : 'Habilitar multiplicador'}
                 disabled={!isOwner}
               />
+            </SettingsRow>
+            <SettingsRow
+              title="Placar do mata-mata"
+              sub={
+                scoreBasis === 'regulation'
+                  ? 'Vale o placar dos 90 minutos — prorrogação conta como empate'
+                  : 'Vale o placar final com prorrogação — pênaltis nunca contam'
+              }
+            >
+              <div className="flex gap-1.5" role="radiogroup" aria-label="Base de placar do mata-mata">
+                {([['full', 'Com prorrogação'], ['regulation', 'Só 90 min']] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={scoreBasis === value}
+                    disabled={!isOwner || updateSettings.isPending || recalcKnockout.isPending}
+                    onClick={() => handleScoreBasisChange(value)}
+                    className={`px-3 py-1.5 rounded-rebrand-md border text-[12px] font-semibold transition-colors ${
+                      scoreBasis === value
+                        ? 'bg-forest text-white border-forest'
+                        : 'bg-white text-ink-2 border-line hover:bg-canvas-2 hover:text-ink'
+                    } ${!isOwner ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </SettingsRow>
           </Card>
 

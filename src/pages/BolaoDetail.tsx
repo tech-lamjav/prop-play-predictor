@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { usePostHog } from '@posthog/react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -28,6 +29,7 @@ import {
   computeMatchDeadline,
 } from '@/hooks/use-bolao';
 import { BolaoRankingTable } from '@/components/bolao/BolaoRankingTable';
+import { BolaoHandoffCard } from '@/components/bolao/BolaoHandoffCard';
 import { UserPredictionsModal } from '@/components/bolao/UserPredictionsModal';
 import { BolaoShareButton } from '@/components/bolao/BolaoShareButton';
 import { BolaoAdminPanel } from '@/components/bolao/BolaoAdminPanel';
@@ -51,6 +53,7 @@ import { useRankingShareImage } from '@/components/bolao/useRankingShareImage';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { WcMatch, BolaoRankingEntry } from '@/services/bolao.service';
+import { applyScoreBasis } from '@/services/bolao.service';
 
 type Tab = 'ranking' | 'estatisticas';
 
@@ -93,6 +96,7 @@ const BolaoDetail: React.FC = () => {
     });
   };
   const [activeTab, setActiveTab] = useState<Tab>('ranking');
+  const posthog = usePostHog();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [showAdmin, setShowAdmin] = useState(false);
   const [showPremiumWelcome, setShowPremiumWelcome] = useState(false);
@@ -106,6 +110,14 @@ const BolaoDetail: React.FC = () => {
       setCurrentUserId(data.user?.id);
     });
   }, []);
+
+  // Analytics: visualização do ranking do bolão. Marca "usuário ativo no bolão" — base da
+  // coorte de migração para Betinho/Futebol no handoff de 19/jul (métrica E4 do plano).
+  useEffect(() => {
+    if (id && activeTab === 'ranking') {
+      posthog?.capture('bolao_ranking_viewed', { bolao_id: id });
+    }
+  }, [id, activeTab, posthog]);
 
   const [predictionsModalOpen, setPredictionsModalOpen] = useState(false);
   const [specialPredictionsOpen, setSpecialPredictionsOpen] = useState(false);
@@ -128,7 +140,13 @@ const BolaoDetail: React.FC = () => {
 
   const { data: bolao, isLoading: loadingBolao } = useBolao(id);
   const { data: ranking, isLoading: loadingRanking } = useBolaoRanking(id);
-  const { data: matches } = useWcMatches();
+  const { data: rawMatches } = useWcMatches();
+  // Placar exibido segue a base do bolão: 'regulation' troca o placar do
+  // mata-mata pelo dos 90 min (coerente com a pontuação — migration 084).
+  const matches = useMemo(
+    () => applyScoreBasis(rawMatches, bolao?.knockout_score_basis),
+    [rawMatches, bolao?.knockout_score_basis]
+  );
   const { data: myPredictions } = useBolaoPredictions(id, currentUserId);
   const { data: championPredictions } = useChampionPredictions(id);
 
@@ -230,6 +248,23 @@ const BolaoDetail: React.FC = () => {
   const totalAvailableMatches = useMemo(
     () => matches?.filter(m => !m.is_finished && m.home_team_code !== 'TBD').length ?? 0,
     [matches]
+  );
+
+  // ── Passagem de bastão (H1): cartão de encerramento na aba Ranking ──
+  // Só quando a FINAL está encerrada (o bolão acabou de verdade); ?handoff
+  // na URL força a exibição pra preview/QA sem esperar o dia 19.
+  const finalOver = useMemo(
+    () => (matches ?? []).some(m => m.stage === 'final' && m.is_finished),
+    [matches]
+  );
+  const handoffForced = useMemo(
+    () => new URLSearchParams(window.location.search).has('handoff'),
+    []
+  );
+  const showHandoff = finalOver || handoffForced;
+  const myRankingEntry = useMemo(
+    () => ranking?.find(r => r.user_id === currentUserId) ?? null,
+    [ranking, currentUserId]
   );
 
   const predictionsByMatch = useMemo(
@@ -395,7 +430,7 @@ const BolaoDetail: React.FC = () => {
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
           enabledTypes={normalizeSpecialConfig(bolao.special_predictions_config)}
           championPoints={bolao.champion_points ?? 25}
-          pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+          pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
           specialDeadlines={bolao.special_deadlines ?? null}
           knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
         />
@@ -433,9 +468,10 @@ const BolaoDetail: React.FC = () => {
             championEnabled={bolao.champion_enabled ?? true}
             knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
             kickoffNotifyTelegram={bolao.kickoff_notify_telegram ?? false}
+            knockoutScoreBasis={bolao.knockout_score_basis ?? 'full'}
             specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
             specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
-            specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+            specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
             championPoints={bolao.champion_points ?? 10}
             playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
             playerAwardPoints={bolao.player_award_points ?? undefined}
@@ -726,6 +762,14 @@ const BolaoDetail: React.FC = () => {
             {/* Tab: Ranking */}
             {activeTab === 'ranking' && (
               <div role="tabpanel" id="bolao-tab-panel-ranking" aria-labelledby="bolao-tab-ranking">
+                {showHandoff && bolao && (
+                  <BolaoHandoffCard
+                    bolaoId={bolao.id}
+                    bolaoName={bolao.name}
+                    myRank={myRankingEntry?.rank ?? null}
+                    totalPlayers={ranking?.length ?? 0}
+                  />
+                )}
                 {ranking && ranking.length > 1 && (
                   <div className="flex items-center justify-end gap-3 mb-3 flex-wrap text-[12px] text-ink-2">
                     <div className="inline-flex items-center rounded-rebrand-sm border border-line overflow-hidden mr-1" role="group" aria-label="Conteúdo da imagem">
@@ -823,7 +867,7 @@ const BolaoDetail: React.FC = () => {
         specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
         enabledTypes={normalizeSpecialConfig(bolao.special_predictions_config)}
         championPoints={bolao.champion_points ?? 25}
-        pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+        pointsConfig={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
         specialDeadlines={bolao.special_deadlines ?? null}
         knockoutRealMode={bolao.knockout_real_predictions_enabled ?? false}
       />
@@ -869,9 +913,10 @@ const BolaoDetail: React.FC = () => {
           customBannerUrl={bolao.custom_banner_url ?? null}
           championEnabled={bolao.champion_enabled ?? true}
           knockoutRealEnabled={bolao.knockout_real_predictions_enabled ?? false}
+          knockoutScoreBasis={bolao.knockout_score_basis ?? 'full'}
           specialPredictionsEnabled={bolao.special_predictions_enabled ?? true}
           specialPredictionsConfig={normalizeSpecialConfig(bolao.special_predictions_config)}
-          specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 2, round_of_32: 1 }}
+          specialPredictionsPoints={bolao.special_predictions_points ?? { finalist: 10, semifinalist: 5, quarterfinalist: 3, round_of_16: 1, round_of_32: 1 }}
           championPoints={bolao.champion_points ?? 10}
           playerAwardsEnabled={bolao.player_awards_enabled ?? undefined}
           playerAwardPoints={bolao.player_award_points ?? undefined}
