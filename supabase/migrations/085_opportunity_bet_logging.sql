@@ -12,7 +12,7 @@
 -- interpreta como valor daquele pick, e NÃO cai no fluxo de "extrair aposta
 -- nova" (evita o textão de ajuda). Sem orquestrador de estado conversacional.
 --
--- 083 está reservada pela branch feat/onboarding-betinho → esta é a 084.
+-- 083 (onboarding) e 084 (knockout_score_basis) já ocupadas → esta é a 085.
 -- ============================================================
 
 -- Picks oferecidos no daily (referenciados pelo callback_data regbet:<id>).
