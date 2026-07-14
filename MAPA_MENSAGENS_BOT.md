@@ -12,6 +12,7 @@ fraco = silêncio; usuário que ignora = para de receber.
 | 2 | **"🏁 Placar X×Y — como foi?"** (jogo casado, mercado não-computável: múltipla, prop...) | Mesmo gatilho da #1, quando o bot não pode cravar | Mesmo momento da #1 | Mesmo teto da #1 + máx **2 lembretes por aposta** (gap 20h) | 🔕 |
 | 3 | **"⏱️ Seu jogo já deve ter terminado — como foi?"** (genérico, sem placar no banco) | `match_date` passou há 3h+, ou aposta com 24h+ sem data de jogo | Só entre **09h–23h BRT** | Mesmo teto da #1 + máx 2 por aposta (gap 20h) | 🔕 |
 | 4 | **"⚽ As oportunidades de hoje"** (daily) | Cron diário | **10h BRT em ponto**, 1x/dia — e SÓ se houver pick acima do corte (Score ≥ 40). Sem pick = sem mensagem | Reativação (segmento B): **2 envios sem clique → para pra sempre** | 🔕 |
+| 4a | **Registrar aposta** (botão "📋 Registrar" no daily #4) | Usuário toca no botão de um pick | Reativa (resposta ao toque): pergunta o valor por botões [1 unidade][½ unidade][Outro valor]; "Outro valor" = force_reply amarrado. Registra a aposta pendente → entra no loop da auto-liquidação (#1) | Reativa — só responde ao toque | n/a |
 | 5 | **Confirmação de aposta registrada** | Usuário mandou print/texto | Imediato (resposta ao registro) | Reativa — só responde ao que o usuário fez | n/a |
 | 6 | **Aviso de kickoff do bolão** (só pro DONO do bolão) | Jogo da Copa começando | No minuto do kickoff (:00/:30) | 1 por jogo por bolão | opt-in explícito do dono |
 

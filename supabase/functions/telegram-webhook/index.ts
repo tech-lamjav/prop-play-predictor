@@ -50,6 +50,8 @@ interface TelegramMessage {
   document?: TelegramFile
   // Telegram sends thumbnails as "thumbnail" in documents; not used directly
   thumbnail?: TelegramFile
+  // resposta a uma mensagem do bot (force_reply do "Outro valor")
+  reply_to_message?: { message_id: number }
 }
 
 // Toque num botão inline (lembrete de liquidação do notify-settlement)
@@ -341,6 +343,77 @@ function settledHtml(bet: any, status: string): string {
   return `Registrada como <b>${escHtml(status)}</b>.\n\n${base}`
 }
 
+// ============================================================
+// Registrar aposta da "oportunidade do dia" (item 15) — botões de stake
+// ============================================================
+
+// Unidade efetiva do usuário em R$ (fixo = valor; percentual = % da banca).
+// null = não configurada → só oferece "Outro valor".
+async function effectiveUnit(supabase: any, userId: string): Promise<number | null> {
+  const { data } = await supabase
+    .from("users")
+    .select("unit_value, unit_calculation_method, bank_amount")
+    .eq("id", userId)
+    .maybeSingle()
+  const u = Number(data?.unit_value)
+  if (!u || u <= 0) return null
+  if (data.unit_calculation_method === "percentual") {
+    const bank = Number(data.bank_amount)
+    if (!bank || bank <= 0) return null
+    return Math.round(bank * (u / 100) * 100) / 100
+  }
+  return u
+}
+
+// Cria a aposta pendente a partir de um pick do daily. channel 'futebol' marca
+// a origem (loop Análise→Betinho); processed_data guarda o pick pra auditoria.
+async function registerPickBet(supabase: any, userId: string, pick: any, stake: number) {
+  const odds = Number(pick.odds)
+  return await supabase
+    .from("bets")
+    .insert({
+      user_id: userId,
+      bet_type: "single",
+      sport: pick.sport || "Futebol",
+      league: pick.league || null,
+      betting_market: pick.betting_market || null,
+      match_description: pick.match_description,
+      bet_description: pick.bet_description,
+      odds,
+      stake_amount: stake,
+      potential_return: Math.round(stake * odds * 100) / 100,
+      status: "pending",
+      bet_date: new Date().toISOString(),
+      match_date: pick.match_date || null,
+      channel: "futebol",
+      raw_input: "[oportunidade do dia]",
+      processed_data: { source: "daily_opportunity", pick_id: pick.id }
+    })
+    .select("id")
+    .maybeSingle()
+}
+
+function pickReceiptHtml(pick: any, stake: number): string {
+  const odds = Number(pick.odds)
+  return [
+    `✅ <b>Registrado no Betinho!</b>`,
+    "",
+    `<b>${escHtml(pick.bet_description)}</b>`,
+    `${escHtml(pick.match_description)}`,
+    `${formatBRL(stake)} · odd ${odds} · retorno ${formatBRL(Math.round(stake * odds * 100) / 100)}`,
+    "",
+    `Tá pendente — quando o jogo acabar, eu fecho pra você. 📊 ${BETS_DASHBOARD_URL}`
+  ].join("\n")
+}
+
+// número do texto do usuário (força reply do "Outro valor"): "R$ 50", "50,00", "50 reais"
+function parseStake(text: string): number | null {
+  const m = String(text ?? "").replace(",", ".").match(/(\d+(?:\.\d+)?)/)
+  if (!m) return null
+  const v = parseFloat(m[1])
+  return v > 0 && v <= 1_000_000 ? v : null
+}
+
 async function handleCallbackQuery(
   supabase: any,
   cq: TelegramCallbackQuery,
@@ -397,6 +470,83 @@ async function handleCallbackQuery(
       traceId
     ).catch(() => {})
     return ok("reminders muted")
+  }
+
+  // 📋 regbet:<pick_id> — tocou "Registrar no Betinho" no daily: abre os
+  // botões de valor (1 unidade / ½ unidade / Outro valor)
+  if (data.startsWith("regbet:")) {
+    const pickId = data.slice("regbet:".length)
+    const { data: pick } = await supabase
+      .from("daily_opportunity_picks").select("id, bet_description, odds").eq("id", pickId).maybeSingle()
+    if (!pick) {
+      await answerCallbackQuery(cq.id, "Essa oportunidade expirou 🕑")
+      return ok("regbet: pick not found")
+    }
+    const unit = await effectiveUnit(supabase, user.id)
+    const rows: any[] = []
+    if (unit) {
+      rows.push([
+        { text: `1 unidade · ${formatBRL(unit)}`, callback_data: `stk:${pickId}:u1` },
+        { text: `½ unidade · ${formatBRL(unit / 2)}`, callback_data: `stk:${pickId}:uh` }
+      ])
+    }
+    rows.push([{ text: "Outro valor", callback_data: `stk:${pickId}:ot` }])
+    await telegramCall("sendMessage", {
+      chat_id: chatId,
+      text: `📋 Registrar <b>${escHtml(pick.bet_description)}</b> (odd ${Number(pick.odds)})\nQuanto você vai colocar?`,
+      parse_mode: "HTML",
+      reply_markup: { inline_keyboard: rows }
+    })
+    await answerCallbackQuery(cq.id)
+    return ok("regbet: asked stake")
+  }
+
+  // 💰 stk:<pick_id>:<u1|uh|ot> — escolha do valor
+  if (data.startsWith("stk:")) {
+    const [, pickId, code] = data.split(":")
+    const { data: pick } = await supabase
+      .from("daily_opportunity_picks").select("*").eq("id", pickId).maybeSingle()
+    if (!pick) {
+      await answerCallbackQuery(cq.id, "Essa oportunidade expirou 🕑")
+      return ok("stk: pick not found")
+    }
+
+    // "Outro valor" → force_reply amarrado (a resposta NÃO cai no fluxo de aposta nova)
+    if (code === "ot") {
+      const sent = await telegramCall<{ result?: { message_id: number } }>("sendMessage", {
+        chat_id: chatId,
+        text: `Quanto você colocou em "${escHtml(pick.bet_description)}"? Responde aqui 👇 (só o número)`,
+        reply_markup: { force_reply: true }
+      })
+      const promptId = sent?.result?.message_id
+      if (promptId) {
+        await supabase.from("stake_prompts").insert({
+          chat_id: String(chatId), message_id: promptId, pick_id: pickId, user_id: user.id
+        })
+      }
+      await answerCallbackQuery(cq.id)
+      return ok("stk: force reply")
+    }
+
+    const unit = await effectiveUnit(supabase, user.id)
+    if (!unit) {
+      await answerCallbackQuery(cq.id, "Configure sua unidade no site ou toque em Outro valor.")
+      return ok("stk: no unit")
+    }
+    const stake = code === "uh" ? Math.round((unit / 2) * 100) / 100 : unit
+    const { data: bet, error } = await registerPickBet(supabase, user.id, pick, stake)
+    if (error || !bet) {
+      await answerCallbackQuery(cq.id, "Deu ruim ao registrar — tenta de novo.")
+      return ok("stk: insert failed")
+    }
+    await editSettledMessage(chatId, messageId, pickReceiptHtml(pick, stake))
+    await answerCallbackQuery(cq.id, "✅ Registrado!")
+    await trackEvent(
+      "opportunity_bet_registered",
+      { bet_id: bet.id, pick_id: pickId, stake, via: "unit_button", channel: "telegram" },
+      user.id, traceId
+    ).catch(() => {})
+    return ok("stk: registered")
   }
 
   // ↩️ fix:<bet_id> — desfaz a AUTO-liquidação (notify-settlement): volta pra
@@ -1936,6 +2086,43 @@ serve(async (req) => {
         JSON.stringify({ success: true, message: "Reminder preference updated" }),
         { headers: { "Content-Type": "application/json" }, status: 200 }
       )
+    }
+
+    // Resposta ao "Outro valor" (force_reply do registrar-oportunidade): se a
+    // mensagem é reply a um stake_prompt nosso, interpreta como VALOR daquele
+    // pick — e sai antes do fluxo de "extrair aposta nova" (nada de textão).
+    const replyToId = updateMessage.reply_to_message?.message_id
+    if (replyToId) {
+      const { data: prompt } = await supabase
+        .from("stake_prompts")
+        .select("pick_id")
+        .eq("chat_id", String(chatId))
+        .eq("message_id", replyToId)
+        .maybeSingle()
+      if (prompt) {
+        const stake = parseStake(text)
+        if (stake == null) {
+          await sendTelegramMessage(chatId, "Não entendi o valor 🤔 Manda só o número, ex: 50")
+          return new Response(JSON.stringify({ success: true, message: "stake reply invalid" }), { headers: { "Content-Type": "application/json" }, status: 200 })
+        }
+        const { data: pick } = await supabase
+          .from("daily_opportunity_picks").select("*").eq("id", prompt.pick_id).maybeSingle()
+        if (pick) {
+          const { data: bet, error } = await registerPickBet(supabase, user.id, pick, stake)
+          if (error || !bet) {
+            await sendTelegramMessage(chatId, "Deu ruim ao registrar — tenta de novo.")
+          } else {
+            await supabase.from("stake_prompts").delete().eq("chat_id", String(chatId)).eq("message_id", replyToId)
+            await sendTelegramMessage(chatId, pickReceiptHtml(pick, stake), { parse_mode: "HTML", disable_web_page_preview: true })
+            await trackEvent(
+              "opportunity_bet_registered",
+              { bet_id: bet.id, pick_id: prompt.pick_id, stake, via: "force_reply", channel: "telegram" },
+              user.id, traceId
+            ).catch(() => {})
+          }
+        }
+        return new Response(JSON.stringify({ success: true, message: "stake reply handled" }), { headers: { "Content-Type": "application/json" }, status: 200 })
+      }
     }
 
     let actualContent = text
