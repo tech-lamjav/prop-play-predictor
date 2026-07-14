@@ -48,6 +48,13 @@ const SharePage = lazyWithRetry(() => import("./pages/SharePage"));
 const Analise360List = lazyWithRetry(() => import("./pages/Analise360List"));
 const Analise360Detail = lazyWithRetry(() => import("./pages/Analise360Detail"));
 const HomeNBA = lazyWithRetry(() => import("./pages/HomeNBA"));
+const FutebolHoje = lazyWithRetry(() => import("./pages/FutebolHoje"));
+const FutebolOportunidades = lazyWithRetry(() => import("./pages/FutebolOportunidades"));
+const FutebolJogos = lazyWithRetry(() => import("./pages/FutebolJogos"));
+const FutebolJogo = lazyWithRetry(() => import("./pages/FutebolJogo"));
+const FutebolTime = lazyWithRetry(() => import("./pages/FutebolTime"));
+const FutebolAssinar = lazyWithRetry(() => import("./pages/FutebolAssinar"));
+const FutebolLP = lazyWithRetry(() => import("./pages/FutebolLP"));
 const BolaoEntry = lazyWithRetry(() => import("./pages/BolaoEntry"));
 const BolaoHome = lazyWithRetry(() => import("./pages/BolaoHome"));
 const BolaoDetail = lazyWithRetry(() => import("./pages/BolaoDetail"));
@@ -131,6 +138,15 @@ const App = () => (
             } />
             <Route path="/home-games" element={<Games />} />
             <Route path="/game/:gameId" element={<GameDetail />} />
+            {/* Futebol (value bet) — protótipo lendo BigQuery via FDW no dev.
+                Rotas públicas por enquanto, igual /home-games. */}
+            <Route path="/futebol" element={<FutebolHoje />} />
+            <Route path="/futebol/comecar" element={<FutebolLP />} />
+            <Route path="/futebol/oportunidades" element={<FutebolOportunidades />} />
+            <Route path="/futebol/jogos" element={<FutebolJogos />} />
+            <Route path="/futebol/jogo/:fixtureId" element={<FutebolJogo />} />
+            <Route path="/futebol/time/:teamId" element={<FutebolTime />} />
+            <Route path="/futebol/assinar" element={<FutebolAssinar />} />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/paywall" element={<Paywall />} />

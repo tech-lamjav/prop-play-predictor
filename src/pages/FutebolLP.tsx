@@ -1,19 +1,17 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { usePostHog } from "@posthog/react";
-import { PlayCircle, ArrowRight, CheckCircle2, XCircle, ChevronRight, Flame } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { PlayCircle, ArrowRight, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
 
 // ============================================================
-// FutebolLP — landing page da Plataforma de Futebol (Aposta de Valor).
-// Portada de smartbetting.main em MODO "EM BREVE" / early-access: o board
-// é 100% estático (mock) e os CTAs capturam interesse (PostHog + estado
-// local), já que o produto ainda não lançou. Tema rebrand (theme-bolao).
-// Na virada de chave do lançamento, é só repontar os CTAs pro produto real.
+// FutebolLP — landing page pública do módulo de Futebol (Aposta de Valor).
+// Mesma fórmula/voz das LPs aprovadas (/nba, /bolao): hero product-led →
+// mock fiel emoldurado (board de Oportunidades → card "O que olhar") →
+// faixa de fatos → lista editorial → manifesto anti-tipster → FAQ → CTA.
+// Sem prova social inventada. Tema rebrand (theme-bolao).
 // ============================================================
-
-const EARLY_ACCESS_KEY = "futebol_early_access_joined";
 
 type Faixa = "Alta" | "Média" | "Baixa";
 
@@ -112,7 +110,7 @@ function Crest({ teamId, name, size = 22 }: { teamId: number; name: string; size
 
 const FutebolLP = () => {
   const navigate = useNavigate();
-  const posthog = usePostHog();
+  const { user } = useAuth();
   const [selectedId, setSelectedId] = useState(OPPS[0].id);
   const selected = useMemo(() => OPPS.find((o) => o.id === selectedId) ?? OPPS[0], [selectedId]);
   const v = verdict(selected.edge);
@@ -120,66 +118,14 @@ const FutebolLP = () => {
   const comValor = OPPS.filter((o) => o.score >= 40);
   const semValor = OPPS.filter((o) => o.score < 40);
 
-  const [joined, setJoined] = useState(false);
-
-  useEffect(() => {
-    try {
-      setJoined(localStorage.getItem(EARLY_ACCESS_KEY) === "1");
-    } catch { /* ignore */ }
-    posthog?.capture("futebol_lp_viewed", { variant: "em_breve" });
-  }, [posthog]);
-
-  const join = (source: string) => {
-    try {
-      localStorage.setItem(EARLY_ACCESS_KEY, "1");
-    } catch { /* ignore */ }
-    setJoined(true);
-    posthog?.capture("futebol_early_access_signup", { source });
-  };
-
-  // Botão de CTA reutilizável — vira estado "na lista" após o clique.
-  const CTAButton = ({
-    source,
-    label,
-    variant = "primary",
-    className = "",
-  }: {
-    source: string;
-    label: string;
-    variant?: "primary" | "ghost";
-    className?: string;
-  }) => {
-    if (joined) {
-      return (
-        <span
-          className={`inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-forest/10 text-forest border border-forest/30 font-bold text-[15px] ${className}`}
-        >
-          <CheckCircle2 className="h-5 w-5" />
-          Você está na lista
-        </span>
-      );
-    }
-    const base =
-      variant === "primary"
-        ? "bg-amber text-white hover:bg-amber-2 shadow-md"
-        : "bg-white text-forest hover:bg-white/90 shadow-md";
-    return (
-      <button
-        type="button"
-        onClick={() => join(source)}
-        className={`inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md font-bold text-[15px] transition-colors ${base} ${className}`}
-      >
-        <PlayCircle className="h-5 w-5 shrink-0" />
-        {label}
-      </button>
-    );
-  };
+  const goAuth = () => navigate("/auth");
+  const goProduct = () => navigate("/futebol");
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
       <Helmet>
-        <title>Aposta de Valor no Futebol — em breve | Smart Betting</title>
-        <meta name="description" content="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. Garanta seu acesso antecipado." />
+        <title>Aposta de Valor no Futebol — Brasileirão e Copa | Smart Betting</title>
+        <meta name="description" content="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. 7 dias grátis, sem cartão." />
       </Helmet>
 
       {/* Nav */}
@@ -189,24 +135,18 @@ const FutebolLP = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate(user ? "/futebol" : "/auth")}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
-              Voltar
+              {user ? "Acessar" : "Entrar"}
             </button>
-            {joined ? (
-              <span className="inline-flex items-center gap-1.5 h-10 px-3 sm:px-4 rounded-rebrand-md bg-forest/10 text-forest border border-forest/30 font-bold text-sm whitespace-nowrap">
-                <CheckCircle2 className="h-4 w-4" /> Na lista
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => join("nav")}
-                className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
-              >
-                Quero acesso
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={goAuth}
+              className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
+            >
+              Começar Grátis
+            </button>
           </div>
         </div>
       </nav>
@@ -216,9 +156,8 @@ const FutebolLP = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-forest via-forest-2 to-forest pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(212,160,23,0.16),transparent_50%)] pointer-events-none" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-40 sm:pb-56">
-          <p className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-5">
-            <Flame className="w-3.5 h-3.5" />
-            Futebol · Em breve
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-5">
+            Futebol · Aposta de Valor
           </p>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-5 max-w-3xl">
             Não precisa cravar o placar.<br />
@@ -227,14 +166,28 @@ const FutebolLP = () => {
           <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
             Pra cada jogo, a gente estima a chance real e compara com a odd da casa.
             Quando a odd paga mais do que o risco, tem valor — e a gente ranqueia por um
-            Score de Confiabilidade de 0 a 100. Dá uma espiada:{" "}
+            Score de Confiabilidade de 0 a 100. Testa num jogo real:{" "}
             <span className="text-white font-semibold">clica numa oportunidade aí embaixo.</span>
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <CTAButton source="hero" label="Garanta seu acesso antecipado" />
+            <button
+              type="button"
+              onClick={goAuth}
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
+            >
+              <PlayCircle className="h-5 w-5 shrink-0" />
+              Criar conta — 7 dias grátis
+            </button>
+            <button
+              type="button"
+              onClick={goProduct}
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-white text-forest hover:bg-white/90 font-bold text-[15px] shadow-md transition-colors"
+            >
+              Espiar sem login
+            </button>
           </div>
           <p className="text-[12px] text-white/55 mt-4">
-            Lançamento durante a Copa · Sem promessa de lucro, a decisão é sua
+            7 dias de Premium, sem cartão · Depois segue free com a análise toda · Sem promessa de lucro, a decisão é sua
           </p>
         </div>
       </section>
@@ -390,10 +343,17 @@ const FutebolLP = () => {
         </div>
 
         {/* CTA abaixo do produto */}
-        <div className="flex flex-col items-center text-center mt-8 sm:mt-10">
-          <CTAButton source="pos_demo" label="Garanta seu acesso antecipado" className="px-8" />
+        <div className="text-center mt-8 sm:mt-10">
+          <button
+            type="button"
+            onClick={goProduct}
+            className="inline-flex items-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
+          >
+            <PlayCircle className="h-5 w-5" />
+            Ver as oportunidades de verdade
+          </button>
           <p className="text-sm text-ink-3 mt-3">
-            A gente te avisa assim que abrir · Lançamento durante a Copa
+            Sem login pra olhar · 7 dias de Premium ao criar a conta
           </p>
         </div>
       </section>
@@ -523,12 +483,12 @@ const FutebolLP = () => {
               a: "É quando a odd paga mais do que a chance real do evento. Se algo acontece em ~55% das vezes, a odd justa é ~1.82; se a casa paga 2.00, tem valor. A gente acha essas diferenças e ranqueia por confiabilidade.",
             },
             {
-              q: "Quando lança?",
-              a: "Estamos nos finalmentes, com lançamento previsto durante a Copa do Mundo. Quem entra na lista de acesso antecipado é avisado primeiro.",
-            },
-            {
               q: "Vocês dão dica de aposta?",
               a: "A gente mapeia onde a odd paga mais do que o risco e mostra com o porquê do lado. O que não fazemos é mandar 'entrada garantida' nem dizer quanto apostar. Quem bate o martelo é você.",
+            },
+            {
+              q: "É grátis pra testar?",
+              a: "São 7 dias de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times — só o pick de valor de cada oportunidade fica bloqueado.",
             },
             {
               q: "Preciso entender de estatística?",
@@ -559,15 +519,29 @@ const FutebolLP = () => {
         <div className="border-t border-line py-14 sm:py-20 grid md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-center">
           <div>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-ink leading-tight mb-3">
-              Entra na fila do lançamento.
+              Testa 7 dias grátis.
             </h2>
             <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg">
-              A Plataforma de Futebol chega durante a Copa. Garanta seu acesso antecipado
-              e seja avisado antes de todo mundo.
+              Premium completo, sem cartão. Depois segue free com a análise toda —
+              só o pick de valor é que fica pra quem assina.
             </p>
           </div>
-          <div className="flex flex-col gap-3 md:min-w-[240px]">
-            <CTAButton source="footer" label="Garanta seu acesso" className="px-8" />
+          <div className="flex flex-col sm:flex-row md:flex-col gap-3 md:min-w-[240px]">
+            <button
+              type="button"
+              onClick={goAuth}
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
+            >
+              <PlayCircle className="h-5 w-5" />
+              Começar grátis
+            </button>
+            <button
+              type="button"
+              onClick={goProduct}
+              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-bold text-[15px] transition-colors"
+            >
+              Espiar sem login
+            </button>
           </div>
         </div>
       </section>
