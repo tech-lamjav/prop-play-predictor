@@ -406,6 +406,22 @@ function pickReceiptHtml(pick: any, stake: number): string {
   ].join("\n")
 }
 
+// pergunta o valor por force_reply e guarda o prompt (o interceptador lê depois)
+async function sendStakePrompt(supabase: any, chatId: string | number, userId: string, pickId: string, text: string): Promise<void> {
+  const sent = await telegramCall<{ result?: { message_id: number } }>("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    reply_markup: { force_reply: true, input_field_placeholder: "Ex: 50" }
+  })
+  const promptId = sent?.result?.message_id
+  if (promptId) {
+    await supabase.from("stake_prompts").insert({
+      chat_id: String(chatId), message_id: promptId, pick_id: pickId, user_id: userId
+    })
+  }
+}
+
 // número do texto do usuário (força reply do "Outro valor"): "R$ 50", "50,00", "50 reais"
 function parseStake(text: string): number | null {
   const m = String(text ?? "").replace(",", ".").match(/(\d+(?:\.\d+)?)/)
@@ -472,8 +488,7 @@ async function handleCallbackQuery(
     return ok("reminders muted")
   }
 
-  // 📋 regbet:<pick_id> — tocou "Registrar no Betinho" no daily: abre os
-  // botões de valor (1 unidade / ½ unidade / Outro valor)
+  // 📋 regbet:<pick_id> — tocou "Registrar no Betinho" no daily
   if (data.startsWith("regbet:")) {
     const pickId = data.slice("regbet:".length)
     const { data: pick } = await supabase
@@ -483,20 +498,25 @@ async function handleCallbackQuery(
       return ok("regbet: pick not found")
     }
     const unit = await effectiveUnit(supabase, user.id)
-    const rows: any[] = []
     if (unit) {
-      rows.push([
-        { text: `1 unidade · ${formatBRL(unit)}`, callback_data: `stk:${pickId}:u1` },
-        { text: `½ unidade · ${formatBRL(unit / 2)}`, callback_data: `stk:${pickId}:uh` }
-      ])
+      // COM unidade: atalhos de valor + "Outro valor" (que aí faz sentido)
+      await telegramCall("sendMessage", {
+        chat_id: chatId,
+        text: `📋 Registrar <b>${escHtml(pick.bet_description)}</b> (odd ${Number(pick.odds)})\nQuanto você vai colocar?`,
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: [
+          [
+            { text: `1 unidade · ${formatBRL(unit)}`, callback_data: `stk:${pickId}:u1` },
+            { text: `½ unidade · ${formatBRL(unit / 2)}`, callback_data: `stk:${pickId}:uh` }
+          ],
+          [{ text: "Outro valor", callback_data: `stk:${pickId}:ot` }]
+        ] }
+      })
+    } else {
+      // SEM unidade: vai DIRETO pra pergunta (sem botão órfão, sem pergunta dupla)
+      await sendStakePrompt(supabase, chatId, user.id, pickId,
+        `📋 Registrar <b>${escHtml(pick.bet_description)}</b> (odd ${Number(pick.odds)})\nQuanto você colocou? Responde com o valor aqui 👇`)
     }
-    rows.push([{ text: "Outro valor", callback_data: `stk:${pickId}:ot` }])
-    await telegramCall("sendMessage", {
-      chat_id: chatId,
-      text: `📋 Registrar <b>${escHtml(pick.bet_description)}</b> (odd ${Number(pick.odds)})\nQuanto você vai colocar?`,
-      parse_mode: "HTML",
-      reply_markup: { inline_keyboard: rows }
-    })
     await answerCallbackQuery(cq.id)
     return ok("regbet: asked stake")
   }
@@ -511,19 +531,10 @@ async function handleCallbackQuery(
       return ok("stk: pick not found")
     }
 
-    // "Outro valor" → force_reply amarrado (a resposta NÃO cai no fluxo de aposta nova)
+    // "Outro valor" → pergunta curta por force_reply (o "Registrar X — quanto?"
+    // já foi mostrado com os botões; aqui não repete)
     if (code === "ot") {
-      const sent = await telegramCall<{ result?: { message_id: number } }>("sendMessage", {
-        chat_id: chatId,
-        text: `Quanto você colocou em "${escHtml(pick.bet_description)}"? Responde aqui 👇 (só o número)`,
-        reply_markup: { force_reply: true }
-      })
-      const promptId = sent?.result?.message_id
-      if (promptId) {
-        await supabase.from("stake_prompts").insert({
-          chat_id: String(chatId), message_id: promptId, pick_id: pickId, user_id: user.id
-        })
-      }
+      await sendStakePrompt(supabase, chatId, user.id, pickId, `Qual valor? Responde com o número aqui 👇`)
       await answerCallbackQuery(cq.id)
       return ok("stk: force reply")
     }
