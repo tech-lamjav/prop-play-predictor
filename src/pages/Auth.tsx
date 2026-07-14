@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Users, Sparkles, Check } from "lucide-react";
+import { Trophy, Users, Sparkles, Check, BarChart3, Send, ShieldCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
@@ -65,6 +65,20 @@ const Auth = () => {
   const fromBolaoInvite = (
     location.state as { from?: { pathname?: string } } | null
   )?.from?.pathname?.startsWith('/bolao/entrar/') ?? false;
+
+  // Branding do Auth: default = nível empresa (Smart Betting cobre análise + gestão + comunidade).
+  // Quem chega por convite de bolão (fromBolaoInvite) mantém a copy contextual do Bolão.
+  const heroFeatures = fromBolaoInvite
+    ? [
+        { icon: Users, title: 'Convite com 1 clique', desc: 'Link direto pro WhatsApp, sem código pra digitar.' },
+        { icon: Sparkles, title: 'Quick Pick em 1 toque', desc: 'Não quer palpitar 104 jogos? Preenche tudo automático e edita depois.' },
+        { icon: Trophy, title: 'Ranking ao vivo', desc: 'Compartilha imagem do ranking nos Stories e zoeia os amigos.' },
+      ]
+    : [
+        { icon: BarChart3, title: 'Análises com edge', desc: 'Props e oportunidades do dia com Score próprio.' },
+        { icon: Send, title: 'Betinho no Telegram', desc: 'Registra por print ou texto e acompanha seu ROI real.' },
+        { icon: ShieldCheck, title: 'Sem tipster, sem achismo', desc: 'Decisão com números, não com palpite.' },
+      ];
 
   // Detect referral code from URL parameter
   useEffect(() => {
@@ -189,9 +203,10 @@ const Auth = () => {
       }
 
       toast({ title: "Conta criada!", description: "Você já pode começar a usar a plataforma." });
-      // Fix: antes era hard-coded /onboarding, ignorando state.from. Agora
-      // respeita o redirect target (ex: vindo da LP do bolão).
-      navigate(getRedirectTarget(location.state));
+      // state.from explícito continua vencendo (ex: vindo da LP do bolão), mas o
+      // fallback do CADASTRO é o onboarding do Betinho (decisão D1, 2026-07-08 —
+      // docs/onboarding-betinho-redesign.md): o antigo /bolao expira com a Copa.
+      navigate(getRedirectTarget(location.state, '/onboarding?src=signup'));
     } catch (error) {
       toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
     } finally {
@@ -225,50 +240,43 @@ const Auth = () => {
 
           <div className="relative z-10">
             <div className="text-[12px] uppercase tracking-[0.18em] font-semibold opacity-70 mb-3">
-              Bolão · Copa do Mundo 2026
+              {fromBolaoInvite ? 'Bolão · Copa do Mundo 2026' : 'Smart Betting'}
             </div>
-            <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
-              Reúne a galera.<br />
-              Palpita os 104 jogos.<br />
-              <span className="text-amber">Vê quem manja mais.</span>
-            </h1>
+            {fromBolaoInvite ? (
+              <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
+                Reúne a galera.<br />
+                Palpita os 104 jogos.<br />
+                <span className="text-amber">Vê quem manja mais.</span>
+              </h1>
+            ) : (
+              <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
+                Pare de apostar<br />
+                <span className="text-amber">no escuro.</span>
+              </h1>
+            )}
             <p className="text-[15px] opacity-80 leading-relaxed max-w-[420px]">
-              Cria seu bolão em 30 segundos, compartilha no zap, e leva a galera junto. Grátis pra até 20 amigos.
+              {fromBolaoInvite
+                ? 'Cria seu bolão em 30 segundos, compartilha no zap, e leva a galera junto. Grátis pra até 20 amigos.'
+                : 'Análises que apontam o valor, o Betinho pra gerir suas apostas e o seu ROI real na palma da mão — tudo com dado, sem achismo.'}
             </p>
           </div>
 
           <div className="relative z-10 space-y-3 max-w-[420px]">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
-                <Users className="w-4 h-4" />
+            {heroFeatures.map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-display text-[15px] font-bold">{title}</p>
+                  <p className="text-[13px] opacity-70">{desc}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-display text-[15px] font-bold">Convite com 1 clique</p>
-                <p className="text-[13px] opacity-70">Link direto pro WhatsApp, sem código pra digitar.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="font-display text-[15px] font-bold">Quick Pick em 1 toque</p>
-                <p className="text-[13px] opacity-70">Não quer palpitar 104 jogos? Preenche tudo automático e edita depois.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
-                <Trophy className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="font-display text-[15px] font-bold">Ranking ao vivo</p>
-                <p className="text-[13px] opacity-70">Compartilha imagem do ranking nos Stories e zoeia os amigos.</p>
-              </div>
-            </div>
+            ))}
           </div>
 
           <div className="relative z-10 text-[11px] opacity-50 mt-8">
-            ✓ 100% gratuito · ✓ Sem cartão · ✓ Sem instalar nada
+            ✓ Grátis pra começar · ✓ Sem cartão · ✓ Sem instalar nada
           </div>
         </aside>
 
@@ -281,10 +289,10 @@ const Auth = () => {
                 <Trophy className="w-6 h-6" />
               </div>
               <h2 className="font-display text-[24px] font-extrabold text-ink leading-tight">
-                Bolão Copa 2026
+                {fromBolaoInvite ? 'Bolão Copa 2026' : 'Smart Betting'}
               </h2>
               <p className="text-[13px] text-ink-2 mt-1">
-                Cria seu bolão em 30 segundos.
+                {fromBolaoInvite ? 'Cria seu bolão em 30 segundos.' : 'Análise, gestão e ROI real — decida com dados.'}
               </p>
             </div>
 
@@ -380,7 +388,7 @@ const Auth = () => {
                     Criar conta
                   </h3>
                   <p className="text-[13px] text-ink-2 mb-5">
-                    Grátis. Sem cartão. Você cria o bolão logo em seguida.
+                    {fromBolaoInvite ? 'Grátis. Sem cartão. Você cria o bolão logo em seguida.' : 'Grátis. Sem cartão. Comece agora.'}
                   </p>
                   <form onSubmit={handleSignUp} className="space-y-4">
                     <div className="space-y-1.5">

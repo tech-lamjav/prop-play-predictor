@@ -199,30 +199,29 @@ async function sendContactRequest(chatId: string | number): Promise<void> {
   await sendTelegramMessage(chatId, text, { reply_markup: keyboard })
 }
 
+// Welcome em 2 mensagens (onboarding redesign): (1) valor em 3 linhas,
+// (2) pedido explícito da 1ª aposta com exemplo copiável — o momento-aha
+// é registrar a primeira aposta em <5 min do cadastro.
 async function sendWelcomeMessageTelegram(chatId: string | number, userName?: string): Promise<void> {
-  const welcomeMessage = [
-    `👋 *Bem-vindo${userName ? `, ${userName}` : ""} ao Smartbetting!*`,
+  const welcome = [
+    `✅ *Conectado${userName ? `, ${userName}` : ""}!* Eu sou o Betinho.`,
     "",
-    "Sua conta Telegram foi sincronizada com sucesso! 🎉",
-    "",
-    "*📸 MELHOR FORMA - Screenshot da aposta:*",
-    "• Tire print da sua aposta (1 aposta por print)",
-    "• Envie a imagem aqui",
-    "• Se faltar alguma info (como valor), escreva na mesma mensagem",
-    "• Exemplo: [IMAGEM] + \"100 reais\"",
-    "",
-    "*✍️ OU escreva algo como:*",
-    "`Lakers vs Warriors - LeBron 25+ pontos - Odd 1.85 - R$ 50`",
-    "",
-    "⚠️ *IMPORTANTE:*",
-    "• 1 mensagem = 1 aposta",
-    "• Envie TUDO junto (imagem + texto na mesma mensagem)",
-    "• Se você enviou uma imagem e não recebeu confirmação, envie novamente",
-    "",
-    "Vamos começar! Envie sua primeira aposta! 🚀"
+    "A partir de agora, por aqui você:",
+    "📸 registra apostas por print, texto ou áudio",
+    "📊 acompanha seu ROI real, liquidação e banca",
+    "📬 recebe as oportunidades do dia e avisos"
   ].join("\n")
 
-  await sendTelegramMessage(chatId, welcomeMessage)
+  const firstBetAsk = [
+    "*Bora registrar sua primeira aposta?*",
+    "",
+    "Manda um print da aposta (1 por print — se faltar o valor, escreve na mesma mensagem), ou copia e adapta:",
+    "",
+    "`Flamengo x Palmeiras - Flamengo vence - Odd 1.85 - R$ 50`"
+  ].join("\n")
+
+  await sendTelegramMessage(chatId, welcome)
+  await sendTelegramMessage(chatId, firstBetAsk)
 }
 
 async function sendHelpMessageTelegram(chatId: string | number): Promise<void> {
@@ -1965,6 +1964,69 @@ serve(async (req) => {
           { headers: { "Content-Type": "application/json" }, status: 200 }
         )
       }
+
+      // Deep-link de vínculo (onboarding redesign): /start link_<token>.
+      // Vincula por chat_id via token de uso único — sem matching por telefone,
+      // que gerava beco quando o nº do Telegram ≠ nº do cadastro.
+      // O fluxo de contato logo abaixo permanece como fallback.
+      if (param && param.startsWith("link_")) {
+        const token = param.slice("link_".length)
+        const { data: tok } = await supabase
+          .from("telegram_link_tokens")
+          .select("token, user_id, expires_at, used_at")
+          .eq("token", token)
+          .maybeSingle()
+
+        if (!tok || tok.used_at || new Date(tok.expires_at).getTime() < Date.now()) {
+          await sendTelegramMessage(chatId, "Esse link de conexão expirou. Volte ao site e clique em *Conectar meu Telegram* de novo — ou vincule pelo número abaixo.")
+          await sendContactRequest(chatId)
+          return new Response(
+            JSON.stringify({ success: true, message: "Link token invalid or expired" }),
+            { headers: { "Content-Type": "application/json" }, status: 200 }
+          )
+        }
+
+        const { error: linkErr } = await supabase
+          .from("users")
+          .update({
+            telegram_chat_id: String(chatId),
+            telegram_user_id: fromUser?.id ? String(fromUser.id) : null,
+            telegram_synced_at: new Date().toISOString(),
+            telegram_sync_source: "deep_link"
+          })
+          .eq("id", tok.user_id)
+
+        if (linkErr) {
+          console.error("deep_link_sync_failed", { user_id: tok.user_id, error: linkErr.message })
+          await sendTelegramMessage(chatId, "Não consegui vincular sua conta agora — volte ao site e tente de novo.")
+          return new Response(
+            JSON.stringify({ success: true, error: "Deep link update failed" }),
+            { headers: { "Content-Type": "application/json" }, status: 200 }
+          )
+        }
+
+        await supabase
+          .from("telegram_link_tokens")
+          .update({ used_at: new Date().toISOString() })
+          .eq("token", token)
+
+        await identifyUser(tok.user_id, {
+          name: fromUser?.first_name || undefined
+        }).catch(() => {})
+
+        await sendWelcomeMessageTelegram(chatId, fromUser?.first_name || undefined)
+        await trackEvent(
+          "telegram_sync_success",
+          { user_id: tok.user_id, chat_id: String(chatId), channel: "telegram", sync_source: "deep_link" },
+          tok.user_id,
+          traceId
+        ).catch(() => {})
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Telegram linked via deep link" }),
+          { headers: { "Content-Type": "application/json" }, status: 200 }
+        )
+      }
     }
 
     // Handle contact sync first
@@ -2011,7 +2073,7 @@ serve(async (req) => {
           await sendWelcomeMessageTelegram(chatId, fromUser?.first_name || userMatch.name || undefined)
           await trackEvent(
             "telegram_sync_success",
-            { user_id: userMatch.id, chat_id: chatId, phone: contactPhone, channel: "telegram" },
+            { user_id: userMatch.id, chat_id: chatId, phone: contactPhone, channel: "telegram", sync_source: "contact_share" },
             userMatch.id,
             traceId
           ).catch(() => {})
