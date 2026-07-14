@@ -80,7 +80,6 @@ function norm(s: unknown): string {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // remove acentos (marcas combinantes)
     .toLowerCase()
-    .replace(/[-_./]/g, " ") // hífen/ponto/barra viram espaço ("atletico-mg" = "atletico mg")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -163,21 +162,21 @@ function teamNames(namePt: string, code: string): string[] {
 }
 
 // ── Aliases de clube pro coletor multi-liga (F2) ─────────────
-// A tabela public.fixtures traz o nome como a API-Football escreve. O casamento
-// primário é pelo próprio nome (já normalizado, hífen→espaço). Aqui só as
-// VARIAÇÕES ESTRUTURAIS que divergem do que o usuário/print costuma trazer
-// (prefixo "rb", "da gama", sufixo "ec/fc"). Apelidos/torcida (galo, verdão)
-// ficam de fora de propósito: risco de falso-positivo > ganho. Curadoria fina
-// futura entra em public.team_aliases (por api_team_id), carregada abaixo.
-// Chave e valores já normalizados (sem acento, minúsculas, sem hífen).
+// A tabela public.fixtures traz o nome como a API-Football escreve (ex.:
+// "Atletico-MG", "RB Bragantino"). O casamento primário é pelo próprio nome
+// normalizado; aqui só as VARIAÇÕES ESTRUTURAIS que divergem do que o
+// usuário/print costuma trazer (prefixo "rb", "da gama", forma por extenso do
+// "-MG/-PR"). Apelidos/torcida (galo, verdão) ficam de fora de propósito: risco
+// de falso-positivo > ganho. Curadoria fina futura entra em public.team_aliases
+// (por api_team_id), carregada abaixo.
+// CHAVE = nome da API normalizado (norm(); mantém o hífen). Valores normalizados.
 const CLUB_ALIASES: Record<string, string[]> = {
   "rb bragantino": ["bragantino", "red bull bragantino"],
-  "red bull bragantino": ["bragantino", "rb bragantino"],
   "vasco da gama": ["vasco"],
-  "atletico mg": ["atletico mineiro", "clube atletico mineiro"],
-  "atletico go": ["atletico goianiense"],
-  "athletico pr": ["athletico paranaense", "atletico pr", "atletico paranaense"],
-  "america mg": ["america mineiro"],
+  "atletico-mg": ["atletico mineiro"],
+  "atletico-go": ["atletico goianiense"],
+  "athletico-pr": ["athletico paranaense", "atletico paranaense"],
+  "america-mg": ["america mineiro"],
   "sao paulo": ["sao paulo fc"],
   "gremio": ["gremio fbpa"],
 };
