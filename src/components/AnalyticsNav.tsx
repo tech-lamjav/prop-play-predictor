@@ -341,7 +341,7 @@ export default function AnalyticsNav({
 
             {/* User Menu or Auth Buttons */}
             {user ? (
-              <UserNav />
+              <UserNav variant={variant} />
             ) : (
               <div className="flex items-center gap-2">
                 <Button
