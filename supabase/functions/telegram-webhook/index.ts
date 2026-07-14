@@ -2088,40 +2088,49 @@ serve(async (req) => {
       )
     }
 
-    // Resposta ao "Outro valor" (force_reply do registrar-oportunidade): se a
-    // mensagem é reply a um stake_prompt nosso, interpreta como VALOR daquele
-    // pick — e sai antes do fluxo de "extrair aposta nova" (nada de textão).
-    const replyToId = updateMessage.reply_to_message?.message_id
-    if (replyToId) {
+    // Resposta ao "Outro valor" (force_reply do registrar-oportunidade).
+    // ROBUSTO: nem todo cliente Telegram anexa reply_to_message ao force_reply,
+    // então intercepta se (a) é reply ao nosso prompt OU (b) é um NÚMERO PURO
+    // logo após um prompt recente pendente. Um registro de aposta real nunca é
+    // só um número → não há risco de sequestrar aposta de verdade.
+    {
       const { data: prompt } = await supabase
         .from("stake_prompts")
-        .select("pick_id")
+        .select("pick_id, message_id, created_at")
         .eq("chat_id", String(chatId))
-        .eq("message_id", replyToId)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle()
       if (prompt) {
-        const stake = parseStake(text)
-        if (stake == null) {
-          await sendTelegramMessage(chatId, "Não entendi o valor 🤔 Manda só o número, ex: 50")
-          return new Response(JSON.stringify({ success: true, message: "stake reply invalid" }), { headers: { "Content-Type": "application/json" }, status: 200 })
-        }
-        const { data: pick } = await supabase
-          .from("daily_opportunity_picks").select("*").eq("id", prompt.pick_id).maybeSingle()
-        if (pick) {
-          const { data: bet, error } = await registerPickBet(supabase, user.id, pick, stake)
-          if (error || !bet) {
-            await sendTelegramMessage(chatId, "Deu ruim ao registrar — tenta de novo.")
-          } else {
-            await supabase.from("stake_prompts").delete().eq("chat_id", String(chatId)).eq("message_id", replyToId)
-            await sendTelegramMessage(chatId, pickReceiptHtml(pick, stake), { parse_mode: "HTML", disable_web_page_preview: true })
-            await trackEvent(
-              "opportunity_bet_registered",
-              { bet_id: bet.id, pick_id: prompt.pick_id, stake, via: "force_reply", channel: "telegram" },
-              user.id, traceId
-            ).catch(() => {})
+        const replyToId = updateMessage.reply_to_message?.message_id
+        const isReply = replyToId != null && Number(replyToId) === Number(prompt.message_id)
+        const bareNumber = /^\s*r?\$?\s*\d+(?:[.,]\d+)?\s*(reais|conto|pila|paus)?\s*$/i.test(text)
+        const fresh = Date.now() - new Date(prompt.created_at).getTime() < 30 * 60_000
+        if (isReply || (bareNumber && fresh)) {
+          const stake = parseStake(text)
+          if (stake == null) {
+            await sendTelegramMessage(chatId, "Não entendi o valor 🤔 Manda só o número, ex: 50")
+            return new Response(JSON.stringify({ success: true, message: "stake reply invalid" }), { headers: { "Content-Type": "application/json" }, status: 200 })
           }
+          // consome o prompt antes de registrar (um número não vira duas apostas)
+          await supabase.from("stake_prompts").delete().eq("chat_id", String(chatId)).eq("message_id", prompt.message_id)
+          const { data: pick } = await supabase
+            .from("daily_opportunity_picks").select("*").eq("id", prompt.pick_id).maybeSingle()
+          if (pick) {
+            const { data: bet, error } = await registerPickBet(supabase, user.id, pick, stake)
+            if (error || !bet) {
+              await sendTelegramMessage(chatId, "Deu ruim ao registrar — tenta de novo.")
+            } else {
+              await sendTelegramMessage(chatId, pickReceiptHtml(pick, stake), { parse_mode: "HTML", disable_web_page_preview: true })
+              await trackEvent(
+                "opportunity_bet_registered",
+                { bet_id: bet.id, pick_id: prompt.pick_id, stake, via: isReply ? "force_reply" : "bare_number", channel: "telegram" },
+                user.id, traceId
+              ).catch(() => {})
+            }
+          }
+          return new Response(JSON.stringify({ success: true, message: "stake reply handled" }), { headers: { "Content-Type": "application/json" }, status: 200 })
         }
-        return new Response(JSON.stringify({ success: true, message: "stake reply handled" }), { headers: { "Content-Type": "application/json" }, status: 200 })
       }
     }
 
