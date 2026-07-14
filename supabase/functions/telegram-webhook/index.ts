@@ -2142,6 +2142,19 @@ serve(async (req) => {
           }
           return new Response(JSON.stringify({ success: true, message: "stake reply handled" }), { headers: { "Content-Type": "application/json" }, status: 200 })
         }
+
+        // Não foi resposta de valor válida. A pergunta pendente não pode ficar
+        // "esperando" e grudar num número futuro — então limpa aqui.
+        await supabase.from("stake_prompts").delete().eq("chat_id", String(chatId))
+
+        if (bareNumber) {
+          // número puro, mas o prompt esfriou (>30min): não vira aposta-lixo —
+          // avisa e encerra (não segue pro fluxo de extração)
+          await sendTelegramMessage(chatId, "Essa oportunidade esfriou 🕑 Toca em *Registrar* de novo numa oportunidade pra lançar o valor.")
+          return new Response(JSON.stringify({ success: true, message: "stale stake prompt cleared" }), { headers: { "Content-Type": "application/json" }, status: 200 })
+        }
+        // qualquer outra coisa (print, aposta em texto...) → pendência limpa e
+        // a mensagem SEGUE o fluxo normal de registro (sem return)
       }
     }
 
