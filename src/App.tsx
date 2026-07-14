@@ -62,7 +62,6 @@ const BolaoPalpites = lazyWithRetry(() => import("./pages/BolaoPalpites"));
 const BolaoJoin = lazyWithRetry(() => import("./pages/BolaoJoin"));
 const BolaoWelcome = lazyWithRetry(() => import("./pages/BolaoWelcome"));
 const BolaoLP = lazyWithRetry(() => import("./pages/BolaoLP"));
-const FutebolLP = lazyWithRetry(() => import("./pages/FutebolLP"));
 const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
 
 const queryClient = new QueryClient();
@@ -98,9 +97,6 @@ const App = () => (
                 Mesmo componente; useLocation detecta a rota e troca hero +
                 "como funciona". CTAs em /bolao/.../palpites apontam pra cá. */}
             <Route path="/betinho/bolao" element={<Betinho />} />
-            {/* Plataforma Futebol — LP pública (placeholder "em breve" na Fase 1,
-                LP completa portada na Fase 3). Destino do cross-sell do bolão. */}
-            <Route path="/futebol/comecar" element={<FutebolLP />} />
             <Route path="/auth" element={
               <ProtectedRoute requireAuth={false}>
                 <Auth />
