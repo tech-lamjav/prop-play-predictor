@@ -133,7 +133,7 @@ export function useUpsertPrediction() {
       predicted_away_score: number;
     }) => bolaoService.upsertPrediction(params),
     onSuccess: (_data, variables) => {
-      posthog?.capture('bolao_palpite_saved', { mode: 'single', count: 1, bolao_id: variables.bolao_id });
+      posthog?.capture('bolao_palpite_saved', { product: 'bolao', mode: 'single', count: 1, bolao_id: variables.bolao_id });
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolao_id] });
       // user_predictions/pending_predictions na home dependem disso
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
@@ -162,9 +162,13 @@ export function useUpsertPredictionsBatch() {
     mutationFn: (params: {
       bolaoId: string;
       predictions: { match_id: number; predicted_home_score: number; predicted_away_score: number }[];
+      /** Restaurações (ex.: Undo do Quick Pick) passam true pra não contar como palpite novo. */
+      silent?: boolean;
     }) => bolaoService.upsertPredictionsBatch(params.bolaoId, params.predictions),
     onSuccess: (_data, variables) => {
-      posthog?.capture('bolao_palpite_saved', { mode: 'batch', count: variables.predictions.length, bolao_id: variables.bolaoId });
+      if (!variables.silent) {
+        posthog?.capture('bolao_palpite_saved', { product: 'bolao', mode: 'batch', count: variables.predictions.length, bolao_id: variables.bolaoId });
+      }
       queryClient.invalidateQueries({ queryKey: ['bolao-predictions', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['bolao-ranking', variables.bolaoId] });
       queryClient.invalidateQueries({ queryKey: ['user-boloes'] });
