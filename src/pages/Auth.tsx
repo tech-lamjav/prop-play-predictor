@@ -111,7 +111,9 @@ const Auth = () => {
       }
 
       toast({ title: "Bem-vindo de volta!" });
-      navigate(getRedirectTarget(location.state));
+      // Login recorrente cai no hub /inicio (dispatcher pós-login). state.from
+      // explícito continua vencendo (ex: barrado numa rota protegida → volta pra ela).
+      navigate(getRedirectTarget(location.state, '/inicio'));
     } catch (error) {
       toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
     } finally {

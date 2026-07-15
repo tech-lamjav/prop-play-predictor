@@ -27,6 +27,7 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 // pra pegar build novo.
 const Betinho = lazyWithRetry(() => import("./pages/Betinho"));
 const Onboarding = lazyWithRetry(() => import("./pages/Onboarding"));
+const Inicio = lazyWithRetry(() => import("./pages/Inicio"));
 const DashboardTest = lazyWithRetry(() => import("./pages/DashboardTest"));
 const Bets = lazyWithRetry(() => import("./pages/Bets"));
 const Bankroll = lazyWithRetry(() => import("./pages/Bankroll"));
@@ -105,6 +106,11 @@ const App = () => (
             <Route path="/onboarding" element={
               <ProtectedRoute>
                 <Onboarding />
+              </ProtectedRoute>
+            } />
+            <Route path="/inicio" element={
+              <ProtectedRoute>
+                <Inicio />
               </ProtectedRoute>
             } />
             <Route path="/dashboard" element={
