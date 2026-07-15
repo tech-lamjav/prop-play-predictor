@@ -18,7 +18,8 @@ const Footer = () => {
     location.pathname.startsWith('/privacidade') ||
     location.pathname.startsWith('/termos') ||
     location.pathname.startsWith('/auth') ||
-    location.pathname.startsWith('/onboarding');
+    location.pathname.startsWith('/onboarding') ||
+    location.pathname.startsWith('/inicio');
 
   // Paleta condicional. Cores literais em vez de CSS vars pra evitar problemas
   // de scope (var(--ink) só existe dentro de .theme-bolao).
