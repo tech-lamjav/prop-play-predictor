@@ -8,15 +8,23 @@
 // Storage por team_id (helper getFutebolTeamLogoUrl), sem depender da api-sports.
 //
 // Fonte da lista: RPC public.get_futebol_teams() (lê bq_futebol.dim_teams via FDW).
-// Idempotente (upsert). Protótipo DEV: deploy com verify_jwt=false; disparo via
-// pg_net a partir do banco. Body opcional: { force?: boolean }.
+// Idempotente (upsert). Deploy com verify_jwt=false; protegida pelo header
+// x-cron-secret (CRON_SECRET), padrão mirror-wc-photos. Disparo manual/pg_net.
+// Body opcional: { force?: boolean }.
 // ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "futebol-team-logos";
 
-serve(async () => {
+serve(async (req) => {
+  const cronSecret = Deno.env.get("CRON_SECRET") || "";
+  if ((req.headers.get("x-cron-secret") || "") !== cronSecret || !cronSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") || "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""

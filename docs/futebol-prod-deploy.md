@@ -6,6 +6,11 @@
 
 Projetos Supabase: **dev** = `kpbjuplcwiyrymafhehz` · **prod** = `lavclmlvvfzkblrstojd`.
 
+> ✅ **VERIFICADO CONTRA O DEV EM 2026-07-18** (inventário via SQL editor: md5 de `pg_get_functiondef` + shape das tabelas/índices): as **19 functions** e as **21 tabelas** do `.sql` estão **byte-idênticas** ao estado do dev — zero drift desde o snapshot de 30/06. Teardown do FDW confirmado no dev (`bq_futebol`, `bigquery_server` e `sync_all` removidos; só a extensão `wrappers` ficou instalada, sem uso). Deltas encontrados e já incorporados/pendentes:
+> 1. **`futebol._sync_state`** (watermark do sync incremental) existia no dev e faltava no `.sql` → **adicionada** (§2a, `create if not exists`).
+> 2. **Bucket `futebol-player-photos`** (público) existe no dev + helper `getFutebolPlayerPhotoUrl` no front → criar no prod e espelhar as fotos (§6a).
+> 3. **Edge function `mirror-futebol-player-photos`** está deployada no dev mas **NÃO está no repo** (deploy direto do Diody) → recuperar o código do dashboard e commitar antes do go-live.
+
 ---
 
 ## 1. Pré-requisitos (do lado de dados — repo `data-engineering` / `analytics-engineering`)
@@ -68,6 +73,14 @@ select * from public.get_futebol_standings_official('brasileirao', 2026) limit 5
 No app: `/futebol`, `/futebol/oportunidades`, `/futebol/jogos`, `/futebol/jogo/:id`, `/futebol/time/:id` — 0 erros de console, reverse trial/blur ok.
 
 ---
+
+## 6a. Storage + espelhamento de imagens (hotlink protection da api-sports)
+
+No ambiente alvo (prod), depois do `.sql`:
+
+1. Criar buckets **públicos**: `futebol-team-logos` e `futebol-player-photos`.
+2. Deployar `mirror-futebol-team-logos` (no repo) e `mirror-futebol-player-photos` (⚠️ recuperar do dev — só existe deployada lá) com `verify_jwt=false`.
+3. Rodar 1x cada (idempotentes, upsert). Re-rodar quando entrarem times/jogadores novos — não há cron agendado (nem no dev).
 
 ## 6. Notas
 - **Custo/latência:** as RPCs leem `futebol.*` nativo (não o BQ). O BQ é tocado só pelo Cloud Run sync (`list_rows`, grátis) — sem o scan recorrente que o FDW cobrava.
