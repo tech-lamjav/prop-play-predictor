@@ -55,6 +55,7 @@ const BolaoJoin = lazyWithRetry(() => import("./pages/BolaoJoin"));
 const BolaoWelcome = lazyWithRetry(() => import("./pages/BolaoWelcome"));
 const BolaoLP = lazyWithRetry(() => import("./pages/BolaoLP"));
 const Privacidade = lazyWithRetry(() => import("./pages/Privacidade"));
+const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,11 @@ const App = () => (
                 <Auth />
               </ProtectedRoute>
             } />
+            {/* Sem ProtectedRoute: o callback do OAuth chega com o usuário
+                "logado" (sessão criada pelo token da URL) e o
+                requireAuth={false} o expulsaria pro /onboarding antes de
+                rodar a própria lógica (criar linha na users, redirect). */}
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/onboarding" element={
               <ProtectedRoute>
                 <Onboarding />
