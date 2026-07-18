@@ -44,6 +44,8 @@ jobs:
           supabase functions deploy notify-handoff --no-verify-jwt
           supabase functions deploy notify-opportunities --no-verify-jwt
           supabase functions deploy go --no-verify-jwt
+          supabase functions deploy mirror-futebol-team-logos --no-verify-jwt
+          # TODO: mirror-futebol-player-photos — adicionar quando o código (hoje só deployado no dev) for commitado
           supabase functions deploy ingest-fixtures --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
