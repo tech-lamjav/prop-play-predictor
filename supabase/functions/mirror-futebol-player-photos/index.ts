@@ -33,10 +33,9 @@ serve(async (req) => {
   const ids = new Set<number>();
   for (const p of pairs) {
     const { data, error } = await supabase.rpc("get_futebol_leaders", { p_competition: p.c, p_season: p.s });
-    if (error) continue;
-    const lead = data as { scorers?: { player_id: number }[]; cards?: { player_id: number }[] } | null;
-    (lead?.scorers || []).forEach((x) => x?.player_id && ids.add(Number(x.player_id)));
-    (lead?.cards || []).forEach((x) => x?.player_id && ids.add(Number(x.player_id)));
+    if (error || !data) continue;
+    for (const x of data.scorers ?? []) { if (x && x.player_id) ids.add(Number(x.player_id)); }
+    for (const x of data.cards ?? []) { if (x && x.player_id) ids.add(Number(x.player_id)); }
   }
 
   let mirrored = 0, failed = 0;
