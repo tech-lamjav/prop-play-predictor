@@ -16,7 +16,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "futebol-player-photos";
 const DEFAULT_PAIRS = [
-  { c: "brasileirao", s: 2026 }, { c: "brasileirao", s: 2025 }, { c: "brasileirao", s: 2024 },
+  { c: "brasileirao", s: 2026 },
+  { c: "brasileirao", s: 2025 },
+  { c: "brasileirao", s: 2024 },
   { c: "copa_mundo", s: 2026 },
 ];
 
@@ -25,34 +27,60 @@ serve(async (req) => {
   if ((req.headers.get("x-cron-secret") || "") !== cronSecret || !cronSecret) {
     return json({ error: "Unauthorized" }, 401);
   }
-  const supabase = createClient(Deno.env.get("SUPABASE_URL") || "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "");
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") || "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+  );
 
   let pairs = DEFAULT_PAIRS;
-  try { const b = await req.json().catch(() => ({})); if (Array.isArray(b?.pairs) && b.pairs.length) pairs = b.pairs; } catch { /* sem body */ }
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (Array.isArray(body?.pairs) && body.pairs.length > 0) {
+      pairs = body.pairs;
+    }
+  } catch {
+    // sem body
+  }
 
   const ids = new Set<number>();
   for (const p of pairs) {
-    const { data, error } = await supabase.rpc("get_futebol_leaders", { p_competition: p.c, p_season: p.s });
+    const { data, error } = await supabase.rpc("get_futebol_leaders", {
+      p_competition: p.c,
+      p_season: p.s,
+    });
     if (error || !data) continue;
-    for (const x of data.scorers ?? []) { if (x && x.player_id) ids.add(Number(x.player_id)); }
-    for (const x of data.cards ?? []) { if (x && x.player_id) ids.add(Number(x.player_id)); }
+    for (const x of data.scorers ?? []) {
+      if (x && x.player_id) ids.add(Number(x.player_id));
+    }
+    for (const x of data.cards ?? []) {
+      if (x && x.player_id) ids.add(Number(x.player_id));
+    }
   }
 
-  let mirrored = 0, failed = 0;
+  let mirrored = 0;
+  let failed = 0;
   for (const id of ids) {
     try {
-      const res = await fetch(`https://media.api-sports.io/football/players/${id}.png`, { redirect: "follow" });
+      const url = `https://media.api-sports.io/football/players/${id}.png`;
+      const res = await fetch(url, { redirect: "follow" });
       if (!res.ok) { failed++; continue; }
       const bytes = new Uint8Array(await res.arrayBuffer());
       if (bytes.byteLength === 0) { failed++; continue; }
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(`${id}.png`, bytes, { contentType: "image/png", upsert: true });
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(`${id}.png`, bytes, { contentType: "image/png", upsert: true });
       if (upErr) { failed++; continue; }
       mirrored++;
-    } catch { failed++; }
+    } catch {
+      failed++;
+    }
   }
   return json({ ok: true, total: ids.size, mirrored, failed });
 });
 
 function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
