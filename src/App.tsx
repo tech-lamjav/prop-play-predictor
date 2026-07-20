@@ -14,6 +14,7 @@ import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
+import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
 import { lazyWithRetry } from "./lib/lazy-with-retry";
@@ -26,6 +27,7 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 // pra pegar build novo.
 const Betinho = lazyWithRetry(() => import("./pages/Betinho"));
 const Onboarding = lazyWithRetry(() => import("./pages/Onboarding"));
+const Inicio = lazyWithRetry(() => import("./pages/Inicio"));
 const DashboardTest = lazyWithRetry(() => import("./pages/DashboardTest"));
 const Bets = lazyWithRetry(() => import("./pages/Bets"));
 const Bankroll = lazyWithRetry(() => import("./pages/Bankroll"));
@@ -47,6 +49,13 @@ const SharePage = lazyWithRetry(() => import("./pages/SharePage"));
 const Analise360List = lazyWithRetry(() => import("./pages/Analise360List"));
 const Analise360Detail = lazyWithRetry(() => import("./pages/Analise360Detail"));
 const HomeNBA = lazyWithRetry(() => import("./pages/HomeNBA"));
+const FutebolHoje = lazyWithRetry(() => import("./pages/FutebolHoje"));
+const FutebolOportunidades = lazyWithRetry(() => import("./pages/FutebolOportunidades"));
+const FutebolJogos = lazyWithRetry(() => import("./pages/FutebolJogos"));
+const FutebolJogo = lazyWithRetry(() => import("./pages/FutebolJogo"));
+const FutebolTime = lazyWithRetry(() => import("./pages/FutebolTime"));
+const FutebolAssinar = lazyWithRetry(() => import("./pages/FutebolAssinar"));
+const FutebolLP = lazyWithRetry(() => import("./pages/FutebolLP"));
 const BolaoEntry = lazyWithRetry(() => import("./pages/BolaoEntry"));
 const BolaoHome = lazyWithRetry(() => import("./pages/BolaoHome"));
 const BolaoDetail = lazyWithRetry(() => import("./pages/BolaoDetail"));
@@ -74,6 +83,7 @@ const App = () => (
       <BrowserRouter>
         <EnvironmentBanner />
         <PostHogPageView />
+        <CrossSellManager />
         <Suspense fallback={<LazyFallback />}>
           <Routes>
             <Route path="/" element={<LandingEcossistema />} />
@@ -104,6 +114,11 @@ const App = () => (
                 <Onboarding />
               </ProtectedRoute>
             } />
+            <Route path="/inicio" element={
+              <ProtectedRoute>
+                <Inicio />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <DashboardTest />
@@ -131,6 +146,15 @@ const App = () => (
             } />
             <Route path="/home-games" element={<Games />} />
             <Route path="/game/:gameId" element={<GameDetail />} />
+            {/* Futebol (value bet) — protótipo lendo BigQuery via FDW no dev.
+                Rotas públicas por enquanto, igual /home-games. */}
+            <Route path="/futebol" element={<FutebolHoje />} />
+            <Route path="/futebol/comecar" element={<FutebolLP />} />
+            <Route path="/futebol/oportunidades" element={<FutebolOportunidades />} />
+            <Route path="/futebol/jogos" element={<FutebolJogos />} />
+            <Route path="/futebol/jogo/:fixtureId" element={<FutebolJogo />} />
+            <Route path="/futebol/time/:teamId" element={<FutebolTime />} />
+            <Route path="/futebol/assinar" element={<FutebolAssinar />} />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/paywall" element={<Paywall />} />

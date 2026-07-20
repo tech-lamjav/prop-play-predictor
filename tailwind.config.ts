@@ -38,8 +38,17 @@ export default {
 				},
 				forest: {
 					DEFAULT: '#0a3d2e',
+					'2': '#0f5238',
 					soft: '#1f5640',
 					tint: '#e7efe9',
+				},
+				/* âmbar: espelha as CSS vars de .theme-bolao (index.css). Definir aqui
+				   habilita variantes com opacidade/gradiente/hover (bg-amber/40,
+				   from-amber, hover:bg-amber-2) globalmente. Merge aditivo — a escala
+				   padrão amber-50..950 do Tailwind continua disponível. */
+				amber: {
+					DEFAULT: '#d4a017',
+					'2': '#b8870f',
 				},
 				status: {
 					success: '#2f7d50',

@@ -441,9 +441,10 @@ serve(async (req) => {
       // execute: aplica os settles (guarda otimista em status=pending)
       let settled = 0;
       const errors: string[] = [];
+      const settledBets: { user_id: string | null; created_at: string | null; channel: string | null; verdict: string }[] = [];
       for (const d of decisions) {
         if (d.action !== "settle") continue;
-        const { data: bet } = await supabase.from("bets").select("processed_data").eq("id", d.bet_id).maybeSingle();
+        const { data: bet } = await supabase.from("bets").select("processed_data, user_id, created_at, channel").eq("id", d.bet_id).maybeSingle();
         // processed_data pode não ser objeto em registros antigos — não espalhar string
         const pd = bet?.processed_data && typeof bet.processed_data === "object" && !Array.isArray(bet.processed_data)
           ? bet.processed_data : {};
@@ -461,7 +462,37 @@ serve(async (req) => {
           .select("id")
           .maybeSingle();
         if (updErr) { errors.push(`${d.bet_id}: ${updErr.message}`); continue; }
-        if (upd) settled++;
+        if (upd) {
+          settled++;
+          settledBets.push({
+            user_id: bet?.user_id ?? null,
+            created_at: bet?.created_at ?? null,
+            channel: bet?.channel ?? null,
+            verdict: d.verdict,
+          });
+        }
+      }
+
+      // bet_settled por aposta (settled_by:'auto') — sem isso o lote do winback fica invisível
+      // pra métrica central no PostHog (o agregado abaixo não conta por usuário nem por aposta).
+      for (const s of settledBets) {
+        await trackEvent(
+          "bet_settled",
+          {
+            product: "betinho",
+            channel: s.channel,
+            status: s.verdict,
+            days_to_settle: s.created_at
+              ? Math.round((Date.now() - new Date(s.created_at).getTime()) / 86400000)
+              : null,
+            settled_by: "auto",
+            via: "winback_backfill",
+            batch: true,
+            count: settledBets.length,
+          },
+          s.user_id ?? "system",
+          traceId
+        ).catch(() => {});
       }
 
       await trackEvent("winback_backfill_executed", { ...totals, settled }, "system", traceId).catch(() => {});

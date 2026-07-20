@@ -661,7 +661,7 @@ export default function Analise360Detail() {
 
   // Analytics: visualização da Análise 360 (Marco 3 — retenção por superfície, N3).
   useEffect(() => {
-    posthog?.capture('nba_analise360_viewed', { player_id: triggerPlayerId });
+    posthog?.capture('nba_analise360_viewed', { product: 'nba', player_id: triggerPlayerId });
   }, [triggerPlayerId, posthog]);
 
   const triggerIdNum = Number(triggerPlayerId);

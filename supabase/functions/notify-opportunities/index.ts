@@ -66,6 +66,19 @@ function pickLabel(market: string, outcome: string, line: number | null, homeNam
   return outcomePt(outcome, homeName, awayName);
 }
 
+// mercado → rótulo PT que a auto-liquidação (notify-settlement) reconhece,
+// pra a aposta registrada aqui ser liquidável depois pelo mesmo motor
+function marketPt(market: string): string {
+  switch (market) {
+    case "match_winner": return "Money Line";
+    case "goals_over_under": return "Over/Under";
+    case "asian_handicap": return "Handicap";
+    case "btts": return "Ambas marcam";
+    case "double_chance": return "Dupla chance";
+    default: return market;
+  }
+}
+
 // ── util ─────────────────────────────────────────────────────
 function esc(s: unknown): string {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -141,7 +154,19 @@ async function buildMessage(picks: BoardRow[], userId: string): Promise<string> 
   return lines.join("\n");
 }
 
-async function sendDaily(chatId: string, text: string, boardUrl: string): Promise<void> {
+// botão "Registrar no Betinho" por pick (item 15). label curto pra caber.
+function registerButtons(picks: BoardRow[], pickIdByFixture: Map<number, string>): any[] {
+  const rows: any[] = [];
+  for (const p of picks) {
+    const id = pickIdByFixture.get(p.fixture_id);
+    if (!id) continue;
+    const label = pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name);
+    rows.push([{ text: `📋 Registrar: ${label.length > 34 ? label.slice(0, 33) + "…" : label}`, callback_data: `regbet:${id}` }]);
+  }
+  return rows;
+}
+
+async function sendDaily(chatId: string, text: string, boardUrl: string, pickRows: any[]): Promise<void> {
   const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -150,7 +175,7 @@ async function sendDaily(chatId: string, text: string, boardUrl: string): Promis
       text,
       parse_mode: "HTML",
       disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [[{ text: "Ver a análise completa", url: boardUrl }]] },
+      reply_markup: { inline_keyboard: [...pickRows, [{ text: "Ver a análise completa", url: boardUrl }]] },
     }),
   });
   if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
@@ -206,14 +231,36 @@ serve(async (req) => {
       });
     }
 
-    // 5) envio + estado de cadência
+    // 5) persiste os picks do dia (referência dos botões "Registrar no Betinho")
+    // — uma vez, compartilhado entre todos; upsert idempotente por (dia,jogo,aposta)
+    const pickRows = picks.map((p) => ({
+      fixture_id: p.fixture_id,
+      sport: "Futebol",
+      league: p.competition,
+      betting_market: marketPt(p.market),
+      match_description: `${p.home_team_name} × ${p.away_team_name}`,
+      bet_description: pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name),
+      odds: p.best_odd,
+      match_date: kickoffDate(p.kickoff_utc).toISOString(),
+    }));
+    const { data: savedPicks, error: pErr } = await supabase
+      .from("daily_opportunity_picks")
+      .upsert(pickRows, { onConflict: "sent_date,fixture_id,bet_description" })
+      .select("id, fixture_id");
+    if (pErr) throw pErr;
+    const pickIdByFixture = new Map<number, string>(
+      (savedPicks ?? []).map((r: any) => [Number(r.fixture_id), r.id as string])
+    );
+    const pickButtonRows = registerButtons(picks, pickIdByFixture);
+
+    // 6) envio + estado de cadência
     let sent = 0;
     const errors: string[] = [];
     for (const r of recipients) {
       try {
         const text = await buildMessage(picks, r.user_id);
         const boardUrl = await trackedUrl(r.user_id, "board");
-        await sendDaily(r.chat_id, text, boardUrl);
+        await sendDaily(r.chat_id, text, boardUrl, pickButtonRows);
 
         const { error: upErr } = await supabase.from("opportunity_dispatch_state").upsert({
           user_id: r.user_id,

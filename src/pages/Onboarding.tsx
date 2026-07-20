@@ -1,456 +1,497 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { telegramBotUrl } from '@/config/environment';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { Progress } from '../components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import UserNav from '../components/UserNav';
-import AnalyticsNav from '../components/AnalyticsNav';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
+import useEmblaCarousel from 'embla-carousel-react';
 import {
-  CheckCircle,
-  ArrowRight,
-  ArrowLeft,
-  Smartphone,
-  Shield,
-  BarChart3,
+  Camera,
+  LineChart,
+  Megaphone,
   Send,
-  Gamepad2
+  Check,
+  Loader2,
+  ArrowRight,
+  RefreshCw,
+  Image as ImageIcon,
+  Flame,
+  TrendingUp,
 } from 'lucide-react';
+import AnalyticsNav from '../components/AnalyticsNav';
+import { telegramBotUsername } from '../config/environment';
 import { createClient } from '../integrations/supabase/client';
 
-export default function Onboarding() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
-  const supabase = createClient();
-  const isBetinhoOnly = searchParams.get('product') === 'betinho' || (location.state as { onboardingProduct?: string })?.onboardingProduct === 'betinho';
+// Onboarding do Betinho — redesign benefit-led (docs/onboarding-betinho-redesign.md).
+// Momento 1: valor (gancho + carrossel do que a conexão entrega). Momento 2: conexão por
+// deep-link com token de uso único + polling até confirmar. Telefone fica no cadastro (CRM),
+// mas não participa do vínculo.
 
-  const [currentStep, setCurrentStep] = useState(isBetinhoOnly ? 1 : 0);
-  const [formData, setFormData] = useState({
-    whatsappNumber: '',
-    countryCode: '+55' // Default to Brazil
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
-  const [whatsappSynced, setWhatsappSynced] = useState(false);
+type Stage = 'value' | 'connecting' | 'connected' | 'timeout';
 
-  // Steps 1 (number) and 2 (telegram) — name/email já vêm do cadastro
-  const steps = [
-    {
-      id: 1,
-      title: 'Número para o Betinho',
-      description: 'Confirme ou altere seu número para conectar ao bot no Telegram',
-      icon: Send
-    },
-    {
-      id: 2,
-      title: 'Finalização',
-      description: 'Conecte com o bot no Telegram',
-      icon: CheckCircle
-    }
-  ];
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 40; // ~2 min
 
-  const progress = currentStep === 0 ? 0 : (currentStep / 2) * 100;
-  const showChoiceStep = currentStep === 0;
+const BENEFITS = [
+  {
+    icon: Camera,
+    title: 'Registra pelo print',
+    description: 'Manda um print ou escreve a aposta. O Betinho lê e registra sozinho.',
+  },
+  {
+    icon: LineChart,
+    title: 'Seu ROI de verdade',
+    description: 'Liquidação, banca e resultado real por esporte, sem planilha.',
+  },
+  {
+    icon: Megaphone,
+    title: 'O dia chega no seu chat',
+    description: 'Oportunidades do dia, avisos de resultado e novidades no Telegram.',
+  },
+] as const;
 
-  // Parse stored whatsapp_number into country code + local number for pre-fill
-  const parseStoredPhone = (stored: string | null): { countryCode: string; number: string } => {
-    if (!stored) return { countryCode: '+55', number: '' };
-    const digits = stored.replace(/\D/g, '');
-    const codes = ['55', '1', '54', '56', '57', '351', '34', '39'];
-    for (const c of codes) {
-      if (digits.startsWith(c)) {
-        return { countryCode: `+${c}`, number: digits.slice(c.length) };
-      }
-    }
-    return { countryCode: '+55', number: digits };
-  };
+// ── Carrossel de mocks NATIVOS (não são screenshots) ──────────────────────
+// Mostra o que a conexão ENTREGA: registrar pelo print, oportunidade do dia, resultado.
+
+function ChatFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mx-auto w-full max-w-[320px] overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
+      <div className="flex items-center gap-2.5 border-b border-line bg-white px-4 py-3">
+        <div className="grid h-8 w-8 place-items-center rounded-full bg-forest text-[13px] font-bold text-white">B</div>
+        <div>
+          <p className="text-[13px] font-semibold leading-none text-ink">Betinho</p>
+          <p className="mt-1 flex items-center gap-1 text-[11px] leading-none text-status-success">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-status-success" /> online
+          </p>
+        </div>
+      </div>
+      <div className="min-h-[220px] space-y-2.5 bg-canvas px-3 py-4">{children}</div>
+    </div>
+  );
+}
+
+// Slide 1 — registrar mandando o PRINT (a ação de maior afinidade)
+function SlidePrint() {
+  return (
+    <ChatFrame>
+      <div className="flex justify-end">
+        <div className="max-w-[82%] overflow-hidden rounded-2xl rounded-br-sm border border-forest/20 bg-white shadow-sm">
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-forest to-forest-soft px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+            <ImageIcon className="h-3.5 w-3.5" /> Comprovante
+          </div>
+          <div className="space-y-1 px-3 py-2 text-[12px]">
+            <div className="font-semibold text-ink">Flamengo x Palmeiras</div>
+            <div className="flex justify-between text-ink-2"><span>Flamengo vence</span><span className="font-semibold text-ink">1.85</span></div>
+            <div className="flex justify-between text-ink-2"><span>Aposta</span><span className="font-semibold text-ink">R$ 50,00</span></div>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-1 pr-2 text-[10px] text-ink-2">
+        <ImageIcon className="h-3 w-3" /> print enviado
+      </div>
+      <div className="flex justify-start">
+        <div className="max-w-[86%] rounded-2xl rounded-bl-sm border border-line bg-white px-3.5 py-2.5 shadow-sm">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[13px] font-semibold text-status-success">
+            <Check className="h-4 w-4" /> Li o print e registrei!
+          </div>
+          <div className="text-[12px] text-ink-2">
+            Retorno potencial <span className="font-semibold text-forest">R$ 92,50</span>
+          </div>
+        </div>
+      </div>
+    </ChatFrame>
+  );
+}
+
+// Slide 2 — a oportunidade do dia chega no chat
+function SlideOpportunity() {
+  return (
+    <ChatFrame>
+      <div className="flex justify-start">
+        <div className="w-full max-w-[92%] overflow-hidden rounded-2xl rounded-bl-sm border border-amber/30 bg-white shadow-sm">
+          <div className="flex items-center gap-1.5 bg-amber/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-2">
+            <Flame className="h-3.5 w-3.5" /> Oportunidade de hoje
+          </div>
+          <div className="space-y-2 px-3 py-2.5">
+            <div className="text-[13px] font-semibold text-ink">Palmeiras x Corinthians</div>
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-ink-2">Mais de 2.5 gols</span>
+              <span className="rounded-md bg-forest px-2 py-0.5 text-[11px] font-bold text-white">Score 82</span>
+            </div>
+            <div className="flex items-center gap-1 text-[12px] font-semibold text-status-success">
+              <TrendingUp className="h-3.5 w-3.5" /> valor +14% na odd
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-start">
+        <div className="rounded-2xl rounded-bl-sm border border-line bg-white px-3.5 py-2 text-[12px] text-ink-2 shadow-sm">
+          Quer registrar? Só mandar aqui.
+        </div>
+      </div>
+    </ChatFrame>
+  );
+}
+
+// Slide 3 — o resultado liquidado, automático
+function SlideResult() {
+  return (
+    <ChatFrame>
+      <div className="flex justify-start">
+        <div className="w-full max-w-[92%] overflow-hidden rounded-2xl rounded-bl-sm border border-status-success/30 bg-white shadow-sm">
+          <div className="flex items-center gap-1.5 bg-status-success/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-status-success">
+            <Check className="h-3.5 w-3.5" /> Bateu!
+          </div>
+          <div className="space-y-1.5 px-3 py-2.5">
+            <div className="text-[13px] font-semibold text-ink">Flamengo venceu o Palmeiras</div>
+            <div className="text-[20px] font-extrabold text-status-success">+ R$ 42,50</div>
+            <div className="flex items-center justify-between rounded-lg bg-canvas-2/60 px-2.5 py-1.5 text-[12px]">
+              <span className="text-ink-2">ROI do mês</span>
+              <span className="font-bold text-forest">+12%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ChatFrame>
+  );
+}
+
+const SLIDES = [
+  { key: 'print', label: 'Registre só mandando o print', node: <SlidePrint /> },
+  { key: 'opp', label: 'As oportunidades do dia chegam a você', node: <SlideOpportunity /> },
+  { key: 'result', label: 'E o resultado é liquidado sozinho', node: <SlideResult /> },
+] as const;
+
+function BetinhoCarousel() {
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center' });
+  const [selected, setSelected] = useState(0);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const play = useCallback(() => {
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => emblaApi?.scrollNext(), 4500);
+  }, [emblaApi]);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        // Check if user already completed onboarding (include whatsapp_number for pre-fill)
-        const { data: userData } = await supabase
-          .from('users')
-          .select('name, email, whatsapp_number, whatsapp_synced')
-          .eq('id', user.id)
-          .single();
-        
-        if (userData?.name && userData?.email) {
-          const { countryCode, number } = parseStoredPhone(userData.whatsapp_number ?? null);
-          setFormData({
-            whatsappNumber: number,
-            countryCode,
-          });
-          setWhatsappSynced(!!userData.whatsapp_synced);
-        }
-      } else {
-        navigate('/auth');
-      }
+    if (!emblaApi) return;
+    const onSelect = () => setSelected(emblaApi.selectedScrollSnap());
+    emblaApi.on('select', onSelect);
+    onSelect();
+    play();
+    return () => {
+      emblaApi.off('select', onSelect);
+      if (timer.current) clearInterval(timer.current);
     };
+  }, [emblaApi, play]);
 
-    checkUser();
-  }, [navigate, supabase.auth]);
-
-  const handleStep1Submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      if (!userId) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      const cleanNumber = formData.whatsappNumber.replace(/\D/g, '');
-      if (cleanNumber.length < 8) {
-        throw new Error('Número de telefone inválido');
-      }
-
-      const fullNumber = formData.countryCode.replace(/\D/g, '') + cleanNumber;
-
-      const { error } = await supabase
-        .from('users')
-        .update({ whatsapp_number: fullNumber })
-        .eq('id', userId);
-
-      if (error) {
-        throw error;
-      }
-
-      setCurrentStep(2);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar número');
-    } finally {
-      setIsLoading(false);
-    }
+  // clicar num dot leva ao slide e reinicia o autoplay (não fica "pulando" sozinho)
+  const goTo = (i: number) => {
+    emblaApi?.scrollTo(i);
+    play();
   };
 
-  const handleTelegramOpen = () => {
-    window.open(telegramBotUrl, '_blank');
-  };
-
-  const handleComplete = () => {
-    navigate('/bets');
-  };
-
-  const renderStep0 = () => (
-    <div className="max-w-md mx-auto">
-      <div className="terminal-container p-6 rounded-lg">
-        <h2 className="section-title text-base md:text-lg text-center mb-2 text-terminal-blue">
-          O que você quer fazer primeiro?
-        </h2>
-        <p className="text-center text-sm text-terminal-text opacity-70 mb-6">
-          Escolha como começar no Smartbetting
-        </p>
-        <div className="space-y-4">
-          <button
-            type="button"
-            onClick={() => navigate('/home-nba')}
-            className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
-          >
-            <Gamepad2 className="w-8 h-8 text-terminal-blue" />
-            <span className="font-semibold text-terminal-blue">Conhecer análises</span>
-            <span className="text-sm text-terminal-text opacity-80 font-normal">
-              Ver jogos, props e dashboards da NBA
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => whatsappSynced ? navigate('/bets') : setCurrentStep(1)}
-            className="terminal-button w-full h-auto py-6 flex flex-col items-center gap-2 rounded border-2 border-terminal-green/40 hover:border-terminal-green hover:bg-terminal-dark-gray/80 transition-all text-terminal-text"
-          >
-            <Send className="w-8 h-8 text-terminal-blue" />
-            <span className="font-semibold text-terminal-blue">
-              {whatsappSynced ? 'Acessar Betinho' : 'Configurar Betinho (Telegram)'}
-            </span>
-            <span className="text-sm text-terminal-text opacity-80 font-normal">
-              {whatsappSynced ? 'Ir para suas apostas' : 'Registrar apostas via bot no Telegram'}
-            </span>
-          </button>
+  return (
+    <div className="w-full max-w-[380px]">
+      <div className="overflow-hidden" ref={emblaRef}>
+        <div className="flex">
+          {SLIDES.map((s) => (
+            <div key={s.key} className="min-w-0 flex-[0_0_100%] px-1">
+              {s.node}
+            </div>
+          ))}
         </div>
+      </div>
+
+      <p className="mt-5 min-h-[40px] text-center text-[14px] font-medium text-white/90">
+        {SLIDES[selected]?.label}
+      </p>
+
+      <div className="mt-2 flex justify-center gap-2">
+        {SLIDES.map((s, i) => (
+          <button
+            key={s.key}
+            type="button"
+            aria-label={`Ir para o slide ${i + 1}`}
+            onClick={() => goTo(i)}
+            className={`h-2 rounded-full transition-all ${i === selected ? 'w-6 bg-amber' : 'w-2 bg-white/30'}`}
+          />
+        ))}
       </div>
     </div>
   );
+}
 
-  const renderStep1 = () => (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-          <Send className="w-6 h-6 text-blue-600" />
-        </div>
-        <CardTitle>Número para o Betinho</CardTitle>
-        <CardDescription>
-          Confirme ou altere seu número. Este número será usado para conectar ao bot no Telegram.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleStep1Submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp">Telefone</Label>
-            <div className="flex gap-2">
-              <Select
-                value={formData.countryCode}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, countryCode: value }))}
-              >
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="+55">🇧🇷 +55</SelectItem>
-                  <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                  <SelectItem value="+54">🇦🇷 +54</SelectItem>
-                  <SelectItem value="+56">🇨🇱 +56</SelectItem>
-                  <SelectItem value="+57">🇨🇴 +57</SelectItem>
-                  <SelectItem value="+351">🇵🇹 +351</SelectItem>
-                  <SelectItem value="+34">🇪🇸 +34</SelectItem>
-                  <SelectItem value="+39">🇮🇹 +39</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                id="whatsapp"
-                type="tel"
-                placeholder="(11) 99999-9999"
-                value={formData.whatsappNumber}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  setFormData(prev => ({ ...prev, whatsappNumber: value }));
-                }}
-                className="flex-1"
-                required
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Código do país selecionado: {formData.countryCode}
-            </p>
-          </div>
+export default function Onboarding() {
+  const navigate = useNavigate();
+  const posthog = usePostHog();
+  const [searchParams] = useSearchParams();
+  const supabase = createClient();
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+  const [userId, setUserId] = useState<string | null>(null);
+  const [stage, setStage] = useState<Stage>('value');
+  const [error, setError] = useState('');
 
-          <div className="flex space-x-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setCurrentStep(0)}
-              className="flex-1"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-            <Button type="submit" className="flex-1" disabled={isLoading}>
-              {isLoading ? 'Salvando...' : 'Continuar'}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const connectStartedAt = useRef<number | null>(null);
+  const viewedFired = useRef(false);
 
-  const renderStep2 = () => (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-          <CheckCircle className="w-6 h-6 text-green-600" />
-        </div>
-        <CardTitle>Conecte com o bot</CardTitle>
-        <CardDescription>
-          Abra o bot no Telegram e compartilhe seu número
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="bg-muted p-4 rounded-lg">
-          <p className="text-sm text-foreground mb-2">
-            <strong>Instruções:</strong>
-          </p>
-          <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-            <li>Clique no botão abaixo</li>
-            <li>No Telegram, toque em <em>Start</em> (/start)</li>
-            <li>Toque em “Enviar meu número” para sincronizar</li>
-            <li>Depois, finalize aqui</li>
-          </ol>
-        </div>
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }, []);
 
-        <Button 
-          onClick={handleTelegramOpen}
-          className="w-full bg-blue-600 hover:bg-blue-700"
-        >
-          <Send className="w-4 h-4 mr-2" />
-          Abrir bot no Telegram
-        </Button>
+  useEffect(() => () => stopPolling(), [stopPolling]);
 
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setCurrentStep(1)}
-            className="flex-1"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-          <Button 
-            onClick={handleComplete} 
-            className="flex-1"
-          >
-            Finalizar
-            <CheckCircle className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth', { state: { from: { pathname: '/onboarding' } } });
+        return;
+      }
+      setUserId(user.id);
+
+      const { data: row } = await supabase
+        .from('users')
+        .select('telegram_chat_id')
+        .eq('id', user.id)
+        .single();
+      const alreadySynced = !!row?.telegram_chat_id;
+      if (alreadySynced) setStage('connected');
+
+      if (!viewedFired.current) {
+        viewedFired.current = true;
+        posthog?.capture('betinho_onboarding_viewed', {
+          product: 'betinho',
+          source: searchParams.get('src') ?? 'direct',
+          already_synced: alreadySynced,
+        });
+      }
+    };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    let attempts = 0;
+    pollTimer.current = setInterval(async () => {
+      attempts++;
+      const { data: row } = await supabase
+        .from('users')
+        .select('telegram_chat_id')
+        .eq('id', userId!)
+        .single();
+      if (row?.telegram_chat_id) {
+        stopPolling();
+        setStage('connected');
+        posthog?.capture('betinho_onboarding_synced', {
+          product: 'betinho',
+          elapsed_s: connectStartedAt.current
+            ? Math.round((Date.now() - connectStartedAt.current) / 1000)
+            : null,
+        });
+        return;
+      }
+      if (attempts >= POLL_MAX_ATTEMPTS) {
+        stopPolling();
+        setStage('timeout');
+      }
+    }, POLL_INTERVAL_MS);
+  }, [posthog, stopPolling, supabase, userId]);
+
+  const handleConnect = async () => {
+    if (!userId) return;
+    setError('');
+    posthog?.capture('betinho_onboarding_link_clicked', { product: 'betinho' });
+    // Safari/iOS bloqueia window.open chamado depois de um await (perde o
+    // "user activation"). Abre a janela AINDA no gesto do clique e navega
+    // ela quando o token chegar; se mesmo assim for bloqueada, cai pra
+    // navegação na própria aba.
+    const popup = window.open('', '_blank');
+    try {
+      const { data: token, error: rpcError } = await supabase.rpc('get_telegram_link_token');
+      if (rpcError || !token) throw rpcError ?? new Error('token vazio');
+      connectStartedAt.current = Date.now();
+      const url = `https://t.me/${telegramBotUsername}?start=link_${token}`;
+      if (popup && !popup.closed) {
+        popup.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+      setStage('connecting');
+      startPolling();
+    } catch {
+      if (popup && !popup.closed) popup.close();
+      setError('Não consegui gerar seu link agora. Tenta de novo em instantes.');
+    }
+  };
+
+  const handleSkip = () => {
+    posthog?.capture('betinho_onboarding_skipped', { product: 'betinho' });
+    navigate('/bets');
+  };
 
   if (!userId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-terminal-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-terminal-green"></div>
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-forest animate-spin" />
       </div>
     );
   }
 
-  // Step 0: choice screen — same design system as analytics platform (terminal theme)
-  if (showChoiceStep) {
+  // ── Momento 1: valor ──────────────────────────────────────────────────────
+  // Desktop: 2 colunas (texto à esquerda centralizado, carrossel forest à direita).
+  // Mobile: gancho → carrossel → benefícios + CTA (carrossel alto, CTA logo abaixo).
+  if (stage === 'value') {
     return (
-      <div className="min-h-screen bg-terminal-black text-terminal-text font-mono">
-        <AnalyticsNav />
-        <div className="container mx-auto px-4 py-8 md:py-12">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wider text-terminal-blue mb-2">
-              BEM-VINDO AO SMARTBETTING
-            </h1>
-            <p className="text-sm text-terminal-text opacity-70">
-              Escolha como começar
-            </p>
+      <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
+        <AnalyticsNav variant="rebrand" />
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 max-w-screen-2xl mx-auto w-full">
+          {/* Gancho */}
+          <div className="order-1 px-6 pt-10 sm:px-10 lg:col-start-1 lg:row-start-1 lg:self-end lg:px-16 lg:pt-0">
+            <div className="mx-auto max-w-md lg:mx-0">
+              <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-forest">
+                Conheça o Betinho
+              </div>
+              <h1 className="mb-4 font-display text-[32px] font-extrabold leading-[1.08] tracking-tight text-ink lg:text-[42px]">
+                Seu assistente de apostas, direto no <span className="text-amber">Telegram.</span>
+              </h1>
+              <p className="text-[15px] leading-relaxed text-ink-2">
+                Você manda a aposta por print ou texto e o Betinho registra sozinho. Ele calcula
+                seu ROI de verdade e ainda te avisa das oportunidades do dia, no chat onde você já conversa.
+              </p>
+            </div>
           </div>
-          {renderStep0()}
+
+          {/* Carrossel — no mobile é um card arredondado com respiro (não faixa colada);
+              no desktop vira o painel full-height da coluna direita. */}
+          <div className="relative order-2 mx-4 my-6 flex items-center justify-center overflow-hidden rounded-3xl bg-forest px-6 py-10 lg:mx-0 lg:my-0 lg:rounded-none lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:py-20">
+            <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber/10" aria-hidden />
+            <div className="pointer-events-none absolute -left-16 bottom-10 h-64 w-64 rounded-full bg-white/5" aria-hidden />
+            <div className="relative z-10 flex w-full justify-center">
+              <BetinhoCarousel />
+            </div>
+          </div>
+
+          {/* Benefícios + CTA */}
+          <div className="order-3 px-6 pb-12 sm:px-10 lg:col-start-1 lg:row-start-2 lg:self-start lg:px-16 lg:pt-6 lg:pb-20">
+            <div className="mx-auto max-w-md lg:mx-0">
+              <div className="mb-7 space-y-3.5">
+                {BENEFITS.map(({ icon: Icon, title, description }) => (
+                  <div key={title} className="flex items-start gap-3.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-forest-tint">
+                      <Icon className="h-4 w-4 text-forest" />
+                    </div>
+                    <div>
+                      <h3 className="text-[14px] font-semibold leading-tight text-ink">{title}</h3>
+                      <p className="text-[13px] leading-snug text-ink-2">{description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {error && <p className="mb-4 text-[13px] text-status-danger">{error}</p>}
+
+              <button
+                type="button"
+                onClick={handleConnect}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-forest text-[16px] font-bold text-white shadow-lg shadow-forest/20 transition-colors hover:bg-forest-soft"
+              >
+                <Send className="h-5 w-5" />
+                Conectar meu Telegram
+              </button>
+              <p className="mt-3 text-center text-[12px] text-ink-2">
+                Abre o Telegram, toca em <strong>Iniciar</strong> e pronto. Sem digitar nada.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="mt-5 flex w-full items-center justify-center gap-1 rounded-lg border border-line bg-canvas-2 py-2.5 text-[13px] font-semibold text-ink-2 transition-colors hover:bg-line/60 hover:text-ink"
+              >
+                Pular por agora
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Betinho onboarding steps (1–3): original Smartbetting layout
+  // ── Demais momentos (connecting / connected / timeout) — centralizado ─────
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-white" />
+    <div className="theme-bolao min-h-screen bg-canvas">
+      <AnalyticsNav variant="rebrand" />
+      <div className="container mx-auto px-4 py-10 md:py-16 max-w-lg">
+        {stage === 'connecting' && (
+          <div className="text-center pt-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-forest-tint flex items-center justify-center mb-5">
+              <Loader2 className="w-7 h-7 text-forest animate-spin" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
+            <h1 className="text-xl font-bold text-ink mb-2">Aguardando o Telegram…</h1>
+            <p className="text-[14px] text-ink-2 mb-6 max-w-sm mx-auto">
+              No Telegram que abriu, toca em <strong>Iniciar</strong>. Assim que conectar, esta tela confirma sozinha.
+            </p>
+            <button
+              type="button"
+              onClick={handleConnect}
+              className="text-[13px] text-forest font-semibold underline underline-offset-2"
+            >
+              O Telegram não abriu? Gerar link de novo
+            </button>
           </div>
-          <UserNav />
-        </div>
-      </nav>
+        )}
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Bem-vindo ao Smartbetting
-          </h1>
-          <p className="text-muted-foreground">
-            Vamos configurar sua conta em poucos passos
-          </p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-foreground">
-              Passo {currentStep} de 2
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {Math.round(progress)}% concluído
-            </span>
+        {stage === 'connected' && (
+          <div className="text-center pt-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-forest flex items-center justify-center mb-5">
+              <Check className="w-7 h-7 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-ink mb-2">Conectado!</h1>
+            <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
+              O Betinho já te mandou uma mensagem. Manda a sua primeira aposta pra ele (print ou texto)
+              e ela aparece aqui na hora.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/bets')}
+              className="w-full h-12 rounded-lg bg-forest hover:bg-forest-soft text-white text-[15px] font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              Ver minhas apostas
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
-          <Progress value={progress} className="h-2" />
-        </div>
+        )}
 
-        {/* Steps Navigation */}
-        <div className="flex justify-center mb-8">
-          <div className="flex space-x-4">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-              
-              return (
-                <div
-                  key={step.id}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                    isActive 
-                      ? 'bg-primary/10 text-primary border border-primary/20' 
-                      : isCompleted 
-                        ? 'bg-green-100 text-green-700 border border-green-200' 
-                        : 'bg-muted text-muted-foreground border border-border'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{step.title}</span>
-                </div>
-              );
-            })}
+        {stage === 'timeout' && (
+          <div className="text-center pt-8">
+            <div className="mx-auto w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mb-5">
+              <RefreshCw className="w-7 h-7 text-amber-600" />
+            </div>
+            <h1 className="text-xl font-bold text-ink mb-2">Ainda não conectou</h1>
+            <p className="text-[14px] text-ink-2 mb-6 max-w-sm mx-auto">
+              Sem problema. Clica de novo abaixo e toca em <strong>Iniciar</strong> no Telegram.
+            </p>
+            {error && <p className="text-[13px] text-status-danger mb-4">{error}</p>}
+            <button
+              type="button"
+              onClick={handleConnect}
+              className="w-full h-12 rounded-lg bg-forest hover:bg-forest-soft text-white text-[15px] font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              Tentar de novo
+            </button>
+            <div className="text-center mt-6">
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="text-[13px] text-ink-2 underline underline-offset-2 hover:text-ink transition-colors"
+              >
+                Pular por agora
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* Step Content */}
-        <div className="flex justify-center">
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-        </div>
-
-        {/* Features Preview */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <Smartphone className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Telegram Integration</h3>
-              <p className="text-sm text-muted-foreground">
-                Envie apostas via texto, áudio ou imagem
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Shield className="w-6 h-6 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Segurança</h3>
-              <p className="text-sm text-muted-foreground">
-                Seus dados protegidos com criptografia
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                <BarChart3 className="w-6 h-6 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-foreground mb-2">Analytics</h3>
-              <p className="text-sm text-muted-foreground">
-                Acompanhe sua performance em tempo real
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { usePostHog } from '@posthog/react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -149,6 +149,18 @@ const BolaoDetail: React.FC = () => {
   );
   const { data: myPredictions } = useBolaoPredictions(id, currentUserId);
   const { data: championPredictions } = useChampionPredictions(id);
+
+  // Analytics: "usuário ativo no bolão" — base da coorte de migração (E4) do handoff de 19/jul.
+  // Dispara 1x por bolão/visita, só com ranking carregado e usuário confirmado participante:
+  // não-membro em link compartilhado e id inválido não contam; troca de aba não re-dispara.
+  const rankingViewFiredFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || activeTab !== 'ranking' || rankingViewFiredFor.current === id) return;
+    if (loadingRanking || !ranking || !currentUserId) return;
+    if (!ranking.some(r => r.user_id === currentUserId)) return;
+    rankingViewFiredFor.current = id;
+    posthog?.capture('bolao_ranking_viewed', { product: 'bolao', bolao_id: id });
+  }, [id, activeTab, loadingRanking, ranking, currentUserId, posthog]);
 
   // ── Handle query params: Stripe success + auto-open settings ──────
   // Two cases for ?success=true:

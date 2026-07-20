@@ -46,3 +46,11 @@ verify_jwt = false
 [functions.mirror-wc-photos]
 # Espelha fotos dos jogadores no nosso Storage (evita hotlink) — header x-cron-secret.
 verify_jwt = false
+
+[functions.mirror-futebol-team-logos]
+# Espelha brasões dos times do futebol no bucket futebol-team-logos — header x-cron-secret.
+verify_jwt = false
+
+[functions.mirror-futebol-player-photos]
+# Espelha fotos dos jogadores do futebol no bucket futebol-player-photos — header x-cron-secret.
+verify_jwt = false
