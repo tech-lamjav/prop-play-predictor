@@ -303,14 +303,25 @@ export default function Onboarding() {
     if (!userId) return;
     setError('');
     posthog?.capture('betinho_onboarding_link_clicked', { product: 'betinho' });
+    // Safari/iOS bloqueia window.open chamado depois de um await (perde o
+    // "user activation"). Abre a janela AINDA no gesto do clique e navega
+    // ela quando o token chegar; se mesmo assim for bloqueada, cai pra
+    // navegação na própria aba.
+    const popup = window.open('', '_blank');
     try {
       const { data: token, error: rpcError } = await supabase.rpc('get_telegram_link_token');
       if (rpcError || !token) throw rpcError ?? new Error('token vazio');
       connectStartedAt.current = Date.now();
-      window.open(`https://t.me/${telegramBotUsername}?start=link_${token}`, '_blank');
+      const url = `https://t.me/${telegramBotUsername}?start=link_${token}`;
+      if (popup && !popup.closed) {
+        popup.location.href = url;
+      } else {
+        window.location.href = url;
+      }
       setStage('connecting');
       startPolling();
     } catch {
+      if (popup && !popup.closed) popup.close();
       setError('Não consegui gerar seu link agora. Tenta de novo em instantes.');
     }
   };

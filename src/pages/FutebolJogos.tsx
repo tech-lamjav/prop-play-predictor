@@ -221,7 +221,12 @@ export default function FutebolJogos() {
   }, [fixtures, currentRound]);
   const roundCount = groups.reduce((n, [, g]) => n + g.length, 0);
 
-  const handleCompetition = (c: Competition) => { setCompetition(c); setSeason(SEASONS[c][0]); };
+  // Mantém a temporada se a nova competição também a tiver; senão vai pra mais
+  // recente (SEASONS é crescente — o índice 0 é a mais ANTIGA, ex.: 2024).
+  const handleCompetition = (c: Competition) => {
+    setCompetition(c);
+    setSeason(SEASONS[c].includes(season) ? season : SEASONS[c][SEASONS[c].length - 1]);
+  };
   const goTeam = (id: number) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`);
 
   return (
