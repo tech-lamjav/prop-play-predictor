@@ -15,6 +15,7 @@ fraco = silêncio; usuário que ignora = para de receber.
 | 4a | **Registrar aposta** (botão "📋 Registrar" no daily #4) | Usuário toca no botão de um pick | Reativa (resposta ao toque): pergunta o valor por botões [1 unidade][½ unidade][Outro valor]; "Outro valor" = force_reply amarrado. Registra a aposta pendente → entra no loop da auto-liquidação (#1) | Reativa — só responde ao toque | n/a |
 | 5 | **Confirmação de aposta registrada** | Usuário mandou print/texto | Imediato (resposta ao registro) | Reativa — só responde ao que o usuário fez | n/a |
 | 6 | **Aviso de kickoff do bolão** (só pro DONO do bolão) | Jogo da Copa começando | No minuto do kickoff (:00/:30) | 1 por jogo por bolão | opt-in explícito do dono |
+| 10 | **"📊 Seus últimos 7 dias"** (resumo semanal · item 04) | Cron semanal | **Segunda 10h BRT**, 1x/semana — e SÓ pra quem teve **≥2 apostas liquidadas** nos últimos 7 dias (rolling). Sem apostas = sem mensagem. Faixa por resultado (positiva/neutra/negativa); lidera por resultado+ROI, SEM taxa de acerto | 1×/semana por usuário (idempotência `weekly_summary_sent_at`, gap ~6d) | `weekly_summary_muted` |
 
 ## One-shot (disparo manual, 1x por usuário PRA SEMPRE)
 
@@ -45,6 +46,8 @@ normal: 0 a 2. O silêncio é parte do produto.
 
 - `users.settlement_reminders_muted` (🔕/`/silenciar`) cala **tudo** que é recorrente
   de liquidação e o winback/handoff também respeitam. `/lembretes` reativa.
+- `users.weekly_summary_muted` é opt-out **independente** do resumo semanal (#10) —
+  cala só ele, não a liquidação. (Cadência semanal ≠ diária, não soma metralhadora.)
 - Toda mensagem tem evento no PostHog (enviada + clicada/corrigida) — a "taxa de
   incômodo" (mute + correções) é métrica acompanhável.
 - Novas mensagens DEVEM entrar neste mapa antes de ir pra develop.
