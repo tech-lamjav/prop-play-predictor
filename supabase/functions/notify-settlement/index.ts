@@ -40,6 +40,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
+import { logMessageRun } from "../shared/runs.ts";
 import {
   type Candidate,
   type FinishedMatch,
@@ -438,6 +439,9 @@ serve(async (req) => {
       }
     }
 
+    // telemetria (só runs com candidato chegam aqui — o vazio retorna cedo)
+    await logMessageRun(supabase, "notify-settlement", { candidates: candidates.length, sent, errors, ok: true });
+
     return json({
       ok: true,
       candidates: candidates.length,
@@ -451,6 +455,7 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("notify-settlement error:", e);
+    await logMessageRun(supabase, "notify-settlement", { errors: [(e as Error)?.message ?? "erro"], ok: false });
     return json({ error: (e as Error)?.message ?? "Internal error" }, 500);
   }
 });

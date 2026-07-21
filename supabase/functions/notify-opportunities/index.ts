@@ -29,6 +29,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
+import { logMessageRun } from "../shared/runs.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
@@ -198,6 +199,10 @@ serve(async (req) => {
 
     // 3) dia fraco → silêncio (nada de mensagem "hoje não tem nada")
     if (picks.length === 0) {
+      // o dia de silêncio é informação (telemetria); ensaio (report) não loga
+      if (mode === "send") {
+        await logMessageRun(supabase, "notify-opportunities", { candidates: 0, sent: 0, ok: true });
+      }
       return json({ ok: true, mode, picks: 0, sent: 0, motivo: "sem oportunidade acima do corte hoje" });
     }
 
@@ -268,9 +273,15 @@ serve(async (req) => {
       }
     }
 
+    // telemetria — só runs de envio (report é ensaio)
+    await logMessageRun(supabase, "notify-opportunities", { candidates: recipients.length, sent, errors, ok: true });
+
     return json({ ok: true, mode, picks: picks.length, destinatarios: recipients.length, sent, errors });
   } catch (e) {
     console.error("notify-opportunities error:", e);
+    if (mode === "send") {
+      await logMessageRun(supabase, "notify-opportunities", { errors: [(e as Error)?.message ?? "erro"], ok: false });
+    }
     return json({ error: (e as Error)?.message ?? "Internal error" }, 500);
   }
 });

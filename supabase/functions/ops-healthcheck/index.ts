@@ -19,6 +19,7 @@
 // ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { failingStreaks, type RunRow } from "./health.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
@@ -73,21 +74,34 @@ serve(async (req) => {
       (j) => j.active && (j.missing_secrets.length > 0 || j.failed_recent >= FAIL_THRESHOLD)
     );
 
-    if (mode !== "report" && problems.length > 0) {
-      const lines = ["🚨 ops-healthcheck — crons com problema:", ""];
+    // Onda 4: carteiros com streak de falha (message_runs, migration 089).
+    // O cron pode dizer "succeeded" (o http_post saiu) e a FUNÇÃO ter falhado —
+    // esta é a visão de dentro.
+    const { data: runData } = await supabase
+      .from("message_runs")
+      .select("fn, ok")
+      .order("ran_at", { ascending: false })
+      .limit(60);
+    const failingFns = failingStreaks((runData ?? []) as RunRow[], FAIL_THRESHOLD);
+
+    if (mode !== "report" && (problems.length > 0 || failingFns.length > 0)) {
+      const lines = ["🚨 ops-healthcheck — problemas encontrados:", ""];
       for (const p of problems) {
         if (p.missing_secrets.length > 0) {
           lines.push(`• ${p.jobname}: SECRETS FALTANDO no vault → ${p.missing_secrets.join(", ")} (job roda mas não chama nada — o "cron mudo")`);
         }
         if (p.failed_recent >= FAIL_THRESHOLD) {
-          lines.push(`• ${p.jobname}: ${p.failed_recent}/${p.total_recent} execuções recentes FALHARAM`);
+          lines.push(`• ${p.jobname}: ${p.failed_recent}/${p.total_recent} execuções recentes FALHARAM (cron)`);
         }
       }
-      lines.push("", "Runbook: criar os secrets (vault.create_secret) ou investigar cron.job_run_details.");
+      for (const fn of failingFns) {
+        lines.push(`• ${fn}: últimos ${FAIL_THRESHOLD} runs da FUNÇÃO falharam (message_runs)`);
+      }
+      lines.push("", "Runbook: criar os secrets (vault.create_secret), investigar cron.job_run_details ou message_runs.errors.");
       if (adminChat) {
         await sendAdminDm(adminChat, lines.join("\n"));
       } else {
-        console.error("ops-healthcheck: problemas encontrados mas admin_telegram_chat_id não configurado:", JSON.stringify(problems));
+        console.error("ops-healthcheck: problemas encontrados mas admin_telegram_chat_id não configurado:", JSON.stringify({ problems, failingFns }));
       }
     }
 
@@ -101,6 +115,7 @@ serve(async (req) => {
         failed_recent: p.failed_recent,
         total_recent: p.total_recent,
       })),
+      failing_message_fns: failingFns,
       admin_configured: adminChat != null,
     });
   } catch (e) {

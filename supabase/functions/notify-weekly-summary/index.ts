@@ -24,6 +24,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { trackedUrl } from "../shared/links.ts";
+import { logMessageRun } from "../shared/runs.ts";
 import { buildMessage, pickTier, type WeeklyCandidate } from "./tiers.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -131,9 +132,15 @@ serve(async (req) => {
       }
     }
 
+    // telemetria — só runs de envio (mode=report é ensaio, não operação)
+    await logMessageRun(supabase, "notify-weekly-summary", { candidates: rows.length, sent, errors, ok: true });
+
     return json({ ok: true, mode, candidates: rows.length, sent, errors });
   } catch (e) {
     console.error("notify-weekly-summary error:", e);
+    if (mode === "send") {
+      await logMessageRun(supabase, "notify-weekly-summary", { errors: [(e as Error)?.message ?? "erro"], ok: false });
+    }
     return json({ error: (e as Error)?.message ?? "Internal error" }, 500);
   }
 });
