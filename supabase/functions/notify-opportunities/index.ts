@@ -27,6 +27,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
+import { esc } from "../shared/format.ts";
+import { trackedUrl } from "../shared/links.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
@@ -80,9 +82,7 @@ function marketPt(market: string): string {
 }
 
 // ── util ─────────────────────────────────────────────────────
-function esc(s: unknown): string {
-  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+// esc/trackedUrl vivem em shared/ (Onda 3 — estavam duplicados 1:1)
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -95,19 +95,6 @@ function brtDay(d: Date): string {
 }
 function brtHourMin(d: Date): string {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }).format(d);
-}
-
-// link rastreado: /functions/v1/go?u=<user>&d=<dest>&s=<hmac>
-async function hmacHex(msg: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(CRON_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
-}
-async function trackedUrl(userId: string, dest: string): Promise<string> {
-  const s = await hmacHex(`${userId}:${dest}`);
-  return `${SUPABASE_URL}/functions/v1/go?u=${userId}&d=${encodeURIComponent(dest)}&s=${s}`;
 }
 
 interface BoardRow {

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "npm:@supabase/supabase-js@2"
 import { normalizePhoneNumber, normalizePhoneCandidates, maskPhone } from "../shared/phone.ts"
 import { generateTraceId, identifyUser, trackEvent, trackLLMGeneration } from "../shared/posthog.ts"
+import { isBareNumber, parseStake } from "./stake.ts"
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")
 const OPENAI_API_URL = "https://api.openai.com/v1"
@@ -421,13 +422,7 @@ async function sendStakePrompt(supabase: any, chatId: string | number, userId: s
   }
 }
 
-// número do texto do usuário (força reply do "Outro valor"): "R$ 50", "50,00", "50 reais"
-function parseStake(text: string): number | null {
-  const m = String(text ?? "").replace(",", ".").match(/(\d+(?:\.\d+)?)/)
-  if (!m) return null
-  const v = parseFloat(m[1])
-  return v > 0 && v <= 1_000_000 ? v : null
-}
+// parseStake/isBareNumber vivem em ./stake.ts (Onda 3 — testados no CI)
 
 async function handleCallbackQuery(
   supabase: any,
@@ -2242,7 +2237,7 @@ serve(async (req) => {
       if (prompt) {
         const replyToId = updateMessage.reply_to_message?.message_id
         const isReply = replyToId != null && Number(replyToId) === Number(prompt.message_id)
-        const bareNumber = /^\s*r?\$?\s*\d+(?:[.,]\d+)?\s*(reais|conto|pila|paus)?\s*$/i.test(text)
+        const bareNumber = isBareNumber(text)
         const fresh = Date.now() - new Date(prompt.created_at).getTime() < 30 * 60_000
         if (isReply || (bareNumber && fresh)) {
           const stake = parseStake(text)

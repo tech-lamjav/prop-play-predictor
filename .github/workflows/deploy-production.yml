@@ -5,9 +5,21 @@ on:
     branches: [main]
 
 jobs:
+  # Gate: deploy só acontece com os testes das funções passando
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run function tests
+        run: deno test supabase/functions/tests/
+
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    needs: test
 
     steps:
       - uses: actions/checkout@v4

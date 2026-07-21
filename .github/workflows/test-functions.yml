@@ -1,0 +1,21 @@
+name: Test Edge Functions
+
+# Roda os testes das funções puras (veredito/matching, faixas do resumo, stake)
+# em TODO pull request — feedback antes do merge. Os deploys (staging/prod)
+# também rodam estes testes como gate (job test, needs: test).
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run function tests
+        run: deno test supabase/functions/tests/
