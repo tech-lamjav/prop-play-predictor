@@ -29,6 +29,7 @@ fraco = silêncio; usuário que ignora = para de receber.
 | # | Mensagem | Gatilho |
 |---|---|---|
 | 9 | Alerta de coletor quebrado | 5 falhas consecutivas do ingest-fixtures → DM só pro admin |
+| 11 | Alerta do ops-healthcheck | Cron diário 8h BRT: vault secret faltando em algum cron OU ≥3 falhas/5 execuções → DM só pro admin (`ops_config.admin_telegram_chat_id`). Sem problema = silêncio |
 
 ## O pior dia possível (teste de metralhadora)
 
