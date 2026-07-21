@@ -61,6 +61,11 @@ normal: 0 a 2. O silêncio é parte do produto.
 - **`/mensagens`** é o centro de controle: lista os recorrentes com estado e toggles
   (liquidação e resumo; o daily é automático — para sozinho sem clique). Embrião do
   item 17 (preferências). `/silenciar`, `/lembretes` e `/resumo` seguem como atalhos.
+- **Sequência de disciplina (item 18, flag `ops_config.streak_enabled` — nasce OFF):**
+  não é mensagem nova — é UMA linha embutida nos recibos de registro (#5/#4a, só em
+  milestone 5/10/20/30/50/100, 1x por dia) e no resumo semanal (#10, streak ≥5, nunca
+  na semana negativa). Semântica anti-"aposte mais": dia sem aposta é NEUTRO (só >7
+  dias vazios reseta); copy celebra CONTROLE ("banca em dia"), nunca volume.
 - Toda mensagem tem evento no PostHog (enviada + clicada/corrigida) — a "taxa de
   incômodo" (mute + correções) é métrica acompanhável.
 - Novas mensagens DEVEM entrar neste mapa antes de ir pra develop.

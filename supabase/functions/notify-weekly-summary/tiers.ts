@@ -4,6 +4,7 @@
 // Extraído de index.ts na Onda 3 (move-only) pra ser testável no CI
 // (supabase/functions/tests/weekly.test.ts). Sem side effects.
 import { esc } from "../shared/format.ts";
+import { weeklyStreakLine } from "../shared/streak.ts";
 
 // thresholds da faixa: com unidade, em u; sem unidade, em ROI
 const POS_U = 0.5, NEG_U = -1.0;
@@ -49,16 +50,20 @@ function resultLine(c: WeeklyCandidate, roi: number): string {
   return `Resultado: <b>${sg}${moneyAbs(p)}</b> · ROI <b>${sg}${pctAbs(roi)}</b>`;
 }
 
-export function buildMessage(c: WeeklyCandidate, tier: Tier, roi: number): string {
+export function buildMessage(c: WeeklyCandidate, tier: Tier, roi: number, streakDays: number | null = null): string {
   const head = `📊 <b>Seus últimos 7 dias</b>`;
   const mkt = c.best_market ? ` · melhor mercado: <b>${esc(c.best_market)}</b>` : "";
   const vol = `${c.n_settled} apostas liquidadas`;
+  // item 18: sequência só nas faixas positiva/neutra — na negativa NUNCA
+  // (mesma régua do "melhor mercado": semana ruim não é hora de cutucar métrica)
+  const streak = tier === "negative" ? null : weeklyStreakLine(streakDays);
 
   if (tier === "positive") {
     return [
       head,
       resultLine(c, roi),
       `${vol}${mkt}`,
+      ...(streak ? [streak] : []),
       "",
       `Fechou no positivo. O que importa agora é entender <b>o que sustentou isso</b> — quais mercados e stakes puxaram o resultado — pra repetir com consistência, não por sorte.`,
     ].join("\n");
@@ -68,6 +73,7 @@ export function buildMessage(c: WeeklyCandidate, tier: Tier, roi: number): strin
       head,
       resultLine(c, roi),
       `${vol}${mkt}`,
+      ...(streak ? [streak] : []),
       "",
       `Variação controlada — nem lucro nem prejuízo relevante. Bom momento pra <b>afinar</b>: onde você foi eficiente e onde deixou valor na mesa.`,
     ].join("\n");

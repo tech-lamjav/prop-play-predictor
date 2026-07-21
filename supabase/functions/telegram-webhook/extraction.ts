@@ -8,6 +8,7 @@ import {
   sendHelpMessageTelegram, sendPaywallMessageTelegram, sendConfirmationMessageTelegram,
 } from "./telegram-api.ts"
 import { trackEvent, trackLLMGeneration } from "../shared/posthog.ts"
+import { receiptStreakLineFor } from "../shared/streak.ts"
 
 // JSON Schema for structured outputs (parity with WhatsApp)
 const BETTING_INFO_SCHEMA = {
@@ -1089,7 +1090,12 @@ async function processMessage(
         .eq("id", messageId)
 
       console.log("bet_sending_confirmation", { message_id: messageId, bet_id: bet.id, chat_id: chatId })
-      await sendConfirmationMessageTelegram(chatId, bet)
+      // item 18: milestone da sequência de disciplina no recibo (flag-gated)
+      const streakLine = await receiptStreakLineFor(supabase, userId)
+      if (streakLine) {
+        await trackEvent("streak_milestone", { line: streakLine, channel: "telegram" }, userId, traceId).catch(() => {})
+      }
+      await sendConfirmationMessageTelegram(chatId, bet, streakLine)
       console.log("bet_confirmation_sent", { message_id: messageId, bet_id: bet.id })
     } else {
       await trackEvent(

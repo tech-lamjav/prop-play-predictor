@@ -25,6 +25,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { logMessageRun } from "../shared/runs.ts";
+import { getStreak, isStreakEnabled } from "../shared/streak.ts";
 import { buildMessage, pickTier, type WeeklyCandidate } from "./tiers.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -81,29 +82,34 @@ serve(async (req) => {
       best_market_profit: r.best_market_profit == null ? null : Number(r.best_market_profit),
     }));
 
-    const rows = candidates.map((c) => {
+    // item 18: sequência de disciplina (flag-gated; 1 flag-check por run)
+    const streakOn = await isStreakEnabled(supabase);
+    const rows = [];
+    for (const c of candidates) {
       const roi = c.total_stake > 0 ? c.total_profit / c.total_stake : 0;
       const tier = pickTier(c.total_profit, roi, c.unit_value_rs);
-      return { c, roi, tier };
-    });
+      const streakDays = streakOn ? (await getStreak(supabase, c.user_id)).days : null;
+      rows.push({ c, roi, tier, streakDays });
+    }
 
     if (mode === "report") {
       return json({
         ok: true, mode, candidates: rows.length,
-        preview: rows.map(({ c, roi, tier }) => ({
+        preview: rows.map(({ c, roi, tier, streakDays }) => ({
           user: c.user_name, n: c.n_settled, tier,
           profit: Number(c.total_profit.toFixed(2)), roi: Number((roi * 100).toFixed(1)),
           has_unit: c.unit_value_rs != null, best_market: c.best_market,
-          text: buildMessage(c, tier, roi),
+          streak_days: streakDays,
+          text: buildMessage(c, tier, roi, streakDays),
         })),
       });
     }
 
     let sent = 0;
     const errors: string[] = [];
-    for (const { c, roi, tier } of rows) {
+    for (const { c, roi, tier, streakDays } of rows) {
       try {
-        const text = buildMessage(c, tier, roi);
+        const text = buildMessage(c, tier, roi, streakDays);
         const bankUrl = await trackedUrl(c.user_id, "bank", CAMPAIGN);
         await sendSummary(c.chat_id, text, bankUrl);
 
@@ -123,6 +129,7 @@ serve(async (req) => {
             has_unit: c.unit_value_rs != null,
             volume: c.n_settled,
             roi_pct: Number((roi * 100).toFixed(1)),
+            streak_days: streakDays,
             channel: "telegram",
           },
           c.user_id, traceId

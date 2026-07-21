@@ -50,6 +50,23 @@ Deno.test("sem unidade: cai pra R$ puro (sem 'u')", () => {
   assert(t.includes("Resultado: <b>+R$ 90,00</b>"), "R$ direto");
   assert(!/\d,\du/.test(t), "sem unidades");
 });
+// ── item 18: streak no resumo ──
+Deno.test("streak: aparece na positiva com >=5 dias", () => {
+  const c = cand({ total_profit: 90, best_market: "Money Line" });
+  const t = buildMessage(c, "positive", 0.15, 7);
+  assert(t.includes("Sequência viva: <b>7 dias</b>"), "linha do streak");
+});
+Deno.test("streak: NUNCA na semana negativa (mesmo com streak alto)", () => {
+  const c = cand({ total_profit: -100 });
+  const t = buildMessage(c, "negative", -0.2, 30);
+  assert(!t.includes("Sequência"), "negativa não cutuca");
+});
+Deno.test("streak: ausente sem dado (flag off) e abaixo do patamar", () => {
+  const c = cand({ total_profit: 90 });
+  assert(!buildMessage(c, "positive", 0.15, null).includes("Sequência"), "null");
+  assert(!buildMessage(c, "positive", 0.15, 4).includes("Sequência"), "<5");
+});
+
 Deno.test("melhor mercado escapa HTML", () => {
   const c = cand({ total_profit: 90, best_market: "A <b> & C" });
   const t = buildMessage(c, "positive", 0.15);
