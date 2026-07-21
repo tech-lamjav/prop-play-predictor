@@ -138,7 +138,8 @@ async function sendConfirmationMessageTelegram(
     odds: number
     stake_amount: number
     potential_return: number
-  }
+  },
+  streakLine?: string | null // item 18: linha de milestone da sequência (flag-gated)
 ): Promise<void> {
   const betTypeText: Record<string, string> = {
     single: "Simples",
@@ -159,6 +160,7 @@ async function sendConfirmationMessageTelegram(
     `• *Odds:* ${betDetails.odds}`,
     `• *Valor:* R$ ${betDetails.stake_amount.toFixed(2)}`,
     `• *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}`,
+    ...(streakLine ? ["", streakLine] : []),
     "",
     "✅ Sua aposta foi salva no dashboard e você pode acompanhar o resultado em tempo real!",
     "",

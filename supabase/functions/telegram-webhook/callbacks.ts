@@ -11,6 +11,7 @@ import { effectiveUnit, registerPickBet, pickReceiptHtml, sendStakePrompt } from
 import { findUserByTelegram } from "./users.ts"
 import { prefsKeyboard, prefsText } from "./prefs.ts"
 import { trackEvent } from "../shared/posthog.ts"
+import { receiptStreakLineFor } from "../shared/streak.ts"
 
 async function handleCallbackQuery(
   supabase: any,
@@ -193,7 +194,8 @@ async function handleCallbackQuery(
       await answerCallbackQuery(cq.id, "Deu ruim ao registrar — tenta de novo.")
       return ok("stk: insert failed")
     }
-    await editSettledMessage(chatId, messageId, pickReceiptHtml(pick, stake))
+    const streakLine = await receiptStreakLineFor(supabase, user.id) // item 18 (flag-gated)
+    await editSettledMessage(chatId, messageId, pickReceiptHtml(pick, stake, streakLine))
     await answerCallbackQuery(cq.id, "✅ Registrado!")
     await trackEvent(
       "opportunity_bet_registered",

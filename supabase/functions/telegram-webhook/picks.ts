@@ -55,7 +55,7 @@ async function registerPickBet(supabase: any, userId: string, pick: any, stake: 
     .maybeSingle()
 }
 
-function pickReceiptHtml(pick: any, stake: number): string {
+function pickReceiptHtml(pick: any, stake: number, streakLine?: string | null): string {
   const odds = Number(pick.odds)
   return [
     `✅ <b>Registrado no Betinho!</b>`,
@@ -63,6 +63,7 @@ function pickReceiptHtml(pick: any, stake: number): string {
     `<b>${escHtml(pick.bet_description)}</b>`,
     `${escHtml(pick.match_description)}`,
     `${formatBRL(stake)} · odd ${odds} · retorno ${formatBRL(Math.round(stake * odds * 100) / 100)}`,
+    ...(streakLine ? ["", streakLine] : []), // item 18: milestone da sequência (flag-gated)
     "",
     `Tá pendente — quando o jogo acabar, eu fecho pra você. 📊 ${BETS_DASHBOARD_URL}`
   ].join("\n")

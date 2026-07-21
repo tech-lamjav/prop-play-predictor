@@ -19,6 +19,7 @@ import {
   sendTelegramMessage, getTelegramFileUrl, sendContactRequest, sendWelcomeMessageTelegram,
 } from "./telegram-api.ts"
 import { registerPickBet, pickReceiptHtml } from "./picks.ts"
+import { receiptStreakLineFor } from "../shared/streak.ts"
 import { handleCallbackQuery } from "./callbacks.ts"
 import { transcribeAudio, processImage, processMessage } from "./extraction.ts"
 import { findUserByTelegram, findUserByPhone } from "./users.ts"
@@ -423,7 +424,8 @@ serve(async (req) => {
             if (error || !bet) {
               await sendTelegramMessage(chatId, "Deu ruim ao registrar — tenta de novo.")
             } else {
-              await sendTelegramMessage(chatId, pickReceiptHtml(pick, stake), { parse_mode: "HTML", disable_web_page_preview: true })
+              const streakLine = await receiptStreakLineFor(supabase, user.id) // item 18 (flag-gated)
+              await sendTelegramMessage(chatId, pickReceiptHtml(pick, stake, streakLine), { parse_mode: "HTML", disable_web_page_preview: true })
               await trackEvent(
                 "opportunity_bet_registered",
                 { bet_id: bet.id, pick_id: prompt.pick_id, stake, via: isReply ? "force_reply" : "bare_number", channel: "telegram" },
