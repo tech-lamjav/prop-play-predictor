@@ -15,7 +15,7 @@ fraco = silêncio; usuário que ignora = para de receber.
 | 4a | **Registrar aposta** (botão "📋 Registrar" no daily #4) | Usuário toca no botão de um pick | Reativa (resposta ao toque): pergunta o valor por botões [1 unidade][½ unidade][Outro valor]; "Outro valor" = force_reply amarrado. Registra a aposta pendente → entra no loop da auto-liquidação (#1) | Reativa — só responde ao toque | n/a |
 | 5 | **Confirmação de aposta registrada** | Usuário mandou print/texto | Imediato (resposta ao registro) | Reativa — só responde ao que o usuário fez | n/a |
 | 6 | **Aviso de kickoff do bolão** (só pro DONO do bolão) | Jogo da Copa começando | No minuto do kickoff (:00/:30) | 1 por jogo por bolão | opt-in explícito do dono |
-| 10 | **"📊 Seus últimos 7 dias"** (resumo semanal · item 04) | Cron semanal | **Segunda 10h BRT**, 1x/semana — e SÓ pra quem teve **≥2 apostas liquidadas** nos últimos 7 dias (rolling). Sem apostas = sem mensagem. Faixa por resultado (positiva/neutra/negativa); lidera por resultado+ROI, SEM taxa de acerto | 1×/semana por usuário (idempotência `weekly_summary_sent_at`, gap ~6d) | `weekly_summary_muted` |
+| 10 | **"📊 Seus últimos 7 dias"** (resumo semanal · item 04) | Cron semanal | **Segunda 9h30 BRT** (antes do daily das 10h — narrativa passado→futuro), 1x/semana — e SÓ pra quem teve **≥2 apostas liquidadas** nos últimos 7 dias (rolling). Sem apostas = sem mensagem. Faixa por resultado (positiva/neutra/negativa); lidera por resultado+ROI, SEM taxa de acerto | 1×/semana por usuário (idempotência `weekly_summary_sent_at`, gap ~6d) | Botão "Silenciar resumo" na própria DM · `/resumo` reativa |
 
 ## One-shot (disparo manual, 1x por usuário PRA SEMPRE)
 
@@ -41,6 +41,15 @@ Cenário extremo — dia da final, usuário com 3 apostas no jogo, no bolão e n
 **Total no pior caso: ~5 mensagens num dia de final de Copa** — todas com conteúdo
 que o usuário quer receber (resultado das apostas dele + posição final dele). Em dia
 normal: 0 a 2. O silêncio é parte do produto.
+
+## Voz do Betinho (régua de escrita)
+
+- **1:1 sobre UMA aposta do usuário** (liquidação, recibo, correção): **1ª pessoa** —
+  "Fechei sua aposta", "eu fecho pra você". O Betinho é um assistente que age.
+- **Relatório/análise** (daily, resumo semanal): **sóbrio-analítico**, sem 1ª pessoa —
+  os números falam; nada de comemorar por ele nem lamentar por ele.
+- Sempre: disciplina e controle (LC 224/2025), nunca "aposte mais"; emoji com
+  parcimônia no corpo, **nunca em botão**; semana ruim = tom protetivo, sem cutucar métrica.
 
 ## Regras transversais
 

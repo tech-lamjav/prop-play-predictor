@@ -132,7 +132,14 @@ async function sendSummary(chatId: string, text: string, bankUrl: string): Promi
       text,
       parse_mode: "HTML",
       disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [[{ text: "Ver minha banca", url: bankUrl }]] },
+      // opt-out visível na própria mensagem (regra: recorrente carrega a própria
+      // saída). Callback `mutew` no telegram-webhook grava weekly_summary_muted.
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "Ver minha banca", url: bankUrl }],
+          [{ text: "Silenciar resumo", callback_data: "mutew" }],
+        ],
+      },
     }),
   });
   if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
