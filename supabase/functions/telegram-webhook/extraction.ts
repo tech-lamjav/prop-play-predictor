@@ -163,7 +163,7 @@ async function getDailyBetCount(supabase: any, userId: string, traceId?: string)
     }
 
     return betCount
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error getting daily bet count:", error)
     if (traceId) {
       await trackEvent(
@@ -290,7 +290,7 @@ async function hasReachedDailyLimit(supabase: any, userId: string, traceId?: str
     }
 
     return limitReached
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error checking daily limit:", error)
     console.log("daily_limit_check_exception", {
       user_id: userId,
@@ -358,7 +358,7 @@ async function transcribeAudio(audioUrl: string, userId: string, traceId: string
     ).catch(() => {})
 
     return result.text
-  } catch (error) {
+  } catch (error: any) {
     await trackEvent(
       "processing_error",
       { error_type: "transcribe_audio_error", error_message: error.message?.substring(0, 500), operation: "transcribe_audio", channel: "telegram" },
@@ -445,7 +445,7 @@ Retorne apenas o texto estruturado, sem explicações adicionais.`
     ).catch(() => {})
 
     return result.choices[0].message.content
-  } catch (error) {
+  } catch (error: any) {
     await trackEvent(
       "processing_error",
       { error_type: "process_image_error", error_message: error.message?.substring(0, 500), operation: "process_image", channel: "telegram" },
@@ -849,7 +849,7 @@ SCHEMA:
       return null
     }
     return bettingInfo
-  } catch (error) {
+  } catch (error: any) {
     await trackEvent(
       "processing_error",
       { error_type: "extract_betting_error", error_message: (error as any)?.message?.substring(0, 500), operation: "extract_betting", channel: "telegram" },
@@ -1102,7 +1102,7 @@ async function processMessage(
       await supabase.from("message_queue").update({ status: "failed", error_message: "Could not extract betting information from message" }).eq("id", messageId)
       await sendHelpMessageTelegram(chatId)
     }
-  } catch (error) {
+  } catch (error: any) {
     await trackEvent(
       "processing_error",
       { error_type: "message_processing_error", error_message: error.message?.substring(0, 500), message_id: messageId, channel: "telegram" },

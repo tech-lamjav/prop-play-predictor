@@ -7,6 +7,7 @@ interface TelegramFile {
   file_unique_id: string
   file_size?: number
   file_path?: string
+  mime_type?: string
 }
 
 interface TelegramUser {

@@ -527,7 +527,7 @@ serve(async (req) => {
     await processMessage(supabase, queueMessage.id, actualContent, user.id, traceId, chatId)
 
     return new Response(JSON.stringify({ success: true, message: "Message processed successfully", queue_id: queueMessage.id }), { headers: { "Content-Type": "application/json" }, status: 200 })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in Telegram webhook:", error)
     return new Response(JSON.stringify({ success: false, error: error.message, timestamp: new Date().toISOString() }), { headers: { "Content-Type": "application/json" }, status: 500 })
   }
