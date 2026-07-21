@@ -19,3 +19,8 @@ jobs:
 
       - name: Run function tests
         run: deno test supabase/functions/tests/
+
+      # Type-check do grafo do webhook (pega import/ref quebrada entre os
+      # módulos do split da Onda 6b antes de qualquer deploy)
+      - name: Type-check telegram-webhook graph
+        run: deno check supabase/functions/telegram-webhook/index.ts
