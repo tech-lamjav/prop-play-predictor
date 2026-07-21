@@ -487,6 +487,28 @@ async function handleCallbackQuery(
     return ok("reminders muted")
   }
 
+  // mutew — botão "Silenciar resumo" da DM do resumo semanal (item 04).
+  // Opt-out independente da liquidação; /resumo reativa.
+  if (data === "mutew") {
+    await supabase.from("users").update({ weekly_summary_muted: true }).eq("id", user.id)
+    // remove só a linha do silenciar; "Ver minha banca" continua útil
+    await telegramCall("editMessageReplyMarkup", {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: {
+        inline_keyboard: [[{ text: "Ver minha banca", url: BETS_DASHBOARD_URL }]]
+      }
+    })
+    await answerCallbackQuery(cq.id, "Ok, sem mais resumos semanais. Pra voltar: /resumo")
+    await trackEvent(
+      "weekly_summary_muted",
+      { via: "button", channel: "telegram" },
+      user.id,
+      traceId
+    ).catch(() => {})
+    return ok("weekly summary muted")
+  }
+
   // 📋 regbet:<pick_id> — tocou "Registrar no Betinho" no daily
   if (data.startsWith("regbet:")) {
     const pickId = data.slice("regbet:".length)
@@ -2176,6 +2198,30 @@ serve(async (req) => {
       ).catch(() => {})
       return new Response(
         JSON.stringify({ success: true, message: "Reminder preference updated" }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      )
+    }
+
+    // /resumo — toggle do resumo semanal (par do botão "Silenciar resumo")
+    if (command === "/resumo") {
+      const { data: pref } = await supabase
+        .from("users").select("weekly_summary_muted").eq("id", user.id).maybeSingle()
+      const mute = !(pref?.weekly_summary_muted ?? false)
+      await supabase.from("users").update({ weekly_summary_muted: mute }).eq("id", user.id)
+      await sendTelegramMessage(
+        chatId,
+        mute
+          ? "Ok — parei com o resumo semanal. Pra voltar, é só mandar /resumo de novo."
+          : "📊 Resumo semanal reativado! Toda segunda de manhã eu te mando como fecharam seus últimos 7 dias."
+      )
+      await trackEvent(
+        mute ? "weekly_summary_muted" : "weekly_summary_unmuted",
+        { via: "command", channel: "telegram" },
+        user.id,
+        traceId
+      ).catch(() => {})
+      return new Response(
+        JSON.stringify({ success: true, message: "Weekly summary preference updated" }),
         { headers: { "Content-Type": "application/json" }, status: 200 }
       )
     }
