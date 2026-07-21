@@ -51,6 +51,14 @@ import {
   norm,
   teamNames,
 } from "./verdict.ts";
+import {
+  type DigestItem,
+  type SettleStatus,
+  DIGEST_MIN,
+  buildDigestMessage,
+  digestButtonRows,
+  money,
+} from "./digest.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const BETS_URL = "https://www.smartbetting.app/bets";
@@ -102,7 +110,7 @@ interface WcMatch {
 }
 
 // ── Mensagens ────────────────────────────────────────────────
-const money = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
+// money vive em ./digest.ts (Onda 5)
 
 function betLine(bet: Candidate): string {
   return (
@@ -142,8 +150,6 @@ function placarLine(m: FinishedMatch): string {
   const extra = wentExtra ? ` <i>(${m.ft_home}×${m.ft_away} no tempo normal)</i>` : "";
   return `🏁 ${esc(m.home_team)} <b>${m.score_home ?? "?"}×${m.score_away ?? "?"}</b> ${esc(m.away_team)} — encerrado${extra}`;
 }
-
-type SettleStatus = Exclude<Verdict, null>;
 
 async function sendAutoSettleDm(bet: Candidate, m: FinishedMatch, verdict: SettleStatus): Promise<void> {
   const profit = bet.potential_return - bet.stake_amount;
@@ -200,10 +206,10 @@ async function sendAutoSettleDm(bet: Candidate, m: FinishedMatch, verdict: Settl
   if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
 }
 
-// Liquida com guarda otimista (status='pending'); false = não liquidou (cai no
-// fluxo de pergunta). Ordem deliberada: grava ANTES de avisar — o valor está
-// na banca certa; a DM falhar não desfaz a liquidação.
-async function autoSettle(supabase: any, bet: Candidate, m: FinishedMatch, verdict: SettleStatus): Promise<boolean> {
+// Liquida no BANCO com guarda otimista (status='pending'); false = não liquidou
+// (estado mudou no meio → cai no fluxo de pergunta). Não manda DM — quem decide
+// o formato do aviso (individual × digest) é o loop de envio.
+async function settleBet(supabase: any, bet: Candidate, m: FinishedMatch, verdict: SettleStatus): Promise<boolean> {
   const evidence = `${m.home_team} ${m.ft_home}×${m.ft_away} ${m.away_team} (90') · ${m.id}`;
   const { data: cur } = await supabase.from("bets").select("processed_data").eq("id", bet.bet_id).maybeSingle();
   const pd = cur?.processed_data && typeof cur.processed_data === "object" && !Array.isArray(cur.processed_data)
@@ -218,9 +224,34 @@ async function autoSettle(supabase: any, bet: Candidate, m: FinishedMatch, verdi
     .eq("status", "pending")
     .select("id")
     .maybeSingle();
-  if (error || !upd) return false;
+  return !error && !!upd;
+}
+
+// Caminho individual (<= 2 auto-liquidações no run): liquida + DM rica com
+// placar. Ordem deliberada: grava ANTES de avisar — o valor está na banca
+// certa; a DM falhar não desfaz a liquidação.
+async function autoSettle(supabase: any, bet: Candidate, m: FinishedMatch, verdict: SettleStatus): Promise<boolean> {
+  const ok = await settleBet(supabase, bet, m, verdict);
+  if (!ok) return false;
   await sendAutoSettleDm(bet, m, verdict);
   return true;
+}
+
+// Caminho digest (>= DIGEST_MIN no run): UMA DM com todas as liquidações e
+// [↩️ Corrigir] por aposta (revisão UX Onda 5 — rajada no apito era spam).
+async function sendDigestDm(chatId: string, items: DigestItem[]): Promise<void> {
+  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: buildDigestMessage(items),
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: digestButtonRows(items, BETS_URL) },
+    }),
+  });
+  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
 }
 
 // ── Utilidades de tempo ──────────────────────────────────────
@@ -373,7 +404,54 @@ serve(async (req) => {
     const errors: string[] = [];
     for (const list of byUser.values()) {
       list.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "game" ? -1 : 1));
-      for (const d of list.slice(0, MAX_PER_USER_PER_RUN)) {
+
+      let budget = MAX_PER_USER_PER_RUN; // teto é de MENSAGEM, não de liquidação
+      let queue = list;
+
+      // DIGEST (Onda 5): >= DIGEST_MIN auto-liquidáveis no mesmo run → liquida
+      // TODAS (sem teto — liquidar é o produto funcionando) e manda UMA DM.
+      const autoItems = list.filter((d) => d.kind === "game" && d.verdict);
+      if (autoItems.length >= DIGEST_MIN) {
+        const settledItems: DigestItem[] = [];
+        for (const d of autoItems) {
+          try {
+            const ok = await settleBet(supabase, d.bet, d.match!, d.verdict as SettleStatus);
+            if (!ok) continue; // guarda otimista barrou → segue como pergunta no queue
+            settledItems.push({ bet: d.bet, verdict: d.verdict as SettleStatus });
+            await trackEvent(
+              "bet_auto_settled",
+              {
+                bet_id: d.bet.bet_id,
+                verdict: d.verdict,
+                betting_market: d.bet.betting_market,
+                sport: d.bet.sport,
+                league: d.bet.league,
+                match_source: d.match?.source ?? null,
+                match_id: d.match?.id ?? null,
+                digest: true,
+                channel: "telegram",
+              },
+              d.bet.user_id,
+              traceId
+            ).catch(() => {});
+          } catch (e) {
+            errors.push(`${d.bet.bet_id}: ${(e as Error)?.message}`);
+          }
+        }
+        queue = list.filter((d) => !settledItems.some((s) => s.bet.bet_id === d.bet.bet_id));
+        if (settledItems.length > 0) {
+          try {
+            await sendDigestDm(settledItems[0].bet.chat_id, settledItems);
+            sent++;
+          } catch (e) {
+            // apostas JÁ liquidadas (grava antes de avisar) — só o aviso falhou
+            errors.push(`digest ${settledItems[0].bet.user_id}: ${(e as Error)?.message}`);
+          }
+          budget--;
+        }
+      }
+
+      for (const d of queue.slice(0, Math.max(0, budget))) {
         try {
           // Match perfeito (jogo casado + mercado direto) → liquida sozinho e
           // avisa com [↩️ Corrigir]. Qualquer outra situação → pergunta.
@@ -391,6 +469,7 @@ serve(async (req) => {
                   league: d.bet.league,
                   match_source: d.match?.source ?? null,
                   match_id: d.match?.id ?? null,
+                  digest: false,
                   channel: "telegram",
                 },
                 d.bet.user_id,
