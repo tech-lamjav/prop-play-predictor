@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2"
 import { normalizePhoneNumber, normalizePhoneCandidates, maskPhone } from "../shared/phone.ts"
 import { generateTraceId, identifyUser, trackEvent, trackLLMGeneration } from "../shared/posthog.ts"
 import { isBareNumber, parseStake } from "./stake.ts"
+import { prefsKeyboard, prefsText } from "./prefs.ts"
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY")
 const OPENAI_API_URL = "https://api.openai.com/v1"
@@ -502,6 +503,45 @@ async function handleCallbackQuery(
       traceId
     ).catch(() => {})
     return ok("weekly summary muted")
+  }
+
+  // prefliq / prefres — toggles do centro de controle /mensagens (Onda 6).
+  // Alterna a preferência e REESCREVE a própria mensagem com o estado novo.
+  if (data === "prefliq" || data === "prefres") {
+    const { data: cur } = await supabase
+      .from("users").select("settlement_reminders_muted, weekly_summary_muted").eq("id", user.id).maybeSingle()
+    const p = {
+      settlementMuted: cur?.settlement_reminders_muted ?? false,
+      weeklyMuted: cur?.weekly_summary_muted ?? false,
+    }
+    let toast: string
+    if (data === "prefliq") {
+      p.settlementMuted = !p.settlementMuted
+      await supabase.from("users").update({ settlement_reminders_muted: p.settlementMuted }).eq("id", user.id)
+      toast = p.settlementMuted ? "🔕 Liquidação silenciada." : "🔔 Liquidação reativada."
+      await trackEvent(
+        p.settlementMuted ? "settlement_reminders_muted" : "settlement_reminders_unmuted",
+        { via: "prefs", channel: "telegram" }, user.id, traceId
+      ).catch(() => {})
+    } else {
+      p.weeklyMuted = !p.weeklyMuted
+      await supabase.from("users").update({ weekly_summary_muted: p.weeklyMuted }).eq("id", user.id)
+      toast = p.weeklyMuted ? "Resumo semanal silenciado." : "📊 Resumo semanal reativado."
+      await trackEvent(
+        p.weeklyMuted ? "weekly_summary_muted" : "weekly_summary_unmuted",
+        { via: "prefs", channel: "telegram" }, user.id, traceId
+      ).catch(() => {})
+    }
+    await telegramCall("editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
+      text: prefsText(p),
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: prefsKeyboard(p) },
+    })
+    await answerCallbackQuery(cq.id, toast)
+    return ok("prefs toggled")
   }
 
   // 📋 regbet:<pick_id> — tocou "Registrar no Betinho" no daily
@@ -2221,6 +2261,27 @@ serve(async (req) => {
       )
     }
 
+    // /mensagens — centro de controle: o que o Betinho manda + toggles num
+    // lugar só (Onda 6 da revisão; embrião do item 17 do Marco 2)
+    if (command === "/mensagens") {
+      const { data: pref } = await supabase
+        .from("users").select("settlement_reminders_muted, weekly_summary_muted").eq("id", user.id).maybeSingle()
+      const p = {
+        settlementMuted: pref?.settlement_reminders_muted ?? false,
+        weeklyMuted: pref?.weekly_summary_muted ?? false,
+      }
+      await sendTelegramMessage(chatId, prefsText(p), {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: { inline_keyboard: prefsKeyboard(p) },
+      })
+      await trackEvent("message_prefs_viewed", { channel: "telegram" }, user.id, traceId).catch(() => {})
+      return new Response(
+        JSON.stringify({ success: true, message: "Prefs shown" }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      )
+    }
+
     // Resposta ao "Outro valor" (force_reply do registrar-oportunidade).
     // ROBUSTO: nem todo cliente Telegram anexa reply_to_message ao force_reply,
     // então intercepta se (a) é reply ao nosso prompt OU (b) é um NÚMERO PURO
@@ -2272,7 +2333,11 @@ serve(async (req) => {
         if (bareNumber) {
           // número puro, mas o prompt esfriou (>30min): não vira aposta-lixo —
           // avisa e encerra (não segue pro fluxo de extração)
-          await sendTelegramMessage(chatId, "Essa oportunidade esfriou 🕑 Toca em *Registrar* de novo numa oportunidade pra lançar o valor.")
+          // reaquecimento (Onda 6): reenvia o botão do pick aqui mesmo — sem
+          // obrigar o usuário a rolar o histórico atrás do Registrar original
+          await sendTelegramMessage(chatId, "Essa oportunidade esfriou 🕑 Se ainda quiser registrar, toca abaixo que eu te pergunto o valor de novo.", {
+            reply_markup: { inline_keyboard: [[{ text: "📋 Registrar de novo", callback_data: `regbet:${prompt.pick_id}` }]] },
+          })
           return new Response(JSON.stringify({ success: true, message: "stale stake prompt cleared" }), { headers: { "Content-Type": "application/json" }, status: 200 })
         }
         // qualquer outra coisa (print, aposta em texto...) → pendência limpa e

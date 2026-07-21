@@ -58,6 +58,9 @@ normal: 0 a 2. O silêncio é parte do produto.
   de liquidação e o winback/handoff também respeitam. `/lembretes` reativa.
 - `users.weekly_summary_muted` é opt-out **independente** do resumo semanal (#10) —
   cala só ele, não a liquidação. (Cadência semanal ≠ diária, não soma metralhadora.)
+- **`/mensagens`** é o centro de controle: lista os recorrentes com estado e toggles
+  (liquidação e resumo; o daily é automático — para sozinho sem clique). Embrião do
+  item 17 (preferências). `/silenciar`, `/lembretes` e `/resumo` seguem como atalhos.
 - Toda mensagem tem evento no PostHog (enviada + clicada/corrigida) — a "taxa de
   incômodo" (mute + correções) é métrica acompanhável.
 - Novas mensagens DEVEM entrar neste mapa antes de ir pra develop.
