@@ -19,3 +19,10 @@ jobs:
 
       - name: Run function tests
         run: deno test supabase/functions/tests/
+
+      # Type-check do grafo do webhook (pega import/ref quebrada entre os
+      # módulos do split da Onda 6b antes de qualquer deploy)
+      - name: Type-check telegram-webhook graph
+        # --node-modules-dir=none: resolve npm: pelo cache global do Deno (a
+        # raiz do repo tem package.json do app React, sem node_modules no CI)
+        run: deno check --node-modules-dir=none supabase/functions/telegram-webhook/index.ts
