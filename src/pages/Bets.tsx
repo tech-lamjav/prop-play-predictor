@@ -657,6 +657,10 @@ export default function Bets() {
   const posthog = usePostHog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bets, setBets] = useState<Bet[]>([]);
+  // Deep-link do Betinho: o recibo de registro traz [✏️ Editar] → /bets?edit=<id>.
+  // Capturamos o id no 1º render (lazy init) porque o efeito de mount limpa os
+  // query params logo em seguida; o modal abre quando a lista de apostas carrega.
+  const [pendingEditBetId, setPendingEditBetId] = useState<string | null>(() => searchParams.get('edit'));
   // Espelho do estado pros callbacks lerem o valor atual sem `bets` nas deps — mantê-lo nas
   // deps recriava os callbacks a cada update e derrotava o React.memo de BetRow/BetCard.
   const betsRef = useRef<Bet[]>([]);
@@ -1262,6 +1266,15 @@ export default function Bets() {
     setIsBettingMarketQueryTouched(false);
     setBettingMarketHighlightIndex(-1);
   }, []);
+
+  // Deep-link ?edit=<id> (botão Editar do recibo do Betinho): assim que a lista
+  // de apostas carrega, abre o modal de edição já preenchido e consome o id.
+  useEffect(() => {
+    if (!pendingEditBetId || bets.length === 0) return;
+    const target = bets.find((b) => b.id === pendingEditBetId);
+    if (target) openEditModal(target);
+    setPendingEditBetId(null);
+  }, [pendingEditBetId, bets, openEditModal]);
 
   const fetchReferralCode = useCallback(async () => {
     if (!user?.id) return;
