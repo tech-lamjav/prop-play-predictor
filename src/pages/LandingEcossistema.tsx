@@ -4,6 +4,7 @@ import { Camera, Crown, CheckCircle2, XCircle, ArrowRight, ArrowDown, Lightbulb,
 import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { getPlayerPhotoUrl, getTeamLogoUrl } from "@/utils/team-logos";
+import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
 
 /**
  * Landing geral do ecossistema (rota /). Papel: porta de entrada que ROTEIA —
@@ -255,34 +256,111 @@ const MockBolao = () => (
   </WindowFrame>
 );
 
-// Mockup Futebol — em construção (skeleton).
-const MockFutebol = () => (
-  <WindowFrame url="smartbetting.app/futebol" tag="em construção">
-    <div className="rounded-rebrand-lg bg-white border border-line p-4 relative overflow-hidden">
-      <div className="space-y-3" aria-hidden="true">
-        <div className="h-4 w-2/5 rounded bg-canvas-2" />
-        <div className="h-20 rounded-rebrand-md bg-canvas-2" />
-        <div className="grid grid-cols-3 gap-3">
-          <div className="h-12 rounded-rebrand-md bg-canvas-2" />
-          <div className="h-12 rounded-rebrand-md bg-canvas-2" />
-          <div className="h-12 rounded-rebrand-md bg-canvas-2" />
+// Escudo do time no mock do Futebol — logo real do bucket, cai pras iniciais no 404.
+const FutebolCrest = ({ teamId, sigla, className = "" }: { teamId: number; sigla: string; className?: string }) => {
+  const [err, setErr] = useState(false);
+  const logo = getFutebolTeamLogoUrl(teamId);
+  if (logo && !err) {
+    return (
+      <img
+        src={logo}
+        alt={sigla}
+        onError={() => setErr(true)}
+        className={`w-6 h-6 rounded-full bg-white border border-line object-contain ${className}`}
+        loading="lazy"
+      />
+    );
+  }
+  return (
+    <span className={`w-6 h-6 rounded-full bg-white border border-line grid place-items-center text-[8px] font-bold text-ink-2 ${className}`}>
+      {sigla}
+    </span>
+  );
+};
+
+// Mockup Futebol — quadro de oportunidades de valor (mini-demo da LP /futebol).
+const MockFutebol = () => {
+  const jogos = [
+    { homeId: 127, awayId: 121, hs: "FLA", as: "PAL", jogo: "Flamengo × Palmeiras", pick: "Mais de 2,5 gols", faixa: "Alta", score: 71 },
+    { homeId: 130, awayId: 119, hs: "GRE", as: "INT", jogo: "Grêmio × Internacional", pick: "Grêmio ou empate", faixa: "Alta", score: 63 },
+    { homeId: 126, awayId: 131, hs: "SAO", as: "COR", jogo: "São Paulo × Corinthians", pick: "Ambos marcam", faixa: "Média", score: 49 },
+  ];
+  const faixaCls = (f: string) =>
+    f === "Alta"
+      ? "bg-forest text-white"
+      : f === "Média"
+        ? "bg-amber/15 text-amber-2 border border-amber/40"
+        : "bg-canvas-2 text-ink-3 border border-line";
+  return (
+    <WindowFrame url="smartbetting.app/futebol">
+      <div className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
+        <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-line">
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Oportunidades de hoje</span>
+          <span className="text-[10px] text-ink-3">Brasileirão · 3 com valor</span>
         </div>
-        <div className="h-4 w-3/5 rounded bg-canvas-2" />
-        <div className="h-4 w-1/2 rounded bg-canvas-2" />
+        <div className="p-3 space-y-2">
+          {jogos.map((j, idx) => (
+            <div
+              key={j.jogo}
+              className={`flex items-center gap-3 rounded-rebrand-md px-3 py-2 ${
+                idx === 0 ? "bg-forest/[0.06] border border-forest/30" : "bg-canvas-2 border border-line"
+              }`}
+            >
+              <div className="flex items-center shrink-0">
+                <FutebolCrest teamId={j.homeId} sigla={j.hs} className="z-10" />
+                <FutebolCrest teamId={j.awayId} sigla={j.as} className="-ml-1.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-bold text-ink leading-tight truncate">{j.jogo}</div>
+                <div className="text-[11px] text-ink-2 truncate">{j.pick}</div>
+              </div>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${faixaCls(j.faixa)}`}>{j.faixa}</span>
+              <span className="font-mono text-[12px] font-bold text-ink tabular-nums w-7 text-right">{j.score}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="absolute inset-0 grid place-items-center">
-        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-amber-2 bg-white border border-amber/40 rounded-full px-4 py-2 shadow-sm">
-          Em construção
-        </span>
+      <div className="rounded-rebrand-lg border border-forest/30 bg-forest/[0.05] p-3">
+        <div className="text-[9px] uppercase tracking-[0.14em] font-extrabold text-forest mb-1">Por que Flamengo × Palmeiras</div>
+        <p className="text-[11px] text-ink-2 leading-snug">
+          Chance real <span className="font-bold text-forest tabular-nums">58%</span> · a odd{" "}
+          <span className="font-bold text-ink tabular-nums">1.95</span> embute só{" "}
+          <span className="tabular-nums">51%</span> — a diferença é o{" "}
+          <span className="font-bold text-forest">valor</span>.
+        </p>
       </div>
-    </div>
-  </WindowFrame>
-);
+    </WindowFrame>
+  );
+};
 
 const PRODUCTS = [
   {
-    id: "nba",
+    id: "futebol",
     num: "01",
+    kicker: "Futebol · Aposta de valor",
+    title: "Onde a odd paga mais do que o risco de verdade.",
+    body: "Todo dia, os jogos em que a chance real supera o que a odd embute — com Score próprio, o porquê de cada pick e o que ficar de olho. Brasileirão, Copa do Brasil e ligas europeias.",
+    facts: ["Quadro de oportunidades do dia", "Score de valor + o porquê", "Brasileirão, Copa do BR e Europa"],
+    cta: "Conhecer o Futebol",
+    route: "/futebol/comecar",
+    Mock: MockFutebol,
+    available: true,
+  },
+  {
+    id: "betinho",
+    num: "02",
+    kicker: "Betinho · Seu assistente no Telegram",
+    title: "Você aposta. O resto o Betinho faz sozinho.",
+    body: "Print do bilhete → registrado. Jogo acabou → fechado. Fim do mês → seu ROI real na mão. Sem planilha, sem digitação, sem autoengano — e as oportunidades do dia chegam no mesmo chat.",
+    facts: ["Registra pelo print, fecha sozinho", "Banca e ROI reais, sempre à vista", "Oportunidades do dia no Telegram"],
+    cta: "Conhecer o Betinho",
+    route: "/betinho",
+    Mock: MockBetinho,
+    available: true,
+  },
+  {
+    id: "nba",
+    num: "03",
     kicker: "Análise NBA · Prop Bets",
     title: "A casa demora pra ajustar a linha. Você chega antes.",
     body: "Desfalque confirmado muda os números de quem fica em quadra — e a linha demora pra acompanhar. A análise cruza injury report com histórico e te mostra onde a janela abriu.",
@@ -293,20 +371,8 @@ const PRODUCTS = [
     available: true,
   },
   {
-    id: "betinho",
-    num: "02",
-    kicker: "Betinho · Gestão de banca",
-    title: "Você tá no lucro ou no prejuízo? O Betinho sabe de cabeça.",
-    body: "Manda o print do bilhete no Telegram. A IA lê, registra e te devolve banca, ROI e taxa de acerto — sem planilha, sem digitação. A verdade da sua banca, sempre à vista.",
-    facts: ["Print ou texto no Telegram", "Banca, ROI e taxa automáticos", "3 registros por dia grátis"],
-    cta: "Conhecer o Betinho",
-    route: "/betinho",
-    Mock: MockBetinho,
-    available: true,
-  },
-  {
     id: "bolao",
-    num: "03",
+    num: "04",
     kicker: "Bolão Copa 2026",
     title: "O bolão da galera. Sem planilha do Excel.",
     body: "Cria em 30 segundos, manda o link no grupo, e pronto. A gente cuida do ranking, dos placares e dos palpites de campeão — você cuida da zoeira.",
@@ -315,18 +381,6 @@ const PRODUCTS = [
     route: "/bolao",
     Mock: MockBolao,
     available: true,
-  },
-  {
-    id: "futebol",
-    num: "04",
-    kicker: "Futebol · Em desenvolvimento",
-    title: "O próximo da prateleira.",
-    body: "Análise de dados pra apostas em futebol — Brasileirão, Copa do Brasil e ligas europeias. Tá em construção com a mesma regra dos outros: o dado na frente, a decisão na sua mão.",
-    facts: ["Brasileirão e Copa do Brasil", "Ligas europeias", "Mesma tese: dado na frente"],
-    cta: "Entrar na lista de espera",
-    route: "/waitlist",
-    Mock: MockFutebol,
-    available: false,
   },
 ];
 
@@ -384,9 +438,9 @@ const LandingEcossistema = () => {
             <span className="text-amber">menos a casa.</span>
           </h1>
           <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
-            Análise pra decidir, gestão pra não se enganar, bolão pra zoar os
-            amigos — e zero promessa de ganho em qualquer um deles. Escolhe por
-            onde começar:
+            Valor no futebol, análise na NBA, gestão de banca no Telegram e
+            bolão pra zoar os amigos — e zero promessa de ganho em nenhum deles.
+            Escolhe por onde começar:
           </p>
           <div className="flex flex-wrap gap-2">
             {PRODUCTS.map((p) => (
@@ -568,10 +622,10 @@ const LandingEcossistema = () => {
             Escolhe sua porta de entrada.
           </h2>
           <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg mb-8">
-            As três começam grátis. Entra na que resolve a sua dor de hoje —
+            Todas começam grátis. Entra na que resolve a sua dor de hoje —
             as outras continuam aqui.
           </p>
-          <div className="grid sm:grid-cols-3 gap-3 max-w-3xl">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">
             {PRODUCTS.filter((p) => p.available).map((p) => (
               <button
                 key={p.id}
