@@ -2371,17 +2371,17 @@ export default function Bets() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green"></div>
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-forest"></div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center text-terminal-text">
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center text-ink">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-terminal-red" />
+          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
           <p>Por favor, faça login para ver suas apostas.</p>
         </div>
       </div>

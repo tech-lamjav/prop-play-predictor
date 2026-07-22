@@ -137,7 +137,7 @@ export default function AnalyticsNav({
   showBack,
   backTo,
   title,
-  variant = 'terminal',
+  variant = 'rebrand',
 }: AnalyticsNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -248,7 +248,7 @@ export default function AnalyticsNav({
           <div className="flex items-center gap-3">
             <div
               className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate('/home-nba')}
+              onClick={() => navigate(user ? '/inicio' : '/')}
             >
               <img
                 src="/logo.png"

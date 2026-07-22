@@ -70,8 +70,8 @@ const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const queryClient = new QueryClient();
 
 const LazyFallback = () => (
-  <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-terminal-green"></div>
+  <div className="min-h-screen bg-canvas flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest"></div>
   </div>
 );
 
