@@ -14,6 +14,7 @@ import { User, CreditCard, ArrowLeft, Send, ExternalLink } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { telegramBotUrl } from '../config/environment';
+import AnalyticsNav from '@/components/AnalyticsNav';
 
 const COUNTRY_CODES = [
   { value: '+55', label: '🇧🇷 +55' },
@@ -125,27 +126,17 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <span className="text-lg font-semibold text-foreground">Configurações</span>
-          </div>
-          <UserNav />
-        </div>
-      </nav>
+    <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
+      <AnalyticsNav variant="rebrand" showBack title="Configurações" />
 
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Configurações do Perfil</h1>
+      <div className="container mx-auto px-4 py-8 max-w-2xl flex-1">
+        <h1 className="text-2xl font-bold text-ink mb-6">Configurações do Perfil</h1>
 
         {/* Perfil */}
-        <Card className="mb-8">
+        <Card className="mb-8 bg-white border border-line text-ink">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
+              <User className="h-5 w-5 text-forest" />
               <CardTitle>Perfil</CardTitle>
             </div>
             <CardDescription>Suas informações pessoais</CardDescription>
@@ -160,6 +151,7 @@ export default function Settings() {
                   placeholder="Seu nome"
                   value={formData.name}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  className="bg-white border-line"
                 />
               </div>
 
@@ -172,6 +164,7 @@ export default function Settings() {
                   value={formData.email}
                   onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                   required
+                  className="bg-white border-line"
                 />
               </div>
 
@@ -182,10 +175,10 @@ export default function Settings() {
                     value={formData.countryCode}
                     onValueChange={(v) => setFormData((prev) => ({ ...prev, countryCode: v }))}
                   >
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger className="w-[120px] bg-white border-line text-ink">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="theme-bolao bg-white border-line text-ink">
                       {COUNTRY_CODES.map((c) => (
                         <SelectItem key={c.value} value={c.value}>
                           {c.label}
@@ -204,13 +197,13 @@ export default function Settings() {
                         phoneNumber: e.target.value.replace(/\D/g, ''),
                       }))
                     }
-                    className="flex-1"
+                    className="flex-1 bg-white border-line"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-ink-2">
                   Se mudou seu número no Telegram, toque para ressincronizar.
                 </p>
                 <Button
@@ -219,6 +212,7 @@ export default function Settings() {
                   onClick={() =>
                     window.open(`${telegramBotUrl}?start=force_contact`, '_blank')
                   }
+                  className="bg-white border-line text-ink hover:bg-canvas-2"
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Ressincronizar Telegram
@@ -231,7 +225,7 @@ export default function Settings() {
                   value={isLoading ? 'Carregando...' : (profile ? formatCreatedAt(profile.created_at) : '—')}
                   readOnly
                   disabled
-                  className="bg-muted"
+                  className="bg-canvas-2 border-line text-ink-2"
                 />
               </div>
 
@@ -241,7 +235,7 @@ export default function Settings() {
                 </Alert>
               )}
 
-              <Button type="submit" disabled={isSaving}>
+              <Button type="submit" disabled={isSaving} className="bg-forest hover:bg-forest-soft text-white">
                 {isSaving ? 'Salvando...' : 'Salvar alterações'}
               </Button>
             </form>
@@ -249,60 +243,60 @@ export default function Settings() {
         </Card>
 
         {/* Assinatura */}
-        <Card>
+        <Card className="bg-white border border-line text-ink">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-muted-foreground" />
+              <CreditCard className="h-5 w-5 text-ink-2" />
               <CardTitle>Assinatura</CardTitle>
             </div>
             <CardDescription>Gerencie seu plano e pagamentos</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading ? (
-              <p className="text-sm text-muted-foreground">Carregando...</p>
+              <p className="text-sm text-ink-2">Carregando...</p>
             ) : (
               <>
                 {/* Betinho */}
-                <div className="space-y-2 rounded-lg border p-4">
+                <div className="space-y-2 rounded-lg border border-line p-4">
                   <h4 className="font-medium text-sm">Betinho</h4>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Plano</span>
+                    <span className="text-sm text-ink-2">Plano</span>
                     <span className="font-medium">
                       {subscription?.betinho.status === 'premium' ? 'Premium' : 'Free'}
                     </span>
                   </div>
                   {subscription?.betinho.periodEnd && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Próxima cobrança</span>
+                      <span className="text-sm text-ink-2">Próxima cobrança</span>
                       <span className="text-sm">{formatDate(subscription.betinho.periodEnd)}</span>
                     </div>
                   )}
                   {subscription?.betinho.cancelAtPeriodEnd && subscription?.betinho.cancelAt && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Cancela em</span>
-                      <span className="text-sm text-amber-600">{formatDate(subscription.betinho.cancelAt)}</span>
+                      <span className="text-sm text-ink-2">Cancela em</span>
+                      <span className="text-sm text-amber-2">{formatDate(subscription.betinho.cancelAt)}</span>
                     </div>
                   )}
                 </div>
                 {/* Plataforma */}
-                <div className="space-y-2 rounded-lg border p-4">
+                <div className="space-y-2 rounded-lg border border-line p-4">
                   <h4 className="font-medium text-sm">Plataforma de Análise NBA</h4>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Plano</span>
+                    <span className="text-sm text-ink-2">Plano</span>
                     <span className="font-medium">
                       {subscription?.analytics.status === 'premium' ? 'Premium' : 'Free'}
                     </span>
                   </div>
                   {subscription?.analytics.periodEnd && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Próxima cobrança</span>
+                      <span className="text-sm text-ink-2">Próxima cobrança</span>
                       <span className="text-sm">{formatDate(subscription.analytics.periodEnd)}</span>
                     </div>
                   )}
                   {subscription?.analytics.cancelAtPeriodEnd && subscription?.analytics.cancelAt && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Cancela em</span>
-                      <span className="text-sm text-amber-600">{formatDate(subscription.analytics.cancelAt)}</span>
+                      <span className="text-sm text-ink-2">Cancela em</span>
+                      <span className="text-sm text-amber-2">{formatDate(subscription.analytics.cancelAt)}</span>
                     </div>
                   )}
                 </div>
@@ -312,13 +306,14 @@ export default function Settings() {
                       variant="default"
                       onClick={handleManageSubscription}
                       disabled={portalLoading}
+                      className="bg-forest hover:bg-forest-soft text-white"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
                       {portalLoading ? 'Abrindo...' : 'Gerenciar assinatura'}
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-ink-2">
                     Assine um plano para gerenciar sua assinatura.
                   </p>
                 )}
