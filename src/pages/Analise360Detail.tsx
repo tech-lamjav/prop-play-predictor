@@ -10,7 +10,7 @@ import {
 } from '@/utils/team-logos';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAnalise360Data } from '@/hooks/use-analise360';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -769,7 +769,7 @@ export default function Analise360Detail() {
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack backTo="/analise-360" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/analise-360" />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-32 gap-2">

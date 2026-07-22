@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
+import { ReferralProvider } from "@/components/ReferralProvider";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
@@ -80,6 +81,7 @@ const App = () => (
       <AchievementProvider>
       <Toaster />
       <Sonner />
+      <ReferralProvider>
       <BrowserRouter>
         <EnvironmentBanner />
         <PostHogPageView />
@@ -224,6 +226,7 @@ const App = () => (
           <Footer />
         </Suspense>
       </BrowserRouter>
+      </ReferralProvider>
       </AchievementProvider>
     </TooltipProvider>
   </QueryClientProvider>

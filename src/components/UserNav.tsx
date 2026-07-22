@@ -13,8 +13,12 @@ import {
   User,
   Settings,
   LogOut,
+  Send,
+  Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { telegramBotUrl } from '@/config/environment';
+import { useReferral } from './ReferralProvider';
 
 interface UserNavProps {
   className?: string;
@@ -30,6 +34,7 @@ export default function UserNav({ className, variant = 'terminal' }: UserNavProp
   const mutedCls = rebrand ? 'text-ink-2' : 'text-muted-foreground';
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { openReferral } = useReferral();
 
   const handleSignOut = async () => {
     await signOut();
@@ -87,6 +92,14 @@ export default function UserNav({ className, variant = 'terminal' }: UserNavProp
           <DropdownMenuItem className={itemCls} onClick={() => navigate('/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configurações</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className={itemCls} onClick={() => window.open(telegramBotUrl, '_blank')}>
+            <Send className="mr-2 h-4 w-4" />
+            <span>Abrir Telegram</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className={itemCls} onClick={openReferral}>
+            <Users className="mr-2 h-4 w-4" />
+            <span>Indique um amigo</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem className={itemCls} onClick={handleSignOut}>

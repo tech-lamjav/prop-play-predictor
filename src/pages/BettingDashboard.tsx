@@ -6,7 +6,7 @@ import { useUserUnit } from '@/hooks/use-user-unit';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { createClient } from '@/integrations/supabase/client';
-import { BetsHeader } from '@/components/bets/BetsHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { ProfitByTagChart } from '@/components/bets/ProfitByTagChart';
 import { Sparkline } from '@/components/dashboard/Sparkline';
 import { BigHeatmap, type HeatmapMetric } from '@/components/dashboard/BigHeatmap';
@@ -293,7 +293,7 @@ export default function BettingDashboard() {
 
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
-      <BetsHeader showBack />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">

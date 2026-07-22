@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AlertCircle, ArrowRight, Calendar as CalendarIcon, ExternalLink, FileText, Loader2, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { supabase } from '@/integrations/supabase/client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -152,7 +152,7 @@ export default function Report() {
   if (accessLoading) {
     return (
       <div className="theme-rebrand min-h-screen bg-canvas">
-        <NBAHomeNav showBack backTo="/home-nba" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-forest opacity-70" />
         </div>
@@ -163,7 +163,7 @@ export default function Report() {
   if (!hasAccess) {
     return (
       <div className="theme-rebrand min-h-screen bg-canvas">
-        <NBAHomeNav showBack backTo="/home-nba" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
         <div className="max-w-md mx-auto px-4 py-24 flex flex-col items-center text-center gap-4">
           <div className="w-16 h-16 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center">
             <Lock className="w-7 h-7 text-amber-700" />
@@ -192,7 +192,7 @@ export default function Report() {
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack backTo="/home-nba" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
 
         {/* Page header (bg-white) */}
         <div className="bg-white border-b border-line">
