@@ -15,16 +15,21 @@ const Footer = () => {
   // o rodapé de "Produtos/Contato" fica deslocado e cria um vão em branco.
   if (location.pathname.startsWith('/inicio')) return null;
 
+  // Rotas com header claro (rebrand) → rodapé claro. Onda 1 da padronização:
+  // adiciona as rotas de NBA/Futebol/Bets que tinham header claro + footer dark.
+  // (As telas dark legadas — paywalls, settings, dashboard, share, como-usar —
+  // ficam de fora e seguem dark até a Onda 3.)
+  const rebrandPrefixes = [
+    '/betinho', '/bolao', '/futebol',
+    '/home-nba', '/home-games', '/game', '/oportunidades',
+    '/nba-dashboard', '/analise-360', '/report',
+    '/bets', '/bankroll', '/betting-dashboard',
+    '/privacidade', '/termos', '/auth', '/onboarding',
+  ];
   const useRebrand =
     location.pathname === '/' ||
     location.pathname === '/nba' ||
-    location.pathname.startsWith('/betinho') ||
-    location.pathname.startsWith('/bolao') ||
-    location.pathname.startsWith('/privacidade') ||
-    location.pathname.startsWith('/termos') ||
-    location.pathname.startsWith('/auth') ||
-    location.pathname.startsWith('/onboarding') ||
-    location.pathname.startsWith('/inicio');
+    rebrandPrefixes.some((p) => location.pathname.startsWith(p));
 
   // Paleta condicional. Cores literais em vez de CSS vars pra evitar problemas
   // de scope (var(--ink) só existe dentro de .theme-bolao).
@@ -69,13 +74,18 @@ const Footer = () => {
             <h4 className={`font-semibold ${t.title} text-sm`}>Produtos</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="/nba" className={`${t.muted} ${t.hover} transition-colors`}>
-                  Plataforma NBA
+                <a href="/futebol" className={`${t.muted} ${t.hover} transition-colors`}>
+                  Futebol
                 </a>
               </li>
               <li>
                 <a href="/betinho" className={`${t.muted} ${t.hover} transition-colors`}>
                   Betinho
+                </a>
+              </li>
+              <li>
+                <a href="/nba" className={`${t.muted} ${t.hover} transition-colors`}>
+                  Plataforma NBA
                 </a>
               </li>
               <li>

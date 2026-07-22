@@ -434,27 +434,6 @@ const Analysis = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-900 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-green-400 font-bold mb-2">SMARTBETTING</div>
-              <div className="text-sm text-slate-400">Advanced player props analysis</div>
-            </div>
-            <div className="flex space-x-6 text-sm text-slate-400">
-              <a href="#" className="hover:text-white">About</a>
-              <a href="#" className="hover:text-white">Terms</a>
-              <a href="#" className="hover:text-white">Privacy</a>
-              <a href="#" className="hover:text-white">Contact</a>
-            </div>
-          </div>
-          <div className="text-center text-sm text-slate-500 mt-4">
-            © 2023 Smartbetting. All rights reserved.
-          </div>
-        </div>
-      </footer>
     </AuthenticatedLayout>
   );
 };

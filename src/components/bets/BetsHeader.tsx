@@ -197,8 +197,8 @@ export const BetsHeader: React.FC<BetsHeaderProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => handleNavigation('/bolao')}
-              className={`flex items-center gap-2 px-4 h-9 text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray ${
-                location.pathname.startsWith('/bolao') ? 'text-terminal-blue' : ''
+              className={`flex items-center gap-2 px-4 h-9 text-ink-2 hover:text-ink hover:bg-ink-3/60 ${
+                location.pathname.startsWith('/bolao') ? 'text-forest' : ''
               }`}
             >
               <Trophy className="w-3.5 h-3.5" />
