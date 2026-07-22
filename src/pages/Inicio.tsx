@@ -50,6 +50,15 @@ type Destino = {
 
 const DESTINOS: Destino[] = [
   {
+    key: 'futebol',
+    icon: IconSoccer,
+    title: 'Futebol',
+    kicker: 'Oportunidades de valor',
+    tile: 'bg-forest-tint border-forest/15',
+    iconColor: 'text-forest',
+    onClick: (nav) => nav('/futebol'),
+  },
+  {
     key: 'betinho',
     icon: Bot,
     title: 'Betinho',
@@ -64,7 +73,7 @@ const DESTINOS: Destino[] = [
     icon: IconBasketball,
     title: 'Análises NBA',
     kicker: 'Props e dashboards',
-    tile: 'bg-forest-tint border-forest/15',
+    tile: 'bg-canvas-2 border-line',
     iconColor: 'text-forest',
     onClick: (nav) => nav('/home-nba'),
   },
@@ -76,16 +85,6 @@ const DESTINOS: Destino[] = [
     tile: 'bg-[#f6efdb] border-[#e6d5a3]',
     iconColor: 'text-amber-2',
     onClick: (nav) => nav('/bolao'),
-  },
-  {
-    key: 'futebol',
-    icon: IconSoccer,
-    title: 'Futebol',
-    kicker: 'Oportunidades de valor',
-    badge: 'Early access',
-    tile: 'bg-canvas-2 border-line',
-    iconColor: 'text-forest',
-    onClick: (nav) => nav('/futebol/comecar'),
   },
 ];
 
@@ -138,10 +137,10 @@ export default function Inicio() {
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" />
 
-      <main className="flex flex-1 flex-col justify-center px-5 py-10 sm:px-8">
-        <div className="mx-auto w-full max-w-md sm:max-w-3xl">
+      <main className="flex flex-1 flex-col px-5 pt-8 pb-12 sm:px-8 sm:pt-14">
+        <div className="mx-auto w-full max-w-md sm:max-w-4xl">
           {/* Cabeçalho enxuto, alinhado à esquerda */}
-          <header className="mb-6 sm:mb-8">
+          <header className="mb-6 sm:mb-9">
             <p className="mb-1 text-[12px] font-semibold uppercase tracking-[0.18em] text-forest">
               {firstName ? `Olá, ${firstName}` : 'Bem-vindo de volta'}
             </p>
@@ -159,7 +158,7 @@ export default function Inicio() {
                   key={d.key}
                   type="button"
                   onClick={() => go(d)}
-                  className={`group relative flex h-[92px] flex-row items-center gap-4 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-ink/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 sm:h-auto sm:min-h-[176px] sm:flex-col sm:items-start sm:justify-between sm:gap-0 sm:p-6 ${d.tile}`}
+                  className={`group relative flex h-[92px] flex-row items-center gap-4 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-ink/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 sm:h-auto sm:min-h-[208px] sm:flex-col sm:items-start sm:justify-between sm:gap-0 sm:p-6 ${d.tile}`}
                 >
                   <span
                     className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${

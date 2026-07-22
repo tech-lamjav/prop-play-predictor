@@ -409,7 +409,7 @@ const LandingEcossistema = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              onClick={() => navigate(user ? "/onboarding" : "/auth")}
+              onClick={() => navigate(user ? "/inicio" : "/auth")}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
               {user ? "Acessar" : "Entrar"}

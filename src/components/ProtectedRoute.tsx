@@ -30,9 +30,11 @@ export default function ProtectedRoute({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // If user is logged in but trying to access auth pages
+  // If user is logged in but trying to access auth pages, send to the hub.
+  // (Não gateia onboarding aqui — o card do Betinho no /inicio leva pro vínculo
+  // se ainda faltar; o gate fica no login/OAuth via resolveHomePath.)
   if (!requireAuth && user) {
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to="/inicio" replace />;
   }
 
   return <>{children}</>;

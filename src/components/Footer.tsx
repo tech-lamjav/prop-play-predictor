@@ -10,6 +10,11 @@ import { useLocation } from 'react-router-dom';
  */
 const Footer = () => {
   const location = useLocation();
+
+  // /inicio é um hub pós-login (dispatcher), não uma página de marketing —
+  // o rodapé de "Produtos/Contato" fica deslocado e cria um vão em branco.
+  if (location.pathname.startsWith('/inicio')) return null;
+
   const useRebrand =
     location.pathname === '/' ||
     location.pathname === '/nba' ||
