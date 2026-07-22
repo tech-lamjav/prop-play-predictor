@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { TagSelector } from '@/components/bets/TagSelector';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { telegramBotUrl } from '@/config/environment';
+import { canonicalizeVocab, vocabHasValue } from '@/utils/betVocab';
 
 export interface CreateBetTag {
   id: string;
@@ -399,31 +400,43 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               </div>
               {isCreateSportDropdownOpen && formData.sport && (
                 <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
-                  {filteredCreateSportsList.length > 0 ? (
-                    filteredCreateSportsList.map((sport, index) => (
-                      <button
-                        key={sport}
-                        type="button"
-                        tabIndex={-1}
-                        ref={(element) => {
-                          createSportItemRefs.current[index] = element;
-                        }}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          setFormData((prev) => ({ ...prev, sport }));
-                          setIsCreateSportDropdownOpen(false);
-                          setIsCreateSportQueryTouched(false);
-                          setCreateSportHighlightIndex(-1);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                          index === createSportHighlightIndex ? 'bg-ink-3/40' : ''
-                        }`}
-                      >
-                        {sport}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-xs text-ink-2">Nenhum esporte encontrado</div>
+                  {filteredCreateSportsList.map((sport, index) => (
+                    <button
+                      key={sport}
+                      type="button"
+                      tabIndex={-1}
+                      ref={(element) => {
+                        createSportItemRefs.current[index] = element;
+                      }}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setFormData((prev) => ({ ...prev, sport }));
+                        setIsCreateSportDropdownOpen(false);
+                        setIsCreateSportQueryTouched(false);
+                        setCreateSportHighlightIndex(-1);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                        index === createSportHighlightIndex ? 'bg-ink-3/40' : ''
+                      }`}
+                    >
+                      {sport}
+                    </button>
+                  ))}
+                  {formData.sport.trim() && !vocabHasValue(formData.sport, sportsList) && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setFormData((prev) => ({ ...prev, sport: canonicalizeVocab(prev.sport, sportsList) }));
+                        setIsCreateSportDropdownOpen(false);
+                        setIsCreateSportQueryTouched(false);
+                        setCreateSportHighlightIndex(-1);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
+                    >
+                      ＋ Adicionar "{formData.sport.trim()}"
+                    </button>
                   )}
                 </div>
               )}
@@ -510,31 +523,43 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               </div>
               {isCreateLeagueDropdownOpen && formData.league && (
                 <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
-                  {filteredCreateLeaguesList.length > 0 ? (
-                    filteredCreateLeaguesList.map((league, index) => (
-                      <button
-                        key={league}
-                        type="button"
-                        tabIndex={-1}
-                        ref={(element) => {
-                          createLeagueItemRefs.current[index] = element;
-                        }}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          setFormData((prev) => ({ ...prev, league }));
-                          setIsCreateLeagueDropdownOpen(false);
-                          setIsCreateLeagueQueryTouched(false);
-                          setCreateLeagueHighlightIndex(-1);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                          index === createLeagueHighlightIndex ? 'bg-ink-3/40' : ''
-                        }`}
-                      >
-                        {league}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-xs text-ink-2">Nenhuma liga encontrada</div>
+                  {filteredCreateLeaguesList.map((league, index) => (
+                    <button
+                      key={league}
+                      type="button"
+                      tabIndex={-1}
+                      ref={(element) => {
+                        createLeagueItemRefs.current[index] = element;
+                      }}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setFormData((prev) => ({ ...prev, league }));
+                        setIsCreateLeagueDropdownOpen(false);
+                        setIsCreateLeagueQueryTouched(false);
+                        setCreateLeagueHighlightIndex(-1);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                        index === createLeagueHighlightIndex ? 'bg-ink-3/40' : ''
+                      }`}
+                    >
+                      {league}
+                    </button>
+                  ))}
+                  {formData.league.trim() && !vocabHasValue(formData.league, leaguesList) && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setFormData((prev) => ({ ...prev, league: canonicalizeVocab(prev.league, leaguesList) }));
+                        setIsCreateLeagueDropdownOpen(false);
+                        setIsCreateLeagueQueryTouched(false);
+                        setCreateLeagueHighlightIndex(-1);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
+                    >
+                      ＋ Adicionar "{formData.league.trim()}"
+                    </button>
                   )}
                 </div>
               )}
@@ -618,31 +643,43 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               </div>
               {isCreateBettingMarketDropdownOpen && formData.betting_market && (
                 <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
-                  {filteredCreateBettingMarketsList.length > 0 ? (
-                    filteredCreateBettingMarketsList.map((market, index) => (
-                      <button
-                        key={market}
-                        type="button"
-                        tabIndex={-1}
-                        ref={(element) => {
-                          createBettingMarketItemRefs.current[index] = element;
-                        }}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          setFormData((prev) => ({ ...prev, betting_market: market }));
-                          setIsCreateBettingMarketDropdownOpen(false);
-                          setIsCreateBettingMarketQueryTouched(false);
-                          setCreateBettingMarketHighlightIndex(-1);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                          index === createBettingMarketHighlightIndex ? 'bg-ink-3/40' : ''
-                        }`}
-                      >
-                        {market}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-xs text-ink-2">Nenhum mercado encontrado</div>
+                  {filteredCreateBettingMarketsList.map((market, index) => (
+                    <button
+                      key={market}
+                      type="button"
+                      tabIndex={-1}
+                      ref={(element) => {
+                        createBettingMarketItemRefs.current[index] = element;
+                      }}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setFormData((prev) => ({ ...prev, betting_market: market }));
+                        setIsCreateBettingMarketDropdownOpen(false);
+                        setIsCreateBettingMarketQueryTouched(false);
+                        setCreateBettingMarketHighlightIndex(-1);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                        index === createBettingMarketHighlightIndex ? 'bg-ink-3/40' : ''
+                      }`}
+                    >
+                      {market}
+                    </button>
+                  ))}
+                  {formData.betting_market.trim() && !vocabHasValue(formData.betting_market, bettingMarketsList) && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        setFormData((prev) => ({ ...prev, betting_market: canonicalizeVocab(prev.betting_market, bettingMarketsList) }));
+                        setIsCreateBettingMarketDropdownOpen(false);
+                        setIsCreateBettingMarketQueryTouched(false);
+                        setCreateBettingMarketHighlightIndex(-1);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
+                    >
+                      ＋ Adicionar "{formData.betting_market.trim()}"
+                    </button>
                   )}
                 </div>
               )}
