@@ -6,11 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
+// Única página eager: a landing raiz ("/") — porta de entrada, paint
+// instantâneo sem roundtrip de chunk. Todo o resto é lazy.
 import LandingEcossistema from "./pages/LandingEcossistema";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import Picks from "./pages/Picks";
-import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PostHogPageView } from "./components/PostHogPageView";
@@ -25,6 +23,12 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 // cacheada tenta carregar chunk inexistente -> "Failed to fetch dynamically
 // imported module" -> tela branca). Helper força reload uma vez por sessão
 // pra pegar build novo.
+// Landing/Auth/Picks/NBADashboard eram eager e inflavam o chunk inicial —
+// NBADashboard puxava o recharts (~400kB) pra TODA página do site.
+const Landing = lazyWithRetry(() => import("./pages/Landing"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Picks = lazyWithRetry(() => import("./pages/Picks"));
+const NBADashboard = lazyWithRetry(() => import("./pages/NBADashboard"));
 const Betinho = lazyWithRetry(() => import("./pages/Betinho"));
 const Onboarding = lazyWithRetry(() => import("./pages/Onboarding"));
 const Inicio = lazyWithRetry(() => import("./pages/Inicio"));
