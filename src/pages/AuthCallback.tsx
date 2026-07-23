@@ -12,13 +12,15 @@ import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
  *    ProtectedRoute — ex: link de convite de bolão). Mesma validação de
  *    open redirect do getRedirectTarget em Auth.tsx.
  * 2. Usuário novo → onboarding (mesmo fallback do signup por email).
- * 3. Usuário existente → /bolao (mesmo fallback do login por email).
+ * 3. Usuário existente → mesma régua do login por e-mail (resolveHomePath):
+ *    conectou o Telegram → /inicio, senão → /onboarding.
  */
-function resolveTarget(stored: string | null, isNewUser: boolean): string {
+function resolveTarget(stored: string | null, isNewUser: boolean, onboarded: boolean): string {
   if (stored && stored.startsWith("/") && !stored.startsWith("//")) {
     return stored;
   }
-  return isNewUser ? "/onboarding?src=signup" : "/bolao";
+  if (isNewUser) return "/onboarding?src=signup";
+  return onboarded ? "/inicio" : "/onboarding";
 }
 
 /** Espera o supabase-js processar os tokens do hash da URL e emitir sessão. */
@@ -97,7 +99,7 @@ const AuthCallback = () => {
       // no OAuth fazemos o equivalente aqui na primeira entrada.
       const { data: existing } = await supabase
         .from("users")
-        .select("id")
+        .select("id, telegram_chat_id")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -157,7 +159,7 @@ const AuthCallback = () => {
       }
 
       toast({ title: isNewUser ? "Conta criada!" : "Bem-vindo de volta!" });
-      navigate(resolveTarget(storedTarget, isNewUser), { replace: true });
+      navigate(resolveTarget(storedTarget, isNewUser, !!existing?.telegram_chat_id), { replace: true });
     };
 
     run();

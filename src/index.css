@@ -149,7 +149,9 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    /* App é light-first (rebrand Direção A). Fundo claro por padrão mata o
+       "flash escuro" no carregamento. Telas legadas dark aplicam o próprio bg. */
+    @apply bg-canvas text-ink font-sans;
   }
 
   html {

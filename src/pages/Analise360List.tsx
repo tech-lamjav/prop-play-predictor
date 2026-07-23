@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { useAnalise360Data } from '@/hooks/use-analise360';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 import {
   Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -341,7 +341,7 @@ export default function Analise360List() {
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack backTo="/home-nba" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
 
         {/* Page header (bg-white) */}
         <div className="bg-white border-b border-line">

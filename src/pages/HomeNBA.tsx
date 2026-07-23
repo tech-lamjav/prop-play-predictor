@@ -7,7 +7,7 @@ import { Search, ChevronRight, Star, FileText, LayoutGrid, ArrowRight } from 'lu
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { useHomeNBAData } from '@/hooks/use-home-nba';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { NBABriefingStrip } from '@/components/nba-home/NBABriefingStrip';
 import { NBATopPickHero, type TopPickData } from '@/components/nba-home/NBATopPickHero';
 import { NBAHotOppCard, type HotOppData } from '@/components/nba-home/NBAHotOppCard';
@@ -351,7 +351,7 @@ export default function HomeNBA() {
         <title>Lesões NBA Hoje e Oportunidades de Apostas do Dia | Smart Betting</title>
         <meta name="description" content="Lesões chave da NBA hoje com impacto nos companheiros, oportunidades de prop bets selecionadas e jogos do dia. Atualizado diariamente." />
       </Helmet>
-      <NBAHomeNav showBack />
+      <AnalyticsNav variant="rebrand" showBack />
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">
         {/* Briefing strip com busca embarcada na coluna esquerda */}

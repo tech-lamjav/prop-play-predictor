@@ -159,7 +159,7 @@ export default function MainNav({ className }: MainNavProps) {
                   Entrar
                 </Button>
                 <Button
-                  onClick={() => navigate('/paywall-platform')}
+                  onClick={() => navigate('/planos')}
                   className="bg-primary text-primary-foreground hover:opacity-90"
                 >
                   Assinar

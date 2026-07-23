@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones, PlayerPassingSeason } from '@/services/nba-data.service';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
 import { PlayerHeader } from '@/components/nba/PlayerHeader';
@@ -142,7 +142,7 @@ export default function NBADashboard() {
         variant: 'default',
       });
       setTimeout(() => {
-        navigate('/paywall-platform');
+        navigate('/planos');
       }, 2000);
     }
   }, [player, user, isPremium, isFree, subscriptionLoading, navigate, toast]);
@@ -606,7 +606,7 @@ export default function NBADashboard() {
 
   return (
     <div className="w-full min-h-screen bg-canvas text-ink">
-      <NBAHomeNav showBack />
+      <AnalyticsNav variant="rebrand" showBack />
       <main className="container mx-auto px-3 py-4">
         {(() => {
           const playerHeaderEl = (

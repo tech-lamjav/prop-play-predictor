@@ -5,7 +5,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-route
 import {
   AlertTriangle, ArrowRight, Calendar as CalendarIcon, Loader2,
 } from 'lucide-react';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -1256,7 +1256,7 @@ export default function GameDetail() {
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack backTo="/home-games" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/home-games" />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
           {isLoadingGame || !game ? (

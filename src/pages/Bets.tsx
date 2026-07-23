@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
-import { BetsHeader } from '../components/bets/BetsHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { BetStatsCard } from '../components/bets/BetStatsCard';
 import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
 import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ShareLinkModal } from '@/components/bets/ShareLinkModal';
-import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
@@ -699,7 +698,6 @@ export default function Bets() {
   const [dailyBetCount, setDailyBetCount] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalBets: 0,
@@ -1188,7 +1186,7 @@ export default function Bets() {
     if (isBetinhoFree) {
       const currentCount = await getDailyBetCount();
       if (currentCount >= DAILY_BET_LIMIT) {
-        navigate('/paywall');
+        navigate('/planos');
         return false;
       }
     }
@@ -2431,17 +2429,17 @@ export default function Bets() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green"></div>
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-forest"></div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center text-terminal-text">
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center text-ink">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-terminal-red" />
+          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
           <p>Por favor, faça login para ver suas apostas.</p>
         </div>
       </div>
@@ -2450,10 +2448,7 @@ export default function Bets() {
 
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
-      <BetsHeader
-        showBack
-        onReferralClick={() => setReferralModalOpen(true)}
-      />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
@@ -2544,7 +2539,7 @@ export default function Bets() {
               type="button"
               onClick={() => {
                 if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-                  navigate('/paywall');
+                  navigate('/planos');
                   return;
                 }
                 setIsCreateModalOpen(true);
@@ -2600,7 +2595,7 @@ export default function Bets() {
                 type="button"
                 onClick={() => {
                   if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-                    navigate('/paywall');
+                    navigate('/planos');
                     return;
                   }
                   setIsCreateModalOpen(true);
@@ -3405,7 +3400,7 @@ export default function Bets() {
           type="button"
           onClick={() => {
             if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-              navigate('/paywall');
+              navigate('/planos');
               return;
             }
             setIsCreateModalOpen(true);
@@ -4291,14 +4286,6 @@ export default function Bets() {
         }} 
       />
 
-      {user?.id && (
-        <ReferralModal
-          open={referralModalOpen}
-          onOpenChange={setReferralModalOpen}
-          userId={user.id}
-          referralCode={referralCode}
-        />
-      )}
 
       {/* Confirmação de exclusão (single ou bulk) — substitui o window.confirm nativo */}
       <AlertDialog

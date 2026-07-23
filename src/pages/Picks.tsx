@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { nbaDataService, DailyOpportunity } from '@/services/nba-data.service';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
@@ -549,7 +549,7 @@ export default function Picks() {
   const handleAnalyze = (opp: DailyOpportunity, rowIdx: number) => {
     const canAccess = isRowFree(rowIdx);
     if (!canAccess) {
-      navigate('/paywall-platform');
+      navigate('/planos');
       return;
     }
     const slug = slugify(opp.backup_player_name);
@@ -560,7 +560,7 @@ export default function Picks() {
   if (error) {
     return (
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack />
+        <AnalyticsNav variant="rebrand" showBack />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <AlertTriangle className="w-8 h-8 text-status-danger mx-auto mb-4" />
@@ -583,7 +583,7 @@ export default function Picks() {
         <title>Oportunidades do dia · Smart Betting NBA</title>
         <meta name="description" content="Quem se beneficia quando um titular não joga — ranqueado por score de confiança." />
       </Helmet>
-      <NBAHomeNav showBack />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Page header (bg-white) */}
       <div className="bg-white border-b border-line">
@@ -780,7 +780,7 @@ export default function Picks() {
               Dados de score, médias e gaps das demais são exclusivos para assinantes Premium.
             </p>
             <button
-              onClick={() => navigate('/paywall-platform')}
+              onClick={() => navigate('/planos')}
               className="text-[12px] font-semibold text-amber-700 hover:text-amber-900 shrink-0 inline-flex items-center gap-1"
             >
               Assinar

@@ -201,7 +201,7 @@ const BolaoPalpites: React.FC = () => {
 
   return (
     <div className="bg-canvas min-h-screen flex flex-col">
-      <AnalyticsNav />
+      <AnalyticsNav variant="rebrand" />
       {/* is_closed (inscricoes encerradas) nao afeta palpites — sticky
           continua util pra quem ja entrou */}
       <PendingPredictionsSticky

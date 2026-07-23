@@ -10,16 +10,28 @@ import { useLocation } from 'react-router-dom';
  */
 const Footer = () => {
   const location = useLocation();
+
+  // /inicio é um hub pós-login (dispatcher), não uma página de marketing —
+  // o rodapé de "Produtos/Contato" fica deslocado e cria um vão em branco.
+  if (location.pathname.startsWith('/inicio')) return null;
+
+  // Rotas com header claro (rebrand) → rodapé claro. Toda página que já usa o
+  // AnalyticsNav rebrand entra aqui. Ficam de fora só as telas dark set-aside
+  // (/paywall-platform, /paywall-dashboard, /dashboard, /waitlist, /share) —
+  // NÃO usar o prefixo '/paywall' aqui, senão pega as duas paywalls dark por
+  // startsWith.
+  const rebrandPrefixes = [
+    '/betinho', '/bolao', '/futebol',
+    '/home-nba', '/home-games', '/game', '/oportunidades',
+    '/nba-dashboard', '/analise-360', '/report',
+    '/bets', '/bankroll', '/betting-dashboard',
+    '/privacidade', '/termos', '/auth', '/onboarding', '/como-usar',
+    '/planos', '/settings',
+  ];
   const useRebrand =
     location.pathname === '/' ||
     location.pathname === '/nba' ||
-    location.pathname.startsWith('/betinho') ||
-    location.pathname.startsWith('/bolao') ||
-    location.pathname.startsWith('/privacidade') ||
-    location.pathname.startsWith('/termos') ||
-    location.pathname.startsWith('/auth') ||
-    location.pathname.startsWith('/onboarding') ||
-    location.pathname.startsWith('/inicio');
+    rebrandPrefixes.some((p) => location.pathname.startsWith(p));
 
   // Paleta condicional. Cores literais em vez de CSS vars pra evitar problemas
   // de scope (var(--ink) só existe dentro de .theme-bolao).
@@ -64,13 +76,18 @@ const Footer = () => {
             <h4 className={`font-semibold ${t.title} text-sm`}>Produtos</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="/nba" className={`${t.muted} ${t.hover} transition-colors`}>
-                  Plataforma NBA
+                <a href="/futebol" className={`${t.muted} ${t.hover} transition-colors`}>
+                  Futebol
                 </a>
               </li>
               <li>
                 <a href="/betinho" className={`${t.muted} ${t.hover} transition-colors`}>
                   Betinho
+                </a>
+              </li>
+              <li>
+                <a href="/nba" className={`${t.muted} ${t.hover} transition-colors`}>
+                  Plataforma NBA
                 </a>
               </li>
               <li>

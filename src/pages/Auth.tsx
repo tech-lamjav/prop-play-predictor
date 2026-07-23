@@ -12,6 +12,7 @@ import { Trophy, Users, Sparkles, Check, BarChart3, Send, ShieldCheck } from "lu
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
+import { resolveHomePath } from "@/lib/post-login";
 
 // lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
 const GoogleIcon = () => (
@@ -123,9 +124,10 @@ const Auth = () => {
       }
 
       toast({ title: "Bem-vindo de volta!" });
-      // Login recorrente cai no hub /inicio (dispatcher pós-login). state.from
-      // explícito continua vencendo (ex: barrado numa rota protegida → volta pra ela).
-      navigate(getRedirectTarget(location.state, '/inicio'));
+      // state.from explícito vence (ex: barrado numa rota protegida → volta pra ela);
+      // senão, resolveHomePath decide: conectou o Telegram → /inicio, senão → /onboarding.
+      const fallback = user ? await resolveHomePath(supabase, user.id) : '/inicio';
+      navigate(getRedirectTarget(location.state, fallback));
     } catch (error) {
       toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
     } finally {

@@ -10,11 +10,14 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
-  User,
   Settings,
   LogOut,
+  Users,
+  BookOpen,
+  Tag,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useReferral } from './ReferralProvider';
 
 interface UserNavProps {
   className?: string;
@@ -30,6 +33,7 @@ export default function UserNav({ className, variant = 'terminal' }: UserNavProp
   const mutedCls = rebrand ? 'text-ink-2' : 'text-muted-foreground';
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { openReferral } = useReferral();
 
   const handleSignOut = async () => {
     await signOut();
@@ -80,13 +84,21 @@ export default function UserNav({ className, variant = 'terminal' }: UserNavProp
             </div>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className={itemCls} onClick={() => navigate('/bets')}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
-          </DropdownMenuItem>
           <DropdownMenuItem className={itemCls} onClick={() => navigate('/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configurações</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className={itemCls} onClick={() => navigate('/planos')}>
+            <Tag className="mr-2 h-4 w-4" />
+            <span>Planos e preços</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className={itemCls} onClick={() => navigate('/como-usar')}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            <span>Como usar</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className={itemCls} onClick={openReferral}>
+            <Users className="mr-2 h-4 w-4" />
+            <span>Indique um amigo</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem className={itemCls} onClick={handleSignOut}>

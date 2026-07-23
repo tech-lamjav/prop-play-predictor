@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
+import { ReferralProvider } from "@/components/ReferralProvider";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
@@ -39,6 +40,7 @@ const Waitlist = lazyWithRetry(() => import("./pages/Waitlist"));
 const Paywall = lazyWithRetry(() => import("./pages/Paywall"));
 const PaywallDashboard = lazyWithRetry(() => import("./pages/PaywallDashboard"));
 const PaywallPlatform = lazyWithRetry(() => import("./pages/PaywallPlatform"));
+const Planos = lazyWithRetry(() => import("./pages/Planos"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
@@ -69,8 +71,8 @@ const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const queryClient = new QueryClient();
 
 const LazyFallback = () => (
-  <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-terminal-green"></div>
+  <div className="min-h-screen bg-canvas flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest"></div>
   </div>
 );
 
@@ -80,6 +82,7 @@ const App = () => (
       <AchievementProvider>
       <Toaster />
       <Sonner />
+      <ReferralProvider>
       <BrowserRouter>
         <EnvironmentBanner />
         <PostHogPageView />
@@ -160,6 +163,7 @@ const App = () => (
             <Route path="/paywall" element={<Paywall />} />
             <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
             <Route path="/paywall-platform" element={<PaywallPlatform />} />
+            <Route path="/planos" element={<Planos />} />
             <Route path="/como-usar" element={<ComoUsar />} />
             <Route path="/report" element={
               <ProtectedRoute>
@@ -168,14 +172,14 @@ const App = () => (
             } />
             <Route path="/analise-360" element={
               <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-platform">
+                <PremiumRoute redirectTo="/planos">
                   <Analise360List />
                 </PremiumRoute>
               </ProtectedRoute>
             } />
             <Route path="/analise-360/:triggerPlayerId" element={
               <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-platform">
+                <PremiumRoute redirectTo="/planos">
                   <Analise360Detail />
                 </PremiumRoute>
               </ProtectedRoute>
@@ -224,6 +228,7 @@ const App = () => (
           <Footer />
         </Suspense>
       </BrowserRouter>
+      </ReferralProvider>
       </AchievementProvider>
     </TooltipProvider>
   </QueryClientProvider>

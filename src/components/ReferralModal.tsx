@@ -118,13 +118,13 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-terminal-dark-gray border-terminal-border text-terminal-text sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="theme-bolao bg-white border-line text-ink sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-terminal-blue">
+          <DialogTitle className="flex items-center gap-2 text-forest">
             <Users className="w-5 h-5" />
             Indique um amigo
           </DialogTitle>
-          <DialogDescription className="text-terminal-text opacity-60">
+          <DialogDescription className="text-ink opacity-60">
             Compartilhe seu link ou código e ganhe descontos progressivos na assinatura
           </DialogDescription>
         </DialogHeader>
@@ -137,11 +137,11 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               <Input
                 value={referralLink}
                 readOnly
-                className="bg-terminal-black border-terminal-border text-terminal-text text-sm"
+                className="bg-canvas-2 border-line text-ink text-sm"
               />
               <Button
                 onClick={() => copyToClipboard(referralLink, 'link')}
-                className="bg-terminal-green hover:bg-terminal-green-bright text-white px-4"
+                className="bg-forest hover:bg-forest-soft text-white px-4"
                 disabled={!referralCode}
               >
                 {copiedLink ? (
@@ -160,11 +160,11 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
               <Input
                 value={referralCode || ''}
                 readOnly
-                className="bg-terminal-black border-terminal-border text-terminal-text text-sm font-mono text-center text-lg tracking-wider"
+                className="bg-canvas-2 border-line text-ink text-sm font-mono text-center text-lg tracking-wider"
               />
               <Button
                 onClick={() => copyToClipboard(referralCode || '', 'code')}
-                className="bg-terminal-green hover:bg-terminal-green-bright text-white px-4"
+                className="bg-forest hover:bg-forest-soft text-white px-4"
                 disabled={!referralCode}
               >
                 {copiedCode ? (
@@ -177,15 +177,15 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
           </div>
 
           {/* Indicações feitas */}
-          <div className="space-y-2 border-t border-terminal-border-subtle pt-4">
+          <div className="space-y-2 border-t border-line pt-4">
             <div className="flex items-center justify-between mb-3">
               <Label className="text-xs uppercase opacity-70 flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Indicações feitas
               </Label>
               <div className="flex items-center gap-2">
-                <div className="bg-terminal-green/20 border border-terminal-green/50 rounded px-3 py-1">
-                  <span className="text-terminal-green font-bold text-lg">{referrals.length}</span>
+                <div className="bg-forest/10 border border-forest/30 rounded px-3 py-1">
+                  <span className="text-forest font-bold text-lg">{referrals.length}</span>
                 </div>
                 <span className="text-xs opacity-60">usuários indicados</span>
               </div>
@@ -204,12 +204,12 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                 {referrals.map((referral) => (
                   <div
                     key={referral.referred_id}
-                    className="bg-terminal-black border border-terminal-border-subtle rounded p-3 flex items-center justify-between"
+                    className="bg-canvas-2 border border-line rounded p-3 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Mail className="w-4 h-4 text-terminal-blue flex-shrink-0" />
+                      <Mail className="w-4 h-4 text-forest flex-shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-terminal-text truncate">
+                        <p className="text-sm font-medium text-ink truncate">
                           {referral.referred_name || referral.referred_email}
                         </p>
                         {referral.referred_name && (
@@ -229,7 +229,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
           </div>
 
           {/* Informação sobre descontos */}
-          <div className="bg-terminal-black border border-terminal-border-subtle rounded p-3 text-xs opacity-60">
+          <div className="bg-canvas-2 border border-line rounded p-3 text-xs opacity-60">
             <p className="text-center">
               Cada indicação que se cadastra neste mês te dá 25% de desconto no próximo mês
             </p>

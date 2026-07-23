@@ -1,13 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, MessageCircle, Send, Camera, AlertCircle, BookOpen, Rocket } from "lucide-react";
+import { CheckCircle, Send, Camera, AlertCircle, BookOpen, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { telegramBotUrl } from "@/config/environment";
+import AnalyticsNav from "@/components/AnalyticsNav";
 import { Seo } from "@/components/Seo";
 
 const ComoUsar = () => {
   const navigate = useNavigate();
-  const telegramLink = telegramBotUrl;
 
   const steps = [
     "Crie sua conta e faça login no app (signup).",
@@ -24,15 +23,6 @@ const ComoUsar = () => {
     "Para texto: siga o formato livre, mas inclua jogo, mercado, odd e valor (ex: “Lakers vs Warriors - LeBron 25+ pts - odd 1.85 - R$50”).",
   ];
 
-  const bastidores = [
-    "O webhook valida TELEGRAM_BOT_TOKEN e o header x-telegram-bot-api-secret-token (se definido).",
-    "Se o usuário não estiver vinculado, o bot pede o compartilhamento de contato e associa pelo telefone (tabela users).",
-    "Mensagens vão para message_queue com channel=telegram; o processamento usa IA (OpenAI) para extrair aposta.",
-    "Limite diário: 3 apostas/dia por usuário (DAILY_BET_LIMIT). Ao atingir, o bot envia paywall/aviso.",
-    "Áudio é transcrito; imagens passam por visão/OCR; texto é parseado pelo schema de aposta.",
-    "Se a mensagem não parecer aposta (saudação ou muito curta), o bot envia ajuda em vez de criar aposta."
-  ];
-
   const problemas = [
     "Bot pediu contato: toque em “Enviar meu número” no teclado do Telegram.",
     "Conta não encontrada após enviar contato: garanta que o telefone cadastrado no app seja o mesmo do Telegram.",
@@ -42,28 +32,30 @@ const ComoUsar = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-terminal-black text-terminal-text">
+    <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
       <Seo
         path="/como-usar"
         title="Como Usar o Betinho no Telegram — Guia Rápido | Smart Betting"
         description="Passo a passo pra registrar suas apostas no Telegram em segundos: sincronize o número, mande o print do bilhete e acompanhe banca, ROI e acerto no dashboard."
       />
-      <div className="container mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <AnalyticsNav variant="rebrand" showBack />
+      <div className="container mx-auto px-4 sm:px-6 py-10 sm:py-14 flex-1">
+
         {/* Hero */}
         <div className="text-center mb-10 sm:mb-12">
-          <div className="inline-flex items-center gap-2 bg-terminal-blue/10 text-terminal-blue px-4 py-2 rounded-full text-sm font-medium border border-terminal-border">
+          <div className="inline-flex items-center gap-2 bg-forest/10 text-forest px-4 py-2 rounded-full text-sm font-medium border border-forest/20">
             <BookOpen className="w-4 h-4" />
             Como usar o Betinho no Telegram
           </div>
-          <h1 className="text-3xl sm:text-5xl font-bold mt-4 mb-4">Guia rápido e boas práticas</h1>
-          <p className="text-lg sm:text-xl text-terminal-text/80 max-w-3xl mx-auto">
+          <h1 className="font-display text-3xl sm:text-5xl font-black mt-4 mb-4 text-ink">Guia rápido e boas práticas</h1>
+          <p className="text-lg sm:text-xl text-ink-2 max-w-3xl mx-auto">
             Siga o passo a passo para sincronizar, enviar apostas e obter o melhor resultado com o bot.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
             <Button
               size="lg"
               onClick={() => navigate("/auth")}
-              className="bg-[#3B82F6] hover:bg-[#2F6AD4] text-white px-6 py-4"
+              className="bg-forest hover:bg-forest-soft text-white px-6 py-4"
             >
               <Rocket className="w-4 h-4 mr-2" />
               Começar grátis
@@ -73,16 +65,16 @@ const ComoUsar = () => {
 
         {/* Passo a passo */}
         <div className="grid gap-4 md:grid-cols-2 mb-8">
-          <Card className="bg-terminal-dark-gray border border-terminal-border">
+          <Card className="bg-white border border-line">
             <CardContent className="p-6 space-y-3">
-              <div className="flex items-center gap-2 text-terminal-blue">
+              <div className="flex items-center gap-2 text-forest">
                 <Send className="w-5 h-5" />
                 <p className="font-semibold">Passo a passo de configuração</p>
               </div>
-              <ul className="space-y-2 text-sm text-terminal-text/90">
+              <ul className="space-y-2 text-sm text-ink-2">
                 {steps.map((item, idx) => (
                   <li key={idx} className="flex gap-2">
-                    <span className="text-terminal-blue font-semibold">{idx + 1}.</span>
+                    <span className="text-forest font-semibold">{idx + 1}.</span>
                     <span>{item}</span>
                   </li>
                 ))}
@@ -90,33 +82,33 @@ const ComoUsar = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-terminal-dark-gray border border-terminal-border">
+          <Card className="bg-white border border-line">
             <CardContent className="p-6 space-y-3">
-              <div className="flex items-center gap-2 text-terminal-blue">
+              <div className="flex items-center gap-2 text-forest">
                 <Camera className="w-5 h-5" />
                 <p className="font-semibold">Como enviar</p>
               </div>
-              <ul className="space-y-2 text-sm text-terminal-text/90">
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-terminal-green mt-0.5" /> Print: 1 aposta por print; se faltar valor, escreva na mesma mensagem.</li>
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-terminal-green mt-0.5" /> Texto: jogo + mercado + odd + valor em uma mensagem.</li>
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-terminal-green mt-0.5" /> Áudio (opcional): o bot transcreve e junta com o texto.</li>
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-terminal-green mt-0.5" /> 1 mensagem = 1 aposta. Não enviar partes separadas.</li>
+              <ul className="space-y-2 text-sm text-ink-2">
+                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> Print: 1 aposta por print; se faltar valor, escreva na mesma mensagem.</li>
+                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> Texto: jogo + mercado + odd + valor em uma mensagem.</li>
+                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> Áudio (opcional): o bot transcreve e junta com o texto.</li>
+                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> 1 mensagem = 1 aposta. Não enviar partes separadas.</li>
               </ul>
             </CardContent>
           </Card>
         </div>
 
         {/* Boas práticas */}
-        <Card className="bg-terminal-dark-gray border border-terminal-border mb-8">
+        <Card className="bg-white border border-line mb-8">
           <CardContent className="p-6 space-y-3">
-            <div className="flex items-center gap-2 text-terminal-blue">
+            <div className="flex items-center gap-2 text-forest">
               <AlertCircle className="w-5 h-5" />
               <p className="font-semibold">Boas práticas</p>
             </div>
-            <ul className="space-y-2 text-sm text-terminal-text/90">
+            <ul className="space-y-2 text-sm text-ink-2">
               {boasPraticas.map((item, idx) => (
                 <li key={idx} className="flex gap-2">
-                  <CheckCircle className="w-4 h-4 text-terminal-green mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -125,16 +117,16 @@ const ComoUsar = () => {
         </Card>
 
         {/* Problemas comuns */}
-        <Card className="bg-terminal-dark-gray border border-terminal-border mb-10">
+        <Card className="bg-white border border-line mb-10">
           <CardContent className="p-6 space-y-3">
-            <div className="flex items-center gap-2 text-terminal-blue">
+            <div className="flex items-center gap-2 text-forest">
               <AlertCircle className="w-5 h-5" />
               <p className="font-semibold">Problemas comuns</p>
             </div>
-            <ul className="space-y-2 text-sm text-terminal-text/90">
+            <ul className="space-y-2 text-sm text-ink-2">
               {problemas.map((item, idx) => (
                 <li key={idx} className="flex gap-2">
-                  <CheckCircle className="w-4 h-4 text-terminal-green mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -147,13 +139,13 @@ const ComoUsar = () => {
             <Button
               size="lg"
               onClick={() => navigate("/auth")}
-              className="bg-[#3B82F6] hover:bg-[#2F6AD4] text-white px-6 py-4"
+              className="bg-forest hover:bg-forest-soft text-white px-6 py-4"
             >
               <Rocket className="w-4 h-4 mr-2" />
               Começar grátis
             </Button>
           </div>
-          <p className="text-xs text-terminal-text/60 mt-3">Dica: se o bot pedir contato, toque em “Enviar meu número”.</p>
+          <p className="text-xs text-ink-3 mt-3">Dica: se o bot pedir contato, toque em “Enviar meu número”.</p>
         </div>
       </div>
     </div>
@@ -161,4 +153,3 @@ const ComoUsar = () => {
 };
 
 export default ComoUsar;
-
