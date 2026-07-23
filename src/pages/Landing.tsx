@@ -4,7 +4,7 @@ import { Star, CheckCircle2, XCircle, PlayCircle, ArrowRight, Lightbulb, X } fro
 import { useNavigate } from "react-router-dom";
 import { FREE_PLAYERS } from "@/config/freemium";
 import { getTeamLogoUrl, getPlayerPhotoUrl, teamAbbrToName } from "@/utils/team-logos";
-import { Helmet } from "react-helmet-async";
+import { Seo } from "@/components/Seo";
 
 const getFreePlayerDashboardPath = () => {
   const name = FREE_PLAYERS[0];
@@ -174,10 +174,11 @@ const Landing = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Helmet>
-        <title>Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting</title>
-        <meta name="description" content="Compare a linha das casas com o histórico real do jogador: últimos jogos, injury report e Análise 360°. Dashboard aberto pra testar sem login." />
-      </Helmet>
+      <Seo
+        path="/nba"
+        title="Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting"
+        description="Compare a linha das casas com o histórico real do jogador: últimos jogos, injury report e Análise 360°. Dashboard aberto pra testar sem login."
+      />
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-4 sm:px-6">

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { Seo } from "@/components/Seo";
 import { useAuth } from "@/hooks/use-auth";
 import { PlayCircle, ArrowRight, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
@@ -123,10 +123,11 @@ const FutebolLP = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Helmet>
-        <title>Aposta de Valor no Futebol — Brasileirão e Copa | Smart Betting</title>
-        <meta name="description" content="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. 7 dias grátis, sem cartão." />
-      </Helmet>
+      <Seo
+        path="/futebol/comecar"
+        title="Aposta de Valor no Futebol — Brasileirão e Copa | Smart Betting"
+        description="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. 7 dias grátis, sem cartão."
+      />
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
