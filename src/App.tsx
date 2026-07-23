@@ -40,6 +40,7 @@ const Waitlist = lazyWithRetry(() => import("./pages/Waitlist"));
 const Paywall = lazyWithRetry(() => import("./pages/Paywall"));
 const PaywallDashboard = lazyWithRetry(() => import("./pages/PaywallDashboard"));
 const PaywallPlatform = lazyWithRetry(() => import("./pages/PaywallPlatform"));
+const Planos = lazyWithRetry(() => import("./pages/Planos"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
@@ -162,6 +163,7 @@ const App = () => (
             <Route path="/paywall" element={<Paywall />} />
             <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
             <Route path="/paywall-platform" element={<PaywallPlatform />} />
+            <Route path="/planos" element={<Planos />} />
             <Route path="/como-usar" element={<ComoUsar />} />
             <Route path="/report" element={
               <ProtectedRoute>

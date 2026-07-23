@@ -25,6 +25,7 @@ const Footer = () => {
     '/nba-dashboard', '/analise-360', '/report',
     '/bets', '/bankroll', '/betting-dashboard',
     '/privacidade', '/termos', '/auth', '/onboarding', '/como-usar',
+    '/planos',
   ];
   const useRebrand =
     location.pathname === '/' ||
