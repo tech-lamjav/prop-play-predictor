@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Send, Camera, AlertCircle, BookOpen, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AnalyticsNav from "@/components/AnalyticsNav";
+import { Seo } from "@/components/Seo";
 
 const ComoUsar = () => {
   const navigate = useNavigate();
@@ -32,8 +33,14 @@ const ComoUsar = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
+      <Seo
+        path="/como-usar"
+        title="Como Usar o Betinho no Telegram — Guia Rápido | Smart Betting"
+        description="Passo a passo pra registrar suas apostas no Telegram em segundos: sincronize o número, mande o print do bilhete e acompanhe banca, ROI e acerto no dashboard."
+      />
       <AnalyticsNav variant="rebrand" showBack />
       <div className="container mx-auto px-4 sm:px-6 py-10 sm:py-14 flex-1">
+
         {/* Hero */}
         <div className="text-center mb-10 sm:mb-12">
           <div className="inline-flex items-center gap-2 bg-forest/10 text-forest px-4 py-2 rounded-full text-sm font-medium border border-forest/20">

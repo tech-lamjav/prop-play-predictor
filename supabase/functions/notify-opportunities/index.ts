@@ -138,7 +138,7 @@ async function buildMessage(picks: BoardRow[], userId: string): Promise<string> 
       ""
     );
   }
-  lines.push(`<i>Score = confiabilidade da oportunidade (0–100), calculado contra a linha sharp do mercado.</i>`);
+  lines.push(`<i>Score 0–100: quanto mais alto, mais confiança na pick.</i>`);
   return lines.join("\n");
 }
 
@@ -154,7 +154,14 @@ function registerButtons(picks: BoardRow[], pickIdByFixture: Map<number, string>
   return rows;
 }
 
-async function sendDaily(chatId: string, text: string, boardUrl: string, pickRows: any[]): Promise<void> {
+// CTA do site com destino inteligente: 1 pick → tela daquele jogo; 2+ → board.
+// Copy promete o "porquê" (a DM traz só 1 evidência; o site tem o raio-x completo).
+function ctaSpec(picks: BoardRow[]): { label: string; dest: string } {
+  if (picks.length === 1) return { label: "Ver o porquê dessa pick →", dest: `jogo-${picks[0].fixture_id}` };
+  return { label: "Ver o porquê de cada pick →", dest: "board" };
+}
+
+async function sendDaily(chatId: string, text: string, ctaUrl: string, ctaLabel: string, pickRows: any[]): Promise<void> {
   const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -163,7 +170,7 @@ async function sendDaily(chatId: string, text: string, boardUrl: string, pickRow
       text,
       parse_mode: "HTML",
       disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [...pickRows, [{ text: "Ver a análise completa", url: boardUrl }]] },
+      reply_markup: { inline_keyboard: [...pickRows, [{ text: ctaLabel, url: ctaUrl }]] },
     }),
   });
   if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
@@ -251,8 +258,9 @@ serve(async (req) => {
     for (const r of recipients) {
       try {
         const text = await buildMessage(picks, r.user_id);
-        const boardUrl = await trackedUrl(r.user_id, "board");
-        await sendDaily(r.chat_id, text, boardUrl, pickButtonRows);
+        const cta = ctaSpec(picks);
+        const ctaUrl = await trackedUrl(r.user_id, cta.dest);
+        await sendDaily(r.chat_id, text, ctaUrl, cta.label, pickButtonRows);
 
         const { error: upErr } = await supabase.from("opportunity_dispatch_state").upsert({
           user_id: r.user_id,

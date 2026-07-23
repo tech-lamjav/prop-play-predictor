@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixtures, useFutebolValueBoard, useFutebolFixtureValue, useFutebolAccess } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
@@ -323,6 +324,11 @@ export default function FutebolHoje() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
+      <Seo
+        path="/futebol"
+        title="Futebol Hoje — Oportunidades de Valor no Brasileirão e Copa | Smart Betting"
+        description="Os jogos de hoje com o Score de Confiabilidade: onde a odd da casa paga mais do que o risco real. Brasileirão, Série B e Copa do Mundo, atualizado todo dia."
+      />
       <AnalyticsNav variant="rebrand" />
       {!loading && days.length > 0 && (
         <div className="bg-white border-b border-line">

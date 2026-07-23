@@ -3,6 +3,7 @@
 // ============================================================
 // Extraído de index.ts na Onda 6b da revisão (split mecânico, move-only).
 import { TELEGRAM_BOT_TOKEN, TELEGRAM_API_BASE, DAILY_BET_LIMIT, BETS_DASHBOARD_URL } from "./config.ts"
+import { confirmationKeyboard } from "./keyboards.ts"
 import type { TelegramFile } from "./types.ts"
 
 async function telegramCall<T = any>(method: string, payload: Record<string, unknown>): Promise<T | null> {
@@ -130,6 +131,7 @@ async function sendPaywallMessageTelegram(chatId: string | number): Promise<void
 async function sendConfirmationMessageTelegram(
   chatId: string | number,
   betDetails: {
+    id: string
     bet_type: string
     sport: string
     league?: string | null
@@ -147,8 +149,6 @@ async function sendConfirmationMessageTelegram(
     system: "Sistema"
   }
 
-  const dashboardUrl = "https://www.smartbetting.app/bets"
-
   const confirmationMessage = [
     "🎯 *Aposta Registrada com Sucesso!*",
     "",
@@ -162,15 +162,12 @@ async function sendConfirmationMessageTelegram(
     `• *Retorno Potencial:* R$ ${betDetails.potential_return.toFixed(2)}`,
     ...(streakLine ? ["", streakLine] : []),
     "",
-    "✅ Sua aposta foi salva no dashboard e você pode acompanhar o resultado em tempo real!",
-    "",
-    `🔗 Acesse seu dashboard: ${dashboardUrl}`,
-    "",
-    "⚠️ *IMPORTANTE:*",
-    "Se você enviou uma imagem de aposta e não recebeu esta mensagem, envie a imagem novamente."
+    "Quando o jogo terminar, eu te aviso o resultado. Já deu? Marca aqui 👇"
   ].join("\n")
 
-  await sendTelegramMessage(chatId, confirmationMessage)
+  await sendTelegramMessage(chatId, confirmationMessage, {
+    reply_markup: confirmationKeyboard(betDetails.id)
+  })
 }
 
 // ============================================================
