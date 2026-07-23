@@ -10,16 +10,13 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
-  User,
   Settings,
   LogOut,
-  Send,
   Users,
   BookOpen,
   Tag,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { telegramBotUrl } from '@/config/environment';
 import { useReferral } from './ReferralProvider';
 
 interface UserNavProps {
@@ -87,10 +84,6 @@ export default function UserNav({ className, variant = 'terminal' }: UserNavProp
             </div>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className={itemCls} onClick={() => navigate('/bets')}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
-          </DropdownMenuItem>
           <DropdownMenuItem className={itemCls} onClick={() => navigate('/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configurações</span>
@@ -102,10 +95,6 @@ export default function UserNav({ className, variant = 'terminal' }: UserNavProp
           <DropdownMenuItem className={itemCls} onClick={() => navigate('/como-usar')}>
             <BookOpen className="mr-2 h-4 w-4" />
             <span>Como usar</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className={itemCls} onClick={() => window.open(telegramBotUrl, '_blank')}>
-            <Send className="mr-2 h-4 w-4" />
-            <span>Abrir Telegram</span>
           </DropdownMenuItem>
           <DropdownMenuItem className={itemCls} onClick={openReferral}>
             <Users className="mr-2 h-4 w-4" />
