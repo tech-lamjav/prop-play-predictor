@@ -1,5 +1,4 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
 import { Trophy, Target, Medal, Star, Flame, Award, Share2 } from 'lucide-react';
 import { AchievementShareImage } from '@/components/bolao/AchievementShareImage';
 import { shareImage } from '@/components/bolao/share-utils';
@@ -125,6 +124,9 @@ const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
     if (sharing || !captureRef.current) return;
     setSharing(true);
     try {
+      // html2canvas (~200kB) só é usado aqui, no clique de compartilhar — o
+      // dynamic import tira ele do chunk inicial (o Provider envolve o app todo).
+      const { default: html2canvas } = await import('html2canvas');
       const canvas = await html2canvas(captureRef.current, {
         backgroundColor: null,
         scale: 2,
