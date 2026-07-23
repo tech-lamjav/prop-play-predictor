@@ -10,6 +10,7 @@ import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
+import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
@@ -17,7 +18,6 @@ import {
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
 function kickoffMs(raw: string | null): number | null {
@@ -55,7 +55,7 @@ const DAY_WINDOW = 8;
 
 type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 type FaixaFilter = 'all' | 'alta' | 'media';
-type CompFilter = 'all' | 'brasileirao' | 'copa_mundo' | 'serie_b';
+type CompFilter = string; // 'all' | slug da competição (data-driven)
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -161,7 +161,7 @@ function OppRow({ o, onClick, muted, locked }: { o: FutebolValueBoardRow; onClic
       </div>
       <div className="min-w-0">
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
-        <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{COMP_LABEL[o.competition] || o.competition} · {fmtHour(o.kickoff_utc)}</div>
+        <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{competitionLabel(o.competition)} · {fmtHour(o.kickoff_utc)}</div>
       </div>
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={!!locked}>{chance != null ? `${chance}%` : '—'}</Blur></div>
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={!!locked}>{o.best_odd.toFixed(2)}</Blur></div>
@@ -263,9 +263,7 @@ export default function FutebolOportunidades() {
   const faixaOptions = [{ value: 'all', label: 'Todas' }, { value: 'alta', label: 'Alta' }, { value: 'media', label: 'Média' }];
   const compOptions = [
     { value: 'all', label: 'Todas' },
-    ...(compsOnDay.has('brasileirao') ? [{ value: 'brasileirao', label: 'Brasileirão' }] : []),
-    ...(compsOnDay.has('serie_b') ? [{ value: 'serie_b', label: 'Série B' }] : []),
-    ...(compsOnDay.has('copa_mundo') ? [{ value: 'copa_mundo', label: 'Copa' }] : []),
+    ...sortCompetitions([...compsOnDay]).map((c) => ({ value: c, label: competitionLabel(c) })),
   ];
 
   const filtered = useMemo(

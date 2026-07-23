@@ -29,7 +29,9 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1200): Pr
   throw lastError;
 }
 
-export type Competition = 'brasileirao' | 'copa_mundo' | 'serie_b';
+// Slug da competição. String livre (data-driven) — o backend é a fonte de verdade
+// (futebol.fact_fixtures.competition). Rótulos/ordem ficam em utils/futebol-competitions.
+export type Competition = string;
 
 export interface FutebolFixture {
   fixture_id: number;

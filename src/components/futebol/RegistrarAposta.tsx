@@ -15,9 +15,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { pickLabel, marketLabel } from '@/utils/futebol-score';
+import { competitionLabel } from '@/utils/futebol-competitions';
 import type { FutebolBetDraft } from './registrar-aposta-utils';
-
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
 
 function kickoffDate(raw: string | null): string | null {
   if (!raw) return null;
@@ -50,7 +49,7 @@ export function RegistrarApostaModal({
   const pick = draft ? pickLabel(draft.market, draft.outcome, draft.lineValue, draft.homeName, draft.awayName) : '';
   const match = draft ? `${draft.homeName} x ${draft.awayName}` : '';
   const mkt = draft ? marketLabel(draft.market) : '';
-  const league = draft ? (COMP_LABEL[draft.competition] || draft.competition) : '';
+  const league = draft ? competitionLabel(draft.competition) : '';
 
   const stakeN = parseFloat(stake.replace(',', '.'));
   const oddN = parseFloat(odd.replace(',', '.'));

@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import {
   futebolDataService,
@@ -46,6 +47,36 @@ export function useFutebolFixtures(competition: Competition, season: number, rou
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+}
+
+/**
+ * Fixtures de VÁRIAS competições de uma vez (uma query por liga, em paralelo).
+ * Achata tudo taggeando cada jogo com sua `competition`. Usado no /futebol
+ * (Hoje) pra listar jogos de todas as ligas, não só de um allowlist fixo.
+ */
+export function useFutebolFixturesMulti(competitions: string[], season: number) {
+  const results = useQueries({
+    queries: competitions.map((competition) => ({
+      queryKey: ['futebol', 'fixtures', competition, season, 'all'],
+      queryFn: () => futebolDataService.getFixtures(competition, season),
+      staleTime: 5 * 60 * 1000,
+      gcTime: 15 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    })),
+  });
+  const isLoading = results.some((r) => r.isLoading);
+  // react-query faz structural sharing → o ref de r.data só muda quando o dado
+  // muda; memoizar por esses refs evita reflatten a cada render.
+  const dataRefs = results.map((r) => r.data);
+  const data = useMemo(
+    () =>
+      results.flatMap((r, i) =>
+        (r.data ?? []).map((f) => ({ ...f, competition: competitions[i] }))
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [...dataRefs, competitions]
+  );
+  return { data, isLoading };
 }
 
 export function useFutebolFixtureDetail(fixtureId: number | undefined) {

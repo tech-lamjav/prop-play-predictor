@@ -4,18 +4,18 @@ import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtures, useFutebolValueBoard, useFutebolFixtureValue, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolFixtureValue, useFutebolAccess } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
+import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, freqEmDez, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
-import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
 const DAY_WINDOW = 8;
 
@@ -108,7 +108,7 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
             <Zap className="w-3 h-3" /> {d ? 'Melhor valor do dia' : 'Melhor do dia · Média'}
           </span>
-          <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {COMP_LABEL[o.competition] || o.competition}</div>
+          <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
           <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}><Blur active={!!locked} strength={9}>{pick}</Blur></div>
           <div className={`flex items-center gap-1.5 text-[13px] mt-2 ${d ? 'text-white/70' : 'text-ink-2'}`}>
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={18} />
@@ -235,21 +235,15 @@ function GameRailRow({ f, best, onClick }: { f: FutebolFixture & { competition?:
 
 export default function FutebolHoje() {
   const navigate = useNavigate();
-  const { data: brasil, isLoading: l1 } = useFutebolFixtures('brasileirao', 2026);
-  const { data: copa, isLoading: l2 } = useFutebolFixtures('copa_mundo', 2026);
-  const { data: serieB, isLoading: l2b } = useFutebolFixtures('serie_b', 2026);
+  // Todas as ligas do mart (data-driven), não mais um allowlist de 3.
+  const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: valueRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: access } = useFutebolAccess();
   const locked = !access?.unlocked;
-  const loading = l1 || l2 || l2b || l3;
+  const loading = lFix || l3;
 
   const todayStr = brtDateStr(new Date());
   const [day, setDay] = useState<string | null>(null);
-
-  const allGames = useMemo(() => {
-    const tag = (arr: FutebolFixture[] | undefined, c: string) => (arr || []).map((f) => ({ ...f, competition: c }));
-    return [...tag(brasil, 'brasileirao'), ...tag(copa, 'copa_mundo'), ...tag(serieB, 'serie_b')];
-  }, [brasil, copa, serieB]);
 
   // dias (BRT) com jogos ainda não começados — base da navegação por dias.
   // Limita aos próximos dias (não varre a temporada inteira do Brasileirão).
