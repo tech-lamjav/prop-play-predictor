@@ -15,17 +15,18 @@ const Footer = () => {
   // o rodapé de "Produtos/Contato" fica deslocado e cria um vão em branco.
   if (location.pathname.startsWith('/inicio')) return null;
 
-  // Rotas com header claro (rebrand) → rodapé claro. Onda 1 da padronização:
-  // adiciona as rotas de NBA/Futebol/Bets que tinham header claro + footer dark.
-  // (As telas dark legadas — paywalls, settings, dashboard, share, como-usar —
-  // ficam de fora e seguem dark até a Onda 3.)
+  // Rotas com header claro (rebrand) → rodapé claro. Toda página que já usa o
+  // AnalyticsNav rebrand entra aqui. Ficam de fora só as telas dark set-aside
+  // (/paywall-platform, /paywall-dashboard, /dashboard, /waitlist, /share) —
+  // NÃO usar o prefixo '/paywall' aqui, senão pega as duas paywalls dark por
+  // startsWith.
   const rebrandPrefixes = [
     '/betinho', '/bolao', '/futebol',
     '/home-nba', '/home-games', '/game', '/oportunidades',
     '/nba-dashboard', '/analise-360', '/report',
     '/bets', '/bankroll', '/betting-dashboard',
     '/privacidade', '/termos', '/auth', '/onboarding', '/como-usar',
-    '/planos',
+    '/planos', '/settings',
   ];
   const useRebrand =
     location.pathname === '/' ||
