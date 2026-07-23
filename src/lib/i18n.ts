@@ -160,8 +160,10 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en', // default language
-    fallbackLng: 'en',
+    // Produto é pt-BR: o default precisa ser português (antes subia em inglês
+    // qualquer texto via t()). Os recursos 'pt' estão completos, então é seguro.
+    lng: 'pt',
+    fallbackLng: 'pt',
     interpolation: {
       escapeValue: false
     }

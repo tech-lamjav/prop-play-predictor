@@ -1,4 +1,4 @@
-import { Helmet } from "react-helmet-async";
+import { Seo } from "@/components/Seo";
 
 /**
  * Página pública (sem auth) com os Termos de Uso e a Política de Privacidade
@@ -234,15 +234,11 @@ const SECTIONS: Section[] = [
 const Privacidade = () => {
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink">
-      <Helmet>
-        <title>Termos de Uso e Política de Privacidade — Smart Betting</title>
-        <meta
-          name="description"
-          content="Termos de Uso e Política de Privacidade da SMARTBETTING (LAMJAV Tecnologia e Inovação LTDA), em conformidade com a LGPD."
-        />
-        <meta name="robots" content="index,follow" />
-        <link rel="canonical" href="https://www.smartbetting.app/privacidade" />
-      </Helmet>
+      <Seo
+        path="/privacidade"
+        title="Termos de Uso e Política de Privacidade — Smart Betting"
+        description="Termos de Uso e Política de Privacidade da SMARTBETTING (LAMJAV Tecnologia e Inovação LTDA), em conformidade com a LGPD."
+      />
 
       <main className="container mx-auto px-4 sm:px-6 py-12 max-w-3xl">
         <a

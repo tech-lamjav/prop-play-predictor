@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Camera, Crown, CheckCircle2, XCircle, ArrowRight, ArrowDown, Lightbulb, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { Seo } from "@/components/Seo";
+import { faqPageSchema, webSiteSchema, type FaqItem } from "@/lib/structured-data";
 import { getPlayerPhotoUrl, getTeamLogoUrl } from "@/utils/team-logos";
 
 /**
@@ -338,12 +339,33 @@ const LandingEcossistema = () => {
     document.getElementById(`produto-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const FAQ: FaqItem[] = [
+    {
+      q: "Vocês são tipsters?",
+      a: "Não. Tipster te dá o palpite e pede fé. A gente te dá o dado — a linha, o histórico, o contexto — e devolve a decisão pra você. Nenhum produto da casa promete ganho; quem promete, desconfia.",
+    },
+    {
+      q: "O que é grátis?",
+      a: "Todos os produtos têm porta de entrada grátis: na análise NBA, dashboards de jogadores liberados sem login; no Betinho, 3 registros por dia; no Bolão, tudo grátis até 20 pessoas. Os detalhes estão na página de cada um.",
+    },
+    {
+      q: "Preciso assinar tudo junto?",
+      a: "Não. Cada produto tem seu plano, separado — você assina só o que usa. O Bolão nem assinatura tem: pagamento único por bolão, e só se o grupo passar de 20 pessoas.",
+    },
+    {
+      q: "Por onde eu começo?",
+      a: "Pela sua dor. Aposta em NBA e quer decidir com dado? Análise NBA. Não sabe se tá no lucro? Betinho. Quer reunir a galera na Copa? Bolão. Todas começam grátis — testa e fica na que te servir.",
+    },
+  ];
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Helmet>
-        <title>Smart Betting — Análises, Gestão e Ferramentas para Apostadores</title>
-        <meta name="description" content="Análise de prop bets NBA, gestão de banca no Telegram e bolão da Copa 2026. Ferramentas para quem decide com dados — sem promessa de ganho." />
-      </Helmet>
+      <Seo
+        jsonLd={[webSiteSchema(), faqPageSchema(FAQ)]}
+        path="/"
+        title="Smart Betting — Análises, Gestão e Ferramentas para Apostadores"
+        description="Análise de prop bets NBA, gestão de banca no Telegram e bolão da Copa 2026. Ferramentas para quem decide com dados — sem promessa de ganho."
+      />
 
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
@@ -529,24 +551,7 @@ const LandingEcossistema = () => {
           <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
         </div>
         <div className="space-y-3">
-          {[
-            {
-              q: "Vocês são tipsters?",
-              a: "Não. Tipster te dá o palpite e pede fé. A gente te dá o dado — a linha, o histórico, o contexto — e devolve a decisão pra você. Nenhum produto da casa promete ganho; quem promete, desconfia.",
-            },
-            {
-              q: "O que é grátis?",
-              a: "Todos os produtos têm porta de entrada grátis: na análise NBA, dashboards de jogadores liberados sem login; no Betinho, 3 registros por dia; no Bolão, tudo grátis até 20 pessoas. Os detalhes estão na página de cada um.",
-            },
-            {
-              q: "Preciso assinar tudo junto?",
-              a: "Não. Cada produto tem seu plano, separado — você assina só o que usa. O Bolão nem assinatura tem: pagamento único por bolão, e só se o grupo passar de 20 pessoas.",
-            },
-            {
-              q: "Por onde eu começo?",
-              a: "Pela sua dor. Aposta em NBA e quer decidir com dado? Análise NBA. Não sabe se tá no lucro? Betinho. Quer reunir a galera na Copa? Bolão. Todas começam grátis — testa e fica na que te servir.",
-            },
-          ].map((item) => (
+          {FAQ.map((item) => (
             <details
               key={item.q}
               className="group rounded-rebrand-md border border-line bg-white px-5 py-4 cursor-pointer hover:border-line-2 transition-colors"

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { Seo } from "@/components/Seo";
+import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import { useAuth } from "@/hooks/use-auth";
 import { PlayCircle, ArrowRight, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
@@ -121,12 +122,41 @@ const FutebolLP = () => {
   const goAuth = () => navigate("/auth");
   const goProduct = () => navigate("/futebol");
 
+  const FAQ: FaqItem[] = [
+    {
+      q: "O que é uma aposta de 'valor'?",
+      a: "É quando a odd paga mais do que a chance real do evento. Se algo acontece em ~55% das vezes, a odd justa é ~1.82; se a casa paga 2.00, tem valor. A gente acha essas diferenças e ranqueia por confiabilidade.",
+    },
+    {
+      q: "Vocês dão dica de aposta?",
+      a: "A gente mapeia onde a odd paga mais do que o risco e mostra com o porquê do lado. O que não fazemos é mandar 'entrada garantida' nem dizer quanto apostar. Quem bate o martelo é você.",
+    },
+    {
+      q: "É grátis pra testar?",
+      a: "São 7 dias de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times — só o pick de valor de cada oportunidade fica bloqueado.",
+    },
+    {
+      q: "Preciso entender de estatística?",
+      a: "Não. Cada oportunidade vem mastigada: o lado, a odd, a chance estimada e o porquê. O Score (0–100) resume o quanto dá pra confiar naquela aposta.",
+    },
+    {
+      q: "De onde vêm os dados?",
+      a: "Estatísticas oficiais dos jogos e odds pré-jogo das principais casas, do Brasileirão e da Copa do Mundo, atualizadas ao longo do dia.",
+    },
+    {
+      q: "Qual a taxa de acerto de vocês?",
+      a: "Não publicamos taxa de acerto. O que você recebe é o dado e o porquê antes de apostar — a chance estimada, a odd e as premissas. Quem avalia se a oportunidade vale é você, com o número na frente.",
+    },
+  ];
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Helmet>
-        <title>Aposta de Valor no Futebol — Brasileirão e Copa | Smart Betting</title>
-        <meta name="description" content="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. 7 dias grátis, sem cartão." />
-      </Helmet>
+      <Seo
+        jsonLd={faqPageSchema(FAQ)}
+        path="/futebol/comecar"
+        title="Aposta de Valor no Futebol — Brasileirão e Copa | Smart Betting"
+        description="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. 7 dias grátis, sem cartão."
+      />
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
@@ -477,32 +507,7 @@ const FutebolLP = () => {
           <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
         </div>
         <div className="space-y-3">
-          {[
-            {
-              q: "O que é uma aposta de 'valor'?",
-              a: "É quando a odd paga mais do que a chance real do evento. Se algo acontece em ~55% das vezes, a odd justa é ~1.82; se a casa paga 2.00, tem valor. A gente acha essas diferenças e ranqueia por confiabilidade.",
-            },
-            {
-              q: "Vocês dão dica de aposta?",
-              a: "A gente mapeia onde a odd paga mais do que o risco e mostra com o porquê do lado. O que não fazemos é mandar 'entrada garantida' nem dizer quanto apostar. Quem bate o martelo é você.",
-            },
-            {
-              q: "É grátis pra testar?",
-              a: "São 7 dias de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times — só o pick de valor de cada oportunidade fica bloqueado.",
-            },
-            {
-              q: "Preciso entender de estatística?",
-              a: "Não. Cada oportunidade vem mastigada: o lado, a odd, a chance estimada e o porquê. O Score (0–100) resume o quanto dá pra confiar naquela aposta.",
-            },
-            {
-              q: "De onde vêm os dados?",
-              a: "Estatísticas oficiais dos jogos e odds pré-jogo das principais casas, do Brasileirão e da Copa do Mundo, atualizadas ao longo do dia.",
-            },
-            {
-              q: "Qual a taxa de acerto de vocês?",
-              a: "Não publicamos taxa de acerto. O que você recebe é o dado e o porquê antes de apostar — a chance estimada, a odd e as premissas. Quem avalia se a oportunidade vale é você, com o número na frente.",
-            },
-          ].map((item) => (
+          {FAQ.map((item) => (
             <details key={item.q} className="group rounded-rebrand-md border border-line bg-white px-5 py-4 cursor-pointer hover:border-line-2 transition-colors">
               <summary className="flex items-center justify-between gap-3 list-none font-bold text-[14px] text-ink">
                 {item.q}
