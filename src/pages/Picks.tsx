@@ -549,7 +549,7 @@ export default function Picks() {
   const handleAnalyze = (opp: DailyOpportunity, rowIdx: number) => {
     const canAccess = isRowFree(rowIdx);
     if (!canAccess) {
-      navigate('/paywall-platform');
+      navigate('/planos');
       return;
     }
     const slug = slugify(opp.backup_player_name);
@@ -780,7 +780,7 @@ export default function Picks() {
               Dados de score, médias e gaps das demais são exclusivos para assinantes Premium.
             </p>
             <button
-              onClick={() => navigate('/paywall-platform')}
+              onClick={() => navigate('/planos')}
               className="text-[12px] font-semibold text-amber-700 hover:text-amber-900 shrink-0 inline-flex items-center gap-1"
             >
               Assinar

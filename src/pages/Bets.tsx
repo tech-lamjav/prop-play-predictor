@@ -1148,7 +1148,7 @@ export default function Bets() {
     if (isBetinhoFree) {
       const currentCount = await getDailyBetCount();
       if (currentCount >= DAILY_BET_LIMIT) {
-        navigate('/paywall');
+        navigate('/planos');
         return false;
       }
     }
@@ -2481,7 +2481,7 @@ export default function Bets() {
               type="button"
               onClick={() => {
                 if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-                  navigate('/paywall');
+                  navigate('/planos');
                   return;
                 }
                 setIsCreateModalOpen(true);
@@ -2537,7 +2537,7 @@ export default function Bets() {
                 type="button"
                 onClick={() => {
                   if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-                    navigate('/paywall');
+                    navigate('/planos');
                     return;
                   }
                   setIsCreateModalOpen(true);
@@ -3342,7 +3342,7 @@ export default function Bets() {
           type="button"
           onClick={() => {
             if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-              navigate('/paywall');
+              navigate('/planos');
               return;
             }
             setIsCreateModalOpen(true);

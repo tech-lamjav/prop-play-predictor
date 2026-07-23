@@ -172,14 +172,14 @@ const App = () => (
             } />
             <Route path="/analise-360" element={
               <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-platform">
+                <PremiumRoute redirectTo="/planos">
                   <Analise360List />
                 </PremiumRoute>
               </ProtectedRoute>
             } />
             <Route path="/analise-360/:triggerPlayerId" element={
               <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-platform">
+                <PremiumRoute redirectTo="/planos">
                   <Analise360Detail />
                 </PremiumRoute>
               </ProtectedRoute>

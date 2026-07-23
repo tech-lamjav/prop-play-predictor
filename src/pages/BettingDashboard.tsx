@@ -640,7 +640,7 @@ export default function BettingDashboard() {
               </>
             ) : (
               <UpsellCard
-                onUpgrade={() => navigate('/paywall-dashboard')}
+                onUpgrade={() => navigate('/planos')}
                 onSeeExample={() => setExampleModalOpen(true)}
               />
             )}
@@ -674,7 +674,7 @@ export default function BettingDashboard() {
                       navigate('/bets');
                     }
                   }}
-                  onUpgrade={() => navigate('/paywall-dashboard')}
+                  onUpgrade={() => navigate('/planos')}
                   onAnalyzeWithAI={isPremium && selectedCell ? () => setSliceModalOpen(true) : undefined}
                 />
               </div>
@@ -883,7 +883,7 @@ export default function BettingDashboard() {
               type="button"
               onClick={() => {
                 setExampleModalOpen(false);
-                navigate('/paywall-dashboard');
+                navigate('/planos');
               }}
               className="h-10 px-5 rounded-md bg-amber-400 text-forest font-extrabold text-[12px] hover:bg-amber-300 transition-colors flex-[2]"
             >

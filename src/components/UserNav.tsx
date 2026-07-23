@@ -16,6 +16,7 @@ import {
   Send,
   Users,
   BookOpen,
+  Tag,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { telegramBotUrl } from '@/config/environment';
@@ -93,6 +94,10 @@ export default function UserNav({ className, variant = 'terminal' }: UserNavProp
           <DropdownMenuItem className={itemCls} onClick={() => navigate('/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Configurações</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className={itemCls} onClick={() => navigate('/planos')}>
+            <Tag className="mr-2 h-4 w-4" />
+            <span>Planos e preços</span>
           </DropdownMenuItem>
           <DropdownMenuItem className={itemCls} onClick={() => navigate('/como-usar')}>
             <BookOpen className="mr-2 h-4 w-4" />

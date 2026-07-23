@@ -2041,7 +2041,7 @@ async function sendPaywallMessage(supabase: any, userId: string) {
     }
 
     // Hardcoded paywall URL
-    const paywallUrl = 'https://smartbetting.app/paywall'
+    const paywallUrl = 'https://www.smartbetting.app/planos'
 
     const paywallMessage = `🚫 *Limite Diário Atingido!*
 

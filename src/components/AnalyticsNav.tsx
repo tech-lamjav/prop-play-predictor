@@ -351,7 +351,7 @@ export default function AnalyticsNav({
                   <LogIn className="w-3 h-3 mr-1" />
                   Entrar
                 </Button>
-                <Button size="sm" onClick={() => navigate('/paywall-platform')} className={`${t.ctaBg} ${t.ctaText} font-bold text-xs h-8`}>
+                <Button size="sm" onClick={() => navigate('/planos')} className={`${t.ctaBg} ${t.ctaText} font-bold text-xs h-8`}>
                   <Zap className="w-3 h-3 mr-1" />
                   Assinar
                 </Button>

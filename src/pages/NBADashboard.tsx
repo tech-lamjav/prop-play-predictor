@@ -142,7 +142,7 @@ export default function NBADashboard() {
         variant: 'default',
       });
       setTimeout(() => {
-        navigate('/paywall-platform');
+        navigate('/planos');
       }, 2000);
     }
   }, [player, user, isPremium, isFree, subscriptionLoading, navigate, toast]);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, X, Flame } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -25,23 +25,6 @@ const TH: Record<'essencial' | 'completo', Record<Billing, string>> = {
 };
 
 const EYEBROW = 'text-[11px] font-bold uppercase tracking-[0.16em] text-forest-2';
-
-function useCountdown(hoursFromNow: number) {
-  const deadline = useMemo(() => Date.now() + hoursFromNow * 3600 * 1000, [hoursFromNow]);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const diff = Math.max(0, deadline - now);
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`;
-}
 
 function PriceBlock({ tier, billing }: { tier: 'essencial' | 'completo'; billing: Billing }) {
   const p = PRICES[tier][billing];
@@ -88,7 +71,6 @@ export default function Planos() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [billing, setBilling] = useState<Billing>('monthly');
-  const countdown = useCountdown(72);
 
   // CTA do plano grátis: deslogado cria conta; logado já tem conta → entra no app.
   const freeCta = user
@@ -110,13 +92,7 @@ export default function Planos() {
       <div className="bg-forest text-white text-[13.5px]">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-2.5 flex items-center justify-center gap-2.5 flex-wrap text-center">
           <Flame className="w-[15px] h-[15px] shrink-0" style={{ color: '#ffd873' }} />
-          <span><b style={{ color: '#ffd873' }}>Preço de lançamento</b> — condições especiais por tempo limitado</span>
-          <span className="text-white/80">
-            termina em{' '}
-            <span className="font-bold tabular-nums bg-white/10 border border-white/15 rounded-md px-2 py-0.5">
-              {countdown}
-            </span>
-          </span>
+          <span><b style={{ color: '#ffd873' }}>Preço de lançamento</b> — valores promocionais por tempo limitado</span>
         </div>
       </div>
 
@@ -301,12 +277,6 @@ export default function Planos() {
                   <td>3 apostas/dia</td>
                   <td>Ilimitado</td>
                   <td className="bg-forest-tint">Ilimitado</td>
-                </tr>
-                <tr>
-                  <th className="text-left px-4 text-sm font-semibold text-ink">Resumo semanal da banca</th>
-                  <td><No /></td>
-                  <td><Yes /></td>
-                  <td className="bg-forest-tint"><Yes /></td>
                 </tr>
                 <tr>
                   <th className="text-left px-4 text-sm font-semibold text-ink">Suporte prioritário</th>

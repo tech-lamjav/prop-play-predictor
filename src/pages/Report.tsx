@@ -174,7 +174,7 @@ export default function Report() {
           </p>
           <button
             type="button"
-            onClick={() => navigate('/paywall')}
+            onClick={() => navigate('/planos')}
             className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-forest text-white text-[13px] font-semibold hover:bg-forest-soft transition-colors"
           >
             Ver planos
