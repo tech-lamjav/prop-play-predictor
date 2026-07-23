@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Seo } from "@/components/Seo";
+import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import {
   MessageCircle,
   CheckCircle2,
@@ -310,9 +311,33 @@ const Betinho = () => {
     };
   }, [bets]);
 
+  const FAQ: FaqItem[] = [
+    {
+      q: "É grátis?",
+      a: "É. No plano grátis você registra até 3 apostas por dia pelo bot e usa o gestor completo — banca, ROI, filtros e exportação. O Premium libera registros ilimitados e as análises do Betinho IA no dashboard.",
+    },
+    {
+      q: "Funciona no WhatsApp?",
+      a: "Não — o Betinho mora no Telegram. Você conecta sua conta em segundos e todo o registro acontece por lá.",
+    },
+    {
+      q: "Funciona com print de qualquer casa?",
+      a: "Serve print de bilhete de qualquer casa — a IA lê o texto da imagem e extrai jogo, odd e valor. Saiu algo errado? Você corrige no dashboard em segundos. E se quiser, manda o caso pro suporte: cada bilhete que a IA erra ajuda a gente a melhorar a leitura.",
+    },
+    {
+      q: "Vocês têm acesso ao meu dinheiro?",
+      a: "Zero. O Betinho não conecta na sua conta da casa de aposta — ele registra o que você manda. É um caderno inteligente, não uma carteira.",
+    },
+    {
+      q: "Dá trabalho manter?",
+      a: 'Uma mensagem por aposta. Resolveu? Responde "ganhou", "perdeu" ou "cashout" e o painel atualiza. Planilha nunca mais.',
+    },
+  ];
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
       <Seo
+        jsonLd={faqPageSchema(FAQ)}
         path={isBolaoVariant ? "/betinho/bolao" : "/betinho"}
         title={
           isBolaoVariant
@@ -946,28 +971,7 @@ const Betinho = () => {
           <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
         </div>
         <div className="space-y-3">
-          {[
-            {
-              q: "É grátis?",
-              a: "É. No plano grátis você registra até 3 apostas por dia pelo bot e usa o gestor completo — banca, ROI, filtros e exportação. O Premium libera registros ilimitados e as análises do Betinho IA no dashboard.",
-            },
-            {
-              q: "Funciona no WhatsApp?",
-              a: "Não — o Betinho mora no Telegram. Você conecta sua conta em segundos e todo o registro acontece por lá.",
-            },
-            {
-              q: "Funciona com print de qualquer casa?",
-              a: "Serve print de bilhete de qualquer casa — a IA lê o texto da imagem e extrai jogo, odd e valor. Saiu algo errado? Você corrige no dashboard em segundos. E se quiser, manda o caso pro suporte: cada bilhete que a IA erra ajuda a gente a melhorar a leitura.",
-            },
-            {
-              q: "Vocês têm acesso ao meu dinheiro?",
-              a: "Zero. O Betinho não conecta na sua conta da casa de aposta — ele registra o que você manda. É um caderno inteligente, não uma carteira.",
-            },
-            {
-              q: "Dá trabalho manter?",
-              a: 'Uma mensagem por aposta. Resolveu? Responde "ganhou", "perdeu" ou "cashout" e o painel atualiza. Planilha nunca mais.',
-            },
-          ].map((item) => (
+          {FAQ.map((item) => (
             <details
               key={item.q}
               className="group rounded-rebrand-md border border-line bg-white px-5 py-4 cursor-pointer hover:border-line-2 transition-colors"

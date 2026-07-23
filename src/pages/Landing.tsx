@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { FREE_PLAYERS } from "@/config/freemium";
 import { getTeamLogoUrl, getPlayerPhotoUrl, teamAbbrToName } from "@/utils/team-logos";
 import { Seo } from "@/components/Seo";
+import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 
 const getFreePlayerDashboardPath = () => {
   const name = FREE_PLAYERS[0];
@@ -172,9 +173,33 @@ const Landing = () => {
     );
   };
 
+  const FAQ: FaqItem[] = [
+    {
+      q: 'Vocês dão dica de aposta?',
+      a: 'Quase. A gente mapeia e publica as principais oportunidades do dia com base no injury report — cada uma com o gatilho, o histórico e a linha do lado. O que a gente não faz é mandar "entrada garantida" sem o dado junto. Quem bate o martelo é sempre você.',
+    },
+    {
+      q: 'É grátis pra testar?',
+      a: `É, em dois níveis. Sem login: os dashboards do ${FREE_PLAYERS.join(' e do ')} ficam abertos. Com conta grátis: você vê as principais oportunidades de cada dia. O Premium libera a lista completa de oportunidades e o dashboard de todos os jogadores.`,
+    },
+    {
+      q: 'De onde vêm os dados?',
+      a: 'Estatísticas oficiais da NBA e a linha agregada das principais casas de aposta, atualizadas todos os dias de jogo.',
+    },
+    {
+      q: 'Preciso entender de estatística?',
+      a: 'Não. O dashboard mostra o que importa: quantas vezes o jogador passou da linha. Verde passou, vermelho não. Se quiser ir mais fundo, o dado completo tá lá.',
+    },
+    {
+      q: 'Qual a taxa de acerto de vocês?',
+      a: 'Não publicamos taxa de acerto — nem de marketing, nem nenhuma. O que você recebe é o dado por trás de cada insight antes de apostar: o gatilho, o histórico do jogador e a linha. Quem avalia se a janela vale é você, com o número na frente.',
+    },
+  ];
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
       <Seo
+        jsonLd={faqPageSchema(FAQ)}
         path="/nba"
         title="Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting"
         description="Compare a linha das casas com o histórico real do jogador: últimos jogos, injury report e Análise 360°. Dashboard aberto pra testar sem login."
@@ -697,28 +722,7 @@ const Landing = () => {
           <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
         </div>
         <div className="space-y-3">
-          {[
-            {
-              q: 'Vocês dão dica de aposta?',
-              a: 'Quase. A gente mapeia e publica as principais oportunidades do dia com base no injury report — cada uma com o gatilho, o histórico e a linha do lado. O que a gente não faz é mandar "entrada garantida" sem o dado junto. Quem bate o martelo é sempre você.',
-            },
-            {
-              q: 'É grátis pra testar?',
-              a: `É, em dois níveis. Sem login: os dashboards do ${FREE_PLAYERS.join(' e do ')} ficam abertos. Com conta grátis: você vê as principais oportunidades de cada dia. O Premium libera a lista completa de oportunidades e o dashboard de todos os jogadores.`,
-            },
-            {
-              q: 'De onde vêm os dados?',
-              a: 'Estatísticas oficiais da NBA e a linha agregada das principais casas de aposta, atualizadas todos os dias de jogo.',
-            },
-            {
-              q: 'Preciso entender de estatística?',
-              a: 'Não. O dashboard mostra o que importa: quantas vezes o jogador passou da linha. Verde passou, vermelho não. Se quiser ir mais fundo, o dado completo tá lá.',
-            },
-            {
-              q: 'Qual a taxa de acerto de vocês?',
-              a: 'Não publicamos taxa de acerto — nem de marketing, nem nenhuma. O que você recebe é o dado por trás de cada insight antes de apostar: o gatilho, o histórico do jogador e a linha. Quem avalia se a janela vale é você, com o número na frente.',
-            },
-          ].map((item) => (
+          {FAQ.map((item) => (
             <details
               key={item.q}
               className="group rounded-rebrand-md border border-line bg-white px-5 py-4 cursor-pointer hover:border-line-2 transition-colors"
