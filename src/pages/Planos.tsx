@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, X, Flame } from 'lucide-react';
+import { Check, Flame } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -10,11 +10,11 @@ type Billing = 'monthly' | 'annual';
    Mensal: preço de lançamento (de/por). Anual: −20% sobre o mensal de lançamento. */
 const PRICES = {
   essencial: {
-    monthly: { amount: '39,90', per: '/mês', billed: 'preço de lançamento', strike: 'R$ 49,90' },
+    monthly: { amount: '39,90', per: '/mês', billed: '', strike: 'R$ 49,90' },
     annual: { amount: '31,90', per: '/mês', billed: 'cobrado R$ 383/ano · economize 20%', strike: 'R$ 39,90' },
   },
   completo: {
-    monthly: { amount: '89,90', per: '/mês', billed: 'preço de lançamento', strike: 'R$ 109,90' },
+    monthly: { amount: '89,90', per: '/mês', billed: '', strike: 'R$ 109,90' },
     annual: { amount: '71,90', per: '/mês', billed: 'cobrado R$ 863/ano · economize 20%', strike: 'R$ 89,90' },
   },
 } as const;
@@ -32,7 +32,7 @@ function PriceBlock({ tier, billing }: { tier: 'essencial' | 'completo'; billing
     <>
       <div className="flex items-baseline gap-2 flex-wrap mt-4">
         {p.strike && (
-          <span className="text-sm text-ink-3 line-through decoration-status-danger tabular-nums">{p.strike}</span>
+          <span className="text-sm text-ink-3 line-through decoration-ink-3 tabular-nums">{p.strike}</span>
         )}
         <span className="font-extrabold text-[40px] leading-none tracking-tight tabular-nums">
           <span className="text-xl font-bold opacity-60 mr-0.5">R$</span>{p.amount}
@@ -44,27 +44,13 @@ function PriceBlock({ tier, billing }: { tier: 'essencial' | 'completo'; billing
   );
 }
 
-function Feat({ children, off = false }: { children: React.ReactNode; off?: boolean }) {
+function Feat({ children }: { children: React.ReactNode }) {
   return (
-    <li className={`flex items-start gap-2.5 ${off ? 'text-ink-3' : 'text-ink-2'}`}>
-      {off ? (
-        <X className="w-[17px] h-[17px] shrink-0 mt-0.5 text-status-danger opacity-70" strokeWidth={2.6} />
-      ) : (
-        <Check className="w-[17px] h-[17px] shrink-0 mt-0.5 text-forest" />
-      )}
-      <span className={off ? 'line-through decoration-line-2' : undefined}>{children}</span>
+    <li className="flex items-start gap-2.5 text-ink-2">
+      <Check className="w-[17px] h-[17px] shrink-0 mt-0.5 text-forest" />
+      <span>{children}</span>
     </li>
   );
-}
-
-/* célula "sim" da tabela */
-function Yes() {
-  return <Check className="w-[18px] h-[18px] text-forest inline" strokeWidth={2.6} />;
-}
-
-/* célula "não" da tabela */
-function No() {
-  return <X className="w-[17px] h-[17px] text-status-danger opacity-60 inline" strokeWidth={2.6} />;
 }
 
 export default function Planos() {
@@ -180,7 +166,7 @@ export default function Planos() {
                 <Feat><b className="text-ink font-semibold">Betinho ilimitado</b> — registra e liquida tudo no Telegram</Feat>
                 <Feat>Resumo semanal da sua banca</Feat>
                 <Feat>Suporte prioritário</Feat>
-                <Feat off>NBA completo</Feat>
+                <Feat>NBA: <b className="text-ink font-semibold">2 picks do dia</b> (completo só no Completo)</Feat>
               </ul>
             </div>
 
@@ -198,7 +184,7 @@ export default function Planos() {
               </div>
               <div className="flex items-baseline gap-2 flex-wrap mt-4">
                 {PRICES.completo[billing].strike && (
-                  <span className="text-sm line-through tabular-nums" style={{ color: '#8fb0a2', textDecorationColor: '#e0956f' }}>
+                  <span className="text-sm line-through tabular-nums" style={{ color: '#8fb0a2', textDecorationColor: '#8fb0a2' }}>
                     {PRICES.completo[billing].strike}
                   </span>
                 )}
@@ -239,7 +225,7 @@ export default function Planos() {
         <section className="max-w-6xl mx-auto px-4 md:px-6 pt-20">
           <div className="text-center mb-8">
             <div className={EYEBROW}>Comparar</div>
-            <h2 className="text-[24px] md:text-[32px] font-extrabold tracking-tight mt-2">O que entra em cada plano</h2>
+            <h2 className="text-[22px] md:text-[26px] font-extrabold tracking-tight mt-2">Resumo dos planos</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse min-w-[620px]">
@@ -259,30 +245,22 @@ export default function Planos() {
               </thead>
               <tbody className="[&_td]:py-[15px] [&_td]:px-4 [&_td]:text-center [&_td]:text-sm [&_td]:text-ink-2 [&_td]:border-b [&_td]:border-line [&_th]:border-b [&_th]:border-line">
                 <tr>
-                  <th className="text-left px-4 text-sm font-semibold text-ink">Análise de Futebol</th>
-                  <td>Trial 7 dias</td>
-                  <td><Yes /></td>
-                  <td className="bg-forest-tint"><Yes /></td>
+                  <th className="text-left px-4 text-sm font-semibold text-ink">Esportes cobertos</th>
+                  <td>Futebol <span className="text-ink-3">(trial 7d)</span></td>
+                  <td>Futebol</td>
+                  <td className="bg-forest-tint !text-forest font-semibold">Futebol + NBA</td>
                 </tr>
                 <tr>
-                  <th className="text-left px-4 text-sm font-semibold text-ink">
-                    Análise NBA<span className="block text-[11.5px] text-ink-3 font-normal">completa — prop bets + Análise 360</span>
-                  </th>
+                  <th className="text-left px-4 text-sm font-semibold text-ink">Profundidade NBA</th>
                   <td>2 picks/dia</td>
                   <td>2 picks/dia</td>
-                  <td className="bg-forest-tint"><Yes /></td>
+                  <td className="bg-forest-tint !text-forest font-semibold">Prop bets + Análise 360</td>
                 </tr>
                 <tr>
-                  <th className="text-left px-4 text-sm font-semibold text-ink">Betinho — gestão no Telegram</th>
+                  <th className="text-left px-4 text-sm font-semibold text-ink">Betinho no Telegram</th>
                   <td>3 apostas/dia</td>
                   <td>Ilimitado</td>
                   <td className="bg-forest-tint">Ilimitado</td>
-                </tr>
-                <tr>
-                  <th className="text-left px-4 text-sm font-semibold text-ink">Suporte prioritário</th>
-                  <td><No /></td>
-                  <td><Yes /></td>
-                  <td className="bg-forest-tint"><Yes /></td>
                 </tr>
               </tbody>
             </table>
