@@ -48,3 +48,54 @@ export const hubSteps: Step[] = [
       'Palpites e ranking entre amigos. Entra num bolão, manda seus palpites e acompanha a classificação em tempo real.',
   },
 ];
+
+// ── Fase 2: passos contextuais (1 por produto, na 1a visita à tela) ──────────
+
+export const FUTEBOL_TOUR_ID = 'futebol';
+export const BETINHO_TOUR_ID = 'betinho';
+export const NBA_TOUR_ID = 'nba';
+export const BOLAO_TOUR_ID = 'bolao';
+
+export const futebolSteps: Step[] = [
+  {
+    id: 'futebol-hero',
+    target: '[data-tour="futebol-hero"]',
+    placement: 'bottom',
+    title: 'Seu dia no futebol',
+    content:
+      'Aqui ficam as oportunidades de valor do dia, com o Score pra você comparar num relance onde o dado aponta vantagem. Toque numa oportunidade pra abrir a análise completa.',
+  },
+];
+
+export const betinhoSteps: Step[] = [
+  {
+    id: 'betinho-hero',
+    target: '[data-tour="betinho-hero"]',
+    placement: 'bottom',
+    title: 'Sua banca, no automático',
+    content:
+      'Tudo o que você registra com o Betinho no Telegram cai aqui: apostas, resultado, lucro e ROI sempre atualizados. Sem planilha.',
+  },
+];
+
+export const nbaSteps: Step[] = [
+  {
+    id: 'nba-hero',
+    target: '[data-tour="nba-hero"]',
+    placement: 'bottom',
+    title: 'Comece por um jogador',
+    content:
+      'Busque um jogador pra abrir a Análise 360: prop bets, médias e o histórico que embasa cada pick da NBA.',
+  },
+];
+
+export const bolaoSteps: Step[] = [
+  {
+    id: 'bolao-hero',
+    target: '[data-tour="bolao-hero"]',
+    placement: 'bottom',
+    title: 'Bolão com a galera',
+    content:
+      'Crie um bolão do zero ou entre num com o código, mande seus palpites e acompanhe o ranking em tempo real.',
+  },
+];

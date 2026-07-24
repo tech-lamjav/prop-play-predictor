@@ -15,6 +15,9 @@ import { NBAKeyInjuriesRail, type KeyInjuryData } from '@/components/nba-home/NB
 import { NBAGamesRich, type RichGame } from '@/components/nba-home/NBAGamesRich';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { NBA_TOUR_ID, nbaSteps } from '@/components/onboarding/tours';
 
 // --- Date helpers ---
 
@@ -345,6 +348,8 @@ export default function HomeNBA() {
     return players.filter(p => p.player_name.toLowerCase().includes(term) || p.team_abbreviation.toLowerCase().includes(term)).sort((a, b) => (b.rating_stars ?? 0) - (a.rating_stars ?? 0)).slice(0, 8);
   }, [players, searchTerm]);
 
+  const nbaTour = useOnboardingTour(NBA_TOUR_ID);
+
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <Helmet>
@@ -352,6 +357,7 @@ export default function HomeNBA() {
         <meta name="description" content="Lesões chave da NBA hoje com impacto nos companheiros, oportunidades de prop bets selecionadas e jogos do dia. Atualizado diariamente." />
       </Helmet>
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={NBA_TOUR_ID} steps={nbaSteps} run={nbaTour.run} onFinish={nbaTour.finish} />
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">
         {/* Briefing strip com busca embarcada na coluna esquerda */}
@@ -359,7 +365,7 @@ export default function HomeNBA() {
           date={todayDate}
           kpis={briefingKpis}
           searchSlot={
-            <div className="relative w-full md:w-80">
+            <div data-tour="nba-hero" className="relative w-full md:w-80">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-2" />
               <Input
                 placeholder="Buscar jogador..."

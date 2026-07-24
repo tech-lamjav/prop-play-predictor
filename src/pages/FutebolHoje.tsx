@@ -13,6 +13,9 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUTEBOL_TOUR_ID, futebolSteps } from '@/components/onboarding/tours';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
@@ -322,6 +325,8 @@ export default function FutebolHoje() {
     return m;
   }, [allGames]);
 
+  const futebolTour = useOnboardingTour(FUTEBOL_TOUR_ID);
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <Seo
@@ -330,6 +335,7 @@ export default function FutebolHoje() {
         description="Os jogos de hoje com o Score de Confiabilidade: onde a odd da casa paga mais do que o risco real. Brasileirão, Série B e Copa do Mundo, atualizado todo dia."
       />
       <AnalyticsNav variant="rebrand" />
+      <OnboardingTour tourId={FUTEBOL_TOUR_ID} steps={futebolSteps} run={futebolTour.run} onFinish={futebolTour.finish} />
       {!loading && days.length > 0 && (
         <div className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
@@ -343,7 +349,7 @@ export default function FutebolHoje() {
         <div className="grid md:grid-cols-12 gap-5">
           <div className="md:col-span-5">
             <div className={LABEL}>{isToday ? 'Hoje no futebol' : 'No futebol'}</div>
-            <h1 className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
+            <h1 data-tour="futebol-hero" className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
             <p className="text-sm mt-2.5 text-ink-2">
               {dayGames.length > 0 ? (
                 <>

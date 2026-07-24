@@ -12,6 +12,9 @@ import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useIsMobile } from '@/hooks/use-mobile';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { BETINHO_TOUR_ID, betinhoSteps } from '@/components/onboarding/tours';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { mergeVocab, canonicalizeVocab, vocabHasValue } from '@/utils/betVocab';
 import { usePostHog } from '@posthog/react';
@@ -669,6 +672,7 @@ function captureBetSettled(
 
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
+  const betinhoTour = useOnboardingTour(BETINHO_TOUR_ID, { enabled: !!user });
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
   const { movements: capitalMovements, addMovement } = useCapitalMovements(user?.id);
@@ -2449,13 +2453,14 @@ export default function Bets() {
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={BETINHO_TOUR_ID} steps={betinhoSteps} run={betinhoTour.run} onFinish={betinhoTour.finish} />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Apostas</div>
-            <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
+            <h1 data-tour="betinho-hero" className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
             <p className="text-[13px] text-ink-2 mt-1 tabular">
               {stats.totalBets} {stats.totalBets === 1 ? 'aposta registrada' : 'apostas registradas'}
             </p>

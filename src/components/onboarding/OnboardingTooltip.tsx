@@ -14,6 +14,7 @@ export default function OnboardingTooltip({
   tooltipProps,
 }: TooltipRenderProps) {
   const isFirst = index === 0;
+  const single = size === 1;
 
   return (
     <div
@@ -22,14 +23,16 @@ export default function OnboardingTooltip({
     >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-forest">
-          Passo {index + 1} de {size}
+          {single ? 'Dica rápida' : `Passo ${index + 1} de ${size}`}
         </span>
-        <button
-          {...skipProps}
-          className="text-[12px] font-medium text-ink-3 transition-colors hover:text-ink"
-        >
-          Pular
-        </button>
+        {!single && (
+          <button
+            {...skipProps}
+            className="text-[12px] font-medium text-ink-3 transition-colors hover:text-ink"
+          >
+            Pular
+          </button>
+        )}
       </div>
 
       {step.title && (
@@ -40,16 +43,20 @@ export default function OnboardingTooltip({
       <div className="mt-1.5 text-[14px] leading-relaxed text-ink-2">{step.content}</div>
 
       <div className="mt-4 flex items-center justify-between gap-3">
-        <div className="flex gap-1.5" aria-hidden>
-          {Array.from({ length: size }).map((_, i) => (
-            <span
-              key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                i === index ? 'w-4 bg-forest' : 'w-1.5 bg-ink-3/30'
-              }`}
-            />
-          ))}
-        </div>
+        {!single ? (
+          <div className="flex gap-1.5" aria-hidden>
+            {Array.from({ length: size }).map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === index ? 'w-4 bg-forest' : 'w-1.5 bg-ink-3/30'
+                }`}
+              />
+            ))}
+          </div>
+        ) : (
+          <span />
+        )}
 
         <div className="flex items-center gap-1">
           {!isFirst && (
