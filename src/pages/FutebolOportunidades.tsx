@@ -4,17 +4,18 @@ import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFutebolValueBoard, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolAccess, useFutebolFixturesMulti } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
+import { competitionLabel, sortCompetitions, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
+import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
@@ -50,8 +51,6 @@ function Crest({ teamId, name, size = 20 }: { teamId: number; name: string; size
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
-// Janela curta da navegação por dias (não varre a temporada inteira).
-const DAY_WINDOW = 8;
 
 type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 type FaixaFilter = 'all' | 'alta' | 'media';
@@ -142,9 +141,14 @@ function FilterSelect({ label, value, options, onChange }: {
 }
 
 // Linha da tabela (desktop)
-function OppRow({ o, onClick, muted, locked }: { o: FutebolValueBoardRow; onClick: () => void; muted?: boolean; locked?: boolean }) {
+function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
+  o: FutebolValueBoardRow; onClick: () => void; muted?: boolean; locked?: boolean;
+  result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
+}) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
+  const hasScore = homeGoals != null && awayGoals != null;
   return (
     <button onClick={onClick} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
       <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[16px] w-10 h-9 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
@@ -155,26 +159,38 @@ function OppRow({ o, onClick, muted, locked }: { o: FutebolValueBoardRow; onClic
           <Crest teamId={o.away_team_id} name={o.away_team_name} size={20} />
         </div>
         <div className="min-w-0">
-          <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pick}</Blur></div>
-          <div className="text-[11px] text-ink-3 truncate">{o.home_team_name} × {o.away_team_name}</div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={showLock}>{pick}</Blur></span>
+            {result && <ResultBadge r={result} />}
+          </div>
+          <div className="text-[11px] text-ink-3 truncate">
+            {hasScore
+              ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name}`
+              : `${o.home_team_name} × ${o.away_team_name}`}
+          </div>
         </div>
       </div>
       <div className="min-w-0">
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
         <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{competitionLabel(o.competition)} · {fmtHour(o.kickoff_utc)}</div>
       </div>
-      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={!!locked}>{chance != null ? `${chance}%` : '—'}</Blur></div>
-      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={!!locked}>{o.best_odd.toFixed(2)}</Blur></div>
-      <div className="text-right tabular-nums text-[14px] font-bold text-forest"><Blur active={!!locked}>{fmtEdgeScore(o.edge)}</Blur></div>
+      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{chance != null ? `${chance}%` : '—'}</Blur></div>
+      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{o.best_odd.toFixed(2)}</Blur></div>
+      <div className="text-right tabular-nums text-[14px] font-bold text-forest"><Blur active={showLock}>{fmtEdgeScore(o.edge)}</Blur></div>
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
     </button>
   );
 }
 
 // Card (mobile)
-function OppMobileCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () => void; locked?: boolean }) {
+function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
+  o: FutebolValueBoardRow; onClick: () => void; locked?: boolean;
+  result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
+}) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  const showLock = !!locked && !result;
+  const hasScore = homeGoals != null && awayGoals != null;
   return (
     <button onClick={onClick} className="w-full text-left rounded-rebrand-md p-3.5 bg-white border border-line">
       <div className="flex items-start gap-3">
@@ -183,12 +199,17 @@ function OppMobileCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClic
           <Crest teamId={o.away_team_id} name={o.away_team_name} size={24} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
             <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+            {result && <ResultBadge r={result} />}
           </div>
-          <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink"><Blur active={!!locked}>{pick}</Blur></div>
-          <div className="text-[11px] text-ink-3 truncate">{o.home_team_name} × {o.away_team_name} · {fmtHour(o.kickoff_utc)}</div>
+          <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink"><Blur active={showLock}>{pick}</Blur></div>
+          <div className="text-[11px] text-ink-3 truncate">
+            {hasScore
+              ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`
+              : `${o.home_team_name} × ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`}
+          </div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
@@ -199,7 +220,7 @@ function OppMobileCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClic
         {[['Chance', chance != null ? `${chance}%` : '—'], ['Odd', o.best_odd.toFixed(2)], ['Valor', fmtEdgeScore(o.edge)]].map(([l, v], i) => (
           <div key={l}>
             <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{l}</div>
-            <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${i === 2 ? 'text-forest' : 'text-ink'}`}><Blur active={!!locked}>{v}</Blur></div>
+            <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${i === 2 ? 'text-forest' : 'text-ink'}`}><Blur active={showLock}>{v}</Blur></div>
           </div>
         ))}
       </div>
@@ -227,9 +248,23 @@ const Regua = () => (
   </div>
 );
 
+// Selo de resultado (histórico): Bateu / Anulada / Não bateu (verde/cinza/vermelho).
+function ResultBadge({ r }: { r: BetResult }) {
+  const b = resultBadge(r);
+  const style = b.tone === 'won' ? { background: '#dcefe2', color: '#0a3d2e' }
+    : b.tone === 'push' ? { background: '#eef0ec', color: '#5a625a' }
+    : { background: '#fbe3e8', color: '#be123c' };
+  return (
+    <span className="shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.06em]" style={style}>
+      {b.label}
+    </span>
+  );
+}
+
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
   const { data: rows, isLoading } = useFutebolValueBoard();
+  const { data: fixtures } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: access } = useFutebolAccess();
   const locked = !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
@@ -237,28 +272,38 @@ export default function FutebolOportunidades() {
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
 
-  // pré-jogo (só tempo) — base estável da navegação por dias
-  const timeUpcoming = useMemo(() => {
-    if (!rows?.length) return [];
-    const now = Date.now();
-    return rows.filter((r) => {
-      const t = kickoffMs(r.kickoff_utc);
-      return t != null && t > now && !FINISHED_STATUS.has(r.status_short ?? '');
-    });
-  }, [rows]);
+  const allRows = useMemo(() => rows ?? [], [rows]);
 
+  // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
+  const goalsMap = useMemo(() => {
+    const m = new Map<number, { gh: number | null; ga: number | null }>();
+    (fixtures ?? []).forEach((f) => m.set(f.fixture_id, { gh: f.goals_home, ga: f.goals_away }));
+    return m;
+  }, [fixtures]);
+
+  const resultOf = (o: FutebolValueBoardRow): BetResult | null => {
+    if (!FINISHED_STATUS.has(o.status_short ?? '')) return null;
+    const g = goalsMap.get(o.fixture_id);
+    return g ? settleFutebol(o.market, o.outcome, o.line_value, g.gh, g.ga) : null;
+  };
+
+  // Dias com oportunidades (passado + futuro), asc — permite navegar pro histórico.
   const days = useMemo(() => {
     const set = new Set<string>();
-    timeUpcoming.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
-    return [...set].sort().slice(0, DAY_WINDOW);
-  }, [timeUpcoming]);
-  const selectedDay = (day && days.includes(day)) ? day : (days.includes(TODAY_BRT) ? TODAY_BRT : days[0]);
+    allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
+    return [...set].sort();
+  }, [allRows]);
+  // Default: hoje se houver; senão o próximo dia futuro; senão o último disponível.
+  const selectedDay = (day && days.includes(day))
+    ? day
+    : (days.includes(TODAY_BRT) ? TODAY_BRT : (days.find((d) => d >= TODAY_BRT) ?? days[days.length - 1]));
+  const isPastDay = !!selectedDay && selectedDay < TODAY_BRT;
 
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
-    timeUpcoming.forEach((r) => { if (brtDayStr(r.kickoff_utc) === selectedDay) s.add(r.competition); });
+    allRows.forEach((r) => { if (brtDayStr(r.kickoff_utc) === selectedDay) s.add(r.competition); });
     return s;
-  }, [timeUpcoming, selectedDay]);
+  }, [allRows, selectedDay]);
 
   const faixaOptions = [{ value: 'all', label: 'Todas' }, { value: 'alta', label: 'Alta' }, { value: 'media', label: 'Média' }];
   const compOptions = [
@@ -267,14 +312,14 @@ export default function FutebolOportunidades() {
   ];
 
   const filtered = useMemo(
-    () => timeUpcoming.filter((r) => {
+    () => allRows.filter((r) => {
       if (brtDayStr(r.kickoff_utc) !== selectedDay) return false;
       if (mercado !== 'all' && r.market !== mercado) return false;
       if (faixa !== 'all' && faixaTone(r.faixa) !== faixa) return false;
       if (comp !== 'all' && r.competition !== comp) return false;
       return true;
     }),
-    [timeUpcoming, selectedDay, mercado, faixa, comp]
+    [allRows, selectedDay, mercado, faixa, comp]
   );
 
   const bestRows = useMemo(() => groupBoardByFixture(filtered).map((bf) => bf.best), [filtered]);
@@ -283,6 +328,36 @@ export default function FutebolOportunidades() {
   const nAlta = bestRows.filter((o) => faixaTone(o.faixa) === 'alta').length;
   const nMedia = bestRows.filter((o) => faixaTone(o.faixa) === 'media').length;
   const nBaixa = bestRows.filter((o) => faixaTone(o.faixa) === 'baixa').length;
+
+  // Contagem de oportunidades COM VALOR por dia (badge do stepper).
+  const countByDay = useMemo(() => {
+    const byDay = new Map<string, FutebolValueBoardRow[]>();
+    allRows.forEach((r) => {
+      const d = brtDayStr(r.kickoff_utc);
+      if (!d) return;
+      if (!byDay.has(d)) byDay.set(d, []);
+      byDay.get(d)!.push(r);
+    });
+    const out: Record<string, number> = {};
+    byDay.forEach((rs, d) => { out[d] = groupBoardByFixture(rs).map((bf) => bf.best).filter((o) => o.score >= SCORE_MEDIA).length; });
+    return out;
+  }, [allRows]);
+
+  // Resumo do dia passado: quantas das "com valor" bateram.
+  const resumo = useMemo(() => {
+    if (!isPastDay) return null;
+    let hit = 0, miss = 0, push = 0, settled = 0;
+    comValor.forEach((o) => {
+      const r = resultOf(o);
+      if (!r) return;
+      settled++;
+      if (r === 'push') push++;
+      else if (isHit(r)) hit++;
+      else miss++;
+    });
+    return { hit, miss, push, settled };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPastDay, comValor, goalsMap]);
 
   const go = (id: number) => navigate(`/futebol/jogo/${id}`);
   const key = (o: FutebolValueBoardRow) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
@@ -295,7 +370,7 @@ export default function FutebolOportunidades() {
       {!isLoading && days.length > 0 && (
         <div className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
-            <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={Object.fromEntries(days.map((dd) => [dd, timeUpcoming.filter((r) => brtDayStr(r.kickoff_utc) === dd).length]))} />
+            <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={countByDay} />
           </div>
         </div>
       )}
@@ -304,9 +379,18 @@ export default function FutebolOportunidades() {
       <div className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex items-end justify-between gap-4">
           <div>
-            <div className={LABEL}>Oportunidades</div>
-            <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{comValor.length} aposta{comValor.length === 1 ? '' : 's'} com valor</h1>
-            <p className="text-[13px] mt-1 text-ink-2">Onde a odd paga acima da chance estimada · ranqueado por confiabilidade</p>
+            <div className={LABEL}>{isPastDay ? 'Histórico' : 'Oportunidades'}</div>
+            {isPastDay && resumo && resumo.settled > 0 ? (
+              <>
+                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} bateram</h1>
+                <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades com valor deste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
+              </>
+            ) : (
+              <>
+                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{comValor.length} aposta{comValor.length === 1 ? '' : 's'} com valor</h1>
+                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Onde a odd paga acima da chance estimada · ranqueado por confiabilidade'}</p>
+              </>
+            )}
           </div>
           {!isLoading && bestRows.length > 0 && (
             <div className="hidden sm:flex items-center gap-2">
@@ -333,10 +417,10 @@ export default function FutebolOportunidades() {
 
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
-        ) : bestRows.length === 0 ? (
+        ) : (isPastDay ? comValor.length === 0 : bestRows.length === 0) ? (
           <div className="rounded-rebrand-md bg-white border border-line p-6 text-center">
-            <p className="text-sm text-ink-2">Nenhum jogo com odds nesse filtro.</p>
-            <p className="text-xs text-ink-3 mt-1">As oportunidades aparecem quando há odds coletadas antes do jogo.</p>
+            <p className="text-sm text-ink-2">{isPastDay ? 'Nenhuma oportunidade com valor nesse dia.' : 'Nenhum jogo com odds nesse filtro.'}</p>
+            <p className="text-xs text-ink-3 mt-1">{isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.' : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}</p>
           </div>
         ) : (
           <>
@@ -346,34 +430,42 @@ export default function FutebolOportunidades() {
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
                 <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
               </div>
-              {comValor.map((o) => (
-                <div key={key(o)}>
-                  <OppRow o={o} onClick={() => go(o.fixture_id)} locked={locked} />
-                  {!locked && (
-                    <div className="px-5 pb-2 -mt-0.5">
-                      <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
-                    </div>
-                  )}
-                </div>
-              ))}
-              {semValor.length > 0 && <Regua />}
-              {semValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} muted locked={locked} />)}
+              {comValor.map((o) => {
+                const res = resultOf(o);
+                const g = goalsMap.get(o.fixture_id);
+                return (
+                  <div key={key(o)}>
+                    <OppRow o={o} onClick={() => go(o.fixture_id)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    {!isPastDay && !locked && !res && (
+                      <div className="px-5 pb-2 -mt-0.5">
+                        <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {!isPastDay && semValor.length > 0 && <Regua />}
+              {!isPastDay && semValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} muted locked={locked} />)}
             </div>
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o) => (
-                <div key={key(o)}>
-                  <OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} />
-                  {!locked && <div className="px-1 pt-1.5"><RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} /></div>}
-                </div>
-              ))}
-              {semValor.length > 0 && (
+              {comValor.map((o) => {
+                const res = resultOf(o);
+                const g = goalsMap.get(o.fixture_id);
+                return (
+                  <div key={key(o)}>
+                    <OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    {!isPastDay && !locked && !res && <div className="px-1 pt-1.5"><RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} /></div>}
+                  </div>
+                );
+              })}
+              {!isPastDay && semValor.length > 0 && (
                 <div className="flex items-center gap-2 py-1">
                   <span className="flex-1 h-px bg-line" /><span className="text-[11px] text-ink-3">sem valor claro</span><span className="flex-1 h-px bg-line" />
                 </div>
               )}
-              {semValor.map((o) => <div key={key(o)} className="opacity-60"><OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} /></div>)}
+              {!isPastDay && semValor.map((o) => <div key={key(o)} className="opacity-60"><OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} /></div>)}
             </div>
           </>
         )}
