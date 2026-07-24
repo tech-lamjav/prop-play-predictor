@@ -10,9 +10,9 @@ const DEFAULT_TITLE =
   "Smart Betting — Análises, Gestão e Ferramentas para Apostadores";
 const DEFAULT_DESCRIPTION =
   "Análise de prop bets NBA, gestão de banca e ferramentas para apostadores que querem decidir com dados. Controle suas apostas e acompanhe seus resultados.";
-// Enquanto não temos um card social 1200×630 aprovado, o fallback é o logo.
-// Ao subir o card, troque só esta constante (e o default de `twitterCard`).
-const DEFAULT_IMAGE = `${SITE_URL}/logo-sem-texto.png`;
+// Card social 1200×630 da marca ("Decida com dados."). Cards por produto em
+// /og/og-futebol.jpg e /og/og-nba.jpg — as páginas passam via prop `image`.
+const DEFAULT_IMAGE = `${SITE_URL}/og/og-default.jpg`;
 
 /** Monta uma URL absoluta a partir de um caminho relativo ("/futebol") ou
  * devolve a própria string se já vier absoluta. */
@@ -35,7 +35,7 @@ export type SeoProps = {
   /** Imagem de compartilhamento — caminho relativo ou URL absoluta (1200×630). */
   image?: string;
   type?: "website" | "article";
-  /** Card do Twitter/X. `summary_large_image` quando houver card próprio. */
+  /** Card do Twitter/X. Default grande — todos os nossos cards são 1200×630. */
   twitterCard?: "summary" | "summary_large_image";
   /** true → `noindex,nofollow`. Use em páginas públicas mas não-indexáveis. */
   noindex?: boolean;
@@ -57,7 +57,7 @@ export function Seo({
   path,
   image = DEFAULT_IMAGE,
   type = "website",
-  twitterCard = "summary",
+  twitterCard = "summary_large_image",
   noindex = false,
   jsonLd,
   children,
@@ -86,6 +86,8 @@ export function Seo({
       <meta property="og:type" content={type} />
       {canonical && <meta property="og:url" content={canonical} />}
       <meta property="og:image" content={imageAbs} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta property="og:locale" content="pt_BR" />
       <meta property="og:site_name" content="Smart Betting" />
 
