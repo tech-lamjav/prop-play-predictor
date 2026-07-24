@@ -16,6 +16,7 @@ import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
   faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
+import { settleFutebol, resultBadge, type BetResult } from '@/utils/futebol-settlement';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
@@ -303,6 +304,48 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 
 // ---------- "O que olhar": Score vem PRONTO do backend (fact_value_opportunities) ----------
 // Síntese "O que olhar neste jogo" — decide e PROVA a melhor aposta (Score do backend)
+// Selo de resultado (jogo encerrado): Green / Meio green / Anulada / Meio red / Red.
+function ResultBadge({ r }: { r: BetResult }) {
+  const b = resultBadge(r);
+  const style = b.tone === 'won' ? { background: '#dcefe2', color: '#0a3d2e' }
+    : b.tone === 'push' ? { background: '#eef0ec', color: '#5a625a' }
+    : { background: '#fbe3e8', color: '#be123c' };
+  return <span className="shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.06em]" style={style}>{b.label}</span>;
+}
+
+// Oportunidades mapeadas de um jogo ENCERRADO + como performaram (green/red).
+function PlayedOpportunities({ rows, homeName, awayName, goalsHome, goalsAway }: {
+  rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; goalsHome: number | null; goalsAway: number | null;
+}) {
+  const valueOpps = [...rows].filter((r) => r.score >= SCORE_MEDIA).sort((a, b) => b.score - a.score);
+  if (!valueOpps.length) return null;
+  return (
+    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
+      <div className="px-5 py-3 flex items-center justify-between bg-canvas-2 border-b border-line">
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Oportunidades deste jogo</div>
+        <span className="text-[11px] text-ink-3">{valueOpps.length} mapeada{valueOpps.length === 1 ? '' : 's'} · como performaram</span>
+      </div>
+      {valueOpps.map((o) => {
+        const res = settleFutebol(o.market, o.outcome, o.line_value, goalsHome, goalsAway);
+        const chance = chancePct(o.prob_justa_fechamento);
+        return (
+          <div key={`${o.market}-${o.outcome}-${o.line_value}`} className="px-5 py-3 border-t border-line flex items-center gap-3">
+            <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[15px] w-9 h-8 shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[14px] font-semibold text-ink truncate">{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</span>
+                {res && <ResultBadge r={res} />}
+              </div>
+              <div className="text-[11px] text-ink-3 truncate">{marketLabel(o.market)}{chance != null ? ` · ${chance}%` : ''} · odd {o.best_odd.toFixed(2)}</div>
+            </div>
+          </div>
+        );
+      })}
+      <p className="px-5 py-2.5 text-[10px] text-ink-3 border-t border-line">Resultado calculado pelo placar final. Não é recomendação.</p>
+    </div>
+  );
+}
+
 function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; competition: string; kickoffUtc: string | null; locked?: boolean }) {
   const ranked = [...rows].sort((a, b) => b.score - a.score);
   const valueOpps = ranked.filter((r) => r.score >= SCORE_MEDIA); // todas as mapeadas (com valor)
@@ -674,6 +717,13 @@ export default function FutebolJogo() {
                 </button>
               </div>
             </div>
+
+            {/* Jogo encerrado: registro das oportunidades mapeadas + resultado (green/red) */}
+            {finished && valueRows && valueRows.length > 0 && (
+              <div className="mt-5">
+                <PlayedOpportunities rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} goalsHome={fixture.goals_home} goalsAway={fixture.goals_away} />
+              </div>
+            )}
 
             {showValue && <FutebolAccessBanner access={access} className="mt-5" />}
 
