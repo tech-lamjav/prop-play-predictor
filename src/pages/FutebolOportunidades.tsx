@@ -12,7 +12,7 @@ import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
 import {
-  pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
+  pickLabel, marketLabel, fmtEdgeScore,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
@@ -322,7 +322,8 @@ export default function FutebolOportunidades() {
     [allRows, selectedDay, mercado, faixa, comp]
   );
 
-  const bestRows = useMemo(() => groupBoardByFixture(filtered).map((bf) => bf.best), [filtered]);
+  // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
+  const bestRows = useMemo(() => [...filtered].sort((a, b) => b.score - a.score), [filtered]);
   const comValor = bestRows.filter((o) => o.score >= SCORE_MEDIA);
   const semValor = bestRows.filter((o) => o.score < SCORE_MEDIA);
   const nAlta = bestRows.filter((o) => faixaTone(o.faixa) === 'alta').length;
@@ -339,7 +340,7 @@ export default function FutebolOportunidades() {
       byDay.get(d)!.push(r);
     });
     const out: Record<string, number> = {};
-    byDay.forEach((rs, d) => { out[d] = groupBoardByFixture(rs).map((bf) => bf.best).filter((o) => o.score >= SCORE_MEDIA).length; });
+    byDay.forEach((rs, d) => { out[d] = rs.filter((o) => o.score >= SCORE_MEDIA).length; });
     return out;
   }, [allRows]);
 

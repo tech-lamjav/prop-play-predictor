@@ -305,8 +305,9 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 // Síntese "O que olhar neste jogo" — decide e PROVA a melhor aposta (Score do backend)
 function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; competition: string; kickoffUtc: string | null; locked?: boolean }) {
   const ranked = [...rows].sort((a, b) => b.score - a.score);
-  const top = ranked[0];
-  const second = ranked[1];
+  const valueOpps = ranked.filter((r) => r.score >= SCORE_MEDIA); // todas as mapeadas (com valor)
+  const top = valueOpps[0];
+  const others = valueOpps.slice(1);
   const note = 'Leitura de risco, não recomendação de aposta.';
 
   if (!top) {
@@ -326,26 +327,13 @@ function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked
   // Pontos de atenção: contras (premissas que não bateram) + avisos (penalidades)
   const atencao = [...(top.contras ?? []), ...(top.avisos ?? [])];
 
-  // Contexto entre mercados: por que o valor está NESTE mercado e não nos outros
-  const otherMarket = Array.from(new Set(rows.map((r) => r.market))).find((m) => m !== top.market);
-  let crossNote: string | null = null;
-  if (otherMarket) {
-    const ob = rows.filter((r) => r.market === otherMarket).reduce((b, r) => (r.score > b.score ? r : b));
-    const obPick = pickLabel(ob.market, ob.outcome, ob.line_value, homeName, awayName);
-    crossNote =
-      ob.score >= SCORE_MEDIA
-        ? `Neste jogo o valor está em ${marketLabel(top.market)}, mas também há valor em ${marketLabel(otherMarket)}: ${obPick} (score ${ob.score}).`
-        : `Neste jogo o valor está em ${marketLabel(top.market)}. Em ${marketLabel(otherMarket)} as odds estão mais equilibradas — nada se destaca (melhor opção: ${obPick}, score ${ob.score}).`;
-  }
-
   const vColor = verdict.toLowerCase().includes('forte') ? 'text-forest' : 'text-amber-2';
   const chance = chancePct(top.prob_justa_fechamento);
-  const secondChance = second ? chancePct(second.prob_justa_fechamento) : null;
 
   return (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
       <div className="px-5 py-3 flex items-center justify-between bg-canvas-2 border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">O que olhar neste jogo</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">O que olhar neste jogo{valueOpps.length > 1 ? ` · ${valueOpps.length} oportunidades` : ''}</div>
         <span className={`text-[11px] font-semibold ${vColor}`}>{verdict}</span>
       </div>
       <div className="p-5 md:p-6 grid md:grid-cols-[1fr_260px] gap-6">
@@ -376,7 +364,6 @@ function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked
               </ul>
             </div>
           )}
-          {crossNote && <p className="text-[12px] text-ink-3 mt-4 pt-3 border-t border-line"><Blur active={!!locked}>{crossNote}</Blur></p>}
         </div>
 
         {/* Painel de confiabilidade + 2ª opção */}
@@ -392,15 +379,22 @@ function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked
               <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Odd</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1"><Blur active={!!locked}>{top.best_odd.toFixed(2)}</Blur></div></div>
             </div>
           </div>
-          {second && (
+          {others.length > 0 && (
             <div className="rounded-rebrand-md p-3 bg-canvas-2 border border-line">
-              <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">2ª opção</div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pickLabel(second.market, second.outcome, second.line_value, homeName, awayName)}</Blur></div>
-                  <div className="text-[10px] text-ink-3 truncate">{marketLabel(second.market)}<Blur active={!!locked}>{secondChance != null ? ` · ${secondChance}%` : ''} · {second.best_odd.toFixed(2)}</Blur></div>
-                </div>
-                <span className="text-[18px] font-semibold tabular-nums text-forest shrink-0">{second.score}</span>
+              <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-2 text-ink-3">Outras oportunidades neste jogo</div>
+              <div className="flex flex-col gap-2.5">
+                {others.map((o) => {
+                  const oc = chancePct(o.prob_justa_fechamento);
+                  return (
+                    <div key={`${o.market}-${o.outcome}-${o.line_value}`} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</Blur></div>
+                        <div className="text-[10px] text-ink-3 truncate">{marketLabel(o.market)}<Blur active={!!locked}>{oc != null ? ` · ${oc}%` : ''} · {o.best_odd.toFixed(2)}</Blur></div>
+                      </div>
+                      <span className={`text-[11px] font-bold tabular-nums px-1.5 h-5 inline-flex items-center rounded shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
