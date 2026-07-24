@@ -287,17 +287,29 @@ export default function FutebolOportunidades() {
     return g ? settleFutebol(o.market, o.outcome, o.line_value, g.gh, g.ga) : null;
   };
 
-  // Dias com oportunidades (passado + futuro), asc — permite navegar pro histórico.
+  // Dias no stepper: dias COM oportunidade (board = passado + presente) + dias
+  // FUTUROS com jogos agendados (fixtures, janela curta) — pra navegar pra frente
+  // mesmo antes das odds entrarem (~24h antes do jogo).
   const days = useMemo(() => {
     const set = new Set<string>();
     allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
+    const now = Date.now();
+    const horizon = now + 8 * 864e5; // ~8 dias à frente
+    (fixtures ?? []).forEach((f) => {
+      const t = kickoffMs(f.kickoff_utc);
+      if (t != null && t > now && t < horizon && !FINISHED_STATUS.has(f.status_short ?? '')) {
+        const d = brtDayStr(f.kickoff_utc);
+        if (d) set.add(d);
+      }
+    });
     return [...set].sort();
-  }, [allRows]);
+  }, [allRows, fixtures]);
   // Default: hoje se houver; senão o próximo dia futuro; senão o último disponível.
   const selectedDay = (day && days.includes(day))
     ? day
     : (days.includes(TODAY_BRT) ? TODAY_BRT : (days.find((d) => d >= TODAY_BRT) ?? days[days.length - 1]));
   const isPastDay = !!selectedDay && selectedDay < TODAY_BRT;
+  const isFutureDay = !!selectedDay && selectedDay > TODAY_BRT;
 
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
@@ -420,8 +432,16 @@ export default function FutebolOportunidades() {
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
         ) : (isPastDay ? comValor.length === 0 : bestRows.length === 0) ? (
           <div className="rounded-rebrand-md bg-white border border-line p-6 text-center">
-            <p className="text-sm text-ink-2">{isPastDay ? 'Nenhuma oportunidade com valor nesse dia.' : 'Nenhum jogo com odds nesse filtro.'}</p>
-            <p className="text-xs text-ink-3 mt-1">{isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.' : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}</p>
+            <p className="text-sm text-ink-2">
+              {isPastDay ? 'Nenhuma oportunidade com valor nesse dia.'
+                : isFutureDay ? 'Ainda sem oportunidades para este dia.'
+                : 'Nenhum jogo com odds nesse filtro.'}
+            </p>
+            <p className="text-xs text-ink-3 mt-1">
+              {isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
+                : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
+                : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
+            </p>
           </div>
         ) : (
           <>
