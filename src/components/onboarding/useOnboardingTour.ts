@@ -14,11 +14,22 @@ function wasSeen(tourId: string): boolean {
   }
 }
 
-/** Esquece que o usuário viu o tour — ele volta a auto-iniciar. Usado pelo
- * "Rever tour" nas Configurações. */
+/** Esquece que o usuário viu um tour específico — ele volta a auto-iniciar. */
 export function resetOnboardingTour(tourId: string) {
   try {
     localStorage.removeItem(storageKey(tourId));
+  } catch {
+    /* noop */
+  }
+}
+
+/** Esquece TODOS os tours (hub + produtos) de uma vez. Usado pelo "Rever tour"
+ * nas Configurações, pra reabrir a experiência guiada inteira. */
+export function resetAllOnboarding() {
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('sb_onboarding_'))
+      .forEach((k) => localStorage.removeItem(k));
   } catch {
     /* noop */
   }

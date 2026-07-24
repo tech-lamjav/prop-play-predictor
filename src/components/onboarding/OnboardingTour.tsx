@@ -63,6 +63,9 @@ export default function OnboardingTour({ tourId, steps, run, onFinish }: Props) 
         overlayColor: 'rgba(10, 31, 24, 0.55)',
         spotlightRadius: 16,
         spotlightPadding: 6,
+        // Compensa a nav sticky (h-14 = 56px + folga) pra o alvo não parar
+        // atrás dela quando o tour rola a página até ele.
+        scrollOffset: 84,
         zIndex: 10_000,
         skipBeacon: true,
         buttons: ['back', 'skip', 'primary'],

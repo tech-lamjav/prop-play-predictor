@@ -15,8 +15,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { telegramBotUrl } from '../config/environment';
 import AnalyticsNav from '@/components/AnalyticsNav';
-import { resetOnboardingTour } from '../components/onboarding/useOnboardingTour';
-import { HUB_TOUR_ID } from '../components/onboarding/tours';
+import { resetAllOnboarding } from '../components/onboarding/useOnboardingTour';
 
 const COUNTRY_CODES = [
   { value: '+55', label: '🇧🇷 +55' },
@@ -331,14 +330,18 @@ export default function Settings() {
               <Compass className="h-5 w-5 text-forest" />
               <CardTitle>Tour guiado</CardTitle>
             </div>
-            <CardDescription>Rever a apresentação das áreas da plataforma</CardDescription>
+            <CardDescription>Rever a apresentação das áreas e dos produtos da plataforma</CardDescription>
           </CardHeader>
           <CardContent>
+            <p className="text-sm text-ink-2 mb-3">
+              Reinicia o tour guiado: a apresentação do início reaparece agora, e a de cada produto
+              (Futebol, Betinho, NBA, Bolão) volta a aparecer na próxima vez que você abrir a tela.
+            </p>
             <Button
               type="button"
               variant="outline"
               onClick={() => {
-                resetOnboardingTour(HUB_TOUR_ID);
+                resetAllOnboarding();
                 navigate('/inicio');
               }}
               className="bg-white border-line text-ink hover:bg-canvas-2"

@@ -15,7 +15,7 @@ import {
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
-import { FUTEBOL_TOUR_ID, futebolSteps } from '@/components/onboarding/tours';
+import { FUTEBOL_TOUR_ID, makeFutebolSteps } from '@/components/onboarding/tours';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
@@ -325,7 +325,11 @@ export default function FutebolHoje() {
     return m;
   }, [allGames]);
 
-  const futebolTour = useOnboardingTour(FUTEBOL_TOUR_ID);
+  const futebolTour = useOnboardingTour(FUTEBOL_TOUR_ID, { enabled: !loading });
+  const futebolSteps = useMemo(
+    () => makeFutebolSteps({ hasDayBar: !loading && days.length > 0 }),
+    [loading, days.length],
+  );
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
@@ -337,7 +341,7 @@ export default function FutebolHoje() {
       <AnalyticsNav variant="rebrand" />
       <OnboardingTour tourId={FUTEBOL_TOUR_ID} steps={futebolSteps} run={futebolTour.run} onFinish={futebolTour.finish} />
       {!loading && days.length > 0 && (
-        <div className="bg-white border-b border-line">
+        <div data-tour="futebol-datas" className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
             <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
           </div>
@@ -364,7 +368,7 @@ export default function FutebolHoje() {
               <span>Odds revisadas de hora em hora</span>
             </div>
           </div>
-          <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div data-tour="futebol-resumo" className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
             <Kpi label="Jogos hoje" value={loading ? '—' : dayGames.length} sub={isToday ? 'na agenda' : 'no dia'} />
             <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="com valor (+EV)" tone="green" />
             <Kpi label="Faixa Alta" value={loading ? '—' : alta} sub="maior confiança" anchor />
@@ -391,7 +395,7 @@ export default function FutebolHoje() {
 
         {/* 2-col: mais oportunidades + jogos de hoje */}
         <div className="grid md:grid-cols-12 gap-6">
-          <div className="md:col-span-8">
+          <div data-tour="futebol-oportunidades" className="md:col-span-8">
             <div className="flex items-end justify-between mb-3">
               <div>
                 <div className={LABEL}>Mais oportunidades</div>
@@ -412,7 +416,7 @@ export default function FutebolHoje() {
             )}
           </div>
 
-          <div className="md:col-span-4">
+          <div data-tour="futebol-jogos" className="md:col-span-4">
             <div className="flex items-end justify-between mb-3">
               <div>
                 <div className={LABEL}>{isToday ? 'Jogos de hoje' : 'Jogos do dia'}</div>
@@ -437,7 +441,7 @@ export default function FutebolHoje() {
         </div>
 
         {/* Banner honesto */}
-        <div className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
+        <div data-tour="futebol-metodologia" className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
             <span className="font-semibold">Não é recomendação.</span> Mostramos onde a odd paga acima da chance estimada (valor). Score e faixa medem confiabilidade, não garantia.
