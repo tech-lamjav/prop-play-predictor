@@ -10,11 +10,13 @@ import UserNav from '../components/UserNav';
 import { useSettingsData } from '../hooks/use-settings-data';
 import { useToast } from '../hooks/use-toast';
 import { stripeService } from '../services/stripe.service';
-import { User, CreditCard, ArrowLeft, Send, ExternalLink } from 'lucide-react';
+import { User, CreditCard, ArrowLeft, Send, ExternalLink, Compass } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { telegramBotUrl } from '../config/environment';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import { resetOnboardingTour } from '../components/onboarding/useOnboardingTour';
+import { HUB_TOUR_ID } from '../components/onboarding/tours';
 
 const COUNTRY_CODES = [
   { value: '+55', label: '🇧🇷 +55' },
@@ -319,6 +321,31 @@ export default function Settings() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Ajuda / Tour guiado */}
+        <Card className="mt-8 bg-white border border-line text-ink">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Compass className="h-5 w-5 text-forest" />
+              <CardTitle>Tour guiado</CardTitle>
+            </div>
+            <CardDescription>Rever a apresentação das áreas da plataforma</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetOnboardingTour(HUB_TOUR_ID);
+                navigate('/inicio');
+              }}
+              className="bg-white border-line text-ink hover:bg-canvas-2"
+            >
+              <Compass className="w-4 h-4 mr-2" />
+              Rever tour guiado
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -4,6 +4,9 @@ import { usePostHog } from '@posthog/react';
 import { Bot, Trophy, ArrowUpRight, Loader2 } from 'lucide-react';
 import AnalyticsNav from '../components/AnalyticsNav';
 import { createClient } from '../integrations/supabase/client';
+import OnboardingTour from '../components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
+import { HUB_TOUR_ID, hubSteps } from '../components/onboarding/tours';
 
 // Hub de direcionamento pós-login (/inicio). Para quem JÁ passou pelo onboarding
 // (sincronizado ou não). Cadastro novo continua indo pro /onboarding (vínculo do
@@ -97,6 +100,9 @@ export default function Inicio() {
   const [firstName, setFirstName] = useState<string>('');
   const [synced, setSynced] = useState(false);
 
+  // Onboarding guiado — só arma quando o hub carregou (tiles montados).
+  const tour = useOnboardingTour(HUB_TOUR_ID, { enabled: !!userId });
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -135,6 +141,12 @@ export default function Inicio() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
+      <OnboardingTour
+        tourId={HUB_TOUR_ID}
+        steps={hubSteps}
+        run={tour.run}
+        onFinish={tour.finish}
+      />
       <AnalyticsNav variant="rebrand" />
 
       <main className="flex flex-1 flex-col px-5 pt-8 pb-12 sm:px-8 sm:pt-14">
@@ -157,6 +169,7 @@ export default function Inicio() {
                 <button
                   key={d.key}
                   type="button"
+                  data-tour={`hub-${d.key}`}
                   onClick={() => go(d)}
                   className={`group relative flex h-[92px] flex-row items-center gap-4 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-ink/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40 sm:h-auto sm:min-h-[208px] sm:flex-col sm:items-start sm:justify-between sm:gap-0 sm:p-6 ${d.tile}`}
                 >
