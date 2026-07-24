@@ -671,6 +671,7 @@ export default function FutebolJogo() {
   const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
   // jogo encerrado/iniciado não é mais oportunidade: esconde o "O que olhar" (vira só descritivo)
   const showValue = !finished && !!valueRows && valueRows.length > 0;
+  const hasPlayed = finished && !!valueRows && valueRows.length > 0; // registro pós-jogo
 
   const playerStats = extras?.player_stats || [];
   const statsById = new Map<number, FutebolPlayerStat>(
@@ -743,17 +744,21 @@ export default function FutebolJogo() {
               </div>
             </div>
 
-            {/* Jogo encerrado: registro das oportunidades mapeadas + resultado (green/red) */}
-            {finished && valueRows && valueRows.length > 0 && (
-              <div className="mt-5">
-                <PlayedOpportunities rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} goalsHome={fixture.goals_home} goalsAway={fixture.goals_away} />
+            {/* Jogo ENCERRADO: oportunidades (resultado) + nosso modelo, lado a lado (~40/60) */}
+            {finished && (hasPlayed || tendencies) && (
+              <div className={`mt-5 grid gap-5 items-start ${hasPlayed && tendencies ? 'lg:grid-cols-[2fr_3fr]' : 'grid-cols-1'}`}>
+                {hasPlayed && valueRows && (
+                  <PlayedOpportunities rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} goalsHome={fixture.goals_home} goalsAway={fixture.goals_away} />
+                )}
+                {tendencies && (
+                  <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                )}
               </div>
             )}
 
-            {showValue && <FutebolAccessBanner access={access} className="mt-5" />}
-
-            {/* Veredito + nosso modelo de gols (lado a lado) */}
-            {(showValue || tendencies) && (
+            {/* Jogo FUTURO: acesso + veredito + nosso modelo, lado a lado */}
+            {!finished && showValue && <FutebolAccessBanner access={access} className="mt-5" />}
+            {!finished && (showValue || tendencies) && (
               <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
                 {showValue && valueRows && (
                   <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
@@ -764,7 +769,7 @@ export default function FutebolJogo() {
               </div>
             )}
 
-            {/* Explorar mercados — largura total */}
+            {/* Explorar mercados — largura total (só pré-jogo, é interativo pra decidir) */}
             {showValue && valueRows && (
               <div className="mt-5">
                 <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
