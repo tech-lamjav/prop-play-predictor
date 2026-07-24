@@ -16,7 +16,7 @@ import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
   faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
-import { settleFutebol, resultBadge, type BetResult } from '@/utils/futebol-settlement';
+import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
@@ -305,12 +305,21 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 // ---------- "O que olhar": Score vem PRONTO do backend (fact_value_opportunities) ----------
 // Síntese "O que olhar neste jogo" — decide e PROVA a melhor aposta (Score do backend)
 // Selo de resultado (jogo encerrado): Green / Meio green / Anulada / Meio red / Red.
-function ResultBadge({ r }: { r: BetResult }) {
+// Cor + texto (não só cor) e um ponto pra reforçar o estado à distância.
+function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
   const b = resultBadge(r);
-  const style = b.tone === 'won' ? { background: '#dcefe2', color: '#0a3d2e' }
-    : b.tone === 'push' ? { background: '#eef0ec', color: '#5a625a' }
-    : { background: '#fbe3e8', color: '#be123c' };
-  return <span className="shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.06em]" style={style}>{b.label}</span>;
+  const c = b.tone === 'won' ? { bg: '#dcefe2', fg: '#0a3d2e', dot: '#2f7d50' }
+    : b.tone === 'push' ? { bg: '#eef0ec', fg: '#5a625a', dot: '#8a8f86' }
+    : { bg: '#fbe3e8', fg: '#be123c', dot: '#be123c' };
+  return (
+    <span
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-[0.06em] ${big ? 'h-7 px-2.5 text-[11px]' : 'h-5 px-1.5 text-[10px]'}`}
+      style={{ background: c.bg, color: c.fg }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.dot }} />
+      {b.label}
+    </span>
+  );
 }
 
 // Oportunidades mapeadas de um jogo ENCERRADO + como performaram (green/red).
@@ -319,28 +328,44 @@ function PlayedOpportunities({ rows, homeName, awayName, goalsHome, goalsAway }:
 }) {
   const valueOpps = [...rows].filter((r) => r.score >= SCORE_MEDIA).sort((a, b) => b.score - a.score);
   if (!valueOpps.length) return null;
+
+  const settled = valueOpps.map((o) => ({ o, r: settleFutebol(o.market, o.outcome, o.line_value, goalsHome, goalsAway) }));
+  const greens = settled.filter((s) => s.r && isHit(s.r)).length;
+  const reds = settled.filter((s) => s.r === 'lost' || s.r === 'half_lost').length;
+  const voids = settled.filter((s) => s.r === 'push').length;
+
   return (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-      <div className="px-5 py-3 flex items-center justify-between bg-canvas-2 border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Oportunidades deste jogo</div>
-        <span className="text-[11px] text-ink-3">{valueOpps.length} mapeada{valueOpps.length === 1 ? '' : 's'} · como performaram</span>
+      <div className="px-5 py-3.5 flex items-center justify-between gap-3 bg-canvas-2 border-b border-line">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Oportunidades deste jogo</div>
+          <div className="text-[11px] text-ink-3 mt-0.5">{valueOpps.length} mapeada{valueOpps.length === 1 ? '' : 's'} · resultado pelo placar</div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {greens > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#dcefe2', color: '#0a3d2e' }}>{greens} green</span>}
+          {reds > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#fbe3e8', color: '#be123c' }}>{reds} red</span>}
+          {voids > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#eef0ec', color: '#5a625a' }}>{voids} anul.</span>}
+        </div>
       </div>
-      {valueOpps.map((o) => {
-        const res = settleFutebol(o.market, o.outcome, o.line_value, goalsHome, goalsAway);
-        const chance = chancePct(o.prob_justa_fechamento);
-        return (
-          <div key={`${o.market}-${o.outcome}-${o.line_value}`} className="px-5 py-3 border-t border-line flex items-center gap-3">
-            <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[15px] w-9 h-8 shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[14px] font-semibold text-ink truncate">{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</span>
-                {res && <ResultBadge r={res} />}
+      <div className="divide-y divide-line">
+        {settled.map(({ o, r }) => {
+          const chance = chancePct(o.prob_justa_fechamento);
+          const spine = !r ? 'border-l-line-2'
+            : isHit(r) ? 'border-l-[#2f7d50]'
+            : r === 'push' ? 'border-l-line-2'
+            : 'border-l-[#be123c]';
+          return (
+            <div key={`${o.market}-${o.outcome}-${o.line_value}`} className={`px-5 py-3.5 flex items-center gap-3.5 border-l-4 ${spine}`}>
+              <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[15px] w-9 h-9 shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-semibold text-ink truncate leading-tight">{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</div>
+                <div className="text-[11px] text-ink-3 truncate mt-0.5">{marketLabel(o.market)}{chance != null ? ` · ${chance}% chance` : ''} · odd {o.best_odd.toFixed(2)}</div>
               </div>
-              <div className="text-[11px] text-ink-3 truncate">{marketLabel(o.market)}{chance != null ? ` · ${chance}%` : ''} · odd {o.best_odd.toFixed(2)}</div>
+              {r && <ResultBadge r={r} big />}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
       <p className="px-5 py-2.5 text-[10px] text-ink-3 border-t border-line">Resultado calculado pelo placar final. Não é recomendação.</p>
     </div>
   );
