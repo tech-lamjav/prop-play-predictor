@@ -75,11 +75,11 @@ export function settleFutebol(
 /** Rótulo + tom pro selo de resultado. */
 export function resultBadge(r: BetResult): { label: string; tone: 'won' | 'lost' | 'push' } {
   switch (r) {
-    case 'won': return { label: 'Bateu', tone: 'won' };
-    case 'half_won': return { label: '½ Bateu', tone: 'won' };
+    case 'won': return { label: 'Green', tone: 'won' };
+    case 'half_won': return { label: 'Meio green', tone: 'won' };
     case 'push': return { label: 'Anulada', tone: 'push' };
-    case 'half_lost': return { label: '½ Não', tone: 'lost' };
-    case 'lost': return { label: 'Não bateu', tone: 'lost' };
+    case 'half_lost': return { label: 'Meio red', tone: 'lost' };
+    case 'lost': return { label: 'Red', tone: 'lost' };
   }
 }
 

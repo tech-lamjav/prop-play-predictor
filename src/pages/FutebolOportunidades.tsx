@@ -382,7 +382,7 @@ export default function FutebolOportunidades() {
             <div className={LABEL}>{isPastDay ? 'Histórico' : 'Oportunidades'}</div>
             {isPastDay && resumo && resumo.settled > 0 ? (
               <>
-                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} bateram</h1>
+                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
                 <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades com valor deste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
               </>
             ) : (
