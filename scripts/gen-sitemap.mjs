@@ -24,6 +24,7 @@ const ROUTES = [
   { path: "/futebol", changefreq: "daily", priority: "0.9", lastmod: "2026-07-22" },
   { path: "/futebol/comecar", changefreq: "weekly", priority: "0.8", lastmod: "2026-07-22" },
   { path: "/betinho", changefreq: "weekly", priority: "0.8", lastmod: "2026-07-22" },
+  { path: "/planos", changefreq: "weekly", priority: "0.8", lastmod: "2026-07-24" },
   { path: "/bolao", changefreq: "weekly", priority: "0.7", lastmod: "2026-07-22" },
   { path: "/bolao/comecar", changefreq: "weekly", priority: "0.7", lastmod: "2026-07-22" },
   { path: "/como-usar", changefreq: "monthly", priority: "0.6", lastmod: "2026-07-22" },
