@@ -200,6 +200,7 @@ const Landing = () => {
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
       <Seo
         jsonLd={faqPageSchema(FAQ)}
+        image="/og/og-nba.jpg"
         path="/nba"
         title="Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting"
         description="Compare a linha das casas com o histórico real do jogador: últimos jogos, injury report e Análise 360°. Dashboard aberto pra testar sem login."

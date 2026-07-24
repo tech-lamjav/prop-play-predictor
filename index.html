@@ -43,19 +43,24 @@
     <!-- Canonical NÃO fica aqui: cada rota declara o seu via <Seo>. Um canonical
          fixo em "/" colidia com o da página (dois canonicals → Google ignora). -->
 
+    <!-- Fallback pros scrapers de social (WhatsApp/FB/X não rodam JS): enquanto
+         não há prerender, é ESTE og:image que aparece ao compartilhar qualquer
+         rota. Card 1200×630 da marca; por-rota via <Seo> vale pro Google. -->
     <meta property="og:title" content="Smart Betting — Análises, Gestão e Ferramentas para Apostadores" />
     <meta property="og:description" content="Análise de prop bets NBA, gestão de banca e ferramentas para apostadores que querem decidir com dados." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.smartbetting.app/" />
-    <meta property="og:image" content="https://www.smartbetting.app/logo-sem-texto.png" />
+    <meta property="og:image" content="https://www.smartbetting.app/og/og-default.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="pt_BR" />
     <meta property="og:site_name" content="Smart Betting" />
 
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@smartbetting" />
     <meta name="twitter:title" content="Smart Betting — Análises, Gestão e Ferramentas para Apostadores" />
     <meta name="twitter:description" content="Análise de prop bets NBA, gestão de banca e ferramentas para apostadores que querem decidir com dados." />
-    <meta name="twitter:image" content="https://www.smartbetting.app/logo-sem-texto.png" />
+    <meta name="twitter:image" content="https://www.smartbetting.app/og/og-default.jpg" />
 
     <!-- Structured Data -->
     <script type="application/ld+json">
