@@ -265,6 +265,62 @@ export function makeFutebolJogoSteps({
   return steps;
 }
 
+export const FUT_JOGOS_TOUR_ID = 'futebol-jogos';
+
+// Tela /futebol/jogos — panorama do campeonato (rodadas, tabela, artilheiros).
+// O stepper de rodada é condicional (depende de rodadas carregadas).
+export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): Step[] {
+  const steps: Step[] = [
+    {
+      id: 'fut-jogos-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'O campeonato inteiro',
+      content:
+        'Aqui é o panorama do campeonato: rodadas, tabela e artilheiros num lugar só.',
+    },
+    {
+      id: 'fut-jogos-header',
+      target: '[data-tour="fut-jogos-header"]',
+      placement: 'bottom',
+      title: 'Competição e temporada',
+      content:
+        'Escolha a competição (Brasileirão, Série B, Copa) e a temporada aqui em cima.',
+    },
+  ];
+
+  if (hasRounds) {
+    steps.push({
+      id: 'fut-jogos-rodada',
+      target: '[data-tour="fut-jogos-rodada"]',
+      placement: 'bottom',
+      title: 'Navegue pelas rodadas',
+      content: 'Use as setas pra ir de uma rodada pra outra e ver os jogos de cada uma.',
+    });
+  }
+
+  steps.push(
+    {
+      id: 'fut-jogos-lista',
+      target: '[data-tour="fut-jogos-lista"]',
+      placement: 'top',
+      title: 'Os jogos da rodada',
+      content:
+        'Os jogos agrupados por dia. A etiqueta na direita mostra a faixa de valor de cada jogo. Toque pra abrir a análise completa.',
+    },
+    {
+      id: 'fut-jogos-tabela',
+      target: '[data-tour="fut-jogos-tabela"]',
+      placement: 'top',
+      title: 'Tabela e artilheiros',
+      content:
+        'Pra acompanhar a temporada: a classificação e os artilheiros, com a tabela e a lista completas a um toque.',
+    },
+  );
+
+  return steps;
+}
+
 export const betinhoSteps: Step[] = [
   {
     id: 'betinho-hero',

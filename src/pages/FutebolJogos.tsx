@@ -8,6 +8,9 @@ import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders, F
 import { futebolZone, FUTEBOL_ZONE_COLOR as ZONE_COLOR, FUTEBOL_ZONE_LABEL as ZONE_LABEL } from '@/services/futebol-data.service';
 import { getFutebolTeamLogoUrl, getFutebolPlayerPhotoUrl } from '@/utils/futebol-logos';
 import { groupBoardByFixture, faixaWord, faixaBadgeCls } from '@/utils/futebol-score';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
 
 const COMPETITIONS: { value: Competition; label: string }[] = [
   { value: 'brasileirao', label: 'Brasileirão' },
@@ -229,12 +232,19 @@ export default function FutebolJogos() {
   };
   const goTeam = (id: number) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`);
 
+  const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
+  const jogosSteps = useMemo(
+    () => makeFutebolJogosSteps({ hasRounds: !isLoading && !isError && rounds.length > 0 }),
+    [isLoading, isError, rounds.length],
+  );
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={FUT_JOGOS_TOUR_ID} steps={jogosSteps} run={jogosTour.run} onFinish={jogosTour.finish} />
 
       {/* Header */}
-      <div className="bg-white border-b border-line">
+      <div data-tour="fut-jogos-header" className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
             <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">{COMPETITIONS.find((c) => c.value === competition)?.label}</div>
@@ -252,7 +262,7 @@ export default function FutebolJogos() {
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {/* Stepper de rodada */}
         {!isLoading && !isError && rounds.length > 0 && (
-          <div className="flex items-center justify-between bg-white border border-line rounded-rebrand-md px-2 py-1.5 mb-4 max-w-sm">
+          <div data-tour="fut-jogos-rodada" className="flex items-center justify-between bg-white border border-line rounded-rebrand-md px-2 py-1.5 mb-4 max-w-sm">
             <button onClick={() => setRoundIdx((i) => Math.max(0, i - 1))} disabled={roundIdx <= 0} className="h-8 w-8 grid place-items-center rounded-rebrand-sm text-ink-2 hover:bg-canvas-2 disabled:opacity-30" aria-label="Rodada anterior"><ChevronLeft className="w-4 h-4" /></button>
             <div className="text-center">
               <div className="text-sm font-bold text-ink">{prettyRound(currentRound)}</div>
@@ -267,7 +277,7 @@ export default function FutebolJogos() {
         ) : (
           <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
             {/* Jogos da rodada */}
-            <div className="flex flex-col gap-4">
+            <div data-tour="fut-jogos-lista" className="flex flex-col gap-4">
               {isLoading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full bg-canvas-2 rounded-rebrand-md" />)
                 : roundCount === 0 ? <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-ink-3">Nenhum jogo nesta rodada.</div>
                 : groups.map(([day, games]) => (
@@ -280,7 +290,7 @@ export default function FutebolJogos() {
                 ))}
             </div>
             {/* Rail: classificação + artilheiros */}
-            <div className="flex flex-col gap-6">
+            <div data-tour="fut-jogos-tabela" className="flex flex-col gap-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Classificação</div>
