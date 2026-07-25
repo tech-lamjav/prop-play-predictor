@@ -7,6 +7,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { createClient } from '@/integrations/supabase/client';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { BETINHO_DASH_TOUR_ID, makeBetinhoDashboardSteps } from '@/components/onboarding/tours';
 import { ProfitByTagChart } from '@/components/bets/ProfitByTagChart';
 import { Sparkline } from '@/components/dashboard/Sparkline';
 import { BigHeatmap, type HeatmapMetric } from '@/components/dashboard/BigHeatmap';
@@ -272,6 +275,9 @@ export default function BettingDashboard() {
     return series;
   }, [currentBets]);
 
+  const dashTour = useOnboardingTour(BETINHO_DASH_TOUR_ID, { enabled: !!user && !betsLoading, delay: 900 });
+  const dashSteps = useMemo(() => makeBetinhoDashboardSteps({ isMobile }), [isMobile]);
+
   if (authLoading) {
     return (
       <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
@@ -294,6 +300,7 @@ export default function BettingDashboard() {
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={BETINHO_DASH_TOUR_ID} steps={dashSteps} run={dashTour.run} onFinish={dashTour.finish} />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
@@ -305,7 +312,7 @@ export default function BettingDashboard() {
             </h1>
             <p className="text-[13px] text-ink-2 mt-1">Veja a performance da sua banca por esporte, liga, mercado e tag.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div data-tour="dash-header" className="flex flex-wrap items-center gap-2">
             {/* Tier badge — informativo, não clicável (vira link se houver página de billing) */}
             {isPremium ? (
               <span
@@ -509,6 +516,7 @@ export default function BettingDashboard() {
       </div>
 
       {/* Mobile hero KPI (substitui StatusStrip no mobile) */}
+      <div data-tour="dash-stats-m" className="md:hidden">
       <HeroKPIMobile
         profit={currentStats.profit}
         roi={currentStats.roi}
@@ -521,9 +529,10 @@ export default function BettingDashboard() {
         profitTrendPct={profitTrend.pctChange}
         roiTrendPct={roiTrend.pctChange}
       />
+      </div>
 
       {/* StatusStrip — desktop only */}
-      <div className="bg-white border-b border-line hidden md:block">
+      <div data-tour="dash-stats" className="bg-white border-b border-line hidden md:block">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-6 flex-wrap">
           {/* Banca big + delta + sparkline */}
           <div className="flex items-center gap-4 shrink-0">
@@ -611,6 +620,7 @@ export default function BettingDashboard() {
         ) : (
           <>
             {/* Tier-aware: Upsell (Free) ou Betinho Narrative + Insight cards (Pro) */}
+            <div data-tour="dash-diagnostico" className="space-y-4">
             {isPremium ? (
               <>
                 <BetinhoNarrative
@@ -644,9 +654,10 @@ export default function BettingDashboard() {
                 onSeeExample={() => setExampleModalOpen(true)}
               />
             )}
+            </div>
 
             {/* Heatmap liga × mercado + DrillDown lateral */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div data-tour="dash-heatmap" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
                 <BigHeatmap
                   data={heatmapData}
@@ -681,21 +692,23 @@ export default function BettingDashboard() {
             </div>
 
             {/* Tag pivot diverging full width */}
-            <ProfitByTagChart
-              bets={currentBetsWithTags}
-              formatValue={(v) => formatValue(v)}
-              onAnalyzeTags={(tagNames) => {
-                setTagAnalysisTags(tagNames);
-                setTagAnalysisModalOpen(true);
-              }}
-            />
+            <div data-tour="dash-tags">
+              <ProfitByTagChart
+                bets={currentBetsWithTags}
+                formatValue={(v) => formatValue(v)}
+                onAnalyzeTags={(tagNames) => {
+                  setTagAnalysisTags(tagNames);
+                  setTagAnalysisModalOpen(true);
+                }}
+              />
+            </div>
 
             {/* Odds + Tempo */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-7">
+              <div data-tour="dash-odds" className="lg:col-span-7">
                 <OddsHistogram data={oddsData} formatValue={(v) => formatValue(v)} />
               </div>
-              <div className="lg:col-span-5">
+              <div data-tour="dash-atividade" className="lg:col-span-5">
                 <CalendarHeatmap bets={bets} />
               </div>
             </div>

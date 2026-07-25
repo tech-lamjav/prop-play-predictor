@@ -321,6 +321,77 @@ export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): St
   return steps;
 }
 
+export const BETINHO_DASH_TOUR_ID = 'betinho-dashboard';
+
+// Dashboard do Betinho (/betting-dashboard) — diagnóstico da banca.
+// Alvo de "resumo" muda por viewport (StatusStrip desktop vs hero mobile).
+export function makeBetinhoDashboardSteps({ isMobile }: { isMobile: boolean }): Step[] {
+  return [
+    {
+      id: 'dash-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'O diagnóstico da banca',
+      content: 'Este é o diagnóstico da sua banca: onde você ganha, onde perde, e o que dá pra ajustar.',
+    },
+    {
+      id: 'dash-header',
+      target: '[data-tour="dash-header"]',
+      placement: 'bottom',
+      title: 'Escolha o período',
+      content:
+        'Comece pelo período. Dá pra ver os números em R$ ou em unidades, e exportar tudo em CSV.',
+    },
+    {
+      id: 'dash-stats',
+      target: isMobile ? '[data-tour="dash-stats-m"]' : '[data-tour="dash-stats"]',
+      placement: 'bottom',
+      title: 'Seu resumo',
+      content: isMobile
+        ? 'Seu resumo do período num relance: lucro, ROI, acerto e a evolução.'
+        : 'Seu resumo do período: banca atual, lucro, ROI e taxa de acerto.',
+    },
+    {
+      id: 'dash-diagnostico',
+      target: '[data-tour="dash-diagnostico"]',
+      placement: 'bottom',
+      title: 'A leitura do Betinho',
+      content:
+        'Aqui o Betinho lê suas apostas e conta, em texto, onde você está ganhando e onde está vazando dinheiro.',
+    },
+    {
+      id: 'dash-heatmap',
+      target: '[data-tour="dash-heatmap"]',
+      placement: 'top',
+      title: 'O mapa de calor',
+      content:
+        'Cada célula cruza liga e mercado, pintada pelo seu resultado: verde você lucra, vermelho você perde. Toque numa pra abrir o detalhe.',
+    },
+    {
+      id: 'dash-tags',
+      target: '[data-tour="dash-tags"]',
+      placement: 'top',
+      title: 'Performance por tag',
+      content:
+        'O resultado das etiquetas que você cria pra agrupar apostas (tipo "live", "gols", "palpite do grupo"). Dá pra selecionar e comparar.',
+    },
+    {
+      id: 'dash-odds',
+      target: '[data-tour="dash-odds"]',
+      placement: 'top',
+      title: 'Faixa de odd',
+      content: 'Em quais faixas de odd a sua banca prospera e em quais ela sangra.',
+    },
+    {
+      id: 'dash-atividade',
+      target: '[data-tour="dash-atividade"]',
+      placement: 'top',
+      title: 'Quando você aposta',
+      content: 'Seus dias mais ativos e as sequências, pra enxergar o seu padrão de atividade.',
+    },
+  ];
+}
+
 // Betinho (/bets) — gestão de banca. Multi-passo. Desktop e mobile têm blocos
 // separados de KPIs/gráfico, então o alvo de "seus números" muda por viewport;
 // o passo do Telegram só entra na banca vazia (é onde o CTA grande aparece).
