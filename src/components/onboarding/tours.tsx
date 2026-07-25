@@ -493,14 +493,54 @@ export const bankrollSteps: Step[] = [
   },
 ];
 
+// NBA hub (/home-nba). Multi-passo; todas as âncoras existem após o load,
+// então array estático (disparo gated em !isLoading na página).
 export const nbaSteps: Step[] = [
+  {
+    id: 'nba-intro',
+    target: 'body',
+    placement: 'center',
+    title: 'Bem-vindo às Análises NBA',
+    content:
+      'Todo dia a gente cruza jogadores, lesões e jogos pra achar as melhores oportunidades de prop bet da NBA.',
+  },
   {
     id: 'nba-hero',
     target: '[data-tour="nba-hero"]',
     placement: 'bottom',
     title: 'Comece por um jogador',
     content:
-      'Busque um jogador pra abrir a Análise 360: prop bets, médias e o histórico que embasa cada pick da NBA.',
+      'Busque um jogador aqui pra abrir a Análise 360 dele: prop bets, médias e o histórico que embasa cada pick.',
+  },
+  {
+    id: 'nba-hots',
+    target: '[data-tour="nba-hots"]',
+    placement: 'top',
+    title: 'Oportunidades quentes',
+    content:
+      'As props mais quentes do dia. Toque numa pra ver a análise, ou abra a lista completa pra comparar lado a lado.',
+  },
+  {
+    id: 'nba-injuries',
+    target: '[data-tour="nba-injuries"]',
+    placement: 'top',
+    title: 'Lesões que mexem no jogo',
+    content:
+      'As lesões que mais impactam os jogos de hoje, e quem tende a se valorizar por causa delas.',
+  },
+  {
+    id: 'nba-jogos',
+    target: '[data-tour="nba-jogos"]',
+    placement: 'top',
+    title: 'Jogos de hoje',
+    content: 'Os jogos do dia. Toque num pra abrir o confronto completo, com escalações e oportunidades.',
+  },
+  {
+    id: 'nba-relatorio',
+    target: '[data-tour="nba-relatorio"]',
+    placement: 'top',
+    title: 'Relatório do dia',
+    content: 'Um resumo com as melhores análises e picks do dia, tudo num lugar só.',
   },
 ];
 

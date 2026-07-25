@@ -348,7 +348,7 @@ export default function HomeNBA() {
     return players.filter(p => p.player_name.toLowerCase().includes(term) || p.team_abbreviation.toLowerCase().includes(term)).sort((a, b) => (b.rating_stars ?? 0) - (a.rating_stars ?? 0)).slice(0, 8);
   }, [players, searchTerm]);
 
-  const nbaTour = useOnboardingTour(NBA_TOUR_ID);
+  const nbaTour = useOnboardingTour(NBA_TOUR_ID, { enabled: !isLoading });
 
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
@@ -437,7 +437,7 @@ export default function HomeNBA() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
             {/* Left: Outras oportunidades quentes (3 cards + CTA no slot 4 do grid 2x2) */}
-            <div className="lg:col-span-3 flex flex-col gap-3">
+            <div data-tour="nba-hots" className="lg:col-span-3 flex flex-col gap-3">
               <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2">Outras oportunidades quentes</div>
 
               {hotOppsData.length === 0 ? (
@@ -485,7 +485,7 @@ export default function HomeNBA() {
             </div>
 
             {/* Right: KeyInjuriesRail */}
-            <div className="lg:col-span-2">
+            <div data-tour="nba-injuries" className="lg:col-span-2">
               <NBAKeyInjuriesRail
                 injuries={keyInjuriesData}
                 onSelect={(id) => navigate(`/analise-360/${id}`)}
@@ -497,7 +497,7 @@ export default function HomeNBA() {
         )}
 
         {/* Onda 4: Jogos de hoje — rich rows (desktop) / stacked cards (mobile) */}
-        <div>
+        <div data-tour="nba-jogos">
           <SectionHeader
             eyebrow="Jogos de hoje"
             title={`${games.length || 0} ${games.length === 1 ? 'partida' : 'partidas'}`}
@@ -521,7 +521,7 @@ export default function HomeNBA() {
         </div>
 
         {/* Acesso rápido — Relatório do dia (Injury Report agora vive dentro do KeyInjuriesRail) */}
-        <div>
+        <div data-tour="nba-relatorio">
           <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2 mb-3">Acesso rápido</div>
           <a
             href="/report"
