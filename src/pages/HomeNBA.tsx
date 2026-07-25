@@ -358,7 +358,9 @@ export default function HomeNBA() {
         <title>Lesões NBA Hoje e Oportunidades de Apostas do Dia | Smart Betting</title>
         <meta name="description" content="Lesões chave da NBA hoje com impacto nos companheiros, oportunidades de prop bets selecionadas e jogos do dia. Atualizado diariamente." />
       </Helmet>
-      <AnalyticsNav variant="rebrand" showBack />
+      {/* backTo fixo no hub, igual ao /futebol: /home-nba é home de produto,
+          então "voltar" significa trocar de produto, não desfazer o passo. */}
+      <AnalyticsNav variant="rebrand" showBack backTo="/inicio" />
       <OnboardingTour tourId={NBA_TOUR_ID} steps={nbaSteps} run={nbaTour.run} onFinish={nbaTour.finish} />
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">

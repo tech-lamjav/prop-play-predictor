@@ -46,6 +46,7 @@ const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const Perfil = lazyWithRetry(() => import("./pages/Perfil"));
 const Report = lazyWithRetry(() => import("./pages/Report"));
 const SharePage = lazyWithRetry(() => import("./pages/SharePage"));
 const Analise360List = lazyWithRetry(() => import("./pages/Analise360List"));
@@ -188,6 +189,13 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            {/* Tela de conta do mobile — o mesmo conteúdo que no desktop mora
+                no dropdown do pill "Perfil". */}
+            <Route path="/perfil" element={
+              <ProtectedRoute>
+                <Perfil />
               </ProtectedRoute>
             } />
             {/* Bolão Copa do Mundo — todas as rotas wrappadas em BolaoLayout

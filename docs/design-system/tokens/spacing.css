@@ -1,0 +1,30 @@
+/* ============================================================================
+   Smart Betting — Spacing scale
+   The rebrand's "aconchego" (coziness) rule: generous padding (p-5/p-6 on cards),
+   gap-5/gap-6 between sections. 4px base grid.
+   ============================================================================ */
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;   /* card padding (p-5) */
+  --space-6: 24px;   /* card padding (p-6), section gap */
+  --space-7: 28px;   /* hero vertical padding */
+  --space-8: 32px;   /* hero horizontal padding */
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---- Layout ---- */
+  --container-max: 1280px;   /* max-w-7xl */
+  --page-gutter: 24px;       /* px-6 */
+  --page-gutter-sm: 16px;    /* px-4 mobile */
+  --section-gap: 24px;       /* gap between page sections (gap-6) */
+  --card-pad: 20px;          /* default card padding */
+  --card-pad-lg: 24px;
+}

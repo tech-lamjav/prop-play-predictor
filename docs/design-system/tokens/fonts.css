@@ -1,0 +1,5 @@
+/* Smart Betting webfonts — Inter (UI/display) + JetBrains Mono (legacy terminal/data).
+   The product ships @fontsource-variable/inter; the closest hosted equivalent is
+   Inter from Google Fonts. Fraunces was intentionally dropped by the rebrand
+   ("coesão com a identidade data/profissional"), so it is NOT included. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");

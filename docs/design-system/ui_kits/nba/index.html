@@ -1,0 +1,249 @@
+<!-- @dsCard group="NBA" viewport="1280x900" name="Home NBA — daily briefing" subtitle="Flagship rebrand home: briefing, top pick hero, opportunities, games" -->
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Betting — NBA Hoje</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--font-sans)}
+  a{text-decoration:none}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+  /* nav */
+  .nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .nav .wrap{height:60px;display:flex;align-items:center;gap:28px}
+  .nav img{height:26px}
+  .navlinks{display:flex;gap:22px;margin-left:8px}
+  .navlinks a{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .navlinks a.active{color:var(--forest)}
+  .navlinks a:hover{color:var(--forest)}
+  .navright{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .prem{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:9999px;background:rgba(212,160,23,.16);color:#8a5a12;font-size:11px;font-weight:700;border:1px solid rgba(212,160,23,.3)}
+  .ava{width:34px;height:34px;border-radius:50%;background:var(--forest);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+  main{padding:24px 0 64px;display:flex;flex-direction:column;gap:28px}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.2em;font-weight:600;color:var(--ink-2)}
+  /* briefing */
+  .brief{display:grid;grid-template-columns:1.4fr 1fr;gap:24px;align-items:start}
+  h1.big{font-size:40px;font-weight:600;letter-spacing:-.02em;line-height:1;margin:4px 0 0}
+  .subline{font-size:14px;margin-top:10px;color:var(--ink-2)}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .search{position:relative;margin-top:16px;max-width:340px}
+  .search i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink-2);width:16px;height:16px}
+  .search input{height:40px;width:100%;padding:0 12px 0 34px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none}
+  .search input:focus{border-color:var(--forest);box-shadow:0 0 0 3px rgba(10,61,46,.12)}
+  /* hero */
+  .hero{position:relative;overflow:hidden;border-radius:24px;color:#fff;background:var(--gradient-hero)}
+  .hero .glow{position:absolute;top:0;right:0;width:280px;height:280px;border-radius:50%;background:var(--gradient-hero-glow);transform:translate(80px,-80px);pointer-events:none}
+  .hero .inner{position:relative;padding:28px 32px;display:grid;grid-template-columns:3fr 6fr 3fr;gap:32px}
+  .htag{display:inline-flex;align-items:center;height:28px;padding:0 11px;border-radius:8px;background:var(--amber-bright);color:var(--ink);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.18em}
+  .hphoto{width:100%;aspect-ratio:1;border-radius:16px;background:var(--gradient-photo);border:1px solid rgba(255,255,255,.1);display:grid;place-items:center;font-size:40px;font-weight:600;color:rgba(255,255,255,.55);position:relative;overflow:hidden}
+  .hphoto .tb{position:absolute;bottom:8px;right:8px;height:20px;padding:0 6px;display:inline-flex;align-items:center;border-radius:4px;font-size:10px;font-weight:700;background:rgba(0,0,0,.4)}
+  .hname{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-top:14px}
+  .hmeta{font-size:12px;color:rgba(255,255,255,.6);margin-top:3px}
+  .hnar{font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1.25;margin-top:8px;text-wrap:pretty}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .chip{height:28px;display:inline-flex;align-items:center;padding:0 10px;border-radius:6px;font-size:11px;font-weight:600}
+  .chip.g{background:rgba(212,160,23,.2);color:#fcd34d;border:1px solid rgba(212,160,23,.3)}
+  .chip.w{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85)}
+  .mstrip{display:grid;grid-template-columns:repeat(4,1fr);margin-top:20px;border:1px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.05)}
+  .mcell{padding:12px 16px;border-left:1px solid rgba(255,255,255,.1)}
+  .mcell:first-child{border-left:none}
+  .mcell .l{font-size:9px;text-transform:uppercase;letter-spacing:.16em;font-weight:600;color:rgba(255,255,255,.5)}
+  .mcell .v{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-top:6px;font-variant-numeric:tabular-nums}
+  .mcell .s{font-size:10px;margin-top:6px;color:rgba(255,255,255,.45)}
+  .score{font-size:88px;font-weight:600;letter-spacing:-.02em;color:var(--amber-bright);line-height:1;font-variant-numeric:tabular-nums;text-align:right}
+  .cta{height:44px;border-radius:10px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--amber-bright);color:var(--ink);border:none;cursor:pointer;width:100%;margin-top:20px}
+  .cta:hover{background:var(--amber-light)}
+  /* opps + injuries */
+  .cols{display:grid;grid-template-columns:3fr 2fr;gap:20px;align-items:start}
+  .oppgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;transition:box-shadow .15s,border-color .15s}
+  .card.click{cursor:pointer}
+  .card.click:hover{box-shadow:0 1px 3px rgba(0,0,0,.06);border-color:rgba(10,61,46,.3)}
+  .opp-top{display:flex;align-items:center;gap:10px}
+  .stars{color:var(--amber);font-size:12px;letter-spacing:1px}
+  .opp-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .opp-sub{font-size:11px;color:var(--ink-2);margin-top:1px}
+  .opp-nums{display:flex;gap:16px;margin-top:14px}
+  .opp-nums .n .l{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-2);font-weight:600}
+  .opp-nums .n .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:3px}
+  .ctacard{background:var(--forest-tint);border:1px solid rgba(10,61,46,.2);border-radius:20px;padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:12px}
+  .ctacard:hover{border-color:rgba(10,61,46,.4)}
+  .ctacard .ico{width:40px;height:40px;border-radius:10px;background:var(--forest);color:#fff;display:grid;place-items:center}
+  .rail{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .injrow{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+  .injrow:hover{border-color:rgba(10,61,46,.3)}
+  .inj-ava{width:38px;height:38px;border-radius:50%;background:var(--ink-3);display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--ink-2);flex-shrink:0}
+  .status{height:20px;padding:0 8px;border-radius:6px;font-size:10px;font-weight:700;display:inline-flex;align-items:center}
+  .status.out{background:#f7dcd6;color:var(--status-danger)}
+  .status.dtd{background:#fbeccd;color:#8a5a12}
+  /* games */
+  .games{background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden}
+  .grow{display:grid;grid-template-columns:70px 1fr 260px 30px;align-items:center;gap:20px;padding:16px 20px;border-top:1px solid var(--line);cursor:pointer}
+  .grow:first-child{border-top:none}
+  .grow:hover{background:var(--canvas-2)}
+  .gtime{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .gtime .d{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-dim);font-weight:600;margin-top:2px}
+  .teams{display:flex;align-items:center;gap:16px}
+  .team{display:flex;align-items:center;gap:10px}
+  .tlogo{width:36px;height:36px;border-radius:50%;background:var(--canvas-2);border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--ink-2)}
+  .tab{font-size:13px;font-weight:600}
+  .at{font-size:10px;text-transform:uppercase;letter-spacing:.16em;font-weight:700;color:var(--ink-dim)}
+  .ghl{display:flex;gap:6px;flex-wrap:wrap}
+  .hlt{height:24px;display:inline-flex;align-items:center;gap:5px;padding:0 8px;border-radius:6px;font-size:11px;font-weight:600;background:var(--forest);color:#fff}
+  .hlt .st{color:var(--amber-light)}
+  .hlt .pct{color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums}
+  .qa{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer}
+  .qa:hover{border-color:rgba(10,61,46,.3)}
+  .qa .ico{width:44px;height:44px;border-radius:12px;background:rgba(238,240,236,.6);color:var(--forest);display:grid;place-items:center;flex-shrink:0}
+  .lucide{width:18px;height:18px}
+  @media(max-width:900px){.brief,.hero .inner,.cols{grid-template-columns:1fr}.grow{grid-template-columns:60px 1fr 30px}.grow>.mid,.oppgrid{grid-template-columns:1fr}}
+</style>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
+</head>
+<body>
+<nav class="nav"><div class="wrap">
+  <img src="../../assets/logo-full.png" alt="Smart Betting">
+  <div class="navlinks">
+    <a href="#" class="active">NBA</a><a href="#">Futebol</a><a href="#">Bolão</a><a href="#">Análises</a><a href="#">Minhas apostas</a>
+  </div>
+  <div class="navright">
+    <span class="prem"><i data-lucide="crown" class="lucide" style="width:13px;height:13px"></i> Premium</span>
+    <div class="ava">RS</div>
+  </div>
+</div></nav>
+
+<main class="wrap">
+  <!-- Briefing -->
+  <section class="brief">
+    <div>
+      <div class="eyebrow">Hoje na NBA</div>
+      <h1 class="big">Quarta, 12 de março</h1>
+      <p class="subline"><b style="color:var(--ink)">8 jogos</b> · 24 oportunidades analisadas · <b style="color:var(--forest)">7 oportunidades de alta confiança</b></p>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11px;color:var(--ink-dim);font-variant-numeric:tabular-nums">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--forest);display:inline-block"></span> Atualizado às 14:32 · próxima atualização em 12min
+      </div>
+      <div class="search"><i data-lucide="search"></i><input placeholder="Buscar jogador..."></div>
+    </div>
+    <div class="kpis">
+      <div class="card" style="padding:12px 14px 10px"><div class="eyebrow" style="font-size:10px;letter-spacing:.16em">Jogos hoje</div><div style="font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1;margin-top:8px;font-variant-numeric:tabular-nums">8</div><div style="font-size:11px;color:var(--ink-dim);margin-top:6px">todos com análise</div></div>
+      <div class="card" style="padding:12px 14px 10px"><div class="eyebrow" style="font-size:10px;letter-spacing:.16em">Oport. 3★</div><div style="font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1;margin-top:8px;color:var(--forest);font-variant-numeric:tabular-nums">7</div><div style="font-size:11px;color:var(--ink-dim);margin-top:6px">alta confiança</div></div>
+      <div class="card" style="padding:12px 14px 10px"><div class="eyebrow" style="font-size:10px;letter-spacing:.16em">Lesões chave</div><div style="font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1;margin-top:8px;color:var(--status-warning);font-variant-numeric:tabular-nums">3</div><div style="font-size:11px;color:var(--ink-dim);margin-top:6px">gatilham análises</div></div>
+    </div>
+  </section>
+
+  <!-- Top pick hero -->
+  <section class="hero"><div class="glow"></div><div class="inner">
+    <div>
+      <span class="htag">Destaque do dia</span>
+      <div class="hphoto" style="margin-top:16px">AR<span class="tb">LAL</span></div>
+      <div class="hname">Austin Reaves</div>
+      <div class="hmeta">vs MIN · Hoje · 21:00</div>
+    </div>
+    <div>
+      <div class="eyebrow" style="color:rgba(255,255,255,.5)">Análise</div>
+      <p class="hnar"><span>Reaves</span> <span style="color:rgba(255,255,255,.85)">rende +34% em pontos quando Doncic fica fora — e é o que deve acontecer hoje contra MIN.</span></p>
+      <div class="chips">
+        <span class="chip g">Gatilho · Sem Doncic (fora)</span>
+        <span class="chip w">Pontos</span>
+        <span class="chip w">Linha · 24.5</span>
+      </div>
+      <div class="mstrip">
+        <div class="mcell"><div class="l">Média</div><div class="v" style="color:rgba(255,255,255,.9)">21.3</div><div class="s">temporada</div></div>
+        <div class="mcell"><div class="l">Projeção</div><div class="v" style="color:#fff">28.4</div><div class="s">com filtro</div></div>
+        <div class="mcell"><div class="l">Linha</div><div class="v" style="color:rgba(255,255,255,.9)">24.5</div><div class="s">mercado</div></div>
+        <div class="mcell"><div class="l">Vantagem</div><div class="v" style="color:var(--amber-light)">+15%</div><div class="s">sobre linha</div></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;justify-content:space-between">
+      <div style="text-align:right">
+        <div class="eyebrow" style="color:rgba(255,255,255,.5)">Score</div>
+        <div class="score">87<span style="font-size:18px;color:rgba(255,255,255,.4)">/100</span></div>
+        <div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:2px">maior do dia</div>
+      </div>
+      <button class="cta">Abrir análise completa <i data-lucide="arrow-right" class="lucide"></i></button>
+    </div>
+  </div></section>
+
+  <!-- Opps + injuries -->
+  <section class="cols">
+    <div>
+      <div class="eyebrow">Outras oportunidades quentes</div>
+      <div class="oppgrid" id="opps"></div>
+    </div>
+    <div>
+      <div class="eyebrow">Lesões-chave de hoje</div>
+      <div class="rail" id="rail"></div>
+    </div>
+  </section>
+
+  <!-- Games -->
+  <section>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px">
+      <div><div class="eyebrow">Jogos de hoje</div><div style="font-size:18px;font-weight:600;letter-spacing:-.02em;margin-top:4px">8 partidas</div></div>
+      <a href="#" style="font-size:12px;font-weight:600;color:var(--forest)">Ver todos ›</a>
+    </div>
+    <div class="games" id="games"></div>
+  </section>
+
+  <!-- Quick access -->
+  <section>
+    <div class="eyebrow" style="margin-bottom:12px">Acesso rápido</div>
+    <div class="qa"><div class="ico"><i data-lucide="file-text" class="lucide"></i></div><div style="flex:1"><div style="font-size:13px;font-weight:600">Relatório do dia</div><div style="font-size:11px;color:var(--ink-2);margin-top:2px">Resumo com as melhores análises e picks</div></div><i data-lucide="chevron-right" class="lucide" style="color:var(--ink-dim)"></i></div>
+  </section>
+</main>
+
+<script>
+const opps = [
+  {n:"Naz Reid", t:"MIN", s:3, stat:"Reb+Ast", line:"11.5", proj:"14.2", edge:"+12%", trig:"Sem Gobert"},
+  {n:"Deni Avdija", t:"POR", s:3, stat:"Pontos", line:"18.5", proj:"22.8", edge:"+18%", trig:"Sem Grant"},
+  {n:"Payton Pritchard", t:"BOS", s:2, stat:"3 Pontos", line:"2.5", proj:"3.4", edge:"+14%", trig:"Sem White"},
+];
+document.getElementById('opps').innerHTML = opps.map(o=>`
+  <div class="card click">
+    <div class="opp-top">
+      <div class="inj-ava">${o.n.split(' ').map(x=>x[0]).join('').slice(0,2)}</div>
+      <div><div class="opp-name">${o.n} <span class="stars">${'★'.repeat(o.s)}</span></div><div class="opp-sub">${o.t} · ${o.stat} · ${o.trig}</div></div>
+    </div>
+    <div class="opp-nums">
+      <div class="n"><div class="l">Projeção</div><div class="v" style="color:var(--forest)">${o.proj}</div></div>
+      <div class="n"><div class="l">Linha</div><div class="v">${o.line}</div></div>
+      <div class="n"><div class="l">Vantagem</div><div class="v" style="color:var(--amber-2)">${o.edge}</div></div>
+    </div>
+  </div>`).join('') + `
+  <div class="ctacard">
+    <div style="display:flex;align-items:center;gap:10px"><div class="ico"><i data-lucide="layout-grid" class="lucide"></i></div><div style="font-size:14px;font-weight:600;color:var(--forest);line-height:1.2">As 24 oportunidades de hoje</div></div>
+    <div style="font-size:12px;color:var(--ink-2)">Compare lado a lado e ordene por score, vantagem ou linha.</div>
+    <button class="cta" style="margin-top:0">Ver oportunidades <i data-lucide="arrow-right" class="lucide"></i></button>
+  </div>`;
+
+const inj = [
+  {n:"Luka Doncic", t:"LAL", st:"OUT", cls:"out", imp:"4 companheiros valorizados"},
+  {n:"Rudy Gobert", t:"MIN", st:"OUT", cls:"out", imp:"3 companheiros valorizados"},
+  {n:"Jerami Grant", t:"POR", st:"DTD", cls:"dtd", imp:"2 companheiros valorizados"},
+];
+document.getElementById('rail').innerHTML = inj.map(i=>`
+  <div class="injrow">
+    <div class="inj-ava">${i.n.split(' ').map(x=>x[0]).join('').slice(0,2)}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${i.n} <span style="color:var(--ink-2);font-weight:400">· ${i.t}</span></div><div style="font-size:11px;color:var(--ink-2);margin-top:2px">${i.imp}</div></div>
+    <span class="status ${i.cls}">${i.st}</span>
+  </div>`).join('');
+
+const games = [
+  {time:"21:00", v:"MIN", h:"LAL", hl:[{n:"Reaves",p:34,s:3},{n:"Reid",p:12,s:3}]},
+  {time:"21:30", v:"POR", h:"GSW", hl:[{n:"Avdija",p:18,s:3}]},
+  {time:"22:00", v:"BOS", h:"MIA", hl:[{n:"Pritchard",p:14,s:2}]},
+];
+document.getElementById('games').innerHTML = games.map(g=>`
+  <div class="grow">
+    <div class="gtime">${g.time}<div class="d">hoje</div></div>
+    <div class="mid teams">
+      <div class="team"><div class="tlogo">${g.v}</div><div class="tab">${g.v}</div></div>
+      <span class="at">@</span>
+      <div class="team"><div class="tlogo">${g.h}</div><div class="tab">${g.h}</div></div>
+    </div>
+    <div class="ghl">${g.hl.map(h=>`<span class="hlt"><span class="st">${'★'.repeat(h.s)}</span>${h.n}<span class="pct">+${h.p}%</span></span>`).join('')}</div>
+    <i data-lucide="chevron-right" class="lucide" style="color:var(--ink-dim)"></i>
+  </div>`).join('');
+
+lucide.createIcons();
+</script>
+</body></html>

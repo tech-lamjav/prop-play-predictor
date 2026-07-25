@@ -1,0 +1,11 @@
+/* ============================================================================
+   Smart Betting Design System — global entry point.
+   Consumers link THIS file. Import order: fonts → tokens → utilities.
+   Sourced from tech-lamjav/prop-play-predictor (branch: develop).
+   ============================================================================ */
+@import "./tokens/fonts.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/spacing.css";
+@import "./tokens/effects.css";
+@import "./tokens/utilities.css";

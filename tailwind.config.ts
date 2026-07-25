@@ -50,6 +50,27 @@ export default {
 					DEFAULT: '#d4a017',
 					'2': '#b8870f',
 				},
+				/* ─── Areia (sand) — cor secundária neutra quente ───
+				   Bege derivado do âmbar dessaturado. Fecha a ponte entre o off-white
+				   (--canvas) e o amarelo da marca, permitindo separar blocos sem sombra
+				   e sem introduzir uma matiz nova. Ver docs/design-system/handoff-header-footer.md */
+				sand: {
+					DEFAULT: '#f4eddc',      // faixa 1 do header, chips, pill ativo
+					'50': '#f8f4ea',         // canvas, cabeçalho do menu de perfil
+					'100': '#f1e9d6',        // footer, faixas de seção, hover de item
+					'200': '#e9dfc4',        // hover de item ghost sobre areia
+					divider: '#eee7d7',      // divisor interno do menu de perfil
+					line: '#ded2b6',         // hairline sobre areia
+					'line-2': '#e5d9bd',     // divisor entre faixa 1 e faixa 2
+					chevron: '#c4bda8',      // seta ">" dos itens de menu
+					ink: '#6b6350',          // texto secundário sobre areia forte
+					'ink-2': '#8d8672',      // texto terciário (e-mail, legendas)
+					'ink-strong': '#3f463d', // rótulo de item de menu
+					danger: '#8a3b34',       // "Sair da conta"
+					'danger-bg': '#fbeeec',  // hover do "Sair da conta"
+				},
+				/* Verde mais escuro do gradiente hero — usado na barra legal do rodapé. */
+				'forest-deep': '#051f12',
 				status: {
 					success: '#2f7d50',
 					warning: '#c97a1a',

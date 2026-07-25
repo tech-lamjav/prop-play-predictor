@@ -1,0 +1,153 @@
+<!-- @dsCard group="NBA" viewport="1280x1000" name="Dashboard do jogador" subtitle="Player header, performance bars vs line, recent games, matchup zones" -->
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Betting — Dashboard do jogador</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--font-sans)}
+  a{text-decoration:none}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+  .nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .nav .wrap{height:60px;display:flex;align-items:center;gap:28px}
+  .nav img{height:26px}
+  .navlinks{display:flex;gap:22px}
+  .navlinks a{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .navlinks a.active{color:var(--forest)}
+  .navright{margin-left:auto}
+  .ava{width:34px;height:34px;border-radius:50%;background:var(--forest);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+  main{padding:24px 0 56px}
+  .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.16em;font-weight:600;color:var(--ink-dim)}
+  .grid{display:grid;grid-template-columns:4fr 8fr;gap:20px;align-items:start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px 24px}
+  /* player header */
+  .phead{display:flex;flex-direction:column;gap:14px}
+  .pmain{display:flex;gap:16px;align-items:center}
+  .pphoto{width:88px;height:88px;border-radius:14px;background:var(--gradient-photo);display:grid;place-items:center;font-size:30px;font-weight:600;color:rgba(255,255,255,.55);position:relative;overflow:hidden;flex-shrink:0}
+  .pphoto .tb{position:absolute;bottom:6px;right:6px;height:18px;padding:0 5px;display:inline-flex;align-items:center;border-radius:4px;font-size:10px;font-weight:700;background:rgba(0,0,0,.4);color:#fff}
+  .pname{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .pmeta{font-size:13px;color:var(--ink-2);margin-top:2px}
+  .stars{color:var(--amber);font-size:14px;letter-spacing:1px;margin-top:6px}
+  .pnext{border-top:1px solid var(--line);padding-top:14px;display:flex;align-items:center;gap:12px}
+  .tlogo{width:38px;height:38px;border-radius:50%;background:var(--canvas-2);border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--ink-2)}
+  .kpirow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:2px}
+  .kpc{padding:12px 14px;border-left:1px solid var(--line)}
+  .kpc:first-child{border-left:none}
+  .kpc .l{font-size:9px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;color:var(--ink-2)}
+  .kpc .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;margin-top:6px}
+  .oppitem{border-top:1px solid var(--line);padding:12px 0;display:flex;align-items:center;justify-content:space-between}
+  .oppitem:first-of-type{border-top:none}
+  .sechead{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+  .sechead .t{font-size:18px;font-weight:700;letter-spacing:-.01em}
+  .toggle{margin-left:auto;display:inline-flex;gap:2px;padding:3px;background:var(--canvas-2);border-radius:8px}
+  .toggle button{border:none;background:none;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer}
+  .toggle button.on{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm)}
+  /* perf chart */
+  .chart{display:flex;align-items:flex-end;gap:14px;height:220px;padding-top:10px;position:relative;border-bottom:1px solid var(--line)}
+  .line{position:absolute;left:0;right:0;border-top:2px dashed var(--amber);z-index:2}
+  .line .tag{position:absolute;right:0;top:-20px;font-size:10px;font-weight:700;color:var(--amber-2);background:#fef7df;padding:1px 6px;border-radius:4px;border:1px solid #fde68a}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+  .bar .col{width:100%;border-radius:6px 6px 0 0;background:var(--forest);position:relative;min-height:4px}
+  .bar .col.under{background:var(--line-2)}
+  .bar .val{position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+  .bar .lab{font-size:10px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:600;color:var(--ink-2);text-align:right;padding:7px 8px;background:var(--canvas-2)}
+  thead th:first-child{text-align:left;border-radius:8px 0 0 8px}
+  thead th:last-child{border-radius:0 8px 8px 0}
+  tbody td{font-size:12px;text-align:right;padding:9px 8px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+  tbody td:first-child{text-align:left;font-weight:600}
+  .zones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .zone{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+  .zone .zl{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);font-weight:600}
+  .zone .zv{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:4px}
+  .zone.hot{background:#e7efe9;border-color:rgba(10,61,46,.25)}
+  .zone.hot .zv{color:var(--forest)}
+  .lucide{width:16px;height:16px}
+  @media(max-width:900px){.grid,.split{grid-template-columns:1fr}}
+</style>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
+</head><body>
+<nav class="nav"><div class="wrap">
+  <img src="../../assets/logo-full.png" alt="Smart Betting">
+  <div class="navlinks"><a href="#" class="active">NBA</a><a href="#">Futebol</a><a href="#">Bolão</a><a href="#">Análises</a></div>
+  <div class="navright"><div class="ava">RS</div></div>
+</div></nav>
+
+<main class="wrap">
+  <a href="#" style="font-size:13px;font-weight:600;color:var(--forest);display:inline-flex;align-items:center;gap:5px;margin-bottom:16px"><i data-lucide="chevron-left" class="lucide"></i> Voltar</a>
+  <div class="grid">
+    <!-- LEFT -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card phead">
+        <div class="pmain">
+          <div class="pphoto">AR<span class="tb">LAL</span></div>
+          <div><div class="pname">Austin Reaves</div><div class="pmeta">Los Angeles Lakers · SG · #15</div><div class="stars">★★★</div></div>
+        </div>
+        <div class="pnext">
+          <div class="tlogo">MIN</div>
+          <div style="flex:1"><div class="lbl">Próximo jogo</div><div style="font-size:13px;font-weight:600;margin-top:2px">vs Timberwolves · Hoje 21:00</div></div>
+          <span style="height:24px;padding:0 8px;border-radius:6px;background:#e2efe8;color:var(--status-success);font-size:11px;font-weight:700;display:inline-flex;align-items:center">Def. #27</span>
+        </div>
+        <div class="kpirow">
+          <div class="kpc"><div class="l">Pts/jogo</div><div class="v">21.3</div></div>
+          <div class="kpc"><div class="l">Últimos 5</div><div class="v" style="color:var(--forest)">25.8</div></div>
+          <div class="kpc"><div class="l">Sem Doncic</div><div class="v" style="color:var(--forest)">28.4</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sechead"><i data-lucide="zap" class="lucide" style="color:var(--forest)"></i><div class="t">Oportunidades ativas</div></div>
+        <div class="oppitem"><div><div style="font-size:14px;font-weight:600">Pontos <span style="color:var(--amber)">★★★</span></div><div style="font-size:12px;color:var(--ink-2);margin-top:2px">linha 24.5 · proj. 28.4</div></div><div style="text-align:right"><div style="font-size:22px;font-weight:700;color:var(--forest);font-variant-numeric:tabular-nums">87</div><div style="font-size:11px;color:var(--amber-2);font-weight:700">+15%</div></div></div>
+        <div class="oppitem"><div><div style="font-size:14px;font-weight:600">Pts+Ast <span style="color:var(--amber)">★★</span></div><div style="font-size:12px;color:var(--ink-2);margin-top:2px">linha 30.5 · proj. 34.2</div></div><div style="text-align:right"><div style="font-size:22px;font-weight:700;color:var(--forest);font-variant-numeric:tabular-nums">71</div><div style="font-size:11px;color:var(--amber-2);font-weight:700">+12%</div></div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card">
+        <div class="sechead"><i data-lucide="bar-chart-3" class="lucide" style="color:var(--forest)"></i><div class="t">Pontos · últimos 10 jogos</div>
+          <div class="toggle"><button class="on">Pontos</button><button>Reb</button><button>Ast</button></div>
+        </div>
+        <div class="chart" id="chart"></div>
+        <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--ink-2)">
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:8px;border-radius:2px;background:var(--forest);display:inline-block"></span> Acima da linha</span>
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:8px;border-radius:2px;background:var(--line-2);display:inline-block"></span> Abaixo</span>
+          <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:0;border-top:2px dashed var(--amber);display:inline-block"></span> Linha 24.5</span>
+        </div>
+      </div>
+      <div class="split">
+        <div class="card">
+          <div class="sechead"><div class="t" style="font-size:16px">Jogos recentes</div></div>
+          <table>
+            <thead><tr><th>Adv.</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th></tr></thead>
+            <tbody>
+              <tr><td>@ GSW</td><td>36</td><td style="color:var(--forest);font-weight:700">31</td><td>5</td><td>7</td></tr>
+              <tr><td>vs DEN</td><td>34</td><td style="color:var(--forest);font-weight:700">27</td><td>4</td><td>8</td></tr>
+              <tr><td>@ PHX</td><td>31</td><td>22</td><td>6</td><td>5</td></tr>
+              <tr><td>vs SAC</td><td>35</td><td style="color:var(--forest);font-weight:700">29</td><td>3</td><td>9</td></tr>
+              <tr><td>@ UTA</td><td>29</td><td>19</td><td>4</td><td>6</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="sechead"><div class="t" style="font-size:16px">Zonas vs MIN</div></div>
+          <div class="zones">
+            <div class="zone hot"><div class="zl">Garrafa</div><div class="zv">68%</div></div>
+            <div class="zone"><div class="zl">Meia dist.</div><div class="zv">44%</div></div>
+            <div class="zone hot"><div class="zl">3 pontos</div><div class="zv">41%</div></div>
+          </div>
+          <p style="font-size:12px;color:var(--ink-2);line-height:1.5;margin:14px 0 0">MIN cede muito na garrafa e na linha de 3 — as zonas onde Reaves mais pontua. Contexto favorável ao over.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+const games=[{v:31,u:1},{v:27,u:1},{v:22,u:0},{v:29,u:1},{v:19,u:0},{v:26,u:1},{v:33,u:1},{v:18,u:0},{v:25,u:1},{v:30,u:1}];
+const max=36, lineVal=24.5;
+document.getElementById('chart').innerHTML =
+ `<div class="line" style="bottom:${(lineVal/max)*100}%"><span class="tag">24.5</span></div>`+
+ games.map(g=>`<div class="bar"><div class="col ${g.u?'':'under'}" style="height:${(g.v/max)*100}%"><span class="val" style="color:${g.u?'var(--forest)':'var(--ink-2)'}">${g.v}</span></div></div>`).join('');
+lucide.createIcons();
+</script>
+</body></html>

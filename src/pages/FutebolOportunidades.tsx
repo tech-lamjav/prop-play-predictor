@@ -437,7 +437,9 @@ export default function FutebolOportunidades() {
         <div data-tour="fut-opp-filtros" className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
           <MarketChips value={mercado} onChange={setMercado} />
           <div className="h-px bg-line/70 sm:hidden" />
-          <div className="flex items-center gap-2 shrink-0">
+          {/* `flex-wrap`: os dois filtros somam ~294px e não cabem lado a lado
+              abaixo de ~340px. Sem isso a linha `shrink-0` estourava a página. */}
+          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
             <FilterSelect label="Faixa" value={faixa} options={faixaOptions} onChange={(v) => setFaixa(v as FaixaFilter)} />
             <FilterSelect label="Competição" value={comp} options={compOptions} onChange={(v) => setComp(v as CompFilter)} />
           </div>
