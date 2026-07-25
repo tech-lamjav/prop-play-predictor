@@ -141,7 +141,7 @@ const FutebolLP = () => {
     },
     {
       q: "De onde vêm os dados?",
-      a: "Estatísticas oficiais dos jogos e odds pré-jogo das principais casas, do Brasileirão e da Copa do Mundo, atualizadas ao longo do dia.",
+      a: "Estatísticas oficiais dos jogos e odds pré-jogo das principais casas, das principais competições do Brasil, América do Sul e Europa, atualizadas ao longo do dia.",
     },
     {
       q: "Qual a taxa de acerto de vocês?",
@@ -392,7 +392,7 @@ const FutebolLP = () => {
           <span className="hidden sm:inline text-amber-2">·</span>
           <span>Odds pré-jogo (não ao vivo)</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Brasileirão + Copa do Mundo</span>
+          <span>Brasil · América do Sul · Europa</span>
         </div>
       </section>
 

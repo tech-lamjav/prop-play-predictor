@@ -196,13 +196,8 @@ serve(async (req) => {
       return k.getTime() > now.getTime() && brtDay(k) === today && r.score >= MIN_SCORE;
     });
 
-    // melhor pick por jogo → top N por Score
-    const bestByFixture = new Map<number, BoardRow>();
-    for (const r of todayRows) {
-      const cur = bestByFixture.get(r.fixture_id);
-      if (!cur || r.score > cur.score) bestByFixture.set(r.fixture_id, r);
-    }
-    const picks = [...bestByFixture.values()].sort((a, b) => b.score - a.score).slice(0, MAX_PICKS);
+    // principais oportunidades do dia por Score — pode ter mais de uma do mesmo jogo
+    const picks = [...todayRows].sort((a, b) => b.score - a.score).slice(0, MAX_PICKS);
 
     // 3) dia fraco → silêncio (nada de mensagem "hoje não tem nada")
     if (picks.length === 0) {
