@@ -18,6 +18,8 @@ import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão', copa_mundo: 'Copa do Mundo', serie_b: 'Série B' };
@@ -234,7 +236,9 @@ export default function FutebolOportunidades() {
   const navigate = useNavigate();
   const { data: rows, isLoading } = useFutebolValueBoard();
   const { data: access } = useFutebolAccess();
-  const locked = !access?.unlocked;
+  const oppTour = useOnboardingTour(FUT_OPP_TOUR_ID, { enabled: !isLoading });
+  const isDemo = oppTour.run; // durante o tour, preenche a tela com exemplo
+  const locked = isDemo ? false : !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
   const [faixa, setFaixa] = useState<FaixaFilter>('all');
   const [comp, setComp] = useState<CompFilter>('all');
@@ -282,7 +286,8 @@ export default function FutebolOportunidades() {
     [timeUpcoming, selectedDay, mercado, faixa, comp]
   );
 
-  const bestRows = useMemo(() => groupBoardByFixture(filtered).map((bf) => bf.best), [filtered]);
+  const realBestRows = useMemo(() => groupBoardByFixture(filtered).map((bf) => bf.best), [filtered]);
+  const bestRows = isDemo ? demoFutebolBoard : realBestRows;
   const comValor = bestRows.filter((o) => o.score >= SCORE_MEDIA);
   const semValor = bestRows.filter((o) => o.score < SCORE_MEDIA);
   const nAlta = bestRows.filter((o) => faixaTone(o.faixa) === 'alta').length;
@@ -292,7 +297,6 @@ export default function FutebolOportunidades() {
   const go = (id: number) => navigate(`/futebol/jogo/${id}`);
   const key = (o: FutebolValueBoardRow) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
-  const oppTour = useOnboardingTour(FUT_OPP_TOUR_ID, { enabled: !isLoading });
   const oppSteps = useMemo(
     () => makeFutebolOportunidadesSteps({ hasDayBar: !isLoading && days.length > 0, hasBoard: bestRows.length > 0 }),
     [isLoading, days.length, bestRows.length],
@@ -316,7 +320,7 @@ export default function FutebolOportunidades() {
       <div className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex items-end justify-between gap-4">
           <div>
-            <div className={LABEL}>Oportunidades</div>
+            <div className={`${LABEL} flex items-center gap-2`}>Oportunidades{isDemo && <DemoBadge />}</div>
             <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{comValor.length} aposta{comValor.length === 1 ? '' : 's'} com valor</h1>
             <p className="text-[13px] mt-1 text-ink-2">Onde a odd paga acima da chance estimada · ranqueado por confiabilidade</p>
           </div>
@@ -331,6 +335,7 @@ export default function FutebolOportunidades() {
       </div>
 
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
+        <DemoRibbon show={isDemo} />
         <FutebolAccessBanner access={access} />
 
         {/* Filtros — desktop: 1 linha (Mercado à esq · dropdowns à dir); mobile: 2 linhas */}
