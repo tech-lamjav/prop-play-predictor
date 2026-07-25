@@ -14,6 +14,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { ANALISE360_DETAIL_TOUR_ID, nbaAnalise360DetailSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaOpportunities, demoPlayerStarsMap } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -656,8 +658,10 @@ export default function Analise360Detail() {
   const isMobile = useIsMobile();
   const posthog = usePostHog();
   const { data, isLoading, error } = useAnalise360Data();
-  const opportunities = data?.opportunities ?? [];
-  const playerStarsMap = data?.playerStarsMap ?? new Map<number, number>();
+  const a360Tour = useOnboardingTour(ANALISE360_DETAIL_TOUR_ID, { enabled: !isLoading, delay: 900 });
+  const isDemo = a360Tour.run; // durante o tour, preenche com exemplo
+  const opportunities = isDemo ? demoNbaOpportunities : (data?.opportunities ?? []);
+  const playerStarsMap = isDemo ? demoPlayerStarsMap : (data?.playerStarsMap ?? new Map<number, number>());
 
   const [selectedStat, setSelectedStat] = useState<string>('all');
   const [hoverBackup, setHoverBackup] = useState<number | null>(null);
@@ -667,7 +671,7 @@ export default function Analise360Detail() {
     posthog?.capture('nba_analise360_viewed', { product: 'nba', player_id: triggerPlayerId });
   }, [triggerPlayerId, posthog]);
 
-  const triggerIdNum = Number(triggerPlayerId);
+  const triggerIdNum = isDemo ? 101 : Number(triggerPlayerId);
   const triggerOpps = useMemo(() => opportunities.filter(o => o.trigger_player_id === triggerIdNum), [opportunities, triggerIdNum]);
 
   const triggerInfo = useMemo<TriggerInfo | null>(() => {
@@ -765,7 +769,6 @@ export default function Analise360Detail() {
   const status = triggerInfo ? normalizeStatus(triggerInfo.triggerStatus) : 'out';
   const badge = STATUS_BADGE[status];
 
-  const a360Tour = useOnboardingTour(ANALISE360_DETAIL_TOUR_ID, { enabled: !isLoading && !!triggerInfo, delay: 900 });
 
   return (
     <>
@@ -782,7 +785,7 @@ export default function Analise360Detail() {
             <Loader2 className="w-5 h-5 animate-spin text-forest opacity-70" />
             <span className="text-sm text-ink-2">Carregando...</span>
           </div>
-        ) : error ? (
+        ) : (error && !isDemo) ? (
           <div className="text-center py-32 text-sm text-status-danger">
             {(error as Error)?.message ?? 'Falha ao carregar dados'}
           </div>
@@ -793,6 +796,7 @@ export default function Analise360Detail() {
           </div>
         ) : (
           <>
+            {isDemo && <div className="px-4 sm:px-6 pt-4"><DemoRibbon show /></div>}
             {/* Page header (bg-white) */}
             <div data-tour="a360d-header" className="bg-white border-b border-line">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
@@ -807,6 +811,7 @@ export default function Analise360Detail() {
                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${badge.cls}`}>
                           {badge.short}
                         </span>
+                        {isDemo && <DemoBadge />}
                       </div>
                       <div className="flex items-center gap-2 mt-2 text-[12px] text-ink-2 flex-wrap">
                         <span className="font-medium text-ink-2">{teamAbbrToName(triggerInfo.triggerTeamAbbr)}</span>
