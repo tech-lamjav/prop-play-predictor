@@ -10,6 +10,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { BETINHO_DASH_TOUR_ID, makeBetinhoDashboardSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoBets } from '@/components/onboarding/demo/betinho';
 import { ProfitByTagChart } from '@/components/bets/ProfitByTagChart';
 import { Sparkline } from '@/components/dashboard/Sparkline';
 import { BigHeatmap, type HeatmapMetric } from '@/components/dashboard/BigHeatmap';
@@ -75,7 +77,7 @@ const PERIOD_OPTIONS: { value: DateRangePreset; label: string }[] = [
 
 export default function BettingDashboard() {
   const { user, isLoading: authLoading } = useAuth();
-  const { bets, isLoading: betsLoading } = useBets(user?.id ?? '');
+  const { bets: realBets, isLoading: betsLoading } = useBets(user?.id ?? '');
   const { toUnits, formatUnits, formatCurrency, isConfigured, refetchConfig, config } = useUserUnit();
   const { isPremium } = useBetinhoPremium();
   const navigate = useNavigate();
@@ -87,7 +89,7 @@ export default function BettingDashboard() {
   const [toPopoverOpen, setToPopoverOpen] = useState(false);
   const [showUnitsView, setShowUnitsView] = useState(false);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
-  const [betsWithTags, setBetsWithTags] = useState<BetWithTags[]>([]);
+  const [realBetsWithTags, setRealBetsWithTags] = useState<BetWithTags[]>([]);
   const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>('roi');
   const [selectedCell, setSelectedCell] = useState<{ l: number; m: number; league: string; market: string } | null>(null);
   const [sliceModalOpen, setSliceModalOpen] = useState(false);
@@ -105,21 +107,27 @@ export default function BettingDashboard() {
       }
     : formatCurrency;
 
+  const dashTour = useOnboardingTour(BETINHO_DASH_TOUR_ID, { enabled: !!user && !betsLoading, delay: 900 });
+  const isDemo = dashTour.run; // durante o tour, preenche com exemplo
+  const bets = isDemo ? (demoBets as unknown as typeof realBets) : realBets;
+  const betsWithTags = isDemo ? (demoBets as unknown as BetWithTags[]) : realBetsWithTags;
+  const dashSteps = useMemo(() => makeBetinhoDashboardSteps({ isMobile }), [isMobile]);
+
   useEffect(() => {
-    if (!bets.length) {
-      setBetsWithTags([]);
+    if (!realBets.length) {
+      setRealBetsWithTags([]);
       return;
     }
     const supabase = createClient();
     Promise.all(
-      bets.map(async (bet) => {
+      realBets.map(async (bet) => {
         const { data: tags } = await supabase.rpc('get_bet_tags', {
           p_bet_id: bet.id,
         });
         return { ...bet, tags: (tags || []) as { id: string; name: string; color?: string }[] };
       })
-    ).then(setBetsWithTags);
-  }, [bets]);
+    ).then(setRealBetsWithTags);
+  }, [realBets]);
 
   const { from, to } = useMemo(() => {
     if (period === 'custom' && customFrom && customTo) {
@@ -275,9 +283,6 @@ export default function BettingDashboard() {
     return series;
   }, [currentBets]);
 
-  const dashTour = useOnboardingTour(BETINHO_DASH_TOUR_ID, { enabled: !!user && !betsLoading, delay: 900 });
-  const dashSteps = useMemo(() => makeBetinhoDashboardSteps({ isMobile }), [isMobile]);
-
   if (authLoading) {
     return (
       <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
@@ -306,7 +311,7 @@ export default function BettingDashboard() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase">Diagnóstico</div>
+            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase flex items-center gap-2">Diagnóstico{isDemo && <DemoBadge />}</div>
             <h1 className="text-[24px] md:text-[28px] font-extrabold tracking-tight text-ink mt-1" style={{ letterSpacing: '-0.02em' }}>
               Onde você <span className="text-forest">ganha</span> e onde <span className="text-rose-700">perde</span>?
             </h1>
@@ -619,6 +624,7 @@ export default function BettingDashboard() {
           </div>
         ) : (
           <>
+            {isDemo && <DemoRibbon show />}
             {/* Tier-aware: Upsell (Free) ou Betinho Narrative + Insight cards (Pro) */}
             <div data-tour="dash-diagnostico" className="space-y-4">
             {isPremium ? (
