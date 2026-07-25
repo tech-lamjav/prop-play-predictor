@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { BANKROLL_TOUR_ID, bankrollSteps } from '@/components/onboarding/tours';
 import { CashFlowTable } from '../components/bets/CashFlowTable';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements, type CapitalMovement } from '@/hooks/use-capital-movements';
@@ -92,6 +95,8 @@ export default function Bankroll() {
   const [movementSaving, setMovementSaving] = useState(false);
   const [deletingMovementId, setDeletingMovementId] = useState<string | null>(null);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
+
+  const bankrollTour = useOnboardingTour(BANKROLL_TOUR_ID, { enabled: !!user && !isLoading });
 
   useEffect(() => {
     if (user?.id) {
@@ -192,6 +197,7 @@ export default function Bankroll() {
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={BANKROLL_TOUR_ID} steps={bankrollSteps} run={bankrollTour.run} onFinish={bankrollTour.finish} />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
@@ -201,7 +207,7 @@ export default function Bankroll() {
             <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minha banca</h1>
             <p className="text-[13px] text-ink-2 mt-1">Visão geral, evolução e histórico de movimentações</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div data-tour="bankroll-acoes" className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -260,7 +266,7 @@ export default function Bankroll() {
           const profitPct = startBalance > 0 ? (betProfit / startBalance) * 100 : 0;
 
           return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div data-tour="bankroll-resumo" className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-white border border-line rounded-lg p-4">
                 <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Saldo atual</div>
                 <div className="text-[22px] font-semibold tabular text-ink mt-1 leading-tight">{formatCurrency(currentBalance)}</div>
@@ -295,6 +301,7 @@ export default function Bankroll() {
           );
         })()}
 
+        <div data-tour="bankroll-extrato">
         <CashFlowTable
           bets={bets}
           initialBankroll={config.bank_amount}
@@ -314,6 +321,7 @@ export default function Bankroll() {
           onDeleteCapitalMovement={(id) => setDeletingMovementId(id)}
           canEditMovement={(id) => capitalMovements.find((m) => m.id === id)?.source === 'manual'}
         />
+        </div>
       </main>
 
       <Dialog

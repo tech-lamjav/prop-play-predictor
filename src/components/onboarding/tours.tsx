@@ -456,6 +456,43 @@ export function makeBetinhoSteps({
   return steps;
 }
 
+export const BANKROLL_TOUR_ID = 'bankroll';
+
+// Fluxo de caixa (/bankroll) — tela simples, sem variações relevantes de
+// viewport, então array estático.
+export const bankrollSteps: Step[] = [
+  {
+    id: 'bankroll-intro',
+    target: 'body',
+    placement: 'center',
+    title: 'O fluxo de caixa da banca',
+    content: 'Aqui fica o dinheiro que entra e sai da sua banca, separado do lucro das apostas.',
+  },
+  {
+    id: 'bankroll-acoes',
+    target: '[data-tour="bankroll-acoes"]',
+    placement: 'bottom',
+    title: 'Aportes e resgates',
+    content:
+      'Registre aportes (o que você põe) e resgates (o que você tira) por aqui. O saldo recalcula na hora.',
+  },
+  {
+    id: 'bankroll-resumo',
+    target: '[data-tour="bankroll-resumo"]',
+    placement: 'bottom',
+    title: 'O resumo da banca',
+    content: 'Saldo atual, total aportado, total retirado e o lucro acumulado das apostas.',
+  },
+  {
+    id: 'bankroll-extrato',
+    target: '[data-tour="bankroll-extrato"]',
+    placement: 'top',
+    title: 'O extrato',
+    content:
+      'O histórico em ordem: cada aposta liquidada, aporte e resgate, com o saldo evoluindo linha a linha.',
+  },
+];
+
 export const nbaSteps: Step[] = [
   {
     id: 'nba-hero',
