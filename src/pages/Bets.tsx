@@ -9,12 +9,14 @@ import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ShareLinkModal } from '@/components/bets/ShareLinkModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
-import { useCapitalMovements } from '@/hooks/use-capital-movements';
+import { useCapitalMovements, type CapitalMovement } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useIsMobile } from '@/hooks/use-mobile';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { BETINHO_TOUR_ID, makeBetinhoSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoBets, demoMovements } from '@/components/onboarding/demo/betinho';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { mergeVocab, canonicalizeVocab, vocabHasValue } from '@/utils/betVocab';
 import { usePostHog } from '@posthog/react';
@@ -674,7 +676,7 @@ export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
-  const { movements: capitalMovements, addMovement } = useCapitalMovements(user?.id);
+  const { movements: realCapitalMovements, addMovement } = useCapitalMovements(user?.id);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -692,9 +694,12 @@ export default function Bets() {
   const [isLoading, setIsLoading] = useState(true);
 
   const betinhoTour = useOnboardingTour(BETINHO_TOUR_ID, { enabled: !!user && !isLoading, delay: 900 });
+  const isDemo = betinhoTour.run; // durante o tour, preenche a banca com exemplo
+  const displayBets = isDemo ? (demoBets as unknown as Bet[]) : bets;
+  const capitalMovements = isDemo ? (demoMovements as unknown as CapitalMovement[]) : realCapitalMovements;
   const betinhoSteps = useMemo(
-    () => makeBetinhoSteps({ isMobile, hasEmptyState: bets.length === 0 }),
-    [isMobile, bets.length],
+    () => makeBetinhoSteps({ isMobile, hasEmptyState: displayBets.length === 0 }),
+    [isMobile, displayBets.length],
   );
 
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
@@ -1466,7 +1471,7 @@ export default function Bets() {
   }, [bets]);
 
   const filteredBets = useMemo(() => {
-    return bets.filter(bet => {
+    return displayBets.filter(bet => {
       // Filter by status: if any statuses selected, bet must match one of them
       if (filters.status.length > 0 && !filters.status.includes(bet.status)) return false;
       
@@ -1558,7 +1563,7 @@ export default function Bets() {
 
       return true;
     });
-  }, [bets, filters]);
+  }, [displayBets, filters]);
 
   // Sort logic
   const sortedBets = useMemo(() => {
@@ -2465,7 +2470,7 @@ export default function Bets() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Apostas</div>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">Apostas{isDemo && <DemoBadge />}</div>
             <h1 data-tour="betinho-hero" className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
             <p className="text-[13px] text-ink-2 mt-1 tabular">
               {stats.totalBets} {stats.totalBets === 1 ? 'aposta registrada' : 'apostas registradas'}
@@ -2565,8 +2570,9 @@ export default function Bets() {
       </div>
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 focus:outline-none">
+        {isDemo && <div className="mb-6"><DemoRibbon show /></div>}
         {/* Onboarding cards — usuário sem nenhuma aposta. Aparecem ACIMA do conteúdo regular */}
-        {!isLoading && bets.length === 0 && (
+        {!isLoading && displayBets.length === 0 && (
           <div data-tour="betinho-telegram" className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
             {/* Primary CTA — Telegram */}
             <div className="bg-forest text-white rounded-xl p-6 md:p-8 relative overflow-hidden">
@@ -2675,7 +2681,7 @@ export default function Bets() {
         {!isMobile && (
         <div data-tour="betinho-evolucao" className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
           <BankrollEvolutionChart
-            bets={bets}
+            bets={displayBets}
             initialBankroll={config.bank_amount}
             capitalMovements={capitalMovements}
             onUpdateBankroll={async (amount) => {
