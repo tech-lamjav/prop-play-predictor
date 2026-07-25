@@ -6,6 +6,9 @@ import {
   FileText,
 } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { NBA_GAMES_TOUR_ID, nbaGamesSteps } from '@/components/onboarding/tours';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -510,7 +513,7 @@ export default function Games() {
   };
 
   const dateNavBlock = (
-    <div className="bg-white border border-line rounded-xl flex items-center justify-between p-2">
+    <div data-tour="nba-games-data" className="bg-white border border-line rounded-xl flex items-center justify-between p-2">
       <button
         type="button"
         onClick={() => navigateDate(-1)}
@@ -577,6 +580,8 @@ export default function Games() {
     ? `${sortedGames.length} ${sortedGames.length === 1 ? 'partida · hoje' : 'partidas · hoje'}`
     : `${sortedGames.length} ${sortedGames.length === 1 ? 'partida' : 'partidas'}`;
 
+  const gamesTour = useOnboardingTour(NBA_GAMES_TOUR_ID, { enabled: !isLoading });
+
   return (
     <>
       <Helmet>
@@ -585,6 +590,7 @@ export default function Games() {
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
+        <OnboardingTour tourId={NBA_GAMES_TOUR_ID} steps={nbaGamesSteps} run={gamesTour.run} onFinish={gamesTour.finish} />
 
         {/* Page header (bg-white) */}
         <div className="bg-white border-b border-line">
@@ -602,7 +608,7 @@ export default function Games() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* ── Games column ── */}
-          <section className="min-w-0">
+          <section data-tour="nba-games-lista" className="min-w-0">
             {/* Date picker — só renderiza no mobile (uma instância só pra evitar Popover duplicado) */}
             {isMobile && (
               <div className="mb-3">
@@ -653,7 +659,7 @@ export default function Games() {
           </section>
 
           {/* ── Sidebar ── */}
-          <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+          <aside data-tour="nba-games-sidebar" className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             {/* Date picker — só renderiza no desktop (mobile aparece acima dos jogos) */}
             {!isMobile && dateNavBlock}
 

@@ -544,6 +544,41 @@ export const nbaSteps: Step[] = [
   },
 ];
 
+export const NBA_GAMES_TOUR_ID = 'nba-games';
+
+// Jogos NBA (/home-games). dateNavBlock renderiza 1x conforme viewport, então
+// a âncora vai na definição dele; demais seções são container único.
+export const nbaGamesSteps: Step[] = [
+  {
+    id: 'nba-games-intro',
+    target: 'body',
+    placement: 'center',
+    title: 'Os jogos da NBA',
+    content: 'Todos os jogos de NBA do dia, num lugar só.',
+  },
+  {
+    id: 'nba-games-data',
+    target: '[data-tour="nba-games-data"]',
+    placement: 'bottom',
+    title: 'Escolha o dia',
+    content: 'Navegue entre as datas aqui pra ver os jogos de outros dias.',
+  },
+  {
+    id: 'nba-games-lista',
+    target: '[data-tour="nba-games-lista"]',
+    placement: 'top',
+    title: 'Os jogos',
+    content: 'Cada card é um jogo: horário, times e o placar quando rola. Toque pra abrir o confronto completo.',
+  },
+  {
+    id: 'nba-games-sidebar',
+    target: '[data-tour="nba-games-sidebar"]',
+    placement: 'top',
+    title: 'Atalhos do dia',
+    content: 'Na lateral: a oportunidade do dia, o injury report e o atalho pro relatório.',
+  },
+];
+
 export const bolaoSteps: Step[] = [
   {
     id: 'bolao-hero',
