@@ -2,6 +2,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones, PlayerPassingSeason } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { NBA_DASH_TOUR_ID, makeNbaDashSteps } from '@/components/onboarding/tours';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
 import { PlayerHeader } from '@/components/nba/PlayerHeader';
@@ -311,6 +314,20 @@ export default function NBADashboard() {
     return Math.floor(avg) + 0.5;
   }, [gameStats, periodStats, historicalStats, selectedSeason, gamePeriod, selectedStatType]);
 
+  // Breakpoint lg (1024) pra o tour ancorar no bloco visível (desktop vs mobile
+  // são duplicados no DOM via CSS; useIsMobile=768 não bateria).
+  const [dashIsLgUp, setDashIsLgUp] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const on = () => setDashIsLgUp(mql.matches);
+    mql.addEventListener('change', on);
+    return () => mql.removeEventListener('change', on);
+  }, []);
+  const dashTour = useOnboardingTour(NBA_DASH_TOUR_ID, { enabled: !!player, delay: 1000 });
+  const dashSteps = useMemo(() => makeNbaDashSteps({ mobile: !dashIsLgUp }), [dashIsLgUp]);
+
   // Early returns (after all hooks)
   if (!authLoading && !user && player && !isFree && !isPicksTrial) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
@@ -607,6 +624,7 @@ export default function NBADashboard() {
   return (
     <div className="w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={NBA_DASH_TOUR_ID} steps={dashSteps} run={dashTour.run} onFinish={dashTour.finish} />
       <main className="container mx-auto px-3 py-4">
         {(() => {
           const playerHeaderEl = (
@@ -798,10 +816,10 @@ export default function NBADashboard() {
             <>
               {/* Mobile layout — single column reordered */}
               <div className="lg:hidden flex flex-col gap-3" ref={chartRef}>
-                {playerHeaderEl}
+                <div data-tour="nba-dash-header-m">{playerHeaderEl}</div>
                 {nextGameEl}
-                {opportunitiesEl}
-                {gameChartEl}
+                <div data-tour="nba-dash-opps-m">{opportunitiesEl}</div>
+                <div data-tour="nba-dash-chart-m">{gameChartEl}</div>
                 {zonesEl}
                 {matchupEl}
                 {recentGamesEl}
@@ -811,13 +829,13 @@ export default function NBADashboard() {
               {/* Desktop layout — 3-col grid */}
               <div className="hidden lg:grid lg:grid-cols-3 gap-3">
                 <div className="lg:col-span-1 space-y-3">
-                  {playerHeaderEl}
+                  <div data-tour="nba-dash-header">{playerHeaderEl}</div>
                   {nextGameEl}
-                  {opportunitiesEl}
+                  <div data-tour="nba-dash-opps">{opportunitiesEl}</div>
                   {teammatesEl}
                 </div>
                 <div className="lg:col-span-2 space-y-3">
-                  {gameChartEl}
+                  <div data-tour="nba-dash-chart">{gameChartEl}</div>
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-stretch">
                     {recentGamesEl}
                     {zonesEl}

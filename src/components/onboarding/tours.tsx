@@ -608,6 +608,46 @@ export const nbaGameSteps: Step[] = [
   },
 ];
 
+export const NBA_DASH_TOUR_ID = 'nba-dashboard';
+
+// Dashboard do jogador (/nba-dashboard/:player). Blocos desktop/mobile são
+// DUPLICADOS no DOM (toggle por CSS no breakpoint lg=1024). `mobile` escolhe o
+// alvo do bloco visível (a página calcula via matchMedia 1024, não useIsMobile).
+export function makeNbaDashSteps({ mobile }: { mobile: boolean }): Step[] {
+  const t = (id: string) => `[data-tour="${id}${mobile ? '-m' : ''}"]`;
+  return [
+    {
+      id: 'nba-dash-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'O dashboard do jogador',
+      content: 'Médias, histórico e as props do dia deste jogador, tudo num lugar.',
+    },
+    {
+      id: 'nba-dash-header',
+      target: t('nba-dash-header'),
+      placement: 'bottom',
+      title: 'O jogador em números',
+      content: 'Foto, time e as médias que importam pra ler as linhas.',
+    },
+    {
+      id: 'nba-dash-opps',
+      target: t('nba-dash-opps'),
+      placement: 'top',
+      title: 'As oportunidades do dia',
+      content: 'As props do jogador pra hoje, com a linha e a vantagem.',
+    },
+    {
+      id: 'nba-dash-chart',
+      target: t('nba-dash-chart'),
+      placement: 'top',
+      title: 'O gráfico de desempenho',
+      content:
+        'Escolha a estatística e veja jogo a jogo, com a linha da aposta na frente pra comparar.',
+    },
+  ];
+}
+
 export const bolaoSteps: Step[] = [
   {
     id: 'bolao-hero',
