@@ -1,0 +1,49 @@
+/* ============================================================================
+   Smart Betting — Typography tokens
+   Inter for all UI + display (rebrand dropped Fraunces). JetBrains Mono only for
+   the legacy "terminal" data screens. Numbers use tabular-nums throughout.
+   ============================================================================ */
+:root {
+  /* ---- Families ---- */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif; /* + tracking-tight */
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ---- Weights ---- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;  /* headline default */
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* ---- Display / headline scale (px, matches HomeNBA + hero) ---- */
+  --text-hero: 40px;       /* page H1 desktop (briefing headline) */
+  --text-hero-mobile: 26px;
+  --text-title: 26px;      /* hero narrative / big statements */
+  --text-section: 18px;    /* section titles */
+  --text-kpi: 30px;        /* KPI value */
+  --text-score: 88px;      /* giant score numeral (hero) */
+
+  /* ---- Body / label scale ---- */
+  --text-body-lg: 15px;
+  --text-body: 14px;       /* default body */
+  --text-body-sm: 13px;    /* dense UI text, buttons */
+  --text-caption: 12px;
+  --text-micro: 11px;      /* eyebrow / meta */
+  --text-nano: 10px;       /* uppercase micro-labels */
+  --text-nano-2: 9px;      /* tiny KPI labels */
+
+  /* ---- Line heights ---- */
+  --leading-tight: 1.1;
+  --leading-snug: 1.25;
+  --leading-normal: 1.5;
+
+  /* ---- Letter-spacing ---- */
+  --tracking-tight: -0.02em;   /* headlines / display */
+  --tracking-normal: 0;
+  --tracking-label: 0.14em;    /* uppercase small labels */
+  --tracking-eyebrow: 0.2em;   /* uppercase eyebrows */
+
+  /* ---- Numeric ---- */
+  --numeric-tabular: 'tnum'; /* @kind other */
+}

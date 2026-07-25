@@ -30,9 +30,9 @@ const GoogleIcon = () => (
  * 1. Se houver `location.state.from` (ProtectedRoute setou — ex: link de
  *    convite, deep link), respeita. Mantém compatibilidade com fluxos que
  *    dependem disso (BolaoLP `/bolao/comecar` passa `state.from`).
- * 2. Default = `/bolao`. Antes era `/onboarding`; mudado pra bolão por
- *    decisão do produto (Diody): bolão vira a porta de entrada padrão
- *    pós-cadastro, todos caem na home do bolão.
+ * 2. Senão, usa o `fallback` que o chamador passar. Login manda o resultado do
+ *    `resolveHomePath` (/inicio ou /onboarding); cadastro manda
+ *    `/onboarding?src=signup`.
  *
  * Bug histórico que esta função corrige: `handleSignUp` ignorava
  * `state.from` (hard-coded `/onboarding`), então quem vinha da LP do bolão
@@ -40,7 +40,9 @@ const GoogleIcon = () => (
  */
 function getRedirectTarget(
   state: unknown,
-  fallback: string = "/bolao"
+  // Sem default: os dois chamadores passam destino explícito, e um default
+  // implícito aqui já apontou pro `/bolao` muito depois da Copa acabar.
+  fallback: string
 ): string {
   const from = (state as { from?: { pathname?: string; search?: string } } | null)?.from;
   if (

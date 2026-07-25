@@ -1,0 +1,45 @@
+/* ============================================================================
+   Smart Betting — light utility layer.
+   Base body defaults + a few brand helpers (tabular numbers, hero surface,
+   eyebrow label, card). Consumers can use these classes directly, or just read
+   the tokens. Kept minimal — the design system is token-first.
+   ============================================================================ */
+
+body {
+  font-family: var(--font-sans);
+  background: var(--surface-page);
+  color: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Links inherit the brand green, darken on hover (rebrand pattern). */
+a { color: var(--forest); text-decoration: none; }
+a:hover { color: var(--forest-soft); }
+
+/* Tabular numbers — money, ROI, odds, scores, dates. */
+.sb-tabular { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+/* Display headline treatment. */
+.sb-display { font-family: var(--font-display); letter-spacing: var(--tracking-tight); font-weight: var(--weight-semibold); }
+
+/* Uppercase eyebrow / micro-label. */
+.sb-eyebrow {
+  font-size: var(--text-micro); text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow); font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+}
+
+/* Signature card: white surface, hairline border, xl radius. */
+.sb-card {
+  background: var(--surface-card); border: var(--border-hairline);
+  border-radius: var(--radius-xl); padding: var(--card-pad);
+}
+.sb-card--interactive { transition: box-shadow var(--duration-fast), border-color var(--duration-fast); }
+.sb-card--interactive:hover { box-shadow: var(--shadow-card-hover); border-color: rgba(10,61,46,0.3); }
+
+/* Forest hero surface with amber glow. */
+.sb-hero {
+  background: var(--gradient-hero); color: var(--text-on-forest);
+  border-radius: var(--radius-2xl); position: relative; overflow: hidden;
+}

@@ -19,4 +19,11 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    // Por padrão o Vite varre todo `**/*.html` atrás de entry points e tenta
+    // resolver os imports. Os UI kits estáticos em docs/design-system/ são
+    // protótipos (CDN, caminhos relativos) e quebram o scan — a app tem um
+    // entry point só.
+    entries: ["index.html"],
+  },
 }));
