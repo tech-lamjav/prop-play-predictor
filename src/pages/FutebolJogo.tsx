@@ -23,6 +23,8 @@ import type {
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoFixtureDetail, demoFixtureValueRows, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
 
 const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
   'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
@@ -644,22 +646,26 @@ export default function FutebolJogo() {
   const fid = fixtureId ? Number(fixtureId) : undefined;
   const { data, isLoading, isError } = useFutebolFixtureDetail(fid);
   const { data: extras, isLoading: extrasLoading } = useFutebolFixtureExtras(fid);
+  const jogoTour = useOnboardingTour(FUT_JOGO_TOUR_ID, { enabled: !isLoading, delay: 1200 });
+  const isDemo = jogoTour.run; // durante o tour, preenche a tela com exemplo
 
-  const fixture = data?.fixture;
+  const fixture = isDemo ? demoFixtureDetail.fixture : data?.fixture;
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
-  const { data: tend } = useFutebolMatchupTendencies(
+  const { data: realTend } = useFutebolMatchupTendencies(
     fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
   );
+  const tend = isDemo ? { home: demoTeamSeason, away: demoAwaySeason } : realTend;
   const tendencies = useMemo(() => {
     if (!fixture || !tend?.home || !tend?.away) return null;
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   const head = tendencies ? headlineMarket(tendencies.markets) : null;
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
-  const { data: valueRows } = useFutebolFixtureValue(fid);
+  const { data: realValueRows } = useFutebolFixtureValue(fid);
+  const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
   const { data: access } = useFutebolAccess();
-  const locked = !access?.unlocked;
+  const locked = isDemo ? false : !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"
   const { data: homeProfile } = useFutebolTeamProfile(fixture?.home_team_id, fixture?.competition as Competition, fixture?.season as number);
   const { data: awayProfile } = useFutebolTeamProfile(fixture?.away_team_id, fixture?.competition as Competition, fixture?.season as number);
@@ -691,7 +697,6 @@ export default function FutebolJogo() {
     (h2h && h2h.length) || extras?.form_home?.length || extras?.form_away?.length
   );
 
-  const jogoTour = useOnboardingTour(FUT_JOGO_TOUR_ID, { enabled: !isLoading && !!fixture, delay: 1200 });
   const jogoSteps = useMemo(
     () => makeFutebolJogoSteps({
       hasValue: showValue,
@@ -712,16 +717,17 @@ export default function FutebolJogo() {
             <Skeleton className="h-10 w-full bg-canvas-2 rounded-rebrand-md" />
             <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
           </div>
-        ) : isError || !fixture ? (
+        ) : !fixture ? (
           <div className={`${CARD} p-6 text-center text-sm text-status-danger`}>
             Não foi possível carregar este jogo.
           </div>
         ) : (
           <>
+            {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
             {/* Header */}
             <div data-tour="fut-jogo-header" className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
               <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
-                <span>{prettyRound(fixture.round)}</span>
+                {isDemo && <DemoBadge />}<span>{prettyRound(fixture.round)}</span>
                 {fixture.venue_name && (
                   <><span>•</span><MapPin className="w-3 h-3" /><span>{fixture.venue_name}{fixture.venue_city ? `, ${fixture.venue_city}` : ''}</span></>
                 )}

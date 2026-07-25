@@ -1,4 +1,4 @@
-import type { FutebolValueBoardRow, FutebolFixture, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolFixture, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason, FutebolFixtureDetail, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 
 // Dados de EXEMPLO (fictícios) pro onboarding guiado — usados só enquanto o tour
 // roda, pra a tela nunca ficar vazia. Nada aqui é real. Times/valores ilustrativos.
@@ -154,6 +154,60 @@ export const demoTeamFixtures: FutebolFixture[] = [
   fx({ fixture_id: 8904, home_team_id: 130, away_team_id: 121, home_team_name: 'Grêmio', away_team_name: 'Palmeiras', status_short: 'FT', status_long: 'Match Finished', goals_home: 1, goals_away: 1, kickoff_utc: '2025-07-15T23:30:00Z', date_utc: '2025-07-15' }),
   fx({ fixture_id: 8905, home_team_id: 121, away_team_id: 127, home_team_name: 'Palmeiras', away_team_name: 'Flamengo', status_short: 'FT', status_long: 'Match Finished', goals_home: 0, goals_away: 1, kickoff_utc: '2025-07-10T21:30:00Z', date_utc: '2025-07-10' }),
   fx({ fixture_id: 8906, home_team_id: 119, away_team_id: 121, home_team_name: 'Internacional', away_team_name: 'Palmeiras', status_short: 'FT', status_long: 'Match Finished', goals_home: 0, goals_away: 2, kickoff_utc: '2025-07-06T20:00:00Z', date_utc: '2025-07-06' }),
+];
+
+// Temporada do visitante (pro modelo de gols do detalhe do jogo).
+export const demoAwaySeason: FutebolTeamSeason = {
+  form: 'WLWDW',
+  played_total: 19, played_home: 9, played_away: 10,
+  wins_total: 12, wins_home: 7, wins_away: 5,
+  draws_total: 5, draws_home: 2, draws_away: 3,
+  loses_total: 2, loses_home: 0, loses_away: 2,
+  goals_for_avg_total: 1.7, goals_for_avg_home: 2.0, goals_for_avg_away: 1.4,
+  goals_against_avg_total: 0.9, goals_against_avg_home: 0.7, goals_against_avg_away: 1.1,
+  clean_sheet_total: 8, clean_sheet_home: 5, clean_sheet_away: 3,
+  failed_to_score_total: 3,
+  biggest_streak_wins: 5, biggest_streak_loses: 1,
+  penalty_total: 3, penalty_scored_pct: 67,
+};
+
+// Detalhe do jogo de exemplo (/futebol/jogo/:id) — Palmeiras x Flamengo.
+export const demoFixtureDetail: FutebolFixtureDetail = {
+  fixture: {
+    ...fx({ fixture_id: 9001, home_team_id: 121, away_team_id: 127, home_team_name: 'Palmeiras', away_team_name: 'Flamengo', kickoff_utc: '2025-08-10T21:30:00Z', date_utc: '2025-08-10' }),
+    competition: 'brasileirao', season: 2026, status_elapsed: null,
+    venue_name: 'Allianz Parque', venue_city: 'São Paulo',
+    score_halftime_home: null, score_halftime_away: null,
+  },
+  stats: [],
+};
+
+// Oportunidades do jogo (WhatToWatch + Explorar mercados).
+const vr = (over: Partial<FutebolFixtureValueRow>): FutebolFixtureValueRow => ({
+  market: 'match_winner', outcome: 'Home', outcome_order: 1, line_value: null,
+  edge: 0.05, best_odd: 2, best_book: 'Bet365', avg_odd: 1.95, n_casas: 6, janela_usada: 't1h',
+  prob_justa_fechamento: 0.5, pts_valor: 20, pts_premissas: 20, pts_corroboracao: 15,
+  penalidades: 0, penalidades_globais_pts: 0, penalidades_especificas_pts: 0,
+  score: 50, faixa: 'Média', modelo_api_concorda: true, linha_sharp_confirma: true,
+  evidencias: [], avisos: [], contras: [], ...over,
+});
+
+export const demoFixtureValueRows: FutebolFixtureValueRow[] = [
+  vr({
+    market: 'match_winner', outcome: 'Home', outcome_order: 1, best_odd: 2.10, avg_odd: 1.98,
+    edge: 0.123, prob_justa_fechamento: 0.52, score: 74, faixa: 'Alta',
+    evidencias: [
+      'Mandante forte em casa (8V em 10 jogos) e melhor ataque do returno.',
+      'Adversário sem o titular do meio-campo, criando menos.',
+      'Odd acima da linha justa nas principais casas.',
+    ],
+    contras: ['Visitante vem de vitória fora e não sofre gols há 3 jogos.'],
+    avisos: [],
+  }),
+  vr({ market: 'match_winner', outcome: 'Draw', outcome_order: 2, best_odd: 3.30, avg_odd: 3.2, edge: 0.02, prob_justa_fechamento: 0.28, score: 46, faixa: 'Média' }),
+  vr({ market: 'match_winner', outcome: 'Away', outcome_order: 3, best_odd: 3.60, avg_odd: 3.5, edge: -0.03, prob_justa_fechamento: 0.24, score: 33, faixa: 'Baixa' }),
+  vr({ market: 'goals_over_under', outcome: 'Over', outcome_order: 1, line_value: 2.5, best_odd: 1.95, avg_odd: 1.9, edge: 0.06, prob_justa_fechamento: 0.55, score: 58, faixa: 'Média' }),
+  vr({ market: 'goals_over_under', outcome: 'Under', outcome_order: 2, line_value: 2.5, best_odd: 1.90, avg_odd: 1.85, edge: -0.01, prob_justa_fechamento: 0.45, score: 39, faixa: 'Baixa' }),
 ];
 
 // Artilheiros de exemplo.
