@@ -10,6 +10,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { ANALISE360_LIST_TOUR_ID, makeAnalise360ListSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaOpportunities, demoPlayerStarsMap } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 import {
   Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -244,8 +246,10 @@ type StatusFilter = 'all' | 'out' | 'doubtful' | 'questionable';
 export default function Analise360List() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useAnalise360Data();
-  const opportunities = data?.opportunities ?? [];
-  const playerStarsMap = data?.playerStarsMap ?? new Map<number, number>();
+  const a360ListTour = useOnboardingTour(ANALISE360_LIST_TOUR_ID, { enabled: !isLoading });
+  const isDemo = a360ListTour.run; // durante o tour, preenche com exemplo
+  const opportunities = isDemo ? demoNbaOpportunities : (data?.opportunities ?? []);
+  const playerStarsMap = isDemo ? demoPlayerStarsMap : (data?.playerStarsMap ?? new Map<number, number>());
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   // exactStars: 0 = todos; 1/2/3 = exatamente N estrelas
@@ -337,7 +341,6 @@ export default function Analise360List() {
 
   const todayLabel = getSaoPauloTodayLabel();
 
-  const a360ListTour = useOnboardingTour(ANALISE360_LIST_TOUR_ID, { enabled: !isLoading });
   const a360ListSteps = useMemo(
     () => makeAnalise360ListSteps({ hasGrid: !isLoading && triggerGroups.length > 0 }),
     [isLoading, triggerGroups.length],
@@ -365,6 +368,7 @@ export default function Analise360List() {
                   <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 bg-amber-100 text-amber-700 rounded-md whitespace-nowrap">
                     impacto de cada lesão
                   </span>
+                  {isDemo && <DemoBadge />}
                 </div>
                 <p className="text-[13px] md:text-[14px] mt-1.5 text-ink-2 max-w-2xl leading-snug">
                   Quem se beneficia quando um titular não joga. Cada card é uma lesão; clique para
@@ -381,6 +385,7 @@ export default function Analise360List() {
         </div>
 
         <main id="main-content" className="max-w-6xl mx-auto px-4 py-6">
+          {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
           {/* Filters bar */}
           {!isLoading && triggerGroups.length > 0 && (
             <>

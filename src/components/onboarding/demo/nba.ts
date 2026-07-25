@@ -49,6 +49,11 @@ const opp = (over: Partial<DailyOpportunity>): DailyOpportunity => ({
   rating_stars: 4, spread: -3.5, blowout_deflator: 1, ...over,
 });
 
+// Estrelas por jogador (id → rating_stars) — usado na Análise 360.
+export const demoPlayerStarsMap: Map<number, number> = new Map(
+  demoNbaPlayers.map((p) => [p.player_id, p.rating_stars]),
+);
+
 export const demoNbaOpportunities: DailyOpportunity[] = [
   opp({ trigger_player_id: 101, trigger_name: 'LeBron James', backup_player_id: 105, backup_player_name: 'Austin Reaves', stat_type: 'PTS', line_value: 19.5, gap_pct: 38, score: 82, score_label: 'Alta', rating_stars: 5 }),
   opp({ trigger_player_id: 101, trigger_name: 'LeBron James', backup_player_id: 106, backup_player_name: 'Rui Hachimura', stat_type: 'REB', avg_com: 5.1, avg_sem: 7.8, line_value: 6.5, gap_pct: 30, score: 71, score_label: 'Alta', rating_stars: 5 }),
