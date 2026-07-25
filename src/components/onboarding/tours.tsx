@@ -392,6 +392,53 @@ export function makeBetinhoDashboardSteps({ isMobile }: { isMobile: boolean }): 
   ];
 }
 
+export const FUTEBOL_TIME_TOUR_ID = 'futebol-time';
+
+// Perfil do time (/futebol/time/:id). Raio-X é condicional a dados.
+export function makeFutebolTimeSteps({ hasRaiox }: { hasRaiox: boolean }): Step[] {
+  const steps: Step[] = [
+    {
+      id: 'ftime-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'O perfil do time',
+      content: 'Como o time vem jogando, traduzido em números.',
+    },
+    {
+      id: 'ftime-header',
+      target: '[data-tour="ftime-header"]',
+      placement: 'bottom',
+      title: 'O panorama',
+      content: 'Posição na tabela, forma recente e o balanço de vitórias, empates e derrotas.',
+    },
+    {
+      id: 'ftime-medias',
+      target: '[data-tour="ftime-medias"]',
+      placement: 'top',
+      title: 'Médias e eficiência',
+      content:
+        'As médias por mando (geral, casa e fora) e a eficiência: gols reais contra o esperado (xG), pra ver se o time está numa fase quente ou fria.',
+    },
+  ];
+  if (hasRaiox) {
+    steps.push({
+      id: 'ftime-raiox',
+      target: '[data-tour="ftime-raiox"]',
+      placement: 'top',
+      title: 'O raio-X da temporada',
+      content: 'Clean sheets, sequências, e a frequência de over 2.5 e de ambos marcam.',
+    });
+  }
+  steps.push({
+    id: 'ftime-resultados',
+    target: '[data-tour="ftime-resultados"]',
+    placement: 'top',
+    title: 'Os últimos jogos',
+    content: 'Os resultados recentes, com placar, adversário e mando.',
+  });
+  return steps;
+}
+
 // Betinho (/bets) — gestão de banca. Multi-passo. Desktop e mobile têm blocos
 // separados de KPIs/gráfico, então o alvo de "seus números" muda por viewport;
 // o passo do Telegram só entra na banca vazia (é onde o CTA grande aparece).

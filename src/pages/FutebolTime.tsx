@@ -4,6 +4,9 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolTeamProfile, useFutebolTeamSeason, useFutebolStandings, useFutebolFixtures } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUTEBOL_TIME_TOUR_ID, makeFutebolTimeSteps } from '@/components/onboarding/tours';
 import type { Competition, FutebolScopeResult, FutebolScopeStats } from '@/services/futebol-data.service';
 
 // Paleta do mockup (espelha theme-bolao)
@@ -167,9 +170,13 @@ export default function FutebolTime() {
       });
   }, [fixtures, tid]);
 
+  const timeTour = useOnboardingTour(FUTEBOL_TIME_TOUR_ID, { enabled: !isLoading && !!profile?.team });
+  const timeSteps = useMemo(() => makeFutebolTimeSteps({ hasRaiox: !!raiox }), [raiox]);
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={FUTEBOL_TIME_TOUR_ID} steps={timeSteps} run={timeTour.run} onFinish={timeTour.finish} />
       <div className="max-w-5xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {isLoading ? (
           <div className="space-y-5">
@@ -185,7 +192,7 @@ export default function FutebolTime() {
         ) : (
           <div className="flex flex-col gap-5">
             {/* ── Header magazine ── */}
-            <div className={CARD}>
+            <div data-tour="ftime-header" className={CARD}>
               <div className="px-5 md:px-8 py-5 md:py-6 flex items-center gap-4 md:gap-5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                 <Crest name={profile.team.team_name || ''} id={profile.team.team_id} size={64} />
                 <div className="flex-1 min-w-0">
@@ -216,7 +223,7 @@ export default function FutebolTime() {
             </div>
 
             {/* ── Médias por mando · Eficiência ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div data-tour="ftime-medias" className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Médias */}
               <div className={CARD}>
                 <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
@@ -240,7 +247,7 @@ export default function FutebolTime() {
                     <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Eficiência · gols × xG</div>
                     {efic && <span className="text-[10px] font-semibold text-ink-3 whitespace-nowrap">totais · {efic.games} {efic.games === 1 ? 'jogo' : 'jogos'}</span>}
                   </div>
-                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar — e os dois tendem a se normalizar.</div>
+                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar, e os dois tendem a se normalizar.</div>
                 </div>
                 {efic ? (
                   <div className="p-5 flex flex-col gap-5">
@@ -255,7 +262,7 @@ export default function FutebolTime() {
 
             {/* ── Raio-X da temporada ── */}
             {raiox && (
-              <div className={CARD}>
+              <div data-tour="ftime-raiox" className={CARD}>
                 <div className="px-5 py-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                   <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Raio-X da temporada</div>
                 </div>
@@ -279,7 +286,7 @@ export default function FutebolTime() {
             )}
 
             {/* ── Últimos resultados ── */}
-            <div className={CARD}>
+            <div data-tour="ftime-resultados" className={CARD}>
               <div className="px-5 py-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                 <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Últimos resultados</div>
               </div>
@@ -308,16 +315,16 @@ function eficVerdict(good: boolean, real: number, esperado: number): string {
   const emLinha = Math.abs(ratio) <= 0.1;
   if (good) {
     // Ataque: real = gols feitos
-    if (emLinha) return 'Marca em linha com as chances que cria — número sustentável.';
+    if (emLinha) return 'Marca em linha com as chances que cria, número sustentável.';
     return ratio > 0
-      ? 'Marca acima das chances que cria — costuma normalizar (esfriar).'
-      : 'Marca menos do que as chances valem — tende a melhorar.';
+      ? 'Marca acima das chances que cria, costuma normalizar (esfriar).'
+      : 'Marca menos do que as chances valem, tende a melhorar.';
   }
   // Defesa: real = gols sofridos
-  if (emLinha) return 'Sofre em linha com as chances do adversário — número sustentável.';
+  if (emLinha) return 'Sofre em linha com as chances do adversário, número sustentável.';
   return ratio > 0
-    ? 'Sofre mais do que as chances mereciam — tende a melhorar.'
-    : 'Sofre menos do que as chances do adversário — pode subir (regride à média).';
+    ? 'Sofre mais do que as chances mereciam, tende a melhorar.'
+    : 'Sofre menos do que as chances do adversário, pode subir (regride à média).';
 }
 
 // Barra Real vs Esperado (gols × xG)
