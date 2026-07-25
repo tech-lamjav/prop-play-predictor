@@ -185,6 +185,86 @@ export function makeFutebolOportunidadesSteps({
   return steps;
 }
 
+export const FUT_JOGO_TOUR_ID = 'futebol-jogo';
+
+// Tela /futebol/jogo/:id — análise completa da partida. Várias seções são
+// condicionais (só existem em jogo com valor / com dados descritivos), daí o
+// builder com flags. Mostrado uma vez (não por jogo).
+export function makeFutebolJogoSteps({
+  hasValue,
+  hasModel,
+  hasContext,
+}: {
+  hasValue: boolean;
+  hasModel: boolean;
+  hasContext: boolean;
+}): Step[] {
+  const steps: Step[] = [
+    {
+      id: 'fut-jogo-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'A análise do jogo',
+      content:
+        'Esta é a análise completa de uma partida. Tudo que a gente reuniu pra você decidir com base em dado.',
+    },
+    {
+      id: 'fut-jogo-header',
+      target: '[data-tour="fut-jogo-header"]',
+      placement: 'bottom',
+      title: 'O confronto',
+      content:
+        'Os dois times, a forma recente (os últimos resultados) e onde e quando o jogo acontece. Toque num escudo pra abrir o perfil do time.',
+    },
+  ];
+
+  if (hasValue) {
+    steps.push({
+      id: 'fut-jogo-oque-olhar',
+      target: '[data-tour="fut-jogo-oque-olhar"]',
+      placement: 'top',
+      title: 'O que olhar neste jogo',
+      content:
+        'A síntese da partida: a aposta de maior valor, o porquê dela, os pontos de atenção e o Score de confiabilidade num só lugar.',
+    });
+  }
+
+  if (hasModel) {
+    steps.push({
+      id: 'fut-jogo-modelo',
+      target: '[data-tour="fut-jogo-modelo"]',
+      placement: 'top',
+      title: 'Nosso modelo de gols',
+      content:
+        'Um modelo estatístico projeta os gols esperados e a probabilidade de cada mercado, a partir das médias da temporada.',
+    });
+  }
+
+  if (hasValue) {
+    steps.push({
+      id: 'fut-jogo-mercados',
+      target: '[data-tour="fut-jogo-mercados"]',
+      placement: 'top',
+      title: 'Explorar mercados',
+      content:
+        'Quer ir além da síntese? Aqui estão todos os mercados e opções, com chance, odd e valor lado a lado.',
+    });
+  }
+
+  if (hasContext) {
+    steps.push({
+      id: 'fut-jogo-contexto',
+      target: '[data-tour="fut-jogo-contexto"]',
+      placement: 'top',
+      title: 'O contexto pra fechar',
+      content:
+        'E pra completar a leitura: escalação provável, desfalques, confrontos diretos e as estatísticas da temporada.',
+    });
+  }
+
+  return steps;
+}
+
 export const betinhoSteps: Step[] = [
   {
     id: 'betinho-hero',

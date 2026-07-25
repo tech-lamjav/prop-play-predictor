@@ -19,6 +19,9 @@ import {
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
 
 const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
   'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
@@ -625,9 +628,20 @@ export default function FutebolJogo() {
     (h2h && h2h.length) || extras?.form_home?.length || extras?.form_away?.length
   );
 
+  const jogoTour = useOnboardingTour(FUT_JOGO_TOUR_ID, { enabled: !isLoading && !!fixture, delay: 1200 });
+  const jogoSteps = useMemo(
+    () => makeFutebolJogoSteps({
+      hasValue: showValue,
+      hasModel: !!tendencies,
+      hasContext: hasDescriptive || !!homeProfile || !!awayProfile,
+    }),
+    [showValue, tendencies, hasDescriptive, homeProfile, awayProfile],
+  );
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={FUT_JOGO_TOUR_ID} steps={jogoSteps} run={jogoTour.run} onFinish={jogoTour.finish} />
       <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {isLoading ? (
           <div className="space-y-3">
@@ -642,7 +656,7 @@ export default function FutebolJogo() {
         ) : (
           <>
             {/* Header */}
-            <div className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
+            <div data-tour="fut-jogo-header" className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
               <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
                 <span>{prettyRound(fixture.round)}</span>
                 {fixture.venue_name && (
@@ -687,24 +701,28 @@ export default function FutebolJogo() {
             {(showValue || tendencies) && (
               <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
                 {showValue && valueRows && (
-                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
+                  <div data-tour="fut-jogo-oque-olhar">
+                    <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
+                  </div>
                 )}
                 {tendencies && (
-                  <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                  <div data-tour="fut-jogo-modelo">
+                    <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                  </div>
                 )}
               </div>
             )}
 
             {/* Explorar mercados — largura total */}
             {showValue && valueRows && (
-              <div className="mt-5">
+              <div data-tour="fut-jogo-mercados" className="mt-5">
                 <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
               </div>
             )}
 
             {/* Contexto — escalação (pitch) + confrontos diretos + estatísticas */}
             {(hasDescriptive || homeProfile || awayProfile) && (
-              <div className="mt-5 grid lg:grid-cols-[1.3fr_1fr] gap-5 items-start">
+              <div data-tour="fut-jogo-contexto" className="mt-5 grid lg:grid-cols-[1.3fr_1fr] gap-5 items-start">
                 {/* Escalação provável & desfalques */}
                 <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
                   <div className="px-5 py-3 flex items-center justify-between border-b border-line">
