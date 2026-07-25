@@ -4,6 +4,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { BANKROLL_TOUR_ID, bankrollSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoBets, demoMovements } from '@/components/onboarding/demo/betinho';
 import { CashFlowTable } from '../components/bets/CashFlowTable';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements, type CapitalMovement } from '@/hooks/use-capital-movements';
@@ -97,6 +99,9 @@ export default function Bankroll() {
   const [deleteConfirming, setDeleteConfirming] = useState(false);
 
   const bankrollTour = useOnboardingTour(BANKROLL_TOUR_ID, { enabled: !!user && !isLoading });
+  const isDemo = bankrollTour.run; // durante o tour, preenche com exemplo
+  const displayBets = isDemo ? (demoBets as unknown as typeof bets) : bets;
+  const displayMovements = isDemo ? (demoMovements as unknown as typeof capitalMovements) : capitalMovements;
 
   useEffect(() => {
     if (user?.id) {
@@ -203,7 +208,7 @@ export default function Bankroll() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Banca</div>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">Banca{isDemo && <DemoBadge />}</div>
             <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minha banca</h1>
             <p className="text-[13px] text-ink-2 mt-1">Visão geral, evolução e histórico de movimentações</p>
           </div>
@@ -243,8 +248,11 @@ export default function Bankroll() {
       </div>
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 focus:outline-none space-y-6">
+        {isDemo && <DemoRibbon show />}
         {/* KPIs — Resumo da banca */}
         {(() => {
+          const capitalMovements = displayMovements;
+          const bets = displayBets;
           const startBalance = config.bank_amount ?? 0;
           const totalDeposits = capitalMovements
             .filter((m) => m.type === 'deposit' && m.affects_balance && m.source !== 'bankroll_edit')
@@ -303,10 +311,10 @@ export default function Bankroll() {
 
         <div data-tour="bankroll-extrato">
         <CashFlowTable
-          bets={bets}
+          bets={displayBets}
           initialBankroll={config.bank_amount}
           formatCurrency={formatCurrency}
-          capitalMovements={capitalMovements}
+          capitalMovements={displayMovements}
           onEditCapitalMovement={(id) => {
             const m = capitalMovements.find((x) => x.id === id);
             if (m && m.source === 'manual') {
