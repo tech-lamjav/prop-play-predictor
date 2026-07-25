@@ -151,13 +151,7 @@ const FutebolLP = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Seo
-        jsonLd={faqPageSchema(FAQ)}
-        image="/og/og-futebol.jpg"
-        path="/futebol/comecar"
-        title="Aposta de Valor no Futebol — Brasileirão e Copa | Smart Betting"
-        description="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. 7 dias grátis, sem cartão."
-      />
+      <Seo route="/futebol/comecar" jsonLd={faqPageSchema(FAQ)} />
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">

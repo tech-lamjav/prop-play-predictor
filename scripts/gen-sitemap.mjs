@@ -1,44 +1,34 @@
 // ============================================================
-// gen-sitemap.mjs — gera public/sitemap.xml a partir da lista de rotas públicas.
+// gen-sitemap.mjs — gera public/sitemap.xml a partir de src/seo/public-routes.json.
 // Roda no `prebuild` (antes do vite build), então o sitemap que vai pro dist
-// está sempre em sincronia com esta lista. Antes era mantido na mão e ficou
-// defasado (5 URLs, faltando /futebol, /bolao, /como-usar...).
+// está sempre em sincronia. Antes era mantido na mão e ficou defasado (5 URLs).
 //
-// Fonte única das rotas indexáveis. Ao criar/remover uma página pública,
-// atualize AQUI (e bump o `lastmod` quando o conteúdo da página mudar — não
-// use a data do build, senão o lastmod muda todo dia sem o conteúdo mudar e o
-// Google passa a ignorá-lo).
+// A lista de rotas NÃO vive aqui: vive no public-routes.json, que também
+// alimenta o <Seo> das páginas e o gen-route-heads (o <head> servido). Um só
+// lugar pra editar, então não existe rota que entre no sitemap e não no shell.
+// Ao mexer, bump o `lastmod` da rota só quando o conteúdo dela mudar de fato
+// (data de build faria o lastmod mudar todo dia e o Google passaria a ignorar).
 // ============================================================
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const SITE_URL = "https://www.smartbetting.app";
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-// Só rotas públicas de conteúdo. NÃO listar: rotas com login (ProtectedRoute),
-// paywalls, checkout, waitlist, nem rotas com parâmetro dinâmico sem versão
-// pública fixa. Precisa bater com o Disallow do robots.txt.
-const ROUTES = [
-  { path: "/", changefreq: "daily", priority: "1.0", lastmod: "2026-07-22" },
-  { path: "/nba", changefreq: "weekly", priority: "0.9", lastmod: "2026-07-22" },
-  { path: "/futebol", changefreq: "daily", priority: "0.9", lastmod: "2026-07-22" },
-  { path: "/futebol/comecar", changefreq: "weekly", priority: "0.8", lastmod: "2026-07-22" },
-  { path: "/betinho", changefreq: "weekly", priority: "0.8", lastmod: "2026-07-22" },
-  { path: "/planos", changefreq: "weekly", priority: "0.8", lastmod: "2026-07-24" },
-  { path: "/bolao", changefreq: "weekly", priority: "0.7", lastmod: "2026-07-22" },
-  { path: "/bolao/comecar", changefreq: "weekly", priority: "0.7", lastmod: "2026-07-22" },
-  { path: "/como-usar", changefreq: "monthly", priority: "0.6", lastmod: "2026-07-22" },
-  { path: "/privacidade", changefreq: "yearly", priority: "0.3", lastmod: "2026-07-22" },
-  { path: "/termos", changefreq: "yearly", priority: "0.3", lastmod: "2026-07-22" },
-];
+// `sitemap: false` marca rota que tem <head> próprio mas fica fora do índice
+// (ex.: /betinho/bolao, variante de campanha da mesma página).
+const ROUTES = JSON.parse(
+  readFileSync(join(ROOT, "src", "seo", "public-routes.json"), "utf8"),
+).filter((r) => r.sitemap);
 
 const body = ROUTES.map(
   (r) =>
     `  <url>\n` +
     `    <loc>${SITE_URL}${r.path}</loc>\n` +
-    `    <lastmod>${r.lastmod}</lastmod>\n` +
-    `    <changefreq>${r.changefreq}</changefreq>\n` +
-    `    <priority>${r.priority}</priority>\n` +
+    `    <lastmod>${r.sitemap.lastmod}</lastmod>\n` +
+    `    <changefreq>${r.sitemap.changefreq}</changefreq>\n` +
+    `    <priority>${r.sitemap.priority}</priority>\n` +
     `  </url>`,
 ).join("\n");
 
@@ -48,6 +38,6 @@ const xml =
   `${body}\n` +
   `</urlset>\n`;
 
-const outPath = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "sitemap.xml");
+const outPath = join(ROOT, "public", "sitemap.xml");
 writeFileSync(outPath, xml, "utf8");
 console.log(`[gen-sitemap] ${ROUTES.length} URLs → public/sitemap.xml`);

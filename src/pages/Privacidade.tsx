@@ -234,11 +234,9 @@ const SECTIONS: Section[] = [
 const Privacidade = () => {
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink">
-      <Seo
-        path="/privacidade"
-        title="Termos de Uso e Política de Privacidade — Smart Betting"
-        description="Termos de Uso e Política de Privacidade da SMARTBETTING (LAMJAV Tecnologia e Inovação LTDA), em conformidade com a LGPD."
-      />
+      {/* /termos renderiza a mesma página; o canonical fica em /privacidade
+          pros dois, evitando conteúdo duplicado. */}
+      <Seo route="/privacidade" />
 
       <main className="container mx-auto px-4 sm:px-6 py-12 max-w-3xl">
         <a

@@ -337,18 +337,8 @@ const Betinho = () => {
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
       <Seo
+        route={isBolaoVariant ? "/betinho/bolao" : "/betinho"}
         jsonLd={faqPageSchema(FAQ)}
-        path={isBolaoVariant ? "/betinho/bolao" : "/betinho"}
-        title={
-          isBolaoVariant
-            ? "Apostas reais? Documente no Telegram | Betinho"
-            : "Betinho — Gestão de Apostas e Controle de Banca no Telegram | Smart Betting"
-        }
-        description={
-          isBolaoVariant
-            ? "Você palpitou no bolão. E suas apostas reais — você anota? Documenta tudo no Telegram em 10 segundos."
-            : "Manda o print do bilhete no Telegram e o Betinho registra: banca, ROI e taxa de acerto sem planilha. 3 apostas por dia grátis."
-        }
       />
 
       {/* Navigation */}

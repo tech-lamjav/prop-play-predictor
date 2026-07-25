@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet-async";
+import publicRoutes from "@/seo/public-routes.json";
 
 /**
  * Origem canônica do site em produção. Todo canonical/og:url é montado a partir
@@ -14,6 +15,14 @@ const DEFAULT_DESCRIPTION =
 // /og/og-futebol.jpg e /og/og-nba.jpg — as páginas passam via prop `image`.
 const DEFAULT_IMAGE = `${SITE_URL}/og/og-default.jpg`;
 
+/**
+ * Tabela de title/description/imagem por rota pública. É a MESMA fonte que o
+ * `scripts/gen-route-heads.mjs` usa pra gerar o <head> servido no HTML e que o
+ * `scripts/gen-sitemap.mjs` usa pra montar o sitemap. Um só lugar pra editar
+ * essa copy, então o que o WhatsApp mostra nunca divirge do que a página diz.
+ */
+const ROUTE_META = new Map(publicRoutes.map((r) => [r.path, r]));
+
 /** Monta uma URL absoluta a partir de um caminho relativo ("/futebol") ou
  * devolve a própria string se já vier absoluta. */
 function toAbsolute(pathOrUrl: string): string {
@@ -23,7 +32,14 @@ function toAbsolute(pathOrUrl: string): string {
 }
 
 export type SeoProps = {
-  /** Título da aba/aba social. Sem sufixo automático — passe o título completo. */
+  /**
+   * Rota pública (ex.: "/futebol"). Puxa title/description/imagem/canonical da
+   * tabela `src/seo/public-routes.json`, a mesma que gera o <head> servido e o
+   * sitemap. É a forma preferida: as props abaixo só existem pra sobrescrever
+   * caso a caso ou pra páginas fora da tabela.
+   */
+  route?: string;
+  /** Título da aba e do card social. Sem sufixo automático: passe completo. */
   title?: string;
   description?: string;
   /**
@@ -52,18 +68,28 @@ export type SeoProps = {
  * colidia com o da página.
  */
 export function Seo({
-  title = DEFAULT_TITLE,
-  description = DEFAULT_DESCRIPTION,
+  route,
+  title,
+  description,
   path,
-  image = DEFAULT_IMAGE,
+  image,
   type = "website",
   twitterCard = "summary_large_image",
   noindex = false,
   jsonLd,
   children,
 }: SeoProps) {
-  const canonical = path ? toAbsolute(path) : undefined;
-  const imageAbs = toAbsolute(image);
+  // Precedência: prop explícita > tabela da rota > default da marca.
+  const meta = route ? ROUTE_META.get(route) : undefined;
+  const finalTitle = title ?? meta?.title ?? DEFAULT_TITLE;
+  const finalDescription = description ?? meta?.description ?? DEFAULT_DESCRIPTION;
+  const finalImage = image ?? meta?.image ?? DEFAULT_IMAGE;
+  // `canonical` da tabela existe pra rotas que apontam pra outra URL
+  // (ex.: /termos canonicaliza em /privacidade, evitando conteúdo duplicado).
+  const canonicalPath = path ?? meta?.canonical ?? route;
+
+  const canonical = canonicalPath ? toAbsolute(canonicalPath) : undefined;
+  const imageAbs = toAbsolute(finalImage);
   const jsonLdArray = jsonLd
     ? Array.isArray(jsonLd)
       ? jsonLd
@@ -72,8 +98,8 @@ export function Seo({
 
   return (
     <Helmet>
-      <title>{title}</title>
-      <meta name="description" content={description} />
+      <title>{finalTitle}</title>
+      <meta name="description" content={finalDescription} />
       <meta
         name="robots"
         content={noindex ? "noindex,nofollow" : "index,follow"}
@@ -81,8 +107,8 @@ export function Seo({
       {canonical && <link rel="canonical" href={canonical} />}
 
       {/* Open Graph */}
-      <meta property="og:title" content={title} />
-      <meta property="og:description" content={description} />
+      <meta property="og:title" content={finalTitle} />
+      <meta property="og:description" content={finalDescription} />
       <meta property="og:type" content={type} />
       {canonical && <meta property="og:url" content={canonical} />}
       <meta property="og:image" content={imageAbs} />
@@ -94,8 +120,8 @@ export function Seo({
       {/* Twitter / X */}
       <meta name="twitter:card" content={twitterCard} />
       <meta name="twitter:site" content="@smartbetting" />
-      <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description} />
+      <meta name="twitter:title" content={finalTitle} />
+      <meta name="twitter:description" content={finalDescription} />
       <meta name="twitter:image" content={imageAbs} />
 
       {jsonLdArray.map((schema, i) => (
