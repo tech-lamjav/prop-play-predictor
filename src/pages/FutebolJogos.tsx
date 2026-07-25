@@ -12,6 +12,8 @@ import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoFutebolBoard, demoFutebolFixtures, demoFutebolStandings, demoFutebolLeaders } from '@/components/onboarding/demo/futebol';
 
 const COMPETITIONS: { value: Competition; label: string }[] = ALL_COMPETITIONS.map((value) => ({
   value,
@@ -192,22 +194,29 @@ export default function FutebolJogos() {
   const { data: leaders, isLoading: loadingLeaders } = useFutebolLeaders(competition, season, true);
   const { data: board } = useFutebolValueBoard();
 
+  const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
+  const isDemo = jogosTour.run; // durante o tour, preenche a tela com exemplo
+  const effFixtures = useMemo(() => (isDemo ? demoFutebolFixtures : (fixtures ?? [])), [isDemo, fixtures]);
+  const effStandings = isDemo ? demoFutebolStandings : standings;
+  const effLeaders = isDemo ? demoFutebolLeaders : leaders;
+
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
+    if (isDemo) { demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r)); return m; }
     groupBoardByFixture(board || []).forEach((bf) => m.set(bf.fixtureId, bf.best));
     return m;
-  }, [board]);
+  }, [board, isDemo]);
 
   const rounds = useMemo(() => {
     const seen: string[] = [];
-    (fixtures || []).forEach((f) => { if (f.round && !seen.includes(f.round)) seen.push(f.round); });
+    effFixtures.forEach((f) => { if (f.round && !seen.includes(f.round)) seen.push(f.round); });
     return seen;
-  }, [fixtures]);
+  }, [effFixtures]);
 
   useEffect(() => {
-    if (!fixtures?.length || !rounds.length) return;
-    let bestRound = fixtures[0].round, bestDelta = Infinity;
-    for (const f of fixtures) {
+    if (!effFixtures.length || !rounds.length) return;
+    let bestRound = effFixtures[0].round, bestDelta = Infinity;
+    for (const f of effFixtures) {
       const d = parseUtc(f.kickoff_utc || f.date_utc);
       if (!d) continue;
       const delta = Math.abs(d.getTime() - TODAY.getTime());
@@ -215,15 +224,15 @@ export default function FutebolJogos() {
     }
     const idx = rounds.indexOf(bestRound as string);
     setRoundIdx(idx >= 0 ? idx : 0);
-  }, [fixtures, rounds]);
+  }, [effFixtures, rounds]);
 
   const currentRound = rounds[roundIdx];
   const groups = useMemo(() => {
-    const list = (fixtures || []).filter((f) => f.round === currentRound);
+    const list = effFixtures.filter((f) => f.round === currentRound);
     const byDay = new Map<string, FutebolFixture[]>();
     list.forEach((f) => { const k = f.date_utc || '—'; if (!byDay.has(k)) byDay.set(k, []); byDay.get(k)!.push(f); });
     return Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [fixtures, currentRound]);
+  }, [effFixtures, currentRound]);
   const roundCount = groups.reduce((n, [, g]) => n + g.length, 0);
 
   // Mantém a temporada se a nova competição também a tiver; senão vai pra mais
@@ -235,7 +244,6 @@ export default function FutebolJogos() {
   };
   const goTeam = (id: number) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`);
 
-  const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
   const jogosSteps = useMemo(
     () => makeFutebolJogosSteps({ hasRounds: !isLoading && !isError && rounds.length > 0 }),
     [isLoading, isError, rounds.length],
@@ -250,7 +258,7 @@ export default function FutebolJogos() {
       <div data-tour="fut-jogos-header" className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">{competitionLabel(competition)}</div>
+            <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3 flex items-center gap-2">{competitionLabel(competition)}{isDemo && <DemoBadge />}</div>
             <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{prettyRound(currentRound)}</h1>
             <p className="text-[13px] mt-1 text-ink-2">Rodadas, classificação e artilheiros · temporada {season}</p>
           </div>
@@ -263,6 +271,7 @@ export default function FutebolJogos() {
       </div>
 
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex-1">
+        {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
         {/* Stepper de rodada */}
         {!isLoading && !isError && rounds.length > 0 && (
           <div data-tour="fut-jogos-rodada" className="flex items-center justify-between bg-white border border-line rounded-rebrand-md px-2 py-1.5 mb-4 max-w-sm">
@@ -299,14 +308,14 @@ export default function FutebolJogos() {
                   <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Classificação</div>
                   <button onClick={() => setModal('tabela')} className="text-[11px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">Tabela completa <ArrowRight className="w-3 h-3" /></button>
                 </div>
-                <StandingsTable rows={standings?.slice(0, 9)} loading={loadingStandings} onTeam={goTeam} />
+                <StandingsTable rows={effStandings?.slice(0, 9)} loading={isDemo ? false : loadingStandings} onTeam={goTeam} />
               </div>
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Artilheiros</div>
-                  {(leaders?.scorers?.length ?? 0) > 8 && <button onClick={() => setModal('artilheiros')} className="text-[11px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">Ver todos <ArrowRight className="w-3 h-3" /></button>}
+                  {(effLeaders?.scorers?.length ?? 0) > 8 && <button onClick={() => setModal('artilheiros')} className="text-[11px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">Ver todos <ArrowRight className="w-3 h-3" /></button>}
                 </div>
-                <ScorersCard leaders={leaders} loading={loadingLeaders} />
+                <ScorersCard leaders={effLeaders} loading={isDemo ? false : loadingLeaders} />
               </div>
             </div>
           </div>
@@ -315,12 +324,12 @@ export default function FutebolJogos() {
 
       {modal === 'tabela' && (
         <Modal title="Classificação completa" onClose={() => setModal(null)}>
-          <StandingsTable rows={standings} loading={loadingStandings} onTeam={(id) => { setModal(null); goTeam(id); }} />
+          <StandingsTable rows={effStandings} loading={isDemo ? false : loadingStandings} onTeam={(id) => { setModal(null); goTeam(id); }} />
         </Modal>
       )}
       {modal === 'artilheiros' && (
         <Modal title="Artilheiros" onClose={() => setModal(null)}>
-          <ScorersCard leaders={leaders} loading={loadingLeaders} full />
+          <ScorersCard leaders={effLeaders} loading={isDemo ? false : loadingLeaders} full />
         </Modal>
       )}
     </div>

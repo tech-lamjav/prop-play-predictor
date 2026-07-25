@@ -1,4 +1,4 @@
-import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolFixture, FutebolStandingRow, FutebolLeaders } from '@/services/futebol-data.service';
 
 // Dados de EXEMPLO (fictícios) pro onboarding guiado — usados só enquanto o tour
 // roda, pra a tela nunca ficar vazia. Nada aqui é real. Times/valores ilustrativos.
@@ -94,3 +94,37 @@ export const demoFutebolFixtures: FutebolFixture[] = [
   fx({ fixture_id: 9004, home_team_id: 120, away_team_id: 124, home_team_name: 'Botafogo', away_team_name: 'Fluminense', kickoff_utc: '2025-08-11T00:00:00Z' }),
   fx({ fixture_id: 9005, home_team_id: 135, away_team_id: 118, home_team_name: 'Cruzeiro', away_team_name: 'Bahia', kickoff_utc: '2025-08-10T19:00:00Z' }),
 ];
+
+// Classificação de exemplo (topo da tabela) — usada em /futebol/jogos e /futebol/time.
+const st = (
+  rank: number, team_id: number, team_name: string, points: number,
+  wins: number, draws: number, loses: number, gf: number, ga: number, zone: string | null,
+): FutebolStandingRow => ({
+  team_id, team_name, rank, points, played: wins + draws + loses,
+  wins, draws, loses, goals_for: gf, goals_against: ga, goals_diff: gf - ga,
+  rank_description: zone,
+});
+
+export const demoFutebolStandings: FutebolStandingRow[] = [
+  st(1, 121, 'Palmeiras', 44, 13, 5, 1, 34, 15, 'Promotion - Libertadores Group Stage'),
+  st(2, 127, 'Flamengo', 41, 12, 5, 2, 32, 18, 'Promotion - Libertadores Group Stage'),
+  st(3, 135, 'Cruzeiro', 38, 11, 5, 3, 28, 16, 'Promotion - Libertadores Group Stage'),
+  st(4, 120, 'Botafogo', 35, 10, 5, 4, 26, 20, 'Promotion - Libertadores Group Stage'),
+  st(5, 119, 'Internacional', 33, 9, 6, 4, 24, 19, 'Promotion - Copa Sudamericana'),
+  st(6, 126, 'São Paulo', 31, 9, 4, 6, 22, 20, null),
+  st(7, 130, 'Grêmio', 29, 8, 5, 6, 25, 23, null),
+  st(8, 118, 'Bahia', 27, 7, 6, 6, 20, 21, null),
+  st(9, 131, 'Corinthians', 25, 7, 4, 8, 19, 24, null),
+];
+
+// Artilheiros de exemplo.
+export const demoFutebolLeaders: FutebolLeaders = {
+  scorers: [
+    { player_id: 1001, player_name: 'Pedro', team_name: 'Flamengo', goals: 12 },
+    { player_id: 1002, player_name: 'Flaco López', team_name: 'Palmeiras', goals: 11 },
+    { player_id: 1003, player_name: 'Calleri', team_name: 'São Paulo', goals: 10 },
+    { player_id: 1004, player_name: 'Yuri Alberto', team_name: 'Corinthians', goals: 9 },
+    { player_id: 1005, player_name: 'Everton Cebolinha', team_name: 'Grêmio', goals: 8 },
+  ],
+  cards: [],
+};
