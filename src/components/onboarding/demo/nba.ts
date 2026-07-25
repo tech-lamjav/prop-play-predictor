@@ -1,4 +1,4 @@
-import type { Game, Player, DailyOpportunity } from '@/services/nba-data.service';
+import type { Game, Player, DailyOpportunity, GamePlayerStats } from '@/services/nba-data.service';
 
 // Dados de EXEMPLO (fictícios) da NBA pro onboarding — usados só durante o tour,
 // pra as telas nunca ficarem vazias (ex.: fora de temporada). Nada aqui é real.
@@ -53,6 +53,67 @@ const opp = (over: Partial<DailyOpportunity>): DailyOpportunity => ({
 export const demoPlayerStarsMap: Map<number, number> = new Map(
   demoNbaPlayers.map((p) => [p.player_id, p.rating_stars]),
 );
+
+// --- Dashboard do jogador (/nba-dashboard/:player) ---
+// Jogador em foco no exemplo: LeBron James (id 101).
+export const demoDashPlayer: Player = demoNbaPlayers[0];
+
+// Gera as linhas jogo-a-jogo (pontos, rebotes, assistências) pro gráfico e as médias.
+const dstat = (
+  i: number,
+  stat_type: string,
+  stat_value: number,
+  line: number,
+  home: boolean,
+  opp: string,
+): GamePlayerStats => {
+  const d = new Date();
+  d.setDate(d.getDate() - (i * 2 + 1));
+  return {
+    player_id: 101,
+    game_date: d.toISOString().slice(0, 10),
+    game_id: 6000 + i,
+    stat_type,
+    stat_value,
+    line,
+    line_most_recent: line,
+    is_b2b_game: false,
+    stat_vs_line: stat_value >= line ? 'over' : 'under',
+    played_against: opp,
+    home_away: home ? 'home' : 'away',
+    is_played: 'true',
+    player_team_score: null,
+    opponent_score: null,
+    game_won: stat_value >= line,
+    season: 2025,
+    season_type: 'regular',
+  };
+};
+
+const OPPS = ['GSW', 'PHX', 'DEN', 'BOS', 'MIL', 'DAL', 'MIN', 'OKC', 'NYK', 'MIA', 'CLE', 'SAC'];
+const PTS = [28, 31, 24, 35, 22, 29, 33, 26, 30, 27, 34, 25];
+const REB = [8, 7, 9, 6, 10, 8, 7, 9, 8, 6, 11, 7];
+const AST = [9, 11, 8, 12, 7, 10, 9, 13, 8, 10, 9, 11];
+
+export const demoDashGameStats: GamePlayerStats[] = [
+  ...PTS.map((v, i) => dstat(i, 'player_points', v, 27.5, i % 2 === 0, OPPS[i])),
+  ...REB.map((v, i) => dstat(i, 'player_rebounds', v, 7.5, i % 2 === 0, OPPS[i])),
+  ...AST.map((v, i) => dstat(i, 'player_assists', v, 8.5, i % 2 === 0, OPPS[i])),
+];
+
+// Oportunidades do dia onde ESTE jogador (LeBron) é o beneficiado (backup).
+export const demoDashOpps: DailyOpportunity[] = [
+  opp({
+    trigger_player_id: 105, trigger_name: 'Austin Reaves', trigger_status: 'Out', trigger_team_abbr: 'LAL', trigger_team_id: 1,
+    backup_player_id: 101, backup_player_name: 'LeBron James', stat_type: 'player_points',
+    avg_com: 26.4, avg_sem: 31.8, line_value: 28.5, gap_pct: 20, score: 78, score_label: 'Alta', rating_stars: 5,
+  }),
+  opp({
+    trigger_player_id: 105, trigger_name: 'Austin Reaves', trigger_status: 'Out', trigger_team_abbr: 'LAL', trigger_team_id: 1,
+    backup_player_id: 101, backup_player_name: 'LeBron James', stat_type: 'player_assists',
+    avg_com: 8.1, avg_sem: 10.6, line_value: 9.5, gap_pct: 31, score: 69, score_label: 'Média', rating_stars: 5,
+  }),
+];
 
 export const demoNbaOpportunities: DailyOpportunity[] = [
   opp({ trigger_player_id: 101, trigger_name: 'LeBron James', backup_player_id: 105, backup_player_name: 'Austin Reaves', stat_type: 'PTS', line_value: 19.5, gap_pct: 38, score: 82, score_label: 'Alta', rating_stars: 5 }),

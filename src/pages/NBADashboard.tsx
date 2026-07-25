@@ -5,6 +5,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_DASH_TOUR_ID, makeNbaDashSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoDashPlayer, demoDashGameStats, demoDashOpps } from '@/components/onboarding/demo/nba';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
 import { PlayerHeader } from '@/components/nba/PlayerHeader';
@@ -48,7 +50,7 @@ export default function NBADashboard() {
   // Initialize from cache if available — zero loading flash on revisit
   const initCache = playerName ? dashboardCache.get(playerName) : undefined;
   const [player, setPlayer] = useState<Player | null>(initCache?.player ?? null);
-  const [gameStats, setGameStats] = useState<GamePlayerStats[]>(initCache?.gameStats ?? []);
+  const [realGameStats, setGameStats] = useState<GamePlayerStats[]>(initCache?.gameStats ?? []);
   const [propPlayers, setPropPlayers] = useState<PropPlayer[]>(initCache?.propPlayers ?? []);
   const [teammates, setTeammates] = useState<TeamPlayer[]>(initCache?.teammates ?? []);
   const [teamData, setTeamData] = useState<Team | null>(initCache?.teamData ?? null);
@@ -84,6 +86,16 @@ export default function NBADashboard() {
   const [seasonType, setSeasonType] = useState<'all' | 'regular' | 'playoffs' | 'playin'>('all');
   const [historicalStats, setHistoricalStats] = useState<Map<number, GamePlayerStats[]>>(new Map());
   const [historicalLoading, setHistoricalLoading] = useState(false);
+
+  // Tour guiado + dados de exemplo. Durante o tour a tela enche de dados
+  // fictícios marcados (nunca fica vazia). Os efeitos continuam olhando o
+  // jogador REAL (`player`) pra não refetchar nem cair no redirect de paywall;
+  // só a renderização usa os valores efetivos abaixo.
+  const dashTour = useOnboardingTour(NBA_DASH_TOUR_ID, { enabled: !!player, delay: 1000 });
+  const isDemo = dashTour.run;
+  const gameStats = isDemo ? demoDashGameStats : realGameStats;
+  const playerView = isDemo ? demoDashPlayer : player;
+  const dailyOppsView = isDemo ? demoDashOpps : dailyOpps;
 
   // React to URL param changes (stat type only — trigger handled below)
   useEffect(() => {
@@ -325,7 +337,6 @@ export default function NBADashboard() {
     mql.addEventListener('change', on);
     return () => mql.removeEventListener('change', on);
   }, []);
-  const dashTour = useOnboardingTour(NBA_DASH_TOUR_ID, { enabled: !!player, delay: 1000 });
   const dashSteps = useMemo(() => makeNbaDashSteps({ mobile: !dashIsLgUp }), [dashIsLgUp]);
 
   // Early returns (after all hooks)
@@ -626,13 +637,21 @@ export default function NBADashboard() {
       <AnalyticsNav variant="rebrand" showBack />
       <OnboardingTour tourId={NBA_DASH_TOUR_ID} steps={dashSteps} run={dashTour.run} onFinish={dashTour.finish} />
       <main className="container mx-auto px-3 py-4">
+        {isDemo && (
+          <div className="mb-3">
+            <DemoRibbon show />
+          </div>
+        )}
         {(() => {
           const playerHeaderEl = (
-            <PlayerHeader
-              player={player || undefined}
-              seasonAverages={seasonAverages}
-              isLoading={statsLoading}
-            />
+            <div className="relative">
+              <PlayerHeader
+                player={playerView || undefined}
+                seasonAverages={seasonAverages}
+                isLoading={statsLoading}
+              />
+              {isDemo && <DemoBadge className="absolute top-2 right-2 z-10" />}
+            </div>
           );
 
           const nextGameEl = (
@@ -648,7 +667,7 @@ export default function NBADashboard() {
             />
           );
 
-          const opportunitiesEl = dailyOpps.length > 0 ? (
+          const opportunitiesEl = dailyOppsView.length > 0 ? (
               <div className="rounded-lg bg-white border border-line overflow-hidden">
                 <div className="px-4 py-3 flex items-center justify-between border-b border-line">
                   <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
@@ -656,7 +675,7 @@ export default function NBADashboard() {
                   </span>
                   <span className="text-[10px] text-ink-dim">mesma análise da tela de Picks</span>
                 </div>
-                {dailyOpps.map((opp, i) => {
+                {dailyOppsView.map((opp, i) => {
                   const triggerLastName = opp.trigger_name.split(' ').pop() ?? opp.trigger_name;
                   const status = opp.trigger_status.toLowerCase();
                   const statusBadge = status.includes('out')
@@ -720,7 +739,7 @@ export default function NBADashboard() {
             ) : (
               <PropInsightsCard
                 propPlayers={propPlayers}
-                playerName={player?.player_name || ''}
+                playerName={playerView?.player_name || ''}
                 isLoading={propsLoading}
                 onInsightClick={handleInsightClick}
               />
@@ -729,8 +748,8 @@ export default function NBADashboard() {
           const teammatesEl = (
             <TeammatesCard
               teammates={teammates}
-              currentPlayerId={player?.player_id || 0}
-              teamName={player?.team_name || ''}
+              currentPlayerId={playerView?.player_id || 0}
+              teamName={playerView?.team_name || ''}
               isLoading={teammatesLoading}
             />
           );
@@ -763,8 +782,8 @@ export default function NBADashboard() {
                   return src.filter(g => g.stat_type === selectedStatType && (selectedSeason === 'current' || seasonType === 'all' || g.season_type === seasonType)).length;
                 })()}
                 teammates={teammates}
-                currentPlayerId={player?.player_id || 0}
-                teamName={player?.team_name || ''}
+                currentPlayerId={playerView?.player_id || 0}
+                teamName={playerView?.team_name || ''}
                 teammateFilter={teammateFilter}
                 onTeammateFilterChange={handleTeammateFilterChange}
                 teammateFilterLoading={teammateFilterLoading}
@@ -789,7 +808,7 @@ export default function NBADashboard() {
           ) : (
             <ComparisonTable
               gameStats={filteredGameStats}
-              playerName={player?.player_name || ''}
+              playerName={playerView?.player_name || ''}
             />
           );
 
@@ -797,7 +816,7 @@ export default function NBADashboard() {
             <ShootingZonesCard
               data={shootingZones}
               isLoading={shootingZonesLoading}
-              playerName={player?.player_name || ''}
+              playerName={playerView?.player_name || ''}
               oppShootingZones={oppShootingZones}
               opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
             />
@@ -808,7 +827,7 @@ export default function NBADashboard() {
               data={shootingZones}
               oppShootingZones={oppShootingZones}
               opponentAbbreviation={teamData?.next_opponent_abbreviation || null}
-              playerName={player?.player_name}
+              playerName={playerView?.player_name}
             />
           );
 
