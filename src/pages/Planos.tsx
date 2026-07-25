@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check, Flame } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { useAuth } from '@/hooks/use-auth';
+import { Seo, SITE_URL } from '@/components/Seo';
 
 type Billing = 'monthly' | 'annual';
 
@@ -25,6 +26,53 @@ const TH: Record<'essencial' | 'completo', Record<Billing, string>> = {
 };
 
 const EYEBROW = 'text-[11px] font-bold uppercase tracking-[0.16em] text-forest-2';
+
+// JSON-LD dos planos DERIVADO do PRICES acima — nunca hardcode preço aqui:
+// o Google exige que o structured data bata com o que a página exibe, e
+// derivando não tem drift quando os valores (hoje placeholders) mudarem.
+const brl = (s: string) => s.replace(/\./g, '').replace(',', '.');
+const annualTotal = (billed: string) => {
+  const m = billed.match(/R\$\s*([\d.,]+)\/ano/);
+  return m ? brl(m[1]) : null;
+};
+const PLANS_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  itemListElement: [
+    {
+      '@type': 'Product',
+      name: 'Smart Betting Grátis',
+      description: 'Porta de entrada do ecossistema: registre apostas com o Betinho e acompanhe o futebol com limites do plano grátis.',
+      brand: { '@type': 'Brand', name: 'Smart Betting' },
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL', url: `${SITE_URL}/planos` },
+    },
+    ...(['essencial', 'completo'] as const).map((tier) => ({
+      '@type': 'Product',
+      name: `Smart Betting ${tier === 'essencial' ? 'Essencial' : 'Completo'}`,
+      description:
+        tier === 'essencial'
+          ? 'Futebol completo (Brasileirão e Copa) + Betinho ilimitado. Teste grátis de 7 dias.'
+          : 'Tudo do Essencial + análise NBA completa (prop bets e Análise 360). Teste grátis de 7 dias.',
+      brand: { '@type': 'Brand', name: 'Smart Betting' },
+      offers: [
+        {
+          '@type': 'Offer',
+          name: 'Mensal',
+          price: brl(PRICES[tier].monthly.amount),
+          priceCurrency: 'BRL',
+          url: `${SITE_URL}/planos`,
+        },
+        {
+          '@type': 'Offer',
+          name: 'Anual',
+          price: annualTotal(PRICES[tier].annual.billed) ?? brl(PRICES[tier].annual.amount),
+          priceCurrency: 'BRL',
+          url: `${SITE_URL}/planos`,
+        },
+      ],
+    })),
+  ],
+};
 
 function PriceBlock({ tier, billing }: { tier: 'essencial' | 'completo'; billing: Billing }) {
   const p = PRICES[tier][billing];
@@ -72,6 +120,7 @@ export default function Planos() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
+      <Seo route="/planos" jsonLd={PLANS_JSONLD} />
       <AnalyticsNav variant="rebrand" />
 
       {/* Promo de lançamento */}
