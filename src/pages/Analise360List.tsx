@@ -7,6 +7,9 @@ import {
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { ANALISE360_LIST_TOUR_ID, makeAnalise360ListSteps } from '@/components/onboarding/tours';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 import {
   Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -334,6 +337,12 @@ export default function Analise360List() {
 
   const todayLabel = getSaoPauloTodayLabel();
 
+  const a360ListTour = useOnboardingTour(ANALISE360_LIST_TOUR_ID, { enabled: !isLoading });
+  const a360ListSteps = useMemo(
+    () => makeAnalise360ListSteps({ hasGrid: !isLoading && triggerGroups.length > 0 }),
+    [isLoading, triggerGroups.length],
+  );
+
   return (
     <>
       <Helmet>
@@ -342,9 +351,10 @@ export default function Analise360List() {
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
+        <OnboardingTour tourId={ANALISE360_LIST_TOUR_ID} steps={a360ListSteps} run={a360ListTour.run} onFinish={a360ListTour.finish} />
 
         {/* Page header (bg-white) */}
-        <div className="bg-white border-b border-line">
+        <div data-tour="a360l-header" className="bg-white border-b border-line">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-7">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="min-w-0">
@@ -516,7 +526,7 @@ export default function Analise360List() {
               <p className="text-sm text-ink-2">Nenhum jogador com lesão impactante hoje.</p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div data-tour="a360l-grid" className="space-y-8">
               {groupedSections.map(([statusKey, triggers]) => {
                 const meta = STATUS_META[statusKey] ?? STATUS_META.out;
                 return (

@@ -648,6 +648,70 @@ export function makeNbaDashSteps({ mobile }: { mobile: boolean }): Step[] {
   ];
 }
 
+export const ANALISE360_LIST_TOUR_ID = 'nba-analise360-list';
+
+// Análise 360 lista (/analise-360, premium). Grid é gated por dados.
+export function makeAnalise360ListSteps({ hasGrid }: { hasGrid: boolean }): Step[] {
+  const steps: Step[] = [
+    {
+      id: 'a360l-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'Análise 360',
+      content:
+        'Parte de um desfalque (um titular fora) e mostra quem herda os minutos e se valoriza nas props.',
+    },
+    {
+      id: 'a360l-header',
+      target: '[data-tour="a360l-header"]',
+      placement: 'bottom',
+      title: 'O impacto das lesões de hoje',
+      content: 'A lista é do dia: traz as lesões e desfalques de hoje e o que cada um destrava.',
+    },
+  ];
+  if (hasGrid) {
+    steps.push({
+      id: 'a360l-grid',
+      target: '[data-tour="a360l-grid"]',
+      placement: 'top',
+      title: 'Os gatilhos do dia',
+      content:
+        'Cada card é uma lesão, agrupada por status (fora, dúvida). Toque num pra ver os companheiros valorizados.',
+    });
+  }
+  return steps;
+}
+
+export const ANALISE360_DETAIL_TOUR_ID = 'nba-analise360-detail';
+
+// Análise 360 detalhe (/analise-360/:id, premium). Conteúdo atrás de
+// isLoading/!triggerInfo; cadeia troca componente por viewport internamente
+// (um elemento só), então array estático.
+export const nbaAnalise360DetailSteps: Step[] = [
+  {
+    id: 'a360d-intro',
+    target: 'body',
+    placement: 'center',
+    title: 'A Análise 360 do gatilho',
+    content: 'Quem se valoriza quando este jogador não joga, e o quanto cada linha muda.',
+  },
+  {
+    id: 'a360d-header',
+    target: '[data-tour="a360d-header"]',
+    placement: 'bottom',
+    title: 'O jogador que saiu',
+    content: 'O status, as estrelas de impacto e, nas abas, a estatística que você quer analisar.',
+  },
+  {
+    id: 'a360d-cadeia',
+    target: '[data-tour="a360d-cadeia"]',
+    placement: 'top',
+    title: 'A cadeia de impacto',
+    content:
+      'Como a ausência dele redistribui minutos e chutes pro resto do time, e quem herda o quê. Toque num jogador pra abrir a análise.',
+  },
+];
+
 export const bolaoSteps: Step[] = [
   {
     id: 'bolao-hero',

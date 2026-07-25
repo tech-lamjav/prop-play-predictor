@@ -11,6 +11,9 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { ANALISE360_DETAIL_TOUR_ID, nbaAnalise360DetailSteps } from '@/components/onboarding/tours';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -762,6 +765,8 @@ export default function Analise360Detail() {
   const status = triggerInfo ? normalizeStatus(triggerInfo.triggerStatus) : 'out';
   const badge = STATUS_BADGE[status];
 
+  const a360Tour = useOnboardingTour(ANALISE360_DETAIL_TOUR_ID, { enabled: !isLoading && !!triggerInfo, delay: 900 });
+
   return (
     <>
       <Helmet>
@@ -770,6 +775,7 @@ export default function Analise360Detail() {
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/analise-360" />
+        <OnboardingTour tourId={ANALISE360_DETAIL_TOUR_ID} steps={nbaAnalise360DetailSteps} run={a360Tour.run} onFinish={a360Tour.finish} />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-32 gap-2">
@@ -788,7 +794,7 @@ export default function Analise360Detail() {
         ) : (
           <>
             {/* Page header (bg-white) */}
-            <div className="bg-white border-b border-line">
+            <div data-tour="a360d-header" className="bg-white border-b border-line">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex items-center gap-3 min-w-0">
@@ -847,7 +853,7 @@ export default function Analise360Detail() {
               {/* ─── Coluna esquerda ─── */}
               <section className="min-w-0 flex flex-col gap-6">
                 {/* Cadeia de impacto */}
-                <div className="bg-white border border-line rounded-xl p-4 md:p-6">
+                <div data-tour="a360d-cadeia" className="bg-white border border-line rounded-xl p-4 md:p-6">
                   <div className="mb-4">
                     <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Cadeia de impacto</div>
                     <p className="text-[11px] text-ink-2 mt-0.5 hidden sm:block">passe o mouse nos jogadores para detalhes</p>
