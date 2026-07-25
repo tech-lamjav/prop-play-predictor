@@ -9,6 +9,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_GAMES_TOUR_ID, nbaGamesSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaGames } from '@/components/onboarding/demo/nba';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -491,7 +493,9 @@ export default function Games() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const sortedGames = useMemo(() => {
+  const gamesTour = useOnboardingTour(NBA_GAMES_TOUR_ID, { enabled: !isLoading });
+  const isDemo = gamesTour.run; // durante o tour, preenche com exemplo
+  const realSortedGames = useMemo(() => {
     return [...games].sort((a, b) => {
       const END_OF_DAY = 23 * 60 * 60 * 1000;
       const ta = a.game_datetime_brasilia ? new Date(a.game_datetime_brasilia).getTime() : parseGameDate(a.game_date).getTime() + END_OF_DAY;
@@ -500,6 +504,7 @@ export default function Games() {
       return a.home_team_name.localeCompare(b.home_team_name);
     });
   }, [games]);
+  const sortedGames = isDemo ? demoNbaGames : realSortedGames;
 
   const totalPages = Math.ceil(sortedGames.length / ITEMS_PER_PAGE);
   const pageGames = useMemo(() => {
@@ -580,8 +585,6 @@ export default function Games() {
     ? `${sortedGames.length} ${sortedGames.length === 1 ? 'partida · hoje' : 'partidas · hoje'}`
     : `${sortedGames.length} ${sortedGames.length === 1 ? 'partida' : 'partidas'}`;
 
-  const gamesTour = useOnboardingTour(NBA_GAMES_TOUR_ID, { enabled: !isLoading });
-
   return (
     <>
       <Helmet>
@@ -596,8 +599,8 @@ export default function Games() {
         <div className="bg-white border-b border-line">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
             <div className="min-w-0">
-              <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink leading-none">
-                Jogos NBA <span className="text-ink-2 font-normal">· {headerDate.weekday}, {headerDate.dayMonth}</span>
+              <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink leading-none flex items-center gap-2 flex-wrap">
+                <span>Jogos NBA <span className="text-ink-2 font-normal">· {headerDate.weekday}, {headerDate.dayMonth}</span></span>{isDemo && <DemoBadge />}
               </h1>
               {subtitle && (
                 <p className="text-[13px] text-ink-2 mt-1.5">{subtitle}</p>
@@ -609,6 +612,7 @@ export default function Games() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* ── Games column ── */}
           <section data-tour="nba-games-lista" className="min-w-0">
+            {isDemo && <div className="mb-3"><DemoRibbon show /></div>}
             {/* Date picker — só renderiza no mobile (uma instância só pra evitar Popover duplicado) */}
             {isMobile && (
               <div className="mb-3">
