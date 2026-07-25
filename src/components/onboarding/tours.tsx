@@ -321,16 +321,69 @@ export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): St
   return steps;
 }
 
-export const betinhoSteps: Step[] = [
-  {
-    id: 'betinho-hero',
-    target: '[data-tour="betinho-hero"]',
+// Betinho (/bets) — gestão de banca. Multi-passo. Desktop e mobile têm blocos
+// separados de KPIs/gráfico, então o alvo de "seus números" muda por viewport;
+// o passo do Telegram só entra na banca vazia (é onde o CTA grande aparece).
+export function makeBetinhoSteps({
+  isMobile,
+  hasEmptyState,
+}: {
+  isMobile: boolean;
+  hasEmptyState: boolean;
+}): Step[] {
+  const steps: Step[] = [
+    {
+      id: 'betinho-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'Bem-vindo ao Betinho',
+      content:
+        'Este é o Betinho, seu gestor de banca. Ele registra e acompanha suas apostas pra você enxergar o resultado real, sem planilha.',
+    },
+  ];
+
+  if (hasEmptyState) {
+    steps.push({
+      id: 'betinho-telegram',
+      target: '[data-tour="betinho-telegram"]',
+      placement: 'bottom',
+      title: 'Comece pelo Telegram',
+      content:
+        'É aqui que tudo começa: manda o bilhete pro Betinho no Telegram, por texto, áudio ou print, e esta tela enche sozinha. Prefere na mão? Dá pra cadastrar manualmente também.',
+    });
+  }
+
+  steps.push({
+    id: 'betinho-stats',
+    target: isMobile ? '[data-tour="betinho-stats-m"]' : '[data-tour="betinho-stats"]',
     placement: 'bottom',
-    title: 'Sua banca, no automático',
+    title: 'Seus números',
+    content: isMobile
+      ? 'Sua banca num relance: taxa de acerto, ROI, total de apostas e a evolução no tempo.'
+      : 'Sempre atualizados: ROI, lucro líquido, total apostado e taxa de acerto.',
+  });
+
+  if (!isMobile) {
+    steps.push({
+      id: 'betinho-evolucao',
+      target: '[data-tour="betinho-evolucao"]',
+      placement: 'top',
+      title: 'A evolução da banca',
+      content: 'A evolução da sua banca ao longo do tempo, pra ver se a estratégia está no caminho.',
+    });
+  }
+
+  steps.push({
+    id: 'betinho-lista',
+    target: '[data-tour="betinho-lista"]',
+    placement: 'top',
+    title: 'Suas apostas',
     content:
-      'Tudo o que você registra com o Betinho no Telegram cai aqui: apostas, resultado, lucro e ROI sempre atualizados. Sem planilha.',
-  },
-];
+      'Todas as suas apostas ficam aqui, com filtros por status, período, liga e mercado. Cada aposta que você liquida entra nos números lá de cima.',
+  });
+
+  return steps;
+}
 
 export const nbaSteps: Step[] = [
   {

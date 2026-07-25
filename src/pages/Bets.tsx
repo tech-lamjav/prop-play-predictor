@@ -14,7 +14,7 @@ import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useIsMobile } from '@/hooks/use-mobile';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
-import { BETINHO_TOUR_ID, betinhoSteps } from '@/components/onboarding/tours';
+import { BETINHO_TOUR_ID, makeBetinhoSteps } from '@/components/onboarding/tours';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { mergeVocab, canonicalizeVocab, vocabHasValue } from '@/utils/betVocab';
 import { usePostHog } from '@posthog/react';
@@ -672,7 +672,6 @@ function captureBetSettled(
 
 export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
-  const betinhoTour = useOnboardingTour(BETINHO_TOUR_ID, { enabled: !!user });
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
   const { movements: capitalMovements, addMovement } = useCapitalMovements(user?.id);
@@ -691,6 +690,13 @@ export default function Bets() {
   const betsRef = useRef<Bet[]>([]);
   useEffect(() => { betsRef.current = bets; }, [bets]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const betinhoTour = useOnboardingTour(BETINHO_TOUR_ID, { enabled: !!user && !isLoading, delay: 900 });
+  const betinhoSteps = useMemo(
+    () => makeBetinhoSteps({ isMobile, hasEmptyState: bets.length === 0 }),
+    [isMobile, bets.length],
+  );
+
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [showUnitsView, setShowUnitsView] = useState(false);
   const formatValue = showUnitsView
@@ -2561,7 +2567,7 @@ export default function Bets() {
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 focus:outline-none">
         {/* Onboarding cards — usuário sem nenhuma aposta. Aparecem ACIMA do conteúdo regular */}
         {!isLoading && bets.length === 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+          <div data-tour="betinho-telegram" className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
             {/* Primary CTA — Telegram */}
             <div className="bg-forest text-white rounded-xl p-6 md:p-8 relative overflow-hidden">
               <div className="absolute top-4 right-4 text-[10px] uppercase tracking-[0.16em] font-semibold text-amber-400 bg-white/5 border border-amber-400/20 px-2 py-1 rounded">
@@ -2572,7 +2578,7 @@ export default function Bets() {
               </div>
               <h2 className="text-[22px] md:text-[24px] font-semibold tracking-tight">Comece pelo Telegram.</h2>
               <p className="text-[13px] md:text-[14px] text-white/70 mt-2 leading-relaxed">
-                Abra o Betinho, mande seu primeiro bilhete por texto ou print — e essa tela enche sozinha.
+                Abra o Betinho, mande seu primeiro bilhete por texto ou print, e essa tela enche sozinha.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer"
@@ -2584,9 +2590,9 @@ export default function Bets() {
               <div className="mt-6 pt-6 border-t border-white/10">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-semibold mb-3">3 formatos aceitos</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-white/80">
-                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre — "apostei R$ 150 LeBron 25+"</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio — fale o bilhete</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Print — foto do cupom</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre: "apostei R$ 150 LeBron 25+"</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio: fale o bilhete</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Print: foto do cupom</div>
                 </div>
               </div>
             </div>
@@ -2594,7 +2600,7 @@ export default function Bets() {
             <div className="bg-white border border-line rounded-xl p-6 md:p-8">
               <h2 className="text-[18px] md:text-[20px] font-semibold tracking-tight text-ink">Ou cadastre manualmente.</h2>
               <p className="text-[13px] text-ink-2 mt-2 leading-relaxed">
-                Se preferir tela e formulário, dá pra cadastrar pelo painel — leva uns 30 segundos.
+                Se preferir tela e formulário, dá pra cadastrar pelo painel, leva uns 30 segundos.
               </p>
               <button
                 type="button"
@@ -2616,7 +2622,7 @@ export default function Bets() {
 
         <>
         {/* Stats Grid — 4 slots: 2 Hero + 2 Pair (desktop) */}
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div data-tour="betinho-stats" className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {/* ROI - HeroKPI */}
           <div className="bg-white border border-line rounded-lg p-5">
             <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">ROI</div>
@@ -2667,7 +2673,7 @@ export default function Bets() {
         </div>
 
         {!isMobile && (
-        <div className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
+        <div data-tour="betinho-evolucao" className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
           <BankrollEvolutionChart
             bets={bets}
             initialBankroll={config.bank_amount}
@@ -2709,7 +2715,7 @@ export default function Bets() {
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
                 <div className="text-[14px] font-semibold mt-1 leading-tight">Cadastre apostas em segundos pelo Telegram.</div>
-                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete — a IA registra e este painel atualiza sozinho.</div>
+                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete, a IA registra e este painel atualiza sozinho.</div>
                 <div className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
                   <Send className="w-3.5 h-3.5" />
                   <span>Abrir bot</span>
@@ -2740,7 +2746,7 @@ export default function Bets() {
         )}
 
         {/* Mobile hero — banca atual + sparkline + mini stats */}
-        <div className="md:hidden mb-4">
+        <div data-tour="betinho-stats-m" className="md:hidden mb-4">
           {(() => {
             const movementsNet = capitalMovements
               .filter(m => m.affects_balance)
@@ -3218,7 +3224,7 @@ export default function Bets() {
         </div>
 
         {/* Bets Table — wrapper card só no desktop. Mobile cards ficam standalone na canvas */}
-        <div className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
+        <div data-tour="betinho-lista" className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
           <div className="flex justify-between items-center px-1 md:px-5 py-3 md:border-b md:border-line">
             <div className="flex items-baseline gap-3">
               <h3 className="text-[11px] md:text-[13px] uppercase md:normal-case tracking-[0.12em] md:tracking-normal font-semibold text-ink-2 md:text-ink">Apostas</h3>
