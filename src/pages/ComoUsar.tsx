@@ -33,11 +33,7 @@ const ComoUsar = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
-      <Seo
-        path="/como-usar"
-        title="Como Usar o Betinho no Telegram — Guia Rápido | Smart Betting"
-        description="Passo a passo pra registrar suas apostas no Telegram em segundos: sincronize o número, mande o print do bilhete e acompanhe banca, ROI e acerto no dashboard."
-      />
+      <Seo route="/como-usar" />
       <AnalyticsNav variant="rebrand" showBack />
       <div className="container mx-auto px-4 sm:px-6 py-10 sm:py-14 flex-1">
 

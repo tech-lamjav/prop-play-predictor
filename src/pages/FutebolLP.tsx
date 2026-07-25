@@ -141,7 +141,7 @@ const FutebolLP = () => {
     },
     {
       q: "De onde vêm os dados?",
-      a: "Estatísticas oficiais dos jogos e odds pré-jogo das principais casas, do Brasileirão e da Copa do Mundo, atualizadas ao longo do dia.",
+      a: "Estatísticas oficiais dos jogos e odds pré-jogo das principais casas, das principais competições do Brasil, América do Sul e Europa, atualizadas ao longo do dia.",
     },
     {
       q: "Qual a taxa de acerto de vocês?",
@@ -151,12 +151,7 @@ const FutebolLP = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Seo
-        jsonLd={faqPageSchema(FAQ)}
-        path="/futebol/comecar"
-        title="Aposta de Valor no Futebol — Brasileirão e Copa | Smart Betting"
-        description="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. Brasileirão e Copa do Mundo. 7 dias grátis, sem cartão."
-      />
+      <Seo route="/futebol/comecar" jsonLd={faqPageSchema(FAQ)} />
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
@@ -397,7 +392,7 @@ const FutebolLP = () => {
           <span className="hidden sm:inline text-amber-2">·</span>
           <span>Odds pré-jogo (não ao vivo)</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Brasileirão + Copa do Mundo</span>
+          <span>Brasil · América do Sul · Europa</span>
         </div>
       </section>
 

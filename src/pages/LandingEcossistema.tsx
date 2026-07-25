@@ -420,12 +420,7 @@ const LandingEcossistema = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Seo
-        jsonLd={[webSiteSchema(), faqPageSchema(FAQ)]}
-        path="/"
-        title="Smart Betting — Análises, Gestão e Ferramentas para Apostadores"
-        description="Análise de prop bets NBA, gestão de banca no Telegram e bolão da Copa 2026. Ferramentas para quem decide com dados — sem promessa de ganho."
-      />
+      <Seo route="/" jsonLd={[webSiteSchema(), faqPageSchema(FAQ)]} />
 
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">

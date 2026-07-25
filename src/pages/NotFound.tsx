@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Seo } from "@/components/Seo";
 
 const NotFound = () => {
   const location = useLocation();
@@ -13,6 +14,10 @@ const NotFound = () => {
 
   return (
     <div className="theme-bolao min-h-screen flex items-center justify-center bg-canvas px-4">
+      {/* Sendo SPA, qualquer URL inexistente responde 200 com o shell, e o
+          Google trata isso como página fantasma (soft 404). O noindex evita
+          que essas URLs entrem no índice. */}
+      <Seo noindex title="Página não encontrada | Smart Betting" />
       <div className="text-center">
         <p className="font-mono text-[13px] font-bold uppercase tracking-[0.2em] text-forest mb-3">Erro 404</p>
         <h1 className="font-display text-5xl font-black text-ink mb-3">Página não encontrada</h1>
