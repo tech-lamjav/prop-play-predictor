@@ -6,6 +6,9 @@ import {
   AlertTriangle, ArrowRight, Calendar as CalendarIcon, Loader2,
 } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { NBA_GAME_TOUR_ID, nbaGameSteps } from '@/components/onboarding/tours';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -1136,6 +1139,8 @@ export default function GameDetail() {
     return allOpps.filter(o => o.game_id === game.game_id);
   }, [game?.game_id, analise360.data]);
 
+  const gameTour = useOnboardingTour(NBA_GAME_TOUR_ID, { enabled: !!game && !isLoadingGame });
+
   if (authLoading) {
     return (
       <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
@@ -1257,6 +1262,7 @@ export default function GameDetail() {
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-games" />
+        <OnboardingTour tourId={NBA_GAME_TOUR_ID} steps={nbaGameSteps} run={gameTour.run} onFinish={gameTour.finish} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
           {isLoadingGame || !game ? (
@@ -1268,7 +1274,9 @@ export default function GameDetail() {
           ) : (
             <>
               {/* Hero */}
-              <HeroCard game={game} homeTeam={homeTeam} visitorTeam={visitorTeam} />
+              <div data-tour="nba-game-hero">
+                <HeroCard game={game} homeTeam={homeTeam} visitorTeam={visitorTeam} />
+              </div>
 
               {/* Ângulo do confronto */}
               <MatchupAngleCard
@@ -1290,7 +1298,7 @@ export default function GameDetail() {
               )}
 
               {/* Tabs */}
-              <div>
+              <div data-tour="nba-game-abas">
                 <div className="border-b border-line flex items-center gap-0.5 md:gap-1">
                   {finished ? (
                     <TabButton

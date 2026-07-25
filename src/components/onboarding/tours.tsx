@@ -579,6 +579,35 @@ export const nbaGamesSteps: Step[] = [
   },
 ];
 
+export const NBA_GAME_TOUR_ID = 'nba-game';
+
+// Detalhe do jogo NBA (/game/:id). Conteúdo atrás do gate !game, então o
+// disparo espera o jogo carregar. HeroCard/abas cuidam do responsivo internamente.
+export const nbaGameSteps: Step[] = [
+  {
+    id: 'nba-game-intro',
+    target: 'body',
+    placement: 'center',
+    title: 'O confronto',
+    content: 'Tudo sobre o jogo num lugar só, pra você montar suas props com contexto.',
+  },
+  {
+    id: 'nba-game-hero',
+    target: '[data-tour="nba-game-hero"]',
+    placement: 'bottom',
+    title: 'Os dois times',
+    content: 'O placar ou o horário, e os ratings de ataque e defesa de cada lado.',
+  },
+  {
+    id: 'nba-game-abas',
+    target: '[data-tour="nba-game-abas"]',
+    placement: 'top',
+    title: 'As visões do jogo',
+    content:
+      'Escalações e lesões, oportunidades de prop do jogo, e o box score quando a partida termina. Toque nas abas pra alternar.',
+  },
+];
+
 export const bolaoSteps: Step[] = [
   {
     id: 'bolao-hero',
