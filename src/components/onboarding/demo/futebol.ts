@@ -1,4 +1,4 @@
-import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
 
 // Dados de EXEMPLO (fictícios) pro onboarding guiado — usados só enquanto o tour
 // roda, pra a tela nunca ficar vazia. Nada aqui é real. Times/valores ilustrativos.
@@ -75,4 +75,22 @@ export const demoFutebolBoard: FutebolValueBoardRow[] = [
     kickoff_utc: '2025-08-10T19:00:00Z',
     evidencias: [],
   }),
+];
+
+// Jogos de exemplo (agenda) — mesmos fixture_ids do board pra casar a etiqueta
+// de faixa na grade. Usados no hub /futebol e na lista /futebol/jogos.
+const fx = (over: Partial<FutebolFixture>): FutebolFixture => ({
+  fixture_id: 0, round: 'Regular Season - 20', kickoff_utc: '2025-08-10T21:30:00Z',
+  date_utc: '2025-08-10', status_short: 'NS', status_long: 'Not Started',
+  home_team_id: 0, home_team_name: '', home_team_logo: null,
+  away_team_id: 0, away_team_name: '', away_team_logo: null,
+  goals_home: null, goals_away: null, ...over,
+});
+
+export const demoFutebolFixtures: FutebolFixture[] = [
+  fx({ fixture_id: 9001, home_team_id: 121, away_team_id: 127, home_team_name: 'Palmeiras', away_team_name: 'Flamengo', kickoff_utc: '2025-08-10T21:30:00Z' }),
+  fx({ fixture_id: 9002, home_team_id: 130, away_team_id: 119, home_team_name: 'Grêmio', away_team_name: 'Internacional', kickoff_utc: '2025-08-10T23:00:00Z' }),
+  fx({ fixture_id: 9003, home_team_id: 126, away_team_id: 131, home_team_name: 'São Paulo', away_team_name: 'Corinthians', kickoff_utc: '2025-08-10T18:30:00Z' }),
+  fx({ fixture_id: 9004, home_team_id: 120, away_team_id: 124, home_team_name: 'Botafogo', away_team_name: 'Fluminense', kickoff_utc: '2025-08-11T00:00:00Z' }),
+  fx({ fixture_id: 9005, home_team_id: 135, away_team_id: 118, home_team_name: 'Cruzeiro', away_team_name: 'Bahia', kickoff_utc: '2025-08-10T19:00:00Z' }),
 ];
