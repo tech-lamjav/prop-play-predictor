@@ -151,12 +151,7 @@ const FutebolLP = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Seo
-        jsonLd={faqPageSchema(FAQ)}
-        path="/futebol/comecar"
-        title="Aposta de Valor no Futebol — Brasil, América do Sul e Europa | Smart Betting"
-        description="Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. As principais competições do Brasil, América do Sul e Europa. 7 dias grátis, sem cartão."
-      />
+      <Seo route="/futebol/comecar" jsonLd={faqPageSchema(FAQ)} />
 
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { Seo } from '@/components/Seo';
 import { Trophy, Plus, Users, Sparkles, ChevronRight, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
@@ -35,18 +35,7 @@ const BolaoLP: React.FC = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Crie seu bolão da Copa 2026 — Smartbetting</title>
-        <meta
-          name="description"
-          content="Crie seu bolão da Copa em 30 segundos. Convide a galera no WhatsApp, palpite os 104 jogos, veja quem manja mais. Grátis pra até 20 amigos."
-        />
-        <meta property="og:title" content="Crie seu bolão da Copa 2026" />
-        <meta
-          property="og:description"
-          content="Reúna a galera, palpite todos os 104 jogos. Grátis. Sem cartão."
-        />
-      </Helmet>
+      <Seo route="/bolao/comecar" />
 
       <AnalyticsNav variant="rebrand" />
 

@@ -1,0 +1,78 @@
+[
+  {
+    "path": "/",
+    "title": "Smart Betting: Análises, Gestão e Ferramentas para Apostadores",
+    "description": "Análise de prop bets NBA, gestão de banca no Telegram e bolão da Copa 2026. Ferramentas para quem decide com dados, sem promessa de ganho.",
+    "sitemap": { "changefreq": "daily", "priority": "1.0", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/futebol",
+    "title": "Futebol Hoje: Oportunidades de Valor no Brasil, América do Sul e Europa | Smart Betting",
+    "description": "Os jogos de hoje com o Score de Confiabilidade: onde a odd da casa paga mais do que o risco real. As principais competições do Brasil, América do Sul e Europa, atualizado todo dia.",
+    "image": "/og/og-futebol.jpg",
+    "sitemap": { "changefreq": "daily", "priority": "0.9", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/futebol/comecar",
+    "title": "Aposta de Valor no Futebol: Brasil, América do Sul e Europa | Smart Betting",
+    "description": "Um Score de Confiabilidade que compara a chance real com a odd da casa e mostra onde a odd paga mais do que o risco. As principais competições do Brasil, América do Sul e Europa. 7 dias grátis, sem cartão.",
+    "image": "/og/og-futebol.jpg",
+    "sitemap": { "changefreq": "weekly", "priority": "0.8", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/nba",
+    "title": "Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting",
+    "description": "Compare a linha das casas com o histórico real do jogador: últimos jogos, injury report e Análise 360°. Dashboard aberto pra testar sem login.",
+    "image": "/og/og-nba.jpg",
+    "sitemap": { "changefreq": "weekly", "priority": "0.9", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/betinho",
+    "title": "Betinho: Gestão de Apostas e Controle de Banca no Telegram | Smart Betting",
+    "description": "Manda o print do bilhete no Telegram e o Betinho registra: banca, ROI e taxa de acerto sem planilha. 3 apostas por dia grátis.",
+    "sitemap": { "changefreq": "weekly", "priority": "0.8", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/betinho/bolao",
+    "title": "Apostas reais? Documente no Telegram | Betinho",
+    "description": "Você palpitou no bolão. E suas apostas reais, você anota? Documenta tudo no Telegram em 10 segundos.",
+    "sitemap": false
+  },
+  {
+    "path": "/planos",
+    "title": "Planos e Preços: Futebol, NBA e Betinho | Smart Betting",
+    "description": "Um plano, todo o ecossistema: comece grátis, assine o Essencial (futebol + Betinho ilimitado) ou o Completo (tudo + NBA). Teste grátis de 7 dias, sem fidelidade.",
+    "sitemap": { "changefreq": "weekly", "priority": "0.8", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/bolao",
+    "title": "Bolão Copa do Mundo 2026: Crie o seu grátis | Smart Betting",
+    "description": "Crie o bolão da Copa 2026 em 30 segundos. Convide a galera por WhatsApp, palpite os 104 jogos, escolha o campeão. Gratuito até 20 pessoas.",
+    "sitemap": { "changefreq": "weekly", "priority": "0.7", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/bolao/comecar",
+    "title": "Crie seu Bolão da Copa 2026 | Smart Betting",
+    "description": "Crie seu bolão da Copa em 30 segundos. Convide a galera no WhatsApp, palpite os 104 jogos, veja quem manja mais. Grátis pra até 20 amigos.",
+    "sitemap": { "changefreq": "weekly", "priority": "0.7", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/como-usar",
+    "title": "Como Usar o Betinho no Telegram: Guia Rápido | Smart Betting",
+    "description": "Passo a passo pra registrar suas apostas no Telegram em segundos: sincronize o número, mande o print do bilhete e acompanhe banca, ROI e acerto no dashboard.",
+    "sitemap": { "changefreq": "monthly", "priority": "0.6", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/privacidade",
+    "title": "Termos de Uso e Política de Privacidade | Smart Betting",
+    "description": "Termos de Uso e Política de Privacidade da SMARTBETTING (LAMJAV Tecnologia e Inovação LTDA), em conformidade com a LGPD.",
+    "sitemap": { "changefreq": "yearly", "priority": "0.3", "lastmod": "2026-07-24" }
+  },
+  {
+    "path": "/termos",
+    "title": "Termos de Uso e Política de Privacidade | Smart Betting",
+    "description": "Termos de Uso e Política de Privacidade da SMARTBETTING (LAMJAV Tecnologia e Inovação LTDA), em conformidade com a LGPD.",
+    "canonical": "/privacidade",
+    "sitemap": { "changefreq": "yearly", "priority": "0.3", "lastmod": "2026-07-24" }
+  }
+]

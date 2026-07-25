@@ -120,12 +120,7 @@ export default function Planos() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      <Seo
-        path="/planos"
-        title="Planos e Preços — Futebol, NBA e Betinho | Smart Betting"
-        description="Um plano, todo o ecossistema: comece grátis, assine o Essencial (futebol + Betinho ilimitado) ou o Completo (tudo + NBA). Teste grátis de 7 dias, sem fidelidade."
-        jsonLd={PLANS_JSONLD}
-      />
+      <Seo route="/planos" jsonLd={PLANS_JSONLD} />
       <AnalyticsNav variant="rebrand" />
 
       {/* Promo de lançamento */}

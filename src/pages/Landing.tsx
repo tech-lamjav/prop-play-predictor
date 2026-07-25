@@ -198,12 +198,7 @@ const Landing = () => {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
-      <Seo
-        jsonLd={faqPageSchema(FAQ)}
-        path="/nba"
-        title="Análise de Prop Bets NBA com Dados em Tempo Real | Smart Betting"
-        description="Compare a linha das casas com o histórico real do jogador: últimos jogos, injury report e Análise 360°. Dashboard aberto pra testar sem login."
-      />
+      <Seo route="/nba" jsonLd={faqPageSchema(FAQ)} />
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
