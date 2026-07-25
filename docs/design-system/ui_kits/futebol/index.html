@@ -1,0 +1,202 @@
+<!-- @dsCard group="Futebol" viewport="1280x1000" name="Futebol Hoje — valor do dia" subtitle="Day stepper, briefing KPIs, best-value hero, opportunity cards + game rail" -->
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Betting — Futebol Hoje</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--font-sans)}
+  a{text-decoration:none}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+  .nav{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .nav .wrap{height:60px;display:flex;align-items:center;gap:28px}
+  .nav img{height:26px}
+  .navlinks{display:flex;gap:22px}
+  .navlinks a{font-size:13px;font-weight:600;color:var(--ink-2)}
+  .navlinks a.active{color:var(--forest)}
+  .navlinks a:hover{color:var(--forest)}
+  .navright{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .ava{width:34px;height:34px;border-radius:50%;background:var(--forest);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+  /* day stepper */
+  .stepbar{background:#fff;border-bottom:1px solid var(--line)}
+  .stepper{display:flex;gap:8px;padding:12px 0;overflow-x:auto}
+  .day{flex-shrink:0;border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;background:#fff;min-width:88px;text-align:center}
+  .day.active{background:var(--forest);border-color:var(--forest);color:#fff}
+  .day .dl{font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;opacity:.7}
+  .day .dd{font-size:15px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .day .dc{font-size:10px;margin-top:2px;opacity:.6}
+  main{padding:26px 0 56px;display:flex;flex-direction:column;gap:26px}
+  .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.16em;font-weight:600;color:var(--ink-dim)}
+  /* briefing */
+  .brief{display:grid;grid-template-columns:5fr 7fr;gap:20px;align-items:start}
+  h1.big{font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1;margin:4px 0 0}
+  .subline{font-size:14px;margin-top:10px;color:var(--ink-2)}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .kpi{border-radius:10px;padding:16px;background:#fff;border:1px solid var(--line)}
+  .kpi.anchor{background:#fef7df;border-color:#fde68a}
+  .kpi .v{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;margin-top:8px}
+  .kpi .s{font-size:11px;margin-top:6px;color:var(--ink-dim)}
+  /* hero */
+  .hero{position:relative;overflow:hidden;border-radius:20px;color:#fff;background:var(--gradient-hero)}
+  .hero .glow{position:absolute;top:0;right:0;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(251,191,36,.16),transparent 70%);transform:translate(90px,-90px);pointer-events:none}
+  .hero .inner{position:relative;padding:28px 32px;display:grid;grid-template-columns:4fr 5fr 3fr;gap:32px}
+  .htag{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:8px;background:var(--amber-bright);color:var(--ink);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;width:fit-content}
+  .hmkt{font-size:11px;text-transform:uppercase;letter-spacing:.16em;font-weight:600;color:rgba(255,255,255,.5);margin-top:20px}
+  .hpick{font-size:32px;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-top:8px}
+  .hteams{display:flex;align-items:center;gap:6px;font-size:13px;margin-top:8px;color:rgba(255,255,255,.7)}
+  .flag{font-size:16px}
+  .hcta{height:44px;padding:0 20px;margin-top:20px;border-radius:10px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:8px;background:var(--amber-bright);color:var(--ink);border:none;cursor:pointer;width:fit-content}
+  .hcol2 .por{font-size:11px;text-transform:uppercase;letter-spacing:.18em;font-weight:600;color:rgba(255,255,255,.5)}
+  .hcol2 p{font-size:18px;line-height:1.4;font-weight:500;margin:8px 0 0;color:rgba(255,255,255,.95);text-wrap:pretty}
+  .evid{display:flex;align-items:flex-start;gap:6px;font-size:12px;margin-top:12px;color:rgba(255,255,255,.8)}
+  .aten{margin-top:16px;border-radius:10px;padding:12px;display:flex;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:12px;line-height:1.5;color:rgba(255,255,255,.8)}
+  .aten b{color:#fde68a}
+  .hcol3{border-left:1px solid rgba(255,255,255,.1);padding-left:24px}
+  .conf{font-size:64px;font-weight:700;color:var(--amber-bright);line-height:1;font-variant-numeric:tabular-nums}
+  .faixa{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:0 8px;height:24px;border-radius:6px;font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:700;background:rgba(220,239,226,.15);color:#dcefe2}
+  .hstats{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin-top:20px}
+  .hstat .l{font-size:9px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;color:rgba(255,255,255,.5)}
+  .hstat .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:4px}
+  /* opps + rail */
+  .cols{display:grid;grid-template-columns:8fr 4fr;gap:24px;align-items:start}
+  .oppgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .oppcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;text-align:left;cursor:pointer;transition:box-shadow .15s,border-color .15s}
+  .oppcard:hover{box-shadow:var(--shadow-card-hover);border-color:var(--line-2)}
+  .oppmkt{display:flex;gap:6px}
+  .tag{height:20px;padding:0 6px;display:inline-flex;align-items:center;border-radius:5px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;background:var(--canvas-2);color:var(--ink-2)}
+  .tag.alta{background:#e2efe8;color:var(--status-success)}
+  .tag.media{background:#fbeccd;color:#8a5a12}
+  .oscore{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--forest);line-height:1}
+  .opick{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-top:10px}
+  .ometa{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-dim);margin-top:4px}
+  .onums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .onums .l{font-size:9px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;color:var(--ink-dim)}
+  .onums .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:3px}
+  .sechead{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
+  .sechead .t{font-size:18px;font-weight:700;letter-spacing:-.01em;margin-top:2px}
+  .seelink{font-size:12px;font-weight:600;color:var(--forest);display:inline-flex;gap:4px;align-items:center}
+  .rail{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .rrow{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+  .rrow:first-child{border-top:none}
+  .rrow:hover{background:var(--canvas-2)}
+  .rtime{width:42px;font-size:11px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums;flex-shrink:0}
+  .rteams{flex:1;display:flex;align-items:center;gap:6px;font-size:13px;min-width:0}
+  .rscore{height:22px;min-width:26px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+  .rscore.alta{background:#e2efe8;color:var(--status-success)}
+  .rscore.media{background:#fbeccd;color:#8a5a12}
+  .banner{border-radius:10px;padding:16px 20px;display:flex;gap:12px;background:#fef7df;border:1px solid #fde68a;font-size:12px;line-height:1.5;color:#5a3c00}
+  .banner b{color:#9a6c00}
+  .lucide{width:16px;height:16px}
+  @media(max-width:900px){.brief,.hero .inner,.cols,.oppgrid,.kpis{grid-template-columns:1fr}}
+</style>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
+</head><body>
+<nav class="nav"><div class="wrap">
+  <img src="../../assets/logo-full.png" alt="Smart Betting">
+  <div class="navlinks"><a href="#">NBA</a><a href="#" class="active">Futebol</a><a href="#">Bolão</a><a href="#">Análises</a><a href="#">Minhas apostas</a></div>
+  <div class="navright"><div class="ava">RS</div></div>
+</div></nav>
+
+<div class="stepbar"><div class="wrap"><div class="stepper" id="stepper"></div></div></div>
+
+<main class="wrap">
+  <!-- briefing -->
+  <section class="brief">
+    <div>
+      <div class="lbl">Hoje no futebol</div>
+      <h1 class="big">Sábado, 14 de junho</h1>
+      <p class="subline"><b style="color:var(--ink)">6 jogos</b> · 9 oportunidades de valor · <b style="color:var(--forest)">3 de faixa Alta</b></p>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11px;color:var(--ink-dim)"><span style="width:6px;height:6px;border-radius:50%;background:var(--forest);display:inline-block"></span> Odds revisadas de hora em hora</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">Jogos hoje</div><div class="v">6</div><div class="s">na agenda</div></div>
+      <div class="kpi"><div class="lbl">Oportunidades</div><div class="v" style="color:var(--forest)">9</div><div class="s">com valor (+EV)</div></div>
+      <div class="kpi anchor"><div class="lbl">Faixa Alta</div><div class="v" style="color:var(--amber-2)">3</div><div class="s">maior confiança</div></div>
+      <div class="kpi"><div class="lbl">Melhor valor</div><div class="v" style="color:var(--forest)">+22%</div><div class="s">destaque do dia</div></div>
+    </div>
+  </section>
+
+  <!-- hero -->
+  <section class="hero"><div class="glow"></div><div class="inner">
+    <div style="display:flex;flex-direction:column">
+      <span class="htag"><i data-lucide="zap" class="lucide" style="width:13px;height:13px"></i> Melhor valor do dia</span>
+      <div class="hmkt">Mais de 2.5 gols · Copa do Mundo</div>
+      <div class="hpick">Mais de 2.5 gols</div>
+      <div class="hteams"><span class="flag">🇧🇷</span> Brasil × Sérvia <span class="flag">🇷🇸</span> <span style="opacity:.7">· Sáb 14/06 16:00</span></div>
+      <button class="hcta">Abrir análise do jogo <i data-lucide="arrow-right" class="lucide"></i></button>
+    </div>
+    <div class="hcol2">
+      <div class="por">Por quê</div>
+      <p>O mercado dá <b style="color:#fff">~64% de chance</b>; na odd <b style="color:#fff">1.72</b> isso paga acima do risco real — é aí que está o valor.</p>
+      <div class="evid"><i data-lucide="check" class="lucide" style="color:#6ee7b7;width:14px;height:14px;margin-top:1px"></i><span>Média de 3.4 gols nos últimos 5 jogos das duas seleções combinadas.</span></div>
+      <div class="aten"><i data-lucide="alert-triangle" class="lucide" style="color:#fde68a;width:14px;height:14px;margin-top:1px;flex-shrink:0"></i><div><b>Ponto de atenção · </b>Sérvia pode fechar a defesa e segurar o placar num jogo de estreia.</div></div>
+    </div>
+    <div class="hcol3">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.16em;font-weight:600;color:rgba(255,255,255,.5)">Confiabilidade</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px"><span class="conf">82</span><span style="font-size:16px;color:rgba(255,255,255,.4)">/100</span></div>
+      <span class="faixa"><span style="width:6px;height:6px;border-radius:50%;background:var(--amber-bright)"></span> Faixa Alta</span>
+      <div class="hstats">
+        <div class="hstat"><div class="l">Chance</div><div class="v">64%</div></div>
+        <div class="hstat"><div class="l">Odd</div><div class="v">1.72</div></div>
+        <div class="hstat"><div class="l">Se paga em</div><div class="v">~6/10</div></div>
+        <div class="hstat"><div class="l">Valor</div><div class="v" style="color:var(--amber-light)">+22%</div></div>
+      </div>
+    </div>
+  </div></section>
+
+  <!-- opps + rail -->
+  <section class="cols">
+    <div>
+      <div class="sechead"><div><div class="lbl">Mais oportunidades</div><div class="t">Por confiabilidade</div></div><a href="#" class="seelink">Ver todas <i data-lucide="arrow-right" class="lucide" style="width:14px;height:14px"></i></a></div>
+      <div class="oppgrid" id="opps"></div>
+    </div>
+    <div>
+      <div class="sechead"><div><div class="lbl">Jogos de hoje</div><div class="t">6 partidas</div></div><a href="#" class="seelink">Ver todos <i data-lucide="arrow-right" class="lucide" style="width:14px;height:14px"></i></a></div>
+      <div class="rail" id="rail"></div>
+    </div>
+  </section>
+
+  <div class="banner"><i data-lucide="alert-triangle" class="lucide" style="color:#9a6c00;flex-shrink:0;margin-top:1px"></i><div><b>Não é recomendação.</b> Mostramos onde a odd paga acima da chance estimada (valor). Score e faixa medem confiabilidade, não garantia.</div></div>
+</main>
+
+<script>
+const days=[["QUI","12","4 jogos"],["SEX","13","2 jogos"],["SÁB","14","6 jogos",1],["DOM","15","5 jogos"],["SEG","16","3 jogos"],["TER","17","2 jogos"]];
+document.getElementById('stepper').innerHTML=days.map(d=>`<div class="day${d[3]?' active':''}"><div class="dl">${d[0]}</div><div class="dd">${d[1]}</div><div class="dc">${d[2]}</div></div>`).join('');
+
+const opps=[
+ {mkt:"Dupla chance",faixa:"alta",fw:"Alta",score:79,pick:"Argentina ou empate",fh:"🇦🇷",fa:"🇲🇽",teams:"Argentina × México",when:"Sáb 14/06 22:00",chance:"71%",odd:"1.40",val:"+14%"},
+ {mkt:"Ambas marcam",faixa:"alta",fw:"Alta",score:76,pick:"Sim",fh:"🇫🇷",fa:"🇳🇬",teams:"França × Nigéria",when:"Sáb 14/06 19:00",chance:"58%",odd:"1.80",val:"+18%"},
+ {mkt:"Mais de 1.5 gols",faixa:"media",fw:"Média",score:64,pick:"Mais de 1.5",fh:"🇵🇹",fa:"🇨🇦",teams:"Portugal × Canadá",when:"Dom 15/06 16:00",chance:"77%",odd:"1.35",val:"+9%"},
+ {mkt:"Resultado",faixa:"media",fw:"Média",score:61,pick:"Vitória Espanha",fh:"🇪🇸",fa:"🇯🇵",teams:"Espanha × Japão",when:"Dom 15/06 13:00",chance:"55%",odd:"1.95",val:"+12%"},
+];
+document.getElementById('opps').innerHTML=opps.map(o=>`
+ <div class="oppcard">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+   <div class="oppmkt"><span class="tag">${o.mkt}</span><span class="tag ${o.faixa}">${o.fw}</span></div>
+   <div style="text-align:right"><div class="lbl" style="font-size:9px">Score</div><div class="oscore">${o.score}</div></div>
+  </div>
+  <div class="opick">${o.pick}</div>
+  <div class="ometa"><span class="flag" style="font-size:14px">${o.fh}</span>${o.teams}<span class="flag" style="font-size:14px">${o.fa}</span> · ${o.when}</div>
+  <div class="onums">
+   <div><div class="l">Chance</div><div class="v">${o.chance}</div></div>
+   <div><div class="l">Odd</div><div class="v">${o.odd}</div></div>
+   <div><div class="l">Valor</div><div class="v" style="color:var(--forest)">${o.val}</div></div>
+  </div>
+ </div>`).join('');
+
+const rail=[
+ {t:"16:00",fh:"🇧🇷",fa:"🇷🇸",h:"Brasil",a:"Sérvia",sc:82,f:"alta"},
+ {t:"19:00",fh:"🇫🇷",fa:"🇳🇬",h:"França",a:"Nigéria",sc:76,f:"alta"},
+ {t:"22:00",fh:"🇦🇷",fa:"🇲🇽",h:"Argentina",a:"México",sc:79,f:"alta"},
+ {t:"fim",fh:"🇩🇪",fa:"🇰🇷",h:"Alemanha",a:"Coreia",sc:58,f:"media",fin:"2 × 1"},
+ {t:"13:00",fh:"🇪🇸",fa:"🇯🇵",h:"Espanha",a:"Japão",sc:61,f:"media"},
+];
+document.getElementById('rail').innerHTML=rail.map(r=>`
+ <div class="rrow">
+  <span class="rtime">${r.t}</span>
+  <div class="rteams"><span class="flag">${r.fh}</span><span>${r.h}</span>${r.fin?`<b style="font-variant-numeric:tabular-nums">${r.fin}</b>`:'<span style="color:var(--ink-dim)">x</span>'}<span class="flag">${r.fa}</span><span>${r.a}</span></div>
+  <span class="rscore ${r.f}">${r.sc}</span>
+ </div>`).join('');
+
+lucide.createIcons();
+</script>
+</body></html>

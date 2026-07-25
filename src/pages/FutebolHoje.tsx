@@ -319,7 +319,9 @@ export default function FutebolHoje() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <Seo route="/futebol" />
-      <AnalyticsNav variant="rebrand" />
+      {/* backTo fixo no hub: /futebol é uma home de produto, então "voltar"
+          significa trocar de produto, não desfazer o último passo. */}
+      <AnalyticsNav variant="rebrand" showBack backTo="/inicio" />
       {!loading && days.length > 0 && (
         <div className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
@@ -373,9 +375,12 @@ export default function FutebolHoje() {
           </div>
         )}
 
-        {/* 2-col: mais oportunidades + jogos de hoje */}
+        {/* 2-col: mais oportunidades + jogos de hoje.
+            `min-w-0` nos filhos: item de grid tem `min-width:auto` e se recusa a
+            encolher abaixo do próprio conteúdo — abaixo de 375px isso empurrava
+            a página inteira e criava rolagem lateral. */}
         <div className="grid md:grid-cols-12 gap-6">
-          <div className="md:col-span-8">
+          <div className="md:col-span-8 min-w-0">
             <div className="flex items-end justify-between mb-3">
               <div>
                 <div className={LABEL}>Mais oportunidades</div>
@@ -396,7 +401,7 @@ export default function FutebolHoje() {
             )}
           </div>
 
-          <div className="md:col-span-4">
+          <div className="md:col-span-4 min-w-0">
             <div className="flex items-end justify-between mb-3">
               <div>
                 <div className={LABEL}>{isToday ? 'Jogos de hoje' : 'Jogos do dia'}</div>

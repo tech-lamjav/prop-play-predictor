@@ -4,37 +4,18 @@ import { usePostHog } from '@posthog/react';
 import { Bot, Trophy, ArrowUpRight, Loader2 } from 'lucide-react';
 import AnalyticsNav from '../components/AnalyticsNav';
 import { createClient } from '../integrations/supabase/client';
+import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
+// Mesmos ícones do cabeçalho — hub e header têm que mostrar a mesma marca
+// por produto. Ver components/icons/sports.tsx.
+import { IconSoccer, IconBasketball } from '@/components/icons/sports';
 
 // Hub de direcionamento pós-login (/inicio). Para quem JÁ passou pelo onboarding
 // (sincronizado ou não). Cadastro novo continua indo pro /onboarding (vínculo do
 // Betinho). Rebranding Direção A — só forest + amber + neutros.
 //
-// Layout: mobile = 4 retângulos empilhados (aproveita a tela). Desktop = 2x2,
-// bloco centralizado na vertical. Texto mínimo (quem está logado já se localiza).
-
-// ── Marcas dos produtos ────────────────────────────────────────────────────
-// Basquete e futebol não existem no lucide; SVGs próprios combinam melhor com
-// cada produto do que um ícone genérico.
-
-function IconBasketball({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2v20M2 12h20" />
-      <path d="M5 4.5c3 3 3 12 0 15M19 4.5c-3 3-3 12 0 15" />
-    </svg>
-  );
-}
-
-function IconSoccer({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 8.6l3.1 2.3-1.2 3.7h-3.8L8.9 10.9z" />
-      <path d="M12 8.6V3M15.1 10.9l4.7-1.9M13.9 14.6l3 4M10.1 14.6l-3 4M8.9 10.9L4.2 9" />
-    </svg>
-  );
-}
+// Layout: mobile = retângulos empilhados (aproveita a tela). Desktop = grade de
+// 2 colunas, bloco centralizado na vertical. Texto mínimo (quem está logado já
+// se localiza). A quantidade de destinos varia — ver SHOW_BOLAO_ENTRY_POINTS.
 
 type Destino = {
   key: string;
@@ -48,7 +29,7 @@ type Destino = {
   onClick: (nav: ReturnType<typeof useNavigate>, synced: boolean) => void;
 };
 
-const DESTINOS: Destino[] = [
+const TODOS_DESTINOS: Destino[] = [
   {
     key: 'futebol',
     icon: IconSoccer,
@@ -87,6 +68,10 @@ const DESTINOS: Destino[] = [
     onClick: (nav) => nav('/bolao'),
   },
 ];
+
+const DESTINOS = TODOS_DESTINOS.filter(
+  (d) => d.key !== 'bolao' || SHOW_BOLAO_ENTRY_POINTS,
+);
 
 export default function Inicio() {
   const navigate = useNavigate();
@@ -149,7 +134,7 @@ export default function Inicio() {
             </h1>
           </header>
 
-          {/* Mobile: 4 retângulos empilhados. Desktop: 2x2. */}
+          {/* Mobile: retângulos empilhados. Desktop: 2 colunas. */}
           <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4">
             {DESTINOS.map((d) => {
               const Icon = d.icon;

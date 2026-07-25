@@ -1,0 +1,75 @@
+/* ============================================================================
+   Smart Betting — Colors (rebrand "Direção A": light theme, verde-mata + âmbar)
+   Base palette + semantic aliases. Sourced from tailwind.config.ts + index.css
+   (.theme-rebrand / .theme-bolao) on the prop-play-predictor `develop` branch.
+   ============================================================================ */
+:root {
+  /* ---- Surfaces / canvas ---- */
+  --canvas: #f6f7f5;        /* app background */
+  --canvas-2: #eef0eb;      /* secondary background, table headers, hovers */
+  --white: #ffffff;         /* card surface */
+
+  /* ---- Ink (text) scale ---- */
+  --ink: #1a1d1a;           /* primary text / headlines */
+  --ink-2: #5a625a;         /* muted / secondary text */
+  --ink-3: #eef0ec;         /* light placeholder surface (avatar bg, chips) */
+  --ink-dim: #9aa097;       /* dimmest hint text */
+
+  /* ---- Lines / borders ---- */
+  --line: #e3e6e0;          /* default hairline border */
+  --line-2: #d4d8d0;        /* stronger divider */
+
+  /* ---- Forest (primary brand green) ---- */
+  --forest: #0a3d2e;        /* primary actions, brand green */
+  --forest-2: #0f5238;      /* hover / pressed */
+  --forest-soft: #1f5640;   /* softer green (links hover, gradients) */
+  --forest-tint: #e7efe9;   /* pale green surface (CTA card backgrounds) */
+
+  /* ---- Amber (accent gold) ---- */
+  --amber: #d4a017;         /* brand amber — KPI values, accents on light */
+  --amber-2: #b8870f;       /* amber hover / pressed */
+  --amber-bright: #fbbf24;  /* Tailwind amber-400 — hero CTA / badge on dark */
+  --amber-light: #fcd34d;   /* Tailwind amber-300 — hero CTA hover */
+
+  /* ---- Status ---- */
+  --status-success: #2f7d50;
+  --status-warning: #c97a1a;
+  --status-danger: #b8341c;
+  --status-info: #1a5fb4;
+
+  /* ---- Brand logo palette (hexagon mark + wordmark) ---- */
+  --brand-teal: #46c1ac;    /* teal bar-chart glyph inside the mark */
+  --brand-navy: #223244;    /* navy wordmark / mark outline (logo-azul) */
+  --brand-emerald: #10b981; /* favicon gradient start */
+  --brand-emerald-2: #059669;/* favicon gradient end */
+
+  /* ---- Hero gradient (forest, used on TopPick / hero cards) ---- */
+  --gradient-hero: linear-gradient(135deg, #0a3d2e 0%, #08321f 60%, #051f12 100%); /* @kind color */
+  --gradient-hero-glow: radial-gradient(circle, rgba(251,191,36,0.18), transparent 70%); /* @kind color */
+  --gradient-photo: linear-gradient(135deg, #1f5640, #0a3d2e); /* @kind color */
+
+  /* ============================ SEMANTIC ALIASES ============================ */
+  --surface-page: var(--canvas);
+  --surface-sunken: var(--canvas-2);
+  --surface-card: var(--white);
+  --surface-cta: var(--forest-tint);
+
+  --text-strong: var(--ink);
+  --text-body: var(--ink);
+  --text-muted: var(--ink-2);
+  --text-hint: var(--ink-dim);
+  --text-on-forest: #ffffff;
+  --text-on-amber: var(--ink);
+
+  --border-default: var(--line);
+  --border-strong: var(--line-2);
+  --border-focus: var(--forest);
+
+  --action-primary: var(--forest);
+  --action-primary-hover: var(--forest-2);
+  --action-accent: var(--amber);
+  --action-accent-hover: var(--amber-2);
+
+  --positive: var(--forest);       /* app uses forest/green for good outcomes */
+  --negative: var(--status-danger);
+}

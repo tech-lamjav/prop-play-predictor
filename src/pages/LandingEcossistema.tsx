@@ -6,6 +6,7 @@ import { Seo } from "@/components/Seo";
 import { faqPageSchema, webSiteSchema, type FaqItem } from "@/lib/structured-data";
 import { getPlayerPhotoUrl, getTeamLogoUrl } from "@/utils/team-logos";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
+import { SHOW_BOLAO_ENTRY_POINTS } from "@/config/bolao";
 
 /**
  * Landing geral do ecossistema (rota /). Papel: porta de entrada que ROTEIA —
@@ -334,7 +335,7 @@ const MockFutebol = () => {
   );
 };
 
-const PRODUCTS = [
+const TODOS_PRODUCTS = [
   {
     id: "futebol",
     num: "01",
@@ -384,6 +385,11 @@ const PRODUCTS = [
     available: true,
   },
 ];
+
+// A Copa acabou — o bolão sai da vitrine (mantém a rota de pé pra quem tem link).
+const PRODUCTS = TODOS_PRODUCTS.filter(
+  (p) => p.id !== 'bolao' || SHOW_BOLAO_ENTRY_POINTS,
+);
 
 const LandingEcossistema = () => {
   const navigate = useNavigate();

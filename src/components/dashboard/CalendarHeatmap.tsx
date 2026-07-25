@@ -89,7 +89,10 @@ export const CalendarHeatmap: React.FC<CalendarHeatmapProps> = ({ bets }) => {
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <div className="relative h-4 flex-1">
+            {/* `overflow-hidden` igual ao grid de semanas abaixo: os rótulos de
+                mês são posicionados em px pra casar com as colunas, então o
+                último escapava do card e empurrava a página em tela estreita. */}
+            <div className="relative h-4 flex-1 overflow-hidden">
               {data.months.map((m, i) => {
                 const left = m.weekIndex * (CELL + GAP);
                 return (

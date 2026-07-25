@@ -4,6 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Rail de esportes/seções do header mobile: rola na horizontal sem mostrar
+   barra (o corte dos pills já sinaliza que tem mais coisa pro lado). */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* A tab bar mobile é `position:fixed` no rodapé da viewport, então cobriria os
+   últimos 62px da página. A classe entra no <body> pelo AnalyticsNav só
+   enquanto a barra está montada — ver MobileTabBar. */
+@media (max-width: 767px) {
+  body.has-tabbar {
+    padding-bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+}
+
 /* Minimal scrollbar for modals and panels */
 .minimal-scrollbar::-webkit-scrollbar {
   width: 4px;
