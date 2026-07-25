@@ -9,6 +9,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_GAME_TOUR_ID, nbaGameSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaGames, demoNbaOpportunities } from '@/components/onboarding/demo/nba';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -1055,7 +1057,7 @@ export default function GameDetail() {
   const posthog = usePostHog();
 
   const initCache = gameId ? gameDetailCache.get(gameId) : undefined;
-  const [game, setGame] = useState<Game | null>(initCache?.game ?? null);
+  const [realGame, setGame] = useState<Game | null>(initCache?.game ?? null);
   const [homePlayers, setHomePlayers] = useState<TeamPlayer[]>(initCache?.homePlayers ?? []);
   const [visitorPlayers, setVisitorPlayers] = useState<TeamPlayer[]>(initCache?.visitorPlayers ?? []);
   const [homeTeam, setHomeTeam] = useState<Team | null>(initCache?.homeTeam ?? null);
@@ -1067,6 +1069,10 @@ export default function GameDetail() {
   const [b2bLoaded, setB2bLoaded] = useState(!!initCache?.b2bData);
   const hasLoaded = useRef(false);
 
+  const gameTour = useOnboardingTour(NBA_GAME_TOUR_ID, { enabled: !isLoadingGame });
+  const isDemo = gameTour.run; // durante o tour, preenche com exemplo
+  const game = isDemo ? demoNbaGames[0] : realGame;
+
   const finished = game?.winner_team_id != null;
   const isB2B = !!(game?.home_team_is_b2b_game || game?.visitor_team_is_b2b_game);
 
@@ -1074,7 +1080,7 @@ export default function GameDetail() {
 
   // Quando game muda (depois do carregamento), seta tab inicial certa
   useEffect(() => {
-    if (game) setActiveTab(finished ? 'boxscore' : 'lineups');
+    if (game) setActiveTab(isDemo ? 'bets' : finished ? 'boxscore' : 'lineups');
   }, [game?.game_id, finished]);
 
   // Analytics: visualização do detalhe de jogo NBA (Marco 3 — retenção por superfície, N3).
@@ -1135,11 +1141,9 @@ export default function GameDetail() {
   const analise360 = useAnalise360Data();
   const gameOpps = useMemo(() => {
     if (!game) return [] as DailyOpportunity[];
-    const allOpps = analise360.data?.opportunities ?? [];
+    const allOpps = isDemo ? demoNbaOpportunities : (analise360.data?.opportunities ?? []);
     return allOpps.filter(o => o.game_id === game.game_id);
-  }, [game?.game_id, analise360.data]);
-
-  const gameTour = useOnboardingTour(NBA_GAME_TOUR_ID, { enabled: !!game && !isLoadingGame });
+  }, [game?.game_id, analise360.data, isDemo]);
 
   if (authLoading) {
     return (
@@ -1273,8 +1277,10 @@ export default function GameDetail() {
             </div>
           ) : (
             <>
+              {isDemo && <DemoRibbon show />}
               {/* Hero */}
               <div data-tour="nba-game-hero">
+                {isDemo && <div className="mb-2"><DemoBadge /></div>}
                 <HeroCard game={game} homeTeam={homeTeam} visitorTeam={visitorTeam} />
               </div>
 
