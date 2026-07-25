@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_TOUR_ID, nbaSteps } from '@/components/onboarding/tours';
+import { DemoRibbon } from '@/components/onboarding/DemoRibbon';
+import { demoNbaGames, demoNbaPlayers, demoNbaOpportunities } from '@/components/onboarding/demo/nba';
 
 // --- Date helpers ---
 
@@ -106,9 +108,11 @@ export default function HomeNBA() {
   const posthog = usePostHog();
   const { user, isLoading: authLoading } = useAuth();
   const { data, isLoading } = useHomeNBAData();
-  const games = data?.games ?? [];
-  const players = data?.players ?? [];
-  const opportunities = data?.opportunities ?? [];
+  const nbaTour = useOnboardingTour(NBA_TOUR_ID, { enabled: !isLoading });
+  const isDemo = nbaTour.run; // durante o tour, preenche com exemplo
+  const games = isDemo ? demoNbaGames : (data?.games ?? []);
+  const players = isDemo ? demoNbaPlayers : (data?.players ?? []);
+  const opportunities = isDemo ? demoNbaOpportunities : (data?.opportunities ?? []);
   const today = data?.today ?? '';
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -348,8 +352,6 @@ export default function HomeNBA() {
     return players.filter(p => p.player_name.toLowerCase().includes(term) || p.team_abbreviation.toLowerCase().includes(term)).sort((a, b) => (b.rating_stars ?? 0) - (a.rating_stars ?? 0)).slice(0, 8);
   }, [players, searchTerm]);
 
-  const nbaTour = useOnboardingTour(NBA_TOUR_ID, { enabled: !isLoading });
-
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <Helmet>
@@ -360,6 +362,7 @@ export default function HomeNBA() {
       <OnboardingTour tourId={NBA_TOUR_ID} steps={nbaSteps} run={nbaTour.run} onFinish={nbaTour.finish} />
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">
+        <DemoRibbon show={isDemo} />
         {/* Briefing strip com busca embarcada na coluna esquerda */}
         <NBABriefingStrip
           date={todayDate}
