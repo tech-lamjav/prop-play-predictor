@@ -1,4 +1,4 @@
-import type { FutebolValueBoardRow, FutebolFixture, FutebolStandingRow, FutebolLeaders } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolFixture, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason } from '@/services/futebol-data.service';
 
 // Dados de EXEMPLO (fictícios) pro onboarding guiado — usados só enquanto o tour
 // roda, pra a tela nunca ficar vazia. Nada aqui é real. Times/valores ilustrativos.
@@ -115,6 +115,45 @@ export const demoFutebolStandings: FutebolStandingRow[] = [
   st(7, 130, 'Grêmio', 29, 8, 5, 6, 25, 23, null),
   st(8, 118, 'Bahia', 27, 7, 6, 6, 20, 21, null),
   st(9, 131, 'Corinthians', 25, 7, 4, 8, 19, 24, null),
+];
+
+// Perfil de time de exemplo (/futebol/time) — Palmeiras (id 121).
+export const demoTeamProfile: FutebolTeamProfile = {
+  team: { team_id: 121, team_name: 'Palmeiras', team_logo: null },
+  results: [
+    { scope: 'geral', games: 19, wins: 13, draws: 5, losses: 1, avg_gf: 1.8, avg_ga: 0.8, over25_pct: 47, btts_pct: 42 },
+    { scope: 'casa', games: 10, wins: 8, draws: 2, losses: 0, avg_gf: 2.1, avg_ga: 0.6, over25_pct: 55, btts_pct: 40 },
+    { scope: 'fora', games: 9, wins: 5, draws: 3, losses: 1, avg_gf: 1.4, avg_ga: 1.0, over25_pct: 40, btts_pct: 44 },
+  ],
+  stats_avg: [
+    { scope: 'geral', games: 19, avg_possession: 55, avg_shots: 14.2, avg_shots_on_goal: 5.1, avg_corners: 6.2, avg_yellow: 1.8, avg_xg: 1.7, avg_xg_against: 0.9 },
+    { scope: 'casa', games: 10, avg_possession: 58, avg_shots: 16.0, avg_shots_on_goal: 6.0, avg_corners: 7.0, avg_yellow: 1.6, avg_xg: 2.0, avg_xg_against: 0.7 },
+    { scope: 'fora', games: 9, avg_possession: 52, avg_shots: 12.1, avg_shots_on_goal: 4.2, avg_corners: 5.4, avg_yellow: 2.0, avg_xg: 1.4, avg_xg_against: 1.1 },
+  ],
+};
+
+export const demoTeamSeason: FutebolTeamSeason = {
+  form: 'LDWWWW',
+  played_total: 19, played_home: 10, played_away: 9,
+  wins_total: 13, wins_home: 8, wins_away: 5,
+  draws_total: 5, draws_home: 2, draws_away: 3,
+  loses_total: 1, loses_home: 0, loses_away: 1,
+  goals_for_avg_total: 1.8, goals_for_avg_home: 2.1, goals_for_avg_away: 1.4,
+  goals_against_avg_total: 0.8, goals_against_avg_home: 0.6, goals_against_avg_away: 1.0,
+  clean_sheet_total: 9, clean_sheet_home: 6, clean_sheet_away: 3,
+  failed_to_score_total: 2,
+  biggest_streak_wins: 6, biggest_streak_loses: 1,
+  penalty_total: 4, penalty_scored_pct: 75,
+};
+
+// Últimos jogos (encerrados) do time — pra "Últimos resultados".
+export const demoTeamFixtures: FutebolFixture[] = [
+  fx({ fixture_id: 8901, home_team_id: 121, away_team_id: 131, home_team_name: 'Palmeiras', away_team_name: 'Corinthians', status_short: 'FT', status_long: 'Match Finished', goals_home: 2, goals_away: 0, kickoff_utc: '2025-07-27T21:30:00Z', date_utc: '2025-07-27' }),
+  fx({ fixture_id: 8902, home_team_id: 124, away_team_id: 121, home_team_name: 'Fluminense', away_team_name: 'Palmeiras', status_short: 'FT', status_long: 'Match Finished', goals_home: 1, goals_away: 2, kickoff_utc: '2025-07-23T23:00:00Z', date_utc: '2025-07-23' }),
+  fx({ fixture_id: 8903, home_team_id: 121, away_team_id: 118, home_team_name: 'Palmeiras', away_team_name: 'Bahia', status_short: 'FT', status_long: 'Match Finished', goals_home: 3, goals_away: 1, kickoff_utc: '2025-07-19T19:00:00Z', date_utc: '2025-07-19' }),
+  fx({ fixture_id: 8904, home_team_id: 130, away_team_id: 121, home_team_name: 'Grêmio', away_team_name: 'Palmeiras', status_short: 'FT', status_long: 'Match Finished', goals_home: 1, goals_away: 1, kickoff_utc: '2025-07-15T23:30:00Z', date_utc: '2025-07-15' }),
+  fx({ fixture_id: 8905, home_team_id: 121, away_team_id: 127, home_team_name: 'Palmeiras', away_team_name: 'Flamengo', status_short: 'FT', status_long: 'Match Finished', goals_home: 0, goals_away: 1, kickoff_utc: '2025-07-10T21:30:00Z', date_utc: '2025-07-10' }),
+  fx({ fixture_id: 8906, home_team_id: 119, away_team_id: 121, home_team_name: 'Internacional', away_team_name: 'Palmeiras', status_short: 'FT', status_long: 'Match Finished', goals_home: 0, goals_away: 2, kickoff_utc: '2025-07-06T20:00:00Z', date_utc: '2025-07-06' }),
 ];
 
 // Artilheiros de exemplo.

@@ -8,6 +8,8 @@ import { competitionLabel } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUTEBOL_TIME_TOUR_ID, makeFutebolTimeSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoTeamProfile, demoTeamSeason, demoFutebolStandings, demoTeamFixtures } from '@/components/onboarding/demo/futebol';
 import type { Competition, FutebolScopeResult, FutebolScopeStats } from '@/services/futebol-data.service';
 
 // Paleta do mockup (espelha theme-bolao)
@@ -98,12 +100,20 @@ export default function FutebolTime() {
   const season = Number(params.get('s')) || 2026;
   const tid = teamId ? Number(teamId) : undefined;
 
-  const { data: profile, isLoading, isError } = useFutebolTeamProfile(tid, competition, season);
-  const { data: raiox } = useFutebolTeamSeason(tid, competition, season);
-  const { data: standings } = useFutebolStandings(competition, season, !!tid);
-  const { data: fixtures } = useFutebolFixtures(competition, season);
+  const { data: realProfile, isLoading, isError } = useFutebolTeamProfile(tid, competition, season);
+  const { data: realRaiox } = useFutebolTeamSeason(tid, competition, season);
+  const { data: realStandings } = useFutebolStandings(competition, season, !!tid);
+  const { data: realFixtures } = useFutebolFixtures(competition, season);
 
-  const stand = useMemo(() => (standings || []).find((s) => s.team_id === tid), [standings, tid]);
+  const timeTour = useOnboardingTour(FUTEBOL_TIME_TOUR_ID, { enabled: !isLoading });
+  const isDemo = timeTour.run; // durante o tour, preenche a tela com exemplo
+  const profile = isDemo ? demoTeamProfile : realProfile;
+  const raiox = isDemo ? demoTeamSeason : realRaiox;
+  const standings = isDemo ? demoFutebolStandings : realStandings;
+  const fixtures = isDemo ? demoTeamFixtures : realFixtures;
+  const tidEff = isDemo ? 121 : tid;
+
+  const stand = useMemo(() => (standings || []).find((s) => s.team_id === tidEff), [standings, tidEff]);
 
   const results = useMemo(() =>
     (profile?.results || []).slice().sort((a, b) => SCOPE_ORDER.indexOf(a.scope as never) - SCOPE_ORDER.indexOf(b.scope as never)),
@@ -149,14 +159,14 @@ export default function FutebolTime() {
 
   // Últimos resultados (a partir dos jogos do time)
   const recent = useMemo(() => {
-    if (!tid) return [];
+    if (!tidEff) return [];
     return (fixtures || [])
-      .filter((f) => (f.home_team_id === tid || f.away_team_id === tid)
+      .filter((f) => (f.home_team_id === tidEff || f.away_team_id === tidEff)
         && FINISHED.has(f.status_short || '') && f.goals_home != null && f.goals_away != null)
       .sort((a, b) => new Date(b.kickoff_utc || b.date_utc || 0).getTime() - new Date(a.kickoff_utc || a.date_utc || 0).getTime())
       .slice(0, 6)
       .map((f) => {
-        const home = f.home_team_id === tid;
+        const home = f.home_team_id === tidEff;
         const gf = (home ? f.goals_home : f.goals_away) as number;
         const ga = (home ? f.goals_away : f.goals_home) as number;
         return {
@@ -168,9 +178,8 @@ export default function FutebolTime() {
           when: fmtDay(f.kickoff_utc || f.date_utc),
         };
       });
-  }, [fixtures, tid]);
+  }, [fixtures, tidEff]);
 
-  const timeTour = useOnboardingTour(FUTEBOL_TIME_TOUR_ID, { enabled: !isLoading && !!profile?.team });
   const timeSteps = useMemo(() => makeFutebolTimeSteps({ hasRaiox: !!raiox }), [raiox]);
 
   return (
@@ -187,16 +196,17 @@ export default function FutebolTime() {
             </div>
             <Skeleton className="h-40 w-full bg-canvas-2 rounded-2xl" />
           </div>
-        ) : isError || !profile?.team ? (
+        ) : !profile?.team ? (
           <div className={`${CARD} p-6 text-center text-sm text-status-danger`}>Não foi possível carregar este time.</div>
         ) : (
           <div className="flex flex-col gap-5">
+            {isDemo && <DemoRibbon show />}
             {/* ── Header magazine ── */}
             <div data-tour="ftime-header" className={CARD}>
               <div className="px-5 md:px-8 py-5 md:py-6 flex items-center gap-4 md:gap-5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                 <Crest name={profile.team.team_name || ''} id={profile.team.team_id} size={64} />
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl md:text-[28px] font-extrabold tracking-tight leading-tight text-ink truncate">{profile.team.team_name}</h1>
+                  <div className="flex items-center gap-2 min-w-0"><h1 className="text-xl md:text-[28px] font-extrabold tracking-tight leading-tight text-ink truncate">{profile.team.team_name}</h1>{isDemo && <DemoBadge />}</div>
                   <p className="text-xs mt-1 text-ink-2">
                     {competitionLabel(competition)} · {season}
                     {stand?.rank ? <> · <span className="font-semibold text-ink">{stand.rank}º colocado</span></> : null}
