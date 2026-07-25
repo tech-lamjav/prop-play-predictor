@@ -320,8 +320,8 @@ export default function FutebolHoje() {
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <Seo
         path="/futebol"
-        title="Futebol Hoje — Oportunidades de Valor no Brasileirão e Copa | Smart Betting"
-        description="Os jogos de hoje com o Score de Confiabilidade: onde a odd da casa paga mais do que o risco real. Brasileirão, Série B e Copa do Mundo, atualizado todo dia."
+        title="Futebol Hoje — Oportunidades de Valor no Brasil, América do Sul e Europa | Smart Betting"
+        description="Os jogos de hoje com o Score de Confiabilidade: onde a odd da casa paga mais do que o risco real. As principais competições do Brasil, América do Sul e Europa, atualizado todo dia."
       />
       <AnalyticsNav variant="rebrand" />
       {!loading && days.length > 0 && (
