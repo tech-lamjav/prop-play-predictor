@@ -3284,12 +3284,14 @@ export default function Bets() {
                 {mobileCards}
               </div>
 
-              {/* Pagination footer */}
-              <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px]">
+              {/* Pagination footer — `flex-wrap` nos dois níveis: com muitas
+                  páginas a fileira de botões passa de 300px e, sem quebrar,
+                  estourava a largura da página em tela estreita. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px]">
                 <div className="text-[11px] text-ink-2 tabular">
                   Página {currentPage} de {totalPages}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}

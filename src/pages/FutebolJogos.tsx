@@ -82,6 +82,12 @@ function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]
   const zonesPresent = Array.from(new Set(rows.map((r) => futebolZone(r.rank_description)).filter(Boolean))) as Exclude<FutebolZone, null>[];
   return (
     <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
+      {/* As colunas fixas (#, J, V, E, D, SG, Pts) somam ~486px e não cabem em
+          tela de 320-360px. Em vez de empurrar a página inteira — o que criava
+          rolagem lateral e descolava o header sticky —, a tabela rola dentro
+          do próprio card. */}
+      <div className="overflow-x-auto no-scrollbar">
+      <div className="min-w-[480px]">
       <div className={`${STAND_GRID} px-4 py-2.5 text-[10px] uppercase tracking-[0.12em] font-bold text-ink-3 bg-canvas-2 border-b border-line`}>
         <span>#</span><span>Time</span>
         <span className="text-center">J</span><span className="text-center">V</span><span className="text-center">E</span><span className="text-center">D</span>
@@ -109,6 +115,8 @@ function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]
           </button>
         );
       })}
+      </div>
+      </div>
       {zonesPresent.length > 0 && (
         <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap text-[10px] bg-canvas-2 border-t border-line text-ink-3">
           {zonesPresent.map((z) => (
@@ -265,9 +273,12 @@ export default function FutebolJogos() {
         {isError ? (
           <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-status-danger">Erro ao carregar os jogos.</div>
         ) : (
+          // `min-w-0` nas duas colunas: item de grid não encolhe abaixo do
+          // próprio conteúdo por padrão, e a tabela de classificação (480px)
+          // empurrava a página inteira em vez de rolar dentro do card.
           <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
             {/* Jogos da rodada */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-w-0">
               {isLoading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full bg-canvas-2 rounded-rebrand-md" />)
                 : roundCount === 0 ? <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-ink-3">Nenhum jogo nesta rodada.</div>
                 : groups.map(([day, games]) => (
@@ -280,7 +291,7 @@ export default function FutebolJogos() {
                 ))}
             </div>
             {/* Rail: classificação + artilheiros */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 min-w-0">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Classificação</div>
