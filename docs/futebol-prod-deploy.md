@@ -10,7 +10,7 @@ Projetos Supabase: **dev** = `kpbjuplcwiyrymafhehz` · **prod** = `lavclmlvvfzkb
 
 ## 1. Pré-requisitos (do lado de dados — repo `data-engineering` / `analytics-engineering`)
 
-1. **dbt do futebol** materializando as 21 tabelas em **`smartbetting-dados.futebol`** como **BASE TABLE** (as 5 que eram `view` — `int_futebol_premissas_ou/ah/btts/dc` e `fact_h2h` — foram convertidas para `table`, senão `list_rows()` não lê). Imagem `dbt-futebol` reconstruída + `gcloud run jobs update dbt-futebol`.
+1. **dbt do futebol** materializando as 22 tabelas em **`smartbetting-dados.futebol`** como **BASE TABLE** (as 5 que eram `view` — `int_futebol_premissas_ou/ah/btts/dc` e `fact_h2h` — foram convertidas para `table`, senão `list_rows()` não lê). Imagem `dbt-futebol` reconstruída + `gcloud run jobs update dbt-futebol`.
 2. **Serviço Cloud Run `sync-bq-to-postgres`** deployado com o engine **sport-aware** (`?sport=futebol`). Sem novos segredos: usa os mesmos `SUPABASE_PG_URL_PRD`/`SUPABASE_PG_URL_DEV` (porta **5432**, sessão direta) do NBA.
 3. **`SUPABASE_PG_URL_PRD`** apontando para o Supabase de prod (`lavclmlvvfzkblrstojd`).
 4. **Workflow de futebol** com o passo de sync (`?sport=futebol`) após o job `dbt-futebol` (freshness ≥ horária, substitui o pg_cron antigo).
@@ -23,7 +23,7 @@ Projetos Supabase: **dev** = `kpbjuplcwiyrymafhehz` · **prod** = `lavclmlvvfzkb
 
 Schema **`futebol`** (RPC-only, igual ao `nba_mart`):
 
-- **21 tabelas nativas** (espelho **escalar** dos marts BQ `smartbetting-dados.futebol`): `dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities`. Colunas `ARRAY<STRING>` (`evidencias`/`avisos`) e `RECORD` (`coverage`) **não** são materializadas — o sync as pula e as RPCs **remontam** evidências/avisos a partir dos booleans das `int_futebol_premissas_*`.
+- **22 tabelas nativas** (espelho **escalar** dos marts BQ `smartbetting-dados.futebol`): `dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities, fact_value_opportunities_hist`. Colunas `ARRAY<STRING>` (`evidencias`/`avisos`) e `RECORD` (`coverage`) **não** são materializadas — o sync as pula e as RPCs **remontam** evidências/avisos a partir dos booleans das `int_futebol_premissas_*`. `fact_value_opportunities_hist` é um **dbt snapshot** (`dbt_valid_from/dbt_valid_to/dbt_scd_id`) — append-only, não é `drop+create` de dado (só de shape).
 - **Índices** das RPCs (1 por tabela, +1 composto em odds/fixtures/standings).
 - **Helper** `public._futebol_team_form(...)` (SECURITY DEFINER).
 - **18 RPCs** `public.get_futebol_*` (SECURITY DEFINER, `search_path=''`, lendo `futebol.*`) + grants `anon`/`authenticated`/`service_role`.

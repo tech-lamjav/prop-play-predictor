@@ -12,7 +12,7 @@
 -- evidencias/avisos — são puladas pelo sync; as RPCs reconstroem evidências dos
 -- booleans das int_futebol_premissas_*). Gerado do estado dev (kpbjuplcwiyrymafhehz).
 --
--- Tabelas sincronizadas (21): dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities
+-- Tabelas sincronizadas (22): dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities, fact_value_opportunities_hist
 -- ============================================================================
 
 -- Não validar corpo das funções no CREATE (ordem-robusto; valida em runtime).
@@ -624,6 +624,44 @@ create table futebol.fact_value_opportunities (
   "dbt_loaded_at" timestamp
 );
 
+-- Histórico append-only (dbt snapshot, strategy=check) de fact_value_opportunities —
+-- preserva o pick de t24h/t1h mesmo depois que o mart (full-refresh) sobrescreve com t15m.
+drop table if exists futebol.fact_value_opportunities_hist cascade;
+create table futebol.fact_value_opportunities_hist (
+  "opportunity_key" text,
+  "fixture_id" bigint,
+  "market" text,
+  "outcome" text,
+  "line_value" double precision,
+  "competition" text,
+  "season" bigint,
+  "edge" double precision,
+  "pts_valor" bigint,
+  "pts_premissas" bigint,
+  "pts_corroboracao" bigint,
+  "penalidades" bigint,
+  "score" bigint,
+  "faixa" text,
+  "best_odd" double precision,
+  "best_book" text,
+  "avg_odd" double precision,
+  "n_casas" bigint,
+  "prob_justa_fechamento" double precision,
+  "valor_fonte" text,
+  "janela_usada" text,
+  "penalidades_globais_pts" bigint,
+  "penalidades_especificas_pts" bigint,
+  "modelo_api_concorda" boolean,
+  "linha_sharp_confirma" boolean,
+  "pin_n_outcomes" bigint,
+  "is_half_line" boolean,
+  "dbt_loaded_at" timestamp,
+  "dbt_scd_id" text,
+  "dbt_updated_at" timestamp,
+  "dbt_valid_from" timestamp,
+  "dbt_valid_to" timestamp
+);
+
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
 revoke all on schema futebol from anon, authenticated;
 revoke all on all tables in schema futebol from anon, authenticated;
@@ -648,6 +686,8 @@ CREATE INDEX IF NOT EXISTS fact_standings_snapshot_competition_season_snapshot_d
 CREATE INDEX IF NOT EXISTS fact_standings_snapshot_team_id_idx ON futebol.fact_standings_snapshot USING btree (team_id);
 CREATE INDEX IF NOT EXISTS fact_team_season_stats_team_id_competition_season_idx ON futebol.fact_team_season_stats USING btree (team_id, competition, season);
 CREATE INDEX IF NOT EXISTS fact_value_opportunities_fixture_id_idx ON futebol.fact_value_opportunities USING btree (fixture_id);
+CREATE INDEX IF NOT EXISTS fact_value_opportunities_hist_fixture_id_idx ON futebol.fact_value_opportunities_hist USING btree (fixture_id);
+CREATE INDEX IF NOT EXISTS fact_value_opportunities_hist_opportunity_key_idx ON futebol.fact_value_opportunities_hist USING btree (opportunity_key);
 CREATE INDEX IF NOT EXISTS int_futebol_premissas_1x2_fixture_id_outcome_idx ON futebol.int_futebol_premissas_1x2 USING btree (fixture_id, outcome);
 CREATE INDEX IF NOT EXISTS int_futebol_premissas_ou_fixture_id_outcome_line_value_idx ON futebol.int_futebol_premissas_ou USING btree (fixture_id, outcome, line_value);
 
