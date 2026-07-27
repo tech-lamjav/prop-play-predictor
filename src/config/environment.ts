@@ -27,6 +27,9 @@ export const config = {
     enableRealTimeUpdates: import.meta.env.VITE_ENABLE_REAL_TIME_UPDATES === 'true',
     enableDataExport: import.meta.env.VITE_ENABLE_DATA_EXPORT === 'true',
     enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
+    // Cross-sell da Plataforma Futebol — ligado por padrão; kill switch via
+    // VITE_CROSSSELL_FUTEBOL=off (sem deploy de código).
+    enableCrossSellFutebol: import.meta.env.VITE_CROSSSELL_FUTEBOL !== 'off',
   },
   
   data: {
@@ -90,6 +93,7 @@ export const telegramBotUrl = `https://t.me/${telegramBotUsername}`;
 export const canUseRealTimeUpdates = config.features.enableRealTimeUpdates;
 export const canExportData = config.features.enableDataExport;
 export const canUseAnalytics = config.features.enableAnalytics;
+export const canUseCrossSellFutebol = config.features.enableCrossSellFutebol;
 
 
 

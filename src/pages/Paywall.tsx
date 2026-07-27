@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
+import AnalyticsNav from "@/components/AnalyticsNav";
 
 // Price ID do Stripe - substitua pelo seu Price ID real
 // Você pode obter isso no Stripe Dashboard → Products → Seu Produto → Price ID
@@ -161,52 +162,25 @@ export default function Paywall() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto flex items-center justify-between px-4 py-6 sm:px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/bets")} 
-              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Bets
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/auth")} 
-              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
-            >
-              Entrar
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
+      <AnalyticsNav variant="rebrand" showBack />
 
-      <div className="container mx-auto px-4 sm:px-6 py-20">
+      <div className="container mx-auto px-4 sm:px-6 py-16 sm:py-20 flex-1">
         {/* Header */}
         <div className="text-center mb-12 max-w-4xl mx-auto">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-primary mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-forest mb-6">
             <Lock className="h-10 w-10 text-white" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-ink mb-4">
             Você chegou ao limite do plano gratuito!
           </h1>
-          <p className="text-base text-muted-foreground">
+          <p className="text-base text-ink-2">
             O plano gratuito é ideal para começar. 
             <br />
             Para continuar registrando apostas e acompanhar seus resultados, faça upgrade para o plano premium.
           </p>
           {isCheckingStatus && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground">
+            <div className="mt-4 flex items-center justify-center gap-2 text-ink-2">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Verificando status da assinatura...</span>
             </div>
@@ -215,10 +189,10 @@ export default function Paywall() {
 
         <div className="max-w-2xl mx-auto">
           {/* Main Card */}
-          <Card className="mb-8">
+          <Card className="mb-8 bg-white border border-line">
             <CardHeader>
-              <CardTitle className="text-2xl">Desbloqueie o Plano Premium</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl text-ink">Desbloqueie o Plano Premium</CardTitle>
+              <CardDescription className="text-ink-2">
                 Apostar mais exige mais controle.
               </CardDescription>
             </CardHeader>
@@ -227,34 +201,34 @@ export default function Paywall() {
                 {/* Features */}
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mt-0.5">
-                      <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-forest/10 flex items-center justify-center mt-0.5">
+                      <Zap className="h-4 w-4 text-forest" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Registro ilimitado de apostas</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-semibold text-ink">Registro ilimitado de apostas</p>
+                      <p className="text-sm text-ink-2">
                         Registre quantas apostas quiser, sem limites diários
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mt-0.5">
-                      <BarChart3 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-forest/10 flex items-center justify-center mt-0.5">
+                      <BarChart3 className="h-4 w-4 text-forest" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Dashboard Completo de gestão de apostas</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-semibold text-ink">Dashboard Completo de gestão de apostas</p>
+                      <p className="text-sm text-ink-2">
                         Visualize lucro, prejuízo, ROI e evolução da sua banca em um só lugar
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mt-0.5">
-                      <ArrowRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-forest/10 flex items-center justify-center mt-0.5">
+                      <ArrowRight className="h-4 w-4 text-forest" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Histórico e organização</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-semibold text-ink">Histórico e organização</p>
+                      <p className="text-sm text-ink-2">
                         Tenha todas as apostas organizadas para analisar padrões e decisões
                       </p>
                     </div>
@@ -262,13 +236,12 @@ export default function Paywall() {
                 </div>
 
                 {/* CTA Buttons */}
-                <div className="pt-6 border-t space-y-3">
+                <div className="pt-6 border-t border-line space-y-3">
                   {/* Botão Stripe Checkout (Principal) */}
-                  <Button 
+                  <Button
                     onClick={handleStripeCheckout}
                     disabled={isLoading || authLoading}
-                    variant="outline"
-                    className="w-full py-6 gap-2 disabled:opacity-50 text-lg"
+                    className="w-full py-6 gap-2 disabled:opacity-50 text-lg bg-forest hover:bg-forest-soft text-white"
                     size="lg"
                   >
                     {isLoading ? (
@@ -291,10 +264,10 @@ export default function Paywall() {
                   </Button>
 
                   {/* Botão WhatsApp (Alternativa) */}
-                  <Button 
+                  <Button
                       onClick={handleUpgrade}
                       variant="outline"
-                      className="w-full py-6 gap-2"
+                      className="w-full py-6 gap-2 bg-white border-line text-ink hover:bg-canvas-2"
                       size="lg"
                     >
                       <MessageCircle className="h-5 w-5" />
@@ -304,11 +277,11 @@ export default function Paywall() {
                     </Button>
 
                   {!user && (
-                    <p className="text-sm text-muted-foreground text-center">
+                    <p className="text-sm text-ink-2 text-center">
                       <Button
                         variant="link"
                         onClick={() => navigate('/auth')}
-                        className="p-0 h-auto text-primary"
+                        className="p-0 h-auto text-forest"
                       >
                         Faça login
                       </Button>
@@ -321,9 +294,9 @@ export default function Paywall() {
           </Card>
 
           {/* Info Card */}
-          <Card className="bg-muted/50">
+          <Card className="bg-canvas-2 border border-line">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-ink-2 text-center">
                 O limite diário é resetado automaticamente à meia-noite (horário GMT-3).
                 Você pode continuar usando o plano gratuito ou fazer upgrade para apostas ilimitadas.
               </p>

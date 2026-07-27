@@ -8,9 +8,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trophy, Users, Sparkles, Check } from "lucide-react";
+import { Trophy, Users, Sparkles, Check, BarChart3, Send, ShieldCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
+import { resolveHomePath } from "@/lib/post-login";
+
+// lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
+const GoogleIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden>
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+  </svg>
+);
 
 /**
  * Determina pra onde redirecionar o user após login/signup bem-sucedido.
@@ -18,9 +30,9 @@ import { LanguageToggle } from "@/components/LanguageToggle";
  * 1. Se houver `location.state.from` (ProtectedRoute setou — ex: link de
  *    convite, deep link), respeita. Mantém compatibilidade com fluxos que
  *    dependem disso (BolaoLP `/bolao/comecar` passa `state.from`).
- * 2. Default = `/bolao`. Antes era `/onboarding`; mudado pra bolão por
- *    decisão do produto (Diody): bolão vira a porta de entrada padrão
- *    pós-cadastro, todos caem na home do bolão.
+ * 2. Senão, usa o `fallback` que o chamador passar. Login manda o resultado do
+ *    `resolveHomePath` (/inicio ou /onboarding); cadastro manda
+ *    `/onboarding?src=signup`.
  *
  * Bug histórico que esta função corrige: `handleSignUp` ignorava
  * `state.from` (hard-coded `/onboarding`), então quem vinha da LP do bolão
@@ -28,7 +40,9 @@ import { LanguageToggle } from "@/components/LanguageToggle";
  */
 function getRedirectTarget(
   state: unknown,
-  fallback: string = "/bolao"
+  // Sem default: os dois chamadores passam destino explícito, e um default
+  // implícito aqui já apontou pro `/bolao` muito depois da Copa acabar.
+  fallback: string
 ): string {
   const from = (state as { from?: { pathname?: string; search?: string } } | null)?.from;
   if (
@@ -55,6 +69,7 @@ const Auth = () => {
   const [referralCode, setReferralCode] = useState("");
   const [phoneCountryCode, setPhoneCountryCode] = useState("+55");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const supabase = createClient();
 
@@ -65,6 +80,20 @@ const Auth = () => {
   const fromBolaoInvite = (
     location.state as { from?: { pathname?: string } } | null
   )?.from?.pathname?.startsWith('/bolao/entrar/') ?? false;
+
+  // Branding do Auth: default = nível empresa (Smart Betting cobre análise + gestão + comunidade).
+  // Quem chega por convite de bolão (fromBolaoInvite) mantém a copy contextual do Bolão.
+  const heroFeatures = fromBolaoInvite
+    ? [
+        { icon: Users, title: 'Convite com 1 clique', desc: 'Link direto pro WhatsApp, sem código pra digitar.' },
+        { icon: Sparkles, title: 'Quick Pick em 1 toque', desc: 'Não quer palpitar 104 jogos? Preenche tudo automático e edita depois.' },
+        { icon: Trophy, title: 'Ranking ao vivo', desc: 'Compartilha imagem do ranking nos Stories e zoeia os amigos.' },
+      ]
+    : [
+        { icon: BarChart3, title: 'Análises com edge', desc: 'Props e oportunidades do dia com Score próprio.' },
+        { icon: Send, title: 'Betinho no Telegram', desc: 'Registra por print ou texto e acompanha seu ROI real.' },
+        { icon: ShieldCheck, title: 'Sem tipster, sem achismo', desc: 'Decisão com números, não com palpite.' },
+      ];
 
   // Detect referral code from URL parameter
   useEffect(() => {
@@ -97,11 +126,55 @@ const Auth = () => {
       }
 
       toast({ title: "Bem-vindo de volta!" });
-      navigate(getRedirectTarget(location.state));
+      // state.from explícito vence (ex: barrado numa rota protegida → volta pra ela);
+      // senão, resolveHomePath decide: conectou o Telegram → /inicio, senão → /onboarding.
+      const fallback = user ? await resolveHomePath(supabase, user.id) : '/inicio';
+      navigate(getRedirectTarget(location.state, fallback));
     } catch (error) {
       toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Login/signup com Google via Supabase OAuth. O browser sai pro Google e
+   * volta em /auth/callback (AuthCallback.tsx), que cria a linha na `users`
+   * se for primeira entrada e resolve o redirect. Como location.state e o
+   * estado React se perdem no redirect, destino e código de indicação vão
+   * via sessionStorage (chaves em @/lib/oauth-state).
+   */
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+      if (from?.pathname && from.pathname.startsWith("/") && !from.pathname.startsWith("//")) {
+        sessionStorage.setItem(OAUTH_REDIRECT_KEY, from.pathname + (from.search || ""));
+      } else {
+        sessionStorage.removeItem(OAUTH_REDIRECT_KEY);
+      }
+      const normalizedReferralCode = referralCode.trim() ? referralCode.toUpperCase().trim() : null;
+      if (normalizedReferralCode) {
+        sessionStorage.setItem(OAUTH_REFERRAL_KEY, normalizedReferralCode);
+      } else {
+        sessionStorage.removeItem(OAUTH_REFERRAL_KEY);
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        setGoogleLoading(false);
+      }
+      // Em sucesso o browser navega pro Google — não resetamos o loading.
+    } catch (error) {
+      toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
+      setGoogleLoading(false);
     }
   };
 
@@ -189,9 +262,10 @@ const Auth = () => {
       }
 
       toast({ title: "Conta criada!", description: "Você já pode começar a usar a plataforma." });
-      // Fix: antes era hard-coded /onboarding, ignorando state.from. Agora
-      // respeita o redirect target (ex: vindo da LP do bolão).
-      navigate(getRedirectTarget(location.state));
+      // state.from explícito continua vencendo (ex: vindo da LP do bolão), mas o
+      // fallback do CADASTRO é o onboarding do Betinho (decisão D1, 2026-07-08 —
+      // docs/onboarding-betinho-redesign.md): o antigo /bolao expira com a Copa.
+      navigate(getRedirectTarget(location.state, '/onboarding?src=signup'));
     } catch (error) {
       toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
     } finally {
@@ -203,13 +277,15 @@ const Auth = () => {
     // theme-bolao no root pra ativar CSS vars (--canvas, --forest, --ink, etc.)
     // mesmo fora do BolaoLayout (Auth tem rota /auth, não /bolao/*).
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      {/* Topbar minimalista — logo igual ao header do bolão (AnalyticsNav rebrand).
-          A logo.png é branca/clara; aplicamos `invert hue-rotate-180` pra ficar
-          legível em fundo branco. Mesmo tratamento usado na nav do /bolao. */}
-      <header className="border-b border-line bg-white">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      {/* Faixa 1 do header novo (forest, 60px, gutter 24px), mas sem a
+          navegação de produto nem a tab bar: /auth é tela de conversão, e um
+          menu ali só dá rota de fuga. A logo é a reversa original — em fundo
+          forest não precisa do filtro `invert hue-rotate-180` que a versão
+          branca desta barra exigia. */}
+      <header className="bg-forest">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[52px] md:h-[60px] flex items-center justify-between">
           <a href="/" aria-label="Smartbetting — home" className="flex items-center hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="Smartbetting" className="h-8 w-auto invert hue-rotate-180" />
+            <img src="/logo.png" alt="Smartbetting" className="h-5 md:h-[26px] w-auto" />
           </a>
           <LanguageToggle />
         </div>
@@ -225,50 +301,43 @@ const Auth = () => {
 
           <div className="relative z-10">
             <div className="text-[12px] uppercase tracking-[0.18em] font-semibold opacity-70 mb-3">
-              Bolão · Copa do Mundo 2026
+              {fromBolaoInvite ? 'Bolão · Copa do Mundo 2026' : 'Smart Betting'}
             </div>
-            <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
-              Reúne a galera.<br />
-              Palpita os 104 jogos.<br />
-              <span className="text-amber">Vê quem manja mais.</span>
-            </h1>
+            {fromBolaoInvite ? (
+              <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
+                Reúne a galera.<br />
+                Palpita os 104 jogos.<br />
+                <span className="text-amber">Vê quem manja mais.</span>
+              </h1>
+            ) : (
+              <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
+                Pare de apostar<br />
+                <span className="text-amber">no escuro.</span>
+              </h1>
+            )}
             <p className="text-[15px] opacity-80 leading-relaxed max-w-[420px]">
-              Cria seu bolão em 30 segundos, compartilha no zap, e leva a galera junto. Grátis pra até 20 amigos.
+              {fromBolaoInvite
+                ? 'Cria seu bolão em 30 segundos, compartilha no zap, e leva a galera junto. Grátis pra até 20 amigos.'
+                : 'Análises que apontam o valor, o Betinho pra gerir suas apostas e o seu ROI real na palma da mão — tudo com dado, sem achismo.'}
             </p>
           </div>
 
           <div className="relative z-10 space-y-3 max-w-[420px]">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
-                <Users className="w-4 h-4" />
+            {heroFeatures.map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-display text-[15px] font-bold">{title}</p>
+                  <p className="text-[13px] opacity-70">{desc}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-display text-[15px] font-bold">Convite com 1 clique</p>
-                <p className="text-[13px] opacity-70">Link direto pro WhatsApp, sem código pra digitar.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="font-display text-[15px] font-bold">Quick Pick em 1 toque</p>
-                <p className="text-[13px] opacity-70">Não quer palpitar 104 jogos? Preenche tudo automático e edita depois.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
-                <Trophy className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="font-display text-[15px] font-bold">Ranking ao vivo</p>
-                <p className="text-[13px] opacity-70">Compartilha imagem do ranking nos Stories e zoeia os amigos.</p>
-              </div>
-            </div>
+            ))}
           </div>
 
           <div className="relative z-10 text-[11px] opacity-50 mt-8">
-            ✓ 100% gratuito · ✓ Sem cartão · ✓ Sem instalar nada
+            ✓ Grátis pra começar · ✓ Sem cartão · ✓ Sem instalar nada
           </div>
         </aside>
 
@@ -281,10 +350,10 @@ const Auth = () => {
                 <Trophy className="w-6 h-6" />
               </div>
               <h2 className="font-display text-[24px] font-extrabold text-ink leading-tight">
-                Bolão Copa 2026
+                {fromBolaoInvite ? 'Bolão Copa 2026' : 'Smart Betting'}
               </h2>
               <p className="text-[13px] text-ink-2 mt-1">
-                Cria seu bolão em 30 segundos.
+                {fromBolaoInvite ? 'Cria seu bolão em 30 segundos.' : 'Análise, gestão e ROI real — decida com dados.'}
               </p>
             </div>
 
@@ -332,6 +401,22 @@ const Auth = () => {
                   <p className="text-[13px] text-ink-2 mb-5">
                     Bom te ver de volta. Coloca os dados aí.
                   </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    disabled={googleLoading}
+                    onClick={handleGoogleSignIn}
+                    className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas gap-2 font-semibold"
+                  >
+                    <GoogleIcon />
+                    {googleLoading ? "Redirecionando..." : "Continuar com o Google"}
+                  </Button>
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="h-px flex-1 bg-line" />
+                    <span className="text-[11px] uppercase tracking-wide text-ink-3">ou</span>
+                    <div className="h-px flex-1 bg-line" />
+                  </div>
                   <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="email" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
@@ -380,8 +465,24 @@ const Auth = () => {
                     Criar conta
                   </h3>
                   <p className="text-[13px] text-ink-2 mb-5">
-                    Grátis. Sem cartão. Você cria o bolão logo em seguida.
+                    {fromBolaoInvite ? 'Grátis. Sem cartão. Você cria o bolão logo em seguida.' : 'Grátis. Sem cartão. Comece agora.'}
                   </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    disabled={googleLoading}
+                    onClick={handleGoogleSignIn}
+                    className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas gap-2 font-semibold"
+                  >
+                    <GoogleIcon />
+                    {googleLoading ? "Redirecionando..." : "Continuar com o Google"}
+                  </Button>
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="h-px flex-1 bg-line" />
+                    <span className="text-[11px] uppercase tracking-wide text-ink-3">ou</span>
+                    <div className="h-px flex-1 bg-line" />
+                  </div>
                   <form onSubmit={handleSignUp} className="space-y-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="signup-name" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">

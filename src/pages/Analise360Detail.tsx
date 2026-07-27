@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePostHog } from '@posthog/react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -9,7 +10,7 @@ import {
 } from '@/utils/team-logos';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAnalise360Data } from '@/hooks/use-analise360';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -650,12 +651,18 @@ export default function Analise360Detail() {
   const { triggerPlayerId } = useParams<{ triggerPlayerId: string }>();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const posthog = usePostHog();
   const { data, isLoading, error } = useAnalise360Data();
   const opportunities = data?.opportunities ?? [];
   const playerStarsMap = data?.playerStarsMap ?? new Map<number, number>();
 
   const [selectedStat, setSelectedStat] = useState<string>('all');
   const [hoverBackup, setHoverBackup] = useState<number | null>(null);
+
+  // Analytics: visualização da Análise 360 (Marco 3 — retenção por superfície, N3).
+  useEffect(() => {
+    posthog?.capture('nba_analise360_viewed', { product: 'nba', player_id: triggerPlayerId });
+  }, [triggerPlayerId, posthog]);
 
   const triggerIdNum = Number(triggerPlayerId);
   const triggerOpps = useMemo(() => opportunities.filter(o => o.trigger_player_id === triggerIdNum), [opportunities, triggerIdNum]);
@@ -762,7 +769,7 @@ export default function Analise360Detail() {
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack backTo="/analise-360" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/analise-360" />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-32 gap-2">

@@ -2,7 +2,8 @@ import type { Bet } from '@/hooks/use-bets';
 
 export type BetWithTags = Bet & { tags?: { id: string; name: string; color?: string }[] };
 
-const SETTLED = ['won', 'lost', 'cashout', 'half_won', 'half_lost', 'void'] as const;
+// Exportado: também é a lista canônica de status finais usada pelo evento bet_settled (Bets.tsx).
+export const SETTLED = ['won', 'lost', 'cashout', 'half_won', 'half_lost', 'void'] as const;
 
 export function profitForBet(bet: Bet): number {
   if (bet.status === 'won') return bet.potential_return - bet.stake_amount;

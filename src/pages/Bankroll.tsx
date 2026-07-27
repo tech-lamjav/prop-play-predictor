@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/use-auth';
-import { BetsHeader } from '../components/bets/BetsHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { CashFlowTable } from '../components/bets/CashFlowTable';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { useCapitalMovements, type CapitalMovement } from '@/hooks/use-capital-movements';
@@ -191,7 +191,7 @@ export default function Bankroll() {
 
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
-      <BetsHeader showBack />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">

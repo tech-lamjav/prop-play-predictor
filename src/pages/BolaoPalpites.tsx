@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { applyScoreBasis } from '@/services/bolao.service';
 import { useParams, useNavigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { ArrowLeft } from 'lucide-react';
@@ -40,7 +41,13 @@ const BolaoPalpites: React.FC = () => {
   }, []);
 
   const { data: bolao } = useBolao(id);
-  const { data: matches, isLoading: loadingMatches } = useWcMatches();
+  const { data: rawMatches, isLoading: loadingMatches } = useWcMatches();
+  // Placar exibido segue a base do bolão (migration 084): 'regulation' troca o
+  // placar do mata-mata pelo dos 90 min, coerente com a pontuação.
+  const matches = useMemo(
+    () => applyScoreBasis(rawMatches, bolao?.knockout_score_basis),
+    [rawMatches, bolao?.knockout_score_basis]
+  );
   const { data: predictions } = useBolaoPredictions(id, currentUserId);
   const upsertPrediction = useUpsertPrediction();
   const upsertPredictionsBatch = useUpsertPredictionsBatch();
@@ -163,9 +170,17 @@ const BolaoPalpites: React.FC = () => {
     );
   };
 
-  // Stats
-  const totalMatches = matches?.filter((m) => !m.is_finished && m.home_team_code !== 'TBD').length || 0;
-  const totalPredictions = predictions?.length || 0;
+  // Stats — progresso conta só os jogos ABERTOS e os palpites DESSES jogos
+  // (palpites de jogos encerrados não entram no numerador; ver PredictionsModal).
+  const openMatchIds = useMemo(
+    () => new Set((matches ?? []).filter((m) => !m.is_finished && m.home_team_code !== 'TBD').map((m) => m.id)),
+    [matches]
+  );
+  const totalMatches = openMatchIds.size;
+  const totalPredictions = useMemo(
+    () => (predictions ?? []).filter((p) => openMatchIds.has(p.match_id)).length,
+    [predictions, openMatchIds]
+  );
 
   // Filter matches by group for the "next pending" lookup
   const filteredMatchesForNext = useMemo(() => {
@@ -186,7 +201,7 @@ const BolaoPalpites: React.FC = () => {
 
   return (
     <div className="bg-canvas min-h-screen flex flex-col">
-      <AnalyticsNav />
+      <AnalyticsNav variant="rebrand" />
       {/* is_closed (inscricoes encerradas) nao afeta palpites — sticky
           continua util pra quem ja entrou */}
       <PendingPredictionsSticky

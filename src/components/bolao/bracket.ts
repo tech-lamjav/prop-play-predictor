@@ -134,9 +134,11 @@ export function resolveBracket(
     .filter((m) => m.stage !== 'group')
     .sort((a, b) => a.match_number - b.match_number);
 
-  // Modo "chaveamento real": os 16 avos vêm dos times REAIS já gravados no
-  // wc_matches (home_team_code/away_team_code != 'TBD'), não da projeção. As
-  // fases seguintes seguem o caminho que o usuário prevê (via picks).
+  // Modo "chaveamento real": qualquer jogo com time REAL já gravado no
+  // wc_matches (home_team_code/away_team_code != 'TBD') usa esse código —
+  // vale pros 16 avos (backfill da projeção) e pras fases que a ingestão
+  // propaga conforme os jogos terminam (oitavas em diante). Slots ainda TBD
+  // seguem o caminho que o usuário prevê (via picks).
   const preferReal = opts?.preferRealCodes ?? false;
   const realCode = (c: string | null | undefined): string | null =>
     c && c !== 'TBD' ? c : null;
@@ -193,20 +195,18 @@ export function resolveBracket(
     const homeRef = parseSlot(m.home_team);
     const awayRef = parseSlot(m.away_team);
 
-    // Round de ENTRADA (16 avos). No modo real preferimos o código real já gravado
-    // no jogo — independente do texto do slot, que pode ter sido sobrescrito pelo
-    // nome real do time (ex: "Brasil") e não casar mais com o descritor. As fases
-    // seguintes ("Vencedor Jxx") continuam resolvendo pelo caminho previsto nos picks.
-    const isEntryRound = m.stage === 'round_of_32';
-
+    // No modo real preferimos o código real já gravado no jogo (em QUALQUER fase)
+    // — independente do texto do slot, que pode ter sido sobrescrito pelo nome
+    // real do time (ex: "Brasil") e não casar mais com o descritor. Slots ainda
+    // TBD ("Vencedor Jxx") continuam resolvendo pelo caminho previsto nos picks.
     const homeCode =
-      preferReal && isEntryRound && realCode(m.home_team_code)
+      preferReal && realCode(m.home_team_code)
         ? realCode(m.home_team_code)
         : homeRef.kind === 'third'
           ? thirdByMatch?.get(m.match_number) ?? null
           : resolveRef(homeRef);
     const awayCode =
-      preferReal && isEntryRound && realCode(m.away_team_code)
+      preferReal && realCode(m.away_team_code)
         ? realCode(m.away_team_code)
         : awayRef.kind === 'third'
           ? thirdByMatch?.get(m.match_number) ?? null

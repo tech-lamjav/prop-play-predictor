@@ -19,8 +19,8 @@ export default function ProtectedRoute({
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-forest"></div>
       </div>
     );
   }
@@ -30,9 +30,11 @@ export default function ProtectedRoute({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // If user is logged in but trying to access auth pages
+  // If user is logged in but trying to access auth pages, send to the hub.
+  // (Não gateia onboarding aqui — o card do Betinho no /inicio leva pro vínculo
+  // se ainda faltar; o gate fica no login/OAuth via resolveHomePath.)
   if (!requireAuth && user) {
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to="/inicio" replace />;
   }
 
   return <>{children}</>;

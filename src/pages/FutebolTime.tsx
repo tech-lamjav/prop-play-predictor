@@ -4,6 +4,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolTeamProfile, useFutebolTeamSeason, useFutebolStandings, useFutebolFixtures } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
+import { competitionLabel } from '@/utils/futebol-competitions';
 import type { Competition, FutebolScopeResult, FutebolScopeStats } from '@/services/futebol-data.service';
 
 // Paleta do mockup (espelha theme-bolao)
@@ -20,7 +21,6 @@ const C = {
   roseBg: '#fbe3e8', roseFg: '#be123c',
 };
 
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão Série A', copa_mundo: 'Copa do Mundo', serie_b: 'Brasileirão Série B' };
 const SCOPE_ORDER = ['geral', 'casa', 'fora'] as const;
 const FINISHED = new Set(['FT', 'AET', 'PEN']);
 const CARD = 'rounded-2xl overflow-hidden bg-white border border-line';
@@ -191,7 +191,7 @@ export default function FutebolTime() {
                 <div className="flex-1 min-w-0">
                   <h1 className="text-xl md:text-[28px] font-extrabold tracking-tight leading-tight text-ink truncate">{profile.team.team_name}</h1>
                   <p className="text-xs mt-1 text-ink-2">
-                    {COMP_LABEL[competition] || competition} · {season}
+                    {competitionLabel(competition)} · {season}
                     {stand?.rank ? <> · <span className="font-semibold text-ink">{stand.rank}º colocado</span></> : null}
                   </p>
                   {raiox?.form && <div className="mt-2"><FormDots form={raiox.form} /></div>}

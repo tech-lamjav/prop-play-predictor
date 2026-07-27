@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePostHog } from '@posthog/react';
+import { useAuth } from '@/hooks/use-auth';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, Star, FileText, LayoutGrid, ArrowRight } from 'lucide-react';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { useHomeNBAData } from '@/hooks/use-home-nba';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { NBABriefingStrip } from '@/components/nba-home/NBABriefingStrip';
 import { NBATopPickHero, type TopPickData } from '@/components/nba-home/NBATopPickHero';
 import { NBAHotOppCard, type HotOppData } from '@/components/nba-home/NBAHotOppCard';
@@ -98,6 +100,8 @@ function SectionHeader({ eyebrow, title, count, actionLabel, onAction, actionHre
 
 export default function HomeNBA() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
+  const { user, isLoading: authLoading } = useAuth();
   const { data, isLoading } = useHomeNBAData();
   const games = data?.games ?? [];
   const players = data?.players ?? [];
@@ -106,6 +110,13 @@ export default function HomeNBA() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [injuryModalOpen, setInjuryModalOpen] = useState(false);
+
+  // Analytics: visualização da home NBA (Marco 3 — retenção por superfície, N3).
+  // Rota é pública: captura só logado, pra manter denominador comparável com Picks/Analise360.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    posthog?.capture('nba_home_viewed', { product: 'nba' });
+  }, [posthog, user, authLoading]);
 
   // --- Derived data ---
 
@@ -340,7 +351,9 @@ export default function HomeNBA() {
         <title>Lesões NBA Hoje e Oportunidades de Apostas do Dia | Smart Betting</title>
         <meta name="description" content="Lesões chave da NBA hoje com impacto nos companheiros, oportunidades de prop bets selecionadas e jogos do dia. Atualizado diariamente." />
       </Helmet>
-      <NBAHomeNav showBack />
+      {/* backTo fixo no hub, igual ao /futebol: /home-nba é home de produto,
+          então "voltar" significa trocar de produto, não desfazer o passo. */}
+      <AnalyticsNav variant="rebrand" showBack backTo="/inicio" />
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">
         {/* Briefing strip com busca embarcada na coluna esquerda */}

@@ -1,0 +1,35 @@
+name: Guard main source
+
+# Bloqueia PRs para `main` cuja origem não seja `develop`, `hotfix/*` ou `release/*`.
+# Objetivo: forçar o fluxo  feature -> develop -> main.
+# `hotfix/*` e `release/*` são as exceções controladas do git-flow.
+#
+# Este job é registrado como required status check na branch protection da `main`
+# (contexto: "guard"). Enquanto este arquivo não estiver na `main`, NÃO marque
+# "guard" como obrigatório — senão todo PR para main fica travado aguardando um
+# check que nunca roda. Ver .github/BRANCH_PROTECTION_RUNBOOK.md.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar branch de origem do PR
+        run: |
+          HEAD="${{ github.head_ref }}"
+          echo "PR: $HEAD -> main"
+          case "$HEAD" in
+            develop|hotfix/*|release/*)
+              echo "OK: '$HEAD' pode ser mergeado em main."
+              ;;
+            *)
+              echo "::error::Branch '$HEAD' nao pode ir direto para main. Use o fluxo feature -> develop -> main: reabra este PR contra 'develop'. Excecoes permitidas: hotfix/* e release/*."
+              exit 1
+              ;;
+          esac

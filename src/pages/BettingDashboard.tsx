@@ -6,7 +6,7 @@ import { useUserUnit } from '@/hooks/use-user-unit';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { createClient } from '@/integrations/supabase/client';
-import { BetsHeader } from '@/components/bets/BetsHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { ProfitByTagChart } from '@/components/bets/ProfitByTagChart';
 import { Sparkline } from '@/components/dashboard/Sparkline';
 import { BigHeatmap, type HeatmapMetric } from '@/components/dashboard/BigHeatmap';
@@ -293,7 +293,7 @@ export default function BettingDashboard() {
 
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
-      <BetsHeader showBack />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
@@ -640,7 +640,7 @@ export default function BettingDashboard() {
               </>
             ) : (
               <UpsellCard
-                onUpgrade={() => navigate('/paywall-dashboard')}
+                onUpgrade={() => navigate('/planos')}
                 onSeeExample={() => setExampleModalOpen(true)}
               />
             )}
@@ -674,7 +674,7 @@ export default function BettingDashboard() {
                       navigate('/bets');
                     }
                   }}
-                  onUpgrade={() => navigate('/paywall-dashboard')}
+                  onUpgrade={() => navigate('/planos')}
                   onAnalyzeWithAI={isPremium && selectedCell ? () => setSliceModalOpen(true) : undefined}
                 />
               </div>
@@ -883,7 +883,7 @@ export default function BettingDashboard() {
               type="button"
               onClick={() => {
                 setExampleModalOpen(false);
-                navigate('/paywall-dashboard');
+                navigate('/planos');
               }}
               className="h-10 px-5 rounded-md bg-amber-400 text-forest font-extrabold text-[12px] hover:bg-amber-300 transition-colors flex-[2]"
             >

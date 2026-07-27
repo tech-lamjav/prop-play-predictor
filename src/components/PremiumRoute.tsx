@@ -10,7 +10,7 @@ interface PremiumRouteProps {
 
 export default function PremiumRoute({
   children,
-  redirectTo = '/paywall',
+  redirectTo = '/planos',
 }: PremiumRouteProps) {
   const { user, isLoading: authLoading } = useAuth();
   const location = useLocation();

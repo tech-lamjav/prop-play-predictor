@@ -1,135 +1,85 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import {
   BarChart3,
   Calendar,
-  Menu,
-  X,
   LogIn,
   Zap,
   ChevronLeft,
-  ChevronDown,
   Target,
   FileText,
-  TrendingUp,
+  LayoutGrid,
+  Wallet,
   Radar,
   Trophy,
-  Goal,
+  Bot,
+  CircleUser,
 } from 'lucide-react';
+import { IconSoccer, IconBasketball } from './icons/sports';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
 import UserNav from './UserNav';
 import { FutebolTrialChip } from './futebol/FutebolGate';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 
 /**
- * Flag temporária pra esconder o botão "Bolão Copa 2026" da nav.
- * Pra liberar: setar pra `true`.
+ * Header global de duas faixas (handoff "Header, Footer e cor secundária Areia",
+ * variante forest — ver docs/design-system/handoff-header-footer.md).
+ *
+ * A separação existe porque o header antigo misturava dois níveis num dropdown
+ * só: qual PRODUTO você está usando e qual ESPORTE está vendo.
+ *
+ *   Faixa 1 (60px) — produto: Análises · Betinho · Bolão + ações da conta
+ *   Faixa 2 (46px) — esporte (Futebol · NBA) + sub-seções do produto ativo
+ *
+ * A faixa 3 do desenho (linha de contexto bege, "Futebol hoje — …") foi
+ * cortada pelo Victor em 2026-07-24: repetia o que o H1 da página já diz.
+ *
+ * Fora do escopo desta entrega (não existem no app ainda): busca ⌘K,
+ * "+4 esportes", "Odds em queda", "Favoritos", "Agenda".
  */
-const SHOW_BOLAO_NAV_ITEM = true;
+
+type SubItem = { name: string; href: string; icon: typeof BarChart3 };
 
 /**
- * Visual variant da nav.
- * - `terminal` (default): tema escuro original.
- * - `rebrand`: tema claro (canvas + forest + amber + ink).
+ * Conceito repetido usa o MESMO glifo nos dois esportes — "Hoje" era
+ * `Calendar` no futebol e `BarChart3` na NBA, "Oportunidades" era `Zap` num e
+ * `TrendingUp` no outro. Glifo diferente pra mesma coisa faz o usuário achar
+ * que são coisas diferentes.
  */
-type NavVariant = 'terminal' | 'rebrand';
+const NBA_ITEMS: SubItem[] = [
+  { name: 'Hoje', href: '/home-nba', icon: LayoutGrid },
+  { name: 'Oportunidades', href: '/oportunidades', icon: Zap },
+  { name: 'Análise 360', href: '/analise-360', icon: Radar },
+  { name: 'Jogos', href: '/home-games', icon: Calendar },
+  { name: 'Relatório', href: '/report', icon: FileText },
+];
 
-interface NavTheme {
-  bg: string;
-  border: string;
-  text: string;
-  textAccent: string;
-  ghostBtn: string;
-  ghostHoverBg: string;
-  textHover: string;
-  slash: string;
-  dropdownBg: string;
-  dropdownBorder: string;
-  dropdownText: string;
-  dropdownItemFocus: string;
-  /** Background do "chip" de ícone dentro dos itens de dropdown/mobile */
-  chipBg: string;
-  activeBg: string;
-  premiumBg: string;
-  premiumBorder: string;
-  premiumIcon: string;
-  premiumText: string;
-  ctaBg: string;
-  ctaText: string;
-}
+const FUTEBOL_ITEMS: SubItem[] = [
+  { name: 'Hoje', href: '/futebol', icon: LayoutGrid },
+  { name: 'Oportunidades', href: '/futebol/oportunidades', icon: Zap },
+  { name: 'Jogos', href: '/futebol/jogos', icon: Calendar },
+];
 
-/**
- * Classes precisam aparecer LITERALMENTE (Tailwind tree-shaking). Por isso o
- * tema é uma matriz de strings completas, não composições dinâmicas.
- */
-const themes: Record<NavVariant, NavTheme> = {
-  terminal: {
-    bg: 'bg-terminal-black',
-    border: 'border-terminal-border-subtle',
-    text: 'text-terminal-text',
-    textAccent: 'text-terminal-blue',
-    ghostBtn: 'text-terminal-text hover:text-terminal-blue hover:bg-terminal-dark-gray',
-    ghostHoverBg: 'hover:bg-terminal-dark-gray',
-    textHover: 'text-terminal-text hover:text-terminal-blue',
-    slash: 'text-terminal-border-subtle',
-    dropdownBg: 'bg-terminal-dark-gray',
-    dropdownBorder: 'border-terminal-border-subtle',
-    dropdownText: 'text-terminal-text',
-    dropdownItemFocus: 'focus:bg-terminal-gray/40 focus:text-terminal-blue',
-    chipBg: 'bg-terminal-gray/40',
-    activeBg: 'bg-terminal-blue/10',
-    premiumBg: 'bg-terminal-blue/10',
-    premiumBorder: 'border-terminal-blue/30',
-    premiumIcon: 'text-terminal-blue',
-    premiumText: 'text-terminal-blue',
-    ctaBg: 'bg-terminal-green hover:bg-terminal-green/80',
-    ctaText: 'text-terminal-black',
-  },
-  rebrand: {
-    bg: 'bg-white',
-    border: 'border-line',
-    text: 'text-ink',
-    textAccent: 'text-forest',
-    ghostBtn: 'text-ink hover:text-forest hover:bg-canvas-2',
-    ghostHoverBg: 'hover:bg-canvas-2',
-    textHover: 'text-ink hover:text-forest',
-    slash: 'text-ink-3',
-    dropdownBg: 'theme-bolao bg-white',
-    dropdownBorder: 'border-line',
-    dropdownText: 'text-ink',
-    dropdownItemFocus: 'focus:bg-canvas-2 focus:text-forest',
-    chipBg: 'bg-canvas-2',
-    activeBg: 'bg-forest/10',
-    premiumBg: 'bg-amber/10',
-    premiumBorder: 'border-amber/30',
-    premiumIcon: 'text-amber-2',
-    premiumText: 'text-amber-2',
-    ctaBg: 'bg-amber hover:bg-amber/90',
-    ctaText: 'text-white',
-  },
-};
-
-interface NavItem {
-  name: string;
-  href: string;
-  icon: typeof BarChart3;
-  desc: string;
-}
+const BETINHO_ITEMS: SubItem[] = [
+  { name: 'Apostas', href: '/bets', icon: Target },
+  // `Wallet` e não `BarChart3`: é a banca, e o gráfico já é "Análises" na
+  // faixa 1. Mesmo glifo do item "Minha banca e apostas" da tela /perfil.
+  { name: 'Dashboard', href: '/betting-dashboard', icon: Wallet },
+];
 
 interface AnalyticsNavProps {
   className?: string;
   showBack?: boolean;
   backTo?: string;
   title?: string;
-  variant?: NavVariant;
+  /**
+   * @deprecated Só existe o tema rebrand — o `terminal` saiu junto com a
+   * reescrita do header. A prop continua aceita pra não churnar os 35
+   * call sites que passam `variant="rebrand"` explicitamente.
+   */
+  variant?: 'rebrand';
 }
 
 export default function AnalyticsNav({
@@ -137,262 +87,335 @@ export default function AnalyticsNav({
   showBack,
   backTo,
   title,
-  variant = 'terminal',
 }: AnalyticsNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isPremium } = useSubscription();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const t = themes[variant];
 
-  const nbaItems: NavItem[] = [
-    { name: 'Hoje', href: '/home-nba', icon: BarChart3, desc: 'Resumo do dia' },
-    { name: 'Oportunidades', href: '/oportunidades', icon: TrendingUp, desc: 'Picks por valor' },
-    { name: 'Análise 360', href: '/analise-360', icon: Radar, desc: 'Impacto de lesões' },
-    { name: 'Jogos', href: '/home-games', icon: Calendar, desc: 'Jogos e matchups' },
-    { name: 'Relatório', href: '/report', icon: FileText, desc: 'Histórico e ROI' },
-  ];
+  const path = location.pathname;
+  const isActive = (href: string) => path === href;
 
-  const futebolItems: NavItem[] = [
-    { name: 'Hoje', href: '/futebol', icon: Calendar, desc: 'Painel do dia' },
-    { name: 'Oportunidades', href: '/futebol/oportunidades', icon: Zap, desc: 'Valor (+EV) do dia' },
-    { name: 'Jogos', href: '/futebol/jogos', icon: Goal, desc: 'Rodadas, tabela e artilheiros' },
-  ];
+  const futebolActive = path.startsWith('/futebol');
+  const nbaActive = NBA_ITEMS.some((i) => isActive(i.href));
+  const betinhoActive = BETINHO_ITEMS.some((i) => isActive(i.href));
+  const bolaoActive = path.startsWith('/bolao');
+  const analisesActive = futebolActive || nbaActive;
 
-  const betinhoItems: NavItem[] = [
-    { name: 'Apostas', href: '/bets', icon: Target, desc: 'Suas apostas' },
-    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3, desc: 'Banca e desempenho' },
-  ];
+  // Sub-seções da faixa 2: seguem o produto ativo. Sem produto ativo (ex.:
+  // /planos, /settings) a faixa 2 não aparece — não há o que contextualizar.
+  const subItems = futebolActive
+    ? FUTEBOL_ITEMS
+    : nbaActive
+      ? NBA_ITEMS
+      : betinhoActive
+        ? BETINHO_ITEMS
+        : [];
+  const showBand2 = subItems.length > 0;
 
-  const isActive = (path: string) => location.pathname === path;
-  const nbaActive = nbaItems.some((i) => isActive(i.href));
-  const futebolActive = location.pathname.startsWith('/futebol');
-  const betinhoActive = betinhoItems.some((i) => isActive(i.href));
-  const bolaoActive = location.pathname.startsWith('/bolao');
+  const go = (href: string) => navigate(href);
 
-  const handleNavigation = (href: string) => {
-    navigate(href);
-    setIsMobileMenuOpen(false);
-  };
+  // ── Faixa 1: item de produto ──
+  const sectionCls = (active: boolean) =>
+    `flex items-center gap-2 h-[38px] px-4 rounded-[10px] text-[13px] tracking-[-0.01em] transition-colors ${
+      active
+        ? 'bg-sand text-forest font-semibold hover:bg-sand'
+        : 'text-white/80 font-medium hover:bg-white/10 hover:text-white'
+    }`;
 
-  // Acordeão mobile: abre o módulo da rota atual por padrão
-  const initialMod = futebolActive ? 'futebol' : bolaoActive ? 'bolao' : betinhoActive ? 'betinho' : 'nba';
-  const [openMod, setOpenMod] = useState<string | null>(initialMod);
+  // ── Faixa 2: pill de esporte ──
+  const sportCls = (active: boolean) =>
+    `flex items-center gap-[7px] h-[30px] px-[13px] rounded-full text-[12.5px] transition-colors ${
+      active
+        ? 'bg-white text-forest font-semibold hover:bg-white'
+        : 'text-white/80 font-medium hover:bg-white/10 hover:text-white'
+    }`;
 
-  // ── Dropdown desktop (item rico: chip + título + descrição) ──
-  const renderItems = (items: NavItem[]) =>
-    items.map((item) => {
-      const Icon = item.icon;
-      const active = isActive(item.href);
-      return (
-        <DropdownMenuItem
-          key={item.href}
-          onClick={() => handleNavigation(item.href)}
-          className={`cursor-pointer gap-3 py-2 ${t.dropdownItemFocus} ${active ? t.textAccent : ''}`}
-        >
-          <span className={`w-8 h-8 rounded-md grid place-items-center shrink-0 ${t.chipBg}`}>
-            <Icon className="w-4 h-4" />
-          </span>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-medium leading-tight">{item.name}</span>
-            <span className="text-[11px] opacity-60 leading-tight truncate">{item.desc}</span>
-          </div>
-        </DropdownMenuItem>
-      );
-    });
-
-  const moduleTriggerCls = (active: boolean) =>
-    `flex items-center gap-2 px-4 h-9 ${active ? `${t.textAccent} ${t.ghostHoverBg}` : t.ghostBtn}`;
-
-  // ── Seção mobile (acordeão) ──
-  const MobileSection = ({ id, label, items }: { id: string; label: string; items: NavItem[] }) => {
-    const open = openMod === id;
-    return (
-      <div>
-        <button
-          onClick={() => setOpenMod(open ? null : id)}
-          className={`w-full flex items-center justify-between px-3 h-10 rounded ${t.ghostBtn}`}
-        >
-          <span className="text-[11px] font-semibold uppercase tracking-wider opacity-60">{label}</span>
-          <ChevronDown className={`w-4 h-4 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
-        {open && (
-          <div className="flex flex-col gap-1 mt-1">
-            {items.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.href);
-              return (
-                <Button
-                  key={item.href}
-                  variant="ghost"
-                  onClick={() => handleNavigation(item.href)}
-                  className={`w-full justify-start h-10 pl-3 ${active ? `${t.activeBg} ${t.textAccent}` : t.ghostBtn}`}
-                >
-                  <Icon className="w-4 h-4 mr-3" />
-                  <span className="text-sm">{item.name}</span>
-                </Button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
+  // ── Faixa 2: sub-seção do produto ativo ──
+  const subCls = (active: boolean) =>
+    `flex items-center gap-[7px] h-[30px] px-[11px] rounded-lg text-[12px] transition-colors ${
+      active
+        ? 'bg-white/10 text-white font-semibold'
+        : 'text-white/75 font-medium hover:bg-white/10 hover:text-white'
+    }`;
 
   return (
-    <nav className={`${t.bg} border-b ${t.border} sticky top-0 z-50 ${className ?? ''}`}>
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between items-center h-14">
-          {/* Left - Logo / Back / Title */}
-          <div className="flex items-center gap-3">
-            <div
-              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => navigate('/home-nba')}
+    <>
+    <nav className={`bg-forest sticky top-0 z-50 ${className ?? ''}`}>
+      {/* ─────────── Faixa 1 — produto, conta ─────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="h-[52px] md:h-[60px] flex items-center justify-between gap-4 sm:gap-6">
+          {/* Esquerda: logo (+ voltar / título quando a rota pede) */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate(user ? '/inicio' : '/')}
+              className="flex items-center hover:opacity-80 transition-opacity shrink-0"
+              aria-label="Início"
             >
-              <img
-                src="/logo.png"
-                alt="Smartbetting"
-                className={`h-8 w-auto ${variant === 'rebrand' ? 'invert hue-rotate-180' : ''}`}
-              />
-            </div>
+              {/* Fundo forest → logo reversa (branca). É o arquivo original,
+                  sem o filtro `invert hue-rotate-180` que o header claro usava. */}
+              <img src="/logo.png" alt="Smart Betting" className="h-5 md:h-[26px] w-auto" />
+            </button>
+
             {showBack && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => (backTo ? navigate(backTo) : navigate(-1))}
-                className={`${t.ghostBtn} -ml-2`}
+                className="-ml-1 h-8 px-2 text-white/80 hover:text-white hover:bg-white/10"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 <span className="text-xs">Voltar</span>
               </Button>
             )}
+
             {title && (
-              <div className="hidden sm:flex items-center">
-                <span className={`${t.slash} mx-2`}>/</span>
-                <span className={`text-sm ${t.text} font-medium truncate max-w-[200px]`}>{title}</span>
+              <div className="hidden sm:flex items-center min-w-0">
+                <span className="text-white/25 mx-2">/</span>
+                <span className="text-sm text-white font-medium truncate max-w-[200px]">
+                  {title}
+                </span>
               </div>
             )}
           </div>
 
-          {/* Center - Dropdowns por produto */}
+          {/* Centro: seções do produto */}
           <div className="hidden md:flex items-center gap-1">
-            {/* NBA */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className={moduleTriggerCls(nbaActive)}>
-                  <span className="text-xs font-semibold uppercase tracking-wide">NBA</span>
-                  <ChevronDown className="w-3 h-3 opacity-70" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className={`w-64 ${t.dropdownBg} ${t.dropdownBorder} ${t.dropdownText}`}>
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wide opacity-70">Plataforma NBA</DropdownMenuLabel>
-                {renderItems(nbaItems)}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button type="button" onClick={() => go(nbaActive ? '/home-nba' : '/futebol')} className={sectionCls(analisesActive)}>
+              <BarChart3 className="w-[15px] h-[15px]" strokeWidth={analisesActive ? 2.2 : 2} />
+              Análises
+            </button>
 
-            {/* Futebol */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className={moduleTriggerCls(futebolActive)}>
-                  <span className="text-xs font-semibold uppercase tracking-wide">Futebol</span>
-                  <ChevronDown className="w-3 h-3 opacity-70" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className={`w-64 ${t.dropdownBg} ${t.dropdownBorder} ${t.dropdownText}`}>
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wide opacity-70">Módulo Futebol</DropdownMenuLabel>
-                {renderItems(futebolItems)}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button type="button" onClick={() => go('/bets')} className={sectionCls(betinhoActive)}>
+              <Bot className="w-[15px] h-[15px]" strokeWidth={betinhoActive ? 2.2 : 2} />
+              Betinho
+            </button>
 
-            {/* Betinho */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className={moduleTriggerCls(betinhoActive)}>
-                  <span className="text-xs font-semibold uppercase tracking-wide">Betinho</span>
-                  <ChevronDown className="w-3 h-3 opacity-70" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className={`w-64 ${t.dropdownBg} ${t.dropdownBorder} ${t.dropdownText}`}>
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wide opacity-70">Módulo Betinho</DropdownMenuLabel>
-                {renderItems(betinhoItems)}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Bolão (produto sem sub-seções) */}
-            {SHOW_BOLAO_NAV_ITEM && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate('/bolao')}
-                className={moduleTriggerCls(bolaoActive)}
-              >
-                <Trophy className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold uppercase tracking-wide">Bolão Copa 2026</span>
-              </Button>
+            {SHOW_BOLAO_ENTRY_POINTS && (
+              <button type="button" onClick={() => go('/bolao')} className={sectionCls(bolaoActive)}>
+                <Trophy className="w-[15px] h-[15px]" strokeWidth={bolaoActive ? 2.2 : 2} />
+                Bolão
+                <span className="inline-flex items-center h-4 px-[5px] rounded bg-amber-400 text-ink text-[9px] font-bold tracking-[0.08em]">
+                  2026
+                </span>
+              </button>
             )}
           </div>
 
-          {/* Right - Auth & Premium */}
-          <div className="flex items-center gap-2">
+          {/* Direita: assinatura + conta */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {futebolActive && <FutebolTrialChip />}
-            {user && isPremium && (
-              <div className={`hidden sm:flex items-center gap-1 ${t.premiumBg} border ${t.premiumBorder} px-2 py-1 rounded`}>
-                <Zap className={`w-3 h-3 ${t.premiumIcon}`} />
-                <span className={`text-[10px] ${t.premiumText} font-bold`}>PREMIUM</span>
-              </div>
-            )}
 
             {user ? (
-              <UserNav />
+              <>
+                {isPremium && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/planos')}
+                    className="hidden md:flex items-center gap-1.5 h-9 px-3 rounded-[10px] bg-amber-400 hover:bg-amber-300 text-ink text-[12px] font-bold transition-colors"
+                  >
+                    <Zap className="w-[13px] h-[13px] fill-current" strokeWidth={0} />
+                    PREMIUM
+                  </button>
+                )}
+
+                {/* Desktop: pill + dropdown. Mobile: avatar → /perfil. */}
+                <UserNav />
+              </>
             ) : (
+              // Ordem espelha o estado logado — comercial no meio, conta na
+              // ponta: [PREMIUM][Perfil] logado, [Assinar][Entrar] deslogado.
+              // Assim o botão âmbar não muda de posição quando o usuário loga.
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate('/auth')} className={`${t.textHover} text-xs h-8`}>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/planos')}
+                  className="h-9 px-3 rounded-[10px] bg-amber-400 hover:bg-amber-300 text-ink text-xs font-bold"
+                >
+                  <Zap className="w-3 h-3 mr-1 fill-current" strokeWidth={0} />
+                  Assinar
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/auth')}
+                  className="h-9 text-xs text-white/80 hover:text-white hover:bg-white/10"
+                >
                   <LogIn className="w-3 h-3 mr-1" />
                   Entrar
                 </Button>
-                <Button size="sm" onClick={() => navigate('/paywall-platform')} className={`${t.ctaBg} ${t.ctaText} font-bold text-xs h-8`}>
-                  <Zap className="w-3 h-3 mr-1" />
-                  Assinar
-                </Button>
               </div>
             )}
-
-            <button
-              className={`md:hidden flex items-center gap-1.5 px-2 py-1.5 rounded transition-colors ${t.ghostBtn}`}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile menu (acordeão por produto) */}
-        {isMobileMenuOpen && (
-          <div className={`md:hidden border-t ${t.border} py-3`}>
-            <div className="flex flex-col gap-2">
-              <MobileSection id="nba" label="NBA" items={nbaItems} />
-              <div className={`border-t ${t.border}`} />
-              <MobileSection id="futebol" label="Futebol" items={futebolItems} />
-              <div className={`border-t ${t.border}`} />
-              <MobileSection id="betinho" label="Betinho" items={betinhoItems} />
-              {SHOW_BOLAO_NAV_ITEM && (
+      {/* ─────────── Faixa 2 — esporte + sub-seções ─────────── */}
+      {showBand2 && (
+        <div className="hidden md:block border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            {/* Sem pills de esporte (Betinho), as sub-seções encostam à
+                esquerda — senão sobra um vão verde no meio da faixa. */}
+            <div className={`h-[46px] flex items-center gap-5 ${analisesActive ? 'justify-between' : ''}`}>
+              {analisesActive && (
+                <div className="flex items-center gap-1.5">
+                  <button type="button" onClick={() => go('/futebol')} className={sportCls(futebolActive)}>
+                    <IconSoccer className="w-3.5 h-3.5" strokeWidth={futebolActive ? 2.2 : 2} />
+                    Futebol
+                  </button>
+                  <button type="button" onClick={() => go('/home-nba')} className={sportCls(nbaActive)}>
+                    <IconBasketball className="w-3.5 h-3.5" strokeWidth={nbaActive ? 2.2 : 2} />
+                    NBA
+                  </button>
+                </div>
+              )}
+
+              {/* Direita: sub-seções do produto ativo */}
+              <div className="flex items-center gap-0.5">
+                {subItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => go(item.href)}
+                      className={subCls(isActive(item.href))}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+        {/* ── Rail mobile: mesmo conteúdo da faixa 2, rolando na horizontal ── */}
+        {showBand2 && (
+          <div className="md:hidden border-t border-white/10">
+            <div className="h-[42px] px-3.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              {analisesActive && (
                 <>
-                  <div className={`border-t ${t.border}`} />
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleNavigation('/bolao')}
-                    className={`w-full justify-start h-10 ${bolaoActive ? `${t.activeBg} ${t.textAccent}` : t.ghostBtn}`}
-                  >
-                    <Trophy className="w-4 h-4 mr-3" />
-                    <span className="text-sm">Bolão Copa 2026</span>
-                  </Button>
+                  <button type="button" onClick={() => go('/futebol')} className={`${sportCls(futebolActive)} shrink-0`}>
+                    <IconSoccer className="w-3.5 h-3.5" strokeWidth={futebolActive ? 2.2 : 2} />
+                    Futebol
+                  </button>
+                  <button type="button" onClick={() => go('/home-nba')} className={`${sportCls(nbaActive)} shrink-0`}>
+                    <IconBasketball className="w-3.5 h-3.5" strokeWidth={nbaActive ? 2.2 : 2} />
+                    NBA
+                  </button>
+                  <span className="w-px h-5 bg-white/15 mx-1.5 shrink-0" />
                 </>
               )}
+              {subItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.href}
+                    type="button"
+                    onClick={() => go(item.href)}
+                    className={`${subCls(isActive(item.href))} shrink-0`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {item.name}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
+      </nav>
+
+      {/* ─────────── Tab bar mobile (fixa no rodapé da viewport) ─────────── */}
+      <MobileTabBar
+        analisesActive={analisesActive}
+        betinhoActive={betinhoActive}
+        bolaoActive={bolaoActive}
+        nbaActive={nbaActive}
+        perfilActive={path.startsWith('/perfil')}
+        onGo={go}
+      />
+    </>
+  );
+}
+
+/**
+ * Tab bar do mobile: substitui o hambúrguer. Só os 4 destinos de topo —
+ * as sub-seções ficam no rail do header.
+ *
+ * Some quando o teclado virtual abre? Não: é `fixed`, então em iOS ela sobe
+ * junto. Se virar problema, a saída é `env(keyboard-inset-height)`.
+ */
+function MobileTabBar({
+  analisesActive,
+  betinhoActive,
+  bolaoActive,
+  nbaActive,
+  perfilActive,
+  onGo,
+}: {
+  analisesActive: boolean;
+  betinhoActive: boolean;
+  bolaoActive: boolean;
+  nbaActive: boolean;
+  perfilActive: boolean;
+  onGo: (href: string) => void;
+}) {
+  const { user } = useAuth();
+  // A barra cobre os últimos 62px da viewport; a classe faz o body reservar
+  // esse espaço. Fica no efeito pra sumir junto com a barra (ex.: landings,
+  // que não montam o AnalyticsNav).
+  useEffect(() => {
+    document.body.classList.add('has-tabbar');
+    return () => document.body.classList.remove('has-tabbar');
+  }, []);
+
+  const itemCls = (active: boolean) =>
+    `h-[62px] flex flex-col items-center justify-center gap-1 transition-colors ${
+      active ? 'text-forest' : 'text-ink-dim hover:text-forest'
+    }`;
+  const labelCls = (active: boolean) => `text-[10px] ${active ? 'font-bold' : 'font-medium'}`;
+
+  return (
+    <div
+      className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-line"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className={`grid ${SHOW_BOLAO_ENTRY_POINTS ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <button type="button" onClick={() => onGo(nbaActive ? '/home-nba' : '/futebol')} className={itemCls(analisesActive)}>
+          <BarChart3 className="w-5 h-5" strokeWidth={analisesActive ? 2.2 : 2} />
+          <span className={labelCls(analisesActive)}>Análises</span>
+        </button>
+
+        <button type="button" onClick={() => onGo('/bets')} className={itemCls(betinhoActive)}>
+          <Bot className="w-5 h-5" strokeWidth={betinhoActive ? 2.2 : 2} />
+          <span className={labelCls(betinhoActive)}>Betinho</span>
+        </button>
+
+        {SHOW_BOLAO_ENTRY_POINTS && (
+          <button type="button" onClick={() => onGo('/bolao')} className={itemCls(bolaoActive)}>
+            <Trophy className="w-5 h-5" strokeWidth={bolaoActive ? 2.2 : 2} />
+            <span className={labelCls(bolaoActive)}>Bolão</span>
+          </button>
+        )}
+
+        {/* Leva pra tela cheia `/perfil` — no mobile não há dropdown de conta.
+            Deslogado, o destino é o login. */}
+        {user ? (
+          <button type="button" onClick={() => onGo('/perfil')} className={itemCls(perfilActive)}>
+            <CircleUser className="w-5 h-5" strokeWidth={perfilActive ? 2.2 : 2} />
+            <span className={labelCls(perfilActive)}>Perfil</span>
+          </button>
+        ) : (
+          <button type="button" onClick={() => onGo('/auth')} className={itemCls(false)}>
+            <LogIn className="w-5 h-5" />
+            <span className={labelCls(false)}>Entrar</span>
+          </button>
+        )}
       </div>
-    </nav>
+    </div>
   );
 }

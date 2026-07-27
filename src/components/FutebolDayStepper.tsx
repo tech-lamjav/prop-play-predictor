@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TZ = 'America/Sao_Paulo';
@@ -35,11 +36,20 @@ function dayParts(s: string): { wd: string; d: string; mon: string } {
 export default function FutebolDayStepper({
   days, value, onChange, counts, className = '',
 }: { days: string[]; value: string; onChange: (d: string) => void; counts?: Record<string, number>; className?: string }) {
+  const activeRef = useRef<HTMLButtonElement>(null);
+  // Mantém o dia selecionado sempre visível (centralizado) — navegação fluida.
+  useEffect(() => {
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [value]);
+
   if (!days.length) return null;
   const today = todayStr();
   const i = days.indexOf(value);
   const hasPrev = i > 0;
   const hasNext = i >= 0 && i < days.length - 1;
+  const isTodayView = value === today;
+  const hasToday = days.includes(today);
   const arrow = 'w-9 h-9 grid place-items-center rounded-md shrink-0 border border-line bg-white text-ink-2 enabled:hover:bg-canvas-2 disabled:opacity-30 disabled:cursor-default transition';
 
   return (
@@ -55,11 +65,16 @@ export default function FutebolDayStepper({
           return (
             <button
               key={s}
+              ref={active ? activeRef : undefined}
               type="button"
               onClick={() => onChange(s)}
               title={dayLabel(s)}
               className={`flex items-center gap-2 rounded-full px-3 h-9 shrink-0 border transition ${
-                active ? 'bg-forest text-canvas border-forest' : 'bg-transparent border-line text-ink hover:bg-canvas-2'
+                active
+                  ? 'bg-forest text-canvas border-forest'
+                  : isToday
+                  ? 'bg-forest-tint border-forest text-forest'
+                  : 'bg-transparent border-line text-ink hover:bg-canvas-2'
               }`}
             >
               <span className="text-[10px] uppercase tracking-[0.16em] font-semibold opacity-70">{wd}</span>
@@ -74,6 +89,16 @@ export default function FutebolDayStepper({
       <button type="button" className={arrow} disabled={!hasNext} onClick={() => hasNext && onChange(days[i + 1])} aria-label="Próximo dia">
         <ChevronRight className="w-4 h-4" />
       </button>
+      {/* Atalho pra voltar pro dia de hoje quando a navegação se afasta */}
+      {!isTodayView && hasToday && (
+        <button
+          type="button"
+          onClick={() => onChange(today)}
+          className="shrink-0 h-9 px-3 rounded-md border border-forest bg-forest-tint text-forest text-[11px] font-bold uppercase tracking-[0.1em] hover:bg-forest hover:text-canvas transition"
+        >
+          Hoje
+        </button>
+      )}
     </div>
   );
 }

@@ -1,0 +1,32 @@
+/* ============================================================================
+   Smart Betting — Radii, shadows, motion
+   Rebrand rule: hierarchy comes from BORDER + background color, not drop-shadow.
+   Elevation is the exception, not the default.
+   ============================================================================ */
+:root {
+  /* ---- Corner radii (rebrand spec) ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px;   /* buttons */
+  --radius-lg: 14px;
+  --radius-xl: 20px;   /* cards — the signature radius */
+  --radius-2xl: 24px;  /* hero cards (rounded-2xl) */
+  --radius-full: 9999px;
+
+  /* ---- Shadows (used sparingly) ---- */
+  --shadow-none: none;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-pop: 0 10px 30px -10px rgba(0,0,0,0.15);  /* dropdowns / search results */
+  --shadow-elevated: 0 12px 32px rgba(0,0,0,0.12);   /* the rare "elevation exception" */
+
+  /* ---- Borders ---- */
+  --border-width: 1px;
+  --border-hairline: 1px solid var(--line);
+
+  /* ---- Motion ---- */
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1); /* @kind other */
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); /* @kind other */
+  --duration-fast: 0.15s; /* @kind other */
+  --duration-base: 0.2s; /* @kind other */
+  --duration-slow: 0.5s; /* @kind other */
+}

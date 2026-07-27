@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { usePostHog } from '@posthog/react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowRight, Calendar as CalendarIcon, Loader2,
 } from 'lucide-react';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -1048,6 +1049,7 @@ export default function GameDetail() {
   const location = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const posthog = usePostHog();
 
   const initCache = gameId ? gameDetailCache.get(gameId) : undefined;
   const [game, setGame] = useState<Game | null>(initCache?.game ?? null);
@@ -1071,6 +1073,13 @@ export default function GameDetail() {
   useEffect(() => {
     if (game) setActiveTab(finished ? 'boxscore' : 'lineups');
   }, [game?.game_id, finished]);
+
+  // Analytics: visualização do detalhe de jogo NBA (Marco 3 — retenção por superfície, N3).
+  // Rota é pública e o componente redireciona deslogado pra /auth — captura só logado.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    posthog?.capture('nba_game_viewed', { product: 'nba', game_id: gameId });
+  }, [gameId, posthog, user, authLoading]);
 
   useEffect(() => {
     if (!authLoading && user && !hasLoaded.current) {
@@ -1247,7 +1256,7 @@ export default function GameDetail() {
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack backTo="/home-games" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/home-games" />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
           {isLoadingGame || !game ? (

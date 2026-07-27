@@ -1,10 +1,15 @@
 # Futebol (Value Bet) — Runbook de deploy para PRODUÇÃO
 
-> ⚠️ **LEIA ANTES DE MERGEAR.** O frontend deste módulo chama RPCs `get_futebol_*` que **não existem em produção**. O backend de futebol foi construído **apenas no projeto DEV** (`kpbjuplcwiyrymafhehz`) e precisa ser provisionado em prod. Se a `main` for pra prod **sem** rodar o `docs/futebol-prod-deploy.sql` abaixo, **o módulo Futebol inteiro fica quebrado** (telas carregam, mas toda chamada de dado falha).
+> ✅ **PROD JÁ PROVISIONADO (verificado 2026-07-20 via inventário SQL no prod).** Schema `futebol` (22 tabelas incl. `_sync_state`), as 19 functions (md5 **idêntico** a dev e a este repo), colunas de trial no `users` e **sync horário ativo** (`workflow-futebol-sync-hourly` no Cloud Scheduler já grava no prod; dados com carga do próprio dia). O aviso antigo ("RPCs não existem em produção") está OBSOLETO. Buckets `futebol-team-logos`/`futebol-player-photos` criados no prod e mirrors executadas em 2026-07-20 (388/388 brasões, 137/137 fotos, 0 falhas). Pré-requisitos de dados (§1) também conferidos em 2026-07-19: 21 tabelas BASE TABLE no BQ, `dbt-futebol` e schedulers rodando, `SUPABASE_PG_URL_PRD` setada no Cloud Run. **Backend de prod 100% completo — falta só o merge do release (PR #207) pro frontend ir ao ar.** Dica pra rodar as mirrors sem conhecer o CRON_SECRET: `net.http_post` via SQL editor lendo o Vault (`vault.decrypted_secrets`, name `ingest_wc_cron_secret`); resposta em `net._http_response` pelo `request_id`.
 
 > 🔄 **MUDANÇA DE ARQUITETURA (2026-06-30).** O futebol **deixou de usar o FDW BigQuery** (`wrappers`/`bq_futebol`/`futebol.sync_all()`/pg_cron) e passou a usar **o mesmo sync do NBA**: o serviço Cloud Run **`sync-bq-to-postgres`** lê os marts do BQ com `list_rows()` (grátis, sem scan) e faz `TRUNCATE + COPY` nas tabelas nativas de `futebol.*`. Não há mais chave do BigQuery no Vault, nem foreign tables, nem procedure, nem pg_cron de sync. Isso elimina o custo de scan recorrente do FDW. **Este deploy continua NÃO sendo migration** (de propósito, pra não acoplar o schema de produto ao CI), mas agora **não depende de nenhum segredo manual**.
 
 Projetos Supabase: **dev** = `kpbjuplcwiyrymafhehz` · **prod** = `lavclmlvvfzkblrstojd`.
+
+> ✅ **VERIFICADO CONTRA O DEV EM 2026-07-18** (inventário via SQL editor: md5 de `pg_get_functiondef` + shape das tabelas/índices): as **19 functions** e as **21 tabelas** do `.sql` estão **byte-idênticas** ao estado do dev — zero drift desde o snapshot de 30/06. Teardown do FDW confirmado no dev (`bq_futebol`, `bigquery_server` e `sync_all` removidos; só a extensão `wrappers` ficou instalada, sem uso). Deltas encontrados e já incorporados/pendentes:
+> 1. **`futebol._sync_state`** (watermark do sync incremental) existia no dev e faltava no `.sql` → **adicionada** (§2a, `create if not exists`).
+> 2. **Bucket `futebol-player-photos`** (público) existe no dev + helper `getFutebolPlayerPhotoUrl` no front → criar no prod e espelhar as fotos (§6a).
+> 3. **Edge function `mirror-futebol-player-photos`** estava deployada no dev sem estar no repo (deploy direto) → **recuperada e commitada** (2026-07-18), com o gate `?token=` hardcoded do protótipo substituído pelo header `x-cron-secret`. ⚠️ A versão deployada no dev ainda é a antiga (aceita o token) até o próximo redeploy.
 
 ---
 
@@ -68,6 +73,14 @@ select * from public.get_futebol_standings_official('brasileirao', 2026) limit 5
 No app: `/futebol`, `/futebol/oportunidades`, `/futebol/jogos`, `/futebol/jogo/:id`, `/futebol/time/:id` — 0 erros de console, reverse trial/blur ok.
 
 ---
+
+## 6a. Storage + espelhamento de imagens (hotlink protection da api-sports)
+
+No ambiente alvo (prod), depois do `.sql`:
+
+1. Criar buckets **públicos**: `futebol-team-logos` e `futebol-player-photos`.
+2. Deployar `mirror-futebol-team-logos` e `mirror-futebol-player-photos` (ambas no repo) com `verify_jwt=false`.
+3. Rodar 1x cada com o header `x-cron-secret: $CRON_SECRET` (idempotentes, upsert). Re-rodar quando entrarem times/jogadores novos — não há cron agendado (nem no dev).
 
 ## 6. Notas
 - **Custo/latência:** as RPCs leem `futebol.*` nativo (não o BQ). O BQ é tocado só pelo Cloud Run sync (`list_rows`, grátis) — sem o scan recorrente que o FDW cobrava.

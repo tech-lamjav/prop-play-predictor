@@ -624,6 +624,14 @@ create table futebol.fact_value_opportunities (
   "dbt_loaded_at" timestamp
 );
 
+-- ── 2a. Infra do sync: estado incremental (o Cloud Run sync lê/escreve aqui) ──
+-- IF NOT EXISTS de propósito: guarda o watermark do último sync — não dropar.
+create table if not exists futebol._sync_state (
+  "table_name" text primary key,
+  "last_synced_bq_modified_time" timestamptz,
+  "last_synced_at" timestamptz
+);
+
 -- Histórico append-only (dbt snapshot, strategy=check) de fact_value_opportunities —
 -- preserva o pick de t24h/t1h mesmo depois que o mart (full-refresh) sobrescreve com t15m.
 drop table if exists futebol.fact_value_opportunities_hist cascade;

@@ -56,7 +56,8 @@ export function useQuickPickUndo(bolaoId: string, predictions: BolaoPrediction[]
 
       try {
         if (toRestore.length > 0) {
-          await upsertBatch.mutateAsync({ bolaoId, predictions: toRestore });
+          // silent: restaurar palpites antigos não é engajamento novo — sem evento de analytics.
+          await upsertBatch.mutateAsync({ bolaoId, predictions: toRestore, silent: true });
         }
 
         let deletedCount = 0;

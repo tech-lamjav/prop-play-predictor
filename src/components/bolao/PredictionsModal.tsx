@@ -165,9 +165,15 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
     setConfirmDeleteMatchId(null);
   };
 
-  const totalMatches =
-    matches?.filter((m) => !m.is_finished && m.home_team_code !== 'TBD').length || 0;
-  const totalPredictions = predictions?.length || 0;
+  // Progresso conta só os jogos ABERTOS (não finalizados, times definidos) e os
+  // palpites DESSES jogos — senão palpites de jogos já encerrados inflam o
+  // numerador (ex.: 90/8 · 1125% quando sobram só as oitavas).
+  const openMatchIds = React.useMemo(
+    () => new Set((matches ?? []).filter((m) => !m.is_finished && m.home_team_code !== 'TBD').map((m) => m.id)),
+    [matches]
+  );
+  const totalMatches = openMatchIds.size;
+  const totalPredictions = (predictions ?? []).filter((p) => openMatchIds.has(p.match_id)).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

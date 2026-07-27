@@ -70,7 +70,7 @@ const BolaoJoin: React.FC = () => {
 
   return (
     <>
-      <AnalyticsNav />
+      <AnalyticsNav variant="rebrand" />
       <Helmet>
         <title>Entrar no Bolão Copa 2026 | Smart Betting</title>
         <meta name="description" content="Você foi convidado pra um bolão da Copa 2026. Entre em 1 clique e palpite os 104 jogos." />

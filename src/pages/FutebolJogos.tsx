@@ -8,13 +8,15 @@ import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders, F
 import { futebolZone, FUTEBOL_ZONE_COLOR as ZONE_COLOR, FUTEBOL_ZONE_LABEL as ZONE_LABEL } from '@/services/futebol-data.service';
 import { getFutebolTeamLogoUrl, getFutebolPlayerPhotoUrl } from '@/utils/futebol-logos';
 import { groupBoardByFixture, faixaWord, faixaBadgeCls } from '@/utils/futebol-score';
+import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
 
-const COMPETITIONS: { value: Competition; label: string }[] = [
-  { value: 'brasileirao', label: 'Brasileirão' },
-  { value: 'serie_b', label: 'Série B' },
-  { value: 'copa_mundo', label: 'Copa do Mundo' },
-];
-const SEASONS: Record<Competition, number[]> = { brasileirao: [2024, 2025, 2026], copa_mundo: [2026], serie_b: [2024, 2025, 2026] };
+const COMPETITIONS: { value: Competition; label: string }[] = ALL_COMPETITIONS.map((value) => ({
+  value,
+  label: competitionLabel(value),
+}));
+// Temporadas por competição. Brasileirão/Série B têm histórico; as demais, só 2026.
+const SEASONS_BY_COMP: Record<string, number[]> = { brasileirao: [2024, 2025, 2026], serie_b: [2024, 2025, 2026] };
+const seasonsFor = (c: string): number[] => SEASONS_BY_COMP[c] ?? [2026];
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const TODAY = new Date();
 
@@ -82,6 +84,12 @@ function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]
   const zonesPresent = Array.from(new Set(rows.map((r) => futebolZone(r.rank_description)).filter(Boolean))) as Exclude<FutebolZone, null>[];
   return (
     <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
+      {/* As colunas fixas (#, J, V, E, D, SG, Pts) somam ~486px e não cabem em
+          tela de 320-360px. Em vez de empurrar a página inteira — o que criava
+          rolagem lateral e descolava o header sticky —, a tabela rola dentro
+          do próprio card. */}
+      <div className="overflow-x-auto no-scrollbar">
+      <div className="min-w-[480px]">
       <div className={`${STAND_GRID} px-4 py-2.5 text-[10px] uppercase tracking-[0.12em] font-bold text-ink-3 bg-canvas-2 border-b border-line`}>
         <span>#</span><span>Time</span>
         <span className="text-center">J</span><span className="text-center">V</span><span className="text-center">E</span><span className="text-center">D</span>
@@ -109,6 +117,8 @@ function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]
           </button>
         );
       })}
+      </div>
+      </div>
       {zonesPresent.length > 0 && (
         <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap text-[10px] bg-canvas-2 border-t border-line text-ink-3">
           {zonesPresent.map((z) => (
@@ -221,7 +231,13 @@ export default function FutebolJogos() {
   }, [fixtures, currentRound]);
   const roundCount = groups.reduce((n, [, g]) => n + g.length, 0);
 
-  const handleCompetition = (c: Competition) => { setCompetition(c); setSeason(SEASONS[c][0]); };
+  // Mantém a temporada se a nova competição também a tiver; senão vai pra mais
+  // recente (SEASONS é crescente — o índice 0 é a mais ANTIGA, ex.: 2024).
+  const handleCompetition = (c: Competition) => {
+    setCompetition(c);
+    const seasons = seasonsFor(c);
+    setSeason(seasons.includes(season) ? season : seasons[seasons.length - 1]);
+  };
   const goTeam = (id: number) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`);
 
   return (
@@ -232,14 +248,14 @@ export default function FutebolJogos() {
       <div className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">{COMPETITIONS.find((c) => c.value === competition)?.label}</div>
+            <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">{competitionLabel(competition)}</div>
             <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{prettyRound(currentRound)}</h1>
             <p className="text-[13px] mt-1 text-ink-2">Rodadas, classificação e artilheiros · temporada {season}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {COMPETITIONS.map((c) => <Pill key={c.value} active={competition === c.value} onClick={() => handleCompetition(c.value)}>{c.label}</Pill>)}
             <span className="w-px h-5 bg-line mx-1" />
-            {SEASONS[competition].map((s) => <Pill key={s} active={season === s} onClick={() => setSeason(s)}>{s}</Pill>)}
+            {seasonsFor(competition).map((s) => <Pill key={s} active={season === s} onClick={() => setSeason(s)}>{s}</Pill>)}
           </div>
         </div>
       </div>
@@ -260,9 +276,12 @@ export default function FutebolJogos() {
         {isError ? (
           <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-status-danger">Erro ao carregar os jogos.</div>
         ) : (
+          // `min-w-0` nas duas colunas: item de grid não encolhe abaixo do
+          // próprio conteúdo por padrão, e a tabela de classificação (480px)
+          // empurrava a página inteira em vez de rolar dentro do card.
           <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
             {/* Jogos da rodada */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-w-0">
               {isLoading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full bg-canvas-2 rounded-rebrand-md" />)
                 : roundCount === 0 ? <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-ink-3">Nenhum jogo nesta rodada.</div>
                 : groups.map(([day, games]) => (
@@ -275,7 +294,7 @@ export default function FutebolJogos() {
                 ))}
             </div>
             {/* Rail: classificação + artilheiros */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 min-w-0">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Classificação</div>

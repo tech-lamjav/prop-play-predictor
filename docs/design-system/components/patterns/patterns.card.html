@@ -1,0 +1,58 @@
+<!-- @dsCard group="Components" viewport="700x460" name="Rebrand patterns" subtitle="KpiTile, Chip, SectionHeader, StatMetric, PlayerAvatar" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;padding:22px;background:var(--canvas);font-family:var(--font-sans);color:var(--ink)}
+  .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.16em;font-weight:600;color:var(--ink-2);margin:0 0 10px}
+  .grp{margin-bottom:22px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+</head><body>
+<div id="root"></div>
+<script type="text/babel">
+const { KpiTile, Chip, SectionHeader, StatMetric, PlayerAvatar } = window.SmartBettingDesignSystem_c8cd28;
+function Demo(){
+  return (<div>
+    <div className="grp"><p className="lbl">KpiTile</p>
+      <div className="row">
+        <KpiTile label="Jogos hoje" value={4} hint="todos com análise" />
+        <KpiTile label="Oportunidades 3★" value={7} hint="alta confiança" tone="forest" />
+        <KpiTile label="Lesões chave" value={3} hint="gatilham análises" tone="amber" />
+      </div>
+    </div>
+    <div className="grp"><p className="lbl">Chip</p>
+      <div className="row">
+        <Chip tone="amberSoft">Gatilho · Sem Luka</Chip>
+        <Chip tone="neutral">Pontos</Chip>
+        <Chip tone="outline">Linha 24.5</Chip>
+        <Chip tone="forest">3★ Reaves</Chip>
+      </div>
+    </div>
+    <div className="grp"><p className="lbl">SectionHeader</p>
+      <div style={{maxWidth:420}}>
+        <SectionHeader eyebrow="Jogos de hoje" title="4 partidas" actionLabel="Ver todos" actionHref="#" />
+      </div>
+    </div>
+    <div className="grp"><p className="lbl">StatMetric (bordered strip)</p>
+      <div className="row" style={{border:"1px solid var(--line)",borderRadius:12,background:"#fff",overflow:"hidden",gap:0}}>
+        <StatMetric label="Média" value="21.3" sub="temporada" />
+        <StatMetric label="Projeção" value="28.4" sub="com filtro" highlight style={{borderLeft:"1px solid var(--line)"}} />
+        <StatMetric label="Linha" value="24.5" sub="mercado" style={{borderLeft:"1px solid var(--line)"}} />
+        <StatMetric label="Vantagem" value="+15%" sub="sobre linha" accent style={{borderLeft:"1px solid var(--line)"}} />
+      </div>
+    </div>
+    <div className="grp"><p className="lbl">PlayerAvatar</p>
+      <div className="row">
+        <PlayerAvatar name="Austin Reaves" size={40} />
+        <PlayerAvatar name="Luka Doncic" size={48} />
+        <PlayerAvatar name="Austin Reaves" shape="square" size={72} teamAbbr="LAL" showTeamBadge />
+      </div>
+    </div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body></html>

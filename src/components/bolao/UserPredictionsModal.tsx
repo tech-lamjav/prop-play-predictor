@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
 import {
+  useBolao,
   useBolaoPredictions,
   useWcMatches,
   useChampionPredictions,
@@ -35,6 +36,7 @@ import type {
   WcPlayer,
   PlayerAwardType,
 } from '@/services/bolao.service';
+import { applyScoreBasis } from '@/services/bolao.service';
 
 interface UserPredictionsModalProps {
   open: boolean;
@@ -239,7 +241,13 @@ const StatPill: React.FC<{
 
 const JogosTab: React.FC<{ bolaoId: string; userId: string }> = ({ bolaoId, userId }) => {
   const { data: predictions, isLoading: loadingPreds } = useBolaoPredictions(bolaoId, userId);
-  const { data: matches } = useWcMatches();
+  const { data: bolao } = useBolao(bolaoId);
+  const { data: rawMatches } = useWcMatches();
+  // Placar exibido segue a base do bolão (migration 084).
+  const matches = useMemo(
+    () => applyScoreBasis(rawMatches, bolao?.knockout_score_basis),
+    [rawMatches, bolao?.knockout_score_basis]
+  );
 
   const predsByMatch = useMemo(
     () => new Map((predictions || []).map((p) => [p.match_id, p])),
