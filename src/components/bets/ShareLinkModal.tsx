@@ -231,7 +231,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
           {/* Tags */}
           {userTags.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">Tags</p>
+              <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">Etiquetas</p>
               <div className="flex flex-wrap gap-1.5">
                 {userTags.map((tag) => {
                   const selected = localTags.includes(tag.id);

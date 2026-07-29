@@ -348,26 +348,26 @@ function HeroCard({
       <div className="hidden md:flex border-t border-line mt-5 pt-3 items-center justify-between gap-3">
         <div className="flex items-center gap-4 md:gap-6">
           <div>
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">OFF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Ataque</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(homeTeam?.team_offensive_rating_rank)}</div>
           </div>
           <div>
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">DEF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Defesa</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(homeTeam?.team_defensive_rating_rank)}</div>
           </div>
         </div>
 
         <div className="text-[9px] uppercase tracking-[0.18em] text-ink-2/60 font-semibold text-center hidden sm:block">
-          Ratings da temporada
+          Números da temporada
         </div>
 
         <div className="flex items-center gap-4 md:gap-6">
           <div className="text-right">
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">OFF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Ataque</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(visitorTeam?.team_offensive_rating_rank)}</div>
           </div>
           <div className="text-right">
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">DEF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Defesa</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(visitorTeam?.team_defensive_rating_rank)}</div>
           </div>
         </div>
@@ -457,7 +457,7 @@ function MatchupAngleCard({
     <div className="bg-white border border-line rounded-xl px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Ângulo do confronto</span>
-        <span className="text-[10px] text-ink-2">rank do adversário na liga · #1 = melhor defesa</span>
+        <span className="text-[10px] text-ink-2">posição do adversário na liga · #1 = melhor defesa</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 md:divide-x divide-line">
         {homeAttacks && <div className="md:pr-6">{renderColumn(homeAbbr, homeAttacks, visitorAbbr)}</div>}
@@ -847,7 +847,7 @@ function BoxScoreTable({
   return (
     <div className="bg-white border border-line rounded-xl overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-line">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Box Score · {filtered.length}</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Estatísticas do jogo · {filtered.length}</span>
         <div className="inline-flex items-center bg-canvas-2 rounded-md p-0.5">
           {([['all','Ambos'],['home',homeAbbr],['visitor',visitorAbbr]] as const).map(([k, label]) => (
             <button
@@ -994,11 +994,11 @@ function GameOpportunitiesTable({
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold border-b border-line">
             <th className="text-left px-4 py-2 font-semibold">Jogador</th>
-            <th className="text-left px-2 py-2 font-semibold">Stat</th>
+            <th className="text-left px-2 py-2 font-semibold">Estatística</th>
             <th className="text-right px-2 py-2 font-semibold tabular-nums">Com</th>
             <th className="text-right px-2 py-2 font-semibold tabular-nums">Sem</th>
             <th className="text-right px-2 py-2 font-semibold tabular-nums">Linha</th>
-            <th className="text-right px-2 py-2 font-semibold tabular-nums">Gap</th>
+            <th className="text-right px-2 py-2 font-semibold tabular-nums">Diferença</th>
             <th className="text-right px-4 py-2 font-semibold">Score</th>
           </tr>
         </thead>
@@ -1310,7 +1310,7 @@ export default function GameDetail() {
                     <TabButton
                       active={activeTab === 'boxscore'}
                       onClick={() => setActiveTab('boxscore')}
-                      label="Box Score"
+                      label="Estatísticas do jogo"
                       count={boxScore.length || undefined}
                     />
                   ) : (
@@ -1318,7 +1318,7 @@ export default function GameDetail() {
                       <TabButton
                         active={activeTab === 'lineups'}
                         onClick={() => setActiveTab('lineups')}
-                        label="Escalações & Injury"
+                        label="Escalações e lesões"
                         count={homePlayers.length + visitorPlayers.length}
                       />
                       <TabButton

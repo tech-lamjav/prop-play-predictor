@@ -19,7 +19,7 @@ const STAT_LABELS: Record<string, string> = {
   player_threes: '3 Pontos',
   player_steals: 'Roubos',
   player_blocks: 'Bloqueios',
-  player_turnovers: 'Turnovers',
+  player_turnovers: 'Erros',
   player_points_assists: 'Pts + Ast',
   player_points_rebounds: 'Pts + Reb',
   player_rebounds_assists: 'Reb + Ast',
@@ -40,7 +40,7 @@ export const STAT_TYPES_BASIC: StatType[] = [
   { id: 'player_threes', label: '3 Pontos', description: 'Cestas de 3 pontos' },
   { id: 'player_steals', label: 'Roubos', description: 'Roubos de bola' },
   { id: 'player_blocks', label: 'Bloqueios', description: 'Bloqueios' },
-  { id: 'player_turnovers', label: 'Turnovers', description: 'Turnovers' },
+  { id: 'player_turnovers', label: 'Erros', description: 'Erros' },
 ];
 
 export const STAT_TYPES_COMBOS: StatType[] = [
@@ -96,7 +96,7 @@ export const StatTypeSelector: React.FC<StatTypeSelectorProps> = ({
   return (
     <div className="rounded-lg bg-white border border-line px-4 py-3 mb-3">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-[10px] data-label opacity-50 shrink-0">STATS</span>
+        <span className="text-[10px] data-label opacity-50 shrink-0">Estatísticas</span>
         <div className="flex gap-1 flex-wrap">
           {basicStats.map(renderButton)}
         </div>

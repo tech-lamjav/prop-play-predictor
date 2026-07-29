@@ -38,7 +38,7 @@ export const OddsHistogram: React.FC<OddsHistogramProps> = ({
     return (
       <div className="bg-white border border-line rounded-xl p-5 h-full flex flex-col">
         <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Faixa de odd</div>
-        <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Onde sua banca prospera (e onde sangra)</h2>
+        <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Onde sua banca cresce (e onde perde dinheiro)</h2>
         <p className="text-[13px] text-ink-2 py-8 text-center">Nenhuma aposta encerrada no período</p>
       </div>
     );
@@ -49,7 +49,7 @@ export const OddsHistogram: React.FC<OddsHistogramProps> = ({
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Faixa de odd</div>
-          <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Onde sua banca prospera (e onde sangra)</h2>
+          <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Onde sua banca cresce (e onde perde dinheiro)</h2>
         </div>
         {hasEmpty && (
           <button

@@ -74,7 +74,7 @@ const STAT_LABEL_PT: Record<string, string> = {
 };
 
 const TAB_OPTIONS = [
-  { key: 'all', label: 'Todas stats' },
+  { key: 'all', label: 'Todas' },
   { key: 'player_points', label: 'Pontos' },
   { key: 'player_assists', label: 'Assistências' },
   { key: 'player_rebounds', label: 'Rebotes' },
@@ -531,7 +531,7 @@ function RankingList({ satellites }: { satellites: BackupAggregate[] }) {
   return (
     <div className="bg-white border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Ranking de impacto</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Classificação de impacto</span>
         <span className="text-[10px] text-ink-2">melhor stat de cada</span>
       </div>
       <div className="space-y-2">
@@ -591,7 +591,7 @@ function CompanionCard({
               </div>
             </div>
             <span className="text-[11px] text-ink-2">
-              {trigger.triggerTeamAbbr} · {valuedRows.length} {valuedRows.length === 1 ? 'stat valorizado' : 'stats valorizados'}
+              {trigger.triggerTeamAbbr} · {valuedRows.length} {valuedRows.length === 1 ? 'estatística valorizada' : 'estatísticas valorizadas'}
             </span>
           </div>
         </div>
@@ -865,7 +865,7 @@ export default function Analise360Detail() {
                     <p className="text-[11px] text-ink-2 mt-0.5 sm:hidden">toque em um jogador para ver a análise</p>
                   </div>
                   {backupAggs.length === 0 ? (
-                    <p className="text-sm text-ink-2 text-center py-10">Sem dados para esta stat.</p>
+                    <p className="text-sm text-ink-2 text-center py-10">Sem dados para esta estatística.</p>
                   ) : isMobile ? (
                     <MobileChain satellites={backupAggs} trigger={triggerInfo} />
                   ) : (
@@ -913,8 +913,8 @@ export default function Analise360Detail() {
                       <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Por que isso importa</span>
                     </div>
                     <p className="text-[12px] text-ink leading-snug">
-                      Sem {lastName(triggerInfo.triggerName)}, minutos e posses redistribuem entre os companheiros.
-                      Quanto maior o gap %, maior a chance de o backup superar a linha de mercado nesta partida.
+                      Sem {lastName(triggerInfo.triggerName)}, minutos e posses se dividem entre os companheiros.
+                      Quanto maior a diferença %, maior a chance de a reserva superar a linha de mercado nesta partida.
                     </p>
                   </div>
                 </div>
@@ -984,8 +984,8 @@ export default function Analise360Detail() {
                     <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Por que isso importa</span>
                   </div>
                   <p className="text-[12px] text-ink leading-snug">
-                    Sem {lastName(triggerInfo.triggerName)}, minutos e posses redistribuem entre os companheiros.
-                    Quanto maior o gap %, maior a chance de o backup superar a linha de mercado nesta partida.
+                    Sem {lastName(triggerInfo.triggerName)}, minutos e posses se dividem entre os companheiros.
+                    Quanto maior a diferença %, maior a chance de a reserva superar a linha de mercado nesta partida.
                   </p>
                 </div>
               </aside>

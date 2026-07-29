@@ -876,7 +876,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Tags (col-span-2) */}
           <div className="col-span-1 sm:col-span-2">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Tags</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Etiquetas</label>
             </div>
             <TagSelector
               selectedTags={formData.selectedTags}

@@ -296,7 +296,7 @@ export default function BettingDashboard() {
       <div className="theme-rebrand min-h-screen bg-canvas text-ink flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
-          <p className="text-[14px] text-ink-2">Por favor, faça login para ver o dashboard.</p>
+          <p className="text-[14px] text-ink-2">Por favor, faça login para ver o painel.</p>
         </div>
       </div>
     );
@@ -311,11 +311,11 @@ export default function BettingDashboard() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase flex items-center gap-2">Diagnóstico{isDemo && <DemoBadge />}</div>
+            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase flex items-center gap-2">Raio-x{isDemo && <DemoBadge />}</div>
             <h1 className="text-[24px] md:text-[28px] font-extrabold tracking-tight text-ink mt-1" style={{ letterSpacing: '-0.02em' }}>
               Onde você <span className="text-forest">ganha</span> e onde <span className="text-rose-700">perde</span>?
             </h1>
-            <p className="text-[13px] text-ink-2 mt-1">Veja a performance da sua banca por esporte, liga, mercado e tag.</p>
+            <p className="text-[13px] text-ink-2 mt-1">Veja o desempenho da sua banca por esporte, liga, mercado e etiqueta.</p>
           </div>
           <div data-tour="dash-header" className="flex flex-wrap items-center gap-2">
             {/* Tier badge — informativo, não clicável (vira link se houver página de billing) */}
@@ -603,7 +603,7 @@ export default function BettingDashboard() {
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Win rate</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Taxa de acerto</div>
               <div className="text-[15px] font-extrabold tabular text-ink mt-0.5">
                 {currentStats.winRate.toFixed(1)}%
               </div>
@@ -858,7 +858,7 @@ export default function BettingDashboard() {
                   Como sua análise vai ficar no Pro
                 </DialogTitle>
                 <DialogDescription className="text-[11px] text-white/70 mt-1">
-                  Preview gerado com seus dados reais ({focusedStats.totalBets}{' '}
+                  Prévia gerada com seus dados reais ({focusedStats.totalBets}{' '}
                   {focusedStats.totalBets === 1 ? 'aposta' : 'apostas'})
                 </DialogDescription>
               </div>
@@ -975,10 +975,10 @@ const UpsellCard: React.FC<UpsellCardProps> = ({ onUpgrade, onSeeExample }) => (
       <div className="md:col-span-5 space-y-2">
         <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-bold mb-1">Você terá:</div>
         {([
-          { Icon: BarChart3, t: 'Diagnóstico completo da banca', s: 'Onde você ganha e onde perde por liga, mercado e tag.' },
+          { Icon: BarChart3, t: 'Raio-x completo da banca', s: 'Onde você ganha e onde perde por liga, mercado e etiqueta.' },
           { Icon: AlertTriangle, t: 'Detector de vazamentos', s: 'Fatias com ROI negativo destacadas como prioridade pra revisar.' },
           { Icon: Lightbulb, t: 'Análise por fatia ou tag', s: 'Clique numa fatia do mapa e veja sequências, odd média e padrões.' },
-          { Icon: Shield, t: 'Insights de disciplina', s: 'Alertas sobre variância de stake e faixa de odd fora da zona estável.' },
+          { Icon: Shield, t: 'Alertas de disciplina', s: 'Alertas sobre quando você aposta valores muito diferentes e faixa de odd fora da zona estável.' },
         ] as { Icon: LucideIcon; t: string; s: string }[]).map((b, i) => (
           <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-2.5 flex gap-2.5">
             <div className="w-7 h-7 rounded-md bg-amber-400/15 grid place-items-center shrink-0">

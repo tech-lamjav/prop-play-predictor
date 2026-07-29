@@ -415,7 +415,7 @@ export default function FutebolOportunidades() {
             ) : (
               <>
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{comValor.length} aposta{comValor.length === 1 ? '' : 's'} com valor</h1>
-                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Onde a odd paga acima da chance estimada · ranqueado por confiabilidade'}</p>
+                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Onde a odd paga acima da chance estimada · em ordem de confiança'}</p>
               </>
             )}
           </div>
@@ -521,14 +521,14 @@ export default function FutebolOportunidades() {
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Como ler o Score</div>
             <p className="text-[12px] text-ink-2 mt-2 leading-relaxed">
-              O <b className="text-ink">Score (0–100)</b> mostra o quanto a oportunidade é <b className="text-ink">confiável</b>, não a chance de acerto. Ele junta quatro coisas: o tamanho do valor (o quanto a odd paga acima do risco real), as premissas do jogo (ataque, defesa, mando, forma…), se a odd não é exagerada (nem zebra, nem mixaria) e se as principais casas vêm concordando com esse lado. Por isso uma "zebra" com valor alto bancada por uma casa só fica com score baixo.
+              O <b className="text-ink">Score (0–100)</b> mostra o quanto a oportunidade é <b className="text-ink">confiável</b>, não a chance de acerto. Ele junta quatro coisas: o tamanho do valor (o quanto a odd paga acima do risco real), o cenário do jogo (ataque, defesa, mando, forma…), se a odd não é exagerada (nem zebra, nem mixaria) e se as principais casas vêm concordando com esse lado. Por isso uma "zebra" com valor alto bancada por uma casa só fica com score baixo.
             </p>
           </div>
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Faixas</div>
             <ul className="mt-2 space-y-2 text-[12px] text-ink-2">
               <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Alta')}`}>60+</span> Alta, oportunidade de destaque</li>
-              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Média')}`}>40+</span> Média, monitorar</li>
+              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Média')}`}>40+</span> Média, vale acompanhar</li>
               <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Baixa')}`}>&lt;40</span> Baixa, não sinaliza</li>
             </ul>
             <p className="text-[10px] text-ink-3 mt-3 leading-snug">

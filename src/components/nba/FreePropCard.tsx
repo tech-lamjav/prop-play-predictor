@@ -155,7 +155,7 @@ export function FreePropCard({ layout = 'vertical' }: FreePropCardProps) {
     return (
       <div className="rounded-lg bg-white border border-line p-6">
         <h3 className="section-title mb-3">OPORTUNIDADE GRÁTIS DO DIA</h3>
-        <p className="text-xs text-ink opacity-70 mb-4">Top oportunidades do dia — acesso gratuito</p>
+        <p className="text-xs text-ink opacity-70 mb-4">Melhores oportunidades do dia · acesso gratuito</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {topOpps.map(opp => renderOppCard(opp, false))}
         </div>

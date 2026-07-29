@@ -215,7 +215,7 @@ function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () 
         </div>
         <div className="text-right min-w-0">
           <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">
-            Top impacto
+            Maior impacto
           </div>
           {lastName ? (
             <>

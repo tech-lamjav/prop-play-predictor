@@ -413,8 +413,8 @@ export default function NBADashboard() {
         setTeamLoading(false);
         setShootingZonesLoading(false);
         toast({
-          title: 'Player not found',
-          description: `Could not find player "${playerName.replace(/-/g, ' ')}"`,
+          title: 'Jogador não encontrado',
+          description: `Não encontramos o jogador "${playerName.replace(/-/g, ' ')}"`,
           variant: 'destructive',
         });
         navigate('/home-nba');
@@ -539,8 +539,8 @@ export default function NBADashboard() {
       setPlayerLookupDone(true);
       console.error('Error loading player:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load player data',
+        title: 'Erro',
+        description: 'Falha ao carregar os dados do jogador',
         variant: 'destructive',
       });
       setStatsLoading(false);

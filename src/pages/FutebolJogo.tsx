@@ -299,7 +299,7 @@ function GoalDistChart({ lh, la }: { lh: number; la: number }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-ink-3 mt-1.5 text-center">distribuição de gols no jogo (modelo) · esperado {lambda.toFixed(1)}</p>
+      <p className="text-[10px] text-ink-3 mt-1.5 text-center">chance de cada placar de gols (modelo) · esperado {lambda.toFixed(1)}</p>
     </div>
   );
 }
@@ -557,7 +557,7 @@ function ModelCard({ tendencies, head, homeName, awayName }: { tendencies: Match
             <TendencyRow key={mk.key} m={mk} />
           ))}
         </div>
-        <p className="mt-4 text-[10px] leading-snug text-ink-3">Estimativa estatística (Poisson) sobre médias da temporada — não é valor de mercado.</p>
+        <p className="mt-4 text-[10px] leading-snug text-ink-3">Conta baseada nas médias da temporada. Não é valor de mercado.</p>
       </div>
     </div>
   );

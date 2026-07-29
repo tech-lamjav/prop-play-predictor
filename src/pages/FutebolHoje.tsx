@@ -368,7 +368,7 @@ export default function FutebolHoje() {
           </div>
           <div data-tour="futebol-resumo" className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
             <Kpi label="Jogos hoje" value={loading ? '—' : gameList.length} sub={isToday ? 'na agenda' : 'no dia'} />
-            <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="com valor (+EV)" tone="green" />
+            <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="com valor" tone="green" />
             <Kpi label="Faixa Alta" value={loading ? '—' : alta} sub="maior confiança" anchor />
             <Kpi label="Melhor valor" value={loading || melhorValor == null ? '—' : `+${melhorValor}%`} sub="destaque do dia" tone="green" />
           </div>

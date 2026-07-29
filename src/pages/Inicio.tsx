@@ -56,7 +56,7 @@ const TODOS_DESTINOS: Destino[] = [
     key: 'nba',
     icon: IconBasketball,
     title: 'Análises NBA',
-    kicker: 'Props e dashboards',
+    kicker: 'Props e painéis',
     tile: 'bg-canvas-2 border-line',
     iconColor: 'text-forest',
     onClick: (nav) => nav('/home-nba'),

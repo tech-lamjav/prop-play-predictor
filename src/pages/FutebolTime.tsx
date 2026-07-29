@@ -257,7 +257,7 @@ export default function FutebolTime() {
                     <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Eficiência · gols × xG</div>
                     {efic && <span className="text-[10px] font-semibold text-ink-3 whitespace-nowrap">totais · {efic.games} {efic.games === 1 ? 'jogo' : 'jogos'}</span>}
                   </div>
-                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar, e os dois tendem a se normalizar.</div>
+                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar, e os dois tendem a voltar ao normal.</div>
                 </div>
                 {efic ? (
                   <div className="p-5 flex flex-col gap-5">
@@ -278,7 +278,7 @@ export default function FutebolTime() {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-px" style={{ background: C.lineSoft }}>
                   {[
-                    { l: 'Clean sheets', v: raiox.clean_sheet_total ?? '—', s: 'jogos sem sofrer' },
+                    { l: 'Sem sofrer gol', v: raiox.clean_sheet_total ?? '—', s: 'jogos sem sofrer' },
                     { l: 'Não marcou', v: raiox.failed_to_score_total ?? '—', s: 'jogos sem gol' },
                     { l: 'Invicto há', v: trailingStreak(raiox.form, (c) => c !== 'L'), s: 'jogos' },
                     { l: 'Sequência V', v: trailingStreak(raiox.form, (c) => c === 'W'), s: 'vitórias seguidas' },
@@ -334,7 +334,7 @@ function eficVerdict(good: boolean, real: number, esperado: number): string {
   if (emLinha) return 'Sofre em linha com as chances do adversário, número sustentável.';
   return ratio > 0
     ? 'Sofre mais do que as chances mereciam, tende a melhorar.'
-    : 'Sofre menos do que as chances do adversário, pode subir (regride à média).';
+    : 'Sofre menos do que as chances do adversário, pode subir (volta ao normal).';
 }
 
 // Barra Real vs Esperado (gols × xG)

@@ -883,8 +883,8 @@ export default function Bets() {
       if (!isMountedRef.current) return;
       console.error('Error fetching bets:', err);
       toast({
-        title: 'Error',
-        description: 'Failed to load bets',
+        title: 'Deu erro',
+        description: 'Não foi possível carregar as apostas',
         variant: 'destructive',
       });
     } finally {
@@ -1016,12 +1016,12 @@ export default function Bets() {
         captureBetSettled(posthog, prevBet, newStatus);
       }
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Bet status updated' });
+        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending' } : b));
-        toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
       }
     }
   }, [posthog, supabase, toast]);
@@ -1065,7 +1065,7 @@ export default function Bets() {
 
     const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
     if (isNaN(cashoutAmount)) {
-      toast({ title: 'Error', description: 'Invalid amount', variant: 'destructive' });
+      toast({ title: 'Deu erro', description: 'Valor inválido', variant: 'destructive' });
       return;
     }
 
@@ -1099,12 +1099,12 @@ export default function Bets() {
       captureBetSettled(posthog, cashoutModal.bet, 'cashout');
 
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Cashout processed' });
+        toast({ title: 'Tudo certo', description: 'Cashout registrado' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending', cashout_amount: undefined, cashout_date: undefined, is_cashout: false } : b));
-        toast({ title: 'Error', description: 'Failed to process cashout', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível registrar o cashout', variant: 'destructive' });
       }
     }
   };
@@ -1185,12 +1185,12 @@ export default function Bets() {
       }
 
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Bet updated' });
+        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, ...editModal.bet } : b));
-        toast({ title: 'Error', description: 'Failed to update bet', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
       }
     }
   };
@@ -1735,7 +1735,7 @@ export default function Bets() {
     ));
     try {
       await Promise.all(ids.map(betId => supabase.rpc('add_tag_to_bet', { p_bet_id: betId, p_tag_id: tag.id })));
-      toast({ title: 'Sucesso', description: `Tag "${tag.name}" adicionada a ${ids.length} apostas` });
+      toast({ title: 'Sucesso', description: `Etiqueta "${tag.name}" adicionada a ${ids.length} apostas` });
     } catch {
       toast({ title: 'Erro', description: 'Falha ao adicionar tag', variant: 'destructive' });
       fetchBets();
@@ -1920,7 +1920,7 @@ export default function Bets() {
       const s = v == null ? '' : String(v);
       return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Tags'];
+    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Etiquetas'];
     const lines = rows.map(b => [
       b.bet_date?.split('T')[0] ?? '',
       b.bet_description ?? '',
@@ -2387,10 +2387,10 @@ export default function Bets() {
 
         {/* Tags (full row) */}
         <div className="sm:col-span-2">
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Tags</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Etiquetas</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {userTags.length === 0 ? (
-              <p className="text-[12px] text-ink-2">Nenhuma tag criada ainda.</p>
+              <p className="text-[12px] text-ink-2">Nenhuma etiqueta criada ainda.</p>
             ) : (
               userTags.map(tag => {
                 const active = filters.selectedTags.includes(tag.id);
@@ -2742,9 +2742,9 @@ export default function Bets() {
                 <ChevronRight className="w-4 h-4 text-ink-2 group-hover:text-forest transition-colors" />
               </div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold mt-3">Análise</div>
-              <div className="text-[15px] font-semibold text-ink mt-1">Dashboard</div>
+              <div className="text-[15px] font-semibold text-ink mt-1">Painel</div>
               <div className="text-[12px] text-ink-2 mt-1 leading-snug">
-                Onde você ganha e onde perde — desempenho por liga, mercado e tag.
+                Onde você ganha e onde perde. Desempenho por liga, mercado e etiqueta.
               </div>
             </button>
           </div>
@@ -2852,7 +2852,7 @@ export default function Bets() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-ink-2">Análise</div>
-              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Dashboard de KPIs</div>
+              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Painel de números</div>
             </div>
             <ChevronRight className="w-4 h-4 text-ink-2 shrink-0" />
           </button>
@@ -3279,7 +3279,7 @@ export default function Bets() {
                       </th>
                       <SortableHeader column="bet_date" label="DATA" />
                       <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">DESCRIÇÃO</th>
-                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">TAGS</th>
+                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">ETIQUETAS</th>
                       <SortableHeader column="sport" label="ESPORTE / LIGA" />
                       <SortableHeader column="betting_market" label="MERCADO" />
                       <SortableHeader column="stake_amount" label="STAKE" align="right" />
@@ -3378,7 +3378,7 @@ export default function Bets() {
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">
                 <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Odd média</div>
-                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">prob. implícita {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">chance {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
               </div>
               <div className="text-[15px] tabular font-semibold text-forest shrink-0 ml-2">{secondaryStats.avgOdds.toFixed(2)}</div>
             </div>
@@ -3487,7 +3487,7 @@ export default function Bets() {
                   </div>
                   {userTags.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar tag</p>
+                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar etiqueta</p>
                       <div className="flex flex-wrap gap-2">
                         {userTags.map(tag => (
                           <button key={tag.id} type="button"
@@ -3515,7 +3515,7 @@ export default function Bets() {
                 </PopoverTrigger>
                 <PopoverContent className="theme-rebrand w-48 p-1 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]" align="start" side="top">
                   {userTags.length === 0 ? (
-                    <p className="text-[11px] text-ink-2 p-2">Nenhuma tag criada</p>
+                    <p className="text-[11px] text-ink-2 p-2">Nenhuma etiqueta criada</p>
                   ) : (
                     userTags.map(tag => (
                       <button key={tag.id} type="button"

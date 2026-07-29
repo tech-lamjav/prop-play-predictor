@@ -654,7 +654,7 @@ export const GameChart: React.FC<GameChartProps> = ({
           <div className="flex items-center min-w-max gap-3">
             {renderStatGroup('Básicos', STAT_TYPES_BASIC, 'forest')}
             <div className="w-px h-5 bg-line shrink-0" />
-            {renderStatGroup('Combos', STAT_TYPES_COMBOS, 'forest')}
+            {renderStatGroup('Combinados', STAT_TYPES_COMBOS, 'forest')}
             <div className="w-px h-5 bg-line shrink-0" />
             {renderStatGroup('Períodos', STAT_TYPES_PERIOD, 'amber')}
           </div>
@@ -965,8 +965,8 @@ export const GameChart: React.FC<GameChartProps> = ({
               balldontlie nao expoe potential_ast game-by-game, entao mostramos
               a media da temporada como info complementar. */}
           {selectedStatType === 'player_assists' && potentialAstSeason != null && (
-            <span title="Passes que viraram chances de cesta — independe de o teammate ter convertido. Métrica balldontlie tier season.">
-              Potential Ast (season){' '}
+            <span title="Passes que viraram chances de cesta — independe de o companheiro ter convertido. Fonte: balldontlie (dados da temporada)">
+              Assistências potenciais (temporada){' '}
               <span className="font-medium text-ink opacity-100">
                 {potentialAstSeason.toFixed(1)}
               </span>

@@ -156,7 +156,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
       {/* Top strip — date + status badge */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-line bg-canvas-2/50">
         <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">
-          {shortDate}{finished ? ' · FT' : ''}
+          {shortDate}{finished ? ' · Fim' : ''}
         </span>
         {finished && winnerAbbr ? (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-forest text-white uppercase tracking-wide">
@@ -680,7 +680,7 @@ export default function Games() {
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">Injury Report</div>
+                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">Lesões</div>
                     <div className="text-[13px] font-semibold text-ink leading-tight">Lesões dos jogos de hoje</div>
                   </div>
                 </div>
