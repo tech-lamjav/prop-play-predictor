@@ -3,6 +3,11 @@ import type { Step } from 'react-joyride';
 // Passos do onboarding guiado. Escopo Fase 1: o hub /inicio (boas-vindas + 1
 // passo por destino). Os passos contextuais dentro de cada produto entram numa
 // fase seguinte, ancorados por data-tour nas respectivas telas.
+//
+// Régua de copy: linguagem o mais simples possível (nosso público tem baixo
+// letramento em média). Evitar palavra difícil e termo em inglês; jargão de
+// apostador que ele já conhece (over, ambos marcam, handicap, odd, linha, ROI,
+// prop, pick, desfalque, escalação, artilheiro, unidade, aporte) pode ficar.
 
 export const HUB_TOUR_ID = 'hub';
 
@@ -37,7 +42,7 @@ export const hubSteps: Step[] = [
     placement: 'bottom',
     title: 'Análises NBA',
     content:
-      'Prop bets e dashboards dos jogadores, a análise mais robusta pra quem acompanha a NBA de perto.',
+      'Prop bets e painéis dos jogadores, a análise mais completa pra quem acompanha a NBA de perto.',
   },
   {
     id: 'bolao',
@@ -56,7 +61,7 @@ export const BETINHO_TOUR_ID = 'betinho';
 export const NBA_TOUR_ID = 'nba';
 export const BOLAO_TOUR_ID = 'bolao';
 
-// Futebol é multi-passo: apresenta o produto de fato (metodologia, datas,
+// Futebol é multi-passo: apresenta o produto de fato (método, datas,
 // oportunidades, jogos). A barra de datas só existe quando há jogos no
 // período, então o passo dela é condicional — por isso um builder.
 export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] {
@@ -67,7 +72,7 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       placement: 'center',
       title: 'Bem-vindo ao Futebol',
       content:
-        'Esta é a sua central do dia. Todo dia a gente cruza as odds das casas com a nossa metodologia e destaca onde existe valor de verdade. Decisão com dado, não com achismo.',
+        'Esta é a sua central do dia. Todo dia a gente cruza as odds das casas com o nosso método e destaca onde existe valor de verdade. Decisão com dado, não com achismo.',
     },
   ];
 
@@ -89,20 +94,23 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       placement: 'bottom',
       title: 'O raio-x do dia',
       content:
-        'Um resumo rápido: quantos jogos na agenda, quantas oportunidades pagam acima da chance real (+EV) e quantas estão na faixa Alta, as de maior confiança pela metodologia.',
+        'Um resumo rápido: quantos jogos na agenda, quantas oportunidades pagam acima da chance real e quantas estão na faixa Alta, as de maior confiança pelo nosso método.',
     },
     {
       id: 'futebol-oportunidades',
       target: '[data-tour="futebol-oportunidades"]',
       placement: 'top',
+      // Bloco grande: mais respiro nas bordas do destaque que o padrão (6).
+      spotlightPadding: 14,
       title: 'As oportunidades de valor',
       content:
-        'Aqui ficam as principais apostas com valor do dia, ranqueadas pelo Score de Confiabilidade. Quanto maior o Score, mais o histórico sustenta aquela linha. Toque numa pra abrir a análise completa do jogo.',
+        'Aqui ficam as principais apostas com valor do dia, ordenadas pelo Score de Confiabilidade. Quanto maior o Score, mais o histórico apoia aquela linha. Toque numa pra abrir a análise completa do jogo.',
     },
     {
       id: 'futebol-jogos',
       target: '[data-tour="futebol-jogos"]',
       placement: 'top',
+      spotlightPadding: 14,
       title: 'Todos os jogos do dia',
       content:
         'A agenda completa, com a melhor oportunidade de cada partida destacada. Um atalho pra explorar jogo por jogo.',
@@ -123,8 +131,8 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
 export const FUT_OPP_TOUR_ID = 'futebol-oportunidades';
 
 // Tela /futebol/oportunidades — a régua completa. Multi-passo explicando
-// filtros, leitura da lista e a metodologia do Score. Barra de datas e a
-// própria lista são condicionais (dependem de dados), daí o builder.
+// filtros, leitura da lista e o Score. Barra de datas e a própria lista são
+// condicionais (dependem de dados), daí o builder.
 export function makeFutebolOportunidadesSteps({
   hasDayBar,
   hasBoard,
@@ -139,7 +147,7 @@ export function makeFutebolOportunidadesSteps({
       placement: 'center',
       title: 'Todas as oportunidades',
       content:
-        'Aqui está a lista completa do dia. Toda aposta com valor, ranqueada do Score mais alto pro mais baixo.',
+        'Aqui está a lista completa do dia. Toda aposta com valor, ordenada do Score mais alto pro mais baixo.',
     },
   ];
 
@@ -177,6 +185,8 @@ export function makeFutebolOportunidadesSteps({
     id: 'fut-opp-metodologia',
     target: '[data-tour="fut-opp-metodologia"]',
     placement: 'top',
+    // Box com borda: folga o spotlight pra o texto não colar no contorno.
+    spotlightPadding: 14,
     title: 'Entenda o Score',
     content:
       'Ficou em dúvida no Score ou nas faixas? Esta parte fica sempre aqui embaixo, explicando como o Score é calculado e o que Alta, Média e Baixa significam.',
@@ -225,7 +235,7 @@ export function makeFutebolJogoSteps({
       placement: 'top',
       title: 'O que olhar neste jogo',
       content:
-        'A síntese da partida: a aposta de maior valor, o porquê dela, os pontos de atenção e o Score de confiabilidade num só lugar.',
+        'O resumo da partida: a aposta de maior valor, o porquê dela, os pontos de atenção e o Score de confiabilidade num só lugar.',
     });
   }
 
@@ -236,7 +246,7 @@ export function makeFutebolJogoSteps({
       placement: 'top',
       title: 'Nosso modelo de gols',
       content:
-        'Um modelo estatístico projeta os gols esperados e a probabilidade de cada mercado, a partir das médias da temporada.',
+        'A partir das médias da temporada, o modelo estima os gols esperados de cada time e a chance de cada mercado.',
     });
   }
 
@@ -247,7 +257,7 @@ export function makeFutebolJogoSteps({
       placement: 'top',
       title: 'Explorar mercados',
       content:
-        'Quer ir além da síntese? Aqui estão todos os mercados e opções, com chance, odd e valor lado a lado.',
+        'Quer ir além do resumo? Aqui estão todos os mercados e opções, com chance, odd e valor lado a lado.',
     });
   }
 
@@ -267,8 +277,9 @@ export function makeFutebolJogoSteps({
 
 export const FUT_JOGOS_TOUR_ID = 'futebol-jogos';
 
-// Tela /futebol/jogos — panorama do campeonato (rodadas, tabela, artilheiros).
-// O stepper de rodada é condicional (depende de rodadas carregadas).
+// Tela /futebol/jogos — visão geral do campeonato (rodadas, tabela,
+// artilheiros). O stepper de rodada é condicional (depende de rodadas
+// carregadas).
 export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): Step[] {
   const steps: Step[] = [
     {
@@ -277,7 +288,7 @@ export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): St
       placement: 'center',
       title: 'O campeonato inteiro',
       content:
-        'Aqui é o panorama do campeonato: rodadas, tabela e artilheiros num lugar só.',
+        'Aqui é a visão geral do campeonato: rodadas, tabela e artilheiros num lugar só.',
     },
     {
       id: 'fut-jogos-header',
@@ -323,7 +334,7 @@ export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): St
 
 export const BETINHO_DASH_TOUR_ID = 'betinho-dashboard';
 
-// Dashboard do Betinho (/betting-dashboard) — diagnóstico da banca.
+// Painel do Betinho (/betting-dashboard) — a leitura da banca.
 // Alvo de "resumo" muda por viewport (StatusStrip desktop vs hero mobile).
 export function makeBetinhoDashboardSteps({ isMobile }: { isMobile: boolean }): Step[] {
   return [
@@ -331,8 +342,8 @@ export function makeBetinhoDashboardSteps({ isMobile }: { isMobile: boolean }): 
       id: 'dash-intro',
       target: 'body',
       placement: 'center',
-      title: 'O diagnóstico da banca',
-      content: 'Este é o diagnóstico da sua banca: onde você ganha, onde perde, e o que dá pra ajustar.',
+      title: 'O raio-x da banca',
+      content: 'Este é o raio-x da sua banca: onde você ganha, onde perde, e o que dá pra ajustar.',
     },
     {
       id: 'dash-header',
@@ -340,7 +351,7 @@ export function makeBetinhoDashboardSteps({ isMobile }: { isMobile: boolean }): 
       placement: 'bottom',
       title: 'Escolha o período',
       content:
-        'Comece pelo período. Dá pra ver os números em R$ ou em unidades, e exportar tudo em CSV.',
+        'Comece pelo período. Dá pra ver os números em R$ ou em unidades, e baixar tudo em planilha.',
     },
     {
       id: 'dash-stats',
@@ -365,13 +376,13 @@ export function makeBetinhoDashboardSteps({ isMobile }: { isMobile: boolean }): 
       placement: 'top',
       title: 'O mapa de calor',
       content:
-        'Cada célula cruza liga e mercado, pintada pelo seu resultado: verde você lucra, vermelho você perde. Toque numa pra abrir o detalhe.',
+        'Cada quadradinho cruza liga e mercado, pintado pelo seu resultado: verde você lucra, vermelho você perde. Toque num pra abrir o detalhe.',
     },
     {
       id: 'dash-tags',
       target: '[data-tour="dash-tags"]',
       placement: 'top',
-      title: 'Performance por tag',
+      title: 'Resultado por etiqueta',
       content:
         'O resultado das etiquetas que você cria pra agrupar apostas (tipo "live", "gols", "palpite do grupo"). Dá pra selecionar e comparar.',
     },
@@ -380,7 +391,7 @@ export function makeBetinhoDashboardSteps({ isMobile }: { isMobile: boolean }): 
       target: '[data-tour="dash-odds"]',
       placement: 'top',
       title: 'Faixa de odd',
-      content: 'Em quais faixas de odd a sua banca prospera e em quais ela sangra.',
+      content: 'Em quais faixas de odd a sua banca cresce e em quais ela perde dinheiro.',
     },
     {
       id: 'dash-atividade',
@@ -408,7 +419,7 @@ export function makeFutebolTimeSteps({ hasRaiox }: { hasRaiox: boolean }): Step[
       id: 'ftime-header',
       target: '[data-tour="ftime-header"]',
       placement: 'bottom',
-      title: 'O panorama',
+      title: 'A visão geral',
       content: 'Posição na tabela, forma recente e o balanço de vitórias, empates e derrotas.',
     },
     {
@@ -417,7 +428,7 @@ export function makeFutebolTimeSteps({ hasRaiox }: { hasRaiox: boolean }): Step[
       placement: 'top',
       title: 'Médias e eficiência',
       content:
-        'As médias por mando (geral, casa e fora) e a eficiência: gols reais contra o esperado (xG), pra ver se o time está numa fase quente ou fria.',
+        'As médias por mando (geral, casa e fora) e a eficiência: os gols que fez contra o que era esperado (xG), pra ver se o time está numa fase quente ou fria.',
     },
   ];
   if (hasRaiox) {
@@ -426,7 +437,7 @@ export function makeFutebolTimeSteps({ hasRaiox }: { hasRaiox: boolean }): Step[
       target: '[data-tour="ftime-raiox"]',
       placement: 'top',
       title: 'O raio-X da temporada',
-      content: 'Clean sheets, sequências, e a frequência de over 2.5 e de ambos marcam.',
+      content: 'Jogos sem sofrer gol, sequências, e a frequência de over 2.5 e de ambos marcam.',
     });
   }
   steps.push({
@@ -557,7 +568,7 @@ export const nbaSteps: Step[] = [
     placement: 'bottom',
     title: 'Comece por um jogador',
     content:
-      'Busque um jogador aqui pra abrir a Análise 360 dele: prop bets, médias e o histórico que embasa cada pick.',
+      'Busque um jogador aqui pra abrir a Análise 360 dele: prop bets, médias e o histórico por trás de cada pick.',
   },
   {
     id: 'nba-hots',
@@ -622,7 +633,7 @@ export const nbaGamesSteps: Step[] = [
     target: '[data-tour="nba-games-sidebar"]',
     placement: 'top',
     title: 'Atalhos do dia',
-    content: 'Na lateral: a oportunidade do dia, o injury report e o atalho pro relatório.',
+    content: 'Na lateral: a melhor oportunidade, as lesões do dia e o atalho pro relatório.',
   },
 ];
 
@@ -643,7 +654,7 @@ export const nbaGameSteps: Step[] = [
     target: '[data-tour="nba-game-hero"]',
     placement: 'bottom',
     title: 'Os dois times',
-    content: 'O placar ou o horário, e os ratings de ataque e defesa de cada lado.',
+    content: 'O placar ou o horário, e as notas de ataque e defesa de cada lado.',
   },
   {
     id: 'nba-game-abas',
@@ -651,13 +662,13 @@ export const nbaGameSteps: Step[] = [
     placement: 'top',
     title: 'As visões do jogo',
     content:
-      'Escalações e lesões, oportunidades de prop do jogo, e o box score quando a partida termina. Toque nas abas pra alternar.',
+      'Escalações e lesões, oportunidades de prop do jogo, e as estatísticas completas quando a partida termina. Toque nas abas pra alternar.',
   },
 ];
 
 export const NBA_DASH_TOUR_ID = 'nba-dashboard';
 
-// Dashboard do jogador (/nba-dashboard/:player). Blocos desktop/mobile são
+// Painel do jogador (/nba-dashboard/:player). Blocos desktop/mobile são
 // DUPLICADOS no DOM (toggle por CSS no breakpoint lg=1024). `mobile` escolhe o
 // alvo do bloco visível (a página calcula via matchMedia 1024, não useIsMobile).
 export function makeNbaDashSteps({ mobile }: { mobile: boolean }): Step[] {
@@ -667,7 +678,7 @@ export function makeNbaDashSteps({ mobile }: { mobile: boolean }): Step[] {
       id: 'nba-dash-intro',
       target: 'body',
       placement: 'center',
-      title: 'O dashboard do jogador',
+      title: 'O painel do jogador',
       content: 'Médias, histórico e as props do dia deste jogador, tudo num lugar.',
     },
     {
@@ -713,7 +724,7 @@ export function makeAnalise360ListSteps({ hasGrid }: { hasGrid: boolean }): Step
       target: '[data-tour="a360l-header"]',
       placement: 'bottom',
       title: 'O impacto das lesões de hoje',
-      content: 'A lista é do dia: traz as lesões e desfalques de hoje e o que cada um destrava.',
+      content: 'A lista é do dia: traz as lesões e desfalques de hoje e quem se beneficia com cada um.',
     },
   ];
   if (hasGrid) {
@@ -755,7 +766,7 @@ export const nbaAnalise360DetailSteps: Step[] = [
     placement: 'top',
     title: 'A cadeia de impacto',
     content:
-      'Como a ausência dele redistribui minutos e chutes pro resto do time, e quem herda o quê. Toque num jogador pra abrir a análise.',
+      'Com ele de fora, pra onde vão os minutos e os chutes do time, e quem herda o quê. Toque num jogador pra abrir a análise.',
   },
 ];
 
