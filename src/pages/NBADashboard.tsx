@@ -6,7 +6,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_DASH_TOUR_ID, makeNbaDashSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoDashPlayer, demoDashGameStats, demoDashOpps } from '@/components/onboarding/demo/nba';
+import { demoDashPlayer, demoDashGameStats, demoDashOpps, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import { GameChart } from '@/components/nba/GameChart';
 import { ComparisonTable } from '@/components/nba/ComparisonTable';
 import { PlayerHeader } from '@/components/nba/PlayerHeader';
@@ -92,7 +92,10 @@ export default function NBADashboard() {
   // jogador REAL (`player`) pra não refetchar nem cair no redirect de paywall;
   // só a renderização usa os valores efetivos abaixo.
   const dashTour = useOnboardingTour(NBA_DASH_TOUR_ID, { enabled: !!player, delay: 1000 });
-  const isDemo = dashTour.run;
+  // Fora do tour: NBA de férias e jogador real inexistente (veio de um card de
+  // exemplo do hub) → mostra o painel de exemplo em vez de "não encontrado".
+  const offSeason = isNbaOffSeason() && !player && playerLookupDone;
+  const isDemo = dashTour.run || offSeason;
   const gameStats = isDemo ? demoDashGameStats : realGameStats;
   const playerView = isDemo ? demoDashPlayer : player;
   const dailyOppsView = isDemo ? demoDashOpps : dailyOpps;
@@ -412,6 +415,11 @@ export default function NBADashboard() {
         setTeammatesLoading(false);
         setTeamLoading(false);
         setShootingZonesLoading(false);
+        // Fora de temporada o nome costuma vir de um card de exemplo do hub;
+        // não é erro. Deixa a tela renderizar o painel de exemplo (isDemo).
+        if (isNbaOffSeason()) {
+          return;
+        }
         toast({
           title: 'Jogador não encontrado',
           description: `Não encontramos o jogador "${playerName.replace(/-/g, ' ')}"`,
@@ -617,7 +625,7 @@ export default function NBADashboard() {
     }
   };
 
-  if (!player && playerLookupDone) {
+  if (!player && playerLookupDone && !isDemo) {
     return (
       <div className="w-full min-h-screen bg-canvas text-ink flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-ink opacity-80">Jogador não encontrado.</p>
@@ -639,7 +647,7 @@ export default function NBADashboard() {
       <main className="container mx-auto px-3 py-4">
         {isDemo && (
           <div className="mb-3">
-            <DemoRibbon show />
+            <DemoRibbon show variant={dashTour.run ? 'tour' : 'offseason'} />
           </div>
         )}
         {(() => {

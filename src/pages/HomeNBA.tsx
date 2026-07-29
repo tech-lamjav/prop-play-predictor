@@ -19,7 +19,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_TOUR_ID, nbaSteps } from '@/components/onboarding/tours';
 import { DemoRibbon } from '@/components/onboarding/DemoRibbon';
-import { demoNbaGames, demoNbaPlayers, demoNbaOpportunities } from '@/components/onboarding/demo/nba';
+import { demoNbaGames, demoNbaPlayers, demoNbaOpportunities, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 
 // --- Date helpers ---
 
@@ -109,10 +109,16 @@ export default function HomeNBA() {
   const { user, isLoading: authLoading } = useAuth();
   const { data, isLoading } = useHomeNBAData();
   const nbaTour = useOnboardingTour(NBA_TOUR_ID, { enabled: !isLoading });
-  const isDemo = nbaTour.run; // durante o tour, preenche com exemplo
-  const games = isDemo ? demoNbaGames : (data?.games ?? []);
-  const players = isDemo ? demoNbaPlayers : (data?.players ?? []);
-  const opportunities = isDemo ? demoNbaOpportunities : (data?.opportunities ?? []);
+  const realGames = data?.games ?? [];
+  const realPlayers = data?.players ?? [];
+  const realOpps = data?.opportunities ?? [];
+  // Fora do tour: se a NBA está de férias (jul-set) e não há nada real, enche
+  // de exemplo pra tela não ficar vazia até a temporada voltar.
+  const offSeason = !isLoading && isNbaOffSeason() && realGames.length === 0 && realOpps.length === 0;
+  const isDemo = nbaTour.run || offSeason;
+  const games = isDemo ? demoNbaGames : realGames;
+  const players = isDemo ? demoNbaPlayers : realPlayers;
+  const opportunities = isDemo ? demoNbaOpportunities : realOpps;
   const today = data?.today ?? '';
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -364,7 +370,7 @@ export default function HomeNBA() {
       <OnboardingTour tourId={NBA_TOUR_ID} steps={nbaSteps} run={nbaTour.run} onFinish={nbaTour.finish} />
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">
-        <DemoRibbon show={isDemo} />
+        <DemoRibbon show={isDemo} variant={nbaTour.run ? 'tour' : 'offseason'} />
         {/* Briefing strip com busca embarcada na coluna esquerda */}
         <NBABriefingStrip
           date={todayDate}

@@ -10,7 +10,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_GAMES_TOUR_ID, nbaGamesSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoNbaGames } from '@/components/onboarding/demo/nba';
+import { demoNbaGames, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -494,7 +494,9 @@ export default function Games() {
   }, []);
 
   const gamesTour = useOnboardingTour(NBA_GAMES_TOUR_ID, { enabled: !isLoading });
-  const isDemo = gamesTour.run; // durante o tour, preenche com exemplo
+  // Fora do tour: NBA de férias (jul-set) e sem jogos reais no dia → exemplo.
+  const offSeason = !isLoading && isNbaOffSeason() && games.length === 0;
+  const isDemo = gamesTour.run || offSeason;
   const realSortedGames = useMemo(() => {
     return [...games].sort((a, b) => {
       const END_OF_DAY = 23 * 60 * 60 * 1000;
@@ -612,7 +614,7 @@ export default function Games() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* ── Games column ── */}
           <section data-tour="nba-games-lista" className="min-w-0">
-            {isDemo && <div className="mb-3"><DemoRibbon show /></div>}
+            {isDemo && <div className="mb-3"><DemoRibbon show variant={gamesTour.run ? 'tour' : 'offseason'} /></div>}
             {/* Date picker — só renderiza no mobile (uma instância só pra evitar Popover duplicado) */}
             {isMobile && (
               <div className="mb-3">

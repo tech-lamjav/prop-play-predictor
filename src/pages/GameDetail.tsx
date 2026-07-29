@@ -10,7 +10,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { NBA_GAME_TOUR_ID, nbaGameSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoNbaGames, demoNbaOpportunities } from '@/components/onboarding/demo/nba';
+import { demoNbaGames, demoNbaOpportunities, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -1070,7 +1070,10 @@ export default function GameDetail() {
   const hasLoaded = useRef(false);
 
   const gameTour = useOnboardingTour(NBA_GAME_TOUR_ID, { enabled: !isLoadingGame });
-  const isDemo = gameTour.run; // durante o tour, preenche com exemplo
+  // Fora do tour: NBA de férias e jogo real inexistente (veio de um card de
+  // exemplo do hub) → mostra o jogo de exemplo em vez de "não encontrado".
+  const offSeason = isNbaOffSeason() && !isLoadingGame && !realGame;
+  const isDemo = gameTour.run || offSeason;
   const game = isDemo ? demoNbaGames[0] : realGame;
 
   const finished = game?.winner_team_id != null;
@@ -1185,6 +1188,12 @@ export default function GameDetail() {
         found = games.find(g => g.game_id === parseInt(gameId));
       }
       if (!found) {
+        // Fora de temporada o id costuma vir de um card de exemplo do hub;
+        // não é erro. Deixa a tela renderizar o jogo de exemplo (isDemo).
+        if (isNbaOffSeason()) {
+          setIsLoadingGame(false);
+          return;
+        }
         toast({ title: 'Jogo não encontrado', variant: 'destructive' });
         navigate('/home-games');
         return;
@@ -1277,7 +1286,7 @@ export default function GameDetail() {
             </div>
           ) : (
             <>
-              {isDemo && <DemoRibbon show />}
+              {isDemo && <DemoRibbon show variant={gameTour.run ? 'tour' : 'offseason'} />}
               {/* Hero */}
               <div data-tour="nba-game-hero">
                 {isDemo && <div className="mb-2"><DemoBadge /></div>}

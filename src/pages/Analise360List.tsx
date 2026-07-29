@@ -11,7 +11,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { ANALISE360_LIST_TOUR_ID, makeAnalise360ListSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoNbaOpportunities, demoPlayerStarsMap } from '@/components/onboarding/demo/nba';
+import { demoNbaOpportunities, demoPlayerStarsMap, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 import {
   Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -247,8 +247,11 @@ export default function Analise360List() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useAnalise360Data();
   const a360ListTour = useOnboardingTour(ANALISE360_LIST_TOUR_ID, { enabled: !isLoading });
-  const isDemo = a360ListTour.run; // durante o tour, preenche com exemplo
-  const opportunities = isDemo ? demoNbaOpportunities : (data?.opportunities ?? []);
+  const realOpps = data?.opportunities ?? [];
+  // Fora do tour: NBA de férias (jul-set) e sem gatilhos reais → exemplo.
+  const offSeason = !isLoading && isNbaOffSeason() && realOpps.length === 0;
+  const isDemo = a360ListTour.run || offSeason;
+  const opportunities = isDemo ? demoNbaOpportunities : realOpps;
   const playerStarsMap = isDemo ? demoPlayerStarsMap : (data?.playerStarsMap ?? new Map<number, number>());
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -385,7 +388,7 @@ export default function Analise360List() {
         </div>
 
         <main id="main-content" className="max-w-6xl mx-auto px-4 py-6">
-          {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
+          {isDemo && <div className="mb-4"><DemoRibbon show variant={a360ListTour.run ? 'tour' : 'offseason'} /></div>}
           {/* Filters bar */}
           {!isLoading && triggerGroups.length > 0 && (
             <>

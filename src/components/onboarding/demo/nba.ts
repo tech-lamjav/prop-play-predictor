@@ -6,6 +6,24 @@ import type { Game, Player, DailyOpportunity, GamePlayerStats } from '@/services
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const nowISO = () => new Date().toISOString();
 
+// Mês atual em São Paulo (1-12), à prova de fuso.
+function saoPauloMonth(): number {
+  const m = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', month: '2-digit' })
+    .formatToParts(new Date())
+    .find((p) => p.type === 'month')?.value;
+  return m ? parseInt(m, 10) : 1;
+}
+
+// Recesso da NBA: julho, agosto e setembro não têm NENHUM jogo (nem regular,
+// nem pré-temporada, nem playoffs) — a temporada recomeça em outubro. Só esses
+// 3 meses retornam true, pra nunca mostrar exemplo num dia vago de temporada
+// (ex.: All-Star break em fevereiro) — aí o estado vazio honesto é que vale.
+// Quem consome combina isto com "o feed real está vazio" antes de exibir demo.
+const NBA_OFFSEASON_MONTHS = new Set([7, 8, 9]);
+export function isNbaOffSeason(): boolean {
+  return NBA_OFFSEASON_MONTHS.has(saoPauloMonth());
+}
+
 const game = (over: Partial<Game>): Game => ({
   game_id: 0, game_date: todayISO(), game_datetime_brasilia: `${todayISO()}T21:30:00-03:00`,
   home_team_id: 0, home_team_name: '', home_team_abbreviation: '', home_team_score: null,

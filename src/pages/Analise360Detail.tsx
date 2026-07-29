@@ -15,7 +15,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { ANALISE360_DETAIL_TOUR_ID, nbaAnalise360DetailSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoNbaOpportunities, demoPlayerStarsMap } from '@/components/onboarding/demo/nba';
+import { demoNbaOpportunities, demoPlayerStarsMap, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -659,7 +659,10 @@ export default function Analise360Detail() {
   const posthog = usePostHog();
   const { data, isLoading, error } = useAnalise360Data();
   const a360Tour = useOnboardingTour(ANALISE360_DETAIL_TOUR_ID, { enabled: !isLoading, delay: 900 });
-  const isDemo = a360Tour.run; // durante o tour, preenche com exemplo
+  // Fora do tour: NBA de férias e sem gatilhos reais (veio de um card de
+  // exemplo do hub) → mostra a análise de exemplo em vez de "sem dados".
+  const offSeason = isNbaOffSeason() && !isLoading && (data?.opportunities ?? []).length === 0;
+  const isDemo = a360Tour.run || offSeason;
   const opportunities = isDemo ? demoNbaOpportunities : (data?.opportunities ?? []);
   const playerStarsMap = isDemo ? demoPlayerStarsMap : (data?.playerStarsMap ?? new Map<number, number>());
 
@@ -796,7 +799,7 @@ export default function Analise360Detail() {
           </div>
         ) : (
           <>
-            {isDemo && <div className="px-4 sm:px-6 pt-4"><DemoRibbon show /></div>}
+            {isDemo && <div className="px-4 sm:px-6 pt-4"><DemoRibbon show variant={a360Tour.run ? 'tour' : 'offseason'} /></div>}
             {/* Page header (bg-white) */}
             <div data-tour="a360d-header" className="bg-white border-b border-line">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
