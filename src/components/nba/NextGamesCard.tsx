@@ -19,7 +19,7 @@ interface NextGamesCardProps {
 const STAT_TO_OPP: Record<string, { rankKey: keyof OpponentRankings; valueKey: keyof OpponentRankings; label: string; unit: string }> = {
   player_points:              { rankKey: 'opp_pts_rank',     valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
   player_rebounds:            { rankKey: 'opp_reb_rank',     valueKey: 'opp_reb',     label: 'Rebotes cedidos', unit: 'reb/jogo' },
-  player_assists:             { rankKey: 'opp_ast_rank',     valueKey: 'opp_ast',     label: 'Assists cedidas', unit: 'ast/jogo' },
+  player_assists:             { rankKey: 'opp_ast_rank',     valueKey: 'opp_ast',     label: 'Assistências cedidas', unit: 'ast/jogo' },
   player_threes:              { rankKey: 'opp_fg3_pct_rank', valueKey: 'opp_fg3_pct', label: '3PT% cedido',     unit: '%' },
   player_steals:              { rankKey: 'opp_stl_rank',     valueKey: 'opp_stl',     label: 'Roubos cedidos',  unit: 'stl/jogo' },
   player_blocks:              { rankKey: 'opp_blk_rank',     valueKey: 'opp_blk',     label: 'Bloqueios cedidos', unit: 'blk/jogo' },
@@ -29,7 +29,7 @@ const STAT_TO_OPP: Record<string, { rankKey: keyof OpponentRankings; valueKey: k
   player_points_rebounds_assists: { rankKey: 'opp_pts_rank', valueKey: 'opp_pts',     label: 'Pontos cedidos',  unit: 'pts/jogo' },
 };
 
-const DEFAULT_OPP = { rankKey: 'def_rating_rank' as keyof OpponentRankings, valueKey: 'def_rating' as keyof OpponentRankings, label: 'Def Rating', unit: '' };
+const DEFAULT_OPP = { rankKey: 'def_rating_rank' as keyof OpponentRankings, valueKey: 'def_rating' as keyof OpponentRankings, label: 'Índice defensivo', unit: '' };
 
 function getMatchupColor(rank: number) {
   if (rank >= 21) return { chipBg: 'bg-emerald-100', chipText: 'text-forest', rankText: 'text-forest', label: 'Defesa fraca' };
@@ -184,14 +184,14 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({
           {renderLastFiveWithColors(team.team_last_five_games)}
           {(teamOffRank || teamDefRank) && (
             <span className="text-ink-dim truncate">
-              Off #{teamOffRank || '—'} · Def #{teamDefRank || '—'}
+              Ataque #{teamOffRank || '—'} · Defesa #{teamDefRank || '—'}
             </span>
           )}
         </div>
         <div className="flex items-center justify-end gap-2 min-w-0">
           {(oppOffRank || oppDefRank) && (
             <span className="text-ink-dim truncate">
-              Off #{oppOffRank || '—'} · Def #{oppDefRank || '—'}
+              Ataque #{oppOffRank || '—'} · Defesa #{oppDefRank || '—'}
             </span>
           )}
           {renderLastFiveWithColors(team.next_opponent_team_last_five_games)}
@@ -238,10 +238,10 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({
               {([
                 { label: 'Pontos cedidos', value: opponentRankings.opp_pts, rank: opponentRankings.opp_pts_rank },
                 { label: 'Rebotes cedidos', value: opponentRankings.opp_reb, rank: opponentRankings.opp_reb_rank },
-                { label: 'Assists cedidas', value: opponentRankings.opp_ast, rank: opponentRankings.opp_ast_rank },
+                { label: 'Assistências cedidas', value: opponentRankings.opp_ast, rank: opponentRankings.opp_ast_rank },
                 { label: '3PT% cedido', value: opponentRankings.opp_fg3_pct, rank: opponentRankings.opp_fg3_pct_rank, isPct: true },
                 { label: 'Pts no garrafão', value: opponentRankings.opp_pts_paint, rank: opponentRankings.opp_pts_paint_rank },
-                { label: 'Rtg defensivo', value: opponentRankings.def_rating, rank: opponentRankings.def_rating_rank },
+                { label: 'Índice defensivo', value: opponentRankings.def_rating, rank: opponentRankings.def_rating_rank },
               ] as { label: string; value: number; rank: number; isPct?: boolean }[]).map(item => {
                 const color = item.rank >= 21 ? 'text-forest' : item.rank >= 11 ? 'text-amber-700' : 'text-rose-700';
                 const formatted = item.isPct ? `${(item.value * 100).toFixed(1)}%` : item.value.toFixed(1);

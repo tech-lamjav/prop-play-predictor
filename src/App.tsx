@@ -94,7 +94,7 @@ const App = () => (
             <Route path="/nba" element={<Landing />} />
             <Route path="/home-nba" element={<HomeNBA />} />
             <Route path="/oportunidades" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowNbaOffSeason>
                 <Picks />
               </ProtectedRoute>
             } />
@@ -172,14 +172,14 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/analise-360" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowNbaOffSeason>
                 <PremiumRoute redirectTo="/planos">
                   <Analise360List />
                 </PremiumRoute>
               </ProtectedRoute>
             } />
             <Route path="/analise-360/:triggerPlayerId" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowNbaOffSeason>
                 <PremiumRoute redirectTo="/planos">
                   <Analise360Detail />
                 </PremiumRoute>

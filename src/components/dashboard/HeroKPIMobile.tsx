@@ -136,7 +136,7 @@ export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
             )}
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">Win rate</div>
+            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">Taxa de acerto</div>
             <div className="text-[15px] font-bold tabular text-white mt-0.5">{winRate.toFixed(0)}%</div>
           </div>
           <div>

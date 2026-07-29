@@ -124,7 +124,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
                 Que período quer analisar?
               </DialogTitle>
               <DialogDescription className="text-[11px] text-white/65 mt-1">
-                Análise derivada dos seus dados
+                Análise feita a partir das suas apostas
               </DialogDescription>
             </div>
             <button
@@ -221,7 +221,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
               {focusOptions.tags.length > 0 && (
                 <div>
                   <div className="text-[9px] uppercase tracking-[0.1em] text-ink-2/70 font-bold mb-1.5">
-                    Tags
+                    Etiquetas
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {focusOptions.tags.map((tag) => {

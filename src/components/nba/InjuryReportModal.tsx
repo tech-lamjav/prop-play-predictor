@@ -14,7 +14,7 @@ const STATUS_META: Record<Status, { label: string; bg: string; fg: string; dot: 
   probable:     { label: 'Provável',     bg: 'bg-emerald-100', fg: 'text-forest',       dot: 'bg-forest' },
   questionable: { label: 'Questionável', bg: 'bg-amber-100',   fg: 'text-amber-700',    dot: 'bg-amber-400' },
   doubtful:     { label: 'Duvidoso',     bg: 'bg-orange-100',  fg: 'text-orange-700',   dot: 'bg-orange-500' },
-  out:          { label: 'Out',          bg: 'bg-rose-100',    fg: 'text-rose-700',     dot: 'bg-rose-600' },
+  out:          { label: 'Fora',          bg: 'bg-rose-100',    fg: 'text-rose-700',     dot: 'bg-rose-600' },
 };
 
 interface InjuredPlayer {
@@ -244,7 +244,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
             <div className="w-9 h-1 rounded-full bg-line" />
           </div>
           <header className="px-4 py-3 shrink-0 border-b border-line pr-12">
-            <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">Injury Report</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">Relatório de lesões</div>
             <div className="text-[14px] font-semibold tracking-tight text-ink mt-0.5 truncate">
               {headerDate || 'Jogos de hoje'}
             </div>
@@ -395,7 +395,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
       <DialogContent className="theme-rebrand max-w-5xl w-full bg-white text-ink border border-line p-0 overflow-hidden max-h-[88vh] flex flex-col">
         {/* Header */}
         <header className="px-7 py-5 border-b border-line shrink-0 pr-14">
-          <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">Injury Report</div>
+          <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">Relatório de lesões</div>
           <h2 className="text-[22px] font-semibold tracking-tight text-ink mt-1">
             Jogos de hoje{headerDate ? ` · ${headerDate}` : ''}
           </h2>

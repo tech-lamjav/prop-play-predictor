@@ -15,6 +15,11 @@ import { NBAKeyInjuriesRail, type KeyInjuryData } from '@/components/nba-home/NB
 import { NBAGamesRich, type RichGame } from '@/components/nba-home/NBAGamesRich';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { NBA_TOUR_ID, nbaSteps } from '@/components/onboarding/tours';
+import { DemoRibbon } from '@/components/onboarding/DemoRibbon';
+import { demoNbaGames, demoNbaPlayers, demoNbaOpportunities, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 
 // --- Date helpers ---
 
@@ -103,9 +108,17 @@ export default function HomeNBA() {
   const posthog = usePostHog();
   const { user, isLoading: authLoading } = useAuth();
   const { data, isLoading } = useHomeNBAData();
-  const games = data?.games ?? [];
-  const players = data?.players ?? [];
-  const opportunities = data?.opportunities ?? [];
+  const nbaTour = useOnboardingTour(NBA_TOUR_ID, { enabled: !isLoading });
+  const realGames = data?.games ?? [];
+  const realPlayers = data?.players ?? [];
+  const realOpps = data?.opportunities ?? [];
+  // Fora do tour: se a NBA está de férias (jul-set) e não há nada real, enche
+  // de exemplo pra tela não ficar vazia até a temporada voltar.
+  const offSeason = !isLoading && isNbaOffSeason() && realGames.length === 0 && realOpps.length === 0;
+  const isDemo = nbaTour.run || offSeason;
+  const games = isDemo ? demoNbaGames : realGames;
+  const players = isDemo ? demoNbaPlayers : realPlayers;
+  const opportunities = isDemo ? demoNbaOpportunities : realOpps;
   const today = data?.today ?? '';
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -354,14 +367,16 @@ export default function HomeNBA() {
       {/* backTo fixo no hub, igual ao /futebol: /home-nba é home de produto,
           então "voltar" significa trocar de produto, não desfazer o passo. */}
       <AnalyticsNav variant="rebrand" showBack backTo="/inicio" />
+      <OnboardingTour tourId={NBA_TOUR_ID} steps={nbaSteps} run={nbaTour.run} onFinish={nbaTour.finish} />
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 focus:outline-none flex flex-col gap-6 md:gap-7">
+        <DemoRibbon show={isDemo} variant={nbaTour.run ? 'tour' : 'offseason'} />
         {/* Briefing strip com busca embarcada na coluna esquerda */}
         <NBABriefingStrip
           date={todayDate}
           kpis={briefingKpis}
           searchSlot={
-            <div className="relative w-full md:w-80">
+            <div data-tour="nba-hero" className="relative w-full md:w-80">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-2" />
               <Input
                 placeholder="Buscar jogador..."
@@ -433,7 +448,7 @@ export default function HomeNBA() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
             {/* Left: Outras oportunidades quentes (3 cards + CTA no slot 4 do grid 2x2) */}
-            <div className="lg:col-span-3 flex flex-col gap-3">
+            <div data-tour="nba-hots" className="lg:col-span-3 flex flex-col gap-3">
               <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2">Outras oportunidades quentes</div>
 
               {hotOppsData.length === 0 ? (
@@ -481,7 +496,7 @@ export default function HomeNBA() {
             </div>
 
             {/* Right: KeyInjuriesRail */}
-            <div className="lg:col-span-2">
+            <div data-tour="nba-injuries" className="lg:col-span-2">
               <NBAKeyInjuriesRail
                 injuries={keyInjuriesData}
                 onSelect={(id) => navigate(`/analise-360/${id}`)}
@@ -493,7 +508,7 @@ export default function HomeNBA() {
         )}
 
         {/* Onda 4: Jogos de hoje — rich rows (desktop) / stacked cards (mobile) */}
-        <div>
+        <div data-tour="nba-jogos">
           <SectionHeader
             eyebrow="Jogos de hoje"
             title={`${games.length || 0} ${games.length === 1 ? 'partida' : 'partidas'}`}
@@ -517,7 +532,7 @@ export default function HomeNBA() {
         </div>
 
         {/* Acesso rápido — Relatório do dia (Injury Report agora vive dentro do KeyInjuriesRail) */}
-        <div>
+        <div data-tour="nba-relatorio">
           <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2 mb-3">Acesso rápido</div>
           <a
             href="/report"

@@ -11,6 +11,11 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { ANALISE360_DETAIL_TOUR_ID, nbaAnalise360DetailSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaOpportunities, demoPlayerStarsMap, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -69,7 +74,7 @@ const STAT_LABEL_PT: Record<string, string> = {
 };
 
 const TAB_OPTIONS = [
-  { key: 'all', label: 'Todas stats' },
+  { key: 'all', label: 'Todas' },
   { key: 'player_points', label: 'Pontos' },
   { key: 'player_assists', label: 'Assistências' },
   { key: 'player_rebounds', label: 'Rebotes' },
@@ -526,7 +531,7 @@ function RankingList({ satellites }: { satellites: BackupAggregate[] }) {
   return (
     <div className="bg-white border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Ranking de impacto</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Classificação de impacto</span>
         <span className="text-[10px] text-ink-2">melhor stat de cada</span>
       </div>
       <div className="space-y-2">
@@ -586,7 +591,7 @@ function CompanionCard({
               </div>
             </div>
             <span className="text-[11px] text-ink-2">
-              {trigger.triggerTeamAbbr} · {valuedRows.length} {valuedRows.length === 1 ? 'stat valorizado' : 'stats valorizados'}
+              {trigger.triggerTeamAbbr} · {valuedRows.length} {valuedRows.length === 1 ? 'estatística valorizada' : 'estatísticas valorizadas'}
             </span>
           </div>
         </div>
@@ -653,8 +658,13 @@ export default function Analise360Detail() {
   const isMobile = useIsMobile();
   const posthog = usePostHog();
   const { data, isLoading, error } = useAnalise360Data();
-  const opportunities = data?.opportunities ?? [];
-  const playerStarsMap = data?.playerStarsMap ?? new Map<number, number>();
+  const a360Tour = useOnboardingTour(ANALISE360_DETAIL_TOUR_ID, { enabled: !isLoading, delay: 900 });
+  // Fora do tour: NBA de férias e sem gatilhos reais (veio de um card de
+  // exemplo do hub) → mostra a análise de exemplo em vez de "sem dados".
+  const offSeason = isNbaOffSeason() && !isLoading && (data?.opportunities ?? []).length === 0;
+  const isDemo = a360Tour.run || offSeason;
+  const opportunities = isDemo ? demoNbaOpportunities : (data?.opportunities ?? []);
+  const playerStarsMap = isDemo ? demoPlayerStarsMap : (data?.playerStarsMap ?? new Map<number, number>());
 
   const [selectedStat, setSelectedStat] = useState<string>('all');
   const [hoverBackup, setHoverBackup] = useState<number | null>(null);
@@ -664,7 +674,7 @@ export default function Analise360Detail() {
     posthog?.capture('nba_analise360_viewed', { product: 'nba', player_id: triggerPlayerId });
   }, [triggerPlayerId, posthog]);
 
-  const triggerIdNum = Number(triggerPlayerId);
+  const triggerIdNum = isDemo ? 101 : Number(triggerPlayerId);
   const triggerOpps = useMemo(() => opportunities.filter(o => o.trigger_player_id === triggerIdNum), [opportunities, triggerIdNum]);
 
   const triggerInfo = useMemo<TriggerInfo | null>(() => {
@@ -762,6 +772,7 @@ export default function Analise360Detail() {
   const status = triggerInfo ? normalizeStatus(triggerInfo.triggerStatus) : 'out';
   const badge = STATUS_BADGE[status];
 
+
   return (
     <>
       <Helmet>
@@ -770,13 +781,14 @@ export default function Analise360Detail() {
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/analise-360" />
+        <OnboardingTour tourId={ANALISE360_DETAIL_TOUR_ID} steps={nbaAnalise360DetailSteps} run={a360Tour.run} onFinish={a360Tour.finish} />
 
         {isLoading ? (
           <div className="flex items-center justify-center py-32 gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-forest opacity-70" />
             <span className="text-sm text-ink-2">Carregando...</span>
           </div>
-        ) : error ? (
+        ) : (error && !isDemo) ? (
           <div className="text-center py-32 text-sm text-status-danger">
             {(error as Error)?.message ?? 'Falha ao carregar dados'}
           </div>
@@ -787,8 +799,9 @@ export default function Analise360Detail() {
           </div>
         ) : (
           <>
+            {isDemo && <div className="px-4 sm:px-6 pt-4"><DemoRibbon show variant={a360Tour.run ? 'tour' : 'offseason'} /></div>}
             {/* Page header (bg-white) */}
-            <div className="bg-white border-b border-line">
+            <div data-tour="a360d-header" className="bg-white border-b border-line">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex items-center gap-3 min-w-0">
@@ -801,6 +814,7 @@ export default function Analise360Detail() {
                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${badge.cls}`}>
                           {badge.short}
                         </span>
+                        {isDemo && <DemoBadge />}
                       </div>
                       <div className="flex items-center gap-2 mt-2 text-[12px] text-ink-2 flex-wrap">
                         <span className="font-medium text-ink-2">{teamAbbrToName(triggerInfo.triggerTeamAbbr)}</span>
@@ -847,14 +861,14 @@ export default function Analise360Detail() {
               {/* ─── Coluna esquerda ─── */}
               <section className="min-w-0 flex flex-col gap-6">
                 {/* Cadeia de impacto */}
-                <div className="bg-white border border-line rounded-xl p-4 md:p-6">
+                <div data-tour="a360d-cadeia" className="bg-white border border-line rounded-xl p-4 md:p-6">
                   <div className="mb-4">
                     <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Cadeia de impacto</div>
                     <p className="text-[11px] text-ink-2 mt-0.5 hidden sm:block">passe o mouse nos jogadores para detalhes</p>
                     <p className="text-[11px] text-ink-2 mt-0.5 sm:hidden">toque em um jogador para ver a análise</p>
                   </div>
                   {backupAggs.length === 0 ? (
-                    <p className="text-sm text-ink-2 text-center py-10">Sem dados para esta stat.</p>
+                    <p className="text-sm text-ink-2 text-center py-10">Sem dados para esta estatística.</p>
                   ) : isMobile ? (
                     <MobileChain satellites={backupAggs} trigger={triggerInfo} />
                   ) : (
@@ -902,8 +916,8 @@ export default function Analise360Detail() {
                       <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Por que isso importa</span>
                     </div>
                     <p className="text-[12px] text-ink leading-snug">
-                      Sem {lastName(triggerInfo.triggerName)}, minutos e posses redistribuem entre os companheiros.
-                      Quanto maior o gap %, maior a chance de o backup superar a linha de mercado nesta partida.
+                      Sem {lastName(triggerInfo.triggerName)}, minutos e posses se dividem entre os companheiros.
+                      Quanto maior a diferença %, maior a chance de a reserva superar a linha de mercado nesta partida.
                     </p>
                   </div>
                 </div>
@@ -973,8 +987,8 @@ export default function Analise360Detail() {
                     <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Por que isso importa</span>
                   </div>
                   <p className="text-[12px] text-ink leading-snug">
-                    Sem {lastName(triggerInfo.triggerName)}, minutos e posses redistribuem entre os companheiros.
-                    Quanto maior o gap %, maior a chance de o backup superar a linha de mercado nesta partida.
+                    Sem {lastName(triggerInfo.triggerName)}, minutos e posses se dividem entre os companheiros.
+                    Quanto maior a diferença %, maior a chance de a reserva superar a linha de mercado nesta partida.
                   </p>
                 </div>
               </aside>

@@ -35,14 +35,14 @@ export default function MainNav({ className }: MainNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Home NBA', href: '/home-nba', icon: BarChart3 },
+    { name: 'Início NBA', href: '/home-nba', icon: BarChart3 },
     { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
     { name: 'Jogos', href: '/home-games', icon: TrendingUp },
     { name: 'Relatório', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
-    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
+    { name: 'Painel', href: '/betting-dashboard', icon: BarChart3 },
     { name: 'Apostas', href: '/bets', icon: Target },
   ];
 
@@ -93,7 +93,7 @@ export default function MainNav({ className }: MainNavProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-56">
-                <DropdownMenuLabel>Módulo NBA</DropdownMenuLabel>
+                <DropdownMenuLabel>NBA</DropdownMenuLabel>
                 {analysisItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -118,7 +118,7 @@ export default function MainNav({ className }: MainNavProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-56">
-                <DropdownMenuLabel>Módulo Betinho</DropdownMenuLabel>
+                <DropdownMenuLabel>Betinho</DropdownMenuLabel>
                 {betinhoModuleItems.map((item) => {
                   const Icon = item.icon;
                   return (

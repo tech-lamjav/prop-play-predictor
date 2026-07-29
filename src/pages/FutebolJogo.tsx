@@ -20,6 +20,11 @@ import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futeb
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoFixtureDetail, demoFixtureValueRows, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
 
 const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
   'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
@@ -294,7 +299,7 @@ function GoalDistChart({ lh, la }: { lh: number; la: number }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-ink-3 mt-1.5 text-center">distribuição de gols no jogo (modelo) · esperado {lambda.toFixed(1)}</p>
+      <p className="text-[10px] text-ink-3 mt-1.5 text-center">chance de cada placar de gols (modelo) · esperado {lambda.toFixed(1)}</p>
     </div>
   );
 }
@@ -552,7 +557,7 @@ function ModelCard({ tendencies, head, homeName, awayName }: { tendencies: Match
             <TendencyRow key={mk.key} m={mk} />
           ))}
         </div>
-        <p className="mt-4 text-[10px] leading-snug text-ink-3">Estimativa estatística (Poisson) sobre médias da temporada — não é valor de mercado.</p>
+        <p className="mt-4 text-[10px] leading-snug text-ink-3">Conta baseada nas médias da temporada. Não é valor de mercado.</p>
       </div>
     </div>
   );
@@ -641,22 +646,26 @@ export default function FutebolJogo() {
   const fid = fixtureId ? Number(fixtureId) : undefined;
   const { data, isLoading, isError } = useFutebolFixtureDetail(fid);
   const { data: extras, isLoading: extrasLoading } = useFutebolFixtureExtras(fid);
+  const jogoTour = useOnboardingTour(FUT_JOGO_TOUR_ID, { enabled: !isLoading, delay: 1200 });
+  const isDemo = jogoTour.run; // durante o tour, preenche a tela com exemplo
 
-  const fixture = data?.fixture;
+  const fixture = isDemo ? demoFixtureDetail.fixture : data?.fixture;
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
-  const { data: tend } = useFutebolMatchupTendencies(
+  const { data: realTend } = useFutebolMatchupTendencies(
     fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
   );
+  const tend = isDemo ? { home: demoTeamSeason, away: demoAwaySeason } : realTend;
   const tendencies = useMemo(() => {
     if (!fixture || !tend?.home || !tend?.away) return null;
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   const head = tendencies ? headlineMarket(tendencies.markets) : null;
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
-  const { data: valueRows } = useFutebolFixtureValue(fid);
+  const { data: realValueRows } = useFutebolFixtureValue(fid);
+  const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
   const { data: access } = useFutebolAccess();
-  const locked = !access?.unlocked;
+  const locked = isDemo ? false : !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"
   const { data: homeProfile } = useFutebolTeamProfile(fixture?.home_team_id, fixture?.competition as Competition, fixture?.season as number);
   const { data: awayProfile } = useFutebolTeamProfile(fixture?.away_team_id, fixture?.competition as Competition, fixture?.season as number);
@@ -688,9 +697,19 @@ export default function FutebolJogo() {
     (h2h && h2h.length) || extras?.form_home?.length || extras?.form_away?.length
   );
 
+  const jogoSteps = useMemo(
+    () => makeFutebolJogoSteps({
+      hasValue: showValue,
+      hasModel: !!tendencies,
+      hasContext: hasDescriptive || !!homeProfile || !!awayProfile,
+    }),
+    [showValue, tendencies, hasDescriptive, homeProfile, awayProfile],
+  );
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={FUT_JOGO_TOUR_ID} steps={jogoSteps} run={jogoTour.run} onFinish={jogoTour.finish} />
       <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {isLoading ? (
           <div className="space-y-3">
@@ -698,16 +717,17 @@ export default function FutebolJogo() {
             <Skeleton className="h-10 w-full bg-canvas-2 rounded-rebrand-md" />
             <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
           </div>
-        ) : isError || !fixture ? (
+        ) : !fixture ? (
           <div className={`${CARD} p-6 text-center text-sm text-status-danger`}>
             Não foi possível carregar este jogo.
           </div>
         ) : (
           <>
+            {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
             {/* Header */}
-            <div className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
+            <div data-tour="fut-jogo-header" className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
               <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
-                <span>{prettyRound(fixture.round)}</span>
+                {isDemo && <DemoBadge />}<span>{prettyRound(fixture.round)}</span>
                 {fixture.venue_name && (
                   <><span>•</span><MapPin className="w-3 h-3" /><span>{fixture.venue_name}{fixture.venue_city ? `, ${fixture.venue_city}` : ''}</span></>
                 )}
@@ -761,24 +781,28 @@ export default function FutebolJogo() {
             {!finished && (showValue || tendencies) && (
               <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
                 {showValue && valueRows && (
-                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
+                  <div data-tour="fut-jogo-oque-olhar">
+                    <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
+                  </div>
                 )}
                 {tendencies && (
-                  <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                  <div data-tour="fut-jogo-modelo">
+                    <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                  </div>
                 )}
               </div>
             )}
 
             {/* Explorar mercados — largura total (só pré-jogo, é interativo pra decidir) */}
             {showValue && valueRows && (
-              <div className="mt-5">
+              <div data-tour="fut-jogo-mercados" className="mt-5">
                 <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
               </div>
             )}
 
             {/* Contexto — escalação (pitch) + confrontos diretos + estatísticas */}
             {(hasDescriptive || homeProfile || awayProfile) && (
-              <div className="mt-5 grid lg:grid-cols-[1.3fr_1fr] gap-5 items-start">
+              <div data-tour="fut-jogo-contexto" className="mt-5 grid lg:grid-cols-[1.3fr_1fr] gap-5 items-start">
                 {/* Escalação provável & desfalques */}
                 <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
                   <div className="px-5 py-3 flex items-center justify-between border-b border-line">

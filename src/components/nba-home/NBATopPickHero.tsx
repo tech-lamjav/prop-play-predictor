@@ -154,7 +154,7 @@ export const NBATopPickHero: React.FC<NBATopPickHeroProps> = ({ pick, onOpenAnal
 
           <div className="grid grid-cols-4 gap-0 rounded-lg overflow-hidden bg-white/5 border border-white/10">
             <Metric label="Média" value={pick.avgCom.toFixed(1)} sub="temporada" />
-            <Metric label="Projeção" value={pick.avgSem.toFixed(1)} sub="c/ filtro" highlight />
+            <Metric label="Previsão" value={pick.avgSem.toFixed(1)} sub="c/ filtro" highlight />
             <Metric label="Linha" value={pick.lineValue?.toFixed(1) ?? '—'} sub="mercado" />
             <Metric
               label="Vantagem"
@@ -233,7 +233,7 @@ export const NBATopPickHero: React.FC<NBATopPickHeroProps> = ({ pick, onOpenAnal
 
           <div className="grid grid-cols-4 gap-0 mt-5 rounded-lg overflow-hidden bg-white/5 border border-white/10">
             <Metric label="Média" value={pick.avgCom.toFixed(1)} sub="temporada" />
-            <Metric label="Projeção" value={pick.avgSem.toFixed(1)} sub="com filtro" highlight />
+            <Metric label="Previsão" value={pick.avgSem.toFixed(1)} sub="com filtro" highlight />
             <Metric label="Linha" value={pick.lineValue?.toFixed(1) ?? '—'} sub="mercado" />
             <Metric
               label="Vantagem"

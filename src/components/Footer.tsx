@@ -88,7 +88,7 @@ const Footer = () => {
         <div>
           <img src="/logo.png" alt="Smart Betting" className="h-[26px] w-auto" />
           <p className="text-[13px] leading-relaxed text-white/60 mt-4 max-w-[340px] text-pretty">
-            Análises, gestão de banca e ferramentas para quem quer decidir com dados. Projeções de
+            Análises, gestão de banca e ferramentas para quem quer decidir com dados. Previsões de
             NBA e futebol atualizadas diariamente, com score de confiabilidade em cada oportunidade.
           </p>
           <div className="flex gap-2 mt-5">

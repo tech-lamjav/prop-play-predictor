@@ -17,6 +17,11 @@ import {
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
@@ -266,7 +271,9 @@ export default function FutebolOportunidades() {
   const { data: rows, isLoading } = useFutebolValueBoard();
   const { data: fixtures } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: access } = useFutebolAccess();
-  const locked = !access?.unlocked;
+  const oppTour = useOnboardingTour(FUT_OPP_TOUR_ID, { enabled: !isLoading });
+  const isDemo = oppTour.run; // durante o tour, preenche a tela com exemplo
+  const locked = isDemo ? false : !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
   const [faixa, setFaixa] = useState<FaixaFilter>('all');
   const [comp, setComp] = useState<CompFilter>('all');
@@ -335,7 +342,8 @@ export default function FutebolOportunidades() {
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
-  const bestRows = useMemo(() => [...filtered].sort((a, b) => b.score - a.score), [filtered]);
+  const realBestRows = useMemo(() => [...filtered].sort((a, b) => b.score - a.score), [filtered]);
+  const bestRows = isDemo ? demoFutebolBoard : realBestRows;
   const comValor = bestRows.filter((o) => o.score >= SCORE_MEDIA);
   const semValor = bestRows.filter((o) => o.score < SCORE_MEDIA);
   const nAlta = bestRows.filter((o) => faixaTone(o.faixa) === 'alta').length;
@@ -375,13 +383,19 @@ export default function FutebolOportunidades() {
   const go = (id: number) => navigate(`/futebol/jogo/${id}`);
   const key = (o: FutebolValueBoardRow) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
+  const oppSteps = useMemo(
+    () => makeFutebolOportunidadesSteps({ hasDayBar: !isLoading && days.length > 0, hasBoard: bestRows.length > 0 }),
+    [isLoading, days.length, bestRows.length],
+  );
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={FUT_OPP_TOUR_ID} steps={oppSteps} run={oppTour.run} onFinish={oppTour.finish} />
 
       {/* Day stepper */}
       {!isLoading && days.length > 0 && (
-        <div className="bg-white border-b border-line">
+        <div data-tour="fut-opp-datas" className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
             <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={countByDay} />
           </div>
@@ -392,7 +406,7 @@ export default function FutebolOportunidades() {
       <div className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex items-end justify-between gap-4">
           <div>
-            <div className={LABEL}>{isPastDay ? 'Histórico' : 'Oportunidades'}</div>
+            <div className={`${LABEL} flex items-center gap-2`}>{isPastDay ? 'Histórico' : 'Oportunidades'}{isDemo && <DemoBadge />}</div>
             {isPastDay && resumo && resumo.settled > 0 ? (
               <>
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
@@ -401,7 +415,7 @@ export default function FutebolOportunidades() {
             ) : (
               <>
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{comValor.length} aposta{comValor.length === 1 ? '' : 's'} com valor</h1>
-                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Onde a odd paga acima da chance estimada · ranqueado por confiabilidade'}</p>
+                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Onde a odd paga acima da chance estimada · em ordem de confiança'}</p>
               </>
             )}
           </div>
@@ -416,10 +430,11 @@ export default function FutebolOportunidades() {
       </div>
 
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
+        <DemoRibbon show={isDemo} />
         <FutebolAccessBanner access={access} />
 
         {/* Filtros — desktop: 1 linha (Mercado à esq · dropdowns à dir); mobile: 2 linhas */}
-        <div className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
+        <div data-tour="fut-opp-filtros" className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
           <MarketChips value={mercado} onChange={setMercado} />
           <div className="h-px bg-line/70 sm:hidden" />
           {/* `flex-wrap`: os dois filtros somam ~294px e não cabem lado a lado
@@ -446,7 +461,7 @@ export default function FutebolOportunidades() {
             </p>
           </div>
         ) : (
-          <>
+          <div data-tour="fut-opp-lista">
             {/* Tabela (desktop) */}
             <div className="hidden md:block rounded-rebrand-md overflow-hidden bg-white border border-line">
               <div className={`${GRID} px-5 py-2.5 text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3 bg-canvas-2`}>
@@ -490,31 +505,31 @@ export default function FutebolOportunidades() {
               )}
               {!isPastDay && semValor.map((o) => <div key={key(o)} className="opacity-60"><OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} /></div>)}
             </div>
-          </>
+          </div>
         )}
 
         {/* Banner honesto */}
         <div className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
-            <span className="font-semibold">Não é recomendação.</span> Valor = a odd paga acima da chance estimada. A régua separa o que tem valor claro do resto — abaixo dela, não enxergamos vantagem.
+            <span className="font-semibold">Não é recomendação.</span> Valor = a odd paga acima da chance estimada. A régua separa o que tem valor claro do resto. Abaixo dela, não enxergamos vantagem.
           </div>
         </div>
 
         {/* Como ler o Score + Faixas */}
-        <div className="grid md:grid-cols-2 gap-4 mt-2">
+        <div data-tour="fut-opp-metodologia" className="grid md:grid-cols-2 gap-4 mt-2">
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Como ler o Score</div>
             <p className="text-[12px] text-ink-2 mt-2 leading-relaxed">
-              O <b className="text-ink">Score (0–100)</b> mostra o quanto a oportunidade é <b className="text-ink">confiável</b> — não a chance de acerto. Ele junta quatro coisas: o tamanho do valor (o quanto a odd paga acima do risco real), as premissas do jogo (ataque, defesa, mando, forma…), se a odd não é exagerada (nem zebra, nem mixaria) e se as principais casas vêm concordando com esse lado. Por isso uma "zebra" com valor alto bancada por uma casa só fica com score baixo.
+              O <b className="text-ink">Score (0–100)</b> mostra o quanto a oportunidade é <b className="text-ink">confiável</b>, não a chance de acerto. Ele junta quatro coisas: o tamanho do valor (o quanto a odd paga acima do risco real), o cenário do jogo (ataque, defesa, mando, forma…), se a odd não é exagerada (nem zebra, nem mixaria) e se as principais casas vêm concordando com esse lado. Por isso uma "zebra" com valor alto bancada por uma casa só fica com score baixo.
             </p>
           </div>
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Faixas</div>
             <ul className="mt-2 space-y-2 text-[12px] text-ink-2">
-              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Alta')}`}>60+</span> Alta — oportunidade de destaque</li>
-              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Média')}`}>40+</span> Média — monitorar</li>
-              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Baixa')}`}>&lt;40</span> Baixa — não sinaliza</li>
+              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Alta')}`}>60+</span> Alta, oportunidade de destaque</li>
+              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Média')}`}>40+</span> Média, vale acompanhar</li>
+              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Baixa')}`}>&lt;40</span> Baixa, não sinaliza</li>
             </ul>
             <p className="text-[10px] text-ink-3 mt-3 leading-snug">
               Odds pré-jogo (não ao vivo). Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance; outros entram conforme liberados.

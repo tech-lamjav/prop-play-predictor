@@ -9,9 +9,14 @@ import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ShareLinkModal } from '@/components/bets/ShareLinkModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
-import { useCapitalMovements } from '@/hooks/use-capital-movements';
+import { useCapitalMovements, type CapitalMovement } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useIsMobile } from '@/hooks/use-mobile';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { BETINHO_TOUR_ID, makeBetinhoSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoBets, demoMovements } from '@/components/onboarding/demo/betinho';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { mergeVocab, canonicalizeVocab, vocabHasValue } from '@/utils/betVocab';
 import { usePostHog } from '@posthog/react';
@@ -671,7 +676,7 @@ export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
-  const { movements: capitalMovements, addMovement } = useCapitalMovements(user?.id);
+  const { movements: realCapitalMovements, addMovement } = useCapitalMovements(user?.id);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -687,6 +692,16 @@ export default function Bets() {
   const betsRef = useRef<Bet[]>([]);
   useEffect(() => { betsRef.current = bets; }, [bets]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const betinhoTour = useOnboardingTour(BETINHO_TOUR_ID, { enabled: !!user && !isLoading, delay: 900 });
+  const isDemo = betinhoTour.run; // durante o tour, preenche a banca com exemplo
+  const displayBets = isDemo ? (demoBets as unknown as Bet[]) : bets;
+  const capitalMovements = isDemo ? (demoMovements as unknown as CapitalMovement[]) : realCapitalMovements;
+  const betinhoSteps = useMemo(
+    () => makeBetinhoSteps({ isMobile, hasEmptyState: displayBets.length === 0 }),
+    [isMobile, displayBets.length],
+  );
+
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [showUnitsView, setShowUnitsView] = useState(false);
   const formatValue = showUnitsView
@@ -868,8 +883,8 @@ export default function Bets() {
       if (!isMountedRef.current) return;
       console.error('Error fetching bets:', err);
       toast({
-        title: 'Error',
-        description: 'Failed to load bets',
+        title: 'Deu erro',
+        description: 'Não foi possível carregar as apostas',
         variant: 'destructive',
       });
     } finally {
@@ -1001,12 +1016,12 @@ export default function Bets() {
         captureBetSettled(posthog, prevBet, newStatus);
       }
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Bet status updated' });
+        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending' } : b));
-        toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
       }
     }
   }, [posthog, supabase, toast]);
@@ -1050,7 +1065,7 @@ export default function Bets() {
 
     const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
     if (isNaN(cashoutAmount)) {
-      toast({ title: 'Error', description: 'Invalid amount', variant: 'destructive' });
+      toast({ title: 'Deu erro', description: 'Valor inválido', variant: 'destructive' });
       return;
     }
 
@@ -1084,12 +1099,12 @@ export default function Bets() {
       captureBetSettled(posthog, cashoutModal.bet, 'cashout');
 
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Cashout processed' });
+        toast({ title: 'Tudo certo', description: 'Cashout registrado' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending', cashout_amount: undefined, cashout_date: undefined, is_cashout: false } : b));
-        toast({ title: 'Error', description: 'Failed to process cashout', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível registrar o cashout', variant: 'destructive' });
       }
     }
   };
@@ -1170,12 +1185,12 @@ export default function Bets() {
       }
 
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Bet updated' });
+        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, ...editModal.bet } : b));
-        toast({ title: 'Error', description: 'Failed to update bet', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
       }
     }
   };
@@ -1456,7 +1471,7 @@ export default function Bets() {
   }, [bets]);
 
   const filteredBets = useMemo(() => {
-    return bets.filter(bet => {
+    return displayBets.filter(bet => {
       // Filter by status: if any statuses selected, bet must match one of them
       if (filters.status.length > 0 && !filters.status.includes(bet.status)) return false;
       
@@ -1548,7 +1563,7 @@ export default function Bets() {
 
       return true;
     });
-  }, [bets, filters]);
+  }, [displayBets, filters]);
 
   // Sort logic
   const sortedBets = useMemo(() => {
@@ -1720,7 +1735,7 @@ export default function Bets() {
     ));
     try {
       await Promise.all(ids.map(betId => supabase.rpc('add_tag_to_bet', { p_bet_id: betId, p_tag_id: tag.id })));
-      toast({ title: 'Sucesso', description: `Tag "${tag.name}" adicionada a ${ids.length} apostas` });
+      toast({ title: 'Sucesso', description: `Etiqueta "${tag.name}" adicionada a ${ids.length} apostas` });
     } catch {
       toast({ title: 'Erro', description: 'Falha ao adicionar tag', variant: 'destructive' });
       fetchBets();
@@ -1905,7 +1920,7 @@ export default function Bets() {
       const s = v == null ? '' : String(v);
       return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Tags'];
+    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Etiquetas'];
     const lines = rows.map(b => [
       b.bet_date?.split('T')[0] ?? '',
       b.bet_description ?? '',
@@ -2372,10 +2387,10 @@ export default function Bets() {
 
         {/* Tags (full row) */}
         <div className="sm:col-span-2">
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Tags</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Etiquetas</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {userTags.length === 0 ? (
-              <p className="text-[12px] text-ink-2">Nenhuma tag criada ainda.</p>
+              <p className="text-[12px] text-ink-2">Nenhuma etiqueta criada ainda.</p>
             ) : (
               userTags.map(tag => {
                 const active = filters.selectedTags.includes(tag.id);
@@ -2449,13 +2464,14 @@ export default function Bets() {
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={BETINHO_TOUR_ID} steps={betinhoSteps} run={betinhoTour.run} onFinish={betinhoTour.finish} />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Apostas</div>
-            <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">Apostas{isDemo && <DemoBadge />}</div>
+            <h1 data-tour="betinho-hero" className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
             <p className="text-[13px] text-ink-2 mt-1 tabular">
               {stats.totalBets} {stats.totalBets === 1 ? 'aposta registrada' : 'apostas registradas'}
             </p>
@@ -2554,9 +2570,10 @@ export default function Bets() {
       </div>
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 focus:outline-none">
+        {isDemo && <div className="mb-6"><DemoRibbon show /></div>}
         {/* Onboarding cards — usuário sem nenhuma aposta. Aparecem ACIMA do conteúdo regular */}
-        {!isLoading && bets.length === 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+        {!isLoading && displayBets.length === 0 && (
+          <div data-tour="betinho-telegram" className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
             {/* Primary CTA — Telegram */}
             <div className="bg-forest text-white rounded-xl p-6 md:p-8 relative overflow-hidden">
               <div className="absolute top-4 right-4 text-[10px] uppercase tracking-[0.16em] font-semibold text-amber-400 bg-white/5 border border-amber-400/20 px-2 py-1 rounded">
@@ -2567,7 +2584,7 @@ export default function Bets() {
               </div>
               <h2 className="text-[22px] md:text-[24px] font-semibold tracking-tight">Comece pelo Telegram.</h2>
               <p className="text-[13px] md:text-[14px] text-white/70 mt-2 leading-relaxed">
-                Abra o Betinho, mande seu primeiro bilhete por texto ou print — e essa tela enche sozinha.
+                Abra o Betinho, mande seu primeiro bilhete por texto ou print, e essa tela enche sozinha.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer"
@@ -2579,9 +2596,9 @@ export default function Bets() {
               <div className="mt-6 pt-6 border-t border-white/10">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-semibold mb-3">3 formatos aceitos</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-white/80">
-                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre — "apostei R$ 150 LeBron 25+"</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio — fale o bilhete</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Print — foto do cupom</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre: "apostei R$ 150 LeBron 25+"</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio: fale o bilhete</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Print: foto do cupom</div>
                 </div>
               </div>
             </div>
@@ -2589,7 +2606,7 @@ export default function Bets() {
             <div className="bg-white border border-line rounded-xl p-6 md:p-8">
               <h2 className="text-[18px] md:text-[20px] font-semibold tracking-tight text-ink">Ou cadastre manualmente.</h2>
               <p className="text-[13px] text-ink-2 mt-2 leading-relaxed">
-                Se preferir tela e formulário, dá pra cadastrar pelo painel — leva uns 30 segundos.
+                Se preferir tela e formulário, dá pra cadastrar pelo painel, leva uns 30 segundos.
               </p>
               <button
                 type="button"
@@ -2611,7 +2628,7 @@ export default function Bets() {
 
         <>
         {/* Stats Grid — 4 slots: 2 Hero + 2 Pair (desktop) */}
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div data-tour="betinho-stats" className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {/* ROI - HeroKPI */}
           <div className="bg-white border border-line rounded-lg p-5">
             <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">ROI</div>
@@ -2662,9 +2679,9 @@ export default function Bets() {
         </div>
 
         {!isMobile && (
-        <div className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
+        <div data-tour="betinho-evolucao" className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
           <BankrollEvolutionChart
-            bets={bets}
+            bets={displayBets}
             initialBankroll={config.bank_amount}
             capitalMovements={capitalMovements}
             onUpdateBankroll={async (amount) => {
@@ -2704,7 +2721,7 @@ export default function Bets() {
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
                 <div className="text-[14px] font-semibold mt-1 leading-tight">Cadastre apostas em segundos pelo Telegram.</div>
-                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete — a IA registra e este painel atualiza sozinho.</div>
+                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete, a IA registra e este painel atualiza sozinho.</div>
                 <div className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
                   <Send className="w-3.5 h-3.5" />
                   <span>Abrir bot</span>
@@ -2725,9 +2742,9 @@ export default function Bets() {
                 <ChevronRight className="w-4 h-4 text-ink-2 group-hover:text-forest transition-colors" />
               </div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold mt-3">Análise</div>
-              <div className="text-[15px] font-semibold text-ink mt-1">Dashboard</div>
+              <div className="text-[15px] font-semibold text-ink mt-1">Painel</div>
               <div className="text-[12px] text-ink-2 mt-1 leading-snug">
-                Onde você ganha e onde perde — desempenho por liga, mercado e tag.
+                Onde você ganha e onde perde. Desempenho por liga, mercado e etiqueta.
               </div>
             </button>
           </div>
@@ -2735,7 +2752,7 @@ export default function Bets() {
         )}
 
         {/* Mobile hero — banca atual + sparkline + mini stats */}
-        <div className="md:hidden mb-4">
+        <div data-tour="betinho-stats-m" className="md:hidden mb-4">
           {(() => {
             const movementsNet = capitalMovements
               .filter(m => m.affects_balance)
@@ -2835,7 +2852,7 @@ export default function Bets() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-ink-2">Análise</div>
-              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Dashboard de KPIs</div>
+              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Painel de números</div>
             </div>
             <ChevronRight className="w-4 h-4 text-ink-2 shrink-0" />
           </button>
@@ -3213,7 +3230,7 @@ export default function Bets() {
         </div>
 
         {/* Bets Table — wrapper card só no desktop. Mobile cards ficam standalone na canvas */}
-        <div className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
+        <div data-tour="betinho-lista" className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
           <div className="flex justify-between items-center px-1 md:px-5 py-3 md:border-b md:border-line">
             <div className="flex items-baseline gap-3">
               <h3 className="text-[11px] md:text-[13px] uppercase md:normal-case tracking-[0.12em] md:tracking-normal font-semibold text-ink-2 md:text-ink">Apostas</h3>
@@ -3262,7 +3279,7 @@ export default function Bets() {
                       </th>
                       <SortableHeader column="bet_date" label="DATA" />
                       <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">DESCRIÇÃO</th>
-                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">TAGS</th>
+                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">ETIQUETAS</th>
                       <SortableHeader column="sport" label="ESPORTE / LIGA" />
                       <SortableHeader column="betting_market" label="MERCADO" />
                       <SortableHeader column="stake_amount" label="STAKE" align="right" />
@@ -3361,7 +3378,7 @@ export default function Bets() {
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">
                 <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Odd média</div>
-                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">prob. implícita {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">chance {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
               </div>
               <div className="text-[15px] tabular font-semibold text-forest shrink-0 ml-2">{secondaryStats.avgOdds.toFixed(2)}</div>
             </div>
@@ -3470,7 +3487,7 @@ export default function Bets() {
                   </div>
                   {userTags.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar tag</p>
+                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar etiqueta</p>
                       <div className="flex flex-wrap gap-2">
                         {userTags.map(tag => (
                           <button key={tag.id} type="button"
@@ -3498,7 +3515,7 @@ export default function Bets() {
                 </PopoverTrigger>
                 <PopoverContent className="theme-rebrand w-48 p-1 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]" align="start" side="top">
                   {userTags.length === 0 ? (
-                    <p className="text-[11px] text-ink-2 p-2">Nenhuma tag criada</p>
+                    <p className="text-[11px] text-ink-2 p-2">Nenhuma etiqueta criada</p>
                   ) : (
                     userTags.map(tag => (
                       <button key={tag.id} type="button"
