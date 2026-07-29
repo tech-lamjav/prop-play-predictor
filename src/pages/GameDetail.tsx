@@ -1155,7 +1155,9 @@ export default function GameDetail() {
       </div>
     );
   }
-  if (!user) {
+  // Off-season: libera o detalhe do jogo (modo exemplo) mesmo deslogado, pra
+  // a vitrine da NBA ficar coerente com o hub aberto.
+  if (!user && !isNbaOffSeason()) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
