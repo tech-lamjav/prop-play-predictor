@@ -13,8 +13,17 @@ export interface FutebolBetDraft {
   bestOdd: number;
 }
 
-/** Monta o draft a partir de uma linha do board de oportunidades. */
-export function draftFromBoardRow(o: FutebolValueBoardRow): FutebolBetDraft {
+/**
+ * Monta o draft a partir de uma linha do board de oportunidades. Aceita
+ * qualquer linha que tenha estes campos (o histórico monta linha de
+ * oportunidade registrada, sem Score/faixa/edge — ver FutebolOportunidades).
+ */
+type DraftSource = Pick<
+  FutebolValueBoardRow,
+  'home_team_name' | 'away_team_name' | 'competition' | 'kickoff_utc' | 'market' | 'outcome' | 'line_value' | 'best_odd'
+>;
+
+export function draftFromBoardRow(o: DraftSource): FutebolBetDraft {
   return {
     homeName: o.home_team_name,
     awayName: o.away_team_name,
