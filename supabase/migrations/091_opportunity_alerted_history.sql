@@ -17,20 +17,27 @@
 -- (a tabela é service_role-only).
 --
 -- O snapshot por janela no BigQuery (fact_value_opportunities_hist) é a outra
--- frente e está com o Mateus. Hoje ele não captura a janela da manhã (t24h =
--- 2 de 888 linhas), então não serve ainda pra reproduzir o alerta. Quando
--- capturar, entra como complemento: TODAS as oportunidades como estavam no
--- momento do envio, não só o pick que foi enviado.
+-- frente e está com o Mateus (task wdx6zeumpz). Ele fotografa o MART; nós
+-- guardamos o que foi ENVIADO. São perguntas diferentes: o snapshot responde
+-- "o que o board tinha naquele instante", este registro responde "qual pick nós
+-- mandamos e com que números". Um não substitui o outro, e o nosso não depende
+-- do ritmo do pipeline dele.
+--
+-- Nota sobre a janela t24h, pra não repetir um erro de leitura: t24h de jogo
+-- noturno é materializada na NOITE ANTERIOR (~24h antes do jogo), não na manhã
+-- do dia do jogo. As duas linhas t24h que existem no hist foram capturadas em
+-- 27/07 22:02 e 22:32 UTC, para jogos de 28/07 19:00 e 19:30 BRT — e são
+-- exatamente os dois picks que o daily enviou em 28/07.
 -- ============================================================
 
 -- ── 1. Pick estruturado + números do momento do envio ────────
 -- Por que gravar Score/faixa/chance/valor aqui, se "já estão no mart": porque
--- NÃO estão. Tudo no pipeline é full-refresh e guarda uma janela por jogo, e a
--- janela da manhã é substituída pela de fechamento. Conferido em 29/07/2026:
--- `int_futebol_odds_devig` (onde vivem chance e edge por janela) tem t24h só
--- pros jogos FUTUROS; de jogo passado sobra apenas t15m. E `message_runs`
--- (telemetria do envio, que guardava top_score) não existe em produção. Ou seja,
--- se não gravar no instante do envio, o número morre.
+-- NÃO estão. Tudo no pipeline é full-refresh e guarda uma janela por jogo: a
+-- janela vigente é substituída pela mais próxima do jogo conforme ele chega.
+-- Conferido em 29 e 30/07/2026 na `int_futebol_odds_devig` (onde vivem chance e
+-- edge por janela): jogo que ainda não começou tem t24h; de jogo passado sobra
+-- apenas t15m. E `message_runs` (telemetria do envio, que guardava top_score)
+-- não existe em produção. Ou seja, se não gravar no instante do envio, morre.
 ALTER TABLE public.daily_opportunity_picks
   ADD COLUMN IF NOT EXISTS market                text,
   ADD COLUMN IF NOT EXISTS outcome               text,
