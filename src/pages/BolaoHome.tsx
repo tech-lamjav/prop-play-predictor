@@ -18,6 +18,9 @@ import { CopaGruposModal } from '@/components/bolao/CopaGruposModal';
 import { CopaBracketModal } from '@/components/bolao/CopaBracketModal';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
 import { useToast } from '@/hooks/use-toast';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { BOLAO_TOUR_ID, bolaoSteps } from '@/components/onboarding/tours';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -65,6 +68,7 @@ const BolaoHome: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { data: boloes, isLoading } = useUserBoloes();
+  const bolaoTour = useOnboardingTour(BOLAO_TOUR_ID);
   const { data: matches } = useWcMatches();
   const createBolao = useCreateBolao();
   const joinBolao = useJoinBolao();
@@ -253,6 +257,7 @@ const BolaoHome: React.FC = () => {
   return (
     <>
       <AnalyticsNav variant="rebrand" />
+      <OnboardingTour tourId={BOLAO_TOUR_ID} steps={bolaoSteps} run={bolaoTour.run} onFinish={bolaoTour.finish} />
       <div className="max-w-[1680px] mx-auto px-4 sm:px-6 py-8">
         {/* ═══ HERO — chamada + dois CTAs (full-width) ═══ */}
         <div className="bg-forest text-white rounded-rebrand-xl p-7 relative overflow-hidden mb-8">
@@ -260,7 +265,7 @@ const BolaoHome: React.FC = () => {
           <div className="text-[11px] uppercase tracking-[0.14em] font-semibold opacity-60 mb-2">
             Copa do Mundo 2026
           </div>
-          <h1 className="font-display text-[40px] sm:text-[48px] leading-[1.05] font-extrabold mb-2">
+          <h1 data-tour="bolao-hero" className="font-display text-[40px] sm:text-[48px] leading-[1.05] font-extrabold mb-2">
             {days > 0 ? (
               <>
                 Faltam <span className="text-amber">{days} dias</span>.<br />

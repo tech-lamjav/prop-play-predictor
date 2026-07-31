@@ -1,20 +1,31 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/use-auth';
+import { isNbaOffSeason } from '@/components/onboarding/demo/nba';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   redirectTo?: string;
+  /** Em off-season da NBA (jul-set), libera a rota mesmo deslogado — vitrine
+   *  do produto em modo exemplo. Só usar em rotas NBA. */
+  allowNbaOffSeason?: boolean;
 }
 
-export default function ProtectedRoute({ 
-  children, 
-  requireAuth = true, 
-  redirectTo = '/auth' 
+export default function ProtectedRoute({
+  children,
+  requireAuth = true,
+  redirectTo = '/auth',
+  allowNbaOffSeason = false,
 }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
+
+  // Vitrine de off-season: qualquer um (mesmo deslogado) pode conhecer a NBA
+  // em modo exemplo enquanto não há temporada. Volta a travar sozinho depois.
+  if (allowNbaOffSeason && isNbaOffSeason()) {
+    return <>{children}</>;
+  }
 
   // Show loading while checking authentication
   if (isLoading) {

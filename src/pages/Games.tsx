@@ -6,6 +6,11 @@ import {
   FileText,
 } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { NBA_GAMES_TOUR_ID, nbaGamesSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaGames, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import { InjuryReportModal } from '@/components/nba/InjuryReportModal';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -151,7 +156,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
       {/* Top strip — date + status badge */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-line bg-canvas-2/50">
         <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">
-          {shortDate}{finished ? ' · FT' : ''}
+          {shortDate}{finished ? ' · Fim' : ''}
         </span>
         {finished && winnerAbbr ? (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-forest text-white uppercase tracking-wide">
@@ -488,7 +493,11 @@ export default function Games() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const sortedGames = useMemo(() => {
+  const gamesTour = useOnboardingTour(NBA_GAMES_TOUR_ID, { enabled: !isLoading });
+  // Fora do tour: NBA de férias (jul-set) e sem jogos reais no dia → exemplo.
+  const offSeason = !isLoading && isNbaOffSeason() && games.length === 0;
+  const isDemo = gamesTour.run || offSeason;
+  const realSortedGames = useMemo(() => {
     return [...games].sort((a, b) => {
       const END_OF_DAY = 23 * 60 * 60 * 1000;
       const ta = a.game_datetime_brasilia ? new Date(a.game_datetime_brasilia).getTime() : parseGameDate(a.game_date).getTime() + END_OF_DAY;
@@ -497,6 +506,7 @@ export default function Games() {
       return a.home_team_name.localeCompare(b.home_team_name);
     });
   }, [games]);
+  const sortedGames = isDemo ? demoNbaGames : realSortedGames;
 
   const totalPages = Math.ceil(sortedGames.length / ITEMS_PER_PAGE);
   const pageGames = useMemo(() => {
@@ -510,7 +520,7 @@ export default function Games() {
   };
 
   const dateNavBlock = (
-    <div className="bg-white border border-line rounded-xl flex items-center justify-between p-2">
+    <div data-tour="nba-games-data" className="bg-white border border-line rounded-xl flex items-center justify-between p-2">
       <button
         type="button"
         onClick={() => navigateDate(-1)}
@@ -585,13 +595,14 @@ export default function Games() {
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
+        <OnboardingTour tourId={NBA_GAMES_TOUR_ID} steps={nbaGamesSteps} run={gamesTour.run} onFinish={gamesTour.finish} />
 
         {/* Page header (bg-white) */}
         <div className="bg-white border-b border-line">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
             <div className="min-w-0">
-              <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink leading-none">
-                Jogos NBA <span className="text-ink-2 font-normal">· {headerDate.weekday}, {headerDate.dayMonth}</span>
+              <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink leading-none flex items-center gap-2 flex-wrap">
+                <span>Jogos NBA <span className="text-ink-2 font-normal">· {headerDate.weekday}, {headerDate.dayMonth}</span></span>{isDemo && <DemoBadge />}
               </h1>
               {subtitle && (
                 <p className="text-[13px] text-ink-2 mt-1.5">{subtitle}</p>
@@ -602,7 +613,8 @@ export default function Games() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* ── Games column ── */}
-          <section className="min-w-0">
+          <section data-tour="nba-games-lista" className="min-w-0">
+            {isDemo && <div className="mb-3"><DemoRibbon show variant={gamesTour.run ? 'tour' : 'offseason'} /></div>}
             {/* Date picker — só renderiza no mobile (uma instância só pra evitar Popover duplicado) */}
             {isMobile && (
               <div className="mb-3">
@@ -653,7 +665,7 @@ export default function Games() {
           </section>
 
           {/* ── Sidebar ── */}
-          <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+          <aside data-tour="nba-games-sidebar" className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             {/* Date picker — só renderiza no desktop (mobile aparece acima dos jogos) */}
             {!isMobile && dateNavBlock}
 
@@ -670,7 +682,7 @@ export default function Games() {
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">Injury Report</div>
+                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">Lesões</div>
                     <div className="text-[13px] font-semibold text-ink leading-tight">Lesões dos jogos de hoje</div>
                   </div>
                 </div>

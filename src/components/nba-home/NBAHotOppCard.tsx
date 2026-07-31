@@ -111,7 +111,7 @@ export const NBAHotOppCard: React.FC<NBAHotOppCardProps> = ({ opp, onClick, href
 
       <div className="grid grid-cols-4 mt-4 pt-3 gap-2 border-t border-line">
         <div>
-          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">Projeção</div>
+          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">Previsão</div>
           <div className="text-[18px] font-semibold tabular tracking-tight mt-0.5 text-ink">{opp.projection.toFixed(1)}</div>
         </div>
         <div>

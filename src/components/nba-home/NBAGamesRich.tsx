@@ -78,7 +78,7 @@ function lastName(full: string): string {
 }
 
 function formatTime(iso: string | null): string {
-  if (!iso) return 'TBD';
+  if (!iso) return 'A definir';
   return new Date(iso).toLocaleTimeString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
     hour: '2-digit',
@@ -186,7 +186,7 @@ const GameRow: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onClick })
       <div className="pr-2 min-w-0">
         {g.angle && angle && (
           <>
-            <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-2">Matchup</div>
+            <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-2">Confronto</div>
             <div className="text-[12px] mt-1 text-ink">
               <span className="font-semibold">{g.angle.teamAbbr}</span> {g.angle.metricLabel} · #{g.angle.rank}
               <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold tabular ${angle.cls}`}>

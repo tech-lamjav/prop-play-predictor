@@ -7,6 +7,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { createClient } from '@/integrations/supabase/client';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { BETINHO_DASH_TOUR_ID, makeBetinhoDashboardSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoBets } from '@/components/onboarding/demo/betinho';
 import { ProfitByTagChart } from '@/components/bets/ProfitByTagChart';
 import { Sparkline } from '@/components/dashboard/Sparkline';
 import { BigHeatmap, type HeatmapMetric } from '@/components/dashboard/BigHeatmap';
@@ -72,7 +77,7 @@ const PERIOD_OPTIONS: { value: DateRangePreset; label: string }[] = [
 
 export default function BettingDashboard() {
   const { user, isLoading: authLoading } = useAuth();
-  const { bets, isLoading: betsLoading } = useBets(user?.id ?? '');
+  const { bets: realBets, isLoading: betsLoading } = useBets(user?.id ?? '');
   const { toUnits, formatUnits, formatCurrency, isConfigured, refetchConfig, config } = useUserUnit();
   const { isPremium } = useBetinhoPremium();
   const navigate = useNavigate();
@@ -84,7 +89,7 @@ export default function BettingDashboard() {
   const [toPopoverOpen, setToPopoverOpen] = useState(false);
   const [showUnitsView, setShowUnitsView] = useState(false);
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
-  const [betsWithTags, setBetsWithTags] = useState<BetWithTags[]>([]);
+  const [realBetsWithTags, setRealBetsWithTags] = useState<BetWithTags[]>([]);
   const [heatmapMetric, setHeatmapMetric] = useState<HeatmapMetric>('roi');
   const [selectedCell, setSelectedCell] = useState<{ l: number; m: number; league: string; market: string } | null>(null);
   const [sliceModalOpen, setSliceModalOpen] = useState(false);
@@ -102,21 +107,27 @@ export default function BettingDashboard() {
       }
     : formatCurrency;
 
+  const dashTour = useOnboardingTour(BETINHO_DASH_TOUR_ID, { enabled: !!user && !betsLoading, delay: 900 });
+  const isDemo = dashTour.run; // durante o tour, preenche com exemplo
+  const bets = isDemo ? (demoBets as unknown as typeof realBets) : realBets;
+  const betsWithTags = isDemo ? (demoBets as unknown as BetWithTags[]) : realBetsWithTags;
+  const dashSteps = useMemo(() => makeBetinhoDashboardSteps({ isMobile }), [isMobile]);
+
   useEffect(() => {
-    if (!bets.length) {
-      setBetsWithTags([]);
+    if (!realBets.length) {
+      setRealBetsWithTags([]);
       return;
     }
     const supabase = createClient();
     Promise.all(
-      bets.map(async (bet) => {
+      realBets.map(async (bet) => {
         const { data: tags } = await supabase.rpc('get_bet_tags', {
           p_bet_id: bet.id,
         });
         return { ...bet, tags: (tags || []) as { id: string; name: string; color?: string }[] };
       })
-    ).then(setBetsWithTags);
-  }, [bets]);
+    ).then(setRealBetsWithTags);
+  }, [realBets]);
 
   const { from, to } = useMemo(() => {
     if (period === 'custom' && customFrom && customTo) {
@@ -285,7 +296,7 @@ export default function BettingDashboard() {
       <div className="theme-rebrand min-h-screen bg-canvas text-ink flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
-          <p className="text-[14px] text-ink-2">Por favor, faça login para ver o dashboard.</p>
+          <p className="text-[14px] text-ink-2">Por favor, faça login para ver o painel.</p>
         </div>
       </div>
     );
@@ -294,18 +305,19 @@ export default function BettingDashboard() {
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={BETINHO_DASH_TOUR_ID} steps={dashSteps} run={dashTour.run} onFinish={dashTour.finish} />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase">Diagnóstico</div>
+            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase flex items-center gap-2">Raio-x{isDemo && <DemoBadge />}</div>
             <h1 className="text-[24px] md:text-[28px] font-extrabold tracking-tight text-ink mt-1" style={{ letterSpacing: '-0.02em' }}>
               Onde você <span className="text-forest">ganha</span> e onde <span className="text-rose-700">perde</span>?
             </h1>
-            <p className="text-[13px] text-ink-2 mt-1">Veja a performance da sua banca por esporte, liga, mercado e tag.</p>
+            <p className="text-[13px] text-ink-2 mt-1">Veja o desempenho da sua banca por esporte, liga, mercado e etiqueta.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div data-tour="dash-header" className="flex flex-wrap items-center gap-2">
             {/* Tier badge — informativo, não clicável (vira link se houver página de billing) */}
             {isPremium ? (
               <span
@@ -509,6 +521,7 @@ export default function BettingDashboard() {
       </div>
 
       {/* Mobile hero KPI (substitui StatusStrip no mobile) */}
+      <div data-tour="dash-stats-m" className="md:hidden">
       <HeroKPIMobile
         profit={currentStats.profit}
         roi={currentStats.roi}
@@ -521,9 +534,10 @@ export default function BettingDashboard() {
         profitTrendPct={profitTrend.pctChange}
         roiTrendPct={roiTrend.pctChange}
       />
+      </div>
 
       {/* StatusStrip — desktop only */}
-      <div className="bg-white border-b border-line hidden md:block">
+      <div data-tour="dash-stats" className="bg-white border-b border-line hidden md:block">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-6 flex-wrap">
           {/* Banca big + delta + sparkline */}
           <div className="flex items-center gap-4 shrink-0">
@@ -589,7 +603,7 @@ export default function BettingDashboard() {
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Win rate</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Taxa de acerto</div>
               <div className="text-[15px] font-extrabold tabular text-ink mt-0.5">
                 {currentStats.winRate.toFixed(1)}%
               </div>
@@ -610,7 +624,9 @@ export default function BettingDashboard() {
           </div>
         ) : (
           <>
+            {isDemo && <DemoRibbon show />}
             {/* Tier-aware: Upsell (Free) ou Betinho Narrative + Insight cards (Pro) */}
+            <div data-tour="dash-diagnostico" className="space-y-4">
             {isPremium ? (
               <>
                 <BetinhoNarrative
@@ -644,9 +660,10 @@ export default function BettingDashboard() {
                 onSeeExample={() => setExampleModalOpen(true)}
               />
             )}
+            </div>
 
             {/* Heatmap liga × mercado + DrillDown lateral */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div data-tour="dash-heatmap" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
                 <BigHeatmap
                   data={heatmapData}
@@ -681,21 +698,23 @@ export default function BettingDashboard() {
             </div>
 
             {/* Tag pivot diverging full width */}
-            <ProfitByTagChart
-              bets={currentBetsWithTags}
-              formatValue={(v) => formatValue(v)}
-              onAnalyzeTags={(tagNames) => {
-                setTagAnalysisTags(tagNames);
-                setTagAnalysisModalOpen(true);
-              }}
-            />
+            <div data-tour="dash-tags">
+              <ProfitByTagChart
+                bets={currentBetsWithTags}
+                formatValue={(v) => formatValue(v)}
+                onAnalyzeTags={(tagNames) => {
+                  setTagAnalysisTags(tagNames);
+                  setTagAnalysisModalOpen(true);
+                }}
+              />
+            </div>
 
             {/* Odds + Tempo */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-7">
+              <div data-tour="dash-odds" className="lg:col-span-7">
                 <OddsHistogram data={oddsData} formatValue={(v) => formatValue(v)} />
               </div>
-              <div className="lg:col-span-5">
+              <div data-tour="dash-atividade" className="lg:col-span-5">
                 <CalendarHeatmap bets={bets} />
               </div>
             </div>
@@ -839,7 +858,7 @@ export default function BettingDashboard() {
                   Como sua análise vai ficar no Pro
                 </DialogTitle>
                 <DialogDescription className="text-[11px] text-white/70 mt-1">
-                  Preview gerado com seus dados reais ({focusedStats.totalBets}{' '}
+                  Prévia gerada com seus dados reais ({focusedStats.totalBets}{' '}
                   {focusedStats.totalBets === 1 ? 'aposta' : 'apostas'})
                 </DialogDescription>
               </div>
@@ -956,10 +975,10 @@ const UpsellCard: React.FC<UpsellCardProps> = ({ onUpgrade, onSeeExample }) => (
       <div className="md:col-span-5 space-y-2">
         <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-bold mb-1">Você terá:</div>
         {([
-          { Icon: BarChart3, t: 'Diagnóstico completo da banca', s: 'Onde você ganha e onde perde por liga, mercado e tag.' },
+          { Icon: BarChart3, t: 'Raio-x completo da banca', s: 'Onde você ganha e onde perde por liga, mercado e etiqueta.' },
           { Icon: AlertTriangle, t: 'Detector de vazamentos', s: 'Fatias com ROI negativo destacadas como prioridade pra revisar.' },
           { Icon: Lightbulb, t: 'Análise por fatia ou tag', s: 'Clique numa fatia do mapa e veja sequências, odd média e padrões.' },
-          { Icon: Shield, t: 'Insights de disciplina', s: 'Alertas sobre variância de stake e faixa de odd fora da zona estável.' },
+          { Icon: Shield, t: 'Alertas de disciplina', s: 'Alertas sobre quando você aposta valores muito diferentes e faixa de odd fora da zona estável.' },
         ] as { Icon: LucideIcon; t: string; s: string }[]).map((b, i) => (
           <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-2.5 flex gap-2.5">
             <div className="w-7 h-7 rounded-md bg-amber-400/15 grid place-items-center shrink-0">

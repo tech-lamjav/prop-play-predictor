@@ -9,16 +9,18 @@
 **Não mergear/deployar esta branch pra PRODUÇÃO antes de plugar o checkout do `/planos`** — senão todo o funil de upgrade do app (que já aponta pra `/planos`) fica sem checkout. Em `develop`/staging, tudo bem.
 
 ## Modelo (decidido)
-3 níveis por **amplitude** — não por esporte:
+4 níveis por **amplitude** — não por esporte:
 
-| | Grátis | Essencial | Completo |
-|---|---|---|---|
-| Futebol | trial 7d | completo | completo |
-| NBA | 2 picks/dia (baseline) | 2 picks/dia (baseline) | completo (prop bets + Análise 360) |
-| Betinho | 3 apostas/dia | ilimitado | ilimitado |
+| | Grátis | Entrada | Essencial | Completo |
+|---|---|---|---|---|
+| Futebol | trial 7d | **não inclui** | completo | completo |
+| NBA | 2 picks/dia (baseline) | 2 picks/dia (baseline) | 2 picks/dia (baseline) | completo (prop bets + Análise 360) |
+| Betinho | 3 apostas/dia | ilimitado | ilimitado | ilimitado |
 
 - **Betinho incluído em todo plano pago.** **NBA só no Completo**, sem avulso. **Bolão fora** (produto de evento, segue `boloes.is_premium` one-time).
-- Preços (placeholders no código, confirmar): Essencial mensal ~~R$49,90~~ **R$39,90** · anual **R$31,90/mês** (R$383/ano, −20%). Completo mensal ~~R$109,90~~ **R$89,90** · anual **R$71,90/mês** (R$863/ano, −20%).
+- **Entrada = Betinho puro**, sem produto de análise. Atenção: ele **mantém o baseline de conta criada** (os 2 picks/dia da NBA), senão o cliente *perde* acesso ao assinar. A página diz isso numa nota embaixo da tabela.
+- Preços (placeholders no código, confirmar): Entrada mensal **R$14,90** · anual **R$11,90/mês** (R$143/ano, −20%) — **fora da promo de lançamento**, sem de/por. Essencial mensal ~~R$49,90~~ **R$39,90** · anual **R$31,90/mês** (R$383/ano, −20%). Completo mensal ~~R$109,90~~ **R$89,90** · anual **R$71,90/mês** (R$863/ano, −20%).
+- **A confirmar:** o front promete "7 dias grátis" pra **todo** plano pago, incluindo o Entrada (lá o trial é o Betinho ilimitado, já que não tem análise). Se o Entrada for sem trial, mudar a nota abaixo dos cards e o FAQ.
 
 ## Estado atual da liberação (o que existe hoje)
 Espalhado em 4 mecanismos:
@@ -32,13 +34,13 @@ Lido por ~6 hooks (`use-betinho-premium`, `use-subscription`, `use-report-access
 ## O que fazer
 
 ### 1. Entitlements unificado
-- Coluna `users.plano` `('free' | 'essencial' | 'completo')`.
-- RPC `get_entitlements(user_id)` → `{ futebol, nba, betinho }` derivado do plano (essencial: futebol full + betinho full + nba baseline; completo: tudo).
+- Coluna `users.plano` `('free' | 'entrada' | 'essencial' | 'completo')`.
+- RPC `get_entitlements(user_id)` → `{ futebol, nba, betinho }` derivado do plano (entrada: betinho full + futebol none + nba baseline; essencial: futebol full + betinho full + nba baseline; completo: tudo).
 - **Não precisa** de coluna `esporte_escolhido` — derrubamos o "escolha o esporte", o plano já determina tudo.
 - Um hook `useEntitlements()` no lugar dos ~6 atuais.
 
 ### 2. Stripe
-- Price IDs por tier×ciclo (env): `essencial_mensal`, `essencial_anual`, `completo_mensal`, `completo_anual`.
+- Price IDs por tier×ciclo (env): `entrada_mensal`, `entrada_anual`, `essencial_mensal`, `essencial_anual`, `completo_mensal`, `completo_anual`.
 - Trocar `startCheckout()` (placeholder em `Planos.tsx`) por `createCheckoutSession(priceId, plano)` — logado vai direto pro gateway; deslogado passa por `/auth` e volta pro checkout.
 - `stripe-webhook/index.ts`: gravar `users.plano` (em vez de `*_subscription_status`).
 - `stripe-create-checkout/index.ts`: hoje detecta produto por `referer.includes('/paywall-platform')` e monta cancel URL `/paywall*` → atualizar pra `/planos`.
@@ -46,6 +48,7 @@ Lido por ~6 hooks (`use-betinho-premium`, `use-subscription`, `use-report-access
 
 ### 3. Migração / grandfather
 - Poucos assinantes → **subir todos os premium atuais** (betinho e/ou analytics) pra `plano='completo'`. Bolão fica separado.
+- O `entrada` **não é destino de migração**: quem já é assinante Betinho sobe pro `completo` (grandfather). O `entrada` é só pra venda nova.
 
 ### 4. Fix do bug do `PremiumRoute`
 - `src/components/PremiumRoute.tsx` gateia `/analise-360` (que é **NBA**) checando `betinho_subscription_status`. Trocar pelo entitlement de NBA. Hoje: assinante Betinho pega análise NBA de graça; assinante NBA-only pode ser bloqueado.

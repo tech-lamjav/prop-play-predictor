@@ -33,7 +33,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
         </div>
         <div className="text-[13px] font-bold text-ink">Selecione uma fatia</div>
         <p className="text-[12px] text-ink-2 mt-1 max-w-[220px]">
-          Clique numa célula do mapa pra ver as apostas, padrão temporal e estatísticas dessa fatia.
+          Clique numa célula do mapa pra ver as apostas, quando você aposta e estatísticas dessa fatia.
         </p>
       </div>
     );

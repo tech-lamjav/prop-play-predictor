@@ -6,6 +6,11 @@ import {
   AlertTriangle, ArrowRight, Calendar as CalendarIcon, Loader2,
 } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { NBA_GAME_TOUR_ID, nbaGameSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaGames, demoNbaOpportunities, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -343,26 +348,26 @@ function HeroCard({
       <div className="hidden md:flex border-t border-line mt-5 pt-3 items-center justify-between gap-3">
         <div className="flex items-center gap-4 md:gap-6">
           <div>
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">OFF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Ataque</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(homeTeam?.team_offensive_rating_rank)}</div>
           </div>
           <div>
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">DEF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Defesa</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(homeTeam?.team_defensive_rating_rank)}</div>
           </div>
         </div>
 
         <div className="text-[9px] uppercase tracking-[0.18em] text-ink-2/60 font-semibold text-center hidden sm:block">
-          Ratings da temporada
+          Números da temporada
         </div>
 
         <div className="flex items-center gap-4 md:gap-6">
           <div className="text-right">
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">OFF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Ataque</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(visitorTeam?.team_offensive_rating_rank)}</div>
           </div>
           <div className="text-right">
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">DEF RTG</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Defesa</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(visitorTeam?.team_defensive_rating_rank)}</div>
           </div>
         </div>
@@ -452,7 +457,7 @@ function MatchupAngleCard({
     <div className="bg-white border border-line rounded-xl px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Ângulo do confronto</span>
-        <span className="text-[10px] text-ink-2">rank do adversário na liga · #1 = melhor defesa</span>
+        <span className="text-[10px] text-ink-2">posição do adversário na liga · #1 = melhor defesa</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 md:divide-x divide-line">
         {homeAttacks && <div className="md:pr-6">{renderColumn(homeAbbr, homeAttacks, visitorAbbr)}</div>}
@@ -842,7 +847,7 @@ function BoxScoreTable({
   return (
     <div className="bg-white border border-line rounded-xl overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-line">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Box Score · {filtered.length}</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Estatísticas do jogo · {filtered.length}</span>
         <div className="inline-flex items-center bg-canvas-2 rounded-md p-0.5">
           {([['all','Ambos'],['home',homeAbbr],['visitor',visitorAbbr]] as const).map(([k, label]) => (
             <button
@@ -989,11 +994,11 @@ function GameOpportunitiesTable({
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold border-b border-line">
             <th className="text-left px-4 py-2 font-semibold">Jogador</th>
-            <th className="text-left px-2 py-2 font-semibold">Stat</th>
+            <th className="text-left px-2 py-2 font-semibold">Estatística</th>
             <th className="text-right px-2 py-2 font-semibold tabular-nums">Com</th>
             <th className="text-right px-2 py-2 font-semibold tabular-nums">Sem</th>
             <th className="text-right px-2 py-2 font-semibold tabular-nums">Linha</th>
-            <th className="text-right px-2 py-2 font-semibold tabular-nums">Gap</th>
+            <th className="text-right px-2 py-2 font-semibold tabular-nums">Diferença</th>
             <th className="text-right px-4 py-2 font-semibold">Score</th>
           </tr>
         </thead>
@@ -1052,7 +1057,7 @@ export default function GameDetail() {
   const posthog = usePostHog();
 
   const initCache = gameId ? gameDetailCache.get(gameId) : undefined;
-  const [game, setGame] = useState<Game | null>(initCache?.game ?? null);
+  const [realGame, setGame] = useState<Game | null>(initCache?.game ?? null);
   const [homePlayers, setHomePlayers] = useState<TeamPlayer[]>(initCache?.homePlayers ?? []);
   const [visitorPlayers, setVisitorPlayers] = useState<TeamPlayer[]>(initCache?.visitorPlayers ?? []);
   const [homeTeam, setHomeTeam] = useState<Team | null>(initCache?.homeTeam ?? null);
@@ -1064,6 +1069,13 @@ export default function GameDetail() {
   const [b2bLoaded, setB2bLoaded] = useState(!!initCache?.b2bData);
   const hasLoaded = useRef(false);
 
+  const gameTour = useOnboardingTour(NBA_GAME_TOUR_ID, { enabled: !isLoadingGame });
+  // Fora do tour: NBA de férias e jogo real inexistente (veio de um card de
+  // exemplo do hub) → mostra o jogo de exemplo em vez de "não encontrado".
+  const offSeason = isNbaOffSeason() && !isLoadingGame && !realGame;
+  const isDemo = gameTour.run || offSeason;
+  const game = isDemo ? demoNbaGames[0] : realGame;
+
   const finished = game?.winner_team_id != null;
   const isB2B = !!(game?.home_team_is_b2b_game || game?.visitor_team_is_b2b_game);
 
@@ -1071,7 +1083,7 @@ export default function GameDetail() {
 
   // Quando game muda (depois do carregamento), seta tab inicial certa
   useEffect(() => {
-    if (game) setActiveTab(finished ? 'boxscore' : 'lineups');
+    if (game) setActiveTab(isDemo ? 'bets' : finished ? 'boxscore' : 'lineups');
   }, [game?.game_id, finished]);
 
   // Analytics: visualização do detalhe de jogo NBA (Marco 3 — retenção por superfície, N3).
@@ -1132,9 +1144,9 @@ export default function GameDetail() {
   const analise360 = useAnalise360Data();
   const gameOpps = useMemo(() => {
     if (!game) return [] as DailyOpportunity[];
-    const allOpps = analise360.data?.opportunities ?? [];
+    const allOpps = isDemo ? demoNbaOpportunities : (analise360.data?.opportunities ?? []);
     return allOpps.filter(o => o.game_id === game.game_id);
-  }, [game?.game_id, analise360.data]);
+  }, [game?.game_id, analise360.data, isDemo]);
 
   if (authLoading) {
     return (
@@ -1143,7 +1155,9 @@ export default function GameDetail() {
       </div>
     );
   }
-  if (!user) {
+  // Off-season: libera o detalhe do jogo (modo exemplo) mesmo deslogado, pra
+  // a vitrine da NBA ficar coerente com o hub aberto.
+  if (!user && !isNbaOffSeason()) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -1176,6 +1190,12 @@ export default function GameDetail() {
         found = games.find(g => g.game_id === parseInt(gameId));
       }
       if (!found) {
+        // Fora de temporada o id costuma vir de um card de exemplo do hub;
+        // não é erro. Deixa a tela renderizar o jogo de exemplo (isDemo).
+        if (isNbaOffSeason()) {
+          setIsLoadingGame(false);
+          return;
+        }
         toast({ title: 'Jogo não encontrado', variant: 'destructive' });
         navigate('/home-games');
         return;
@@ -1257,6 +1277,7 @@ export default function GameDetail() {
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-games" />
+        <OnboardingTour tourId={NBA_GAME_TOUR_ID} steps={nbaGameSteps} run={gameTour.run} onFinish={gameTour.finish} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
           {isLoadingGame || !game ? (
@@ -1267,8 +1288,12 @@ export default function GameDetail() {
             </div>
           ) : (
             <>
+              {isDemo && <DemoRibbon show variant={gameTour.run ? 'tour' : 'offseason'} />}
               {/* Hero */}
-              <HeroCard game={game} homeTeam={homeTeam} visitorTeam={visitorTeam} />
+              <div data-tour="nba-game-hero">
+                {isDemo && <div className="mb-2"><DemoBadge /></div>}
+                <HeroCard game={game} homeTeam={homeTeam} visitorTeam={visitorTeam} />
+              </div>
 
               {/* Ângulo do confronto */}
               <MatchupAngleCard
@@ -1290,13 +1315,13 @@ export default function GameDetail() {
               )}
 
               {/* Tabs */}
-              <div>
+              <div data-tour="nba-game-abas">
                 <div className="border-b border-line flex items-center gap-0.5 md:gap-1">
                   {finished ? (
                     <TabButton
                       active={activeTab === 'boxscore'}
                       onClick={() => setActiveTab('boxscore')}
-                      label="Box Score"
+                      label="Estatísticas do jogo"
                       count={boxScore.length || undefined}
                     />
                   ) : (
@@ -1304,7 +1329,7 @@ export default function GameDetail() {
                       <TabButton
                         active={activeTab === 'lineups'}
                         onClick={() => setActiveTab('lineups')}
-                        label="Escalações & Injury"
+                        label="Escalações e lesões"
                         count={homePlayers.length + visitorPlayers.length}
                       />
                       <TabButton

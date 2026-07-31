@@ -50,8 +50,8 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
   if (allEntries.length === 0) {
     return (
       <div className="bg-white border border-line rounded-xl p-5">
-        <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Pivot dinâmico</div>
-        <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Performance pelas tags que você criou</h2>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Resultado por etiqueta</div>
+        <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Resultado pelas etiquetas que você criou</h2>
         <p className="text-[13px] text-ink-2 py-8 text-center">Nenhuma aposta com tag no período</p>
       </div>
     );
@@ -63,12 +63,12 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
     <div className="bg-white border border-line rounded-xl p-5">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-1">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Pivot dinâmico</div>
-          <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Performance pelas tags que você criou</h2>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Resultado por etiqueta</div>
+          <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Resultado pelas etiquetas que você criou</h2>
           <p className="text-[12px] text-ink-2 mt-0.5">
             {hasSelection
-              ? `${selectedTagNames.length} ${selectedTagNames.length === 1 ? 'tag selecionada' : 'tags selecionadas'} (máx 8)`
-              : `Top ${Math.min(MAX_DEFAULT, allEntries.length)} por valor absoluto. Selecione tags pra comparar.`}
+              ? `${selectedTagNames.length} ${selectedTagNames.length === 1 ? 'etiqueta selecionada' : 'etiquetas selecionadas'} (máx 8)`
+              : `Os ${Math.min(MAX_DEFAULT, allEntries.length)} que mais pesaram. Selecione etiquetas pra comparar.`}
           </p>
         </div>
         {hasSelection && onAnalyzeTags && (
@@ -81,7 +81,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
             Analisar{' '}
             {selectedTagNames.length === 1
               ? selectedTagNames[0]
-              : `${selectedTagNames.length} tags`}
+              : `${selectedTagNames.length} etiquetas`}
           </button>
         )}
       </div>
@@ -128,7 +128,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
       {displayEntries.length > 0 && (
         <div className="flex items-center justify-end gap-3 text-[10px] text-ink-2 mb-2 -mt-1">
           <span className="inline-flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-ink-3 border border-line" /> identidade da tag
+            <span className="w-2 h-2 rounded-full bg-ink-3 border border-line" /> identidade da etiqueta
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="w-2.5 h-1.5 rounded-sm bg-forest" /> lucro
@@ -141,7 +141,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
 
       {/* Bars */}
       {displayEntries.length === 0 ? (
-        <p className="text-[12px] text-ink-2 py-4 text-center">Nenhum dado para as tags selecionadas</p>
+        <p className="text-[12px] text-ink-2 py-4 text-center">Nenhum dado para as etiquetas selecionadas</p>
       ) : (
         <>
           {/* Desktop: diverging bars (centered on zero) */}

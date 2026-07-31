@@ -14,6 +14,11 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUTEBOL_TOUR_ID, makeFutebolSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoFutebolBoard, demoFutebolFixtures } from '@/components/onboarding/demo/futebol';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
@@ -239,8 +244,10 @@ export default function FutebolHoje() {
   const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: valueRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: access } = useFutebolAccess();
-  const locked = !access?.unlocked;
   const loading = lFix || l3;
+  const futebolTour = useOnboardingTour(FUTEBOL_TOUR_ID, { enabled: !loading });
+  const isDemo = futebolTour.run; // durante o tour, preenche a tela com exemplo
+  const locked = isDemo ? false : !access?.unlocked;
 
   const todayStr = brtDateStr(new Date());
   const [day, setDay] = useState<string | null>(null);
@@ -277,9 +284,10 @@ export default function FutebolHoje() {
   const board = useMemo(() => groupBoardByFixture(dayRows), [dayRows]);
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
+    if (isDemo) { demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r)); return m; }
     board.forEach((bf) => m.set(bf.fixtureId, bf.best));
     return m;
-  }, [board]);
+  }, [board, isDemo]);
 
   // agenda do dia selecionado (inclui já iniciados, pra contexto da grade)
   const dayGames = useMemo(() => {
@@ -291,7 +299,8 @@ export default function FutebolHoje() {
       .sort((a, b) => (parseUtc(a.kickoff_utc)?.getTime() ?? 0) - (parseUtc(b.kickoff_utc)?.getTime() ?? 0));
   }, [allGames, selectedDay]);
 
-  const oppsByFixture = useMemo(() => board.map((bf) => bf.best), [board]);
+  const realOppsByFixture = useMemo(() => board.map((bf) => bf.best), [board]);
+  const oppsByFixture = isDemo ? demoFutebolBoard : realOppsByFixture;
   const heroOpp = oppsByFixture[0] && oppsByFixture[0].score >= SCORE_MEDIA ? oppsByFixture[0] : null;
   // "Ponto de atenção" do hero: vem do detalhe (contras/avisos) do jogo em destaque
   const { data: heroRows } = useFutebolFixtureValue(heroOpp?.fixture_id);
@@ -302,8 +311,8 @@ export default function FutebolHoje() {
     return list[0] ?? null;
   }, [heroOpp, heroRows]);
   const moreOpps = (heroOpp ? oppsByFixture.slice(1) : oppsByFixture).filter((o) => o.score >= SCORE_MEDIA).slice(0, 4);
-  const nOpps = dayRows.length;
-  const gameList = dayGames;
+  const nOpps = isDemo ? demoFutebolBoard.length : dayRows.length;
+  const gameList = isDemo ? demoFutebolFixtures : dayGames;
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
   // melhor valor entre as oportunidades realmente exibidas (score ≥ Média), não o edge bruto de longshots
   const surfaced = oppsByFixture.filter((o) => o.score >= SCORE_MEDIA);
@@ -316,30 +325,37 @@ export default function FutebolHoje() {
     return m;
   }, [allGames]);
 
+  const futebolSteps = useMemo(
+    () => makeFutebolSteps({ hasDayBar: !loading && days.length > 0 }),
+    [loading, days.length],
+  );
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <Seo route="/futebol" />
       {/* backTo fixo no hub: /futebol é uma home de produto, então "voltar"
           significa trocar de produto, não desfazer o último passo. */}
       <AnalyticsNav variant="rebrand" showBack backTo="/inicio" />
+      <OnboardingTour tourId={FUTEBOL_TOUR_ID} steps={futebolSteps} run={futebolTour.run} onFinish={futebolTour.finish} />
       {!loading && days.length > 0 && (
-        <div className="bg-white border-b border-line">
+        <div data-tour="futebol-datas" className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
             <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
           </div>
         </div>
       )}
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 md:py-7 flex flex-col gap-6 md:gap-7 flex-1">
+        <DemoRibbon show={isDemo} />
 
         {/* Briefing */}
         <div className="grid md:grid-cols-12 gap-5">
           <div className="md:col-span-5">
-            <div className={LABEL}>{isToday ? 'Hoje no futebol' : 'No futebol'}</div>
-            <h1 className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
+            <div className={`${LABEL} flex items-center gap-2`}>{isToday ? 'Hoje no futebol' : 'No futebol'}{isDemo && <DemoBadge />}</div>
+            <h1 data-tour="futebol-hero" className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
             <p className="text-sm mt-2.5 text-ink-2">
-              {dayGames.length > 0 ? (
+              {gameList.length > 0 ? (
                 <>
-                  <span className="font-semibold text-ink">{dayGames.length} jogo{dayGames.length === 1 ? '' : 's'}</span>
+                  <span className="font-semibold text-ink">{gameList.length} jogo{gameList.length === 1 ? '' : 's'}</span>
                   {nOpps > 0 && <> · {nOpps} oportunidade{nOpps === 1 ? '' : 's'} de valor</>}
                   {alta > 0 && <> · <span className="font-semibold text-forest">{alta} de faixa Alta</span></>}
                 </>
@@ -350,9 +366,9 @@ export default function FutebolHoje() {
               <span>Odds revisadas de hora em hora</span>
             </div>
           </div>
-          <div className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Kpi label="Jogos hoje" value={loading ? '—' : dayGames.length} sub={isToday ? 'na agenda' : 'no dia'} />
-            <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="com valor (+EV)" tone="green" />
+          <div data-tour="futebol-resumo" className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Kpi label="Jogos hoje" value={loading ? '—' : gameList.length} sub={isToday ? 'na agenda' : 'no dia'} />
+            <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="com valor" tone="green" />
             <Kpi label="Faixa Alta" value={loading ? '—' : alta} sub="maior confiança" anchor />
             <Kpi label="Melhor valor" value={loading || melhorValor == null ? '—' : `+${melhorValor}%`} sub="destaque do dia" tone="green" />
           </div>
@@ -380,7 +396,7 @@ export default function FutebolHoje() {
             encolher abaixo do próprio conteúdo — abaixo de 375px isso empurrava
             a página inteira e criava rolagem lateral. */}
         <div className="grid md:grid-cols-12 gap-6">
-          <div className="md:col-span-8 min-w-0">
+          <div data-tour="futebol-oportunidades" className="md:col-span-8 min-w-0">
             <div className="flex items-end justify-between mb-3">
               <div>
                 <div className={LABEL}>Mais oportunidades</div>
@@ -401,7 +417,7 @@ export default function FutebolHoje() {
             )}
           </div>
 
-          <div className="md:col-span-4 min-w-0">
+          <div data-tour="futebol-jogos" className="md:col-span-4 min-w-0">
             <div className="flex items-end justify-between mb-3">
               <div>
                 <div className={LABEL}>{isToday ? 'Jogos de hoje' : 'Jogos do dia'}</div>
@@ -426,7 +442,7 @@ export default function FutebolHoje() {
         </div>
 
         {/* Banner honesto */}
-        <div className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
+        <div data-tour="futebol-metodologia" className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
             <span className="font-semibold">Não é recomendação.</span> Mostramos onde a odd paga acima da chance estimada (valor). Score e faixa medem confiabilidade, não garantia.

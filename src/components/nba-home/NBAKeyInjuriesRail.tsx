@@ -125,7 +125,7 @@ export const NBAKeyInjuriesRail: React.FC<NBAKeyInjuriesRailProps> = ({
         <div>
           <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-ink-2">Lesões chave</div>
           <div className="text-[14px] font-semibold tracking-tight mt-0.5 text-ink">
-            {totalCount} {totalCount === 1 ? 'jogador' : 'jogadores'} no injury report
+            {totalCount} {totalCount === 1 ? 'jogador' : 'jogadores'} na lista de lesões
           </div>
         </div>
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-widest bg-amber-400 text-ink">
@@ -157,7 +157,7 @@ export const NBAKeyInjuriesRail: React.FC<NBAKeyInjuriesRailProps> = ({
             className="h-9 rounded-md text-[12px] font-semibold inline-flex items-center justify-center gap-2 bg-white border border-line text-ink-2 hover:text-ink hover:border-forest/30 transition-colors w-full"
           >
             <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Ver Injury Report completo</span>
+            <span>Ver lista completa de lesões</span>
           </button>
         )}
       </div>
