@@ -111,6 +111,9 @@ interface BoardRow {
   best_odd: number;
   score: number;
   faixa: string;
+  janela_usada: string | null;
+  edge: number | null;
+  prob_justa_fechamento: number | null;
   evidencias: string[] | null;
 }
 
@@ -225,8 +228,17 @@ serve(async (req) => {
       });
     }
 
-    // 5) persiste os picks do dia (referência dos botões "Registrar no Betinho")
+    // 5) persiste os picks do dia (referência dos botões "Registrar no Betinho"
+    // e do histórico "enviado no Telegram" da tela de Oportunidades)
     // — uma vez, compartilhado entre todos; upsert idempotente por (dia,jogo,aposta)
+    //
+    // O pick vai TAMBÉM estruturado, com os números deste instante (ver migration
+    // 091): o mart é full-refresh e re-escolhe a janela de odds, então em algumas
+    // horas este pick pode não existir mais lá — e chance/valor/Score da janela da
+    // manhã são DESTRUÍDOS quando a de fechamento entra (conferido: a devig só
+    // guarda t24h enquanto o jogo é futuro). Se não gravar aqui, morre: o histórico
+    // passa a mostrar o pick de fechamento em vez do que a pessoa recebeu, e não há
+    // como liquidar green/red (não se liquida "Palmeiras −0,25" em texto).
     const pickRows = picks.map((p) => ({
       fixture_id: p.fixture_id,
       sport: "Futebol",
@@ -236,6 +248,14 @@ serve(async (req) => {
       bet_description: pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name),
       odds: p.best_odd,
       match_date: kickoffDate(p.kickoff_utc).toISOString(),
+      market: p.market,
+      outcome: p.outcome,
+      line_value: p.line_value,
+      janela_usada: p.janela_usada,
+      score: p.score,
+      faixa: p.faixa,
+      edge: p.edge,
+      prob_justa_fechamento: p.prob_justa_fechamento,
     }));
     const { data: savedPicks, error: pErr } = await supabase
       .from("daily_opportunity_picks")

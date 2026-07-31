@@ -4,7 +4,7 @@ import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFutebolValueBoard, useFutebolAccess, useFutebolFixturesMulti } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
@@ -16,7 +16,7 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
-import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
@@ -25,6 +25,64 @@ import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
+
+/**
+ * Linha da lista. O board (mart) sempre traz Score, faixa, chance e valor; uma
+ * oportunidade REGISTRADA (que existiu no dia e o board não tem mais, porque o
+ * mart é full-refresh e re-escolhe a janela de odds) pode não ter esses números
+ * do instante em que era oportunidade — nas enviadas antes da migration 091 não
+ * foram guardados. Ela continua sendo oportunidade do dia; só esses campos ficam
+ * vazios. FutebolValueBoardRow é atribuível a isto (number → number | null).
+ */
+type OppLike = Omit<FutebolValueBoardRow, 'score' | 'faixa' | 'edge' | 'prob_justa_fechamento'> & {
+  score: number | null;
+  faixa: string | null;
+  edge: number | null;
+  prob_justa_fechamento: number | null;
+};
+
+/** Chave de uma oportunidade — casa board com registro do que foi enviado. */
+const oppKey = (fixtureId: number, market: string | null, outcome: string | null, line: number | null) =>
+  `${fixtureId}|${market ?? ''}|${outcome ?? ''}|${line ?? ''}`;
+
+/**
+ * Monta a linha de uma oportunidade registrada (enviada no daily) com os valores
+ * do momento do envio. Sem fixture casado, cai pro "Casa × Fora" do registro:
+ * é melhor manter a oportunidade na lista sem escudo do que perder o registro.
+ */
+function oppFromAlerted(a: FutebolAlertedPick, fx?: FutebolFixture): OppLike {
+  const [rawHome, rawAway] = a.match_description.split('×');
+  return {
+    fixture_id: a.fixture_id,
+    home_team_id: fx?.home_team_id ?? 0,
+    away_team_id: fx?.away_team_id ?? 0,
+    home_team_name: fx?.home_team_name ?? (rawHome?.trim() || 'Casa'),
+    away_team_name: fx?.away_team_name ?? (rawAway?.trim() || 'Fora'),
+    competition: a.league ?? '',
+    kickoff_utc: fx?.kickoff_utc ?? null,
+    status_short: fx?.status_short ?? null,
+    market: a.market!,
+    outcome: a.outcome!,
+    line_value: a.line_value,
+    best_odd: Number(a.odds),
+    best_book: '',
+    avg_odd: Number(a.odds),
+    n_casas: 0,
+    janela_usada: a.janela_usada ?? '',
+    pts_valor: 0,
+    pts_premissas: 0,
+    pts_corroboracao: 0,
+    penalidades: 0,
+    evidencias: [],
+    // Números do instante em que era oportunidade. Null nas enviadas antes da
+    // migration 091 (o pipeline sobrescreve a janela e destrói chance/valor/Score
+    // da manhã); daí em diante vêm preenchidos e a linha fica igual à do board.
+    score: a.score,
+    faixa: a.faixa,
+    edge: a.edge,
+    prob_justa_fechamento: a.prob_justa_fechamento,
+  };
+}
 
 function kickoffMs(raw: string | null): number | null {
   if (!raw) return null;
@@ -147,17 +205,20 @@ function FilterSelect({ label, value, options, onChange }: {
 
 // Linha da tabela (desktop)
 function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
-  o: FutebolValueBoardRow; onClick: () => void; muted?: boolean; locked?: boolean;
+  o: OppLike; onClick: () => void; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   const hasScore = homeGoals != null && awayGoals != null;
+  // Sem os números do instante em que era oportunidade, mostra "—" em vez de
+  // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
+  const badgeCls = o.faixa != null ? faixaBadgeCls(o.faixa) : 'bg-canvas-2 text-ink-3 border border-line';
   return (
     <button onClick={onClick} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
-      <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[16px] w-10 h-9 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
-      <span className={`px-1.5 h-5 w-fit inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+      <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[16px] w-10 h-9 ${badgeCls}`}>{o.score ?? '—'}</span>
+      <span className={`px-1.5 h-5 w-fit inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${badgeCls}`}>{o.faixa != null ? faixaWord(o.faixa) : '—'}</span>
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="flex items-center gap-1 shrink-0">
           <Crest teamId={o.home_team_id} name={o.home_team_name} size={20} />
@@ -181,7 +242,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
       </div>
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{chance != null ? `${chance}%` : '—'}</Blur></div>
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{o.best_odd.toFixed(2)}</Blur></div>
-      <div className="text-right tabular-nums text-[14px] font-bold text-forest"><Blur active={showLock}>{fmtEdgeScore(o.edge)}</Blur></div>
+      <div className="text-right tabular-nums text-[14px] font-bold text-forest"><Blur active={showLock}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</Blur></div>
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
     </button>
   );
@@ -189,7 +250,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
 
 // Card (mobile)
 function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
-  o: FutebolValueBoardRow; onClick: () => void; locked?: boolean;
+  o: OppLike; onClick: () => void; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
@@ -206,7 +267,9 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
-            <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+            {o.faixa != null && (
+              <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+            )}
             {result && <ResultBadge r={result} />}
           </div>
           <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink"><Blur active={showLock}>{pick}</Blur></div>
@@ -218,11 +281,11 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
         </div>
         <div className="text-right shrink-0">
           <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
-          <div className="text-[22px] font-bold tabular-nums tracking-tight leading-none text-forest">{o.score}</div>
+          <div className="text-[22px] font-bold tabular-nums tracking-tight leading-none text-forest">{o.score ?? '—'}</div>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-1 mt-3 pt-2.5 border-t border-line">
-        {[['Chance', chance != null ? `${chance}%` : '—'], ['Odd', o.best_odd.toFixed(2)], ['Valor', fmtEdgeScore(o.edge)]].map(([l, v], i) => (
+        {[['Chance', chance != null ? `${chance}%` : '—'], ['Odd', o.best_odd.toFixed(2)], ['Valor', o.edge != null ? fmtEdgeScore(o.edge) : '—']].map(([l, v], i) => (
           <div key={l}>
             <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{l}</div>
             <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${i === 2 ? 'text-forest' : 'text-ink'}`}><Blur active={showLock}>{v}</Blur></div>
@@ -287,12 +350,34 @@ export default function FutebolOportunidades() {
     (fixtures ?? []).forEach((f) => m.set(f.fixture_id, { gh: f.goals_home, ga: f.goals_away }));
     return m;
   }, [fixtures]);
+  // Fixture completo (escudo, nome, status) pra montar a linha de uma
+  // oportunidade registrada que o board não tem mais.
+  const fixtureMap = useMemo(() => {
+    const m = new Map<number, FutebolFixture>();
+    (fixtures ?? []).forEach((f) => m.set(f.fixture_id, f));
+    return m;
+  }, [fixtures]);
 
-  const resultOf = (o: FutebolValueBoardRow): BetResult | null => {
+  const resultOf = (o: OppLike): BetResult | null => {
     if (!FINISHED_STATUS.has(o.status_short ?? '')) return null;
     const g = goalsMap.get(o.fixture_id);
     return g ? settleFutebol(o.market, o.outcome, o.line_value, g.gh, g.ga) : null;
   };
+
+  // ── Oportunidades REGISTRADAS ─────────────────────────────────────────────
+  // O mart é full-refresh e escolhe UMA janela de odds por jogo (t24h de manhã →
+  // t15m no fechamento), então uma oportunidade que existiu durante o dia pode
+  // não estar mais lá — foi o caso do "Palmeiras −0,25" de 22/07, que saiu no
+  // daily e deu green. Ela FOI oportunidade de fato, então o registro entra na
+  // lista do dia como qualquer outra, com os valores do momento em que era.
+  // Fonte: daily_opportunity_picks via get_futebol_alerted_picks (migration 091).
+  const { data: alertedRaw } = useFutebolAlertedPicks();
+  // Sem market/outcome não há como casar com o board nem liquidar (linhas
+  // anteriores ao 091 podem vir sem).
+  const registradasAll = useMemo(
+    () => (alertedRaw ?? []).filter((a) => !!a.market && !!a.outcome),
+    [alertedRaw]
+  );
 
   // Dias no stepper: dias COM oportunidade (board = passado + presente) + dias
   // FUTUROS com jogos agendados (fixtures, janela curta) — pra navegar pra frente
@@ -300,6 +385,9 @@ export default function FutebolOportunidades() {
   const days = useMemo(() => {
     const set = new Set<string>();
     allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
+    // Dias que tiveram oportunidade registrada: o mart larga dia antigo (o 22/07
+    // já não tem nenhuma linha lá), e sem isto o dia ficaria inalcançável.
+    registradasAll.forEach((a) => set.add(a.game_day));
     const now = Date.now();
     const horizon = now + 8 * 864e5; // ~8 dias à frente
     (fixtures ?? []).forEach((f) => {
@@ -310,7 +398,7 @@ export default function FutebolOportunidades() {
       }
     });
     return [...set].sort();
-  }, [allRows, fixtures]);
+  }, [allRows, fixtures, registradasAll]);
   // Default: hoje se houver; senão o próximo dia futuro; senão o último disponível.
   const selectedDay = (day && days.includes(day))
     ? day
@@ -321,8 +409,9 @@ export default function FutebolOportunidades() {
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
     allRows.forEach((r) => { if (brtDayStr(r.kickoff_utc) === selectedDay) s.add(r.competition); });
+    registradasAll.forEach((a) => { if (a.game_day === selectedDay && a.league) s.add(a.league); });
     return s;
-  }, [allRows, selectedDay]);
+  }, [allRows, selectedDay, registradasAll]);
 
   const faixaOptions = [{ value: 'all', label: 'Todas' }, { value: 'alta', label: 'Alta' }, { value: 'media', label: 'Média' }];
   const compOptions = [
@@ -330,25 +419,50 @@ export default function FutebolOportunidades() {
     ...sortCompetitions([...compsOnDay]).map((c) => ({ value: c, label: competitionLabel(c) })),
   ];
 
+  // Lista do dia = board + oportunidades registradas que o board não tem mais.
+  // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde
+  // veio o número, não de natureza.
+  const dayRows = useMemo<OppLike[]>(() => {
+    const board: OppLike[] = allRows.filter((r) => brtDayStr(r.kickoff_utc) === selectedDay);
+    const noBoard = new Set(board.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)));
+    const registradas = registradasAll
+      .filter((a) => a.game_day === selectedDay)
+      .filter((a) => !noBoard.has(oppKey(a.fixture_id, a.market, a.outcome, a.line_value)))
+      .map((a) => oppFromAlerted(a, fixtureMap.get(a.fixture_id)));
+    return [...board, ...registradas];
+  }, [allRows, selectedDay, registradasAll, fixtureMap]);
+
   const filtered = useMemo(
-    () => allRows.filter((r) => {
-      if (brtDayStr(r.kickoff_utc) !== selectedDay) return false;
+    () => dayRows.filter((r) => {
       if (mercado !== 'all' && r.market !== mercado) return false;
-      if (faixa !== 'all' && faixaTone(r.faixa) !== faixa) return false;
+      // Sem faixa não dá pra classificar, então o filtro de faixa a esconde.
+      if (faixa !== 'all' && (r.faixa == null || faixaTone(r.faixa) !== faixa)) return false;
       if (comp !== 'all' && r.competition !== comp) return false;
       return true;
     }),
-    [allRows, selectedDay, mercado, faixa, comp]
+    [dayRows, mercado, faixa, comp]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
-  const realBestRows = useMemo(() => [...filtered].sort((a, b) => b.score - a.score), [filtered]);
-  const bestRows = isDemo ? demoFutebolBoard : realBestRows;
-  const comValor = bestRows.filter((o) => o.score >= SCORE_MEDIA);
-  const semValor = bestRows.filter((o) => o.score < SCORE_MEDIA);
-  const nAlta = bestRows.filter((o) => faixaTone(o.faixa) === 'alta').length;
-  const nMedia = bestRows.filter((o) => faixaTone(o.faixa) === 'media').length;
-  const nBaixa = bestRows.filter((o) => faixaTone(o.faixa) === 'baixa').length;
+  // Registro sem Score vai primeiro: o daily só manda pick acima do corte e do
+  // topo do ranking, então na hora do envio ela era das melhores do dia — o
+  // número exato daquele instante é que não foi guardado.
+  const realBestRows = useMemo(
+    () => [...filtered].sort((a, b) => {
+      if (a.score == null && b.score == null) return 0;
+      if (a.score == null) return -1;
+      if (b.score == null) return 1;
+      return b.score - a.score;
+    }),
+    [filtered]
+  );
+  const bestRows: OppLike[] = isDemo ? demoFutebolBoard : realBestRows;
+  // Registro sem Score conta como com valor: foi enviado acima do corte.
+  const comValor = bestRows.filter((o) => o.score == null || o.score >= SCORE_MEDIA);
+  const semValor = bestRows.filter((o) => o.score != null && o.score < SCORE_MEDIA);
+  const nAlta = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'alta').length;
+  const nMedia = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
+  const nBaixa = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;
 
   // Contagem de oportunidades COM VALOR por dia (badge do stepper).
   const countByDay = useMemo(() => {
@@ -361,8 +475,16 @@ export default function FutebolOportunidades() {
     });
     const out: Record<string, number> = {};
     byDay.forEach((rs, d) => { out[d] = rs.filter((o) => o.score >= SCORE_MEDIA).length; });
+    // Registrada que o board não tem entra na conta, senão dia que só tem
+    // registro apareceria zerado no seletor.
+    registradasAll.forEach((a) => {
+      const naLista = (byDay.get(a.game_day) ?? []).some(
+        (r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value) === oppKey(a.fixture_id, a.market, a.outcome, a.line_value)
+      );
+      if (!naLista) out[a.game_day] = (out[a.game_day] ?? 0) + 1;
+    });
     return out;
-  }, [allRows]);
+  }, [allRows, registradasAll]);
 
   // Resumo do dia passado: quantas das "com valor" bateram.
   const resumo = useMemo(() => {
@@ -381,7 +503,7 @@ export default function FutebolOportunidades() {
   }, [isPastDay, comValor, goalsMap]);
 
   const go = (id: number) => navigate(`/futebol/jogo/${id}`);
-  const key = (o: FutebolValueBoardRow) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
+  const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
     () => makeFutebolOportunidadesSteps({ hasDayBar: !isLoading && days.length > 0, hasBoard: bestRows.length > 0 }),

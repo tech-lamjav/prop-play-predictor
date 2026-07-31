@@ -21,6 +21,7 @@ import {
   type FutebolLeaders,
   type FutebolValueBoardRow,
   type FutebolFixtureValueRow,
+  type FutebolAlertedPick,
 } from '@/services/futebol-data.service';
 
 /**
@@ -197,6 +198,21 @@ export function useFutebolValueBoard() {
   return useQuery<FutebolValueBoardRow[]>({
     queryKey: ['futebol', 'value-board'],
     queryFn: () => futebolDataService.getValueBoard(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Tudo que foi alertado no Telegram nos últimos 90 dias (poucas linhas: 1 a 3
+ * picks por dia). Buscado de uma vez porque o seletor de dias precisa saber
+ * quais dias tiveram alerta, inclusive os que o mart já não guarda. Ver 091.
+ */
+export function useFutebolAlertedPicks() {
+  return useQuery<FutebolAlertedPick[]>({
+    queryKey: ['futebol', 'alerted-picks'],
+    queryFn: () => futebolDataService.getAlertedPicks(),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,

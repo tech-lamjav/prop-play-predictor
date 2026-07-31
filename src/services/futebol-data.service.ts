@@ -366,6 +366,32 @@ export interface FutebolValueBoardRow {
   evidencias: string[];    // "por quê" (montado no backend); usar a 1ª na lista
 }
 
+// ── O que foi ALERTADO no Telegram (public.daily_opportunity_picks, ver 091) ──
+// Fonte separada do board de propósito: o mart é full-refresh e re-escolhe a
+// janela de odds, então o pick que saiu às 10h pode não estar mais lá à noite.
+// Isto é o registro do que a pessoa recebeu, não do que fechou.
+export interface FutebolAlertedPick {
+  game_day: string;           // YYYY-MM-DD (dia do jogo, BRT)
+  fixture_id: number;
+  market: string | null;      // null nas linhas antigas sem pick estruturado
+  outcome: string | null;
+  line_value: number | null;
+  bet_description: string;    // rótulo exatamente como foi enviado
+  betting_market: string | null;
+  league: string | null;      // slug da competição (mesmo do board)
+  match_description: string;  // "Coritiba × Palmeiras" (fallback de nome)
+  odds: number;               // odd do momento do envio
+  janela_usada: string | null;
+  // Números do instante do envio. Vêm null nas enviadas antes da migration 091:
+  // o pipeline sobrescreve a janela e destrói chance/valor/Score da manhã, então
+  // não há de onde recuperar — a tela mostra "—" nesses casos.
+  score: number | null;
+  faixa: string | null;
+  edge: number | null;
+  prob_justa_fechamento: number | null;
+  sent_at: string;
+}
+
 export interface FutebolFixtureValueRow {
   market: string;            // 'match_winner' | 'goals_over_under'
   outcome: string;
@@ -582,6 +608,22 @@ export const futebolDataService = {
       const { data, error } = await supabaseClient.rpc('get_futebol_value_board');
       if (error) throw error;
       return (data || []) as FutebolValueBoardRow[];
+    });
+  },
+
+  /**
+   * O que foi ALERTADO no Telegram nos últimos 90 dias (dia do jogo, BRT).
+   * Sem dia = todos, porque o front precisa saber QUAIS dias tiveram alerta pra
+   * montar o seletor de dias (o mart não guarda dia antigo). São poucas linhas.
+   * Ver migration 091.
+   */
+  async getAlertedPicks(day?: string): Promise<FutebolAlertedPick[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_alerted_picks', {
+        p_day: day ?? null,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolAlertedPick[];
     });
   },
 
