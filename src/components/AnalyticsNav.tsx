@@ -80,6 +80,18 @@ interface AnalyticsNavProps {
    * call sites que passam `variant="rebrand"` explicitamente.
    */
   variant?: 'rebrand';
+  /**
+   * Esconde a tab bar fixa do mobile, mantendo só o cabeçalho. Usado nas
+   * landing pages de tráfego pago: lá o rodapé da viewport é do CTA, e duas
+   * barras fixas brigariam pelo mesmo espaço do polegar.
+   */
+  semTabBar?: boolean;
+  /**
+   * Esconde as seções de produto do centro do cabeçalho (Análises, Betinho,
+   * Bolão). Nas landing pages elas são porta de saída: o visitante veio de
+   * anúncio pra uma oferta só, e cada link desses tira ele dela.
+   */
+  semSecoes?: boolean;
 }
 
 export default function AnalyticsNav({
@@ -87,6 +99,8 @@ export default function AnalyticsNav({
   showBack,
   backTo,
   title,
+  semTabBar,
+  semSecoes,
 }: AnalyticsNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -181,7 +195,7 @@ export default function AnalyticsNav({
           </div>
 
           {/* Centro: seções do produto */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className={`${semSecoes ? 'hidden' : 'hidden md:flex'} items-center gap-1`}>
             <button type="button" onClick={() => go(nbaActive ? '/home-nba' : '/futebol')} className={sectionCls(analisesActive)}>
               <BarChart3 className="w-[15px] h-[15px]" strokeWidth={analisesActive ? 2.2 : 2} />
               Análises
@@ -330,14 +344,16 @@ export default function AnalyticsNav({
       </nav>
 
       {/* ─────────── Tab bar mobile (fixa no rodapé da viewport) ─────────── */}
-      <MobileTabBar
-        analisesActive={analisesActive}
-        betinhoActive={betinhoActive}
-        bolaoActive={bolaoActive}
-        nbaActive={nbaActive}
-        perfilActive={path.startsWith('/perfil')}
-        onGo={go}
-      />
+      {!semTabBar && (
+        <MobileTabBar
+          analisesActive={analisesActive}
+          betinhoActive={betinhoActive}
+          bolaoActive={bolaoActive}
+          nbaActive={nbaActive}
+          perfilActive={path.startsWith('/perfil')}
+          onGo={go}
+        />
+      )}
     </>
   );
 }

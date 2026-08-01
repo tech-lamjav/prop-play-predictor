@@ -23,6 +23,15 @@
   }
 }
 
+/* Mesmo problema com a barra de CTA das landing pages: ela é fixa no rodapé da
+   viewport e cobriria o fim do rodapé global (a linha do +18 e dos termos). A
+   classe entra no <body> pelo LpStickyCta enquanto a barra está montada. */
+@media (max-width: 639px) {
+  body.has-lp-cta {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+}
+
 /* Minimal scrollbar for modals and panels */
 .minimal-scrollbar::-webkit-scrollbar {
   width: 4px;
