@@ -331,7 +331,7 @@ export const MyBolaoStatsPanel: React.FC<Props> = ({ bolaoId, currentUserId }) =
               <option value="">Escolha um participante…</option>
               {opponents.map((o) => (
                 <option key={o.user_id} value={o.user_id}>
-                  {o.user_name || o.user_email.split('@')[0]} — {o.total_points} pts
+                  {o.user_name || o.user_email.split('@')[0]} · {o.total_points} pts
                 </option>
               ))}
             </select>

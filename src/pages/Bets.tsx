@@ -4172,7 +4172,7 @@ export default function Bets() {
                   className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white tabular"
                 />
                 <p className="text-[11px] leading-snug text-ink-2">
-                  A casa pagou diferente por causa de bônus? Ajuste o valor pago aqui — a odd se reajusta sozinha pra bater com a banca.
+                  A casa pagou diferente por causa de bônus? Ajuste o valor pago aqui: a odd se reajusta sozinha pra bater com a banca.
                 </p>
               </div>
 

@@ -284,7 +284,7 @@ const Auth = () => {
           branca desta barra exigia. */}
       <header className="bg-forest">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[52px] md:h-[60px] flex items-center justify-between">
-          <a href="/" aria-label="Smartbetting — home" className="flex items-center hover:opacity-80 transition-opacity">
+          <a href="/" aria-label="Smartbetting, home" className="flex items-center hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="Smartbetting" className="h-5 md:h-[26px] w-auto" />
           </a>
           <LanguageToggle />
@@ -318,7 +318,7 @@ const Auth = () => {
             <p className="text-[15px] opacity-80 leading-relaxed max-w-[420px]">
               {fromBolaoInvite
                 ? 'Cria seu bolão em 30 segundos, compartilha no zap, e leva a galera junto. Grátis pra até 20 amigos.'
-                : 'Análises que apontam o valor, o Betinho pra gerir suas apostas e o seu ROI real na palma da mão — tudo com dado, sem achismo.'}
+                : 'Análises que apontam o valor, o Betinho pra gerir suas apostas e o seu ROI real na palma da mão, tudo com dado, sem achismo.'}
             </p>
           </div>
 
@@ -353,7 +353,7 @@ const Auth = () => {
                 {fromBolaoInvite ? 'Bolão Copa 2026' : 'Smart Betting'}
               </h2>
               <p className="text-[13px] text-ink-2 mt-1">
-                {fromBolaoInvite ? 'Cria seu bolão em 30 segundos.' : 'Análise, gestão e ROI real — decida com dados.'}
+                {fromBolaoInvite ? 'Cria seu bolão em 30 segundos.' : 'Análise, gestão e ROI real. Decida com dados.'}
               </p>
             </div>
 
@@ -369,7 +369,7 @@ const Auth = () => {
                       Você foi convidado pro Bolão Copa 2026
                     </p>
                     <p className="text-[12px] text-ink-2 mt-1 leading-snug">
-                      Crie sua conta (grátis) ou entre — depois você cai direto no bolão pra palpitar.
+                      Crie sua conta (grátis) ou entre: depois você cai direto no bolão pra palpitar.
                     </p>
                   </div>
                 </div>

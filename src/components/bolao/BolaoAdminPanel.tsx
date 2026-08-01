@@ -924,7 +924,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
                 maxLength={280}
                 rows={3}
                 autoFocus
-                placeholder="Ex: bolão da firma — o campeão paga a pizza 🍕"
+                placeholder="Ex: bolão da firma, o campeão paga a pizza 🍕"
                 aria-label="Descrição do bolão"
                 className="w-full px-3 py-2 rounded-rebrand-md border border-line bg-white text-[13px] text-ink focus:border-forest focus:ring-2 focus:ring-forest/20 focus:outline-none resize-none"
               />
@@ -1160,8 +1160,8 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
               title="Placar do mata-mata"
               sub={
                 scoreBasis === 'regulation'
-                  ? 'Vale o placar dos 90 minutos — prorrogação conta como empate'
-                  : 'Vale o placar final com prorrogação — pênaltis nunca contam'
+                  ? 'Vale o placar dos 90 minutos: prorrogação conta como empate'
+                  : 'Vale o placar final com prorrogação: pênaltis nunca contam'
               }
             >
               <div className="flex gap-1.5" role="radiogroup" aria-label="Base de placar do mata-mata">
@@ -1422,7 +1422,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
             <span>
               <span className="font-bold text-ink">{bolaoStats.total_members}</span> {bolaoStats.total_members === 1 ? 'pessoa já fez' : 'pessoas já fizeram'}{' '}
               <span className="font-bold text-ink">{bolaoStats.total_predictions}</span> palpite{bolaoStats.total_predictions !== 1 ? 's' : ''}.
-              Mudar o prazo afeta todos eles — pediremos confirmação.
+              Mudar o prazo afeta todos eles, pediremos confirmação.
             </span>
           </p>
         </div>
@@ -1477,7 +1477,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
       <Card
         title="Chaveamento com times reais"
-        sub="Os 16 avos já saem com os times reais classificados. Os membros montam o bracket — clicam em quem avança até a final + campeão — numa janela curta, que fecha no início do mata-mata."
+        sub="Os 16 avos já saem com os times reais classificados. Os membros montam o bracket (clicam em quem avança até a final + campeão) numa janela curta, que fecha no início do mata-mata."
         action={
           <Toggle
             on={knockoutReal}
@@ -1498,7 +1498,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
 
       <Card
         title="Avisar no meu Telegram quando o jogo começar"
-        sub="No início de cada jogo, você (dono) recebe no seu Telegram os palpites de todos os membros — placar, quem cada um acha que avança e o campeão. Só você recebe."
+        sub="No início de cada jogo, você (dono) recebe no seu Telegram os palpites de todos os membros: placar, quem cada um acha que avança e o campeão. Só você recebe."
         action={
           tgLink?.linked ? (
             <Toggle
@@ -1586,7 +1586,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
         )}
       </Card>
 
-      <Card title="Prêmios de Jogador" sub="Artilheiro, craque, goleiro e revelação — cada um ativável com pontos próprios">
+      <Card title="Prêmios de Jogador" sub="Artilheiro, craque, goleiro e revelação, cada um ativável com pontos próprios">
         {PLAYER_AWARD_TYPES.map(({ key, label, sub }) => (
           <SettingsRow
             key={key}
@@ -1784,7 +1784,7 @@ export const BolaoAdminPanel: React.FC<BolaoAdminPanelProps> = ({
               </div>
             )}
             <p className="text-[11px] text-ink-3">
-              Avise os participantes antes de confirmar — mudanças no meio do bolão podem gerar confusão.
+              Avise os participantes antes de confirmar: mudanças no meio do bolão podem gerar confusão.
             </p>
           </>
         }

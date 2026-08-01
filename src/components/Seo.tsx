@@ -8,7 +8,7 @@ import publicRoutes from "@/seo/public-routes.json";
 export const SITE_URL = "https://www.smartbetting.app";
 
 const DEFAULT_TITLE =
-  "Smart Betting — Análises, Gestão e Ferramentas para Apostadores";
+  "Smart Betting · Análises, Gestão e Ferramentas para Apostadores";
 const DEFAULT_DESCRIPTION =
   "Análise de prop bets NBA, gestão de banca e ferramentas para apostadores que querem decidir com dados. Controle suas apostas e acompanhe seus resultados.";
 // Card social 1200×630 da marca ("Decida com dados."). Cards por produto em

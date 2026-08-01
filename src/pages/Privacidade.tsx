@@ -22,9 +22,9 @@ const SECTIONS: Section[] = [
     title: "Informações Importantes acerca da SMARTBETTING",
     blocks: [
       { p: "A SMARTBETTING é uma plataforma digital de análise de dados esportivos cuja missão é tornar as apostas esportivas mais inteligentes e acessíveis, transformando dados complexos em informações claras e acionáveis." },
-      { p: "Tudo que a SMARTBETTING oferece é construído sobre dados reais e históricos, com total transparência. A plataforma não faz promessas de ganho garantido e não indica apostas específicas — seu papel é fornecer análises objetivas para que o próprio usuário tome decisões mais informadas." },
+      { p: "Tudo que a SMARTBETTING oferece é construído sobre dados reais e históricos, com total transparência. A plataforma não faz promessas de ganho garantido e não indica apostas específicas. Seu papel é fornecer análises objetivas para que o próprio usuário tome decisões mais informadas." },
       { p: "Os serviços estão disponíveis em português (PT-BR) e inglês (EN), e são destinados exclusivamente a maiores de 18 anos. O acesso se dá pelo site smartbetting.app." },
-      { p: "A SMARTBETTING é uma plataforma de análise estatística e suporte informacional, não constituindo, em hipótese alguma, casa de apostas, operadora de jogos ou qualquer modalidade de agente intermediário em transações de apostas esportivas. Todos os dados, análises, projeções e recomendações disponibilizados pela plataforma — incluindo aqueles gerados pelo assistente Betinho — têm caráter exclusivamente informativo e educacional, destinando-se a subsidiar a tomada de decisão autônoma do Usuário. A SMARTBETTING não realiza apostas em nome do Usuário, não gerencia recursos financeiros de terceiros, não garante resultados e não possui qualquer vínculo com as plataformas de apostas eventualmente utilizadas pelo Usuário. A responsabilidade pela decisão de apostar, pela escolha da plataforma de apostas, pelo gerenciamento do capital investido e pelas consequências financeiras decorrentes é integralmente do Usuário, que declara ciência de que o uso das informações fornecidas pela SMARTBETTING não elimina os riscos inerentes à atividade de apostas esportivas. O contrato firmado entre as partes tem por objeto exclusivo o acesso a dados e ferramentas analíticas, não configurando qualquer forma de assessoria financeira, de investimento ou de gestão de ativos." },
+      { p: "A SMARTBETTING é uma plataforma de análise estatística e suporte informacional, não constituindo, em hipótese alguma, casa de apostas, operadora de jogos ou qualquer modalidade de agente intermediário em transações de apostas esportivas. Todos os dados, análises, projeções e recomendações disponibilizados pela plataforma (incluindo aqueles gerados pelo assistente Betinho) têm caráter exclusivamente informativo e educacional, destinando-se a subsidiar a tomada de decisão autônoma do Usuário. A SMARTBETTING não realiza apostas em nome do Usuário, não gerencia recursos financeiros de terceiros, não garante resultados e não possui qualquer vínculo com as plataformas de apostas eventualmente utilizadas pelo Usuário. A responsabilidade pela decisão de apostar, pela escolha da plataforma de apostas, pelo gerenciamento do capital investido e pelas consequências financeiras decorrentes é integralmente do Usuário, que declara ciência de que o uso das informações fornecidas pela SMARTBETTING não elimina os riscos inerentes à atividade de apostas esportivas. O contrato firmado entre as partes tem por objeto exclusivo o acesso a dados e ferramentas analíticas, não configurando qualquer forma de assessoria financeira, de investimento ou de gestão de ativos." },
     ],
   },
   {
@@ -32,13 +32,13 @@ const SECTIONS: Section[] = [
     title: "Produtos Disponíveis",
     blocks: [
       { p: "A SMARTBETTING oferece dois produtos integrados entre si, ambos com acesso gratuito disponível, e acessos premiums devidamente contratados." },
-      { sub: "2.1 Plataforma de Análises — smartbetting.app" },
+      { sub: "2.1 Plataforma de Análises: smartbetting.app" },
       { p: "A Plataforma de Análises é um dashboard web com foco atual em prop bets da NBA. Utilizando um modelo proprietário treinado com milhares de resultados históricos, a plataforma entrega análises prontas de forma rápida e objetiva, sem que o usuário precise coletar dados manualmente." },
       { p: "Entre as funcionalidades disponibilizadas estão a taxa de acerto (hit rate) por jogador e por linha de aposta nos últimos 15 jogos, gráficos de performance comparados à linha, shooting zones com dados de FGA, FGM e FG% por região da quadra, e análise automática das odds das principais casas de apostas com integração ao Injury Report oficial. Todo o histórico do modelo é exibido de forma transparente e auditável pelo próprio usuário." },
       { p: "O usuário pode experimentar o dashboard com dados reais sem necessidade de cadastro, por meio do acesso gratuito disponível no site." },
-      { sub: "2.2 Betinho — Assistente de Apostas por IA — smartbetting.app/betinho" },
+      { sub: "2.2 Betinho, Assistente de Apostas por IA: smartbetting.app/betinho" },
       { p: "O Betinho é um assistente inteligente acessível via WhatsApp e Telegram que usa inteligência artificial para registrar e organizar as apostas do usuário de forma automática. O fluxo é simples: o usuário envia uma mensagem de texto ou um print da aposta pelo aplicativo de mensagens de sua preferência, e o Betinho processa as informações e sincroniza tudo no dashboard." },
-      { p: "O bot possui reconhecimento ótico de caracteres (OCR) para extrair odds, valor apostado e jogo diretamente de prints. Também entende mensagens de texto com múltiplas linhas, odds e stakes, calcula odds combinadas automaticamente e permite registrar o resultado da aposta — ganhou, perdeu ou cashout — pelo próprio chat." },
+      { p: "O bot possui reconhecimento ótico de caracteres (OCR) para extrair odds, valor apostado e jogo diretamente de prints. Também entende mensagens de texto com múltiplas linhas, odds e stakes, calcula odds combinadas automaticamente e permite registrar o resultado da aposta (ganhou, perdeu ou cashout) pelo próprio chat." },
       { p: "Todas as apostas registradas aparecem no dashboard com métricas completas: taxa de acerto, ROI, lucro total e evolução da banca. O Betinho suporta apostas de NBA, futebol (Brasileirão, Serie A e outros) e demais esportes. Não requer instalação adicional e o acesso básico é gratuito." },
     ],
   },
@@ -49,7 +49,7 @@ const SECTIONS: Section[] = [
       { p: "A SMARTBETTING adota um modelo de negócio Freemium, no qual o acesso básico é gratuito e o Plano Premium desbloqueia todas as funcionalidades." },
       { sub: "3.1 Plano Gratuito" },
       { p: "O plano gratuito inclui acesso à análise de dois jogadores da NBA: Nikola Jokic e Victor Wembanyama. Além disso, o usuário tem acesso ao dashboard básico de gestão de apostas, ao Betinho (via WhatsApp e Telegram) e ao controle de bankroll. Não há qualquer custo ou obrigação para utilizar este plano." },
-      { sub: "3.2 Plano Premium — R$ 99,90 por mês" },
+      { sub: "3.2 Plano Premium: R$ 99,90 por mês" },
       { p: "O Plano Premium concede acesso completo à plataforma, incluindo análise de todos os jogadores da NBA, análises avançadas com scores de confiança, Injury Insights completos sobre o impacto de lesões nos props de titulares e reservas, betting dashboard com métricas detalhadas de ROI, win rate e lucro por esporte e mercado, shooting zones, comparativos e suporte prioritário. O pagamento é processado via Stripe." },
       { p: "O valor mensal de R$ 99,90 pode variar conforme o país do usuário em razão de diferenças cambiais. A assinatura é renovada automaticamente a cada período. Para cancelar, basta acessar as configurações da conta e desativar a renovação com pelo menos 24 horas de antecedência do vencimento. Após o cancelamento, o acesso permanece ativo até o fim do período já pago. Eventuais reembolsos são de responsabilidade da plataforma de pagamento (Stripe), que atua como intermediária entre o consumidor e a SMARTBETTING." },
     ],
@@ -58,7 +58,7 @@ const SECTIONS: Section[] = [
     n: "4",
     title: "Disponibilidade dos Serviços",
     blocks: [
-      { p: "Os serviços podem ser adquiridos e utilizados no Brasil a qualquer momento enquanto estiverem disponíveis na plataforma. As análises da Plataforma de Análises estão vinculadas ao calendário oficial das ligas cobertas — atualmente com foco na NBA — e ficam ativas durante o período de realização dos campeonatos. O Betinho, por sua vez, funciona de forma contínua, independente do calendário esportivo." },
+      { p: "Os serviços podem ser adquiridos e utilizados no Brasil a qualquer momento enquanto estiverem disponíveis na plataforma. As análises da Plataforma de Análises estão vinculadas ao calendário oficial das ligas cobertas (atualmente com foco na NBA) e ficam ativas durante o período de realização dos campeonatos. O Betinho, por sua vez, funciona de forma contínua, independente do calendário esportivo." },
       { p: "A lista de jogadores, campeonatos, clubes e ligas disponíveis na plataforma pode ser alterada a qualquer momento, a critério da SMARTBETTING ou por decisão das entidades organizadoras, sem necessidade de aviso prévio. Em períodos de alto volume de acessos simultâneos, podem ocorrer pequenos atrasos na atualização de dados e métricas." },
     ],
   },
@@ -67,7 +67,7 @@ const SECTIONS: Section[] = [
     n: "5",
     title: "Identificação do Controlador",
     blocks: [
-      { p: "A SMARTBETTING é operada por LAMJAV TECNOLOGIA E INOVAÇÃO LTDA, inscrita no CNPJ sob o nº 62.004.595/0001-00, com sede na cidade de Londrina – PR. Nos termos da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados — LGPD), a SMARTBETTING é considerada Controladora dos dados pessoais de seus usuários, sendo responsável pelas decisões sobre o tratamento dessas informações." },
+      { p: "A SMARTBETTING é operada por LAMJAV TECNOLOGIA E INOVAÇÃO LTDA, inscrita no CNPJ sob o nº 62.004.595/0001-00, com sede na cidade de Londrina – PR. Nos termos da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados, LGPD), a SMARTBETTING é considerada Controladora dos dados pessoais de seus usuários, sendo responsável pelas decisões sobre o tratamento dessas informações." },
       { p: `Os usuários são considerados titulares dos dados e consumidores da plataforma. Dúvidas, solicitações e requerimentos relacionados a dados pessoais podem ser direcionados pelo e-mail ${CONTATO_LGPD}.` },
     ],
   },
@@ -76,7 +76,7 @@ const SECTIONS: Section[] = [
     title: "Objetivo desta Política",
     blocks: [
       { p: "Esta Política de Privacidade tem como objetivo esclarecer, de forma clara e transparente, como a SMARTBETTING coleta, utiliza, armazena, compartilha e trata os dados pessoais de seus usuários. Ela foi elaborada em conformidade com a LGPD e se aplica a todo tratamento de dados pessoais realizado no Brasil." },
-      { p: "Ao aceitar esta Política — por meio do clique em “Aceito” no momento do cadastro ou assinatura —, o usuário autoriza expressamente o tratamento de seus dados pessoais para as finalidades aqui descritas." },
+      { p: "Ao aceitar esta Política, por meio do clique em “Aceito” no momento do cadastro ou assinatura, o usuário autoriza expressamente o tratamento de seus dados pessoais para as finalidades aqui descritas." },
     ],
   },
   {
@@ -151,14 +151,14 @@ const SECTIONS: Section[] = [
   {
     divider: "Termos de Uso",
     blocks: [
-      { p: "Este Termo de Uso rege as condições de utilização da plataforma SMARTBETTING, também denominada BETINHO, operada por LAMJAV TECNOLOGIA E INOVAÇÃO LTDA, CNPJ 62.004.595/0001-00, com sede cidade de Londrina – PR. Ao utilizar qualquer serviço da plataforma, o usuário — doravante denominado Você — concorda integralmente com as regras a seguir." },
+      { p: "Este Termo de Uso rege as condições de utilização da plataforma SMARTBETTING, também denominada BETINHO, operada por LAMJAV TECNOLOGIA E INOVAÇÃO LTDA, CNPJ 62.004.595/0001-00, com sede cidade de Londrina – PR. Ao utilizar qualquer serviço da plataforma, o usuário (doravante denominado Você) concorda integralmente com as regras a seguir." },
     ],
   },
   {
     n: "16",
     title: "Requisitos para Uso",
     blocks: [
-      { p: "Para contratar e utilizar os serviços da SMARTBETTING, você precisa ter 18 anos ou mais (ou estar devidamente representado conforme a lei), realizar o cadastro completo com login e senha pessoais e intransferíveis, preencher corretamente os campos obrigatórios — nome completo, e-mail e telefone —, ter acesso à internet e arcar com seus custos, e manter uma forma de pagamento válida e a assinatura em dia." },
+      { p: "Para contratar e utilizar os serviços da SMARTBETTING, você precisa ter 18 anos ou mais (ou estar devidamente representado conforme a lei), realizar o cadastro completo com login e senha pessoais e intransferíveis, preencher corretamente os campos obrigatórios (nome completo, e-mail e telefone), ter acesso à internet e arcar com seus custos, e manter uma forma de pagamento válida e a assinatura em dia." },
       { p: "Você é inteiramente responsável pelo sigilo e pela segurança da sua conta. Não compartilhe seus dados de acesso com terceiros e não utilize contas alheias. Em caso de suspeita de acesso não autorizado, entre em contato imediatamente com a SMARTBETTING. Ao contratar via terceiros autorizados, você consente que esses terceiros compartilhem suas informações de cadastro com a SMARTBETTING." },
     ],
   },
@@ -188,7 +188,7 @@ const SECTIONS: Section[] = [
     n: "20",
     title: "Propriedade Intelectual e Licença",
     blocks: [
-      { p: "Todo o conteúdo da plataforma — textos, análises, imagens, gráficos, softwares, marcas e logotipos — é propriedade da SMARTBETTING ou está licenciado a ela, protegido pela legislação de direitos autorais e propriedade intelectual." },
+      { p: "Todo o conteúdo da plataforma (textos, análises, imagens, gráficos, softwares, marcas e logotipos) é propriedade da SMARTBETTING ou está licenciado a ela, protegido pela legislação de direitos autorais e propriedade intelectual." },
       { p: "A SMARTBETTING concede ao usuário uma licença de uso pessoal, não exclusiva, intransferível e limitada, apenas para uso privado e não comercial. Essa licença não transfere qualquer propriedade ou titularidade sobre a plataforma." },
       { p: "Ao utilizar os serviços, o usuário cede à SMARTBETTING, de forma gratuita e universal, os direitos patrimoniais sobre o material por ele criado a partir da plataforma, incluindo a possibilidade de uso em promoção, distribuição, transmissão e comercialização em qualquer mídia. Violações a esses direitos poderão resultar em bloqueio imediato do acesso e nas medidas legais cabíveis." },
     ],

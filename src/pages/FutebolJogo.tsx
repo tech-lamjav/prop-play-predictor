@@ -388,7 +388,7 @@ function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked
       <div className="rounded-rebrand-xl border border-line border-l-4 border-l-amber bg-white p-5">
         <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
         <div className="text-lg font-bold text-ink mt-1.5">Sem valor claro nos mercados</div>
-        <p className="text-sm text-ink-2 mt-1">As melhores odds estão alinhadas ao risco real — nada que se destaque aqui. Os dados abaixo seguem pra você tirar sua própria conclusão.</p>
+        <p className="text-sm text-ink-2 mt-1">As melhores odds estão alinhadas ao risco real, sem nada que se destaque aqui. Os dados abaixo seguem pra você tirar sua própria conclusão.</p>
         <p className="text-[10px] text-ink-3 mt-3">{note}</p>
       </div>
     );

@@ -578,7 +578,7 @@ export default function FutebolOportunidades() {
             </p>
             <p className="text-xs text-ink-3 mt-1">
               {isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
-                : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
+                : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo. As oportunidades aparecem aqui quando chegarem.'
                 : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
             </p>
           </div>

@@ -590,7 +590,7 @@ export default function Games() {
   return (
     <>
       <Helmet>
-        <title>Jogos NBA — Smart Betting</title>
+        <title>Jogos NBA · Smart Betting</title>
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">

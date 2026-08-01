@@ -143,7 +143,7 @@ export function RegistrarApostaModal({
                 />
               </label>
             </div>
-            <p className="text-[11px] text-ink-3 -mt-2">Pegou outra odd? Ajuste acima — preenchemos com a melhor que encontramos ({draft?.bestOdd.toFixed(2)}).</p>
+            <p className="text-[11px] text-ink-3 -mt-2">Pegou outra odd? Ajuste acima: preenchemos com a melhor que encontramos ({draft?.bestOdd.toFixed(2)}).</p>
 
             {/* Retorno potencial */}
             <div className="flex items-center justify-between rounded-rebrand-sm bg-forest/5 border border-forest/15 px-3.5 py-2.5">

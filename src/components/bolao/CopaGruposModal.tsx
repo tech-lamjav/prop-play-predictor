@@ -23,7 +23,7 @@ export const CopaGruposModal: React.FC<Props> = ({ open, onOpenChange }) => {
       <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-3xl max-h-[85vh] flex flex-col overflow-hidden rounded-rebrand-xl">
         <DialogHeader className="shrink-0 border-b border-line pb-3">
           <DialogTitle className="font-display text-[18px] font-bold text-ink">
-            Tabela dos Grupos — Copa 2026
+            Tabela dos Grupos · Copa 2026
           </DialogTitle>
         </DialogHeader>
 

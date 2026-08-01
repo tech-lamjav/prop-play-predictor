@@ -152,7 +152,7 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
           <span className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: dotColor }}>
             {label}
           </span>
-          <span className="text-[10px] text-ink-dim">— {sub}</span>
+          <span className="text-[10px] text-ink-dim">· {sub}</span>
         </div>
         {items.map((z, i) => renderRow(z, i === items.length - 1))}
       </div>
@@ -185,7 +185,7 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
             <span className="font-semibold" style={{ color: headlineStyle.accent }}>
               {Math.round(best.oppPct * 100)}%
             </span>
-            {' '}nessa zona — defesa{' '}
+            {' '}nessa zona, defesa{' '}
             <span className="font-semibold text-ink">#{best.rank} de 30</span>.
             {' '}Você acerta{' '}
             <span className="font-semibold" style={{ color: headlineStyle.accent }}>

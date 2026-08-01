@@ -4,7 +4,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 
 const UNLOCK = [
-  { icon: Zap, t: 'Os picks de valor', d: 'O lado, a odd e o valor (+EV) de cada oportunidade — não só que existe uma.' },
+  { icon: Zap, t: 'Os picks de valor', d: 'O lado, a odd e o valor (+EV) de cada oportunidade, não só que existe uma.' },
   { icon: Star, t: '5 mercados', d: 'Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance.' },
   { icon: TrendingUp, t: 'Ranking de confiabilidade', d: 'Oportunidades do dia ordenadas pelo Score, atualizadas de hora em hora.' },
   { icon: ShieldCheck, t: 'O "Por quê" de cada aposta', d: 'As premissas que sustentam a tese e os pontos de atenção, mastigados.' },
@@ -54,13 +54,13 @@ export default function FutebolAssinar() {
   let ctaDisabled = true;
   let onCta = () => {};
   if (state === 'anon') {
-    cta = 'Criar conta — 7 dias grátis'; ctaDisabled = false; onCta = () => navigate('/auth');
+    cta = 'Criar conta · 7 dias grátis'; ctaDisabled = false; onCta = () => navigate('/auth');
   } else if (state === 'subscribed') {
     cta = 'Você já é Premium'; ctaDisabled = true;
   }
 
   const headerNote =
-    state === 'trial' ? `Você está no teste grátis — ${access?.days_left ?? 7} dias restantes. Aproveite o acesso completo.`
+    state === 'trial' ? `Você está no teste grátis, com ${access?.days_left ?? 7} dias restantes. Aproveite o acesso completo.`
     : state === 'expired' ? 'Seu teste grátis acabou. Garanta o acesso aos picks de valor.'
     : state === 'subscribed' ? 'Você já tem acesso completo ao Futebol Premium.'
     : 'Teste 7 dias grátis, sem cartão. Depois, assine pra continuar vendo os picks.';
@@ -120,7 +120,7 @@ export default function FutebolAssinar() {
             </ul>
           </div>
           <div className="rounded-2xl bg-white border border-line p-6">
-            <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-3">Continua livre — sempre</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-3">Continua livre, sempre</div>
             <p className="text-[12px] text-ink-2 mt-2 leading-relaxed">A análise não é refém do paywall. Sem assinar, você ainda usa:</p>
             <ul className="mt-3 space-y-2.5">
               {FREE.map((f) => (
@@ -131,7 +131,7 @@ export default function FutebolAssinar() {
             </ul>
             <div className="mt-4 pt-3 border-t border-line text-[12px] text-ink-3 flex items-start gap-2">
               <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-forest" />
-              <span>O Premium destrava só <b className="text-ink">o pick de valor</b> — o resto fica aberto pra você decidir com dados.</span>
+              <span>O Premium destrava só <b className="text-ink">o pick de valor</b>: o resto fica aberto pra você decidir com dados.</span>
             </div>
           </div>
         </section>

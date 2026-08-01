@@ -148,7 +148,7 @@ const LandingBolao: React.FC = () => {
               Tudo grátis até 20 pessoas.
             </h2>
             <p className="text-[13px] text-ink-2">
-              Mesmas features nos dois planos. Pra grupo maior, sobe pro Premium — pagamento único, sem mensalidade.
+              Mesmas features nos dois planos. Pra grupo maior, sobe pro Premium: pagamento único, sem mensalidade.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -269,7 +269,7 @@ const LandingBolao: React.FC = () => {
               },
               {
                 q: 'Premium vale só pra um bolão?',
-                a: 'Sim — o pagamento de R$ 19,90 vale pro bolão que você escolheu Premium na criação (libera mais de 20 participantes). Outros bolões seus continuam Free. Não tem assinatura — é pagamento por bolão.',
+                a: 'Sim. O pagamento de R$ 19,90 vale pro bolão que você escolheu Premium na criação (libera mais de 20 participantes). Outros bolões seus continuam Free. Não tem assinatura: é pagamento por bolão.',
               },
             ].map((item) => (
               <details

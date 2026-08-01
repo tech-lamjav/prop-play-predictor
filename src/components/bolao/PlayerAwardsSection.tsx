@@ -254,7 +254,7 @@ const PlayerAwardCard: React.FC<CardProps> = ({ award, bolaoId, players, pickedP
           </div>
           {!search && eligible.length > 60 && (
             <p className="text-[10px] text-ink-3 mt-2 text-center">
-              Mostrando 60 de {eligible.length} — use a busca pra achar mais rápido.
+              Mostrando 60 de {eligible.length}. Use a busca pra achar mais rápido.
             </p>
           )}
         </div>

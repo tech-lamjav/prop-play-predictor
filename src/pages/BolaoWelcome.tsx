@@ -74,7 +74,7 @@ const BolaoWelcome: React.FC = () => {
   // Em desktop sem Web Share API, cai no fallback wa.me automaticamente.
   const handleShare = () => {
     void shareTextOrLink({
-      title: `Bolão "${bolao.name}" — Copa 2026`,
+      title: `Bolão "${bolao.name}" · Copa 2026`,
       text: SHARE_MESSAGES.invite(bolao.name, bolao.invite_code, inviteUrl),
     });
   };
@@ -117,7 +117,7 @@ const BolaoWelcome: React.FC = () => {
             Boa! <span className="text-forest">"{bolao.name}"</span> tá no ar.
           </h1>
           <p className="text-[15px] text-ink-2 max-w-[520px] mx-auto leading-relaxed">
-            Agora bora chamar a galera pra palpitar — sem amigos no bolão, ele não rola.
+            Agora bora chamar a galera pra palpitar: sem amigos no bolão, ele não rola.
           </p>
         </div>
 
@@ -175,7 +175,7 @@ const BolaoWelcome: React.FC = () => {
             Personalize (opcional)
           </h2>
           <p className="text-[13px] text-ink-2 mb-4">
-            Defaults são bons. Mexa só no que quiser — dá pra mudar tudo depois, antes do 1º jogo.
+            Defaults são bons. Mexa só no que quiser: dá pra mudar tudo depois, antes do 1º jogo.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {personalizeCards.map(({ icon: Icon, title, desc }) => (

@@ -188,7 +188,7 @@ export default function Report() {
   return (
     <>
       <Helmet>
-        <title>Relatório do dia — Smart Betting</title>
+        <title>Relatório do dia · Smart Betting</title>
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">

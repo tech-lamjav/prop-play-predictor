@@ -715,7 +715,7 @@ const SavedIndicator: React.FC<{ lastSavedAt: number | null }> = ({ lastSavedAt 
   return (
     <p className="inline-flex items-center gap-1.5 text-[11px] text-ink-2">
       <Check className="w-3 h-3 text-status-success" strokeWidth={3} />
-      Tudo salvo — última alteração {label}
+      Tudo salvo · última alteração {label}
     </p>
   );
 };

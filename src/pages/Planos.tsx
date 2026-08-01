@@ -160,7 +160,7 @@ export default function Planos() {
       <div className="bg-forest text-white text-[13.5px]">
         <div className="max-w-[1240px] mx-auto px-4 md:px-6 py-2.5 flex items-center justify-center gap-2.5 flex-wrap text-center">
           <Flame className="w-[15px] h-[15px] shrink-0" style={{ color: '#ffd873' }} />
-          <span><b style={{ color: '#ffd873' }}>Preço de lançamento</b> — valores promocionais por tempo limitado</span>
+          <span><b style={{ color: '#ffd873' }}>Preço de lançamento</b>: valores promocionais por tempo limitado</span>
         </div>
       </div>
 
@@ -173,7 +173,7 @@ export default function Planos() {
           </h1>
           <p className="text-[17px] md:text-[18px] text-ink-2 mt-4 max-w-[52ch] leading-relaxed">
             Análise de futebol e NBA, e o Betinho cuidando da sua banca direto no Telegram. Você
-            escolhe até onde quer ir — e sobe de nível quando quiser.
+            escolhe até onde quer ir, e sobe de nível quando quiser.
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 text-[13.5px] text-ink-3">
             {['7 dias grátis pra testar', 'Cancele quando quiser', 'Pix ou cartão'].map((t) => (
@@ -263,8 +263,8 @@ export default function Planos() {
                 Assinar Essencial
               </button>
               <ul className="mt-5 pt-5 border-t border-line flex flex-col gap-2.5 text-sm">
-                <Feat><b className="text-ink font-semibold">Futebol completo</b> — oportunidades e Score sem limite</Feat>
-                <Feat><b className="text-ink font-semibold">Betinho ilimitado</b> — registra e liquida tudo no Telegram</Feat>
+                <Feat><b className="text-ink font-semibold">Futebol completo</b>: oportunidades e Score sem limite</Feat>
+                <Feat><b className="text-ink font-semibold">Betinho ilimitado</b>: registra e liquida tudo no Telegram</Feat>
                 <Feat>Resumo semanal da sua banca</Feat>
                 <Feat>Suporte prioritário</Feat>
                 <Feat>NBA: <b className="text-ink font-semibold">2 picks do dia</b> (completo só no Completo)</Feat>
@@ -304,7 +304,7 @@ export default function Planos() {
               <ul className="mt-5 pt-5 flex flex-col gap-2.5 text-sm" style={{ borderTop: '1px solid rgba(255,255,255,0.14)' }}>
                 {[
                   <>Tudo do Essencial, incluído</>,
-                  <><b className="text-white font-semibold">NBA completo</b> — a análise mais robusta: prop bets + Análise 360</>,
+                  <><b className="text-white font-semibold">NBA completo</b>: a análise mais robusta, com prop bets + Análise 360</>,
                   <>Todos os esportes de uma vez só</>,
                   <>Suporte prioritário</>,
                 ].map((node, i) => (
@@ -394,12 +394,12 @@ export default function Planos() {
               },
               {
                 q: 'Por que o NBA só está no plano Completo?',
-                a: (<>O NBA é a nossa análise <b className="text-ink">mais robusta</b> — prop bets, Análise 360 e o que temos de mais avançado. O Essencial já entrega o futebol completo pro seu dia a dia; o Completo é pra quem quer <b className="text-ink">tudo</b> junto. Você não paga por esporte solto: paga por até onde quer ir.</>),
+                a: (<>O NBA é a nossa análise <b className="text-ink">mais robusta</b>: prop bets, Análise 360 e o que temos de mais avançado. O Essencial já entrega o futebol completo pro seu dia a dia; o Completo é pra quem quer <b className="text-ink">tudo</b> junto. Você não paga por esporte solto: paga por até onde quer ir.</>),
               },
               { q: 'Posso trocar de plano depois?', a: <>Pode, quando quiser. Se subir de plano, o valor é ajustado proporcionalmente; se descer, a troca vale no fim do ciclo. Sem multa, sem burocracia.</> },
-              { q: 'Como funciona o teste grátis?', a: <>Você cria a conta e tem <b className="text-ink">7 dias</b> de acesso completo pra experimentar de verdade. Só cobra depois — e você decide se continua.</> },
+              { q: 'Como funciona o teste grátis?', a: <>Você cria a conta e tem <b className="text-ink">7 dias</b> de acesso completo pra experimentar de verdade. Só cobra depois, e você decide se continua.</> },
               { q: 'Consigo pagar com Pix?', a: <>Sim. Aceitamos <b className="text-ink">Pix</b> e cartão. No anual, o Pix sai à vista com o desconto de lançamento aplicado.</> },
-              { q: 'Como eu cancelo?', a: <>Em dois cliques, na sua conta. O acesso continua até o fim do período que você já pagou — nada de corte no meio.</> },
+              { q: 'Como eu cancelo?', a: <>Em dois cliques, na sua conta. O acesso continua até o fim do período que você já pagou, sem corte no meio.</> },
             ].map(({ q, a, open }) => (
               <details key={q} open={open} className="group border-b border-line">
                 <summary className="cursor-pointer list-none py-[18px] pr-10 font-semibold text-[16.5px] text-ink relative marker:hidden [&::-webkit-details-marker]:hidden">

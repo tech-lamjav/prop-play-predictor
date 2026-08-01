@@ -587,7 +587,7 @@ export default function Picks() {
     <div className="theme-rebrand min-h-screen bg-canvas text-ink">
       <Helmet>
         <title>Oportunidades do dia · Smart Betting NBA</title>
-        <meta name="description" content="Quem se beneficia quando um titular não joga — ranqueado por score de confiança." />
+        <meta name="description" content="Quem se beneficia quando um titular não joga, ranqueado por score de confiança." />
       </Helmet>
       <AnalyticsNav variant="rebrand" showBack />
 

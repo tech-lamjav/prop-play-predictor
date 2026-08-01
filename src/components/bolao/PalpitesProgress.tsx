@@ -39,7 +39,7 @@ export const PalpitesProgress: React.FC<PalpitesProgressProps> = ({ done, total,
       onClick={clickable ? onClick : undefined}
       aria-label={
         clickable
-          ? `${total - done} palpites faltando — ver pendentes`
+          ? `${total - done} palpites faltando · ver pendentes`
           : `${done} de ${total} palpites feitos (${pct}%)`
       }
       className={`flex flex-col items-end gap-1.5 w-32 ${

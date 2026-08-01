@@ -191,7 +191,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
           toast({
             title: 'Palpite de campeão salvo',
             description: cascadedStages.length > 0
-              ? `${teamCode} passa por todas as fases até a final — adicionei automaticamente.`
+              ? `${teamCode} passa por todas as fases até a final, adicionei automaticamente.`
               : teamCode,
           });
         },
@@ -398,7 +398,7 @@ export const SpecialPredictionsModal: React.FC<SpecialPredictionsModalProps> = (
                       </p>
                       <p className="text-[10px] text-ink-3 mt-2 leading-snug border-t border-line pt-2">
                         Prêmios de jogador fecham na abertura. Cada fase do mata-mata fecha
-                        no início da rodada que a decide — o prazo aparece em cada card.
+                        no início da rodada que a decide. O prazo aparece em cada card.
                       </p>
                     </div>
                   )}

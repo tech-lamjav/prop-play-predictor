@@ -117,7 +117,7 @@ export function computeMatchupTendencies(
     const reading =
       top.side === 'home' ? `${homeName} é favorito jogando em casa.`
       : top.side === 'away' ? `${awayName} chega como favorito mesmo fora.`
-      : 'Confronto equilibrado — empate é o cenário mais provável.';
+      : 'Confronto equilibrado: empate é o cenário mais provável.';
     markets.push({ key: 'resultado', group: 'Resultado', label, prob: top.p, fairOdds: fair(top.p), reading, strength: strengthFromProb(top.p) });
   }
 
