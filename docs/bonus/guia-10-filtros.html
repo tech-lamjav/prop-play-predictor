@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Guia Prático dos 10 Filtros | Smart Betting</title>
+<style>
+  /* Tokens do rebrand, replicados aqui porque o arquivo é solto (vira PDF). */
+  :root {
+    --canvas: #f6f7f5;
+    --canvas-2: #eef0eb;
+    --ink: #1a1d1a;
+    --ink-2: #4a4f48;
+    --ink-3: #8a8f86;
+    --line: #e3e6e0;
+    --line-2: #d4d8d0;
+    --forest: #0a3d2e;
+    --forest-2: #0f5238;
+    --amber: #d4a017;
+    --amber-2: #b8870f;
+    --danger: #b8341c;
+  }
+
+  @page { size: A4; margin: 0; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background: #fff;
+    font-size: 11pt;
+    line-height: 1.55;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pagina {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm 22mm;
+    page-break-after: always;
+    position: relative;
+  }
+  .pagina:last-child { page-break-after: auto; }
+
+  /* Capa */
+  .capa {
+    background: linear-gradient(155deg, var(--forest-2), #072a1c 70%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 28mm 22mm;
+  }
+  .capa .selo {
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+  .capa h1 {
+    font-size: 38pt;
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    font-weight: 800;
+  }
+  .capa h1 span { color: var(--amber); }
+  .capa .sub {
+    font-size: 12pt;
+    color: rgba(255,255,255,.75);
+    max-width: 118mm;
+    margin-top: 8mm;
+  }
+  .capa .rodape {
+    font-size: 8.5pt;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.45);
+  }
+
+  h2 {
+    font-size: 20pt;
+    line-height: 1.15;
+    letter-spacing: -.015em;
+    font-weight: 800;
+    margin-bottom: 5mm;
+  }
+  h3 { font-size: 13pt; font-weight: 700; }
+
+  .olho {
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--forest);
+    margin-bottom: 3mm;
+  }
+
+  p { margin-bottom: 4mm; color: var(--ink-2); }
+  p.destaque { color: var(--ink); font-weight: 600; }
+  strong { color: var(--ink); }
+
+  .caixa {
+    border: 1px solid var(--line);
+    background: var(--canvas);
+    border-radius: 10px;
+    padding: 6mm 7mm;
+    margin: 5mm 0;
+  }
+  .caixa.escura {
+    background: var(--forest);
+    border-color: var(--forest);
+    color: #fff;
+  }
+  .caixa.escura p { color: rgba(255,255,255,.8); }
+  .caixa.escura strong { color: #fff; }
+
+  /* Filtro */
+  .filtro { border-top: 1px solid var(--line); padding: 6mm 0; page-break-inside: avoid; }
+  .filtro:last-child { border-bottom: 1px solid var(--line); }
+  .filtro .cabeca { display: flex; gap: 5mm; align-items: baseline; }
+  .filtro .num {
+    font-size: 22pt;
+    font-weight: 800;
+    color: var(--amber);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    min-width: 14mm;
+  }
+  .filtro .linhas { margin-top: 3mm; padding-left: 19mm; }
+  .filtro .linha { display: flex; gap: 4mm; margin-bottom: 2mm; }
+  .filtro .rotulo {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    min-width: 26mm;
+    padding-top: .6mm;
+  }
+  .filtro .texto { font-size: 10.5pt; color: var(--ink-2); flex: 1; }
+
+  .aviso {
+    font-size: 9pt;
+    color: var(--ink-3);
+    border-top: 1px solid var(--line);
+    padding-top: 4mm;
+    margin-top: 6mm;
+  }
+
+  ol.passos { margin: 4mm 0 4mm 6mm; }
+  ol.passos li { margin-bottom: 3mm; color: var(--ink-2); }
+  ol.passos strong { display: block; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ============ Capa ============ -->
+<section class="pagina capa">
+  <div class="selo">Bônus da assinatura</div>
+  <div>
+    <h1>Guia Prático<br /><span>dos 10 Filtros</span></h1>
+    <p class="sub">
+      O que cada filtro analisa, como ler o resultado e qual sinal observar antes
+      de decidir a sua aposta.
+    </p>
+  </div>
+  <div class="rodape">Smart Betting · Futebol</div>
+</section>
+
+<!-- ============ Por que 10 filtros ============ -->
+<section class="pagina">
+  <div class="olho">Antes de começar</div>
+  <h2>Uma estatística sozinha justifica quase qualquer aposta.</h2>
+
+  <p>
+    Você já viu isso: o time marcou em 8 dos últimos 10 jogos, então "mais de 2,5 gols é dinheiro
+    na mão". O número é verdadeiro. O problema é que ele responde uma pergunta só, e uma aposta tem
+    umas dez perguntas em volta.
+  </p>
+  <p>
+    É por isso que a plataforma não olha um dado. Ela roda dez filtros no mesmo jogo e conta quantos
+    apontam para o mesmo lado. Quando a maioria aponta junto, aquilo vira oportunidade. Quando três
+    apontam a favor e sete contra, a gente deixa passar, mesmo com a estatística bonita na mão.
+  </p>
+
+  <div class="caixa escura">
+    <h3 style="color:#fff;margin-bottom:3mm">Como os filtros viram uma nota</h3>
+    <p>
+      O resultado dos dez filtros é resumido no <strong>Score de Confiabilidade, de 0 a 100</strong>.
+      Ele junta o tamanho da vantagem que a odd oferece com quantos filtros sustentam a tese, e
+      desconta os sinais de que aquela odd é boa demais para ser verdade. Uma aposta só é publicada
+      quando tem pelo menos dois filtros acesos: preço bom sem contexto não entra.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>O Score não é chance de acerto.</strong> Ele mede o quanto dá para confiar naquela
+      leitura. Score alto com odd baixa e Score médio com odd alta são coisas diferentes, e as duas
+      podem valer a pena.
+    </p>
+  </div>
+
+  <div class="olho" style="margin-top:8mm">Como usar este guia</div>
+  <ol class="passos">
+    <li><strong>Abra a oportunidade na plataforma.</strong> Você vai ver o pick, a odd, a chance estimada e o Score.</li>
+    <li><strong>Leia o "por quê" e os pontos de atenção.</strong> Eles são a tradução dos filtros que dispararam naquele jogo.</li>
+    <li><strong>Use este guia para entender cada filtro.</strong> Assim você sabe o que está sustentando a leitura, não só o número final.</li>
+    <li><strong>Decida você.</strong> A plataforma organiza a informação. O martelo é sempre seu.</li>
+  </ol>
+</section>
+
+<!-- ============ Filtros 1 a 5 ============ -->
+<section class="pagina">
+  <div class="olho">Os dez filtros</div>
+  <h2>O que a plataforma olha em cada jogo.</h2>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">01</span><h3>Força dos ataques</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">Quanto cada time produz de gol, em casa e fora, e se o ataque de um pega a defesa frágil do outro.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Dois ataques fortes empurram mercados de gol. Um ataque forte contra uma defesa vazada empurra o resultado.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Ataque que produz muito mas contra adversário fraco. O número infla e engana.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">02</span><h3>Solidez das defesas</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">Gols sofridos, jogos sem sofrer gol e se as duas defesas costumam ser vazadas.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Defesa firme dos dois lados é o filtro que mais segura mercado de gol para baixo.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Defesa que só ficou firme contra times fracos. Olhe contra quem foi.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">03</span><h3>Chances criadas</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">O volume e a qualidade das finalizações, não só o placar. É o que mostra se o time merecia o resultado.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Time que cria muito e não faz gol tende a voltar à média. Time que faz gol criando pouco tende a cair.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Amostra curta. Duas partidas não dizem nada, é preciso sequência.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">04</span><h3>Jogos sem sofrer gol</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">Com que frequência o time termina a partida sem levar gol, e em que condição isso acontece.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Sequência de jogos sem sofrer gol é dos sinais mais fortes contra mercado de gol e a favor de placar curto.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Amostra pequena. Três jogos não formam padrão, é preciso constância.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">05</span><h3>Peso do mando</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">O quanto jogar em casa muda o desempenho daquele time específico, não a média genérica do campeonato.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Existe time que é outro em casa e time que pouco muda. O filtro separa os dois casos.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Em clássico, o mando pesa menos. E em mercado de gol, quase não pesa.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Filtros 6 a 10 ============ -->
+<section class="pagina">
+  <div class="filtro" style="border-top:none;padding-top:0">
+    <div class="cabeca"><span class="num">06</span><h3>Forma recente</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">Os últimos resultados e se o time chega embalado ou em sequência ruim.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Forma é sinal, não sentença. Serve para confirmar a tese, não para ser a tese.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Sequência boa construída contra tabela fácil. Olhe a dificuldade dos adversários.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">07</span><h3>Posição na tabela</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">A diferença de nível entre os dois times ao longo do campeonato, não só no mês.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Diferença grande de faixa costuma aparecer no jogo. Times na mesma faixa tendem ao equilíbrio.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Começo de campeonato. Com poucas rodadas, a tabela ainda não significa muito.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">08</span><h3>Ataque fraco do adversário</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">Se o adversário produz pouco gol, principalmente fora de casa, e o quanto ele depende de um jogador só.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Ataque que não funciona longe de casa sustenta placar curto e protege quem joga em casa.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Time que trocou de treinador. O ataque pode mudar de cara em duas rodadas.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">09</span><h3>Desfalques e escalação</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">Quem está fora por lesão ou suspensão, dos dois lados, e o peso daquela ausência.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Perder o artilheiro derruba mercado de gol. Perder o zagueiro titular faz o contrário.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Escalação confirmada só sai perto do jogo. Antes disso é provável, não certo.</span></div>
+    </div>
+  </div>
+
+  <div class="filtro">
+    <div class="cabeca"><span class="num">10</span><h3>Defesa vazada do adversário</h3></div>
+    <div class="linhas">
+      <div class="linha"><span class="rotulo">O que olha</span><span class="texto">Com que frequência o adversário sofre gol, e se isso piora quando ele joga longe de casa.</span></div>
+      <div class="linha"><span class="rotulo">Como ler</span><span class="texto">Defesa que leva gol em quase todo jogo abre mercado de gol e de ambos marcam.</span></div>
+      <div class="linha"><span class="rotulo">Fique de olho</span><span class="texto">Gols sofridos em jogo já decidido contam menos que gols sofridos em jogo aberto.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Penalidades e fechamento ============ -->
+<section class="pagina">
+  <div class="olho">O outro lado</div>
+  <h2>Quando a plataforma desconta pontos.</h2>
+
+  <p>
+    Filtro a favor soma. Mas existe um segundo grupo de sinais que só tira ponto, e ele existe para
+    proteger você da odd boa demais para ser verdade.
+  </p>
+
+  <div class="caixa">
+    <p class="destaque" style="margin-bottom:3mm">Os quatro descontos</p>
+    <p style="margin-bottom:2mm"><strong>Odd muito destoante das outras.</strong> Se uma casa está sozinha naquele número, quase sempre é erro dela, e não presente para você. É o desconto mais pesado de todos.</p>
+    <p style="margin-bottom:2mm"><strong>Desfalque no próprio time.</strong> Perder titular importante derruba a tese, e o sistema tira ponto por isso.</p>
+    <p style="margin-bottom:2mm"><strong>Odd muito alta.</strong> Quanto mais raro o evento, mais fácil errar a conta. Desconto pequeno, proporcional ao que foi medido.</p>
+    <p style="margin-bottom:0"><strong>Linha extrema.</strong> Mercado de muitos gols ou handicap alto tem margem de erro maior.</p>
+  </div>
+
+  <div class="olho" style="margin-top:8mm">Como ler a faixa</div>
+  <p>
+    <strong>Faixa Alta.</strong> Vários filtros apontam junto e o mercado está maduro. É onde a
+    leitura tem mais sustentação.
+  </p>
+  <p>
+    <strong>Faixa Média.</strong> A tese existe mas tem contraponto. Vale olhar os pontos de atenção
+    antes de decidir.
+  </p>
+  <p>
+    <strong>Faixa Baixa.</strong> Pouca coisa sustentando, ou valor magro demais. Aparece na tela
+    para você saber que a gente olhou e não gostou.
+  </p>
+
+  <div class="caixa escura" style="margin-top:8mm">
+    <h3 style="color:#fff;margin-bottom:3mm">O combinado</h3>
+    <p style="margin-bottom:0">
+      A gente mostra o dado e o porquê antes da aposta. O que a gente não faz: prometer lucro, dizer
+      quanto você deve apostar, publicar taxa de acerto de marketing ou inventar depoimento. Nenhuma
+      análise elimina o risco do futebol. Quem decide é você, agora com mais informação na mão.
+    </p>
+  </div>
+
+  <p class="aviso">
+    Conteúdo analítico e educativo. Não é recomendação de aposta. Aposta envolve risco de perda.
+    Jogue com responsabilidade e apenas com dinheiro que você pode perder. Proibido para menores de
+    18 anos.
+  </p>
+</section>
+
+</body>
+</html>

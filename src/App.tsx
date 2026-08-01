@@ -41,6 +41,9 @@ const Paywall = lazyWithRetry(() => import("./pages/Paywall"));
 const PaywallDashboard = lazyWithRetry(() => import("./pages/PaywallDashboard"));
 const PaywallPlatform = lazyWithRetry(() => import("./pages/PaywallPlatform"));
 const Planos = lazyWithRetry(() => import("./pages/Planos"));
+// Variações de LP de teste (tráfego pago, noindex). Uma rota por variação,
+// resolvida pelo registry em pages/lp/variants.ts.
+const LpVariant = lazyWithRetry(() => import("./pages/lp/LpVariant"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
@@ -165,6 +168,7 @@ const App = () => (
             <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
             <Route path="/paywall-platform" element={<PaywallPlatform />} />
             <Route path="/planos" element={<Planos />} />
+            <Route path="/lp/:slug" element={<LpVariant />} />
             <Route path="/como-usar" element={<ComoUsar />} />
             <Route path="/report" element={
               <ProtectedRoute>
