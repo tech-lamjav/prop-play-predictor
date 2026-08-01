@@ -4,6 +4,12 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolTeamProfile, useFutebolTeamSeason, useFutebolStandings, useFutebolFixtures } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
+import { competitionLabel } from '@/utils/futebol-competitions';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUTEBOL_TIME_TOUR_ID, makeFutebolTimeSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoTeamProfile, demoTeamSeason, demoFutebolStandings, demoTeamFixtures } from '@/components/onboarding/demo/futebol';
 import type { Competition, FutebolScopeResult, FutebolScopeStats } from '@/services/futebol-data.service';
 
 // Paleta do mockup (espelha theme-bolao)
@@ -20,7 +26,6 @@ const C = {
   roseBg: '#fbe3e8', roseFg: '#be123c',
 };
 
-const COMP_LABEL: Record<string, string> = { brasileirao: 'Brasileirão Série A', copa_mundo: 'Copa do Mundo', serie_b: 'Brasileirão Série B' };
 const SCOPE_ORDER = ['geral', 'casa', 'fora'] as const;
 const FINISHED = new Set(['FT', 'AET', 'PEN']);
 const CARD = 'rounded-2xl overflow-hidden bg-white border border-line';
@@ -95,12 +100,20 @@ export default function FutebolTime() {
   const season = Number(params.get('s')) || 2026;
   const tid = teamId ? Number(teamId) : undefined;
 
-  const { data: profile, isLoading, isError } = useFutebolTeamProfile(tid, competition, season);
-  const { data: raiox } = useFutebolTeamSeason(tid, competition, season);
-  const { data: standings } = useFutebolStandings(competition, season, !!tid);
-  const { data: fixtures } = useFutebolFixtures(competition, season);
+  const { data: realProfile, isLoading, isError } = useFutebolTeamProfile(tid, competition, season);
+  const { data: realRaiox } = useFutebolTeamSeason(tid, competition, season);
+  const { data: realStandings } = useFutebolStandings(competition, season, !!tid);
+  const { data: realFixtures } = useFutebolFixtures(competition, season);
 
-  const stand = useMemo(() => (standings || []).find((s) => s.team_id === tid), [standings, tid]);
+  const timeTour = useOnboardingTour(FUTEBOL_TIME_TOUR_ID, { enabled: !isLoading });
+  const isDemo = timeTour.run; // durante o tour, preenche a tela com exemplo
+  const profile = isDemo ? demoTeamProfile : realProfile;
+  const raiox = isDemo ? demoTeamSeason : realRaiox;
+  const standings = isDemo ? demoFutebolStandings : realStandings;
+  const fixtures = isDemo ? demoTeamFixtures : realFixtures;
+  const tidEff = isDemo ? 121 : tid;
+
+  const stand = useMemo(() => (standings || []).find((s) => s.team_id === tidEff), [standings, tidEff]);
 
   const results = useMemo(() =>
     (profile?.results || []).slice().sort((a, b) => SCOPE_ORDER.indexOf(a.scope as never) - SCOPE_ORDER.indexOf(b.scope as never)),
@@ -146,14 +159,14 @@ export default function FutebolTime() {
 
   // Últimos resultados (a partir dos jogos do time)
   const recent = useMemo(() => {
-    if (!tid) return [];
+    if (!tidEff) return [];
     return (fixtures || [])
-      .filter((f) => (f.home_team_id === tid || f.away_team_id === tid)
+      .filter((f) => (f.home_team_id === tidEff || f.away_team_id === tidEff)
         && FINISHED.has(f.status_short || '') && f.goals_home != null && f.goals_away != null)
       .sort((a, b) => new Date(b.kickoff_utc || b.date_utc || 0).getTime() - new Date(a.kickoff_utc || a.date_utc || 0).getTime())
       .slice(0, 6)
       .map((f) => {
-        const home = f.home_team_id === tid;
+        const home = f.home_team_id === tidEff;
         const gf = (home ? f.goals_home : f.goals_away) as number;
         const ga = (home ? f.goals_away : f.goals_home) as number;
         return {
@@ -165,11 +178,14 @@ export default function FutebolTime() {
           when: fmtDay(f.kickoff_utc || f.date_utc),
         };
       });
-  }, [fixtures, tid]);
+  }, [fixtures, tidEff]);
+
+  const timeSteps = useMemo(() => makeFutebolTimeSteps({ hasRaiox: !!raiox }), [raiox]);
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={FUTEBOL_TIME_TOUR_ID} steps={timeSteps} run={timeTour.run} onFinish={timeTour.finish} />
       <div className="max-w-5xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {isLoading ? (
           <div className="space-y-5">
@@ -180,18 +196,19 @@ export default function FutebolTime() {
             </div>
             <Skeleton className="h-40 w-full bg-canvas-2 rounded-2xl" />
           </div>
-        ) : isError || !profile?.team ? (
+        ) : !profile?.team ? (
           <div className={`${CARD} p-6 text-center text-sm text-status-danger`}>Não foi possível carregar este time.</div>
         ) : (
           <div className="flex flex-col gap-5">
+            {isDemo && <DemoRibbon show />}
             {/* ── Header magazine ── */}
-            <div className={CARD}>
+            <div data-tour="ftime-header" className={CARD}>
               <div className="px-5 md:px-8 py-5 md:py-6 flex items-center gap-4 md:gap-5" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                 <Crest name={profile.team.team_name || ''} id={profile.team.team_id} size={64} />
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-xl md:text-[28px] font-extrabold tracking-tight leading-tight text-ink truncate">{profile.team.team_name}</h1>
+                  <div className="flex items-center gap-2 min-w-0"><h1 className="text-xl md:text-[28px] font-extrabold tracking-tight leading-tight text-ink truncate">{profile.team.team_name}</h1>{isDemo && <DemoBadge />}</div>
                   <p className="text-xs mt-1 text-ink-2">
-                    {COMP_LABEL[competition] || competition} · {season}
+                    {competitionLabel(competition)} · {season}
                     {stand?.rank ? <> · <span className="font-semibold text-ink">{stand.rank}º colocado</span></> : null}
                   </p>
                   {raiox?.form && <div className="mt-2"><FormDots form={raiox.form} /></div>}
@@ -216,7 +233,7 @@ export default function FutebolTime() {
             </div>
 
             {/* ── Médias por mando · Eficiência ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div data-tour="ftime-medias" className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Médias */}
               <div className={CARD}>
                 <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
@@ -240,7 +257,7 @@ export default function FutebolTime() {
                     <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Eficiência · gols × xG</div>
                     {efic && <span className="text-[10px] font-semibold text-ink-3 whitespace-nowrap">totais · {efic.games} {efic.games === 1 ? 'jogo' : 'jogos'}</span>}
                   </div>
-                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar — e os dois tendem a se normalizar.</div>
+                  <div className="text-[10px] mt-0.5 text-ink-3 leading-snug">O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar, e os dois tendem a voltar ao normal.</div>
                 </div>
                 {efic ? (
                   <div className="p-5 flex flex-col gap-5">
@@ -255,13 +272,13 @@ export default function FutebolTime() {
 
             {/* ── Raio-X da temporada ── */}
             {raiox && (
-              <div className={CARD}>
+              <div data-tour="ftime-raiox" className={CARD}>
                 <div className="px-5 py-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                   <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Raio-X da temporada</div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-px" style={{ background: C.lineSoft }}>
                   {[
-                    { l: 'Clean sheets', v: raiox.clean_sheet_total ?? '—', s: 'jogos sem sofrer' },
+                    { l: 'Sem sofrer gol', v: raiox.clean_sheet_total ?? '—', s: 'jogos sem sofrer' },
                     { l: 'Não marcou', v: raiox.failed_to_score_total ?? '—', s: 'jogos sem gol' },
                     { l: 'Invicto há', v: trailingStreak(raiox.form, (c) => c !== 'L'), s: 'jogos' },
                     { l: 'Sequência V', v: trailingStreak(raiox.form, (c) => c === 'W'), s: 'vitórias seguidas' },
@@ -279,7 +296,7 @@ export default function FutebolTime() {
             )}
 
             {/* ── Últimos resultados ── */}
-            <div className={CARD}>
+            <div data-tour="ftime-resultados" className={CARD}>
               <div className="px-5 py-3" style={{ borderBottom: `1px solid ${C.lineSoft}` }}>
                 <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Últimos resultados</div>
               </div>
@@ -308,16 +325,16 @@ function eficVerdict(good: boolean, real: number, esperado: number): string {
   const emLinha = Math.abs(ratio) <= 0.1;
   if (good) {
     // Ataque: real = gols feitos
-    if (emLinha) return 'Marca em linha com as chances que cria — número sustentável.';
+    if (emLinha) return 'Marca em linha com as chances que cria, número sustentável.';
     return ratio > 0
-      ? 'Marca acima das chances que cria — costuma normalizar (esfriar).'
-      : 'Marca menos do que as chances valem — tende a melhorar.';
+      ? 'Marca acima das chances que cria, costuma normalizar (esfriar).'
+      : 'Marca menos do que as chances valem, tende a melhorar.';
   }
   // Defesa: real = gols sofridos
-  if (emLinha) return 'Sofre em linha com as chances do adversário — número sustentável.';
+  if (emLinha) return 'Sofre em linha com as chances do adversário, número sustentável.';
   return ratio > 0
-    ? 'Sofre mais do que as chances mereciam — tende a melhorar.'
-    : 'Sofre menos do que as chances do adversário — pode subir (regride à média).';
+    ? 'Sofre mais do que as chances mereciam, tende a melhorar.'
+    : 'Sofre menos do que as chances do adversário, pode subir (volta ao normal).';
 }
 
 // Barra Real vs Esperado (gols × xG)

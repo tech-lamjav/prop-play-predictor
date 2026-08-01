@@ -20,6 +20,7 @@ const BLOCKED_PREFIXES = [
   '/bolao/comecar',
   '/futebol', // a própria LP de destino
   '/paywall',
+  '/planos',
   '/waitlist',
   '/privacidade',
   '/termos',

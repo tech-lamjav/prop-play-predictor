@@ -163,7 +163,7 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
     <div className="rounded-lg bg-white border border-line overflow-hidden">
       <div className="px-4 py-3 border-b border-line">
         <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
-          Matchup vs {opponentAbbreviation}
+          Confronto vs {opponentAbbreviation}
         </span>
       </div>
       <div className="p-4">

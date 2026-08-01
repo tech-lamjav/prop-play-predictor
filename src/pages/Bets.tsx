@@ -1,19 +1,24 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
-import { BetsHeader } from '../components/bets/BetsHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { BetStatsCard } from '../components/bets/BetStatsCard';
 import { TagSelector } from '../components/bets/TagSelector';
 import { UnitConfigurationModal } from '../components/UnitConfigurationModal';
 import { BankrollEvolutionChart } from '@/components/bets/BankrollEvolutionChart';
 import { CreateBetModal, CreateBetFormData } from '@/components/bets/CreateBetModal';
 import { ShareLinkModal } from '@/components/bets/ShareLinkModal';
-import { ReferralModal } from '../components/ReferralModal';
 import { useUserUnit } from '@/hooks/use-user-unit';
-import { useCapitalMovements } from '@/hooks/use-capital-movements';
+import { useCapitalMovements, type CapitalMovement } from '@/hooks/use-capital-movements';
 import { useBetinhoPremium } from '@/hooks/use-betinho-premium';
 import { useIsMobile } from '@/hooks/use-mobile';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { BETINHO_TOUR_ID, makeBetinhoSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoBets, demoMovements } from '@/components/onboarding/demo/betinho';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { mergeVocab, canonicalizeVocab, vocabHasValue } from '@/utils/betVocab';
 import { usePostHog } from '@posthog/react';
 import { SETTLED } from '@/utils/dashboardAggregations';
 import { MultiSelectFilter } from '../components/ui/multi-select-filter';
@@ -208,6 +213,27 @@ const BETTING_MARKETS_LIST = [
   'Dupla Chance',
   'Ambas Marcam',
 ];
+
+// Vínculo de mão dupla stake ⇄ odd ⇄ retorno no modal de edição (Request bônus
+// de odd alta): a casa às vezes paga diferente de stake×odd. O usuário edita o
+// RETORNO final e a odd se reajusta pra enquadrar (odd efetiva = retorno/stake).
+// Retornam null quando não dá pra calcular — aí não mexemos no campo dependente
+// (não apaga o que o usuário está digitando).
+const round2 = (n: number) => Math.round(n * 100) / 100;
+function calcReturnStr(stakeStr: string, oddsStr: string, credit: boolean): string | null {
+  const s = parseFloat(stakeStr);
+  const o = parseFloat(oddsStr);
+  if (!isFinite(s) || !isFinite(o)) return null;
+  const r = credit ? s * (o - 1) : s * o;
+  return isFinite(r) ? String(round2(r)) : null;
+}
+function calcOddsStr(stakeStr: string, returnStr: string, credit: boolean): string | null {
+  const s = parseFloat(stakeStr);
+  const r = parseFloat(returnStr);
+  if (!isFinite(s) || s <= 0 || !isFinite(r)) return null;
+  const o = credit ? r / s + 1 : r / s;
+  return isFinite(o) && o > 0 ? String(round2(o)) : null;
+}
 
 type BetRowProps = {
   bet: Bet;
@@ -650,18 +676,32 @@ export default function Bets() {
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
-  const { movements: capitalMovements, addMovement } = useCapitalMovements(user?.id);
+  const { movements: realCapitalMovements, addMovement } = useCapitalMovements(user?.id);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
   const posthog = usePostHog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bets, setBets] = useState<Bet[]>([]);
+  // Deep-link do Betinho: o recibo de registro traz [✏️ Editar] → /bets?edit=<id>.
+  // Capturamos o id no 1º render (lazy init) porque o efeito de mount limpa os
+  // query params logo em seguida; o modal abre quando a lista de apostas carrega.
+  const [pendingEditBetId, setPendingEditBetId] = useState<string | null>(() => searchParams.get('edit'));
   // Espelho do estado pros callbacks lerem o valor atual sem `bets` nas deps — mantê-lo nas
   // deps recriava os callbacks a cada update e derrotava o React.memo de BetRow/BetCard.
   const betsRef = useRef<Bet[]>([]);
   useEffect(() => { betsRef.current = bets; }, [bets]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const betinhoTour = useOnboardingTour(BETINHO_TOUR_ID, { enabled: !!user && !isLoading, delay: 900 });
+  const isDemo = betinhoTour.run; // durante o tour, preenche a banca com exemplo
+  const displayBets = isDemo ? (demoBets as unknown as Bet[]) : bets;
+  const capitalMovements = isDemo ? (demoMovements as unknown as CapitalMovement[]) : realCapitalMovements;
+  const betinhoSteps = useMemo(
+    () => makeBetinhoSteps({ isMobile, hasEmptyState: displayBets.length === 0 }),
+    [isMobile, displayBets.length],
+  );
+
   const [unitConfigOpen, setUnitConfigOpen] = useState(false);
   const [showUnitsView, setShowUnitsView] = useState(false);
   const formatValue = showUnitsView
@@ -673,7 +713,6 @@ export default function Bets() {
   const [dailyBetCount, setDailyBetCount] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [referralModalOpen, setReferralModalOpen] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalBets: 0,
@@ -714,6 +753,7 @@ export default function Bets() {
       betting_market: string;
       odds: string;
       stake_amount: string;
+      potential_return: string;
       bet_date: string;
       match_date: string;
       status: 'pending' | 'won' | 'lost' | 'void' | 'cashout' | 'half_won' | 'half_lost';
@@ -730,6 +770,7 @@ export default function Bets() {
       betting_market: '',
       odds: '',
       stake_amount: '',
+      potential_return: '',
       bet_date: '',
       match_date: '',
       status: 'pending',
@@ -842,8 +883,8 @@ export default function Bets() {
       if (!isMountedRef.current) return;
       console.error('Error fetching bets:', err);
       toast({
-        title: 'Error',
-        description: 'Failed to load bets',
+        title: 'Deu erro',
+        description: 'Não foi possível carregar as apostas',
         variant: 'destructive',
       });
     } finally {
@@ -975,12 +1016,12 @@ export default function Bets() {
         captureBetSettled(posthog, prevBet, newStatus);
       }
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Bet status updated' });
+        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending' } : b));
-        toast({ title: 'Error', description: 'Failed to update bet status', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
       }
     }
   }, [posthog, supabase, toast]);
@@ -1024,7 +1065,7 @@ export default function Bets() {
 
     const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
     if (isNaN(cashoutAmount)) {
-      toast({ title: 'Error', description: 'Invalid amount', variant: 'destructive' });
+      toast({ title: 'Deu erro', description: 'Valor inválido', variant: 'destructive' });
       return;
     }
 
@@ -1058,12 +1099,12 @@ export default function Bets() {
       captureBetSettled(posthog, cashoutModal.bet, 'cashout');
 
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Cashout processed' });
+        toast({ title: 'Tudo certo', description: 'Cashout registrado' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending', cashout_amount: undefined, cashout_date: undefined, is_cashout: false } : b));
-        toast({ title: 'Error', description: 'Failed to process cashout', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível registrar o cashout', variant: 'destructive' });
       }
     }
   };
@@ -1074,7 +1115,17 @@ export default function Bets() {
     const odds = parseFloat(editModal.formData.odds);
     const stakeAmount = parseFloat(editModal.formData.stake_amount);
     const isCreditBet = editModal.formData.is_credit_bet;
-    const potentialReturn = isCreditBet ? stakeAmount * (odds - 1) : stakeAmount * odds;
+    // Retorno editável (bônus de odd alta): usa o valor que o usuário deixou no
+    // campo; só cai no cálculo padrão se estiver vazio/inválido. Lucro/ROI leem
+    // potential_return em todo lugar, então o override fica consistente.
+    const parsedReturn = parseFloat(editModal.formData.potential_return);
+    const potentialReturn = isFinite(parsedReturn)
+      ? round2(parsedReturn)
+      : (isCreditBet ? stakeAmount * (odds - 1) : stakeAmount * odds);
+    // Encaixa esporte/liga/mercado no valor canônico existente (anti-fragmentação).
+    const sport = canonicalizeVocab(editModal.formData.sport, sportOptions);
+    const league = canonicalizeVocab(editModal.formData.league, leagueOptions);
+    const bettingMarket = canonicalizeVocab(editModal.formData.betting_market, marketOptions);
     const updatedAt = new Date().toISOString();
 
     // Convert yyyy-MM-dd to local midnight ISO so the calendar day is preserved in all timezones
@@ -1093,9 +1144,9 @@ export default function Bets() {
     const updateData: any = {
       bet_description: editModal.formData.bet_description,
       match_description: editModal.formData.match_description || null,
-      sport: editModal.formData.sport,
-      league: editModal.formData.league || null,
-      betting_market: editModal.formData.betting_market || null,
+      sport: sport,
+      league: league || null,
+      betting_market: bettingMarket || null,
       odds: odds,
       stake_amount: stakeAmount,
       potential_return: potentialReturn,
@@ -1134,12 +1185,12 @@ export default function Bets() {
       }
 
       if (isMountedRef.current) {
-        toast({ title: 'Success', description: 'Bet updated' });
+        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, ...editModal.bet } : b));
-        toast({ title: 'Error', description: 'Failed to update bet', variant: 'destructive' });
+        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
       }
     }
   };
@@ -1150,7 +1201,7 @@ export default function Bets() {
     if (isBetinhoFree) {
       const currentCount = await getDailyBetCount();
       if (currentCount >= DAILY_BET_LIMIT) {
-        navigate('/paywall');
+        navigate('/planos');
         return false;
       }
     }
@@ -1163,6 +1214,10 @@ export default function Bets() {
       }
       const isCreditBet = data.is_credit_bet ?? false;
       const potentialReturn = isCreditBet ? stakeAmount * (odds - 1) : stakeAmount * odds;
+      // Encaixa no vocabulário canônico do usuário (anti-fragmentação).
+      const sport = canonicalizeVocab(data.sport, sportOptions) || 'Outros';
+      const league = canonicalizeVocab(data.league, leagueOptions);
+      const bettingMarket = canonicalizeVocab(data.betting_market, marketOptions);
 
       const { data: newBet, error } = await supabase
         .from('bets')
@@ -1171,9 +1226,9 @@ export default function Bets() {
           bet_type: 'single',
           bet_description: data.bet_description,
           match_description: data.match_description || null,
-          sport: data.sport || 'Outros',
-          league: data.league || null,
-          betting_market: data.betting_market || null,
+          sport: sport,
+          league: league || null,
+          betting_market: bettingMarket || null,
           odds: odds,
           stake_amount: stakeAmount,
           potential_return: potentialReturn,
@@ -1195,7 +1250,7 @@ export default function Bets() {
         product: 'betinho',
         channel: 'web',
         bet_type: 'single',
-        sport: data.sport || 'Outros',
+        sport: sport,
         is_credit_bet: isCreditBet,
       });
 
@@ -1246,6 +1301,7 @@ export default function Bets() {
         betting_market: bet.betting_market || '',
         odds: bet.odds?.toString() || '',
         stake_amount: bet.stake_amount?.toString() || '',
+        potential_return: bet.potential_return != null ? String(round2(bet.potential_return)) : '',
         bet_date: bet.bet_date ? String(bet.bet_date).split('T')[0] : '',
         match_date: bet.match_date ? String(bet.match_date).split('T')[0] : '',
         status: bet.status || 'pending',
@@ -1262,6 +1318,15 @@ export default function Bets() {
     setIsBettingMarketQueryTouched(false);
     setBettingMarketHighlightIndex(-1);
   }, []);
+
+  // Deep-link ?edit=<id> (botão Editar do recibo do Betinho): assim que a lista
+  // de apostas carrega, abre o modal de edição já preenchido e consome o id.
+  useEffect(() => {
+    if (!pendingEditBetId || bets.length === 0) return;
+    const target = bets.find((b) => b.id === pendingEditBetId);
+    if (target) openEditModal(target);
+    setPendingEditBetId(null);
+  }, [pendingEditBetId, bets, openEditModal]);
 
   const fetchReferralCode = useCallback(async () => {
     if (!user?.id) return;
@@ -1406,7 +1471,7 @@ export default function Bets() {
   }, [bets]);
 
   const filteredBets = useMemo(() => {
-    return bets.filter(bet => {
+    return displayBets.filter(bet => {
       // Filter by status: if any statuses selected, bet must match one of them
       if (filters.status.length > 0 && !filters.status.includes(bet.status)) return false;
       
@@ -1498,7 +1563,7 @@ export default function Bets() {
 
       return true;
     });
-  }, [bets, filters]);
+  }, [displayBets, filters]);
 
   // Sort logic
   const sortedBets = useMemo(() => {
@@ -1670,7 +1735,7 @@ export default function Bets() {
     ));
     try {
       await Promise.all(ids.map(betId => supabase.rpc('add_tag_to_bet', { p_bet_id: betId, p_tag_id: tag.id })));
-      toast({ title: 'Sucesso', description: `Tag "${tag.name}" adicionada a ${ids.length} apostas` });
+      toast({ title: 'Sucesso', description: `Etiqueta "${tag.name}" adicionada a ${ids.length} apostas` });
     } catch {
       toast({ title: 'Erro', description: 'Falha ao adicionar tag', variant: 'destructive' });
       fetchBets();
@@ -1697,32 +1762,38 @@ export default function Bets() {
     }
   }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
 
+  // Vocabulário per-user: base curada ∪ os valores que ESTE usuário já usou
+  // (deriva das apostas em memória; o custom de um não vaza pro dropdown de outro).
+  const sportOptions = useMemo(() => mergeVocab(SPORTS_LIST, bets.map((b) => b.sport)), [bets]);
+  const leagueOptions = useMemo(() => mergeVocab(LEAGUES_LIST, bets.map((b) => b.league)), [bets]);
+  const marketOptions = useMemo(() => mergeVocab(BETTING_MARKETS_LIST, bets.map((b) => b.betting_market)), [bets]);
+
   const filteredSportsList = useMemo(() => {
     if (!isSportQueryTouched) {
-      return SPORTS_LIST;
+      return sportOptions;
     }
     const query = editModal.formData.sport.trim().toLowerCase();
-    if (!query) return SPORTS_LIST;
-    return SPORTS_LIST.filter((sport) => sport.toLowerCase().includes(query));
-  }, [editModal.formData.sport, isSportQueryTouched]);
+    if (!query) return sportOptions;
+    return sportOptions.filter((sport) => sport.toLowerCase().includes(query));
+  }, [editModal.formData.sport, isSportQueryTouched, sportOptions]);
 
   const filteredLeaguesList = useMemo(() => {
     if (!isLeagueQueryTouched) {
-      return LEAGUES_LIST;
+      return leagueOptions;
     }
     const query = editModal.formData.league.trim().toLowerCase();
-    if (!query) return LEAGUES_LIST;
-    return LEAGUES_LIST.filter((league) => league.toLowerCase().includes(query));
-  }, [editModal.formData.league, isLeagueQueryTouched]);
+    if (!query) return leagueOptions;
+    return leagueOptions.filter((league) => league.toLowerCase().includes(query));
+  }, [editModal.formData.league, isLeagueQueryTouched, leagueOptions]);
 
   const filteredBettingMarketsList = useMemo(() => {
     if (!isBettingMarketQueryTouched) {
-      return BETTING_MARKETS_LIST;
+      return marketOptions;
     }
     const query = editModal.formData.betting_market.trim().toLowerCase();
-    if (!query) return BETTING_MARKETS_LIST;
-    return BETTING_MARKETS_LIST.filter((market) => market.toLowerCase().includes(query));
-  }, [editModal.formData.betting_market, isBettingMarketQueryTouched]);
+    if (!query) return marketOptions;
+    return marketOptions.filter((market) => market.toLowerCase().includes(query));
+  }, [editModal.formData.betting_market, isBettingMarketQueryTouched, marketOptions]);
 
   useEffect(() => {
     if (!isSportDropdownOpen || filteredSportsList.length === 0) {
@@ -1849,7 +1920,7 @@ export default function Bets() {
       const s = v == null ? '' : String(v);
       return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Tags'];
+    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Etiquetas'];
     const lines = rows.map(b => [
       b.bet_date?.split('T')[0] ?? '',
       b.bet_description ?? '',
@@ -2316,10 +2387,10 @@ export default function Bets() {
 
         {/* Tags (full row) */}
         <div className="sm:col-span-2">
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Tags</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Etiquetas</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {userTags.length === 0 ? (
-              <p className="text-[12px] text-ink-2">Nenhuma tag criada ainda.</p>
+              <p className="text-[12px] text-ink-2">Nenhuma etiqueta criada ainda.</p>
             ) : (
               userTags.map(tag => {
                 const active = filters.selectedTags.includes(tag.id);
@@ -2373,17 +2444,17 @@ export default function Bets() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-terminal-green"></div>
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-forest"></div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-terminal-black flex items-center justify-center text-terminal-text">
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center text-ink">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-terminal-red" />
+          <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
           <p>Por favor, faça login para ver suas apostas.</p>
         </div>
       </div>
@@ -2392,17 +2463,15 @@ export default function Bets() {
 
   return (
     <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
-      <BetsHeader
-        showBack
-        onReferralClick={() => setReferralModalOpen(true)}
-      />
+      <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={BETINHO_TOUR_ID} steps={betinhoSteps} run={betinhoTour.run} onFinish={betinhoTour.finish} />
 
       {/* Page Header */}
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase">Apostas</div>
-            <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">Apostas{isDemo && <DemoBadge />}</div>
+            <h1 data-tour="betinho-hero" className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
             <p className="text-[13px] text-ink-2 mt-1 tabular">
               {stats.totalBets} {stats.totalBets === 1 ? 'aposta registrada' : 'apostas registradas'}
             </p>
@@ -2486,7 +2555,7 @@ export default function Bets() {
               type="button"
               onClick={() => {
                 if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-                  navigate('/paywall');
+                  navigate('/planos');
                   return;
                 }
                 setIsCreateModalOpen(true);
@@ -2501,9 +2570,10 @@ export default function Bets() {
       </div>
 
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 focus:outline-none">
+        {isDemo && <div className="mb-6"><DemoRibbon show /></div>}
         {/* Onboarding cards — usuário sem nenhuma aposta. Aparecem ACIMA do conteúdo regular */}
-        {!isLoading && bets.length === 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+        {!isLoading && displayBets.length === 0 && (
+          <div data-tour="betinho-telegram" className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
             {/* Primary CTA — Telegram */}
             <div className="bg-forest text-white rounded-xl p-6 md:p-8 relative overflow-hidden">
               <div className="absolute top-4 right-4 text-[10px] uppercase tracking-[0.16em] font-semibold text-amber-400 bg-white/5 border border-amber-400/20 px-2 py-1 rounded">
@@ -2514,7 +2584,7 @@ export default function Bets() {
               </div>
               <h2 className="text-[22px] md:text-[24px] font-semibold tracking-tight">Comece pelo Telegram.</h2>
               <p className="text-[13px] md:text-[14px] text-white/70 mt-2 leading-relaxed">
-                Abra o Betinho, mande seu primeiro bilhete por texto ou print — e essa tela enche sozinha.
+                Abra o Betinho, mande seu primeiro bilhete por texto ou print, e essa tela enche sozinha.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer"
@@ -2526,9 +2596,9 @@ export default function Bets() {
               <div className="mt-6 pt-6 border-t border-white/10">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-semibold mb-3">3 formatos aceitos</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-white/80">
-                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre — "apostei R$ 150 LeBron 25+"</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio — fale o bilhete</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Print — foto do cupom</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre: "apostei R$ 150 LeBron 25+"</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio: fale o bilhete</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">Print: foto do cupom</div>
                 </div>
               </div>
             </div>
@@ -2536,13 +2606,13 @@ export default function Bets() {
             <div className="bg-white border border-line rounded-xl p-6 md:p-8">
               <h2 className="text-[18px] md:text-[20px] font-semibold tracking-tight text-ink">Ou cadastre manualmente.</h2>
               <p className="text-[13px] text-ink-2 mt-2 leading-relaxed">
-                Se preferir tela e formulário, dá pra cadastrar pelo painel — leva uns 30 segundos.
+                Se preferir tela e formulário, dá pra cadastrar pelo painel, leva uns 30 segundos.
               </p>
               <button
                 type="button"
                 onClick={() => {
                   if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-                    navigate('/paywall');
+                    navigate('/planos');
                     return;
                   }
                   setIsCreateModalOpen(true);
@@ -2558,7 +2628,7 @@ export default function Bets() {
 
         <>
         {/* Stats Grid — 4 slots: 2 Hero + 2 Pair (desktop) */}
-        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div data-tour="betinho-stats" className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {/* ROI - HeroKPI */}
           <div className="bg-white border border-line rounded-lg p-5">
             <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">ROI</div>
@@ -2609,9 +2679,9 @@ export default function Bets() {
         </div>
 
         {!isMobile && (
-        <div className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
+        <div data-tour="betinho-evolucao" className="hidden md:grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-6">
           <BankrollEvolutionChart
-            bets={bets}
+            bets={displayBets}
             initialBankroll={config.bank_amount}
             capitalMovements={capitalMovements}
             onUpdateBankroll={async (amount) => {
@@ -2651,7 +2721,7 @@ export default function Bets() {
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
                 <div className="text-[14px] font-semibold mt-1 leading-tight">Cadastre apostas em segundos pelo Telegram.</div>
-                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete — a IA registra e este painel atualiza sozinho.</div>
+                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete, a IA registra e este painel atualiza sozinho.</div>
                 <div className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
                   <Send className="w-3.5 h-3.5" />
                   <span>Abrir bot</span>
@@ -2672,9 +2742,9 @@ export default function Bets() {
                 <ChevronRight className="w-4 h-4 text-ink-2 group-hover:text-forest transition-colors" />
               </div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold mt-3">Análise</div>
-              <div className="text-[15px] font-semibold text-ink mt-1">Dashboard</div>
+              <div className="text-[15px] font-semibold text-ink mt-1">Painel</div>
               <div className="text-[12px] text-ink-2 mt-1 leading-snug">
-                Onde você ganha e onde perde — desempenho por liga, mercado e tag.
+                Onde você ganha e onde perde. Desempenho por liga, mercado e etiqueta.
               </div>
             </button>
           </div>
@@ -2682,7 +2752,7 @@ export default function Bets() {
         )}
 
         {/* Mobile hero — banca atual + sparkline + mini stats */}
-        <div className="md:hidden mb-4">
+        <div data-tour="betinho-stats-m" className="md:hidden mb-4">
           {(() => {
             const movementsNet = capitalMovements
               .filter(m => m.affects_balance)
@@ -2782,7 +2852,7 @@ export default function Bets() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-ink-2">Análise</div>
-              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Dashboard de KPIs</div>
+              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Painel de números</div>
             </div>
             <ChevronRight className="w-4 h-4 text-ink-2 shrink-0" />
           </button>
@@ -3160,7 +3230,7 @@ export default function Bets() {
         </div>
 
         {/* Bets Table — wrapper card só no desktop. Mobile cards ficam standalone na canvas */}
-        <div className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
+        <div data-tour="betinho-lista" className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
           <div className="flex justify-between items-center px-1 md:px-5 py-3 md:border-b md:border-line">
             <div className="flex items-baseline gap-3">
               <h3 className="text-[11px] md:text-[13px] uppercase md:normal-case tracking-[0.12em] md:tracking-normal font-semibold text-ink-2 md:text-ink">Apostas</h3>
@@ -3209,7 +3279,7 @@ export default function Bets() {
                       </th>
                       <SortableHeader column="bet_date" label="DATA" />
                       <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">DESCRIÇÃO</th>
-                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">TAGS</th>
+                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">ETIQUETAS</th>
                       <SortableHeader column="sport" label="ESPORTE / LIGA" />
                       <SortableHeader column="betting_market" label="MERCADO" />
                       <SortableHeader column="stake_amount" label="STAKE" align="right" />
@@ -3231,12 +3301,14 @@ export default function Bets() {
                 {mobileCards}
               </div>
 
-              {/* Pagination footer */}
-              <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px]">
+              {/* Pagination footer — `flex-wrap` nos dois níveis: com muitas
+                  páginas a fileira de botões passa de 300px e, sem quebrar,
+                  estourava a largura da página em tela estreita. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px]">
                 <div className="text-[11px] text-ink-2 tabular">
                   Página {currentPage} de {totalPages}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -3306,7 +3378,7 @@ export default function Bets() {
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">
                 <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Odd média</div>
-                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">prob. implícita {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">chance {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
               </div>
               <div className="text-[15px] tabular font-semibold text-forest shrink-0 ml-2">{secondaryStats.avgOdds.toFixed(2)}</div>
             </div>
@@ -3347,7 +3419,7 @@ export default function Bets() {
           type="button"
           onClick={() => {
             if (isBetinhoFree && (dailyBetCount ?? 0) >= DAILY_BET_LIMIT) {
-              navigate('/paywall');
+              navigate('/planos');
               return;
             }
             setIsCreateModalOpen(true);
@@ -3415,7 +3487,7 @@ export default function Bets() {
                   </div>
                   {userTags.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar tag</p>
+                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar etiqueta</p>
                       <div className="flex flex-wrap gap-2">
                         {userTags.map(tag => (
                           <button key={tag.id} type="button"
@@ -3443,7 +3515,7 @@ export default function Bets() {
                 </PopoverTrigger>
                 <PopoverContent className="theme-rebrand w-48 p-1 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]" align="start" side="top">
                   {userTags.length === 0 ? (
-                    <p className="text-[11px] text-ink-2 p-2">Nenhuma tag criada</p>
+                    <p className="text-[11px] text-ink-2 p-2">Nenhuma etiqueta criada</p>
                   ) : (
                     userTags.map(tag => (
                       <button key={tag.id} type="button"
@@ -3764,30 +3836,46 @@ export default function Bets() {
                     />
                     {isSportDropdownOpen && (
                       <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
-                        {filteredSportsList.length > 0 ? (
-                          filteredSportsList.map((sport, index) => (
-                            <button
-                              key={sport}
-                              type="button"
-                              tabIndex={-1}
-                              ref={(element) => {
-                                sportItemRefs.current[index] = element;
-                              }}
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                                setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport } }));
-                                setIsSportDropdownOpen(false);
-                                setIsSportQueryTouched(false);
-                                setSportHighlightIndex(-1);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                                index === sportHighlightIndex ? 'bg-ink-3/40' : ''
-                              }`}
-                            >
-                              {sport}
-                            </button>
-                          ))
-                        ) : (
+                        {filteredSportsList.map((sport, index) => (
+                          <button
+                            key={sport}
+                            type="button"
+                            tabIndex={-1}
+                            ref={(element) => {
+                              sportItemRefs.current[index] = element;
+                            }}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport } }));
+                              setIsSportDropdownOpen(false);
+                              setIsSportQueryTouched(false);
+                              setSportHighlightIndex(-1);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                              index === sportHighlightIndex ? 'bg-ink-3/40' : ''
+                            }`}
+                          >
+                            {sport}
+                          </button>
+                        ))}
+                        {editModal.formData.sport.trim() && !vocabHasValue(editModal.formData.sport, sportOptions) && (
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              const added = canonicalizeVocab(editModal.formData.sport, sportOptions);
+                              setEditModal(prev => ({ ...prev, formData: { ...prev.formData, sport: added } }));
+                              setIsSportDropdownOpen(false);
+                              setIsSportQueryTouched(false);
+                              setSportHighlightIndex(-1);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
+                          >
+                            ＋ Adicionar "{editModal.formData.sport.trim()}"
+                          </button>
+                        )}
+                        {filteredSportsList.length === 0 && !editModal.formData.sport.trim() && (
                           <div className="px-3 py-2 text-xs text-ink-2">
                             Nenhum esporte encontrado
                           </div>
@@ -3871,30 +3959,46 @@ export default function Bets() {
                     />
                     {isLeagueDropdownOpen && (
                       <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
-                        {filteredLeaguesList.length > 0 ? (
-                          filteredLeaguesList.map((league, index) => (
-                            <button
-                              key={league}
-                              type="button"
-                              tabIndex={-1}
-                              ref={(element) => {
-                                leagueItemRefs.current[index] = element;
-                              }}
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                                setEditModal(prev => ({ ...prev, formData: { ...prev.formData, league } }));
-                                setIsLeagueDropdownOpen(false);
-                                setIsLeagueQueryTouched(false);
-                                setLeagueHighlightIndex(-1);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                                index === leagueHighlightIndex ? 'bg-ink-3/40' : ''
-                              }`}
-                            >
-                              {league}
-                            </button>
-                          ))
-                        ) : (
+                        {filteredLeaguesList.map((league, index) => (
+                          <button
+                            key={league}
+                            type="button"
+                            tabIndex={-1}
+                            ref={(element) => {
+                              leagueItemRefs.current[index] = element;
+                            }}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setEditModal(prev => ({ ...prev, formData: { ...prev.formData, league } }));
+                              setIsLeagueDropdownOpen(false);
+                              setIsLeagueQueryTouched(false);
+                              setLeagueHighlightIndex(-1);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                              index === leagueHighlightIndex ? 'bg-ink-3/40' : ''
+                            }`}
+                          >
+                            {league}
+                          </button>
+                        ))}
+                        {editModal.formData.league.trim() && !vocabHasValue(editModal.formData.league, leagueOptions) && (
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              const added = canonicalizeVocab(editModal.formData.league, leagueOptions);
+                              setEditModal(prev => ({ ...prev, formData: { ...prev.formData, league: added } }));
+                              setIsLeagueDropdownOpen(false);
+                              setIsLeagueQueryTouched(false);
+                              setLeagueHighlightIndex(-1);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
+                          >
+                            ＋ Adicionar "{editModal.formData.league.trim()}"
+                          </button>
+                        )}
+                        {filteredLeaguesList.length === 0 && !editModal.formData.league.trim() && (
                           <div className="px-3 py-2 text-xs text-ink-2">
                             Nenhuma liga encontrada
                           </div>
@@ -3974,30 +4078,46 @@ export default function Bets() {
                     />
                     {isBettingMarketDropdownOpen && (
                       <div className="theme-rebrand absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-md border border-line bg-white shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
-                        {filteredBettingMarketsList.length > 0 ? (
-                          filteredBettingMarketsList.map((market, index) => (
-                            <button
-                              key={market}
-                              type="button"
-                              tabIndex={-1}
-                              ref={(element) => {
-                                bettingMarketItemRefs.current[index] = element;
-                              }}
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                                setEditModal(prev => ({ ...prev, formData: { ...prev.formData, betting_market: market } }));
-                                setIsBettingMarketDropdownOpen(false);
-                                setIsBettingMarketQueryTouched(false);
-                                setBettingMarketHighlightIndex(-1);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                                index === bettingMarketHighlightIndex ? 'bg-ink-3/40' : ''
-                              }`}
-                            >
-                              {market}
-                            </button>
-                          ))
-                        ) : (
+                        {filteredBettingMarketsList.map((market, index) => (
+                          <button
+                            key={market}
+                            type="button"
+                            tabIndex={-1}
+                            ref={(element) => {
+                              bettingMarketItemRefs.current[index] = element;
+                            }}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setEditModal(prev => ({ ...prev, formData: { ...prev.formData, betting_market: market } }));
+                              setIsBettingMarketDropdownOpen(false);
+                              setIsBettingMarketQueryTouched(false);
+                              setBettingMarketHighlightIndex(-1);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
+                              index === bettingMarketHighlightIndex ? 'bg-ink-3/40' : ''
+                            }`}
+                          >
+                            {market}
+                          </button>
+                        ))}
+                        {editModal.formData.betting_market.trim() && !vocabHasValue(editModal.formData.betting_market, marketOptions) && (
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              const added = canonicalizeVocab(editModal.formData.betting_market, marketOptions);
+                              setEditModal(prev => ({ ...prev, formData: { ...prev.formData, betting_market: added } }));
+                              setIsBettingMarketDropdownOpen(false);
+                              setIsBettingMarketQueryTouched(false);
+                              setBettingMarketHighlightIndex(-1);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
+                          >
+                            ＋ Adicionar "{editModal.formData.betting_market.trim()}"
+                          </button>
+                        )}
+                        {filteredBettingMarketsList.length === 0 && !editModal.formData.betting_market.trim() && (
                           <div className="px-3 py-2 text-xs text-ink-2">
                             Nenhum mercado encontrado
                           </div>
@@ -4014,7 +4134,11 @@ export default function Bets() {
                   <Input
                     type="number"
                     value={editModal.formData.stake_amount}
-                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, stake_amount: e.target.value } }))}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const ret = calcReturnStr(v, editModal.formData.odds, editModal.formData.is_credit_bet);
+                      setEditModal(prev => ({ ...prev, formData: { ...prev.formData, stake_amount: v, ...(ret !== null ? { potential_return: ret } : {}) } }));
+                    }}
                     className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white tabular"
                   />
                 </div>
@@ -4023,17 +4147,44 @@ export default function Bets() {
                   <Input
                     type="number"
                     value={editModal.formData.odds}
-                    onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, odds: e.target.value } }))}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const ret = calcReturnStr(editModal.formData.stake_amount, v, editModal.formData.is_credit_bet);
+                      setEditModal(prev => ({ ...prev, formData: { ...prev.formData, odds: v, ...(ret !== null ? { potential_return: ret } : {}) } }));
+                    }}
                     className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white tabular"
                   />
                 </div>
+              </div>
+
+              {/* Retorno pago editável — casa às vezes paga diferente de stake×odd
+                  (bônus de odd alta). Editar o retorno reajusta a odd pra enquadrar. */}
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Retorno pago (R$)</Label>
+                <Input
+                  type="number"
+                  value={editModal.formData.potential_return}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const od = calcOddsStr(editModal.formData.stake_amount, v, editModal.formData.is_credit_bet);
+                    setEditModal(prev => ({ ...prev, formData: { ...prev.formData, potential_return: v, ...(od !== null ? { odds: od } : {}) } }));
+                  }}
+                  className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white tabular"
+                />
+                <p className="text-[11px] leading-snug text-ink-2">
+                  A casa pagou diferente por causa de bônus? Ajuste o valor pago aqui — a odd se reajusta sozinha pra bater com a banca.
+                </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Crédito de apostas</Label>
                 <button
                   type="button"
-                  onClick={() => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, is_credit_bet: !prev.formData.is_credit_bet } }))}
+                  onClick={() => setEditModal(prev => {
+                    const nextCredit = !prev.formData.is_credit_bet;
+                    const ret = calcReturnStr(prev.formData.stake_amount, prev.formData.odds, nextCredit);
+                    return { ...prev, formData: { ...prev.formData, is_credit_bet: nextCredit, ...(ret !== null ? { potential_return: ret } : {}) } };
+                  })}
                   style={{ backgroundColor: editModal.formData.is_credit_bet ? 'var(--forest)' : '#d1d5db' }}
                   className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
                 >
@@ -4132,9 +4283,9 @@ export default function Bets() {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onCreate={createBet}
-        sportsList={SPORTS_LIST}
-        leaguesList={LEAGUES_LIST}
-        bettingMarketsList={BETTING_MARKETS_LIST}
+        sportsList={sportOptions}
+        leaguesList={leagueOptions}
+        bettingMarketsList={marketOptions}
         userTags={userTags}
         onTagsUpdated={fetchUserTags}
       />
@@ -4154,14 +4305,6 @@ export default function Bets() {
         }} 
       />
 
-      {user?.id && (
-        <ReferralModal
-          open={referralModalOpen}
-          onOpenChange={setReferralModalOpen}
-          userId={user.id}
-          referralCode={referralCode}
-        />
-      )}
 
       {/* Confirmação de exclusão (single ou bulk) — substitui o window.confirm nativo */}
       <AlertDialog

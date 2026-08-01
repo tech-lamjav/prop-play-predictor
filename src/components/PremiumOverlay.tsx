@@ -21,7 +21,7 @@ export function PremiumOverlay({ onUnlock, className = '' }: PremiumOverlayProps
       if (!user) {
         navigate('/auth');
       } else {
-        navigate('/paywall-platform');
+        navigate('/planos');
       }
     }
   };

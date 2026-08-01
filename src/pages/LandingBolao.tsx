@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { Seo } from '@/components/Seo';
 import {
   Trophy,
   Users,
@@ -36,22 +36,9 @@ const LandingBolao: React.FC = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Bolão Copa do Mundo 2026 — Crie o seu grátis | Smart Betting</title>
-        <meta
-          name="description"
-          content="Crie o bolão da Copa 2026 em 30 segundos. Convide a galera por WhatsApp, palpite os 104 jogos, escolha o campeão. Gratuito até 20 pessoas. Premium pra grupos maiores."
-        />
-        <meta property="og:title" content="Bolão Copa 2026 — Crie o seu grátis" />
-        <meta
-          property="og:description"
-          content="Crie o bolão da galera em 30 segundos. 104 jogos, palpite de campeão, ranking ao vivo."
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://smartbetting.app/bolao" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <link rel="canonical" href="https://smartbetting.app/bolao" />
-      </Helmet>
+      {/* O canonical daqui apontava pra smartbetting.app sem www, host
+          diferente do canônico do site. Agora sai do <Seo> (com www). */}
+      <Seo route="/bolao" />
 
       <main className="theme-bolao min-h-screen bg-canvas text-ink">
         {/* ─── Hero ─────────────────────────────────────────────────────── */}

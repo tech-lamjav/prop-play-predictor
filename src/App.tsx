@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
+import { ReferralProvider } from "@/components/ReferralProvider";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
@@ -39,11 +40,13 @@ const Waitlist = lazyWithRetry(() => import("./pages/Waitlist"));
 const Paywall = lazyWithRetry(() => import("./pages/Paywall"));
 const PaywallDashboard = lazyWithRetry(() => import("./pages/PaywallDashboard"));
 const PaywallPlatform = lazyWithRetry(() => import("./pages/PaywallPlatform"));
+const Planos = lazyWithRetry(() => import("./pages/Planos"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const Perfil = lazyWithRetry(() => import("./pages/Perfil"));
 const Report = lazyWithRetry(() => import("./pages/Report"));
 const SharePage = lazyWithRetry(() => import("./pages/SharePage"));
 const Analise360List = lazyWithRetry(() => import("./pages/Analise360List"));
@@ -69,8 +72,8 @@ const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const queryClient = new QueryClient();
 
 const LazyFallback = () => (
-  <div className="min-h-screen bg-terminal-black flex items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-terminal-green"></div>
+  <div className="min-h-screen bg-canvas flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest"></div>
   </div>
 );
 
@@ -80,6 +83,7 @@ const App = () => (
       <AchievementProvider>
       <Toaster />
       <Sonner />
+      <ReferralProvider>
       <BrowserRouter>
         <EnvironmentBanner />
         <PostHogPageView />
@@ -90,7 +94,7 @@ const App = () => (
             <Route path="/nba" element={<Landing />} />
             <Route path="/home-nba" element={<HomeNBA />} />
             <Route path="/oportunidades" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowNbaOffSeason>
                 <Picks />
               </ProtectedRoute>
             } />
@@ -160,6 +164,7 @@ const App = () => (
             <Route path="/paywall" element={<Paywall />} />
             <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
             <Route path="/paywall-platform" element={<PaywallPlatform />} />
+            <Route path="/planos" element={<Planos />} />
             <Route path="/como-usar" element={<ComoUsar />} />
             <Route path="/report" element={
               <ProtectedRoute>
@@ -167,15 +172,15 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/analise-360" element={
-              <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-platform">
+              <ProtectedRoute allowNbaOffSeason>
+                <PremiumRoute redirectTo="/planos">
                   <Analise360List />
                 </PremiumRoute>
               </ProtectedRoute>
             } />
             <Route path="/analise-360/:triggerPlayerId" element={
-              <ProtectedRoute>
-                <PremiumRoute redirectTo="/paywall-platform">
+              <ProtectedRoute allowNbaOffSeason>
+                <PremiumRoute redirectTo="/planos">
                   <Analise360Detail />
                 </PremiumRoute>
               </ProtectedRoute>
@@ -184,6 +189,13 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            {/* Tela de conta do mobile — o mesmo conteúdo que no desktop mora
+                no dropdown do pill "Perfil". */}
+            <Route path="/perfil" element={
+              <ProtectedRoute>
+                <Perfil />
               </ProtectedRoute>
             } />
             {/* Bolão Copa do Mundo — todas as rotas wrappadas em BolaoLayout
@@ -224,6 +236,7 @@ const App = () => (
           <Footer />
         </Suspense>
       </BrowserRouter>
+      </ReferralProvider>
       </AchievementProvider>
     </TooltipProvider>
   </QueryClientProvider>

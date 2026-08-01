@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import UserNav from './UserNav';
+import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 import { useState } from 'react';
 import {
   DropdownMenu,
@@ -34,14 +35,14 @@ export default function MainNav({ className }: MainNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Home NBA', href: '/home-nba', icon: BarChart3 },
+    { name: 'Início NBA', href: '/home-nba', icon: BarChart3 },
     { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
     { name: 'Jogos', href: '/home-games', icon: TrendingUp },
     { name: 'Relatório', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
-    { name: 'Dashboard', href: '/betting-dashboard', icon: BarChart3 },
+    { name: 'Painel', href: '/betting-dashboard', icon: BarChart3 },
     { name: 'Apostas', href: '/bets', icon: Target },
   ];
 
@@ -92,7 +93,7 @@ export default function MainNav({ className }: MainNavProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-56">
-                <DropdownMenuLabel>Módulo NBA</DropdownMenuLabel>
+                <DropdownMenuLabel>NBA</DropdownMenuLabel>
                 {analysisItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -117,7 +118,7 @@ export default function MainNav({ className }: MainNavProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-56">
-                <DropdownMenuLabel>Módulo Betinho</DropdownMenuLabel>
+                <DropdownMenuLabel>Betinho</DropdownMenuLabel>
                 {betinhoModuleItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -135,14 +136,16 @@ export default function MainNav({ className }: MainNavProps) {
             </DropdownMenu>
 
             {/* Bolão — destino único, sem dropdown */}
-            <Button
-              variant="ghost"
-              onClick={() => handleNavigation('/bolao')}
-              className={`flex items-center gap-2 ${isBolaoActive ? 'font-semibold text-foreground' : ''}`}
-            >
-              <Trophy className="w-4 h-4" />
-              <span>Bolão</span>
-            </Button>
+            {SHOW_BOLAO_ENTRY_POINTS && (
+              <Button
+                variant="ghost"
+                onClick={() => handleNavigation('/bolao')}
+                className={`flex items-center gap-2 ${isBolaoActive ? 'font-semibold text-foreground' : ''}`}
+              >
+                <Trophy className="w-4 h-4" />
+                <span>Bolão</span>
+              </Button>
+            )}
           </div>
 
           {/* Right side - User Menu */}
@@ -159,7 +162,7 @@ export default function MainNav({ className }: MainNavProps) {
                   Entrar
                 </Button>
                 <Button
-                  onClick={() => navigate('/paywall-platform')}
+                  onClick={() => navigate('/planos')}
                   className="bg-primary text-primary-foreground hover:opacity-90"
                 >
                   Assinar
@@ -252,25 +255,27 @@ export default function MainNav({ className }: MainNavProps) {
               <div className="border-t border-border" />
 
               {/* Seção Bolão */}
-              <div>
-                <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Bolão
-                </p>
-                <div className="space-y-1">
-                  <Button
-                    variant={isBolaoActive ? "default" : "ghost"}
-                    onClick={() => handleNavigation('/bolao')}
-                    className={`w-full justify-start flex items-center space-x-3 ${
-                      isBolaoActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Trophy className="w-4 h-4" />
-                    <span className="font-medium">Bolão Copa 2026</span>
-                  </Button>
+              {SHOW_BOLAO_ENTRY_POINTS && (
+                <div>
+                  <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Bolão
+                  </p>
+                  <div className="space-y-1">
+                    <Button
+                      variant={isBolaoActive ? "default" : "ghost"}
+                      onClick={() => handleNavigation('/bolao')}
+                      className={`w-full justify-start flex items-center space-x-3 ${
+                        isBolaoActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Trophy className="w-4 h-4" />
+                      <span className="font-medium">Bolão Copa 2026</span>
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
           </div>

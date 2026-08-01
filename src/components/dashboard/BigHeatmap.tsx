@@ -110,7 +110,7 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-bold">ROI por liga × mercado</div>
-            <div className="text-[12px] text-ink-2 mt-0.5">Green = lucro · red = prejuízo · cinza = sem volume</div>
+            <div className="text-[12px] text-ink-2 mt-0.5">Green = lucro · red = prejuízo · cinza = sem apostas</div>
           </div>
         </div>
         <p className="text-[13px] text-ink-2 py-8 text-center">Nenhuma aposta encerrada no período</p>
@@ -156,10 +156,10 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
           <div className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-bold">ROI por liga × mercado</div>
           <div className="text-[12px] text-ink-2 mt-0.5">
             {selectedCell
-              ? 'Clique novamente pra desselecionar'
+              ? 'Clique novamente pra desmarcar'
               : compact
-                ? 'Toque numa célula pra ver detalhes'
-                : 'Clique numa célula pra ver detalhes ao lado'}
+                ? 'Toque num quadradinho pra ver detalhes'
+                : 'Clique num quadradinho pra ver detalhes ao lado'}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start">
@@ -186,8 +186,8 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
             <div className="flex gap-1">
               {(['roi', 'profit', 'volume'] as const).map((m) => {
                 const label = compact
-                  ? m === 'roi' ? 'ROI' : m === 'profit' ? 'R$' : 'Vol'
-                  : m === 'roi' ? 'ROI' : m === 'profit' ? 'Lucro' : 'Volume';
+                  ? m === 'roi' ? 'ROI' : m === 'profit' ? 'R$' : 'Qtd'
+                  : m === 'roi' ? 'ROI' : m === 'profit' ? 'Lucro' : 'Quantidade';
                 return (
                   <button
                     key={m}

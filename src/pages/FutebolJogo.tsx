@@ -16,9 +16,15 @@ import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
   faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
+import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoFixtureDetail, demoFixtureValueRows, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
 
 const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
   'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
@@ -293,7 +299,7 @@ function GoalDistChart({ lh, la }: { lh: number; la: number }) {
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-ink-3 mt-1.5 text-center">distribuição de gols no jogo (modelo) · esperado {lambda.toFixed(1)}</p>
+      <p className="text-[10px] text-ink-3 mt-1.5 text-center">chance de cada placar de gols (modelo) · esperado {lambda.toFixed(1)}</p>
     </div>
   );
 }
@@ -303,10 +309,78 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 
 // ---------- "O que olhar": Score vem PRONTO do backend (fact_value_opportunities) ----------
 // Síntese "O que olhar neste jogo" — decide e PROVA a melhor aposta (Score do backend)
+// Selo de resultado (jogo encerrado): Green / Meio green / Anulada / Meio red / Red.
+// Cor + texto (não só cor) e um ponto pra reforçar o estado à distância.
+function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
+  const b = resultBadge(r);
+  const c = b.tone === 'won' ? { bg: '#dcefe2', fg: '#0a3d2e', dot: '#2f7d50' }
+    : b.tone === 'push' ? { bg: '#eef0ec', fg: '#5a625a', dot: '#8a8f86' }
+    : { bg: '#fbe3e8', fg: '#be123c', dot: '#be123c' };
+  return (
+    <span
+      className={`shrink-0 inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-[0.06em] ${big ? 'h-7 px-2.5 text-[11px]' : 'h-5 px-1.5 text-[10px]'}`}
+      style={{ background: c.bg, color: c.fg }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.dot }} />
+      {b.label}
+    </span>
+  );
+}
+
+// Oportunidades mapeadas de um jogo ENCERRADO + como performaram (green/red).
+function PlayedOpportunities({ rows, homeName, awayName, goalsHome, goalsAway }: {
+  rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; goalsHome: number | null; goalsAway: number | null;
+}) {
+  const valueOpps = [...rows].filter((r) => r.score >= SCORE_MEDIA).sort((a, b) => b.score - a.score);
+  if (!valueOpps.length) return null;
+
+  const settled = valueOpps.map((o) => ({ o, r: settleFutebol(o.market, o.outcome, o.line_value, goalsHome, goalsAway) }));
+  const greens = settled.filter((s) => s.r && isHit(s.r)).length;
+  const reds = settled.filter((s) => s.r === 'lost' || s.r === 'half_lost').length;
+  const voids = settled.filter((s) => s.r === 'push').length;
+
+  return (
+    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
+      <div className="px-5 py-3.5 flex items-center justify-between gap-3 bg-canvas-2 border-b border-line">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Oportunidades deste jogo</div>
+          <div className="text-[11px] text-ink-3 mt-0.5">{valueOpps.length} mapeada{valueOpps.length === 1 ? '' : 's'} · resultado pelo placar</div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {greens > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#dcefe2', color: '#0a3d2e' }}>{greens} green</span>}
+          {reds > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#fbe3e8', color: '#be123c' }}>{reds} red</span>}
+          {voids > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#eef0ec', color: '#5a625a' }}>{voids} anul.</span>}
+        </div>
+      </div>
+      <div className="divide-y divide-line">
+        {settled.map(({ o, r }) => {
+          const chance = chancePct(o.prob_justa_fechamento);
+          const spine = !r ? 'border-l-line-2'
+            : isHit(r) ? 'border-l-[#2f7d50]'
+            : r === 'push' ? 'border-l-line-2'
+            : 'border-l-[#be123c]';
+          return (
+            <div key={`${o.market}-${o.outcome}-${o.line_value}`} className={`px-5 py-3.5 flex items-center gap-3.5 border-l-4 ${spine}`}>
+              <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[15px] w-9 h-9 shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-semibold text-ink truncate leading-tight">{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</div>
+                <div className="text-[11px] text-ink-3 truncate mt-0.5">{marketLabel(o.market)}{chance != null ? ` · ${chance}% chance` : ''} · odd {o.best_odd.toFixed(2)}</div>
+              </div>
+              {r && <ResultBadge r={r} big />}
+            </div>
+          );
+        })}
+      </div>
+      <p className="px-5 py-2.5 text-[10px] text-ink-3 border-t border-line">Resultado calculado pelo placar final. Não é recomendação.</p>
+    </div>
+  );
+}
+
 function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; competition: string; kickoffUtc: string | null; locked?: boolean }) {
   const ranked = [...rows].sort((a, b) => b.score - a.score);
-  const top = ranked[0];
-  const second = ranked[1];
+  const valueOpps = ranked.filter((r) => r.score >= SCORE_MEDIA); // todas as mapeadas (com valor)
+  const top = valueOpps[0];
+  const others = valueOpps.slice(1);
   const note = 'Leitura de risco, não recomendação de aposta.';
 
   if (!top) {
@@ -326,26 +400,13 @@ function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked
   // Pontos de atenção: contras (premissas que não bateram) + avisos (penalidades)
   const atencao = [...(top.contras ?? []), ...(top.avisos ?? [])];
 
-  // Contexto entre mercados: por que o valor está NESTE mercado e não nos outros
-  const otherMarket = Array.from(new Set(rows.map((r) => r.market))).find((m) => m !== top.market);
-  let crossNote: string | null = null;
-  if (otherMarket) {
-    const ob = rows.filter((r) => r.market === otherMarket).reduce((b, r) => (r.score > b.score ? r : b));
-    const obPick = pickLabel(ob.market, ob.outcome, ob.line_value, homeName, awayName);
-    crossNote =
-      ob.score >= SCORE_MEDIA
-        ? `Neste jogo o valor está em ${marketLabel(top.market)}, mas também há valor em ${marketLabel(otherMarket)}: ${obPick} (score ${ob.score}).`
-        : `Neste jogo o valor está em ${marketLabel(top.market)}. Em ${marketLabel(otherMarket)} as odds estão mais equilibradas — nada se destaca (melhor opção: ${obPick}, score ${ob.score}).`;
-  }
-
   const vColor = verdict.toLowerCase().includes('forte') ? 'text-forest' : 'text-amber-2';
   const chance = chancePct(top.prob_justa_fechamento);
-  const secondChance = second ? chancePct(second.prob_justa_fechamento) : null;
 
   return (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
       <div className="px-5 py-3 flex items-center justify-between bg-canvas-2 border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">O que olhar neste jogo</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">O que olhar neste jogo{valueOpps.length > 1 ? ` · ${valueOpps.length} oportunidades` : ''}</div>
         <span className={`text-[11px] font-semibold ${vColor}`}>{verdict}</span>
       </div>
       <div className="p-5 md:p-6 grid md:grid-cols-[1fr_260px] gap-6">
@@ -376,7 +437,6 @@ function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked
               </ul>
             </div>
           )}
-          {crossNote && <p className="text-[12px] text-ink-3 mt-4 pt-3 border-t border-line"><Blur active={!!locked}>{crossNote}</Blur></p>}
         </div>
 
         {/* Painel de confiabilidade + 2ª opção */}
@@ -392,15 +452,22 @@ function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked
               <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Odd</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1"><Blur active={!!locked}>{top.best_odd.toFixed(2)}</Blur></div></div>
             </div>
           </div>
-          {second && (
+          {others.length > 0 && (
             <div className="rounded-rebrand-md p-3 bg-canvas-2 border border-line">
-              <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">2ª opção</div>
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pickLabel(second.market, second.outcome, second.line_value, homeName, awayName)}</Blur></div>
-                  <div className="text-[10px] text-ink-3 truncate">{marketLabel(second.market)}<Blur active={!!locked}>{secondChance != null ? ` · ${secondChance}%` : ''} · {second.best_odd.toFixed(2)}</Blur></div>
-                </div>
-                <span className="text-[18px] font-semibold tabular-nums text-forest shrink-0">{second.score}</span>
+              <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-2 text-ink-3">Outras oportunidades neste jogo</div>
+              <div className="flex flex-col gap-2.5">
+                {others.map((o) => {
+                  const oc = chancePct(o.prob_justa_fechamento);
+                  return (
+                    <div key={`${o.market}-${o.outcome}-${o.line_value}`} className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</Blur></div>
+                        <div className="text-[10px] text-ink-3 truncate">{marketLabel(o.market)}<Blur active={!!locked}>{oc != null ? ` · ${oc}%` : ''} · {o.best_odd.toFixed(2)}</Blur></div>
+                      </div>
+                      <span className={`text-[11px] font-bold tabular-nums px-1.5 h-5 inline-flex items-center rounded shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -490,7 +557,7 @@ function ModelCard({ tendencies, head, homeName, awayName }: { tendencies: Match
             <TendencyRow key={mk.key} m={mk} />
           ))}
         </div>
-        <p className="mt-4 text-[10px] leading-snug text-ink-3">Estimativa estatística (Poisson) sobre médias da temporada — não é valor de mercado.</p>
+        <p className="mt-4 text-[10px] leading-snug text-ink-3">Conta baseada nas médias da temporada. Não é valor de mercado.</p>
       </div>
     </div>
   );
@@ -579,22 +646,26 @@ export default function FutebolJogo() {
   const fid = fixtureId ? Number(fixtureId) : undefined;
   const { data, isLoading, isError } = useFutebolFixtureDetail(fid);
   const { data: extras, isLoading: extrasLoading } = useFutebolFixtureExtras(fid);
+  const jogoTour = useOnboardingTour(FUT_JOGO_TOUR_ID, { enabled: !isLoading, delay: 1200 });
+  const isDemo = jogoTour.run; // durante o tour, preenche a tela com exemplo
 
-  const fixture = data?.fixture;
+  const fixture = isDemo ? demoFixtureDetail.fixture : data?.fixture;
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
-  const { data: tend } = useFutebolMatchupTendencies(
+  const { data: realTend } = useFutebolMatchupTendencies(
     fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
   );
+  const tend = isDemo ? { home: demoTeamSeason, away: demoAwaySeason } : realTend;
   const tendencies = useMemo(() => {
     if (!fixture || !tend?.home || !tend?.away) return null;
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   const head = tendencies ? headlineMarket(tendencies.markets) : null;
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
-  const { data: valueRows } = useFutebolFixtureValue(fid);
+  const { data: realValueRows } = useFutebolFixtureValue(fid);
+  const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
   const { data: access } = useFutebolAccess();
-  const locked = !access?.unlocked;
+  const locked = isDemo ? false : !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"
   const { data: homeProfile } = useFutebolTeamProfile(fixture?.home_team_id, fixture?.competition as Competition, fixture?.season as number);
   const { data: awayProfile } = useFutebolTeamProfile(fixture?.away_team_id, fixture?.competition as Competition, fixture?.season as number);
@@ -609,6 +680,7 @@ export default function FutebolJogo() {
   const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
   // jogo encerrado/iniciado não é mais oportunidade: esconde o "O que olhar" (vira só descritivo)
   const showValue = !finished && !!valueRows && valueRows.length > 0;
+  const hasPlayed = finished && !!valueRows && valueRows.length > 0; // registro pós-jogo
 
   const playerStats = extras?.player_stats || [];
   const statsById = new Map<number, FutebolPlayerStat>(
@@ -625,9 +697,19 @@ export default function FutebolJogo() {
     (h2h && h2h.length) || extras?.form_home?.length || extras?.form_away?.length
   );
 
+  const jogoSteps = useMemo(
+    () => makeFutebolJogoSteps({
+      hasValue: showValue,
+      hasModel: !!tendencies,
+      hasContext: hasDescriptive || !!homeProfile || !!awayProfile,
+    }),
+    [showValue, tendencies, hasDescriptive, homeProfile, awayProfile],
+  );
+
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
+      <OnboardingTour tourId={FUT_JOGO_TOUR_ID} steps={jogoSteps} run={jogoTour.run} onFinish={jogoTour.finish} />
       <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {isLoading ? (
           <div className="space-y-3">
@@ -635,16 +717,17 @@ export default function FutebolJogo() {
             <Skeleton className="h-10 w-full bg-canvas-2 rounded-rebrand-md" />
             <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
           </div>
-        ) : isError || !fixture ? (
+        ) : !fixture ? (
           <div className={`${CARD} p-6 text-center text-sm text-status-danger`}>
             Não foi possível carregar este jogo.
           </div>
         ) : (
           <>
+            {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
             {/* Header */}
-            <div className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
+            <div data-tour="fut-jogo-header" className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
               <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
-                <span>{prettyRound(fixture.round)}</span>
+                {isDemo && <DemoBadge />}<span>{prettyRound(fixture.round)}</span>
                 {fixture.venue_name && (
                   <><span>•</span><MapPin className="w-3 h-3" /><span>{fixture.venue_name}{fixture.venue_city ? `, ${fixture.venue_city}` : ''}</span></>
                 )}
@@ -681,13 +764,11 @@ export default function FutebolJogo() {
               </div>
             </div>
 
-            {showValue && <FutebolAccessBanner access={access} className="mt-5" />}
-
-            {/* Veredito + nosso modelo de gols (lado a lado) */}
-            {(showValue || tendencies) && (
-              <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
-                {showValue && valueRows && (
-                  <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
+            {/* Jogo ENCERRADO: oportunidades (resultado) + nosso modelo, lado a lado (~40/60) */}
+            {finished && (hasPlayed || tendencies) && (
+              <div className={`mt-5 grid gap-5 items-start ${hasPlayed && tendencies ? 'lg:grid-cols-[2fr_3fr]' : 'grid-cols-1'}`}>
+                {hasPlayed && valueRows && (
+                  <PlayedOpportunities rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} goalsHome={fixture.goals_home} goalsAway={fixture.goals_away} />
                 )}
                 {tendencies && (
                   <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
@@ -695,16 +776,33 @@ export default function FutebolJogo() {
               </div>
             )}
 
-            {/* Explorar mercados — largura total */}
+            {/* Jogo FUTURO: acesso + veredito + nosso modelo, lado a lado */}
+            {!finished && showValue && <FutebolAccessBanner access={access} className="mt-5" />}
+            {!finished && (showValue || tendencies) && (
+              <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
+                {showValue && valueRows && (
+                  <div data-tour="fut-jogo-oque-olhar">
+                    <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
+                  </div>
+                )}
+                {tendencies && (
+                  <div data-tour="fut-jogo-modelo">
+                    <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Explorar mercados — largura total (só pré-jogo, é interativo pra decidir) */}
             {showValue && valueRows && (
-              <div className="mt-5">
+              <div data-tour="fut-jogo-mercados" className="mt-5">
                 <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
               </div>
             )}
 
             {/* Contexto — escalação (pitch) + confrontos diretos + estatísticas */}
             {(hasDescriptive || homeProfile || awayProfile) && (
-              <div className="mt-5 grid lg:grid-cols-[1.3fr_1fr] gap-5 items-start">
+              <div data-tour="fut-jogo-contexto" className="mt-5 grid lg:grid-cols-[1.3fr_1fr] gap-5 items-start">
                 {/* Escalação provável & desfalques */}
                 <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
                   <div className="px-5 py-3 flex items-center justify-between border-b border-line">

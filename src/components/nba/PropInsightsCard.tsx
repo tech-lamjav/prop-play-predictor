@@ -10,7 +10,7 @@ const STAT_LABELS: Record<string, string> = {
   player_threes: '3 Pontos',
   player_steals: 'Roubos',
   player_blocks: 'Bloqueios',
-  player_turnovers: 'Turnovers',
+  player_turnovers: 'Erros',
   player_points_assists: 'Pts + Ast',
   player_points_rebounds: 'Pts + Reb',
   player_rebounds_assists: 'Reb + Ast',
@@ -121,7 +121,7 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
                   <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
                 )}
                 <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
-                  {confirmed ? 'Insight' : 'Alerta'}
+                  {confirmed ? 'Dica' : 'Alerta'}
                 </span>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${config.badgeClass}`}>
                   {config.badge}

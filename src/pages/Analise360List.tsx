@@ -6,7 +6,12 @@ import {
 } from 'lucide-react';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { useAnalise360Data } from '@/hooks/use-analise360';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
+import OnboardingTour from '@/components/onboarding/OnboardingTour';
+import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
+import { ANALISE360_LIST_TOUR_ID, makeAnalise360ListSteps } from '@/components/onboarding/tours';
+import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { demoNbaOpportunities, demoPlayerStarsMap, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
 import {
   Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
@@ -210,7 +215,7 @@ function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () 
         </div>
         <div className="text-right min-w-0">
           <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">
-            Top impacto
+            Maior impacto
           </div>
           {lastName ? (
             <>
@@ -241,8 +246,13 @@ type StatusFilter = 'all' | 'out' | 'doubtful' | 'questionable';
 export default function Analise360List() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useAnalise360Data();
-  const opportunities = data?.opportunities ?? [];
-  const playerStarsMap = data?.playerStarsMap ?? new Map<number, number>();
+  const a360ListTour = useOnboardingTour(ANALISE360_LIST_TOUR_ID, { enabled: !isLoading });
+  const realOpps = data?.opportunities ?? [];
+  // Fora do tour: NBA de férias (jul-set) e sem gatilhos reais → exemplo.
+  const offSeason = !isLoading && isNbaOffSeason() && realOpps.length === 0;
+  const isDemo = a360ListTour.run || offSeason;
+  const opportunities = isDemo ? demoNbaOpportunities : realOpps;
+  const playerStarsMap = isDemo ? demoPlayerStarsMap : (data?.playerStarsMap ?? new Map<number, number>());
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   // exactStars: 0 = todos; 1/2/3 = exatamente N estrelas
@@ -334,6 +344,11 @@ export default function Analise360List() {
 
   const todayLabel = getSaoPauloTodayLabel();
 
+  const a360ListSteps = useMemo(
+    () => makeAnalise360ListSteps({ hasGrid: !isLoading && triggerGroups.length > 0 }),
+    [isLoading, triggerGroups.length],
+  );
+
   return (
     <>
       <Helmet>
@@ -341,10 +356,11 @@ export default function Analise360List() {
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack backTo="/home-nba" />
+        <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
+        <OnboardingTour tourId={ANALISE360_LIST_TOUR_ID} steps={a360ListSteps} run={a360ListTour.run} onFinish={a360ListTour.finish} />
 
         {/* Page header (bg-white) */}
-        <div className="bg-white border-b border-line">
+        <div data-tour="a360l-header" className="bg-white border-b border-line">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-7">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="min-w-0">
@@ -355,6 +371,7 @@ export default function Analise360List() {
                   <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 bg-amber-100 text-amber-700 rounded-md whitespace-nowrap">
                     impacto de cada lesão
                   </span>
+                  {isDemo && <DemoBadge />}
                 </div>
                 <p className="text-[13px] md:text-[14px] mt-1.5 text-ink-2 max-w-2xl leading-snug">
                   Quem se beneficia quando um titular não joga. Cada card é uma lesão; clique para
@@ -371,6 +388,7 @@ export default function Analise360List() {
         </div>
 
         <main id="main-content" className="max-w-6xl mx-auto px-4 py-6">
+          {isDemo && <div className="mb-4"><DemoRibbon show variant={a360ListTour.run ? 'tour' : 'offseason'} /></div>}
           {/* Filters bar */}
           {!isLoading && triggerGroups.length > 0 && (
             <>
@@ -516,7 +534,7 @@ export default function Analise360List() {
               <p className="text-sm text-ink-2">Nenhum jogador com lesão impactante hoje.</p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div data-tour="a360l-grid" className="space-y-8">
               {groupedSections.map(([statusKey, triggers]) => {
                 const meta = STATUS_META[statusKey] ?? STATUS_META.out;
                 return (

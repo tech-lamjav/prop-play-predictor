@@ -256,7 +256,11 @@ export default function Onboarding() {
         .eq('id', user.id)
         .single();
       const alreadySynced = !!row?.telegram_chat_id;
-      if (alreadySynced) setStage('connected');
+      if (alreadySynced) {
+        // Já conectou antes de chegar aqui → não mostra o onboarding, manda pro hub.
+        navigate('/inicio', { replace: true });
+        return;
+      }
 
       if (!viewedFired.current) {
         viewedFired.current = true;
@@ -328,7 +332,7 @@ export default function Onboarding() {
 
   const handleSkip = () => {
     posthog?.capture('betinho_onboarding_skipped', { product: 'betinho' });
-    navigate('/bets');
+    navigate('/inicio');
   };
 
   if (!userId) {
@@ -449,15 +453,15 @@ export default function Onboarding() {
             </div>
             <h1 className="text-xl font-bold text-ink mb-2">Conectado!</h1>
             <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
-              O Betinho já te mandou uma mensagem. Manda a sua primeira aposta pra ele (print ou texto)
-              e ela aparece aqui na hora.
+              O Betinho já te mandou uma mensagem no Telegram. Manda sua primeira aposta pra ele
+              por lá (print ou texto) quando quiser.
             </p>
             <button
               type="button"
-              onClick={() => navigate('/bets')}
+              onClick={() => navigate('/inicio')}
               className="w-full h-12 rounded-lg bg-forest hover:bg-forest-soft text-white text-[15px] font-semibold flex items-center justify-center gap-2 transition-colors"
             >
-              Ver minhas apostas
+              Continuar
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

@@ -27,6 +27,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
+import { esc } from "../shared/format.ts";
+import { trackedUrl } from "../shared/links.ts";
+import { logMessageRun } from "../shared/runs.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
@@ -80,9 +83,7 @@ function marketPt(market: string): string {
 }
 
 // ── util ─────────────────────────────────────────────────────
-function esc(s: unknown): string {
-  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+// esc/trackedUrl vivem em shared/ (Onda 3 — estavam duplicados 1:1)
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -95,19 +96,6 @@ function brtDay(d: Date): string {
 }
 function brtHourMin(d: Date): string {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }).format(d);
-}
-
-// link rastreado: /functions/v1/go?u=<user>&d=<dest>&s=<hmac>
-async function hmacHex(msg: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(CRON_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
-}
-async function trackedUrl(userId: string, dest: string): Promise<string> {
-  const s = await hmacHex(`${userId}:${dest}`);
-  return `${SUPABASE_URL}/functions/v1/go?u=${userId}&d=${encodeURIComponent(dest)}&s=${s}`;
 }
 
 interface BoardRow {
@@ -123,6 +111,9 @@ interface BoardRow {
   best_odd: number;
   score: number;
   faixa: string;
+  janela_usada: string | null;
+  edge: number | null;
+  prob_justa_fechamento: number | null;
   evidencias: string[] | null;
 }
 
@@ -150,7 +141,7 @@ async function buildMessage(picks: BoardRow[], userId: string): Promise<string> 
       ""
     );
   }
-  lines.push(`<i>Score = confiabilidade da oportunidade (0–100), calculado contra a linha sharp do mercado.</i>`);
+  lines.push(`<i>Score 0–100: quanto mais alto, mais confiança na pick.</i>`);
   return lines.join("\n");
 }
 
@@ -166,7 +157,14 @@ function registerButtons(picks: BoardRow[], pickIdByFixture: Map<number, string>
   return rows;
 }
 
-async function sendDaily(chatId: string, text: string, boardUrl: string, pickRows: any[]): Promise<void> {
+// CTA do site com destino inteligente: 1 pick → tela daquele jogo; 2+ → board.
+// Copy promete o "porquê" (a DM traz só 1 evidência; o site tem o raio-x completo).
+function ctaSpec(picks: BoardRow[]): { label: string; dest: string } {
+  if (picks.length === 1) return { label: "Ver o porquê dessa pick →", dest: `jogo-${picks[0].fixture_id}` };
+  return { label: "Ver o porquê de cada pick →", dest: "board" };
+}
+
+async function sendDaily(chatId: string, text: string, ctaUrl: string, ctaLabel: string, pickRows: any[]): Promise<void> {
   const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -175,7 +173,7 @@ async function sendDaily(chatId: string, text: string, boardUrl: string, pickRow
       text,
       parse_mode: "HTML",
       disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [...pickRows, [{ text: "Ver a análise completa", url: boardUrl }]] },
+      reply_markup: { inline_keyboard: [...pickRows, [{ text: ctaLabel, url: ctaUrl }]] },
     }),
   });
   if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
@@ -201,16 +199,15 @@ serve(async (req) => {
       return k.getTime() > now.getTime() && brtDay(k) === today && r.score >= MIN_SCORE;
     });
 
-    // melhor pick por jogo → top N por Score
-    const bestByFixture = new Map<number, BoardRow>();
-    for (const r of todayRows) {
-      const cur = bestByFixture.get(r.fixture_id);
-      if (!cur || r.score > cur.score) bestByFixture.set(r.fixture_id, r);
-    }
-    const picks = [...bestByFixture.values()].sort((a, b) => b.score - a.score).slice(0, MAX_PICKS);
+    // principais oportunidades do dia por Score — pode ter mais de uma do mesmo jogo
+    const picks = [...todayRows].sort((a, b) => b.score - a.score).slice(0, MAX_PICKS);
 
     // 3) dia fraco → silêncio (nada de mensagem "hoje não tem nada")
     if (picks.length === 0) {
+      // o dia de silêncio é informação (telemetria); ensaio (report) não loga
+      if (mode === "send") {
+        await logMessageRun(supabase, "notify-opportunities", { candidates: 0, sent: 0, ok: true });
+      }
       return json({ ok: true, mode, picks: 0, sent: 0, motivo: "sem oportunidade acima do corte hoje" });
     }
 
@@ -231,8 +228,17 @@ serve(async (req) => {
       });
     }
 
-    // 5) persiste os picks do dia (referência dos botões "Registrar no Betinho")
+    // 5) persiste os picks do dia (referência dos botões "Registrar no Betinho"
+    // e do histórico "enviado no Telegram" da tela de Oportunidades)
     // — uma vez, compartilhado entre todos; upsert idempotente por (dia,jogo,aposta)
+    //
+    // O pick vai TAMBÉM estruturado, com os números deste instante (ver migration
+    // 091): o mart é full-refresh e re-escolhe a janela de odds, então em algumas
+    // horas este pick pode não existir mais lá — e chance/valor/Score da janela da
+    // manhã são DESTRUÍDOS quando a de fechamento entra (conferido: a devig só
+    // guarda t24h enquanto o jogo é futuro). Se não gravar aqui, morre: o histórico
+    // passa a mostrar o pick de fechamento em vez do que a pessoa recebeu, e não há
+    // como liquidar green/red (não se liquida "Palmeiras −0,25" em texto).
     const pickRows = picks.map((p) => ({
       fixture_id: p.fixture_id,
       sport: "Futebol",
@@ -242,6 +248,14 @@ serve(async (req) => {
       bet_description: pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name),
       odds: p.best_odd,
       match_date: kickoffDate(p.kickoff_utc).toISOString(),
+      market: p.market,
+      outcome: p.outcome,
+      line_value: p.line_value,
+      janela_usada: p.janela_usada,
+      score: p.score,
+      faixa: p.faixa,
+      edge: p.edge,
+      prob_justa_fechamento: p.prob_justa_fechamento,
     }));
     const { data: savedPicks, error: pErr } = await supabase
       .from("daily_opportunity_picks")
@@ -259,8 +273,9 @@ serve(async (req) => {
     for (const r of recipients) {
       try {
         const text = await buildMessage(picks, r.user_id);
-        const boardUrl = await trackedUrl(r.user_id, "board");
-        await sendDaily(r.chat_id, text, boardUrl, pickButtonRows);
+        const cta = ctaSpec(picks);
+        const ctaUrl = await trackedUrl(r.user_id, cta.dest);
+        await sendDaily(r.chat_id, text, ctaUrl, cta.label, pickButtonRows);
 
         const { error: upErr } = await supabase.from("opportunity_dispatch_state").upsert({
           user_id: r.user_id,
@@ -281,9 +296,15 @@ serve(async (req) => {
       }
     }
 
+    // telemetria — só runs de envio (report é ensaio)
+    await logMessageRun(supabase, "notify-opportunities", { candidates: recipients.length, sent, errors, ok: true });
+
     return json({ ok: true, mode, picks: picks.length, destinatarios: recipients.length, sent, errors });
   } catch (e) {
     console.error("notify-opportunities error:", e);
+    if (mode === "send") {
+      await logMessageRun(supabase, "notify-opportunities", { errors: [(e as Error)?.message ?? "erro"], ok: false });
+    }
     return json({ error: (e as Error)?.message ?? "Internal error" }, 500);
   }
 });

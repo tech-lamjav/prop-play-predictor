@@ -49,7 +49,7 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
                 {narrative.title}
               </DialogTitle>
               <DialogDescription className="text-[11px] text-white/65 mt-1">
-                Análise derivada dos seus dados
+                Análise feita a partir das suas apostas
               </DialogDescription>
             </div>
             <button

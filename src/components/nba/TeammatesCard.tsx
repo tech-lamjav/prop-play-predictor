@@ -30,11 +30,11 @@ function statusLabel(status: string | undefined): { label: string; cls: string }
   if (!status) return null;
   const s = status.toLowerCase();
   if (s === 'active' || s === '') return null;
-  if (s.includes('out for season')) return { label: 'Out For Season', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
-  if (s === 'out' || s.includes('out')) return { label: 'Out', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
-  if (s.includes('doubtful')) return { label: 'Doubtful', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
-  if (s.includes('probable')) return { label: 'Probable', cls: 'bg-emerald-50 text-forest border-emerald-200' };
-  if (s.includes('questionable')) return { label: 'Questionable', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+  if (s.includes('out for season')) return { label: 'Fora da temporada', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+  if (s === 'out' || s.includes('out')) return { label: 'Fora', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+  if (s.includes('doubtful')) return { label: 'Duvidoso', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
+  if (s.includes('probable')) return { label: 'Provável', cls: 'bg-emerald-50 text-forest border-emerald-200' };
+  if (s.includes('questionable')) return { label: 'Questionável', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
   return { label: status, cls: 'bg-canvas-2 text-ink-2 border-line' };
 }
 

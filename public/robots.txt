@@ -1,37 +1,56 @@
+# robots.txt — Smart Betting
+# Regra: só indexar páginas públicas de conteúdo (landings, /futebol, guia,
+# termos). Tudo que exige login ou é app/checkout fica fora do índice.
+# Twitterbot e facebookexternalhit ficam com Allow total pra montar o preview
+# de compartilhamento (eles não respeitam noindex, só o Disallow).
+
 User-agent: Googlebot
 Allow: /
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /inicio
 Disallow: /dashboard
 Disallow: /bets
 Disallow: /bankroll
 Disallow: /betting-dashboard
 Disallow: /analysis
-Disallow: /onboarding
-Disallow: /settings
 Disallow: /report
+Disallow: /settings
 Disallow: /analise-360
-Disallow: /nba-players
 Disallow: /oportunidades
+Disallow: /waitlist
 Disallow: /paywall
 Disallow: /paywall-dashboard
 Disallow: /paywall-platform
+Disallow: /futebol/oportunidades
+Disallow: /futebol/jogos
+Disallow: /futebol/assinar
+Disallow: /bolao/entrar
 
 User-agent: Bingbot
 Allow: /
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /inicio
 Disallow: /dashboard
 Disallow: /bets
 Disallow: /bankroll
 Disallow: /betting-dashboard
 Disallow: /analysis
-Disallow: /onboarding
-Disallow: /settings
 Disallow: /report
+Disallow: /settings
 Disallow: /analise-360
-Disallow: /nba-players
 Disallow: /oportunidades
+Disallow: /waitlist
 Disallow: /paywall
 Disallow: /paywall-dashboard
 Disallow: /paywall-platform
+Disallow: /futebol/oportunidades
+Disallow: /futebol/jogos
+Disallow: /futebol/assinar
+Disallow: /bolao/entrar
 
+# Scrapers de social: liberados pra montar o card de compartilhamento.
 User-agent: Twitterbot
 Allow: /
 
@@ -40,19 +59,25 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /inicio
 Disallow: /dashboard
 Disallow: /bets
 Disallow: /bankroll
 Disallow: /betting-dashboard
 Disallow: /analysis
-Disallow: /onboarding
-Disallow: /settings
 Disallow: /report
+Disallow: /settings
 Disallow: /analise-360
-Disallow: /nba-players
 Disallow: /oportunidades
+Disallow: /waitlist
 Disallow: /paywall
 Disallow: /paywall-dashboard
 Disallow: /paywall-platform
+Disallow: /futebol/oportunidades
+Disallow: /futebol/jogos
+Disallow: /futebol/assinar
+Disallow: /bolao/entrar
 
 Sitemap: https://www.smartbetting.app/sitemap.xml

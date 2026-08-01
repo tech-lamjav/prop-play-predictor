@@ -12,6 +12,7 @@ import { Trophy, Users, Sparkles, Check, BarChart3, Send, ShieldCheck } from "lu
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
+import { resolveHomePath } from "@/lib/post-login";
 
 // lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
 const GoogleIcon = () => (
@@ -29,9 +30,9 @@ const GoogleIcon = () => (
  * 1. Se houver `location.state.from` (ProtectedRoute setou — ex: link de
  *    convite, deep link), respeita. Mantém compatibilidade com fluxos que
  *    dependem disso (BolaoLP `/bolao/comecar` passa `state.from`).
- * 2. Default = `/bolao`. Antes era `/onboarding`; mudado pra bolão por
- *    decisão do produto (Diody): bolão vira a porta de entrada padrão
- *    pós-cadastro, todos caem na home do bolão.
+ * 2. Senão, usa o `fallback` que o chamador passar. Login manda o resultado do
+ *    `resolveHomePath` (/inicio ou /onboarding); cadastro manda
+ *    `/onboarding?src=signup`.
  *
  * Bug histórico que esta função corrige: `handleSignUp` ignorava
  * `state.from` (hard-coded `/onboarding`), então quem vinha da LP do bolão
@@ -39,7 +40,9 @@ const GoogleIcon = () => (
  */
 function getRedirectTarget(
   state: unknown,
-  fallback: string = "/bolao"
+  // Sem default: os dois chamadores passam destino explícito, e um default
+  // implícito aqui já apontou pro `/bolao` muito depois da Copa acabar.
+  fallback: string
 ): string {
   const from = (state as { from?: { pathname?: string; search?: string } } | null)?.from;
   if (
@@ -123,9 +126,10 @@ const Auth = () => {
       }
 
       toast({ title: "Bem-vindo de volta!" });
-      // Login recorrente cai no hub /inicio (dispatcher pós-login). state.from
-      // explícito continua vencendo (ex: barrado numa rota protegida → volta pra ela).
-      navigate(getRedirectTarget(location.state, '/inicio'));
+      // state.from explícito vence (ex: barrado numa rota protegida → volta pra ela);
+      // senão, resolveHomePath decide: conectou o Telegram → /inicio, senão → /onboarding.
+      const fallback = user ? await resolveHomePath(supabase, user.id) : '/inicio';
+      navigate(getRedirectTarget(location.state, fallback));
     } catch (error) {
       toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
     } finally {
@@ -273,13 +277,15 @@ const Auth = () => {
     // theme-bolao no root pra ativar CSS vars (--canvas, --forest, --ink, etc.)
     // mesmo fora do BolaoLayout (Auth tem rota /auth, não /bolao/*).
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
-      {/* Topbar minimalista — logo igual ao header do bolão (AnalyticsNav rebrand).
-          A logo.png é branca/clara; aplicamos `invert hue-rotate-180` pra ficar
-          legível em fundo branco. Mesmo tratamento usado na nav do /bolao. */}
-      <header className="border-b border-line bg-white">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      {/* Faixa 1 do header novo (forest, 60px, gutter 24px), mas sem a
+          navegação de produto nem a tab bar: /auth é tela de conversão, e um
+          menu ali só dá rota de fuga. A logo é a reversa original — em fundo
+          forest não precisa do filtro `invert hue-rotate-180` que a versão
+          branca desta barra exigia. */}
+      <header className="bg-forest">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[52px] md:h-[60px] flex items-center justify-between">
           <a href="/" aria-label="Smartbetting — home" className="flex items-center hover:opacity-80 transition-opacity">
-            <img src="/logo.png" alt="Smartbetting" className="h-8 w-auto invert hue-rotate-180" />
+            <img src="/logo.png" alt="Smartbetting" className="h-5 md:h-[26px] w-auto" />
           </a>
           <LanguageToggle />
         </div>

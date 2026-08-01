@@ -8,13 +8,15 @@ import {
 } from 'lucide-react';
 import { nbaDataService, DailyOpportunity } from '@/services/nba-data.service';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
-import { NBAHomeNav } from '@/components/nba-home/NBAHomeHeader';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from '@/components/ui/drawer';
 import { useSubscription } from '@/hooks/use-subscription';
+import { DemoRibbon } from '@/components/onboarding/DemoRibbon';
+import { demoNbaOpportunities, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -406,9 +408,15 @@ export default function Picks() {
   const posthog = usePostHog();
   const { isPremium } = useSubscription();
 
-  const [opportunities, setOpportunities] = useState<DailyOpportunity[]>([]);
+  const [realOpportunities, setOpportunities] = useState<DailyOpportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fora de temporada (jul-set) e sem oportunidades reais → enche de exemplo
+  // pra tela não ficar vazia até a NBA voltar. Só a renderização usa o efetivo.
+  const offSeason = !isLoading && isNbaOffSeason() && realOpportunities.length === 0;
+  const isDemo = offSeason;
+  const opportunities = isDemo ? demoNbaOpportunities : realOpportunities;
 
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>('score');
@@ -422,7 +430,7 @@ export default function Picks() {
 
   // Free user paywall (mantém comportamento atual — adaptado pro tema light)
   const FREE_VISIBLE_COUNT = 2;
-  const isRowFree = (idx: number) => isPremium || idx < FREE_VISIBLE_COUNT;
+  const isRowFree = (idx: number) => isDemo || isPremium || idx < FREE_VISIBLE_COUNT;
   const getBlur = (idx: number) => isRowFree(idx) ? '' : 'blur-sm select-none pointer-events-none';
 
   // Analytics: visualização da tela de Picks NBA (Marco 3 — retenção por superfície, N3).
@@ -435,9 +443,7 @@ export default function Picks() {
       try {
         setIsLoading(true);
         setError(null);
-        // ⚠️ TEMP — lock em 2026-05-10 pra iteração de layout do rebrand.
-        // REVERTER pra `getDailyOpportunities()` (sem argumento) antes do merge.
-        const data = await nbaDataService.getDailyOpportunities('2026-05-10');
+        const data = await nbaDataService.getDailyOpportunities();
         setOpportunities(data);
       } catch (err) {
         console.error('Error loading opportunities:', err);
@@ -549,7 +555,7 @@ export default function Picks() {
   const handleAnalyze = (opp: DailyOpportunity, rowIdx: number) => {
     const canAccess = isRowFree(rowIdx);
     if (!canAccess) {
-      navigate('/paywall-platform');
+      navigate('/planos');
       return;
     }
     const slug = slugify(opp.backup_player_name);
@@ -560,7 +566,7 @@ export default function Picks() {
   if (error) {
     return (
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
-        <NBAHomeNav showBack />
+        <AnalyticsNav variant="rebrand" showBack />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <AlertTriangle className="w-8 h-8 text-status-danger mx-auto mb-4" />
@@ -583,7 +589,7 @@ export default function Picks() {
         <title>Oportunidades do dia · Smart Betting NBA</title>
         <meta name="description" content="Quem se beneficia quando um titular não joga — ranqueado por score de confiança." />
       </Helmet>
-      <NBAHomeNav showBack />
+      <AnalyticsNav variant="rebrand" showBack />
 
       {/* Page header (bg-white) */}
       <div className="bg-white border-b border-line">
@@ -612,6 +618,7 @@ export default function Picks() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
+        {isDemo && <DemoRibbon show variant="offseason" />}
         {/* Filter row — mobile (drawer) */}
         <div className="md:hidden flex items-center gap-2">
           <Drawer>
@@ -773,14 +780,14 @@ export default function Picks() {
         )}
 
         {/* Premium banner pra free user */}
-        {!isPremium && !isLoading && filtered.length > FREE_VISIBLE_COUNT && (
+        {!isDemo && !isPremium && !isLoading && filtered.length > FREE_VISIBLE_COUNT && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
             <p className="text-[12px] text-amber-700">
               Você vê as primeiras {FREE_VISIBLE_COUNT} oportunidades.
               Dados de score, médias e gaps das demais são exclusivos para assinantes Premium.
             </p>
             <button
-              onClick={() => navigate('/paywall-platform')}
+              onClick={() => navigate('/planos')}
               className="text-[12px] font-semibold text-amber-700 hover:text-amber-900 shrink-0 inline-flex items-center gap-1"
             >
               Assinar

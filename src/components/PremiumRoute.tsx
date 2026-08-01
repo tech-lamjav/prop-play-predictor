@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { createClient } from '@/integrations/supabase/client';
+import { isNbaOffSeason } from '@/components/onboarding/demo/nba';
 
 interface PremiumRouteProps {
   children: React.ReactNode;
@@ -10,7 +11,7 @@ interface PremiumRouteProps {
 
 export default function PremiumRoute({
   children,
-  redirectTo = '/paywall',
+  redirectTo = '/planos',
 }: PremiumRouteProps) {
   const { user, isLoading: authLoading } = useAuth();
   const location = useLocation();
@@ -50,6 +51,13 @@ export default function PremiumRoute({
 
     checkSubscription();
   }, [user?.id]);
+
+  // Vitrine de off-season da NBA: o PremiumRoute só protege a Análise 360.
+  // Enquanto não há temporada, abre pra qualquer um conhecer o produto em modo
+  // exemplo (dados fictícios), sem login nem assinatura. Trava sozinho depois.
+  if (isNbaOffSeason()) {
+    return <>{children}</>;
+  }
 
   if (authLoading || isCheckingSubscription) {
     return (
