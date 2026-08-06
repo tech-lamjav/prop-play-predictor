@@ -142,7 +142,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   // O sheet nativo deixa o user escolher entre WhatsApp / Telegram / Instagram / Copiar etc.
   const handleShareInvite = () => {
     void shareTextOrLink({
-      title: `Bolão "${bolao.name}" — Copa 2026`,
+      title: `Bolão "${bolao.name}" · Copa 2026`,
       text: SHARE_MESSAGES.invite(bolao.name, bolao.invite_code, inviteUrl),
     });
   };
@@ -160,7 +160,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
     memberCount === 1
       ? 'Só você ainda. Chame a galera.'
       : memberCount < 4
-        ? `${memberCount} jogadores. Chame mais — fica mais disputado a partir de 4.`
+        ? `${memberCount} jogadores. Chame mais, fica mais disputado a partir de 4.`
         : `${memberCount} jogadores. Chame mais se quiser.`;
 
   return (
@@ -321,7 +321,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
                 className="rounded-rebrand-md gap-2 justify-center bg-white/10 text-white border border-white/30 hover:bg-white/20 hover:border-white/50 transition-colors"
               >
                 <Wand2 className="w-4 h-4 shrink-0" />
-                Quick Pick — preencher em 1 clique
+                Quick Pick · preencher em 1 clique
               </Button>
             </div>
             {/* Info de prazo + primeiro jogo */}
@@ -362,7 +362,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
                 {inviteHeadline}
               </p>
               <p className="text-[12px] text-ink-2 mt-0.5 leading-relaxed">
-                Manda o link no zap. Pode chamar quantos quiser — o ranking fica interessante a partir de 4.
+                Manda o link no zap. Pode chamar quantos quiser: o ranking fica interessante a partir de 4.
               </p>
             </div>
           </div>

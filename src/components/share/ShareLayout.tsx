@@ -47,7 +47,7 @@ export const ShareLayout: React.FC<ShareLayoutProps> = ({
                 variant="secondary"
                 className="bg-terminal-gray/50 border-terminal-border text-terminal-text text-xs"
               >
-                Visão compartilhada — somente leitura
+                Visão compartilhada · somente leitura
               </Badge>
             </div>
 

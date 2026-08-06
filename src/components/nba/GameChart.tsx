@@ -965,7 +965,7 @@ export const GameChart: React.FC<GameChartProps> = ({
               balldontlie nao expoe potential_ast game-by-game, entao mostramos
               a media da temporada como info complementar. */}
           {selectedStatType === 'player_assists' && potentialAstSeason != null && (
-            <span title="Passes que viraram chances de cesta — independe de o companheiro ter convertido. Fonte: balldontlie (dados da temporada)">
+            <span title="Passes que viraram chances de cesta, independente de o companheiro ter convertido. Fonte: balldontlie (dados da temporada)">
               Assistências potenciais (temporada){' '}
               <span className="font-medium text-ink opacity-100">
                 {potentialAstSeason.toFixed(1)}

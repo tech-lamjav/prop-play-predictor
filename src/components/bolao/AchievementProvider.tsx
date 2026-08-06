@@ -138,7 +138,7 @@ const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
       await shareImage(blob, {
         filename: `conquista-${def.id}.png`,
         title: `Conquista: ${def.title}`,
-        text: `${def.title} — ${def.description} 🏆`,
+        text: `${def.title}: ${def.description} 🏆`,
       });
     } catch {
       // ignore — toast já cuida via shareImage fallback

@@ -224,7 +224,7 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
         <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-2xl rounded-rebrand-xl">
           <DialogHeader>
             <DialogTitle className="font-display text-[18px] font-bold text-ink">
-              Mata-mata — Copa 2026
+              Mata-mata · Copa 2026
             </DialogTitle>
           </DialogHeader>
           <div className="text-center py-10">
@@ -250,7 +250,7 @@ export const CopaBracketModal: React.FC<Props> = ({ open, onOpenChange }) => {
       <DialogContent className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-[95vw] sm:w-auto max-h-[90vh] flex flex-col overflow-hidden p-0 rounded-rebrand-xl">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b border-line">
           <DialogTitle className="font-display text-[18px] font-bold text-ink">
-            Mata-mata — Copa 2026
+            Mata-mata · Copa 2026
           </DialogTitle>
         </DialogHeader>
 

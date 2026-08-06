@@ -80,7 +80,7 @@ const BolaoJoin: React.FC = () => {
             <meta property="og:image:width" content="1200" />
             <meta property="og:image:height" content="630" />
             <meta property="og:type" content="website" />
-            <meta property="og:title" content="Bolão Copa 2026 — Entre na disputa" />
+            <meta property="og:title" content="Bolão Copa 2026 · Entre na disputa" />
             <meta property="og:description" content="104 jogos, palpite de campeão, ranking ao vivo." />
             <meta name="twitter:card" content="summary_large_image" />
             <meta name="twitter:image" content={ogImageUrl} />
@@ -202,7 +202,7 @@ const BolaoJoin: React.FC = () => {
                     <span className="font-semibold">
                       Você tem {pendingPredictions} jogo{pendingPredictions !== 1 ? 's' : ''} para palpitar.
                     </span>{' '}
-                    Comece agora — leva poucos minutos.
+                    Comece agora, leva poucos minutos.
                   </p>
                 </div>
               )}

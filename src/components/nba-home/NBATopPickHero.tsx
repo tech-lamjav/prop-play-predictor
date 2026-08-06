@@ -99,7 +99,7 @@ export const NBATopPickHero: React.FC<NBATopPickHeroProps> = ({ pick, onOpenAnal
   const oppLabel = pick.opponentAbbr ? `${pick.isHome ? 'vs ' : '@'}${pick.opponentAbbr}` : null;
   const whenLabel = [oppLabel, pick.gameTime ? `Hoje · ${pick.gameTime}` : null].filter(Boolean).join(' · ');
   const triggerStatusFull = statusFull(pick.triggerStatus);
-  const narrative = `rende +${Math.round(pick.gapPct)}% em ${statLong} quando ${lastName(pick.triggerName)} fica fora${pick.opponentAbbr ? ` — e é o que deve acontecer hoje contra ${pick.opponentAbbr}` : ''}.`;
+  const narrative = `rende +${Math.round(pick.gapPct)}% em ${statLong} quando ${lastName(pick.triggerName)} fica fora${pick.opponentAbbr ? `, e é o que deve acontecer hoje contra ${pick.opponentAbbr}` : ''}.`;
   const filterChip = `Sem ${lastName(pick.triggerName)} (${triggerStatusFull})`;
 
   if (isMobile) {

@@ -53,7 +53,7 @@ export const PlayerAwardsModal: React.FC<PlayerAwardsModalProps> = ({
                 Palpites de jogador
               </DialogTitle>
               <p className="text-[12px] text-ink-2 mt-1 leading-snug">
-                Quem vai brilhar na Copa — artilheiro, craque, goleiro e revelação.
+                Quem vai brilhar na Copa: artilheiro, craque, goleiro e revelação.
               </p>
             </div>
           </div>

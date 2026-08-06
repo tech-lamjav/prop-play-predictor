@@ -82,14 +82,14 @@ export const BolaoHandoffCard: React.FC<BolaoHandoffCardProps> = ({
             </p>
             <p className="text-[12.5px] text-white/70 leading-relaxed mb-3.5 flex-1">
               A maioria não sabe. Manda o print da aposta no Telegram e o Betinho
-              te responde: lucro, ROI e onde você acerta — sem planilha.
+              te responde: lucro, ROI e onde você acerta, sem planilha.
             </p>
             <a
               href="/betinho/bolao"
               onClick={() => handleClick('betinho')}
               className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[13px] shadow-md transition-colors"
             >
-              Conhecer o Betinho — grátis
+              Conhecer o Betinho · grátis
               <ArrowRight className="w-4 h-4 shrink-0" />
             </a>
           </div>
@@ -101,7 +101,7 @@ export const BolaoHandoffCard: React.FC<BolaoHandoffCardProps> = ({
             </p>
             <p className="text-[12.5px] text-white/70 leading-relaxed mb-3.5 flex-1">
               A análise de futebol te mostra: as principais oportunidades de cada
-              jogo, com os prós e contras de cada aposta — sem achismo.
+              jogo, com os prós e contras de cada aposta, sem achismo.
             </p>
             <a
               href="/futebol/comecar"

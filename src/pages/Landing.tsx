@@ -176,7 +176,7 @@ const Landing = () => {
   const FAQ: FaqItem[] = [
     {
       q: 'Vocês dão dica de aposta?',
-      a: 'Quase. A gente mapeia e publica as principais oportunidades do dia com base no injury report — cada uma com o gatilho, o histórico e a linha do lado. O que a gente não faz é mandar "entrada garantida" sem o dado junto. Quem bate o martelo é sempre você.',
+      a: 'Quase. A gente mapeia e publica as principais oportunidades do dia com base no injury report, cada uma com o gatilho, o histórico e a linha do lado. O que a gente não faz é mandar "entrada garantida" sem o dado junto. Quem bate o martelo é sempre você.',
     },
     {
       q: 'É grátis pra testar?',
@@ -192,7 +192,7 @@ const Landing = () => {
     },
     {
       q: 'Qual a taxa de acerto de vocês?',
-      a: 'Não publicamos taxa de acerto — nem de marketing, nem nenhuma. O que você recebe é o dado por trás de cada insight antes de apostar: o gatilho, o histórico do jogador e a linha. Quem avalia se a janela vale é você, com o número na frente.',
+      a: 'Não publicamos taxa de acerto, nem de marketing, nem nenhuma. O que você recebe é o dado por trás de cada insight antes de apostar: o gatilho, o histórico do jogador e a linha. Quem avalia se a janela vale é você, com o número na frente.',
     },
   ];
 
@@ -238,7 +238,7 @@ const Landing = () => {
             <span className="text-amber">Você chega antes.</span>
           </h1>
           <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
-            Titular desfalcou? Os números de quem fica em quadra sobem na hora —
+            Titular desfalcou? Os números de quem fica em quadra sobem na hora,
             a linha demora. Nossa metodologia varre o injury report e te mostra
             onde essa janela abriu, com o dado na frente. Testa num caso real:{" "}
             <span className="text-white font-semibold">clica no insight aí embaixo.</span>
@@ -587,7 +587,7 @@ const Landing = () => {
             Abrir o dashboard de verdade
           </button>
           <p className="text-sm text-ink-3 mt-3">
-            Sem login — dados ao vivo do {firstFreePlayerName}
+            Sem login · dados ao vivo do {firstFreePlayerName}
           </p>
         </div>
       </section>
@@ -626,12 +626,12 @@ const Landing = () => {
               {
                 num: '01',
                 title: 'Oportunidades por desfalque',
-                text: 'Saiu o injury report, a gente cruza quem tá fora com o histórico de quem fica em quadra. Onde a linha não acompanhou o desfalque, tem janela — ela chega pra você como o insight do exemplo lá em cima.',
+                text: 'Saiu o injury report, a gente cruza quem tá fora com o histórico de quem fica em quadra. Onde a linha não acompanhou o desfalque, tem janela: ela chega pra você como o insight do exemplo lá em cima.',
               },
               {
                 num: '02',
                 title: 'Dashboard por jogador',
-                text: '12 mercados de props — pontos, assistências, rebotes e combos — contra a linha, nos últimos 5, 10 ou 15 jogos, casa e fora.',
+                text: '12 mercados de props (pontos, assistências, rebotes e combos) contra a linha, nos últimos 5, 10 ou 15 jogos, casa e fora.',
               },
               {
                 num: '03',
@@ -641,7 +641,7 @@ const Landing = () => {
               {
                 num: '04',
                 title: 'Análise 360°',
-                text: 'Escolhe o jogador e recebe a leitura completa do confronto numa tela só — desempenho, contexto e companheiros.',
+                text: 'Escolhe o jogador e recebe a leitura completa do confronto numa tela só: desempenho, contexto e companheiros.',
               },
             ].map((f) => (
               <div key={f.num} className="grid grid-cols-[56px_1fr] sm:grid-cols-[88px_1fr] gap-4 sm:gap-8 py-7 border-t border-line last:border-b">
@@ -690,7 +690,7 @@ const Landing = () => {
               </h3>
               {[
                 'O dado e a linha, lado a lado',
-                'O porquê de cada insight — gatilho, números e contexto',
+                'O porquê de cada insight: gatilho, números e contexto',
                 'Linha agregada das principais casas',
                 'A decisão sempre na sua mão',
               ].map((item) => (
@@ -703,7 +703,7 @@ const Landing = () => {
           </div>
 
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
-            — Smart Betting · combinado válido desde o primeiro dia
+            Smart Betting · combinado válido desde o primeiro dia
           </p>
         </div>
       </section>

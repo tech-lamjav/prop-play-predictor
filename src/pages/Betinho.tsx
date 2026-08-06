@@ -188,7 +188,7 @@ const MOCK_INSIGHTS: Array<{
     type: "opportunity",
     label: "Oportunidade",
     title: "Props da NBA é sua mina",
-    body: "+38% de ROI em 12 apostas. É a sua melhor fatia — volume aqui tem pagado.",
+    body: "+38% de ROI em 12 apostas. É a sua melhor fatia: volume aqui tem pagado.",
     targetCell: "nba-0",
   },
   {
@@ -314,19 +314,19 @@ const Betinho = () => {
   const FAQ: FaqItem[] = [
     {
       q: "É grátis?",
-      a: "É. No plano grátis você registra até 3 apostas por dia pelo bot e usa o gestor completo — banca, ROI, filtros e exportação. O Premium libera registros ilimitados e as análises do Betinho IA no dashboard.",
+      a: "É. No plano grátis você registra até 3 apostas por dia pelo bot e usa o gestor completo: banca, ROI, filtros e exportação. O Premium libera registros ilimitados e as análises do Betinho IA no dashboard.",
     },
     {
       q: "Funciona no WhatsApp?",
-      a: "Não — o Betinho mora no Telegram. Você conecta sua conta em segundos e todo o registro acontece por lá.",
+      a: "Não. O Betinho mora no Telegram. Você conecta sua conta em segundos e todo o registro acontece por lá.",
     },
     {
       q: "Funciona com print de qualquer casa?",
-      a: "Serve print de bilhete de qualquer casa — a IA lê o texto da imagem e extrai jogo, odd e valor. Saiu algo errado? Você corrige no dashboard em segundos. E se quiser, manda o caso pro suporte: cada bilhete que a IA erra ajuda a gente a melhorar a leitura.",
+      a: "Serve print de bilhete de qualquer casa: a IA lê o texto da imagem e extrai jogo, odd e valor. Saiu algo errado? Você corrige no dashboard em segundos. E se quiser, manda o caso pro suporte: cada bilhete que a IA erra ajuda a gente a melhorar a leitura.",
     },
     {
       q: "Vocês têm acesso ao meu dinheiro?",
-      a: "Zero. O Betinho não conecta na sua conta da casa de aposta — ele registra o que você manda. É um caderno inteligente, não uma carteira.",
+      a: "Zero. O Betinho não conecta na sua conta da casa de aposta, ele só registra o que você manda. É um caderno inteligente, não uma carteira.",
     },
     {
       q: "Dá trabalho manter?",
@@ -382,7 +382,7 @@ const Betinho = () => {
                 <span className="text-amber">E as apostas de verdade, você anota?</span>
               </h1>
               <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
-                Documenta tudo no Telegram em 10 segundos — print do bilhete, a IA
+                Documenta tudo no Telegram em 10 segundos: print do bilhete, a IA
                 registra, e a sua banca aparece organizada no dashboard. Sem planilha,
                 sem app novo.
               </p>
@@ -408,7 +408,7 @@ const Betinho = () => {
               </h1>
               <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
                 Manda o print do bilhete no Telegram. A IA lê, registra e te devolve
-                banca, ROI e taxa de acerto — sem planilha, sem digitação. Testa aí
+                banca, ROI e taxa de acerto, sem planilha e sem digitação. Testa aí
                 embaixo: <span className="text-white font-semibold">manda um print pro Betinho.</span>
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -475,7 +475,7 @@ const Betinho = () => {
                       </div>
                     ) : simDone ? (
                       <p className="text-[13px] text-ink-2">
-                        Esses eram os 3 prints de exemplo — no bot é igual:{" "}
+                        Esses eram os 3 prints de exemplo. No bot é igual:{" "}
                         <span className="font-bold text-ink">3 registros por dia grátis.</span>
                       </p>
                     ) : (
@@ -536,8 +536,8 @@ const Betinho = () => {
                     </>
                   ) : (
                     <>
-                      Seu mês tá positivo: <span className="text-amber">{stats.roi >= 0 ? "+" : ""}{stats.roi.toFixed(1)}% de ROI</span>{" "}
-                      — as props da NBA puxaram o resultado.
+                      Seu mês tá positivo: <span className="text-amber">{stats.roi >= 0 ? "+" : ""}{stats.roi.toFixed(1)}% de ROI</span>. As props da NBA
+                      puxaram o resultado.
                     </>
                   )}
                 </p>
@@ -829,7 +829,7 @@ const Betinho = () => {
             </h2>
             <p className="text-base sm:text-lg text-ink-2 max-w-2xl mx-auto">
               A demonstração lá em cima é simulada. Isto aqui é gravação real do bot
-              no Telegram — print enviado, aposta confirmada.
+              no Telegram: print enviado, aposta confirmada.
             </p>
           </div>
           <div className="flex items-center justify-center">
@@ -860,7 +860,7 @@ const Betinho = () => {
             </h2>
             <p className="text-[14px] text-ink-2 leading-relaxed">
               Todo apostador já tentou anotar as apostas. A planilha morre na segunda
-              semana — não pela falta de vontade, pelo trabalho. O Betinho tira o
+              semana, não pela falta de vontade, pelo trabalho. O Betinho tira o
               trabalho da equação.
             </p>
           </div>
@@ -870,7 +870,7 @@ const Betinho = () => {
               {
                 num: "01",
                 title: "Registro por print ou texto",
-                text: 'Manda o print do bilhete ou escreve "apostei 50 no Corinthians a 2.10". A IA extrai jogo, odd e valor — 1 mensagem, 1 aposta.',
+                text: 'Manda o print do bilhete ou escreve "apostei 50 no Corinthians a 2.10". A IA extrai jogo, odd e valor: 1 mensagem, 1 aposta.',
               },
               {
                 num: "02",
@@ -919,7 +919,7 @@ const Betinho = () => {
               {[
                 "Dica de aposta no meio do seu chat",
                 "Acesso à sua conta na casa de aposta",
-                "Spam — o bot só fala de registro",
+                "Spam: o bot só fala de registro",
                 "Número maquiado pra você se sentir melhor",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white/85">
@@ -936,7 +936,7 @@ const Betinho = () => {
                 "Registro em segundos, por print ou texto",
                 "Seu lucro e seu prejuízo, sem filtro",
                 "Seus dados exportáveis quando quiser",
-                "A banca é sua — a gente só organiza",
+                "A banca é sua, a gente só organiza",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
                   <CheckCircle2 className="w-4 h-4 text-amber shrink-0" />
@@ -947,7 +947,7 @@ const Betinho = () => {
           </div>
 
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
-            — Betinho · combinado válido desde o primeiro print
+            Betinho · combinado válido desde o primeiro print
           </p>
         </div>
       </section>

@@ -210,7 +210,7 @@ export const SHARE_MESSAGES = {
     rank === 1
       ? `Tô em 1º no bolão "${bolaoName}" com ${points} pts! 🏆`
       : rank <= 3
-        ? `Tô no top ${rank} do bolão "${bolaoName}" — ${points} pts. Vem disputar!`
+        ? `Tô no top ${rank} do bolão "${bolaoName}" com ${points} pts. Vem disputar!`
         : `Tô em ${rank}º de ${totalMembers} no bolão "${bolaoName}". Vem participar!`,
 
   /**

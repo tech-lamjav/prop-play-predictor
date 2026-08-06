@@ -130,7 +130,7 @@ const Waitlist = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl text-center">
-              Plataforma Futebol — Em breve
+              Plataforma Futebol · Em breve
             </CardTitle>
             <p className="text-muted-foreground text-center">
               Análises de dados para apostas em futebol. Seja um dos primeiros a ter acesso.

@@ -285,7 +285,7 @@ const BracketCard: React.FC<BracketCardProps> = ({
           {teams.length === 0 ? (
             <p className="text-[12px] text-ink-2 text-center py-6 leading-snug">
               {parentLabel ? (
-                <>Preencha primeiro os times de <span className="font-semibold text-ink">{parentLabel}</span> — eles aparecem aqui pra você afunilar.</>
+                <>Preencha primeiro os times de <span className="font-semibold text-ink">{parentLabel}</span>: eles aparecem aqui pra você afunilar.</>
               ) : (
                 'Nenhuma seleção disponível.'
               )}

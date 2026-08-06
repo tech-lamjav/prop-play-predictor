@@ -352,7 +352,7 @@ export default function Analise360List() {
   return (
     <>
       <Helmet>
-        <title>Análise 360° — Smart Betting</title>
+        <title>Análise 360° · Smart Betting</title>
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">

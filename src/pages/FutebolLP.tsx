@@ -48,7 +48,7 @@ const OPPS: MockOpp[] = [
     id: "gre-int", home: "Grêmio", away: "Internacional", homeId: 130, awayId: 119, comp: "Brasileirão", hora: "18:30",
     market: "Dupla chance", pick: "Grêmio ou empate", faixa: "Alta", score: 63,
     chance: 68, odd: 1.58, edge: 0.034,
-    porque: ["Grêmio forte como mandante", "Internacional oscila longe de casa", "Clássico equilibrado — o empate protege a aposta"],
+    porque: ["Grêmio forte como mandante", "Internacional oscila longe de casa", "Clássico equilibrado, o empate protege a aposta"],
     atencao: ["Inter vem em sequência melhor de resultados", "Em clássico, o mando pesa menos"],
   },
   {
@@ -63,7 +63,7 @@ const OPPS: MockOpp[] = [
     market: "Resultado (1X2)", pick: "Bahia", faixa: "Baixa", score: 34,
     chance: 44, odd: 2.30, edge: 0.011,
     porque: ["Leve vantagem do mando"],
-    atencao: ["A odd está perto do justo — valor magro", "Fluminense reage bem fora de casa"],
+    atencao: ["A odd está perto do justo, valor magro", "Fluminense reage bem fora de casa"],
   },
 ];
 
@@ -133,7 +133,7 @@ const FutebolLP = () => {
     },
     {
       q: "É grátis pra testar?",
-      a: "São 7 dias de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times — só o pick de valor de cada oportunidade fica bloqueado.",
+      a: "São 7 dias de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times. Só o pick de valor de cada oportunidade fica bloqueado.",
     },
     {
       q: "Preciso entender de estatística?",
@@ -145,7 +145,7 @@ const FutebolLP = () => {
     },
     {
       q: "Qual a taxa de acerto de vocês?",
-      a: "Não publicamos taxa de acerto. O que você recebe é o dado e o porquê antes de apostar — a chance estimada, a odd e as premissas. Quem avalia se a oportunidade vale é você, com o número na frente.",
+      a: "Não publicamos taxa de acerto. O que você recebe é o dado e o porquê antes de apostar: a chance estimada, a odd e as premissas. Quem avalia se a oportunidade vale é você, com o número na frente.",
     },
   ];
 
@@ -190,7 +190,7 @@ const FutebolLP = () => {
           </h1>
           <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
             Pra cada jogo, a gente estima a chance real e compara com a odd da casa.
-            Quando a odd paga mais do que o risco, tem valor — e a gente ranqueia por um
+            Quando a odd paga mais do que o risco, tem valor, e a gente ranqueia por um
             Score de Confiabilidade de 0 a 100. Testa num jogo real:{" "}
             <span className="text-white font-semibold">clica numa oportunidade aí embaixo.</span>
           </p>
@@ -201,7 +201,7 @@ const FutebolLP = () => {
               className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
             >
               <PlayCircle className="h-5 w-5 shrink-0" />
-              Criar conta — 7 dias grátis
+              Criar conta · 7 dias grátis
             </button>
             <button
               type="button"
@@ -415,12 +415,12 @@ const FutebolLP = () => {
               {
                 num: "01",
                 title: "Oportunidades de valor",
-                text: "A cada jogo, comparamos a chance real com a odd da casa. Onde a odd paga mais do que o risco, vira oportunidade — e ela chega ranqueada por confiabilidade, como no exemplo lá em cima.",
+                text: "A cada jogo, comparamos a chance real com a odd da casa. Onde a odd paga mais do que o risco, vira oportunidade, e ela chega ranqueada por confiabilidade, como no exemplo lá em cima.",
               },
               {
                 num: "02",
                 title: "Score de Confiabilidade",
-                text: "De 0 a 100. Junta o tamanho do valor, as premissas do jogo (ataque, defesa, mando, forma), se a odd não é exagerada e se as casas vêm concordando. Não é chance de acerto — é o quanto dá pra confiar.",
+                text: "De 0 a 100. Junta o tamanho do valor, as premissas do jogo (ataque, defesa, mando, forma), se a odd não é exagerada e se as casas vêm concordando. Não é chance de acerto: é o quanto dá pra confiar.",
               },
               {
                 num: "03",
@@ -430,7 +430,7 @@ const FutebolLP = () => {
               {
                 num: "04",
                 title: "A leitura do jogo inteira",
-                text: "Modelo de gols, escalação provável, desfalques, confrontos diretos e estatísticas da temporada — pra você bater o martelo com o jogo na frente, não no escuro.",
+                text: "Modelo de gols, escalação provável, desfalques, confrontos diretos e estatísticas da temporada, pra você bater o martelo com o jogo na frente, não no escuro.",
               },
             ].map((f) => (
               <div key={f.num} className="grid grid-cols-[56px_1fr] sm:grid-cols-[88px_1fr] gap-4 sm:gap-8 py-7 border-t border-line last:border-b">
@@ -477,9 +477,9 @@ const FutebolLP = () => {
               </h3>
               {[
                 "A chance estimada e a odd, lado a lado",
-                "O porquê de cada oportunidade — premissas e pontos de atenção",
+                "O porquê de cada oportunidade: premissas e pontos de atenção",
                 "Odds pré-jogo das principais casas",
-                "A análise toda livre — só o pick de valor é Premium",
+                "A análise toda livre: só o pick de valor é Premium",
                 "A decisão sempre na sua mão",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
@@ -490,7 +490,7 @@ const FutebolLP = () => {
             </div>
           </div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
-            — Smart Betting · combinado válido desde o primeiro dia
+            Smart Betting · combinado válido desde o primeiro dia
           </p>
         </div>
       </section>
@@ -522,7 +522,7 @@ const FutebolLP = () => {
               Testa 7 dias grátis.
             </h2>
             <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg">
-              Premium completo, sem cartão. Depois segue free com a análise toda —
+              Premium completo, sem cartão. Depois segue free com a análise toda:
               só o pick de valor é que fica pra quem assina.
             </p>
           </div>

@@ -657,7 +657,7 @@ export function deriveInsights(
         icon: 'target',
         label: 'Disciplina',
         title: 'Odd média baixa',
-        body: `Odd média ${avgOdd.toFixed(2)} é conservadora. Pouco upside por aposta — vale revisar critério de seleção.`,
+        body: `Odd média ${avgOdd.toFixed(2)} é conservadora. Pouco upside por aposta, vale revisar critério de seleção.`,
       });
     }
   }
@@ -944,12 +944,12 @@ export function composeSliceNarrative(
     } else if (avgOdd < 1.5) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é conservadora — pouco upside por aposta.`,
+        text: `Odd média ${avgOdd.toFixed(2)} é conservadora, pouco upside por aposta.`,
       });
     } else {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é arriscada — variância alta.`,
+        text: `Odd média ${avgOdd.toFixed(2)} é arriscada, variância alta.`,
       });
     }
   }
@@ -1072,12 +1072,12 @@ export function composeTagNarrative(
     } else if (avgOdd < 1.5) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é conservadora — pouco upside por aposta.`,
+        text: `Odd média ${avgOdd.toFixed(2)} é conservadora, pouco upside por aposta.`,
       });
     } else {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é arriscada — variância alta.`,
+        text: `Odd média ${avgOdd.toFixed(2)} é arriscada, variância alta.`,
       });
     }
   }

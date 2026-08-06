@@ -115,7 +115,7 @@ const MockNBA = () => {
           Com <span className="font-bold text-status-danger">Murray</span> fora, os{" "}
           <span className="font-bold text-forest">pontos</span> de Jokic sobem{" "}
           <span className="font-bold text-forest">+15%</span>
-          {!filtered && <span className="text-ink-3"> — clique pra filtrar o gráfico</span>}
+          {!filtered && <span className="text-ink-3">. Clique pra filtrar o gráfico</span>}
         </p>
       </button>
 
@@ -327,7 +327,7 @@ const MockFutebol = () => {
         <p className="text-[11px] text-ink-2 leading-snug">
           Chance real <span className="font-bold text-forest tabular-nums">58%</span> · a odd{" "}
           <span className="font-bold text-ink tabular-nums">1.95</span> embute só{" "}
-          <span className="tabular-nums">51%</span> — a diferença é o{" "}
+          <span className="tabular-nums">51%</span>. A diferença é o{" "}
           <span className="font-bold text-forest">valor</span>.
         </p>
       </div>
@@ -341,7 +341,7 @@ const TODOS_PRODUCTS = [
     num: "01",
     kicker: "Futebol · Aposta de valor",
     title: "Onde a odd paga mais do que o risco de verdade.",
-    body: "Todo dia, os jogos em que a chance real supera o que a odd embute — com Score próprio, o porquê de cada pick e o que ficar de olho. Brasileirão, Copa do Brasil e ligas europeias.",
+    body: "Todo dia, os jogos em que a chance real supera o que a odd embute, com Score próprio, o porquê de cada pick e o que ficar de olho. Brasileirão, Copa do Brasil e ligas europeias.",
     facts: ["Quadro de oportunidades do dia", "Score de valor + o porquê", "Brasileirão, Copa do BR e Europa"],
     cta: "Conhecer o Futebol",
     route: "/futebol/comecar",
@@ -353,7 +353,7 @@ const TODOS_PRODUCTS = [
     num: "02",
     kicker: "Betinho · Seu assistente no Telegram",
     title: "Você aposta. O resto o Betinho faz sozinho.",
-    body: "Print do bilhete → registrado. Jogo acabou → fechado. Fim do mês → seu ROI real na mão. Sem planilha, sem digitação, sem autoengano — e as oportunidades do dia chegam no mesmo chat.",
+    body: "Print do bilhete → registrado. Jogo acabou → fechado. Fim do mês → seu ROI real na mão. Sem planilha, sem digitação, sem autoengano. E as oportunidades do dia chegam no mesmo chat.",
     facts: ["Registra pelo print, fecha sozinho", "Banca e ROI reais, sempre à vista", "Oportunidades do dia no Telegram"],
     cta: "Conhecer o Betinho",
     route: "/betinho",
@@ -365,7 +365,7 @@ const TODOS_PRODUCTS = [
     num: "03",
     kicker: "Análise NBA · Prop Bets",
     title: "A casa demora pra ajustar a linha. Você chega antes.",
-    body: "Desfalque confirmado muda os números de quem fica em quadra — e a linha demora pra acompanhar. A análise cruza injury report com histórico e te mostra onde a janela abriu.",
+    body: "Desfalque confirmado muda os números de quem fica em quadra, e a linha demora pra acompanhar. A análise cruza injury report com histórico e te mostra onde a janela abriu.",
     facts: ["12 mercados de props", "Injury report diário", "Oportunidades por desfalque"],
     cta: "Explorar a análise NBA",
     route: "/nba",
@@ -377,7 +377,7 @@ const TODOS_PRODUCTS = [
     num: "04",
     kicker: "Bolão Copa 2026",
     title: "O bolão da galera. Sem planilha do Excel.",
-    body: "Cria em 30 segundos, manda o link no grupo, e pronto. A gente cuida do ranking, dos placares e dos palpites de campeão — você cuida da zoeira.",
+    body: "Cria em 30 segundos, manda o link no grupo, e pronto. A gente cuida do ranking, dos placares e dos palpites de campeão. Você cuida da zoeira.",
     facts: ["104 jogos da Copa", "Grátis até 20 pessoas", "Ranking automático"],
     cta: "Criar meu bolão",
     route: "/bolao",
@@ -402,7 +402,7 @@ const LandingEcossistema = () => {
   const FAQ: FaqItem[] = [
     {
       q: "Vocês são tipsters?",
-      a: "Não. Tipster te dá o palpite e pede fé. A gente te dá o dado — a linha, o histórico, o contexto — e devolve a decisão pra você. Nenhum produto da casa promete ganho; quem promete, desconfia.",
+      a: "Não. Tipster te dá o palpite e pede fé. A gente te dá o dado (a linha, o histórico, o contexto) e devolve a decisão pra você. Nenhum produto da casa promete ganho; quem promete, desconfia.",
     },
     {
       q: "O que é grátis?",
@@ -410,11 +410,11 @@ const LandingEcossistema = () => {
     },
     {
       q: "Preciso assinar tudo junto?",
-      a: "Não. Cada produto tem seu plano, separado — você assina só o que usa. O Bolão nem assinatura tem: pagamento único por bolão, e só se o grupo passar de 20 pessoas.",
+      a: "Não. Cada produto tem seu plano, separado: você assina só o que usa. O Bolão nem assinatura tem: pagamento único por bolão, e só se o grupo passar de 20 pessoas.",
     },
     {
       q: "Por onde eu começo?",
-      a: "Pela sua dor. Aposta em NBA e quer decidir com dado? Análise NBA. Não sabe se tá no lucro? Betinho. Quer reunir a galera na Copa? Bolão. Todas começam grátis — testa e fica na que te servir.",
+      a: "Pela sua dor. Aposta em NBA e quer decidir com dado? Análise NBA. Não sabe se tá no lucro? Betinho. Quer reunir a galera na Copa? Bolão. Todas começam grátis: testa e fica na que te servir.",
     },
   ];
 
@@ -462,7 +462,7 @@ const LandingEcossistema = () => {
           </h1>
           <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
             Valor no futebol, análise na NBA, gestão de banca no Telegram e
-            bolão pra zoar os amigos — e zero promessa de ganho em nenhum deles.
+            bolão pra zoar os amigos. E zero promessa de ganho em nenhum deles.
             Escolhe por onde começar:
           </p>
           <div className="flex flex-wrap gap-2">
@@ -580,7 +580,7 @@ const LandingEcossistema = () => {
               {[
                 "O dado na frente da decisão",
                 "O porquê de cada análise",
-                "Sua banca e sua decisão — sempre suas",
+                "Sua banca e sua decisão, sempre suas",
                 "Transparência como princípio, não slogan",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
@@ -592,7 +592,7 @@ const LandingEcossistema = () => {
           </div>
 
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
-            — Smart Betting · combinado válido em todos os produtos
+            Smart Betting · combinado válido em todos os produtos
           </p>
         </div>
       </section>
@@ -628,8 +628,8 @@ const LandingEcossistema = () => {
             Escolhe sua porta de entrada.
           </h2>
           <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg mb-8">
-            Todas começam grátis. Entra na que resolve a sua dor de hoje —
-            as outras continuam aqui.
+            Todas começam grátis. Entra na que resolve a sua dor de hoje.
+            As outras continuam aqui.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">
             {PRODUCTS.filter((p) => p.available).map((p) => (

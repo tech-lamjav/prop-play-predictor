@@ -41,7 +41,7 @@ export const PremiumWelcomeModal: React.FC<PremiumWelcomeModalProps> = ({
             </h2>
             <p className="text-[13px] text-ink-2 mt-2 leading-snug">
               Pagamento confirmado. Agora seu bolão aceita{' '}
-              <span className="font-bold text-ink">participantes ilimitados</span> — chama a galera toda.
+              <span className="font-bold text-ink">participantes ilimitados</span>, chama a galera toda.
             </p>
           </div>
 

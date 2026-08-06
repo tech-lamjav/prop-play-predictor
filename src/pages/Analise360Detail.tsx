@@ -776,7 +776,7 @@ export default function Analise360Detail() {
   return (
     <>
       <Helmet>
-        <title>{triggerInfo ? `${triggerInfo.triggerName} · Análise 360°` : 'Análise 360°'} — Smart Betting</title>
+        <title>{triggerInfo ? `${triggerInfo.triggerName} · Análise 360°` : 'Análise 360°'} · Smart Betting</title>
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">

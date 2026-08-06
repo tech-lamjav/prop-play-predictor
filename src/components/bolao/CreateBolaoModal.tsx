@@ -101,7 +101,7 @@ export const CreateBolaoModal: React.FC<CreateBolaoModalProps> = ({
               Criar bolão
             </DialogTitle>
             <DialogDescription className="text-[12px] text-ink-2 leading-tight mt-0.5">
-              Você é o dono — convida quem quiser depois
+              Você é o dono, convida quem quiser depois
             </DialogDescription>
           </div>
         </div>
@@ -270,7 +270,7 @@ export const CreateBolaoModal: React.FC<CreateBolaoModalProps> = ({
         <div className="px-6 py-4 border-t border-line bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-[11px] text-ink-2 leading-tight text-center sm:text-left">
             Você poderá <span className="text-ink font-medium">trocar pontuação e regras</span>{' '}
-            depois — antes do 1º jogo.
+            depois, antes do 1º jogo.
           </p>
           <div className="flex items-center gap-2 shrink-0">
             <button

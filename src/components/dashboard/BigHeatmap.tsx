@@ -286,8 +286,8 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
                     style={{ backgroundColor: bg, color: fg }}
                     title={
                       cell.n === 0
-                        ? `${lg} · ${mk} — sem dados`
-                        : `${lg} · ${mk} — ${cell.n} apostas, ROI ${cell.roi?.toFixed(1)}%, ${formatValue(cell.profit)}`
+                        ? `${lg} · ${mk}: sem dados`
+                        : `${lg} · ${mk}: ${cell.n} apostas, ROI ${cell.roi?.toFixed(1)}%, ${formatValue(cell.profit)}`
                     }
                   >
                     {renderCellValue(cell)}

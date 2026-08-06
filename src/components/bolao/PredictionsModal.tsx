@@ -229,7 +229,7 @@ export const PredictionsModal: React.FC<PredictionsModalProps> = ({
             >
               <span>
                 Faltam {totalMatches - totalPredictions} jogo
-                {totalMatches - totalPredictions !== 1 ? 's' : ''} — ver o que falta
+                {totalMatches - totalPredictions !== 1 ? 's' : ''} · ver o que falta
               </span>
               <ChevronRight className="w-4 h-4 shrink-0" />
             </button>

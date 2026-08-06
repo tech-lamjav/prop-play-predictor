@@ -366,7 +366,7 @@ const PredictionRow: React.FC<{ match: WcMatch; pred: BolaoPrediction | undefine
         />
 
         {!hasPred && !finished && (
-          <p className="text-[11px] text-ink-3 italic text-center">— sem palpite —</p>
+          <p className="text-[11px] text-ink-3 italic text-center">sem palpite</p>
         )}
       </div>
 
@@ -389,7 +389,7 @@ const PredictionRow: React.FC<{ match: WcMatch; pred: BolaoPrediction | undefine
               {pred.predicted_away_score}
             </span>
           ) : (
-            <span className="text-[12px] text-ink-3 italic">— sem palpite —</span>
+            <span className="text-[12px] text-ink-3 italic">sem palpite</span>
           )}
           {finished && match.home_score != null && match.away_score != null && (
             <span className="text-[10px] text-ink-3 tabular-nums leading-none mt-1">

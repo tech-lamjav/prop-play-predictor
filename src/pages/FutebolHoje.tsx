@@ -98,8 +98,8 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
   const porque = chance != null
-    ? <>O mercado dá <b className={d ? 'text-white' : 'text-ink'}>~{chance}% de chance</b>; na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b> isso paga acima do risco real — é aí que está o valor.</>
-    : <>Na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b>, se paga se acontecer ~{freqEmDez(o.best_odd)} em cada 10 vezes ou mais — e a leitura do jogo aponta nessa direção.</>;
+    ? <>O mercado dá <b className={d ? 'text-white' : 'text-ink'}>~{chance}% de chance</b>; na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b> isso paga acima do risco real: é aí que está o valor.</>
+    : <>Na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b>, se paga se acontecer ~{freqEmDez(o.best_odd)} em cada 10 vezes ou mais, e a leitura do jogo aponta nessa direção.</>;
 
   return (
     <div className={`rounded-2xl overflow-hidden relative ${d ? 'text-white' : 'bg-white border border-line border-l-4 border-l-amber'}`}
@@ -386,7 +386,7 @@ export default function FutebolHoje() {
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-ink">Sem valor claro {isToday ? 'hoje' : 'nesse dia'}</p>
-              <p className="text-xs text-ink-2 mt-1">As melhores odds estão perto da linha justa do mercado — nenhuma passou a régua de confiabilidade. Os jogos do dia estão abaixo{days.length > 1 ? '; use as setas pra ver outros dias' : ''}.</p>
+              <p className="text-xs text-ink-2 mt-1">As melhores odds estão perto da linha justa do mercado, e nenhuma passou a régua de confiabilidade. Os jogos do dia estão abaixo{days.length > 1 ? '; use as setas pra ver outros dias' : ''}.</p>
             </div>
           </div>
         )}

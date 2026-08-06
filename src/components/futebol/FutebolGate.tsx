@@ -92,7 +92,7 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
       <div className="flex items-start gap-2.5 flex-1 min-w-0">
         <span className="w-8 h-8 rounded-full bg-forest text-canvas grid place-items-center shrink-0"><Lock className="w-4 h-4" /></span>
         <div className="min-w-0">
-          <div className="text-[13px] font-bold text-ink">{expired ? 'Seu teste grátis acabou' : 'Veja as oportunidades — 7 dias grátis'}</div>
+          <div className="text-[13px] font-bold text-ink">{expired ? 'Seu teste grátis acabou' : 'Veja as oportunidades · 7 dias grátis'}</div>
           <p className="text-[12px] text-ink-2 leading-snug">
             {expired
               ? 'As oportunidades de valor estão bloqueadas. Assine o Futebol pra continuar vendo os picks.'

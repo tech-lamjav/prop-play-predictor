@@ -512,12 +512,12 @@ function generateB2BLoadSignal(top: { playerName: string; minutes: number } | un
   if (!top) return null;
   const lastName = top.playerName.split(' ').slice(-1)[0];
   if (top.minutes >= 38) {
-    return `${lastName} jogou ${top.minutes} min ontem — carga muito alta.`;
+    return `${lastName} jogou ${top.minutes} min ontem, carga muito alta.`;
   }
   if (top.minutes >= 32) {
-    return `${lastName} jogou ${top.minutes} min ontem — carga alta.`;
+    return `${lastName} jogou ${top.minutes} min ontem, carga alta.`;
   }
-  return `Top minutagem ontem: ${lastName} com ${top.minutes} min — carga distribuída.`;
+  return `Top minutagem ontem: ${lastName} com ${top.minutes} min, carga distribuída.`;
 }
 
 function B2BAlertCard({
@@ -1272,7 +1272,7 @@ export default function GameDetail() {
   return (
     <>
       <Helmet>
-        <title>{game ? `${game.home_team_abbreviation} vs ${game.visitor_team_abbreviation}` : 'Jogo'} — Smart Betting</title>
+        <title>{game ? `${game.home_team_abbreviation} vs ${game.visitor_team_abbreviation}` : 'Jogo'} · Smart Betting</title>
       </Helmet>
 
       <div className="theme-rebrand min-h-screen bg-canvas text-ink">
