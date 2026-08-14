@@ -239,14 +239,17 @@ export function makeFutebolJogoSteps({
     });
   }
 
+  // O passo do "Nosso modelo de gols" saiu junto com o card no pré-jogo: o modelo
+  // contava a história do mapa com um sinal que a recalibragem rebaixou. O `hasModel`
+  // agora significa "a página tem o mapa de premissas" (jogo futuro).
   if (hasModel) {
     steps.push({
-      id: 'fut-jogo-modelo',
-      target: '[data-tour="fut-jogo-modelo"]',
+      id: 'fut-jogo-mapa',
+      target: '[data-tour="fut-jogo-mapa"]',
       placement: 'top',
-      title: 'Nosso modelo de gols',
+      title: 'O mapa de premissas',
       content:
-        'A partir das médias da temporada, o modelo estima os gols esperados de cada time e a chance de cada mercado.',
+        'O coração da análise: o que sustenta cada mercado deste jogo, com o número por trás de cada premissa e quantas faltam pra virar aposta.',
     });
   }
 
@@ -277,57 +280,91 @@ export function makeFutebolJogoSteps({
 
 export const FUT_JOGOS_TOUR_ID = 'futebol-jogos';
 
-// Tela /futebol/jogos — visão geral do campeonato (rodadas, tabela,
-// artilheiros). O stepper de rodada é condicional (depende de rodadas
-// carregadas).
-export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): Step[] {
+// Tela /futebol/jogos — agenda por dia, todas as ligas juntas. O passo do painel
+// só existe no desktop, porque em telas menores o clique navega pra tela do jogo
+// e o alvo não está montado.
+export function makeFutebolJogosSteps({ hasPanel }: { hasPanel: boolean }): Step[] {
   const steps: Step[] = [
     {
       id: 'fut-jogos-intro',
       target: 'body',
       placement: 'center',
-      title: 'O campeonato inteiro',
+      title: 'Os jogos do dia',
       content:
-        'Aqui é a visão geral do campeonato: rodadas, tabela e artilheiros num lugar só.',
+        'Aqui ficam os jogos de todos os campeonatos, dia por dia. É a resposta pra "o que tem hoje".',
     },
     {
-      id: 'fut-jogos-header',
-      target: '[data-tour="fut-jogos-header"]',
+      id: 'fut-jogos-datas',
+      target: '[data-tour="fut-jogos-datas"]',
       placement: 'bottom',
-      title: 'Competição e temporada',
+      title: 'Escolha o dia',
       content:
-        'Escolha a competição (Brasileirão, Série B, Copa) e a temporada aqui em cima.',
+        'Use as setas pra andar pelos dias, ou o calendário pra pular pra qualquer data. O pontinho embaixo do dia avisa que tem jogo.',
+    },
+    {
+      id: 'fut-jogos-lista',
+      target: '[data-tour="fut-jogos-lista"]',
+      placement: 'top',
+      title: 'Os jogos, por campeonato',
+      content:
+        'Dentro do dia, os jogos vêm separados por campeonato e na ordem do horário. A etiqueta na direita aparece quando aquele jogo tem oportunidade de valor.',
+    },
+  ];
+
+  if (hasPanel) {
+    steps.push({
+      id: 'fut-jogos-painel',
+      target: '[data-tour="fut-jogos-painel"]',
+      placement: 'left',
+      title: 'O resumo do lado',
+      content:
+        'Clique num jogo e o resumo abre aqui, sem sair da lista. Pra ver tudo (escalação, tendências, odds), é o botão "ver análise completa".',
+    });
+  }
+
+  return steps;
+}
+
+export const FUT_CAMPEONATO_TOUR_ID = 'futebol-campeonato';
+
+// Tela /futebol/campeonato/:slug — o que saiu da agenda: rodada, tabela e
+// artilheiros, que são conceitos por liga.
+export function makeFutebolCampeonatoSteps({ hasRounds }: { hasRounds: boolean }): Step[] {
+  const steps: Step[] = [
+    {
+      id: 'fut-camp-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'O campeonato inteiro',
+      content: 'Aqui é a visão de um campeonato: rodadas, tabela e artilheiros num lugar só.',
+    },
+    {
+      id: 'fut-camp-header',
+      target: '[data-tour="fut-camp-header"]',
+      placement: 'bottom',
+      title: 'Campeonato e temporada',
+      content: 'Troque de campeonato ou de temporada aqui em cima.',
     },
   ];
 
   if (hasRounds) {
     steps.push({
-      id: 'fut-jogos-rodada',
-      target: '[data-tour="fut-jogos-rodada"]',
+      id: 'fut-camp-rodada',
+      target: '[data-tour="fut-camp-rodada"]',
       placement: 'bottom',
       title: 'Navegue pelas rodadas',
       content: 'Use as setas pra ir de uma rodada pra outra e ver os jogos de cada uma.',
     });
   }
 
-  steps.push(
-    {
-      id: 'fut-jogos-lista',
-      target: '[data-tour="fut-jogos-lista"]',
-      placement: 'top',
-      title: 'Os jogos da rodada',
-      content:
-        'Os jogos agrupados por dia. A etiqueta na direita mostra a faixa de valor de cada jogo. Toque pra abrir a análise completa.',
-    },
-    {
-      id: 'fut-jogos-tabela',
-      target: '[data-tour="fut-jogos-tabela"]',
-      placement: 'top',
-      title: 'Tabela e artilheiros',
-      content:
-        'Pra acompanhar a temporada: a classificação e os artilheiros, com a tabela e a lista completas a um toque.',
-    },
-  );
+  steps.push({
+    id: 'fut-camp-tabela',
+    target: '[data-tour="fut-camp-tabela"]',
+    placement: 'top',
+    title: 'Tabela e artilheiros',
+    content:
+      'Pra acompanhar a temporada: a classificação e os artilheiros, com a tabela e a lista completas a um toque.',
+  });
 
   return steps;
 }
