@@ -1,4 +1,4 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -8,7 +8,7 @@ import { type JogoInfo } from '@/components/futebol/JogoResumo';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies,
@@ -26,6 +26,26 @@ import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFixtureDetail, demoFixtureValueRows, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
+
+/**
+ * A bancada fica lado a lado a partir de 1280px (o breakpoint `xl` do grid). O
+ * tour usa isto pra decidir se o balão cabe ao lado do alvo ou se precisa ir por
+ * cima: empilhada, a folha do mercado é mais alta que a tela.
+ */
+const BANCADA_MQ = '(min-width: 1280px)';
+
+function useBancadaLadoALado(): boolean {
+  const [lado, setLado] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia(BANCADA_MQ).matches : true,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(BANCADA_MQ);
+    const onChange = (e: MediaQueryListEvent) => setLado(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return lado;
+}
 
 const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
   'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
@@ -302,6 +322,7 @@ export default function FutebolJogo() {
 
   // Duas abas (Leitura & mercados · Times) e o mercado aberto na bancada.
   const [aba, setAba] = useState<'mercados' | 'times'>('mercados');
+  const bancadaLadoALado = useBancadaLadoALado();
   const [mercadoAtivo, setMercadoAtivo] = useState('goals_over_under');
   const jogoInfo: JogoInfo | null = fixture
     ? {
@@ -319,15 +340,18 @@ export default function FutebolJogo() {
       }
     : null;
 
+  // O tour fala do que está montado: a régua só existe nos mercados de linha, e
+  // as premissas só quando a coleta trouxe alguma para este jogo. A query é a
+  // mesma da bancada, então sai do cache do react-query, sem ida extra à rede.
+  const { data: premissasDoJogo } = useFutebolFixturePremissas(fid);
   const jogoSteps = useMemo(
-    () => makeFutebolJogoSteps({
-      // Com a página em abas, os alvos de mapa/contexto ficam em abas ocultas na
-      // carga — o tour precisa ser refeito para navegar entre abas (pendência).
-      hasValue: false,
-      hasModel: false,
-      hasContext: false,
-    }),
-    [],
+    () =>
+      makeFutebolJogoSteps({
+        hasRegua: mercadoAtivo === 'goals_over_under' || mercadoAtivo === 'asian_handicap',
+        hasPremissas: (premissasDoJogo?.length ?? 0) > 0,
+        ladoALado: bancadaLadoALado,
+      }),
+    [mercadoAtivo, premissasDoJogo, bancadaLadoALado],
   );
 
   // ── Cards de contexto, montados uma vez e posicionados conforme o estado ──
@@ -476,7 +500,11 @@ export default function FutebolJogo() {
                 O antigo "Resumo" virou a própria faixa da partida mais a coluna de
                 mercados, então deixou de ser uma aba. */}
             <div className="mt-5 flex items-center justify-between gap-4 flex-wrap">
-              <div className="inline-flex p-[3px] rounded-[11px]" style={{ background: 'var(--canvas-2)', border: '1px solid #ded2b6' }}>
+              <div
+                data-tour="fut-jogo-abas"
+                className="inline-flex p-[3px] rounded-[11px]"
+                style={{ background: 'var(--canvas-2)', border: '1px solid #ded2b6' }}
+              >
                 {(
                   [
                     ['mercados', 'Leitura & mercados'],

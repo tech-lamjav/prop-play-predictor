@@ -48,6 +48,26 @@ import { FUT_CAMPEONATO_TOUR_ID, makeFutebolCampeonatoSteps } from '@/components
 
 const DEFAULT_COMP = 'brasileirao';
 
+/**
+ * Duas colunas (jogos + tabela/chave) ou abas? Casado com o `lg:` do grid, e não
+ * com o breakpoint de 768px do useIsMobile: entre 768 e 1024 a tela já está em
+ * abas, e o tour apontaria para a coluna escondida.
+ */
+const COLUNAS_MQ = '(min-width: 1024px)';
+
+function useDuasColunas(): boolean {
+  const [tem, setTem] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia(COLUNAS_MQ).matches : true,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(COLUNAS_MQ);
+    const onChange = (e: MediaQueryListEvent) => setTem(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return tem;
+}
+
 const d1 = (n: number) => n.toFixed(1).replace('.', ',');
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -88,6 +108,7 @@ export default function FutebolCampeonato() {
 
   const [roundIdx, setRoundIdx] = useState(0);
   const [aba, setAba] = useState<'rodada' | 'tabela' | 'artilheiros'>('rodada');
+  const duasColunas = useDuasColunas();
   const [menuLiga, setMenuLiga] = useState(false);
 
   const { data: fixtures, isLoading, isError } = useFutebolFixtures(competition, season);
@@ -231,7 +252,10 @@ export default function FutebolCampeonato() {
   const vazioArtilheiros = { titulo: 'Artilheiros ainda não coletados', texto: 'Entram assim que a competição passar pela coleta.' };
 
   const campTour = useOnboardingTour(FUT_CAMPEONATO_TOUR_ID, { enabled: !isLoading && !isError });
-  const campSteps = useMemo(() => makeFutebolCampeonatoSteps({ hasRounds: rounds.length > 0 }), [rounds.length]);
+  const campSteps = useMemo(
+    () => makeFutebolCampeonatoSteps({ hasRounds: rounds.length > 0, ehCopa: !porPontos, isMobile: !duasColunas }),
+    [rounds.length, porPontos, duasColunas],
+  );
 
   const goTeam = (id: number) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`);
   const setSeason = (s: number) => setParams({ s: String(s) }, { replace: true });
@@ -510,7 +534,11 @@ export default function FutebolCampeonato() {
 
             {/* Celular: três abas, porque tabela e artilheiros embaixo da lista de
                 jogos ficam a uma rolagem inteira de distância. */}
-            <div className="lg:hidden mb-3 inline-flex p-0.5 rounded-rebrand-sm" style={{ background: '#f1e9d6', border: '1px solid #e5d9bd' }}>
+            <div
+              data-tour="fut-camp-abas"
+              className="lg:hidden mb-3 inline-flex p-0.5 rounded-rebrand-sm"
+              style={{ background: '#f1e9d6', border: '1px solid #e5d9bd' }}
+            >
               {(['rodada', 'tabela', 'artilheiros'] as const).map((a) => (
                 <button
                   key={a}

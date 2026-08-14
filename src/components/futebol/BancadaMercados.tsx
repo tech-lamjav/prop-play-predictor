@@ -460,7 +460,7 @@ export function BancadaMercados({
           e a folha ocupa a direita inteira; no celular a ordem do DOM manda, e é
           por isso que o contexto vem DEPOIS da folha: "como chegam" antes da
           análise empurrava o mercado duas telas para baixo. */}
-      <div className="min-w-0 xl:col-start-1 xl:row-start-1 xl:border-r" style={{ borderColor: '#ded2b6', background: '#fdfbf6' }}>
+      <div data-tour="fut-jogo-mercados" className="min-w-0 xl:col-start-1 xl:row-start-1 xl:border-r" style={{ borderColor: '#ded2b6', background: '#fdfbf6' }}>
         <div className="px-5 pt-4 pb-3.5" style={{ borderBottom: '1px solid #f1e9d6' }}>
           <div className="text-[10px] uppercase tracking-[0.18em] font-bold" style={{ color: '#8d8672' }}>
             Os 5 mercados
@@ -538,7 +538,7 @@ export function BancadaMercados({
       </div>
 
       {/* A folha do mercado aberto. */}
-      <div className="min-w-0 xl:col-start-2 xl:row-start-1 xl:row-span-2">
+      <div data-tour="fut-jogo-folha" className="min-w-0 xl:col-start-2 xl:row-start-1 xl:row-span-2">
         <div className="relative overflow-hidden px-6 md:px-8 py-6" style={{ background: 'linear-gradient(135deg,#0a3d2e,#08321f 60%,#051f12)' }}>
           <div
             className="absolute pointer-events-none"
@@ -611,7 +611,7 @@ export function BancadaMercados({
 
           {/* A régua de paradas mora no hero: trocar a parada troca o que precisa ser
               verdade, e o Score muda junto. */}
-          <div className="relative mt-5 pt-4 flex items-center gap-3.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,.15)' }}>
+          <div data-tour="fut-jogo-regua" className="relative mt-5 pt-4 flex items-center gap-3.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,.15)' }}>
             <span className="text-[9.5px] uppercase tracking-[0.14em] shrink-0" style={{ color: 'rgba(255,255,255,.45)' }}>
               {ehLinha ? 'Linha' : 'Saída'}
             </span>
@@ -714,7 +714,7 @@ export function BancadaMercados({
         )}
 
         {/* Sub-abas em forma de pasta: A favor · Contra. */}
-        <div className="px-6 md:px-8 pt-4 flex items-center gap-2" style={{ borderBottom: '1px solid #f1e9d6' }}>
+        <div data-tour="fut-jogo-premissas" className="px-6 md:px-8 pt-4 flex items-center gap-2" style={{ borderBottom: '1px solid #f1e9d6' }}>
           {(
             [
               ['favor', 'A favor', favorVisivel.length],

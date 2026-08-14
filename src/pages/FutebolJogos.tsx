@@ -15,7 +15,12 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFutebolBoard, makeDemoAgenda } from '@/components/onboarding/demo/futebol';
+import {
+  demoFutebolBoard,
+  demoFutebolNumeros,
+  demoFutebolPremissas,
+  makeDemoAgenda,
+} from '@/components/onboarding/demo/futebol';
 
 /**
  * Agenda de jogos por DIA, multi-liga.
@@ -138,6 +143,19 @@ export default function FutebolJogos() {
       setParams(next, { replace: true });
     }
   }, [jogoParam, selected, isLoading, effFixtures.length, params, setParams]);
+
+  // Durante o tour, o painel da direita não pode estar vazio: o passo fala do
+  // resumo e apontava para um "clique num jogo da lista". Escolhe sozinho o jogo
+  // de melhor leitura do dia (ou o primeiro, se nenhum tiver preço) só enquanto o
+  // tour roda; fora dele o vazio continua sendo o estado inicial, porque a
+  // escolha é do usuário.
+  useEffect(() => {
+    if (!jogosTour.run || !hasPanel || jogoParam || !effFixtures.length) return;
+    const melhor = [...effFixtures].sort(
+      (a, b) => (bestByFixture.get(b.fixture_id)?.score ?? -1) - (bestByFixture.get(a.fixture_id)?.score ?? -1),
+    )[0];
+    if (melhor) setParams({ dia, jogo: String(melhor.fixture_id) }, { replace: true });
+  }, [jogosTour.run, hasPanel, jogoParam, effFixtures, bestByFixture, dia, setParams]);
 
   const selectDay = (d: string) => {
     // replace pra seta de dia não empilhar histórico; o jogo selecionado cai fora
@@ -317,6 +335,9 @@ export default function FutebolJogos() {
                     fixture={selected}
                     best={bestByFixture.get(selected.fixture_id) ?? null}
                     onClose={closePanel}
+                    demo={
+                      isDemo ? { premissas: demoFutebolPremissas, numeros: demoFutebolNumeros } : undefined
+                    }
                   />
                 ) : (
                   <div className="bg-white rounded-[20px] p-10 text-center" style={{ border: '1px solid #ded2b6' }}>

@@ -1,4 +1,4 @@
-import type { FutebolValueBoardRow, FutebolFixture, FutebolFixtureByDay, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason, FutebolFixtureDetail, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import type { FutebolFixturePremissas, FutebolFixtureNumeros, FutebolValueBoardRow, FutebolFixture, FutebolFixtureByDay, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason, FutebolFixtureDetail, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import { fmtTime, addDays } from '@/utils/futebol-datas';
 
 // Dados de EXEMPLO (fictícios) pro onboarding guiado — usados só enquanto o tour
@@ -253,3 +253,46 @@ export const demoFutebolLeaders: FutebolLeaders = {
   ],
   cards: [],
 };
+
+/**
+ * Premissas e números de exemplo para o painel da agenda durante o tour.
+ *
+ * O tour troca a lista por jogos de exemplo, e o painel da direita ia buscar
+ * premissas do fixture 9001 no banco: não existe, então o passo "o porquê, do
+ * lado" abria um painel sem porquê nenhum ("0 premissas a favor", sem "como
+ * chegam", sem forma). Aqui o exemplo fica completo, com o mesmo formato das
+ * RPCs 093 e 094.
+ */
+export const demoFutebolPremissas: FutebolFixturePremissas[] = [
+  {
+    market: 'match_winner',
+    outcome: 'Home',
+    line_value: null,
+    pts_premissas: 46,
+    penalidades_pts: 6,
+    acesas: ['forma', 'mando', 'superioridade_tabela'],
+    apagadas: ['forca_mismatch', 'h2h_favoravel'],
+    penalidades: [],
+  },
+];
+
+/** Os números que embasam as premissas de exemplo (formato da RPC 094). */
+export const demoFutebolNumeros: FutebolFixtureNumeros[] = [
+  {
+    side: 'home', team_id: 121, team_name: 'Palmeiras',
+    posicao: 1, pontos: 48, zona: 'Libertadores', jogos: 22, jogos_casa: 11, jogos_fora: 11,
+    v_casa: 8, e_casa: 2, d_casa: 1, v_fora: 6, e_fora: 4, d_fora: 1,
+    gf_casa: 2.1, ga_casa: 0.8, gf_fora: 1.5, ga_fora: 1.0,
+    gf_total: 1.8, ga_total: 0.9, clean_sheets: 9, sem_marcar: 2,
+    // `forma` no formato da API: W vitória, D empate, L derrota.
+    forma: 'WWDWW', h2h_jogos: 6, h2h_vitorias: 3, h2h_empates: 2, ate: '2026-08-13',
+  },
+  {
+    side: 'away', team_id: 127, team_name: 'Flamengo',
+    posicao: 2, pontos: 42, zona: 'Libertadores', jogos: 21, jogos_casa: 11, jogos_fora: 10,
+    v_casa: 7, e_casa: 3, d_casa: 1, v_fora: 5, e_fora: 2, d_fora: 3,
+    gf_casa: 2.0, ga_casa: 0.9, gf_fora: 1.4, ga_fora: 1.3, 
+    gf_total: 1.7, ga_total: 1.1, clean_sheets: 7, sem_marcar: 3,
+    forma: 'WLWWD', h2h_jogos: 6, h2h_vitorias: 1, h2h_empates: 2, ate: '2026-08-13',
+  },
+];

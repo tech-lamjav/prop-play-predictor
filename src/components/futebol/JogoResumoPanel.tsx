@@ -17,7 +17,12 @@ import { melhorLeitura, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-l
 import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
-import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
+import type {
+  FutebolFixtureByDay,
+  FutebolFixtureNumeros,
+  FutebolFixturePremissas,
+  FutebolValueBoardRow,
+} from '@/services/futebol-data.service';
 
 /**
  * O painel do jogo na coluna da direita (protótipo "Futebol Jogos").
@@ -63,13 +68,22 @@ export function JogoResumoPanel({
   fixture,
   best,
   onClose,
+  demo,
 }: {
   fixture: FutebolFixtureByDay;
   best: FutebolValueBoardRow | null;
   onClose: () => void;
+  /**
+   * Premissas e números de exemplo, usados só enquanto o tour roda. O jogo do
+   * tour é fictício, então buscar no banco devolvia vazio e o passo do porquê
+   * abria um painel sem porquê nenhum.
+   */
+  demo?: { premissas: FutebolFixturePremissas[]; numeros: FutebolFixtureNumeros[] };
 }) {
-  const { data: premissas } = useFutebolFixturePremissas(fixture.fixture_id);
-  const { data: numeros } = useFutebolFixtureNumeros(fixture.fixture_id);
+  const { data: premissasReais } = useFutebolFixturePremissas(demo ? undefined : fixture.fixture_id);
+  const { data: numerosReais } = useFutebolFixtureNumeros(demo ? undefined : fixture.fixture_id);
+  const premissas = demo?.premissas ?? premissasReais;
+  const numeros = demo?.numeros ?? numerosReais;
   const { data: injuries } = useFutebolFixtureInjuries(fixture.fixture_id);
   const { data: historico } = useFutebolFixtureHistorico(fixture.fixture_id);
 
