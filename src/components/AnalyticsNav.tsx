@@ -113,9 +113,21 @@ export default function AnalyticsNav({
   const path = location.pathname;
   const isActive = (href: string) => path === href;
 
+  /**
+   * A tela pertence à seção? Vale a rota exata e as filhas dela. A faixa 2 usava
+   * só igualdade, então bastava abrir um detalhe para o contexto sumir: em
+   * /analise-360/1 e em /game/:id o cabeçalho ficava com uma faixa só, e a
+   * pessoa perdia a navegação da NBA no meio do caminho. O futebol nunca teve
+   * esse problema porque já testava por prefixo.
+   */
+  const daSecao = (href: string) => path === href || path.startsWith(`${href}/`);
+  // Rotas de detalhe da NBA que não moram embaixo de nenhum item do menu.
+  const NBA_DETALHES = ['/game/', '/nba-dashboard/'];
+
   const futebolActive = path.startsWith('/futebol');
-  const nbaActive = NBA_ITEMS.some((i) => isActive(i.href));
-  const betinhoActive = BETINHO_ITEMS.some((i) => isActive(i.href));
+  const nbaActive =
+    NBA_ITEMS.some((i) => daSecao(i.href)) || NBA_DETALHES.some((p) => path.startsWith(p));
+  const betinhoActive = BETINHO_ITEMS.some((i) => daSecao(i.href));
   const bolaoActive = path.startsWith('/bolao');
   const analisesActive = futebolActive || nbaActive;
 
