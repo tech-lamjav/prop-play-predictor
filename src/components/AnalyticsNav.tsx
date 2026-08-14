@@ -60,6 +60,9 @@ const FUTEBOL_ITEMS: SubItem[] = [
   { name: 'Hoje', href: '/futebol', icon: LayoutGrid },
   { name: 'Oportunidades', href: '/futebol/oportunidades', icon: Zap },
   { name: 'Jogos', href: '/futebol/jogos', icon: Calendar },
+  // "Jogos" é a agenda por dia (todas as ligas); "Campeonatos" é a navegação por
+  // liga, com rodada, tabela e artilheiros.
+  { name: 'Campeonatos', href: '/futebol/campeonatos', icon: Trophy },
 ];
 
 const BETINHO_ITEMS: SubItem[] = [

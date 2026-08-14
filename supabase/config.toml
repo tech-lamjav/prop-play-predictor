@@ -54,3 +54,7 @@ verify_jwt = false
 [functions.mirror-futebol-player-photos]
 # Espelha fotos dos jogadores do futebol no bucket futebol-player-photos — header x-cron-secret.
 verify_jwt = false
+
+[functions.mirror-futebol-league-logos]
+# Espelha brasões dos campeonatos no bucket futebol-league-logos — header x-cron-secret.
+verify_jwt = false
