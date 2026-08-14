@@ -57,6 +57,19 @@ export function marketLabel(market: string): string {
   return market;
 }
 
+/**
+ * Nome curto do mercado, para etiqueta em caixa alta na lista e no painel da
+ * agenda. "Gols (Over/Under)" em 9px com letter-spacing vira uma tira de ruído.
+ */
+export function marketShort(market: string): string {
+  if (market === 'match_winner') return 'Resultado';
+  if (market === 'goals_over_under') return 'Gols';
+  if (market === 'asian_handicap') return 'Handicap';
+  if (market === 'btts') return 'Ambos marcam';
+  if (market === 'double_chance') return 'Dupla chance';
+  return market;
+}
+
 /** Linha do handicap com sinal e vírgula decimal (ex.: -1,5 / +1,5). */
 function fmtHandicapLine(line: number): string {
   const sign = line > 0 ? '+' : line < 0 ? '−' : '';

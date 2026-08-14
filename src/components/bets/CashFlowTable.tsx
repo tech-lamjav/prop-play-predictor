@@ -279,7 +279,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       case 'half_loss':
         return 'bg-rose-50/70 text-rose-700';
       case 'void':
-        return 'bg-ink-3 text-ink-2';
+        return 'bg-canvas-2 text-ink-2';
       case 'initial':
         return 'bg-forest-tint text-forest';
       case 'deposit':
@@ -321,7 +321,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       {/* Filters bar */}
       <div className="px-5 py-3 border-b border-line flex flex-col md:flex-row md:items-center gap-3">
         {/* Search */}
-        <div className="flex items-center gap-2 px-2.5 h-9 bg-ink-3/40 border border-line rounded-md w-full md:w-[240px] shrink-0">
+        <div className="flex items-center gap-2 px-2.5 h-9 bg-canvas-2 border border-line rounded-md w-full md:w-[240px] shrink-0">
           <Search className="w-4 h-4 text-ink-2 shrink-0" />
           <input
             type="text"
@@ -420,11 +420,11 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                 numberOfMonths={1}
                 classNames={{
                   caption_label: 'text-sm font-semibold text-ink',
-                  nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                  nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                   head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                  day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                  day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                   day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                  day_today: 'bg-ink-3 text-ink font-semibold',
+                  day_today: 'bg-canvas-2 text-ink font-semibold',
                   day_outside: 'text-ink-2 opacity-40',
                   day_disabled: 'text-ink-2 opacity-30',
                   day_range_middle: 'aria-selected:bg-forest-tint aria-selected:text-forest aria-selected:rounded-none',
@@ -477,7 +477,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-[12px]">
-          <thead className="bg-ink-3/40">
+          <thead className="bg-canvas-2">
             <tr className="text-left text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">
               <th className="py-2.5 px-3">Data</th>
               <th className="py-2.5 px-3">Descrição</th>
@@ -494,7 +494,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
               <tr
                 key={entry.id}
                 className={`border-b border-line transition-colors last:border-0 ${
-                  entry.type === 'initial' ? 'bg-forest-tint/30' : 'hover:bg-ink-3/30'
+                  entry.type === 'initial' ? 'bg-forest-tint/30' : 'hover:bg-canvas-2'
                 }`}
               >
                 <td className="py-2.5 px-3 tabular text-ink-2">{entry.date}</td>
@@ -537,7 +537,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                         {onEditCapitalMovement && canEdit(entry.id) && (
                           <button
                             type="button"
-                            className="w-9 h-9 grid place-items-center text-ink-2 hover:text-ink hover:bg-ink-3/60 rounded transition-colors"
+                            className="w-9 h-9 grid place-items-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded transition-colors"
                             onClick={() => onEditCapitalMovement(entry.id)}
                             title="Editar movimento"
                             aria-label="Editar movimento"
@@ -588,7 +588,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     {onEditCapitalMovement && canEdit(entry.id) && (
                       <button
                         type="button"
-                        className="w-9 h-9 grid place-items-center text-ink-2 hover:text-ink hover:bg-ink-3/60 rounded transition-colors"
+                        className="w-9 h-9 grid place-items-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded transition-colors"
                         onClick={() => onEditCapitalMovement(entry.id)}
                         title="Editar movimento"
                         aria-label="Editar movimento"
@@ -654,7 +654,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
               aria-label="Página anterior"
-              className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -684,7 +684,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     className={`h-8 w-8 inline-flex items-center justify-center text-[12px] rounded-md font-medium transition-colors ${
                       p === currentPage
                         ? 'bg-forest text-white'
-                        : 'text-ink-2 hover:text-ink hover:bg-ink-3/40'
+                        : 'text-ink-2 hover:text-ink hover:bg-canvas-2'
                     }`}
                   >
                     {p}
@@ -697,7 +697,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
               aria-label="Próxima página"
-              className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

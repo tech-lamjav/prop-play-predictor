@@ -285,7 +285,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {availableTags.map(tag => (
                       <div key={tag.id} className="space-y-1">
-                        <div className="flex items-center justify-between p-1 hover:bg-ink-3/40 rounded-md group">
+                        <div className="flex items-center justify-between p-1 hover:bg-canvas-2 rounded-md group">
                           <div className="flex-1 flex items-center gap-2 min-w-0">
                             <button
                               type="button"

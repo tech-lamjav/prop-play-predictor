@@ -5,7 +5,8 @@
 // só pra ganhar nome bonito + posição no seletor.
 //
 // Slugs confirmados no mart (season 2026): brasileirao, serie_b, copa_do_brasil,
-// libertadores, sudamericana, la_liga, premier_league, copa_mundo.
+// libertadores, sudamericana, la_liga, premier_league, copa_mundo, champions_league,
+// bundesliga, ligue_1, primeira_liga, serie_a_ita.
 
 export const COMPETITION_LABELS: Record<string, string> = {
   brasileirao: 'Brasileirão',
@@ -16,6 +17,35 @@ export const COMPETITION_LABELS: Record<string, string> = {
   la_liga: 'La Liga',
   premier_league: 'Premier League',
   copa_mundo: 'Copa do Mundo',
+  champions_league: 'Champions League',
+  bundesliga: 'Bundesliga',
+  ligue_1: 'Ligue 1',
+  primeira_liga: 'Primeira Liga',
+  // O humanize devolvia "Serie A Ita", que é o único nome feio da lista.
+  serie_a_ita: 'Serie A (Itália)',
+};
+
+/**
+ * Slug do mart → id da liga na API-Football, a mesma numeração de
+ * public.leagues_config (migration 082). É de onde saem os brasões do bucket
+ * futebol-league-logos; pra somar liga nova, entre com ela aqui e no de-para da
+ * edge function mirror-futebol-league-logos, e rode o espelho. Liga sem arquivo
+ * cai no ícone de troféu, sem quebrar nada.
+ */
+export const COMPETITION_API_IDS: Record<string, number> = {
+  copa_mundo: 1,
+  champions_league: 2,
+  sudamericana: 11,
+  libertadores: 13,
+  premier_league: 39,
+  ligue_1: 61,
+  brasileirao: 71,
+  serie_b: 72,
+  copa_do_brasil: 73,
+  bundesliga: 78,
+  primeira_liga: 94,
+  serie_a_ita: 135,
+  la_liga: 140,
 };
 
 // Ordem canônica nos seletores que buscam por slug (pickers). Copa do Mundo por

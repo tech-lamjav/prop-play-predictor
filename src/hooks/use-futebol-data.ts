@@ -6,6 +6,12 @@ import {
   type FutebolAccess,
   type Competition,
   type FutebolFixture,
+  type FutebolFixtureByDay,
+  type FutebolFixtureDay,
+  type FutebolFixturePremissas,
+  type FutebolFixtureNumeros,
+  type FutebolFixtureHistorico,
+  type FutebolCompetitionInfo,
   type FutebolFixtureDetail,
   type FutebolFixtureExtras,
   type FutebolH2HMeeting,
@@ -46,6 +52,88 @@ export function useFutebolFixtures(competition: Competition, season: number, rou
     queryFn: () => futebolDataService.getFixtures(competition, season, round),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Agenda de UM dia (BRT) em todas as ligas. É o caminho novo da /futebol/jogos.
+ * Prefira este ao useFutebolFixturesMulti quando a pergunta é "o que tem no dia X":
+ * uma chamada de ~16 KB no pior dia, contra ~850 KB das 8 chamadas por liga.
+ * `day` é chave `YYYY-MM-DD` (use brtToday()/addDays de utils/futebol-datas).
+ */
+export function useFutebolFixturesByDay(day: string | null | undefined, competitions?: string[] | null) {
+  return useQuery<FutebolFixtureByDay[]>({
+    queryKey: ['futebol', 'fixtures-by-day', day, competitions ?? 'all'],
+    queryFn: () => futebolDataService.getFixturesByDay(day as string, competitions),
+    enabled: !!day,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Dias com jogo no intervalo, pra régua de datas saber onde tem jogo e quantos. */
+export function useFutebolFixtureDays(from: string | null | undefined, to: string | null | undefined) {
+  return useQuery<FutebolFixtureDay[]>({
+    queryKey: ['futebol', 'fixture-days', from, to],
+    queryFn: () => futebolDataService.getFixtureDays(from as string, to as string),
+    enabled: !!from && !!to,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Mapa de premissas do jogo (acesas e apagadas), nos 5 mercados. É o conteúdo
+ * analítico que existe mesmo sem odd coletada, então não depende de preço.
+ */
+export function useFutebolFixturePremissas(fixtureId: number | undefined) {
+  return useQuery<FutebolFixturePremissas[]>({
+    queryKey: ['futebol', 'fixture-premissas', fixtureId],
+    queryFn: () => futebolDataService.getFixturePremissas(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Números de temporada dos dois times, para embasar cada premissa com o dado real. */
+export function useFutebolFixtureNumeros(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureNumeros[]>({
+    queryKey: ['futebol', 'fixture-numeros', fixtureId],
+    queryFn: () => futebolDataService.getFixtureNumeros(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Jogo a jogo dos dois times: é o que sustenta o gráfico embaixo de cada premissa. */
+export function useFutebolFixtureHistorico(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureHistorico[]>({
+    queryKey: ['futebol', 'fixture-historico', fixtureId],
+    queryFn: () => futebolDataService.getFixtureHistorico(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Competições e temporadas que existem no mart. Cache longo: muda quando o Mateus
+ * sobe liga nova, não a cada minuto.
+ */
+export function useFutebolCompetitions() {
+  return useQuery<FutebolCompetitionInfo[]>({
+    queryKey: ['futebol', 'competitions'],
+    queryFn: () => futebolDataService.getCompetitions(),
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 }

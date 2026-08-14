@@ -123,7 +123,7 @@ function statusBadgeStyle(status: string | null | undefined): { label: string; c
   if (s.includes('probable')) {
     return { label: 'Prov.', cls: 'bg-lime-100 text-lime-700 border border-lime-200' };
   }
-  return { label: status || '—', cls: 'bg-ink-3 text-ink-2 border border-line' };
+  return { label: status || '—', cls: 'bg-canvas-2 text-ink-2 border border-line' };
 }
 
 // ─── Last 5 V/D ───────────────────────────────────────────────────────────
@@ -697,7 +697,7 @@ function LineupTable({
                     to={`/nba-dashboard/${slugify(p.player_name)}`}
                     className="flex items-center gap-2.5 group"
                   >
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-ink-3 border border-line shrink-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0">
                       <img
                         src={getPlayerPhotoUrl(p.player_name, teamAbbr)}
                         alt={p.player_name}
@@ -894,7 +894,7 @@ function BoxScoreTable({
                 <tr key={p.player_id} className="border-t border-line hover:bg-canvas-2/40 transition-colors">
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full overflow-hidden bg-ink-3 border border-line shrink-0">
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0">
                         <img
                           src={getPlayerPhotoUrl(p.player_name, team)}
                           alt={p.player_name}
@@ -1030,7 +1030,7 @@ function GameOpportunitiesTable({
                       ? 'bg-emerald-100 text-emerald-700'
                       : (o.score ?? 0) >= 60
                       ? 'bg-amber-100 text-amber-700'
-                      : 'bg-ink-3 text-ink-2'
+                      : 'bg-canvas-2 text-ink-2'
                   }`}>
                     {o.score ?? '—'}
                   </span>
@@ -1150,7 +1150,7 @@ export default function GameDetail() {
 
   if (authLoading) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-forest" />
       </div>
     );
@@ -1275,7 +1275,7 @@ export default function GameDetail() {
         <title>{game ? `${game.home_team_abbreviation} vs ${game.visitor_team_abbreviation}` : 'Jogo'} — Smart Betting</title>
       </Helmet>
 
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-games" />
         <OnboardingTour tourId={NBA_GAME_TOUR_ID} steps={nbaGameSteps} run={gameTour.run} onFinish={gameTour.finish} />
 

@@ -27,9 +27,10 @@ export const config = {
     enableRealTimeUpdates: import.meta.env.VITE_ENABLE_REAL_TIME_UPDATES === 'true',
     enableDataExport: import.meta.env.VITE_ENABLE_DATA_EXPORT === 'true',
     enableAnalytics: import.meta.env.VITE_ENABLE_ANALYTICS === 'true',
-    // Cross-sell da Plataforma Futebol — ligado por padrão; kill switch via
-    // VITE_CROSSSELL_FUTEBOL=off (sem deploy de código).
-    enableCrossSellFutebol: import.meta.env.VITE_CROSSSELL_FUTEBOL !== 'off',
+    // Cross-sell da Plataforma Futebol — campanha do bolão da Copa, encerrada.
+    // Desligado por padrão; religa via VITE_CROSSSELL_FUTEBOL=on (sem deploy de
+    // código). O preview por ?crosssell na URL continua funcionando pra demo.
+    enableCrossSellFutebol: import.meta.env.VITE_CROSSSELL_FUTEBOL === 'on',
   },
   
   data: {

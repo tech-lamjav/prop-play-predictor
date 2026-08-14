@@ -1,0 +1,397 @@
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, X, Minus } from 'lucide-react';
+import { Crest } from './Crest';
+import { RegistrarApostaCTA } from './RegistrarAposta';
+import {
+  useFutebolFixturePremissas,
+  useFutebolFixtureNumeros,
+  useFutebolFixtureInjuries,
+  useFutebolFixtureHistorico,
+} from '@/hooks/use-futebol-data';
+import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
+import { chancePct, pickLabel } from '@/utils/futebol-score';
+import { marketShort } from '@/utils/futebol-score';
+import { contaQueValem, premissaDe, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
+import { melhorLeitura, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-leitura';
+import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
+import { evidenciaDoHistorico } from '@/utils/futebol-historico';
+import { settleFutebol, isHit } from '@/utils/futebol-settlement';
+import type {
+  FutebolFixtureByDay,
+  FutebolFixtureNumeros,
+  FutebolFixturePremissas,
+  FutebolValueBoardRow,
+} from '@/services/futebol-data.service';
+
+/**
+ * O painel do jogo na coluna da direita (protótipo "Futebol Jogos").
+ *
+ * Ele responde uma pergunta só: POR QUE esta leitura. A lista já mostra pick, odd e
+ * Score em cada linha, então aqui entra o motivo (as premissas com o número que as
+ * embasa), como os dois chegam, a forma e os desfalques.
+ *
+ * Sem leitura o painel NÃO esvazia: explica o motivo e mostra o contexto assim
+ * mesmo. A maioria dos jogos legitimamente não tem oportunidade, e um painel em
+ * branco lê como defeito.
+ *
+ * Três queries por jogo aberto (premissas, números e desfalques), todas leves e
+ * compartilhadas com a tela de jogo: abrir o painel aquece a análise completa. A
+ * `fixture_detail` saiu junto com o bloco de stats, que este desenho não tem mais.
+ */
+
+const RES_COR: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
+  V: { bg: '#2f7d50', fg: '#fff' },
+  E: { bg: '#f1e9d6', fg: '#6b6350' },
+  D: { bg: '#b8341c', fg: '#fff' },
+};
+
+function Forma({ forma }: { forma: string | null | undefined }) {
+  if (!forma) return <span className="text-[11px]" style={{ color: '#8d8672' }}>—</span>;
+  const ult = forma.slice(-5).split('').map((c) => (c === 'W' ? 'V' : c === 'D' ? 'E' : 'D') as 'V' | 'E' | 'D');
+  return (
+    <span className="flex gap-[3px]">
+      {ult.map((r, i) => (
+        <span
+          key={i}
+          className="w-[17px] h-[17px] rounded grid place-items-center text-[8.5px] font-bold"
+          style={{ background: RES_COR[r].bg, color: RES_COR[r].fg }}
+        >
+          {r}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function JogoResumoPanel({
+  fixture,
+  best,
+  onClose,
+  demo,
+}: {
+  fixture: FutebolFixtureByDay;
+  best: FutebolValueBoardRow | null;
+  onClose: () => void;
+  /**
+   * Premissas e números de exemplo, usados só enquanto o tour roda. O jogo do
+   * tour é fictício, então buscar no banco devolvia vazio e o passo do porquê
+   * abria um painel sem porquê nenhum.
+   */
+  demo?: { premissas: FutebolFixturePremissas[]; numeros: FutebolFixtureNumeros[] };
+}) {
+  const { data: premissasReais } = useFutebolFixturePremissas(demo ? undefined : fixture.fixture_id);
+  const { data: numerosReais } = useFutebolFixtureNumeros(demo ? undefined : fixture.fixture_id);
+  const premissas = demo?.premissas ?? premissasReais;
+  const numeros = demo?.numeros ?? numerosReais;
+  const { data: injuries } = useFutebolFixtureInjuries(fixture.fixture_id);
+  const { data: historico } = useFutebolFixtureHistorico(fixture.fixture_id);
+
+  const fim = isFinished(fixture.status_short);
+  const live = isLive(fixture.status_short);
+  const dia = fmtDayChip(fixture.day_brt);
+
+  // A leitura: com preço, a melhor do value board; sem preço, o mercado com mais
+  // premissas. É a mesma conta da tela de jogo, então os dois nunca divergem.
+  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null), [premissas, best]);
+  const topo = useMemo(() => melhorLeitura(resumos), [resumos]);
+
+  const mercadoLeitura = best ? best.market : topo?.mercado.slug ?? null;
+  // As premissas têm que ser as da MESMA saída do pick. Pegando só "o melhor
+  // candidato do mercado", o painel listava as premissas da linha 4,25 embaixo de um
+  // pick de 2,5 — duas leituras diferentes na mesma caixa.
+  const cand = !mercadoLeitura
+    ? null
+    : (best
+        ? (premissas ?? []).find(
+            (r) =>
+              r.market === best.market &&
+              r.outcome === best.outcome &&
+              ((r.line_value == null && best.line_value == null) ||
+                (r.line_value != null && best.line_value != null && Math.abs(r.line_value - best.line_value) < 0.011)),
+          )
+        : null) ?? resumos.find((r) => r.mercado.slug === mercadoLeitura)?.candidato ?? null;
+  const pick = best
+    ? pickLabel(best.market, best.outcome, best.line_value, fixture.home_team_name, fixture.away_team_name)
+    : topo
+      ? pickLabel(
+          topo.mercado.slug,
+          topo.candidato.outcome,
+          topo.candidato.line_value,
+          fixture.home_team_name,
+          fixture.away_team_name,
+        )
+      : null;
+
+  const temLeitura = !!best || (topo != null && topo.nValem > 0);
+  const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
+  const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
+
+  // Os porquês: premissas acesas que valem, com o número que as embasa.
+  const porques = (cand?.acesas ?? [])
+    .map((s) => premissaDe(mercadoLeitura!, s))
+    .filter((p): p is NonNullable<typeof p> => p != null && (p.peso == null || p.peso > 0))
+    .sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0))
+    .slice(0, 4)
+    .map((p) => ({
+      p,
+      ev:
+        evidenciaDe(p.slug, numeros, lado, true, cand?.line_value ?? null) ??
+        evidenciaDoHistorico(p.slug, historico, lado, cand?.line_value ?? null),
+    }));
+
+  // O que pesou contra: as premissas do lado que NÃO aconteceram.
+  const contra = topo && cand && mercadoLeitura
+    ? (() => {
+        const acesas = new Set(cand.acesas);
+        const faltou = topo.mercado.premissas
+          .filter((p) => !acesas.has(p.slug) && p.peso != null && p.peso > 0)
+          .slice(0, 2)
+          .map((p) => rotuloPremissa(p, lado, true).toLowerCase());
+        return faltou.length ? `${faltou.length} ${faltou.length === 1 ? 'pesou' : 'pesaram'} contra: ${faltou.join(' e ')}.` : null;
+      })()
+    : null;
+
+  const casa = numeros?.find((n) => n.side === 'home');
+  const fora = numeros?.find((n) => n.side === 'away');
+  const d1 = (v: number | null | undefined) => (v == null ? '—' : v.toFixed(1).replace('.', ','));
+  const chegam = casa && fora
+    ? [
+        { label: 'Gols marcados', a: casa.gf_total, b: fora.gf_total, maiorEhCasa: true },
+        { label: 'Gols sofridos', a: casa.ga_total, b: fora.ga_total, maiorEhCasa: false },
+        { label: 'Sem sofrer gol', a: casa.clean_sheets, b: fora.clean_sheets, maiorEhCasa: true },
+      ].filter((x) => x.a != null && x.b != null)
+    : [];
+
+  const desfalques = (teamId: number) =>
+    (injuries ?? [])
+      .filter((i) => i.team_id === teamId)
+      .slice(0, 2)
+      .map((i) => i.player_name)
+      .join(', ') || '—';
+
+  const desfecho =
+    fim && cand && mercadoLeitura
+      ? settleFutebol(mercadoLeitura, cand.outcome, cand.line_value, fixture.goals_home, fixture.goals_away)
+      : null;
+
+  const chance = best ? chancePct(best.prob_justa_fechamento) : null;
+
+  return (
+    <div className="bg-white rounded-[20px] overflow-hidden" style={{ border: '1px solid #ded2b6' }}>
+      <div
+        className="px-4 py-2.5 flex items-center gap-2.5"
+        style={{ background: 'var(--canvas-2)', borderBottom: '1px solid #ded2b6' }}
+      >
+        <Crest name={fixture.home_team_name} id={fixture.home_team_id} size={20} />
+        <span className="text-[13.5px] font-semibold tracking-tight text-ink truncate">
+          {fixture.home_team_name} × {fixture.away_team_name}
+        </span>
+        <Crest name={fixture.away_team_name} id={fixture.away_team_id} size={20} />
+        <span className="text-[11px] truncate" style={{ color: '#8d8672' }}>
+          {fim || live
+            ? `${live ? 'ao vivo' : 'encerrado'} · ${fixture.goals_home ?? 0} × ${fixture.goals_away ?? 0}`
+            : `${dia.weekday} ${dia.day} ${fmtTime(fixture.kickoff_utc) ?? ''}`}
+        </span>
+        <button
+          onClick={onClose}
+          className="ml-auto w-6 h-6 shrink-0 grid place-items-center rounded-md transition hover:bg-white"
+          style={{ color: '#8d8672' }}
+          aria-label="Fechar resumo"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {temLeitura && pick && (
+        <div className="relative overflow-hidden px-5 py-5" style={{ background: 'linear-gradient(135deg,#0a3d2e,#08321f 60%,#051f12)' }}>
+          <div
+            className="absolute pointer-events-none"
+            style={{ right: -50, top: -70, width: 230, height: 230, borderRadius: 999, background: 'radial-gradient(circle,rgba(251,191,36,.24),transparent 68%)' }}
+          />
+          <div className="relative flex items-end justify-between gap-5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 h-[17px]">
+                <span className="text-[9.5px] uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,.45)' }}>
+                  Melhor leitura · {marketShort(mercadoLeitura!)}
+                </span>
+                {desfecho && (
+                  <span
+                    className="inline-flex items-center h-[17px] px-1.5 rounded text-[9px] font-bold uppercase tracking-[0.08em]"
+                    style={
+                      isHit(desfecho)
+                        ? { background: 'rgba(142,230,176,.18)', color: '#8ee6b0' }
+                        : { background: 'rgba(255,255,255,.12)', color: 'rgba(255,255,255,.7)' }
+                    }
+                  >
+                    {isHit(desfecho) ? 'bateu' : desfecho === 'push' ? 'anulada' : 'não bateu'}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1.5 text-[22px] font-semibold leading-tight tracking-[-0.025em] text-white">{pick}</div>
+              {best ? (
+                <div className="flex gap-4 mt-2.5">
+                  <div>
+                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
+                    <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">{chance}%</div>
+                  </div>
+                  <div>
+                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
+                    <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">{best.best_odd.toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Vantagem</div>
+                    <div className="tabular-nums text-[15px] font-semibold mt-0.5" style={{ color: best.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}>
+                      {`${best.edge >= 0 ? '+' : '−'}${Math.abs(best.edge * 100).toFixed(1).replace('.', ',')}%`}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
+                  sem preço coletado ainda · as odds entram perto do jogo
+                </div>
+              )}
+            </div>
+            <div className="text-center shrink-0">
+              <div className="tabular-nums text-[40px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
+                {best ? best.score : nValem}
+              </div>
+              <div className="mt-1 text-[9px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
+                {best ? `Score · ${best.score >= 60 ? 'faixa alta' : best.score >= REGUA_SCORE ? 'faixa média' : 'abaixo da régua'}` : 'premissas a favor'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="p-4">
+        {temLeitura ? (
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
+              Por que · {nValem} {nValem === 1 ? 'premissa a favor' : 'premissas a favor'}
+            </div>
+            <div className="mt-2.5 flex flex-col gap-2.5">
+              {porques.map(({ p, ev }) => (
+                <div key={p.slug} className="flex gap-2.5 items-start">
+                  <span
+                    className="shrink-0 mt-0.5 h-[18px] px-1.5 rounded inline-flex items-center text-[9px] font-bold uppercase tracking-[0.08em]"
+                    style={pesoForte(p) ? { background: '#dcefe2', color: '#0a3d2e' } : { background: '#eae2cf', color: '#8d8672' }}
+                  >
+                    {pesoForte(p) ? 'Forte' : 'Médio'}
+                  </span>
+                  <span className="flex-1 min-w-0 text-[12.5px] leading-relaxed" style={{ color: '#3f463d' }}>
+                    <b className="font-semibold">{rotuloPremissa(p, lado)}.</b>
+                    {ev ? ` ${ev.texto}.` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {contra && (
+              <div
+                className="mt-3.5 px-3.5 py-2.5 rounded-xl flex gap-2.5 items-start"
+                style={{ background: 'var(--canvas-2)', border: '1px solid #e5d9bd' }}
+              >
+                <Minus className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: '#b8870f' }} strokeWidth={3} />
+                <span className="text-[12px] leading-relaxed" style={{ color: '#6b6350' }}>{contra}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="px-4 py-3.5 rounded-[14px]" style={{ background: 'var(--canvas-2)', border: '1px solid #e5d9bd' }}>
+            <div className="text-[12.5px] font-semibold text-ink">Sem leitura para este jogo</div>
+            <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: '#6b6350' }}>
+              {premissas?.length
+                ? 'Nenhuma premissa passou a porta de 2 em nenhum mercado.'
+                : 'As premissas deste jogo ainda não foram calculadas.'}
+            </p>
+            <p className="mt-2 text-[11.5px] leading-relaxed" style={{ color: '#8d8672' }}>
+              Isso não é defeito: a maioria dos jogos legitimamente não tem oportunidade. O contexto abaixo continua
+              valendo.
+            </p>
+          </div>
+        )}
+
+        {chegam.length > 0 && (
+          <div className="mt-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
+            <div className="flex items-baseline justify-between">
+              <span className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
+                Como chegam
+              </span>
+              <span className="text-[10.5px] truncate max-w-[60%]" style={{ color: '#8d8672' }}>
+                {fixture.home_team_name} · {fixture.away_team_name}
+              </span>
+            </div>
+            <div className="mt-2.5 flex flex-col gap-3">
+              {chegam.map((c) => {
+                const tot = (c.a ?? 0) + (c.b ?? 0) || 1;
+                const wa = `${Math.round(((c.a ?? 0) / tot) * 100)}%`;
+                const wb = `${Math.round(((c.b ?? 0) / tot) * 100)}%`;
+                const inteiro = c.label === 'Sem sofrer gol';
+                return (
+                  <div key={c.label}>
+                    <div className="flex justify-between items-baseline mb-1 tabular-nums">
+                      <span className="text-[14px] font-semibold" style={{ color: '#0a3d2e' }}>
+                        {inteiro ? c.a : d1(c.a)}
+                      </span>
+                      <span className="text-[10.5px] font-medium" style={{ color: '#8d8672' }}>{c.label}</span>
+                      <span className="text-[14px] font-semibold" style={{ color: '#6b6350' }}>
+                        {inteiro ? c.b : d1(c.b)}
+                      </span>
+                    </div>
+                    <div className="flex gap-[3px] h-1.5">
+                      <div className="flex-1 flex justify-end overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '999px 0 0 999px' }}>
+                        <div style={{ width: wa, background: '#0a3d2e' }} />
+                      </div>
+                      <div className="flex-1 overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '0 999px 999px 0' }}>
+                        <div style={{ width: wb, height: '100%', background: '#c4bda8' }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 pt-3 flex items-center gap-2.5" style={{ borderTop: '1px solid #f1e9d6' }}>
+              <span className="text-[10.5px] font-medium shrink-0" style={{ color: '#8d8672' }}>Forma</span>
+              <Forma forma={casa?.forma} />
+              <span className="ml-auto">
+                <Forma forma={fora?.forma} />
+              </span>
+            </div>
+
+            <div className="mt-3 pt-3 flex items-center gap-2.5" style={{ borderTop: '1px solid #f1e9d6' }}>
+              <span className="text-[10.5px] font-medium shrink-0" style={{ color: '#8d8672' }}>Desfalques</span>
+              <span className="text-[12px] truncate" style={{ color: '#3f463d' }}>{desfalques(fixture.home_team_id)}</span>
+              <span className="ml-auto text-[12px] truncate" style={{ color: '#3f463d' }}>{desfalques(fixture.away_team_id)}</span>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex gap-2">
+          <Link
+            to={`/futebol/jogo/${fixture.fixture_id}`}
+            className="flex-1 h-10 rounded-[10px] bg-forest text-canvas text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-forest-2 transition"
+          >
+            {temLeitura ? 'Ver a análise dos 5 mercados' : 'Ver a análise completa'} <ArrowRight className="w-4 h-4" />
+          </Link>
+          {best && !fim && (
+            <RegistrarApostaCTA
+              draft={{
+                homeName: fixture.home_team_name,
+                awayName: fixture.away_team_name,
+                competition: fixture.competition,
+                kickoffUtc: fixture.kickoff_utc,
+                market: best.market,
+                outcome: best.outcome,
+                lineValue: best.line_value,
+                bestOdd: best.best_odd,
+              }}
+              variant="ambar"
+              rotulo="Registrar"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

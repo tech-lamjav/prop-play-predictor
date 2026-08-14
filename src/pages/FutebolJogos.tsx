@@ -1,348 +1,359 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ArrowRight, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowRight, ArrowUpRight, CalendarOff, ChevronDown } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtures, useFutebolStandings, useFutebolLeaders, useFutebolValueBoard } from '@/hooks/use-futebol-data';
-import type { Competition, FutebolFixture, FutebolStandingRow, FutebolLeaders, FutebolZone, FutebolValueBoardRow } from '@/services/futebol-data.service';
-import { futebolZone, FUTEBOL_ZONE_COLOR as ZONE_COLOR, FUTEBOL_ZONE_LABEL as ZONE_LABEL } from '@/services/futebol-data.service';
-import { getFutebolTeamLogoUrl, getFutebolPlayerPhotoUrl } from '@/utils/futebol-logos';
-import { groupBoardByFixture, faixaWord, faixaBadgeCls } from '@/utils/futebol-score';
-import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
+import { FixtureRow } from '@/components/futebol/FixtureRow';
+import { AgendaDateStrip } from '@/components/futebol/AgendaDateStrip';
+import { JogoResumoPanel } from '@/components/futebol/JogoResumoPanel';
+import { useFutebolFixturesByDay, useFutebolFixtureDays, useFutebolValueBoard } from '@/hooks/use-futebol-data';
+import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
+import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
+import { groupBoardByFixture } from '@/utils/futebol-score';
+import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFutebolBoard, demoFutebolFixtures, demoFutebolStandings, demoFutebolLeaders } from '@/components/onboarding/demo/futebol';
+import {
+  demoFutebolBoard,
+  demoFutebolNumeros,
+  demoFutebolPremissas,
+  makeDemoAgenda,
+} from '@/components/onboarding/demo/futebol';
 
-const COMPETITIONS: { value: Competition; label: string }[] = ALL_COMPETITIONS.map((value) => ({
-  value,
-  label: competitionLabel(value),
-}));
-// Temporadas por competição. Brasileirão/Série B têm histórico; as demais, só 2026.
-const SEASONS_BY_COMP: Record<string, number[]> = { brasileirao: [2024, 2025, 2026], serie_b: [2024, 2025, 2026] };
-const seasonsFor = (c: string): number[] => SEASONS_BY_COMP[c] ?? [2026];
-const SAO_PAULO_TZ = 'America/Sao_Paulo';
-const TODAY = new Date();
+/**
+ * Agenda de jogos por DIA, multi-liga.
+ *
+ * Antes esta tela era campeonato → rodada → dia, o que obrigava o usuário a saber em
+ * qual competição estava o jogo antes de achar o jogo, e "Rodada 21" atravessa três
+ * datas. Agora o eixo é o dia, e a competição é só agrupamento dentro dele.
+ *
+ * O que era rodada, temporada, classificação e artilheiros mudou pra
+ * /futebol/campeonato/:slug, onde esses conceitos fazem sentido (são por liga).
+ *
+ * Dados: uma chamada get_futebol_fixtures_by_day por dia (~16 KB no pior dia do
+ * mart) no lugar das 8 chamadas de temporada inteira que o useFutebolFixturesMulti
+ * fazia (~850 KB). O dia vem em BRT do banco, então jogo de 21:30 não escorrega
+ * mais pro dia seguinte.
+ */
 
-function parseUtc(raw: string | null): Date | null {
-  if (!raw) return null;
-  const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
-  const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
-  return isNaN(d.getTime()) ? null : d;
-}
-function fmtTime(raw: string | null): string {
-  const d = parseUtc(raw);
-  return d ? new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' }).format(d) : '';
-}
-function fmtDayHeader(dateUtc: string | null): string {
-  if (!dateUtc) return '—';
-  const d = new Date(`${dateUtc}T12:00:00Z`);
-  const s = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'short' }).format(d).replace('.', '');
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-function prettyRound(round: string | null): string {
-  if (!round) return 'Rodada';
-  const m = round.match(/Regular Season\s*-\s*(\d+)/i);
-  return m ? `Rodada ${m[1]}` : round;
-}
-function crestInitials(name: string): string {
-  return name.replace(/[^A-Za-zÀ-ÿ\s]/g, '').trim().slice(0, 3).toUpperCase() || '?';
-}
-function isFinished(status: string | null): boolean {
-  return status === 'FT' || status === 'AET' || status === 'PEN';
-}
-function Crest({ name, id, size = 24 }: { name: string; id: number; size?: number }) {
-  const [err, setErr] = useState(false);
-  const logo = getFutebolTeamLogoUrl(id);
-  if (logo && !err) return <img src={logo} alt={name} onError={() => setErr(true)} style={{ width: size, height: size }} className="object-contain shrink-0" loading="lazy" />;
-  return <div style={{ width: size, height: size }} className="rounded-full bg-canvas-2 border border-line grid place-items-center text-[8px] font-bold text-ink-2 shrink-0">{crestInitials(name)}</div>;
-}
-function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button onClick={onClick}
-      className={`h-8 px-3 rounded-rebrand-sm text-xs font-semibold transition-colors ${active ? 'bg-forest text-canvas' : 'bg-white text-ink border border-line hover:bg-canvas-2'}`}>
-      {children}
-    </button>
+/** Breakpoint do painel. Casado com o `lg:` do grid: se divergir, o clique abre um painel invisível. */
+const PANEL_MQ = '(min-width: 1024px)';
+
+function useHasPanel(): boolean {
+  const [has, setHas] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia(PANEL_MQ).matches : false,
   );
-}
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-rebrand-lg bg-canvas border border-line overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="px-5 py-3 flex items-center justify-between border-b border-line bg-white shrink-0">
-          <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{title}</div>
-          <button onClick={onClose} className="w-8 h-8 grid place-items-center rounded-rebrand-sm text-ink-2 hover:bg-canvas-2" aria-label="Fechar"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="overflow-y-auto minimal-scrollbar p-4">{children}</div>
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    const mql = window.matchMedia(PANEL_MQ);
+    const onChange = (e: MediaQueryListEvent) => setHas(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return has;
 }
 
-const STAND_GRID = 'grid grid-cols-[28px_1fr_repeat(4,30px)_40px_44px] gap-2 items-center';
-
-function StandingsTable({ rows, loading, onTeam }: { rows?: FutebolStandingRow[]; loading: boolean; onTeam: (id: number) => void }) {
-  if (loading) return <div className="space-y-1">{Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-9 w-full bg-canvas-2 rounded-rebrand-sm" />)}</div>;
-  if (!rows?.length) return <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-ink-3">Sem classificação pra esse filtro.</div>;
-  const zonesPresent = Array.from(new Set(rows.map((r) => futebolZone(r.rank_description)).filter(Boolean))) as Exclude<FutebolZone, null>[];
-  return (
-    <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
-      {/* As colunas fixas (#, J, V, E, D, SG, Pts) somam ~486px e não cabem em
-          tela de 320-360px. Em vez de empurrar a página inteira — o que criava
-          rolagem lateral e descolava o header sticky —, a tabela rola dentro
-          do próprio card. */}
-      <div className="overflow-x-auto no-scrollbar">
-      <div className="min-w-[480px]">
-      <div className={`${STAND_GRID} px-4 py-2.5 text-[10px] uppercase tracking-[0.12em] font-bold text-ink-3 bg-canvas-2 border-b border-line`}>
-        <span>#</span><span>Time</span>
-        <span className="text-center">J</span><span className="text-center">V</span><span className="text-center">E</span><span className="text-center">D</span>
-        <span className="text-center">SG</span><span className="text-center">Pts</span>
-      </div>
-      {rows.map((r, i) => {
-        const zone = futebolZone(r.rank_description);
-        return (
-          <button key={r.team_id} onClick={() => onTeam(r.team_id)}
-            className={`${STAND_GRID} w-full px-4 py-2.5 hover:bg-canvas-2 transition ${i ? 'border-t border-line/60' : ''}`}>
-            <span className="flex items-center gap-1.5">
-              {zone && <span className="w-1 h-5 rounded-full shrink-0" style={{ background: ZONE_COLOR[zone] }} title={ZONE_LABEL[zone]} />}
-              <span className="text-[12px] tabular-nums font-semibold text-ink-2">{r.rank}</span>
-            </span>
-            <span className="flex items-center gap-2 min-w-0">
-              <Crest name={r.team_name} id={r.team_id} size={24} />
-              <span className="truncate text-[12px] font-semibold tracking-tight text-ink text-left">{r.team_name}</span>
-            </span>
-            <span className="text-center text-[12px] tabular-nums text-ink-2">{r.played}</span>
-            <span className="text-center text-[12px] tabular-nums text-ink-2">{r.wins}</span>
-            <span className="text-center text-[12px] tabular-nums text-ink-2">{r.draws}</span>
-            <span className="text-center text-[12px] tabular-nums text-ink-2">{r.loses}</span>
-            <span className="text-center text-[12px] tabular-nums" style={{ color: r.goals_diff > 0 ? 'var(--forest)' : r.goals_diff < 0 ? '#be123c' : undefined }}>{r.goals_diff > 0 ? '+' : ''}{r.goals_diff}</span>
-            <span className="text-center text-[14px] font-bold tabular-nums text-ink">{r.points}</span>
-          </button>
-        );
-      })}
-      </div>
-      </div>
-      {zonesPresent.length > 0 && (
-        <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap text-[10px] bg-canvas-2 border-t border-line text-ink-3">
-          {zonesPresent.map((z) => (
-            <span key={z} className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: ZONE_COLOR[z] }} />{ZONE_LABEL[z]}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+/**
+ * Intervalo da régua, quantizado no mês do dia escolhido (com folga de 7 dias pras
+ * pontas). Quantizar importa: se o intervalo fosse "dia ± 15", cada clique de seta
+ * mudaria a query key e refetcharia. Assim, andar dentro do mês reusa o cache.
+ */
+function monthRange(dayKey: string): { from: string; to: string } {
+  const [y, m] = dayKey.split('-').map(Number);
+  const mm = String(m).padStart(2, '0');
+  const ultimoDia = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return {
+    from: addDays(`${y}-${mm}-01`, -7),
+    to: addDays(`${y}-${mm}-${String(ultimoDia).padStart(2, '0')}`, 7),
+  };
 }
 
-function PlayerAvatar({ id, name, size = 28 }: { id: number; name: string; size?: number }) {
-  const [err, setErr] = useState(false);
-  const url = getFutebolPlayerPhotoUrl(id);
-  if (url && !err) return <img src={url} alt={name} onError={() => setErr(true)} style={{ width: size, height: size }} className="rounded-full object-cover bg-canvas-2 shrink-0" loading="lazy" />;
-  return <div style={{ width: size, height: size }} className="rounded-full bg-canvas-2 border border-line grid place-items-center text-[9px] font-bold text-ink-2 shrink-0">{crestInitials(name)}</div>;
-}
-
-function ScorersCard({ leaders, loading, full }: { leaders?: FutebolLeaders; loading: boolean; full?: boolean }) {
-  const scorers = full ? (leaders?.scorers || []) : (leaders?.scorers || []).slice(0, 8);
-  return (
-    <div className="bg-white border border-line rounded-rebrand-md overflow-hidden">
-      {loading ? <div className="p-4 space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full bg-canvas-2 rounded" />)}</div>
-        : scorers.length ? scorers.map((s, i) => (
-          <div key={s.player_id} className={`px-4 py-2.5 flex items-center gap-3 ${i ? 'border-t border-line/60' : ''}`}>
-            <span className="text-[12px] tabular-nums font-semibold text-ink-3 w-4">{i + 1}</span>
-            <PlayerAvatar id={s.player_id} name={s.player_name} />
-            <span className="text-[13px] font-semibold tracking-tight text-ink flex-1 min-w-0 truncate">{s.player_name}</span>
-            <span className="text-[11px] text-ink-3 truncate max-w-[100px] text-right">{s.team_name}</span>
-            <span className="text-[15px] font-semibold tabular-nums text-forest">{s.goals}</span>
-            <span className="text-[10px] text-ink-3">gols</span>
-          </div>
-        )) : <div className="p-4 text-center text-sm text-ink-3">Sem dados.</div>}
-    </div>
-  );
-}
-
-function FixtureRow({ fixture, best, onClick }: { fixture: FutebolFixture; best: FutebolValueBoardRow | null; onClick: () => void }) {
-  const finished = isFinished(fixture.status_short);
-  return (
-    <button onClick={onClick} className="w-full text-left px-4 py-3 flex items-center gap-3 border-t border-line/60 first:border-t-0 hover:bg-canvas-2 transition">
-      <div className="w-12 shrink-0 text-center">
-        {finished ? <span className="text-[9px] uppercase tracking-[0.12em] font-bold text-ink-3">Fim</span>
-          : <span className="text-[12px] font-semibold tabular-nums text-ink">{fmtTime(fixture.kickoff_utc) || '—'}</span>}
-      </div>
-      <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-        <span className="text-[12px] font-semibold tracking-tight truncate text-ink">{fixture.home_team_name}</span>
-        <Crest name={fixture.home_team_name} id={fixture.home_team_id} size={22} />
-      </div>
-      <div className="shrink-0 text-center" style={{ minWidth: 52 }}>
-        {finished ? <span className="text-[15px] font-semibold tabular-nums tracking-tight text-ink">{fixture.goals_home ?? '-'} <span className="text-ink-3">×</span> {fixture.goals_away ?? '-'}</span>
-          : <span className="text-[11px] text-ink-3">×</span>}
-      </div>
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Crest name={fixture.away_team_name} id={fixture.away_team_id} size={22} />
-        <span className="text-[12px] font-semibold tracking-tight truncate text-ink">{fixture.away_team_name}</span>
-      </div>
-      <div className="shrink-0 w-16 text-right">
-        {!finished && (best
-          ? <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(best.faixa)}`}>{faixaWord(best.faixa)}</span>
-          : <span className="text-[9px] text-ink-3">sem valor</span>)}
-      </div>
-    </button>
-  );
-}
+const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function FutebolJogos() {
   const navigate = useNavigate();
-  const [competition, setCompetition] = useState<Competition>('brasileirao');
-  const [season, setSeason] = useState<number>(2026);
-  const [roundIdx, setRoundIdx] = useState(0);
-  const [modal, setModal] = useState<null | 'tabela' | 'artilheiros'>(null);
+  const hasPanel = useHasPanel();
+  const [params, setParams] = useSearchParams();
 
-  const { data: fixtures, isLoading, isError } = useFutebolFixtures(competition, season);
-  const { data: standings, isLoading: loadingStandings } = useFutebolStandings(competition, season, true);
-  const { data: leaders, isLoading: loadingLeaders } = useFutebolLeaders(competition, season, true);
+  const diaParam = params.get('dia');
+  const dia = DIA_RE.test(diaParam ?? '') ? (diaParam as string) : brtToday();
+  const jogoParam = Number(params.get('jogo')) || null;
+
+  const { from, to } = useMemo(() => monthRange(dia), [dia]);
+  const { data: fixtures, isLoading, isError } = useFutebolFixturesByDay(dia);
+  const { data: dias } = useFutebolFixtureDays(from, to);
   const { data: board } = useFutebolValueBoard();
 
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
-  const isDemo = jogosTour.run; // durante o tour, preenche a tela com exemplo
-  const effFixtures = useMemo(() => (isDemo ? demoFutebolFixtures : (fixtures ?? [])), [isDemo, fixtures]);
-  const effStandings = isDemo ? demoFutebolStandings : standings;
-  const effLeaders = isDemo ? demoFutebolLeaders : leaders;
+  const isDemo = jogosTour.run;
+
+  const effFixtures = useMemo<FutebolFixtureByDay[]>(
+    () => (isDemo ? makeDemoAgenda(dia) : (fixtures ?? [])),
+    [isDemo, dia, fixtures],
+  );
 
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
-    if (isDemo) { demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r)); return m; }
+    if (isDemo) {
+      demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r));
+      return m;
+    }
     groupBoardByFixture(board || []).forEach((bf) => m.set(bf.fixtureId, bf.best));
     return m;
   }, [board, isDemo]);
 
-  const rounds = useMemo(() => {
-    const seen: string[] = [];
-    effFixtures.forEach((f) => { if (f.round && !seen.includes(f.round)) seen.push(f.round); });
-    return seen;
+  const jogosPorDia = useMemo(() => {
+    const m = new Map<string, number>();
+    (dias ?? []).forEach((d) => m.set(d.day_brt, Number(d.jogos)));
+    return m;
+  }, [dias]);
+
+  /** Jogos do dia agrupados por competição, na ordem canônica das ligas. */
+  const grupos = useMemo(() => {
+    const byComp = new Map<string, FutebolFixtureByDay[]>();
+    effFixtures.forEach((f) => {
+      const k = f.competition || '—';
+      if (!byComp.has(k)) byComp.set(k, []);
+      byComp.get(k)!.push(f);
+    });
+    // Ordena por horário dentro da liga. A RPC já devolve ordenado, mas o front não
+    // deveria depender disso pra desenhar certo (os dados de exemplo do tour vêm na
+    // ordem do array, não do relógio).
+    return sortCompetitions([...byComp.keys()]).map(
+      (c) =>
+        [
+          c,
+          [...byComp.get(c)!].sort((a, b) => (a.kickoff_utc ?? '').localeCompare(b.kickoff_utc ?? '')),
+        ] as const,
+    );
   }, [effFixtures]);
 
-  useEffect(() => {
-    if (!effFixtures.length || !rounds.length) return;
-    let bestRound = effFixtures[0].round, bestDelta = Infinity;
-    for (const f of effFixtures) {
-      const d = parseUtc(f.kickoff_utc || f.date_utc);
-      if (!d) continue;
-      const delta = Math.abs(d.getTime() - TODAY.getTime());
-      if (delta < bestDelta) { bestDelta = delta; bestRound = f.round; }
-    }
-    const idx = rounds.indexOf(bestRound as string);
-    setRoundIdx(idx >= 0 ? idx : 0);
-  }, [effFixtures, rounds]);
-
-  const currentRound = rounds[roundIdx];
-  const groups = useMemo(() => {
-    const list = effFixtures.filter((f) => f.round === currentRound);
-    const byDay = new Map<string, FutebolFixture[]>();
-    list.forEach((f) => { const k = f.date_utc || '—'; if (!byDay.has(k)) byDay.set(k, []); byDay.get(k)!.push(f); });
-    return Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [effFixtures, currentRound]);
-  const roundCount = groups.reduce((n, [, g]) => n + g.length, 0);
-
-  // Mantém a temporada se a nova competição também a tiver; senão vai pra mais
-  // recente (SEASONS é crescente — o índice 0 é a mais ANTIGA, ex.: 2024).
-  const handleCompetition = (c: Competition) => {
-    setCompetition(c);
-    const seasons = seasonsFor(c);
-    setSeason(seasons.includes(season) ? season : seasons[seasons.length - 1]);
-  };
-  const goTeam = (id: number) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`);
-
-  const jogosSteps = useMemo(
-    () => makeFutebolJogosSteps({ hasRounds: !isLoading && !isError && rounds.length > 0 }),
-    [isLoading, isError, rounds.length],
+  const selected = useMemo(
+    () => effFixtures.find((f) => f.fixture_id === jogoParam) ?? null,
+    [effFixtures, jogoParam],
   );
+
+  // Jogo que não existe no dia (link velho, ou o usuário trocou o dia na mão) não
+  // pode deixar `?jogo=` pendurado na URL.
+  useEffect(() => {
+    if (jogoParam && !isLoading && !selected && effFixtures.length > 0) {
+      const next = new URLSearchParams(params);
+      next.delete('jogo');
+      setParams(next, { replace: true });
+    }
+  }, [jogoParam, selected, isLoading, effFixtures.length, params, setParams]);
+
+  // Durante o tour, o painel da direita não pode estar vazio: o passo fala do
+  // resumo e apontava para um "clique num jogo da lista". Escolhe sozinho o jogo
+  // de melhor leitura do dia (ou o primeiro, se nenhum tiver preço) só enquanto o
+  // tour roda; fora dele o vazio continua sendo o estado inicial, porque a
+  // escolha é do usuário.
+  useEffect(() => {
+    if (!jogosTour.run || !hasPanel || jogoParam || !effFixtures.length) return;
+    const melhor = [...effFixtures].sort(
+      (a, b) => (bestByFixture.get(b.fixture_id)?.score ?? -1) - (bestByFixture.get(a.fixture_id)?.score ?? -1),
+    )[0];
+    if (melhor) setParams({ dia, jogo: String(melhor.fixture_id) }, { replace: true });
+  }, [jogosTour.run, hasPanel, jogoParam, effFixtures, bestByFixture, dia, setParams]);
+
+  const selectDay = (d: string) => {
+    // replace pra seta de dia não empilhar histórico; o jogo selecionado cai fora
+    // porque ele pertencia ao dia anterior.
+    setParams({ dia: d }, { replace: true });
+  };
+
+  const openJogo = (f: FutebolFixtureByDay) => {
+    if (!hasPanel) {
+      navigate(`/futebol/jogo/${f.fixture_id}`);
+      return;
+    }
+    // push: o voltar do navegador fecha o painel, que é o que o usuário espera.
+    setParams({ dia, jogo: String(f.fixture_id) });
+  };
+
+  const closePanel = () => setParams({ dia }, { replace: true });
+
+  /** Dia mais próximo com jogo, pra oferecer saída num dia vazio. */
+  const proximoComJogo = useMemo(() => {
+    const comJogo = (dias ?? []).filter((d) => Number(d.jogos) > 0).map((d) => d.day_brt);
+    const depois = comJogo.find((d) => d > dia);
+    if (depois) return depois;
+    return [...comJogo].reverse().find((d) => d < dia) ?? null;
+  }, [dias, dia]);
+
+  const total = effFixtures.length;
+  /** Quantos jogos do dia têm leitura com preço: é o que o resumo do dia promete. */
+  const comLeitura = effFixtures.filter((f) => bestByFixture.has(f.fixture_id)).length;
+
+  /**
+   * Campeonatos recolhidos. Em dia cheio (16 jogos em 4 ligas) o usuário quase
+   * sempre quer varrer uma liga por vez. O estado é por sessão de tela e some ao
+   * trocar de dia, porque cada dia tem a sua lista.
+   */
+  const [recolhidos, setRecolhidos] = useState<Set<string>>(new Set());
+  useEffect(() => setRecolhidos(new Set()), [dia]);
+  const alternarGrupo = (comp: string) =>
+    setRecolhidos((s) => {
+      const n = new Set(s);
+      if (n.has(comp)) n.delete(comp);
+      else n.add(comp);
+      return n;
+    });
+  const jogosSteps = useMemo(() => makeFutebolJogosSteps({ hasPanel }), [hasPanel]);
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
       <OnboardingTour tourId={FUT_JOGOS_TOUR_ID} steps={jogosSteps} run={jogosTour.run} onFinish={jogosTour.finish} />
 
-      {/* Header */}
-      <div data-tour="fut-jogos-header" className="bg-white border-b border-line">
-        <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3 flex items-center gap-2">{competitionLabel(competition)}{isDemo && <DemoBadge />}</div>
-            <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{prettyRound(currentRound)}</h1>
-            <p className="text-[13px] mt-1 text-ink-2">Rodadas, classificação e artilheiros · temporada {season}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {COMPETITIONS.map((c) => <Pill key={c.value} active={competition === c.value} onClick={() => handleCompetition(c.value)}>{c.label}</Pill>)}
-            <span className="w-px h-5 bg-line mx-1" />
-            {seasonsFor(competition).map((s) => <Pill key={s} active={season === s} onClick={() => setSeason(s)}>{s}</Pill>)}
+      {/* Barra do dia: faixa areia colada no cabeçalho, com título, resumo do dia e
+          a régua de datas à direita (protótipo "Futebol Jogos"). O bege é o rótulo
+          da página; o conteúdo abaixo é que fica branco. */}
+      <div style={{ background: 'var(--canvas-2)', borderBottom: '1px solid #ded2b6' }}>
+        <div className="max-w-[1240px] w-full mx-auto px-4 md:px-6 py-2.5 flex items-center gap-x-3 gap-y-2 flex-wrap">
+          <h1 className="font-display text-[17px] font-bold tracking-tight text-ink">Jogos</h1>
+          {isDemo && <DemoBadge />}
+          <span className="text-[12.5px]" style={{ color: '#6b6350' }}>
+            {isLoading
+              ? 'carregando…'
+              : total === 0
+                ? 'nenhum jogo neste dia'
+                : `${total} ${total === 1 ? 'jogo' : 'jogos'} · ${grupos.length} ${grupos.length === 1 ? 'campeonato' : 'campeonatos'} · ${comLeitura} com leitura`}
+          </span>
+          <div className="ml-auto min-w-0" data-tour="fut-jogos-datas">
+            <AgendaDateStrip selectedDay={dia} onSelectDay={selectDay} jogosPorDia={jogosPorDia} />
           </div>
         </div>
       </div>
 
-      <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex-1">
-        {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
-        {/* Stepper de rodada */}
-        {!isLoading && !isError && rounds.length > 0 && (
-          <div data-tour="fut-jogos-rodada" className="flex items-center justify-between bg-white border border-line rounded-rebrand-md px-2 py-1.5 mb-4 max-w-sm">
-            <button onClick={() => setRoundIdx((i) => Math.max(0, i - 1))} disabled={roundIdx <= 0} className="h-8 w-8 grid place-items-center rounded-rebrand-sm text-ink-2 hover:bg-canvas-2 disabled:opacity-30" aria-label="Rodada anterior"><ChevronLeft className="w-4 h-4" /></button>
-            <div className="text-center">
-              <div className="text-sm font-bold text-ink">{prettyRound(currentRound)}</div>
-              <div className="text-[10px] text-ink-3">{roundCount} jogos · {roundIdx + 1}/{rounds.length}</div>
-            </div>
-            <button onClick={() => setRoundIdx((i) => Math.min(rounds.length - 1, i + 1))} disabled={roundIdx >= rounds.length - 1} className="h-8 w-8 grid place-items-center rounded-rebrand-sm text-ink-2 hover:bg-canvas-2 disabled:opacity-30" aria-label="Próxima rodada"><ChevronRight className="w-4 h-4" /></button>
+      {/* A faixa do dia é rótulo, não parte do card: sem respiro embaixo dela, a
+          lista e o painel pareciam grudados na régua de datas. */}
+      <div className="max-w-[1240px] w-full mx-auto px-4 md:px-6 pt-5 md:pt-6 pb-8 flex-1 w-full">
+        {isDemo && (
+          <div className="mb-4">
+            <DemoRibbon show />
           </div>
         )}
 
         {isError ? (
-          <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-status-danger">Erro ao carregar os jogos.</div>
+          <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-status-danger">
+            Erro ao carregar os jogos.
+          </div>
         ) : (
-          // `min-w-0` nas duas colunas: item de grid não encolhe abaixo do
-          // próprio conteúdo por padrão, e a tabela de classificação (480px)
-          // empurrava a página inteira em vez de rolar dentro do card.
-          <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
-            {/* Jogos da rodada */}
-            <div data-tour="fut-jogos-lista" className="flex flex-col gap-4 min-w-0">
-              {isLoading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-28 w-full bg-canvas-2 rounded-rebrand-md" />)
-                : roundCount === 0 ? <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-ink-3">Nenhum jogo nesta rodada.</div>
-                : groups.map(([day, games]) => (
-                  <div key={day} className="bg-white border border-line rounded-rebrand-md overflow-hidden">
-                    <div className="px-4 py-2.5 text-[11px] uppercase tracking-[0.16em] font-bold text-ink-2 bg-canvas-2 border-b border-line">{fmtDayHeader(day)}</div>
-                    {games.map((f) => (
-                      <FixtureRow key={f.fixture_id} fixture={f} best={bestByFixture.get(f.fixture_id) ?? null} onClick={() => navigate(`/futebol/jogo/${f.fixture_id}`)} />
-                    ))}
+          // 50/50 da Direção B: a lista não precisa de mais da metade (times
+          // empilhados cabem), e o painel deixa de parecer um encosto.
+          <div className="grid lg:grid-cols-2 gap-5 items-start">
+            <div data-tour="fut-jogos-lista" className="min-w-0">
+              {isLoading ? (
+                <div className="flex flex-col gap-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-28 w-full bg-canvas-2 rounded-rebrand-md" />
+                  ))}
+                </div>
+              ) : total === 0 ? (
+                <div className="bg-white rounded-[20px] p-12 text-center" style={{ border: '1px solid #ded2b6' }}>
+                  <CalendarOff className="w-6 h-6 mx-auto" style={{ color: '#c4bda8' }} />
+                  <p className="text-[13.5px] mt-2.5" style={{ color: '#6b6350' }}>Nenhum jogo em {fmtDayHeader(dia)}.</p>
+                  {proximoComJogo && (
+                    <button
+                      onClick={() => selectDay(proximoComJogo)}
+                      className="mt-3 h-9 px-4 rounded-rebrand-sm text-xs font-semibold bg-forest text-canvas hover:bg-forest-2 transition inline-flex items-center gap-1.5"
+                    >
+                      Ir para {fmtDayHeader(proximoComJogo)}
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                /* Card ÚNICO com as ligas como sub-headers, em vez de um card por
+                   liga: menos moldura repetida, a lista vira uma coisa só. O nome
+                   da liga é o link pra página do campeonato. */
+                <div className="bg-white rounded-[20px] overflow-hidden" style={{ border: '1px solid #ded2b6' }}>
+                  {grupos.map(([comp, jogos]) => {
+                    const recolhido = recolhidos.has(comp);
+                    return (
+                      <div key={comp}>
+                        {/* O cabeçalho recolhe o campeonato; a seta ao lado do nome
+                            abre a página dele. Duas ações separadas, cada uma no seu
+                            alvo, em vez de um clique com dois significados. */}
+                        <div
+                          className="px-4 py-2 flex items-center gap-2"
+                          style={{ background: 'var(--canvas-2)', borderTop: '1px solid #ded2b6', borderBottom: '1px solid #ded2b6' }}
+                        >
+                          <button
+                            onClick={() => alternarGrupo(comp)}
+                            aria-expanded={!recolhido}
+                            className="min-w-0 flex items-center gap-1.5 bg-transparent border-0 p-0 py-1 -my-1 cursor-pointer text-left"
+                          >
+                            <ChevronDown
+                              className="w-3.5 h-3.5 shrink-0 transition-transform"
+                              style={{ color: '#8d8672', transform: `rotate(${recolhido ? -90 : 0}deg)` }}
+                            />
+                            <span
+                              className="text-[10.5px] uppercase tracking-[0.16em] font-bold truncate"
+                              style={{ color: '#6b6350' }}
+                            >
+                              {competitionLabel(comp)}
+                            </span>
+                          </button>
+                          <Link
+                            to={`/futebol/campeonato/${comp}`}
+                            aria-label={`Abrir ${competitionLabel(comp)}`}
+                            className="shrink-0 w-5 h-5 grid place-items-center rounded hover:text-forest transition"
+                            style={{ color: '#8d8672' }}
+                          >
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          </Link>
+                          <span className="ml-auto text-[10.5px] shrink-0 tabular-nums" style={{ color: '#8d8672' }}>
+                            {jogos.length} {jogos.length === 1 ? 'jogo' : 'jogos'} ·{' '}
+                            {jogos.filter((j) => bestByFixture.has(j.fixture_id)).length} com leitura
+                          </span>
+                        </div>
+                        {!recolhido &&
+                          jogos.map((f) => (
+                            <FixtureRow
+                              key={f.fixture_id}
+                              fixture={f}
+                              best={bestByFixture.get(f.fixture_id) ?? null}
+                              selected={f.fixture_id === jogoParam}
+                              onClick={() => openJogo(f)}
+                            />
+                          ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Painel só no desktop. Em mobile o clique já navegou pra tela cheia. */}
+            {hasPanel && (
+              <div data-tour="fut-jogos-painel" className="min-w-0 lg:sticky lg:top-4">
+                {selected ? (
+                  <JogoResumoPanel
+                    fixture={selected}
+                    best={bestByFixture.get(selected.fixture_id) ?? null}
+                    onClose={closePanel}
+                    demo={
+                      isDemo ? { premissas: demoFutebolPremissas, numeros: demoFutebolNumeros } : undefined
+                    }
+                  />
+                ) : (
+                  <div className="bg-white rounded-[20px] p-10 text-center" style={{ border: '1px solid #ded2b6' }}>
+                    <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
+                      Resumo do jogo
+                    </div>
+                    <p className="text-[13px] mt-2 leading-relaxed" style={{ color: '#6b6350' }}>
+                      Clique num jogo da lista para ver por que aquela é a leitura, sem sair da agenda.
+                    </p>
                   </div>
-                ))}
-            </div>
-            {/* Rail: classificação + artilheiros */}
-            <div data-tour="fut-jogos-tabela" className="flex flex-col gap-6 min-w-0">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Classificação</div>
-                  <button onClick={() => setModal('tabela')} className="text-[11px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">Tabela completa <ArrowRight className="w-3 h-3" /></button>
-                </div>
-                <StandingsTable rows={effStandings?.slice(0, 9)} loading={isDemo ? false : loadingStandings} onTeam={goTeam} />
+                )}
               </div>
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Artilheiros</div>
-                  {(effLeaders?.scorers?.length ?? 0) > 8 && <button onClick={() => setModal('artilheiros')} className="text-[11px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">Ver todos <ArrowRight className="w-3 h-3" /></button>}
-                </div>
-                <ScorersCard leaders={effLeaders} loading={isDemo ? false : loadingLeaders} />
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
-
-      {modal === 'tabela' && (
-        <Modal title="Classificação completa" onClose={() => setModal(null)}>
-          <StandingsTable rows={effStandings} loading={isDemo ? false : loadingStandings} onTeam={(id) => { setModal(null); goTeam(id); }} />
-        </Modal>
-      )}
-      {modal === 'artilheiros' && (
-        <Modal title="Artilheiros" onClose={() => setModal(null)}>
-          <ScorersCard leaders={effLeaders} loading={isDemo ? false : loadingLeaders} full />
-        </Modal>
-      )}
     </div>
   );
 }

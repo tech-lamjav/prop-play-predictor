@@ -59,6 +59,8 @@ const FutebolHoje = lazyWithRetry(() => import("./pages/FutebolHoje"));
 const FutebolOportunidades = lazyWithRetry(() => import("./pages/FutebolOportunidades"));
 const FutebolJogos = lazyWithRetry(() => import("./pages/FutebolJogos"));
 const FutebolJogo = lazyWithRetry(() => import("./pages/FutebolJogo"));
+const FutebolCampeonatos = lazyWithRetry(() => import("./pages/FutebolCampeonatos"));
+const FutebolCampeonato = lazyWithRetry(() => import("./pages/FutebolCampeonato"));
 const FutebolTime = lazyWithRetry(() => import("./pages/FutebolTime"));
 const FutebolAssinar = lazyWithRetry(() => import("./pages/FutebolAssinar"));
 const FutebolLP = lazyWithRetry(() => import("./pages/FutebolLP"));
@@ -75,7 +77,7 @@ const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const queryClient = new QueryClient();
 
 const LazyFallback = () => (
-  <div className="min-h-screen bg-canvas flex items-center justify-center">
+  <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest"></div>
   </div>
 );
@@ -160,6 +162,10 @@ const App = () => (
             <Route path="/futebol/oportunidades" element={<FutebolOportunidades />} />
             <Route path="/futebol/jogos" element={<FutebolJogos />} />
             <Route path="/futebol/jogo/:fixtureId" element={<FutebolJogo />} />
+            {/* Rodada, tabela e artilheiros saíram da agenda (/futebol/jogos) e
+                moraram aqui, porque são conceitos por liga. */}
+            <Route path="/futebol/campeonatos" element={<FutebolCampeonatos />} />
+            <Route path="/futebol/campeonato/:slug" element={<FutebolCampeonato />} />
             <Route path="/futebol/time/:teamId" element={<FutebolTime />} />
             <Route path="/futebol/assinar" element={<FutebolAssinar />} />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
