@@ -1,4 +1,5 @@
-import type { FutebolValueBoardRow, FutebolFixture, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason, FutebolFixtureDetail, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolFixture, FutebolFixtureByDay, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason, FutebolFixtureDetail, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import { fmtTime, addDays } from '@/utils/futebol-datas';
 
 // Dados de EXEMPLO (fictícios) pro onboarding guiado — usados só enquanto o tour
 // roda, pra a tela nunca ficar vazia. Nada aqui é real. Times/valores ilustrativos.
@@ -94,6 +95,35 @@ export const demoFutebolFixtures: FutebolFixture[] = [
   fx({ fixture_id: 9004, home_team_id: 120, away_team_id: 124, home_team_name: 'Botafogo', away_team_name: 'Fluminense', kickoff_utc: '2025-08-11T00:00:00Z' }),
   fx({ fixture_id: 9005, home_team_id: 135, away_team_id: 118, home_team_name: 'Cruzeiro', away_team_name: 'Bahia', kickoff_utc: '2025-08-10T19:00:00Z' }),
 ];
+
+/**
+ * Agenda de exemplo pro tour da /futebol/jogos (que virou agenda por dia).
+ *
+ * Reaproveita os mesmos jogos e fixture_ids do board, mas remapeados pro dia que a
+ * régua está mostrando: o tour roda em qualquer data, e lista de um dia com jogo de
+ * outro dia é exatamente o tipo de incoerência que a agenda veio corrigir.
+ *
+ * Mantém a HORA de Brasília original de cada jogo e reconstrói o kickoff em UTC.
+ * BRT é UTC−3 fixo (o Brasil não tem horário de verão desde 2019), então somar 3
+ * basta; se passar da meia-noite, o kickoff cai no dia UTC seguinte, e nesse caso o
+ * `day_brt` continua sendo o dia pedido, que é o certo.
+ */
+export function makeDemoAgenda(dayKey: string): FutebolFixtureByDay[] {
+  return demoFutebolFixtures.map((f) => {
+    const [hh, mm] = (fmtTime(f.kickoff_utc) || '21:30').split(':').map(Number);
+    const utcHour = hh + 3;
+    const diaUtc = utcHour >= 24 ? addDays(dayKey, 1) : dayKey;
+    const hora = String(utcHour % 24).padStart(2, '0');
+    return {
+      ...f,
+      kickoff_utc: `${diaUtc}T${hora}:${String(mm).padStart(2, '0')}:00`,
+      date_utc: diaUtc,
+      competition: 'brasileirao',
+      season: 2026,
+      day_brt: dayKey,
+    };
+  });
+}
 
 // Classificação de exemplo (topo da tabela) — usada em /futebol/jogos e /futebol/time.
 const st = (
