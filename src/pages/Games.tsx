@@ -167,7 +167,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
             {countdown}
           </span>
         ) : (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-ink-3 text-ink-2 uppercase tracking-wide">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-canvas-2 text-ink-2 uppercase tracking-wide">
             {time ?? '—'}
           </span>
         )}
@@ -291,7 +291,7 @@ function OpportunityOfDayCard() {
       </div>
 
       <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-ink-3 border border-line shrink-0 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0 flex items-center justify-center">
           <img
             src={getPlayerPhotoUrl(top.backup_player_name, top.trigger_team_abbr)}
             alt={top.backup_player_name}
@@ -593,7 +593,7 @@ export default function Games() {
         <title>Jogos NBA — Smart Betting</title>
       </Helmet>
 
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
         <OnboardingTour tourId={NBA_GAMES_TOUR_ID} steps={nbaGamesSteps} run={gamesTour.run} onFinish={gamesTour.finish} />
 

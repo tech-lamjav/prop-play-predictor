@@ -46,7 +46,7 @@ function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: 
   const sizeClass = size === 'lg' ? 'w-12 h-12' : size === 'md' ? 'w-10 h-10' : 'w-8 h-8';
   const textClass = size === 'lg' ? 'text-sm' : size === 'md' ? 'text-[10px]' : 'text-[9px]';
   return (
-    <div className={`${sizeClass} rounded-full overflow-hidden bg-ink-3 border border-line shrink-0 flex items-center justify-center`}>
+    <div className={`${sizeClass} rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0 flex items-center justify-center`}>
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
         alt={`Foto de ${name}`}
@@ -359,7 +359,7 @@ export default function HomeNBA() {
   }, [players, searchTerm]);
 
   return (
-    <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
+    <div className="theme-bolao w-full min-h-screen bg-canvas text-ink">
       <Helmet>
         <title>Lesões NBA Hoje e Oportunidades de Apostas do Dia | Smart Betting</title>
         <meta name="description" content="Lesões chave da NBA hoje com impacto nos companheiros, oportunidades de prop bets selecionadas e jogos do dia. Atualizado diariamente." />
@@ -392,7 +392,7 @@ export default function HomeNBA() {
                     return (
                       <a key={player.player_id} href={`/nba-dashboard/${slug}`}
                         onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); setSearchTerm(''); navigate(`/nba-dashboard/${slug}`); } }}
-                        className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-ink-3/40 transition-colors no-underline border-b border-line last:border-b-0"
+                        className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-canvas-2 transition-colors no-underline border-b border-line last:border-b-0"
                       >
                         <PlayerPhoto name={player.player_name} teamAbbr={player.team_abbreviation} size="sm" />
                         <div className="min-w-0 flex-1">
@@ -539,7 +539,7 @@ export default function HomeNBA() {
             onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate('/report'); } }}
             className="block text-left rounded-xl px-5 py-4 flex items-center gap-4 transition-colors bg-white border border-line hover:border-forest/30 no-underline"
           >
-            <div className="w-11 h-11 rounded-lg grid place-items-center bg-ink-3/60 text-forest shrink-0">
+            <div className="w-11 h-11 rounded-lg grid place-items-center bg-canvas-2 text-forest shrink-0">
               <FileText className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">

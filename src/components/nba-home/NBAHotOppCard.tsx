@@ -103,7 +103,7 @@ export const NBAHotOppCard: React.FC<NBAHotOppCardProps> = ({ opp, onClick, href
       </div>
 
       <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-        <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold bg-ink-3 text-ink">{statShort}</span>
+        <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold bg-canvas-2 text-ink">{statShort}</span>
         <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
           {filterChip}
         </span>

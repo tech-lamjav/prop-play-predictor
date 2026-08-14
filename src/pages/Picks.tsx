@@ -565,7 +565,7 @@ export default function Picks() {
 
   if (error) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
@@ -584,7 +584,7 @@ export default function Picks() {
   }
 
   return (
-    <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+    <div className="theme-bolao min-h-screen bg-canvas text-ink">
       <Helmet>
         <title>Oportunidades do dia · Smart Betting NBA</title>
         <meta name="description" content="Quem se beneficia quando um titular não joga — ranqueado por score de confiança." />
