@@ -151,7 +151,7 @@ export default function Report() {
 
   if (accessLoading) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas">
+      <div className="theme-bolao min-h-screen bg-canvas">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 className="w-6 h-6 animate-spin text-forest opacity-70" />
@@ -162,7 +162,7 @@ export default function Report() {
 
   if (!hasAccess) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas">
+      <div className="theme-bolao min-h-screen bg-canvas">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
         <div className="max-w-md mx-auto px-4 py-24 flex flex-col items-center text-center gap-4">
           <div className="w-16 h-16 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center">
@@ -191,7 +191,7 @@ export default function Report() {
         <title>Relatório do dia — Smart Betting</title>
       </Helmet>
 
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
 
         {/* Page header (bg-white) */}

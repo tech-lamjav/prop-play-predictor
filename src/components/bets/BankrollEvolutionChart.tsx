@@ -200,7 +200,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                 type="button"
                 onClick={() => setPeriod(p)}
                 className={`px-2.5 h-7 rounded-md font-medium transition-colors ${
-                  p === period ? 'bg-ink-3 text-ink' : 'text-ink-2 hover:text-ink hover:bg-ink-3/60'
+                  p === period ? 'bg-canvas-2 text-ink' : 'text-ink-2 hover:text-ink hover:bg-canvas-2'
                 }`}
               >
                 {p === 'all' ? 'Tudo' : p}
@@ -394,7 +394,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
                   <DropdownMenuSeparator className="bg-line" />
                   <DropdownMenuItem
                     onClick={() => setIsEditing(true)}
-                    className="cursor-pointer focus:bg-ink-3/60"
+                    className="cursor-pointer focus:bg-canvas-2"
                   >
                     <Edit2 className="w-4 h-4 mr-2 text-ink-2" />
                     Editar banca inicial

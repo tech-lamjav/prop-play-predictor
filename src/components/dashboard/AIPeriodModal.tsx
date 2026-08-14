@@ -270,7 +270,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-ink-3/40 transition-colors flex-1"
+                className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex-1"
               >
                 Cancelar
               </button>

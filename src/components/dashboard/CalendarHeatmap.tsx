@@ -14,8 +14,8 @@ const WINDOW_DAYS = 91; // ~13 semanas (~3 meses)
 const STEP_DAYS = 28; // navegação: ~1 mês por click
 
 const intensityClass = (n: number, maxN: number): string => {
-  if (n === 0) return 'bg-ink-3/60';
-  if (maxN <= 0) return 'bg-ink-3/60';
+  if (n === 0) return 'bg-canvas-2';
+  if (maxN <= 0) return 'bg-canvas-2';
   const ratio = n / maxN;
   if (ratio <= 0.25) return 'bg-forest/30';
   if (ratio <= 0.5) return 'bg-forest/55';
@@ -84,7 +84,7 @@ export const CalendarHeatmap: React.FC<CalendarHeatmapProps> = ({ bets }) => {
               type="button"
               onClick={goBack}
               disabled={!canGoBack}
-              className="w-9 h-9 grid place-items-center rounded text-ink-2 hover:text-ink hover:bg-ink-3/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="w-9 h-9 grid place-items-center rounded text-ink-2 hover:text-ink hover:bg-canvas-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
               aria-label="Mês anterior"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -110,7 +110,7 @@ export const CalendarHeatmap: React.FC<CalendarHeatmapProps> = ({ bets }) => {
               type="button"
               onClick={goForward}
               disabled={!canGoForward}
-              className="w-9 h-9 grid place-items-center rounded text-ink-2 hover:text-ink hover:bg-ink-3/60 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="w-9 h-9 grid place-items-center rounded text-ink-2 hover:text-ink hover:bg-canvas-2 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
               aria-label="Mês seguinte"
             >
               <ChevronRight className="w-3.5 h-3.5" />
@@ -211,7 +211,7 @@ export const CalendarHeatmap: React.FC<CalendarHeatmapProps> = ({ bets }) => {
         <div className="flex items-center gap-1.5 text-ink-2">
           <span>Menos</span>
           <div className="flex" style={{ gap: 2 }}>
-            <div className="rounded bg-ink-3/60" style={{ width: 10, height: 10 }} />
+            <div className="rounded bg-canvas-2" style={{ width: 10, height: 10 }} />
             <div className="rounded bg-forest/30" style={{ width: 10, height: 10 }} />
             <div className="rounded bg-forest/55" style={{ width: 10, height: 10 }} />
             <div className="rounded bg-forest/80" style={{ width: 10, height: 10 }} />

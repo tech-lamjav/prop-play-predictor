@@ -58,7 +58,7 @@ export const OddsHistogram: React.FC<OddsHistogramProps> = ({
             className={`shrink-0 h-7 px-2.5 text-[11px] font-medium rounded-md inline-flex items-center gap-1 transition-colors ${
               hideEmpty
                 ? 'bg-forest-tint text-forest border border-forest/30'
-                : 'bg-white text-ink-2 border border-line hover:bg-ink-3/40'
+                : 'bg-white text-ink-2 border border-line hover:bg-canvas-2'
             }`}
             aria-pressed={hideEmpty}
             title={hideEmpty ? 'Mostrar todas as faixas (inclusive vazias)' : 'Esconder faixas sem dados'}
@@ -89,7 +89,7 @@ export const OddsHistogram: React.FC<OddsHistogramProps> = ({
               <div className="w-full h-32 flex items-end">
                 <div
                   className={`w-full rounded-t transition-all ${
-                    isEmpty ? 'bg-ink-3/40' : isPositive ? 'bg-forest' : 'bg-rose-700'
+                    isEmpty ? 'bg-canvas-2' : isPositive ? 'bg-forest' : 'bg-rose-700'
                   }`}
                   style={{ height: `${height}%` }}
                   title={

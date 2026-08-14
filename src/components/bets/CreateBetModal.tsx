@@ -415,8 +415,8 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                         setIsCreateSportQueryTouched(false);
                         setCreateSportHighlightIndex(-1);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                        index === createSportHighlightIndex ? 'bg-ink-3/40' : ''
+                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-canvas-2 ${
+                        index === createSportHighlightIndex ? 'bg-canvas-2' : ''
                       }`}
                     >
                       {sport}
@@ -538,8 +538,8 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                         setIsCreateLeagueQueryTouched(false);
                         setCreateLeagueHighlightIndex(-1);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                        index === createLeagueHighlightIndex ? 'bg-ink-3/40' : ''
+                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-canvas-2 ${
+                        index === createLeagueHighlightIndex ? 'bg-canvas-2' : ''
                       }`}
                     >
                       {league}
@@ -658,8 +658,8 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                         setIsCreateBettingMarketQueryTouched(false);
                         setCreateBettingMarketHighlightIndex(-1);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                        index === createBettingMarketHighlightIndex ? 'bg-ink-3/40' : ''
+                      className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-canvas-2 ${
+                        index === createBettingMarketHighlightIndex ? 'bg-canvas-2' : ''
                       }`}
                     >
                       {market}
@@ -796,11 +796,11 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                   className="bg-white"
                   classNames={{
                     caption_label: 'text-sm font-semibold text-ink',
-                    nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                    nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                     head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                    day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                    day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                     day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                    day_today: 'bg-ink-3 text-ink font-semibold',
+                    day_today: 'bg-canvas-2 text-ink font-semibold',
                     day_outside: 'text-ink-2 opacity-40',
                     day_disabled: 'text-ink-2 opacity-30',
                   }}
@@ -860,11 +860,11 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                   className="bg-white"
                   classNames={{
                     caption_label: 'text-sm font-semibold text-ink',
-                    nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                    nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                     head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                    day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                    day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                     day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                    day_today: 'bg-ink-3 text-ink font-semibold',
+                    day_today: 'bg-canvas-2 text-ink font-semibold',
                     day_outside: 'text-ink-2 opacity-40',
                     day_disabled: 'text-ink-2 opacity-30',
                   }}
@@ -942,7 +942,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               type="button"
               variant="ghost"
               onClick={() => handleOpenChange(false)}
-              className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:bg-ink-3/60 hover:text-ink rounded-md"
+              className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md"
             >
               Cancelar
             </Button>

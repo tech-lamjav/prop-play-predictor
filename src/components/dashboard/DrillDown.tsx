@@ -87,7 +87,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
           <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Reds</div>
           <div className="text-[14px] font-bold tabular text-rose-700 leading-none mt-1">{stats.lost}</div>
         </div>
-        <div className="bg-ink-3/40 rounded-lg p-2 border border-line/60">
+        <div className="bg-canvas-2 rounded-lg p-2 border border-line/60">
           <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Outras</div>
           <div className="text-[14px] font-bold tabular text-ink leading-none mt-1">{stats.other}</div>
         </div>
@@ -163,7 +163,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
           <button
             type="button"
             onClick={onUpgrade}
-            className="w-full h-9 rounded-md bg-ink-3/60 border border-line text-[11px] font-bold text-ink-2 hover:bg-ink-3 hover:text-ink transition-colors flex items-center justify-center gap-1.5"
+            className="w-full h-9 rounded-md bg-canvas-2 border border-line text-[11px] font-bold text-ink-2 hover:bg-canvas-2 hover:text-ink transition-colors flex items-center justify-center gap-1.5"
           >
             <Sparkles className="w-3 h-3" />
             Análise dessa fatia · Disponível no Pro
@@ -173,7 +173,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
           <button
             type="button"
             onClick={onViewAllBets}
-            className="w-full h-9 rounded-md border border-line bg-white text-[12px] font-bold text-ink hover:bg-ink-3/40 transition-colors flex items-center justify-center gap-1.5"
+            className="w-full h-9 rounded-md border border-line bg-white text-[12px] font-bold text-ink hover:bg-canvas-2 transition-colors flex items-center justify-center gap-1.5"
           >
             {stats.n === 1 ? 'Ver a aposta' : `Ver todas as ${stats.n} apostas`}
             <ArrowRight className="w-3.5 h-3.5" />

@@ -284,10 +284,10 @@ const BetRow = React.memo(function BetRow({
     bet.status === 'half_lost' ? 'text-status-danger bg-status-danger/15 border-status-danger/30' :
     bet.status === 'pending' ? 'text-status-warning bg-status-warning/10 border-status-warning/20' :
     bet.status === 'cashout' ? 'text-forest bg-forest-tint border-forest/20' :
-    'text-ink-2 bg-ink-3 border-line';
+    'text-ink-2 bg-canvas-2 border-line';
 
   return (
-    <tr className="border-b border-line hover:bg-ink-3/30 transition-colors">
+    <tr className="border-b border-line hover:bg-canvas-2 transition-colors">
       <td className="py-2 px-1.5 w-8">
         <input
           type="checkbox"
@@ -401,7 +401,7 @@ const BetRow = React.memo(function BetRow({
                     <TrendingDown className="w-4 h-4 text-status-danger opacity-70" />
                     <span>1/2 Red</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-ink-3/60">
+                  <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-canvas-2">
                     <X className="w-4 h-4 text-ink-2" />
                     <span>Anulada</span>
                   </DropdownMenuItem>
@@ -420,7 +420,7 @@ const BetRow = React.memo(function BetRow({
           <button
             type="button"
             onClick={() => openEditModal(bet)}
-            className="h-7 w-7 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/60 rounded transition-colors shrink-0"
+            className="h-7 w-7 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded transition-colors shrink-0"
             title="Editar"
           >
             <Edit className="w-4 h-4" />
@@ -474,7 +474,7 @@ const BetCard = React.memo(function BetCard({
     bet.status === 'half_lost' ? 'text-status-danger bg-status-danger/15 border-status-danger/30' :
     bet.status === 'pending' ? 'text-status-warning bg-status-warning/10 border-status-warning/20' :
     bet.status === 'cashout' ? 'text-forest bg-forest-tint border-forest/20' :
-    'text-ink-2 bg-ink-3 border-line';
+    'text-ink-2 bg-canvas-2 border-line';
 
   return (
     <div className="bg-white border border-line-2 p-4 rounded-lg space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -596,7 +596,7 @@ const BetCard = React.memo(function BetCard({
                   <TrendingDown className="w-4 h-4 text-status-danger opacity-70" />
                   <span>1/2 Red</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-ink-3/60">
+                <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-canvas-2">
                   <X className="w-4 h-4 text-ink-2" />
                   <span>Anulada</span>
                 </DropdownMenuItem>
@@ -611,7 +611,7 @@ const BetCard = React.memo(function BetCard({
               <DollarSign className="w-4 h-4 text-forest shrink-0" />
               <span className="text-xs font-semibold text-forest uppercase tracking-[0.04em]">Cashout</span>
             </button>
-            <button type="button" onClick={() => openEditModal(bet)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-ink-3/60 transition-colors flex items-center justify-center" title="Editar">
+            <button type="button" onClick={() => openEditModal(bet)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex items-center justify-center" title="Editar">
               <Edit className="w-4 h-4" />
             </button>
             <button type="button" onClick={() => deleteBet(bet.id)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex items-center justify-center" title="Excluir">
@@ -623,7 +623,7 @@ const BetCard = React.memo(function BetCard({
             <button
               type="button"
               onClick={() => openEditModal(bet)}
-              className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-ink-3/60 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex items-center justify-center gap-2"
               title="Editar"
             >
               <Edit className="w-4 h-4" />
@@ -2092,7 +2092,7 @@ export default function Bets() {
     if (value === 'lost' || value === 'half_lost') return 'bg-status-danger/10 text-status-danger border-status-danger/30';
     if (value === 'pending') return 'bg-status-warning/10 text-status-warning border-status-warning/30';
     if (value === 'cashout') return 'bg-forest-tint text-forest border-forest/30';
-    return 'bg-ink-3 text-ink-2 border-line';
+    return 'bg-canvas-2 text-ink-2 border-line';
   };
 
   // Conta total de filtros ativos no botão "Mais filtros" / "Filtros"
@@ -2136,7 +2136,7 @@ export default function Bets() {
         {/* Período — segmented control + popover de calendário em "Personalizado" */}
         <div>
           <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Período</label>
-          <div className="mt-2 grid grid-cols-3 gap-1 p-1 bg-ink-3/60 rounded-md text-[11px] font-medium">
+          <div className="mt-2 grid grid-cols-3 gap-1 p-1 bg-canvas-2 rounded-md text-[11px] font-medium">
             {([
               { k: '7d', l: '7d' },
               { k: '30d', l: '30d' },
@@ -2208,11 +2208,11 @@ export default function Bets() {
                   numberOfMonths={2}
                   classNames={{
                     caption_label: 'text-sm font-semibold text-ink',
-                    nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                    nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                     head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                    day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                    day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                     day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                    day_today: 'bg-ink-3 text-ink font-semibold',
+                    day_today: 'bg-canvas-2 text-ink font-semibold',
                     day_outside: 'text-ink-2 opacity-40',
                     day_disabled: 'text-ink-2 opacity-30',
                     day_range_middle: 'aria-selected:bg-forest-tint aria-selected:text-forest aria-selected:rounded-none',
@@ -2462,7 +2462,7 @@ export default function Bets() {
   }
 
   return (
-    <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
+    <div className="theme-bolao w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
       <OnboardingTour tourId={BETINHO_TOUR_ID} steps={betinhoSteps} run={betinhoTour.run} onFinish={betinhoTour.finish} />
 
@@ -2478,7 +2478,7 @@ export default function Bets() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {/* Toggle R$ / u */}
-            <div className="h-9 inline-flex items-center p-0.5 bg-ink-3 border border-line rounded-md">
+            <div className="h-9 inline-flex items-center p-0.5 bg-canvas-2 border border-line rounded-md">
               <button
                 type="button"
                 onClick={() => setShowUnitsView(false)}
@@ -2510,7 +2510,7 @@ export default function Bets() {
             <button
               type="button"
               onClick={() => setUnitConfigOpen(true)}
-              className="h-9 px-2 md:px-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-9 px-2 md:px-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
               title={isConfigured() && config.unit_value ? `1u = ${formatCurrency(config.unit_value)}` : 'Configurar unidade'}
             >
               {isConfigured() && config.unit_value ? (
@@ -2531,7 +2531,7 @@ export default function Bets() {
             <button
               type="button"
               onClick={handleExportCsv}
-              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
               title="Exportar CSV"
               aria-label="Exportar CSV"
             >
@@ -2543,7 +2543,7 @@ export default function Bets() {
             <button
               type="button"
               onClick={() => setIsShareModalOpen(true)}
-              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
               title="Compartilhar"
             >
               <Share2 className="w-4 h-4" />
@@ -2961,11 +2961,11 @@ export default function Bets() {
                 numberOfMonths={1}
                 classNames={{
                   caption_label: 'text-sm font-semibold text-ink',
-                  nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                  nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                   head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                  day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                  day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                   day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                  day_today: 'bg-ink-3 text-ink font-semibold',
+                  day_today: 'bg-canvas-2 text-ink font-semibold',
                   day_outside: 'text-ink-2 opacity-40',
                   day_disabled: 'text-ink-2 opacity-30',
                   day_range_middle: 'aria-selected:bg-forest-tint aria-selected:text-forest aria-selected:rounded-none',
@@ -3019,7 +3019,7 @@ export default function Bets() {
         <div className="hidden md:block bg-white border border-line rounded-lg p-3 mb-4">
           <div className="flex flex-wrap items-center gap-2">
               {/* Search */}
-              <div className="flex items-center gap-2 px-2.5 h-9 bg-ink-3/40 border border-line rounded-md w-[200px]">
+              <div className="flex items-center gap-2 px-2.5 h-9 bg-canvas-2 border border-line rounded-md w-[200px]">
                 <Search className="w-4 h-4 text-ink-2 shrink-0" />
                 <input
                   type="text"
@@ -3097,7 +3097,7 @@ export default function Bets() {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="h-9 px-3 inline-flex items-center gap-2 text-[12px] text-ink-2 border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors font-medium"
+                    className="h-9 px-3 inline-flex items-center gap-2 text-[12px] text-ink-2 border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors font-medium"
                   >
                     <span className="font-semibold uppercase tracking-[0.08em] text-[10px] text-ink-2">PERÍODO</span>
                     {(() => {
@@ -3164,11 +3164,11 @@ export default function Bets() {
                     initialFocus
                     classNames={{
                       caption_label: 'text-sm font-semibold text-ink',
-                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                       head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                       day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_today: 'bg-canvas-2 text-ink font-semibold',
                       day_outside: 'text-ink-2 opacity-40',
                       day_disabled: 'text-ink-2 opacity-30',
                       day_range_middle: 'aria-selected:bg-forest-tint aria-selected:text-forest aria-selected:rounded-none',
@@ -3201,7 +3201,7 @@ export default function Bets() {
                     className={`h-9 px-3 inline-flex items-center gap-2 text-[12px] font-semibold border rounded-md transition-colors ${
                       advancedFiltersTotal > 0
                         ? 'text-forest border-forest/30 bg-forest-tint hover:bg-forest-tint/80'
-                        : 'text-ink-2 border-line bg-white hover:bg-ink-3/40 hover:text-ink'
+                        : 'text-ink-2 border-line bg-white hover:bg-canvas-2 hover:text-ink'
                     }`}
                   >
                     <Filter className="w-3.5 h-3.5" />
@@ -3242,7 +3242,7 @@ export default function Bets() {
             <button
               type="button"
               onClick={fetchBets}
-              className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors"
               title="Atualizar"
             >
               <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
@@ -3252,7 +3252,7 @@ export default function Bets() {
           {isLoading ? (
             <div className="space-y-2 p-5">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full bg-ink-3" />
+                <Skeleton key={i} className="h-10 w-full bg-canvas-2" />
               ))}
             </div>
           ) : filteredBets.length === 0 ? (
@@ -3266,7 +3266,7 @@ export default function Bets() {
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-[12px] min-w-[960px] table-auto">
-                  <thead className="bg-ink-3/40">
+                  <thead className="bg-canvas-2">
                     <tr>
                       <th className="py-2.5 px-1.5 w-8 text-left">
                         <input
@@ -3314,7 +3314,7 @@ export default function Bets() {
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     aria-label="Página anterior"
-                    className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -3342,7 +3342,7 @@ export default function Bets() {
                           className={`h-8 w-8 inline-flex items-center justify-center text-[12px] rounded-md font-medium transition-colors ${
                             p === currentPage
                               ? 'bg-forest text-white'
-                              : 'text-ink-2 hover:text-ink hover:bg-ink-3/40'
+                              : 'text-ink-2 hover:text-ink hover:bg-canvas-2'
                           }`}
                         >
                           {p}
@@ -3355,7 +3355,7 @@ export default function Bets() {
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                     aria-label="Próxima página"
-                    className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-ink-3/40 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -3477,7 +3477,7 @@ export default function Bets() {
                       <TrendingDown className="w-4 h-4 opacity-70" /> ½ Red
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('void')}
-                      className="h-11 text-[12px] font-semibold border border-line text-ink-2 bg-white hover:bg-ink-3/40 rounded-md transition-colors flex items-center justify-center gap-2">
+                      className="h-11 text-[12px] font-semibold border border-line text-ink-2 bg-white hover:bg-canvas-2 rounded-md transition-colors flex items-center justify-center gap-2">
                       <X className="w-4 h-4" /> Anulada
                     </button>
                     <button type="button" onClick={bulkDelete}
@@ -3492,7 +3492,7 @@ export default function Bets() {
                         {userTags.map(tag => (
                           <button key={tag.id} type="button"
                             onClick={() => bulkAddTag(tag)}
-                            className="h-8 px-3 text-[11px] border border-line bg-white text-ink hover:bg-ink-3/40 rounded-md transition-colors flex items-center gap-1.5">
+                            className="h-8 px-3 text-[11px] border border-line bg-white text-ink hover:bg-canvas-2 rounded-md transition-colors flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
                             {tag.name}
                           </button>
@@ -3509,7 +3509,7 @@ export default function Bets() {
               <Popover>
                 <PopoverTrigger asChild>
                   <button type="button"
-                    className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-ink-3/40 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
+                    className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-canvas-2 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
                     <Plus className="w-3.5 h-3.5" /> TAG
                   </button>
                 </PopoverTrigger>
@@ -3520,7 +3520,7 @@ export default function Bets() {
                     userTags.map(tag => (
                       <button key={tag.id} type="button"
                         onClick={() => bulkAddTag(tag)}
-                        className="w-full text-left px-2 py-1.5 text-[11px] text-ink hover:bg-ink-3/40 rounded flex items-center gap-2 transition-colors">
+                        className="w-full text-left px-2 py-1.5 text-[11px] text-ink hover:bg-canvas-2 rounded flex items-center gap-2 transition-colors">
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
                         {tag.name}
                       </button>
@@ -3545,7 +3545,7 @@ export default function Bets() {
                 <TrendingDown className="w-3.5 h-3.5 opacity-70" /> ½ Red
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('void')}
-                className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-ink-3/40 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
+                className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-canvas-2 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
                 <X className="w-3.5 h-3.5" /> Anulada
               </button>
               <button type="button" onClick={bulkDelete}
@@ -3640,7 +3640,7 @@ export default function Bets() {
                 <Button
                   onClick={() => setCashoutModal({ isOpen: false, bet: null, cashoutAmount: '', cashoutOdds: '' })}
                   variant="ghost"
-                  className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:bg-ink-3/40 hover:text-ink"
+                  className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:bg-canvas-2 hover:text-ink"
                 >
                   Cancelar
                 </Button>
@@ -3693,7 +3693,7 @@ export default function Bets() {
               <Button
                 onClick={() => setCapitalModal(prev => ({ ...prev, isOpen: false }))}
                 variant="outline"
-                className="flex-1 h-10 border-line bg-white hover:bg-ink-3/40 text-ink-2 hover:text-ink"
+                className="flex-1 h-10 border-line bg-white hover:bg-canvas-2 text-ink-2 hover:text-ink"
               >
                 Cancelar
               </Button>
@@ -3851,8 +3851,8 @@ export default function Bets() {
                               setIsSportQueryTouched(false);
                               setSportHighlightIndex(-1);
                             }}
-                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                              index === sportHighlightIndex ? 'bg-ink-3/40' : ''
+                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-canvas-2 ${
+                              index === sportHighlightIndex ? 'bg-canvas-2' : ''
                             }`}
                           >
                             {sport}
@@ -3974,8 +3974,8 @@ export default function Bets() {
                               setIsLeagueQueryTouched(false);
                               setLeagueHighlightIndex(-1);
                             }}
-                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                              index === leagueHighlightIndex ? 'bg-ink-3/40' : ''
+                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-canvas-2 ${
+                              index === leagueHighlightIndex ? 'bg-canvas-2' : ''
                             }`}
                           >
                             {league}
@@ -4093,8 +4093,8 @@ export default function Bets() {
                               setIsBettingMarketQueryTouched(false);
                               setBettingMarketHighlightIndex(-1);
                             }}
-                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-ink-3/40 ${
-                              index === bettingMarketHighlightIndex ? 'bg-ink-3/40' : ''
+                            className={`w-full text-left px-3 py-2 text-sm text-ink hover:bg-canvas-2 ${
+                              index === bettingMarketHighlightIndex ? 'bg-canvas-2' : ''
                             }`}
                           >
                             {market}
@@ -4198,7 +4198,7 @@ export default function Bets() {
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-full justify-start text-left font-normal h-10 bg-canvas border-line text-ink rounded-md hover:bg-ink-3/40 hover:text-ink"
+                      className="w-full justify-start text-left font-normal h-10 bg-canvas border-line text-ink rounded-md hover:bg-canvas-2 hover:text-ink"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-forest" />
                       {(() => {
@@ -4225,11 +4225,11 @@ export default function Bets() {
                       className="bg-white"
                       classNames={{
                         caption_label: 'text-sm font-semibold text-ink',
-                        nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                        nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                         head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                         day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                        day_today: 'bg-ink-3 text-ink font-semibold',
+                        day_today: 'bg-canvas-2 text-ink font-semibold',
                         day_outside: 'text-ink-2 opacity-40',
                         day_disabled: 'text-ink-2 opacity-30',
                       }}
@@ -4263,7 +4263,7 @@ export default function Bets() {
                 <Button
                   onClick={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
                   variant="outline"
-                  className="flex-1 h-10 border-line bg-white hover:bg-ink-3/40 text-ink-2 hover:text-ink"
+                  className="flex-1 h-10 border-line bg-white hover:bg-canvas-2 text-ink-2 hover:text-ink"
                 >
                   Cancelar
                 </Button>
@@ -4324,7 +4324,7 @@ export default function Bets() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-ink-3/40">
+            <AlertDialogCancel className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-canvas-2">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction

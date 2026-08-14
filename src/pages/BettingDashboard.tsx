@@ -285,7 +285,7 @@ export default function BettingDashboard() {
 
   if (authLoading) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-forest border-t-transparent" />
       </div>
     );
@@ -293,7 +293,7 @@ export default function BettingDashboard() {
 
   if (!user) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink flex items-center justify-center">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
           <p className="text-[14px] text-ink-2">Por favor, faça login para ver o painel.</p>
@@ -303,7 +303,7 @@ export default function BettingDashboard() {
   }
 
   return (
-    <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
+    <div className="theme-bolao w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
       <OnboardingTour tourId={BETINHO_DASH_TOUR_ID} steps={dashSteps} run={dashTour.run} onFinish={dashTour.finish} />
 
@@ -331,7 +331,7 @@ export default function BettingDashboard() {
               </span>
             ) : (
               <span
-                className="h-7 px-2.5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-ink-3 text-ink-2 border border-line"
+                className="h-7 px-2.5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-canvas-2 text-ink-2 border border-line"
                 role="status"
                 aria-label="Plano Free"
                 title="Plano Free"
@@ -341,7 +341,7 @@ export default function BettingDashboard() {
             )}
 
             {/* Toggle R$ / u */}
-            <div className="h-9 inline-flex items-center p-0.5 bg-ink-3 border border-line rounded-md">
+            <div className="h-9 inline-flex items-center p-0.5 bg-canvas-2 border border-line rounded-md">
               <button
                 type="button"
                 onClick={() => setShowUnitsView(false)}
@@ -373,7 +373,7 @@ export default function BettingDashboard() {
             <button
               type="button"
               onClick={() => setUnitConfigOpen(true)}
-              className="h-9 px-2 md:px-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-9 px-2 md:px-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
               title={isConfigured() && config?.unit_value ? `1u = ${formatCurrency(config.unit_value)}` : 'Configurar unidade'}
             >
               {isConfigured() && config?.unit_value ? (
@@ -393,7 +393,7 @@ export default function BettingDashboard() {
             <button
               type="button"
               onClick={() => exportBetsToCSV(currentBets, formatValue)}
-              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
               title="Exportar CSV"
               aria-label="Exportar CSV"
             >
@@ -413,7 +413,7 @@ export default function BettingDashboard() {
                   <SelectItem
                     key={opt.value}
                     value={opt.value}
-                    className="text-ink text-[13px] focus:bg-ink-3/60 focus:text-ink"
+                    className="text-ink text-[13px] focus:bg-canvas-2 focus:text-ink"
                   >
                     {opt.label}
                   </SelectItem>
@@ -427,7 +427,7 @@ export default function BettingDashboard() {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="h-9 px-3 inline-flex items-center gap-2 text-[13px] bg-white border border-line text-ink hover:bg-ink-3/40 rounded-md w-full sm:w-[150px]"
+                      className="h-9 px-3 inline-flex items-center gap-2 text-[13px] bg-white border border-line text-ink hover:bg-canvas-2 rounded-md w-full sm:w-[150px]"
                     >
                       <CalendarIcon className="w-3.5 h-3.5 text-forest" />
                       <span className={customFrom ? 'tabular' : 'text-ink-2'}>
@@ -449,11 +449,11 @@ export default function BettingDashboard() {
                       className="bg-white"
                       classNames={{
                         caption_label: 'text-sm font-bold text-ink',
-                        nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                        nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                         head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                         day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                        day_today: 'bg-ink-3 text-ink font-bold',
+                        day_today: 'bg-canvas-2 text-ink font-bold',
                         day_outside: 'text-ink-2 opacity-40',
                         day_disabled: 'text-ink-2 opacity-30',
                       }}
@@ -464,7 +464,7 @@ export default function BettingDashboard() {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="h-9 px-3 inline-flex items-center gap-2 text-[13px] bg-white border border-line text-ink hover:bg-ink-3/40 rounded-md w-full sm:w-[150px]"
+                      className="h-9 px-3 inline-flex items-center gap-2 text-[13px] bg-white border border-line text-ink hover:bg-canvas-2 rounded-md w-full sm:w-[150px]"
                     >
                       <CalendarIcon className="w-3.5 h-3.5 text-forest" />
                       <span className={customTo ? 'tabular' : 'text-ink-2'}>
@@ -485,11 +485,11 @@ export default function BettingDashboard() {
                       className="bg-white"
                       classNames={{
                         caption_label: 'text-sm font-bold text-ink',
-                        nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                        nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                         head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                        day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                         day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                        day_today: 'bg-ink-3 text-ink font-bold',
+                        day_today: 'bg-canvas-2 text-ink font-bold',
                         day_outside: 'text-ink-2 opacity-40',
                         day_disabled: 'text-ink-2 opacity-30',
                       }}
@@ -894,7 +894,7 @@ export default function BettingDashboard() {
             <button
               type="button"
               onClick={() => setExampleModalOpen(false)}
-              className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-ink-3/40 transition-colors flex-1"
+              className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex-1"
             >
               Fechar
             </button>

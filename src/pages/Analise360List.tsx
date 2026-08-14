@@ -109,7 +109,7 @@ function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: 
   const sizeClass = size === 'lg' ? 'w-12 h-12' : size === 'md' ? 'w-10 h-10' : 'w-8 h-8';
   const textClass = size === 'lg' ? 'text-sm' : size === 'md' ? 'text-[11px]' : 'text-[9px]';
   return (
-    <div className={`${sizeClass} rounded-full overflow-hidden bg-ink-3 border border-line shrink-0 flex items-center justify-center`}>
+    <div className={`${sizeClass} rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0 flex items-center justify-center`}>
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
         alt={name}
@@ -151,7 +151,7 @@ function FilterPill({
       className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-colors ${
         active
           ? PILL_ACTIVE_CLS[tone]
-          : 'text-ink-2 border-transparent hover:text-ink hover:bg-ink-3/60'
+          : 'text-ink-2 border-transparent hover:text-ink hover:bg-canvas-2'
       }`}
     >
       {children}
@@ -355,7 +355,7 @@ export default function Analise360List() {
         <title>Análise 360° — Smart Betting</title>
       </Helmet>
 
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/home-nba" />
         <OnboardingTour tourId={ANALISE360_LIST_TOUR_ID} steps={a360ListSteps} run={a360ListTour.run} onFinish={a360ListTour.finish} />
 

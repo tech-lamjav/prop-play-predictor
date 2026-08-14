@@ -481,8 +481,11 @@ All colors MUST be HSL.
   --ink: #1a1d1a;
   --ink-2: #4a4f48;
   --ink-3: #8a8f86;
-  --line: #e3e6e0;
-  --line-2: #d4d8d0;
+  /* Linha areia: a borda do card precisa conversar com o chão bege. O cinza
+     esverdeado antigo virava um contorno frio em cima do areia, e as telas de
+     futebol acabaram cravando #ded2b6 no arquivo pra fugir dele. Agora é token. */
+  --line: #ded2b6;
+  --line-2: #cbbb92;
   --forest: #0a3d2e;
   --forest-2: #0f5238;
   --amber: #d4a017;

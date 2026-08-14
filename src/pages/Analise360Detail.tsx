@@ -140,10 +140,10 @@ function gapBarColor(pct: number): string {
 }
 
 function scoreColor(score: number | null): string {
-  if (score == null) return 'bg-ink-3 text-ink-2';
+  if (score == null) return 'bg-canvas-2 text-ink-2';
   if (score >= 75) return 'bg-emerald-100 text-emerald-700';
   if (score >= 60) return 'bg-amber-100 text-amber-700';
-  return 'bg-ink-3 text-ink-2';
+  return 'bg-canvas-2 text-ink-2';
 }
 
 function getSatelliteRing(pct: number): string {
@@ -201,7 +201,7 @@ function PlayerPhoto({
   }[size];
 
   return (
-    <div className={`${sizeClass} rounded-full overflow-hidden bg-ink-3 border border-line shrink-0 flex items-center justify-center ${ringClass ?? ''}`}>
+    <div className={`${sizeClass} rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0 flex items-center justify-center ${ringClass ?? ''}`}>
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
         alt={name}
@@ -331,7 +331,7 @@ function MandalaView({
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : pct < -3
                     ? 'bg-status-danger/10 text-status-danger border border-status-danger/20'
-                    : 'bg-ink-3 text-ink-2 border border-line'
+                    : 'bg-canvas-2 text-ink-2 border border-line'
                 }`}>
                   {isPos ? '+' : ''}{pct.toFixed(0)}%
                 </span>
@@ -503,7 +503,7 @@ function MobileChain({
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : pct < -3
                     ? 'bg-status-danger/10 text-status-danger border border-status-danger/20'
-                    : 'bg-ink-3 text-ink-2 border border-line'
+                    : 'bg-canvas-2 text-ink-2 border border-line'
                 }`}>
                   {isPos ? '+' : ''}{pct.toFixed(0)}%
                 </span>
@@ -779,7 +779,7 @@ export default function Analise360Detail() {
         <title>{triggerInfo ? `${triggerInfo.triggerName} · Análise 360°` : 'Análise 360°'} — Smart Betting</title>
       </Helmet>
 
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <AnalyticsNav variant="rebrand" showBack backTo="/analise-360" />
         <OnboardingTour tourId={ANALISE360_DETAIL_TOUR_ID} steps={nbaAnalise360DetailSteps} run={a360Tour.run} onFinish={a360Tour.finish} />
 
