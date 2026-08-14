@@ -50,6 +50,119 @@ export interface FutebolFixture {
   goals_away: number | null;
 }
 
+/**
+ * Linha da agenda por dia (RPC get_futebol_fixtures_by_day, migration 092).
+ * Traz `competition` e `season` que o get_futebol_fixtures não devolve: numa lista
+ * de uma liga só o front já sabia qual era, numa lista multi-liga não, e o link do
+ * time é /futebol/time/:id?c=&s=. O `day_brt` vem calculado no banco pelo
+ * public.futebol_dia_brt, então o front não precisa reimplementar a virada de dia.
+ */
+export interface FutebolFixtureByDay extends FutebolFixture {
+  competition: string;
+  season: number;
+  day_brt: string;
+}
+
+/**
+ * Um candidato (mercado + saída + linha) com as premissas acesas e apagadas.
+ * RPC get_futebol_fixture_premissas, migration 093.
+ *
+ * Dois estados só: as tabelas int_* não têm NULL, então premissa sem dado hoje é
+ * indistinguível de premissa apagada. É o T3 da recalibragem; quando ele entrar,
+ * entra um terceiro array aqui.
+ */
+export interface FutebolFixturePremissas {
+  market: string;
+  outcome: string;
+  line_value: number | null;
+  pts_premissas: number;
+  penalidades_pts: number;
+  acesas: string[];
+  apagadas: string[];
+  penalidades: string[];
+}
+
+/**
+ * Números de temporada de um lado do confronto (RPC get_futebol_fixture_numeros).
+ * Serve para EMBASAR as premissas: sem o número, "em boa fase" é adjetivo.
+ * `ate` é o snapshot_date, para a tela declarar a data do dado.
+ */
+export interface FutebolFixtureNumeros {
+  side: 'home' | 'away';
+  team_id: number;
+  team_name: string;
+  posicao: number | null;
+  pontos: number | null;
+  zona: string | null;
+  jogos: number | null;
+  jogos_casa: number | null;
+  jogos_fora: number | null;
+  v_casa: number | null;
+  e_casa: number | null;
+  d_casa: number | null;
+  v_fora: number | null;
+  e_fora: number | null;
+  d_fora: number | null;
+  gf_casa: number | null;
+  ga_casa: number | null;
+  gf_fora: number | null;
+  ga_fora: number | null;
+  gf_total: number | null;
+  ga_total: number | null;
+  clean_sheets: number | null;
+  sem_marcar: number | null;
+  forma: string | null;
+  h2h_jogos: number | null;
+  h2h_vitorias: number | null;
+  h2h_empates: number | null;
+  ate: string | null;
+}
+
+/**
+ * Um jogo passado de um dos times, na competição e temporada do confronto (RPC 095).
+ * É o que permite auditar a média: filtrada pelo mando certo, a média destas linhas
+ * reproduz o mesmo número que a premissa usa (medido: Palmeiras em casa, 10 jogos,
+ * 0,80 gol sofrido, igual ao ga_casa da 094).
+ */
+export interface FutebolFixtureHistorico {
+  side: 'home' | 'away';
+  team_id: number;
+  team_name: string;
+  past_fixture_id: number;
+  data: string;
+  ordem: number;
+  em_casa: boolean;
+  adversario: string;
+  /** Para o escudo do adversário embaixo da barra. */
+  adversario_id: number;
+  gols_pro: number;
+  gols_contra: number;
+  total_gols: number;
+  ambos_marcaram: boolean;
+  sem_sofrer: boolean;
+  sem_marcar: boolean;
+  /** Gols esperados do time no jogo. Null onde a API não entregou (9% dos jogos). */
+  xg: number | null;
+  xg_contra: number | null;
+  resultado: 'V' | 'E' | 'D';
+}
+
+/** Um dia com jogo, pra régua de datas (RPC get_futebol_fixture_days). */
+export interface FutebolFixtureDay {
+  day_brt: string;
+  jogos: number;
+  ligas: number;
+}
+
+/** Competição + temporada que existe de fato no mart (RPC get_futebol_competitions). */
+export interface FutebolCompetitionInfo {
+  competition: string;
+  season: number;
+  jogos: number;
+  primeiro: string | null;
+  ultimo: string | null;
+}
+
 export interface FutebolTeamStats {
   team_side: 'home' | 'away';
   team_id: number | null;
@@ -195,6 +308,9 @@ export interface FutebolStandingRow {
   goals_against: number;
   goals_diff: number;
   rank_description: string | null;
+  /** Grupo da fase de grupos ('Group A'…). Em pontos corridos vem o nome da liga,
+   *  que é como a API marca quem não tem grupo. Ver migration 096. */
+  group_name: string | null;
 }
 
 export type FutebolZone = 'libertadores' | 'sula' | 'rebaixamento' | null;
@@ -454,6 +570,85 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolFixture[];
+    });
+  },
+
+  /**
+   * Jogos de UM dia (fuso BRT) em todas as ligas. Uma chamada no lugar das N do
+   * useFutebolFixturesMulti (uma por liga, temporada inteira): o pior dia do mart
+   * são 33 jogos em 16 KB, contra ~850 KB das 8 chamadas antigas.
+   */
+  async getFixturesByDay(day: string, competitions?: string[] | null): Promise<FutebolFixtureByDay[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixtures_by_day', {
+        p_day: day,
+        p_competitions: competitions ?? null,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureByDay[];
+    });
+  },
+
+  /** Dias com jogo num intervalo, com contagem. Alimenta a régua de datas sem baixar jogo. */
+  async getFixtureDays(from: string, to: string): Promise<FutebolFixtureDay[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_days', {
+        p_from: from,
+        p_to: to,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureDay[];
+    });
+  },
+
+  /**
+   * Competições e temporadas presentes no mart. Fonte de verdade do que existe, no
+   * lugar das listas fixas do front (que escondiam a champions_league e as
+   * temporadas 2025 de La Liga, Premier, Libertadores e Sul-Americana).
+   */
+  async getCompetitions(): Promise<FutebolCompetitionInfo[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_competitions');
+      if (error) throw error;
+      return (data || []) as FutebolCompetitionInfo[];
+    });
+  },
+
+  /**
+   * Mapa de premissas do jogo nos 5 mercados. Funciona onde o preço não existe:
+   * as premissas cobrem os 6.597 jogos do mart (1.177 futuros), enquanto odd só
+   * aparece a partir de T−24h.
+   */
+  async getFixturePremissas(fixtureId: number): Promise<FutebolFixturePremissas[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_premissas', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixturePremissas[];
+    });
+  },
+
+  /** Números que embasam as premissas (campanha casa/fora, gols por jogo, forma, tabela). */
+  async getFixtureNumeros(fixtureId: number): Promise<FutebolFixtureNumeros[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_numeros', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureNumeros[];
+    });
+  },
+
+  /** Jogo a jogo dos dois times, para auditar a média de cada premissa. */
+  async getFixtureHistorico(fixtureId: number, max = 40): Promise<FutebolFixtureHistorico[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_historico', {
+        p_fixture_id: fixtureId,
+        p_max: max,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureHistorico[];
     });
   },
 
