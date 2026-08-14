@@ -133,6 +133,8 @@ const st = (
   team_id, team_name, rank, points, played: wins + draws + loses,
   wins, draws, loses, goals_for: gf, goals_against: ga, goals_diff: gf - ga,
   rank_description: zone,
+  // Em pontos corridos a API repete o nome da liga no lugar do grupo (096).
+  group_name: 'Serie A',
 });
 
 export const demoFutebolStandings: FutebolStandingRow[] = [
