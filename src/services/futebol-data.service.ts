@@ -488,6 +488,12 @@ export interface FutebolValueBoardRow {
   score: number;           // 0..100
   faixa: string;           // 'Alta' | 'Média' | 'Baixa'
   evidencias: string[];    // "por quê" (montado no backend); usar a 1ª na lista
+  /**
+   * Quantas checagens ficaram sem resposta por falta de dado. NÃO desconta
+   * nota (ADR 0003: dado faltante diagnostica, não penaliza). Ver
+   * `futebol-sem-dado.ts` — nunca renderizar como penalidade.
+   */
+  premissas_sem_dado: number;
 }
 
 // ── O que foi ALERTADO no Telegram (public.daily_opportunity_picks, ver 091) ──
@@ -542,6 +548,15 @@ export interface FutebolFixtureValueRow {
   evidencias: string[];
   avisos: string[];
   contras: string[];        // premissas-chave que NÃO bateram (pontos de atenção)
+  /**
+   * Quantas checagens ficaram sem resposta por falta de dado.
+   *
+   * ⚠️ NÃO juntar com `contras` nem com `avisos`. `contras` são premissas que
+   * FORAM avaliadas e não bateram; esta é o contrário — nem deu para avaliar.
+   * E `avisos` carregam desconto de pontos, que este não tem.
+   * Ver `futebol-sem-dado.ts`.
+   */
+  premissas_sem_dado: number;
 }
 
 export interface FutebolScorer {

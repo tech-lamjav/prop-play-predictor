@@ -13,6 +13,7 @@ import {
   pickLabel, marketLabel, fmtEdgeScore, freqEmDez, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
+import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -145,6 +146,15 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
               </div>
             </div>
           )}
+          {/* Ressalva, NÃO alerta. Fora da caixa âmbar do "ponto de atenção" de
+              propósito: aquilo ali é aposta com sinal contra, isto é aposta com
+              menos informação. Sem ícone de aviso, sem cor de erro, sem
+              desconto do lado. Ver futebol-sem-dado.ts. */}
+          {avisoSemDado(o.premissas_sem_dado) && (
+            <p className={`mt-3 text-[11px] leading-relaxed ${d ? 'text-white/55' : 'text-ink-3'}`}>
+              {avisoSemDado(o.premissas_sem_dado)!.longo}
+            </p>
+          )}
         </div>
 
         {/* Direita — confiabilidade + números */}
@@ -196,6 +206,10 @@ function OppCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () 
         <Crest teamId={o.away_team_id} name={o.away_team_name} size={16} />
         <span className="shrink-0 opacity-80">· {fmtDayTime(o.kickoff_utc)}</span>
       </div>
+      {/* Ressalva discreta: fala da nossa confiança, não da qualidade da aposta. */}
+      {avisoSemDado(o.premissas_sem_dado) && (
+        <div className="text-[11px] text-ink-3 mt-1.5">{avisoSemDado(o.premissas_sem_dado)!.curto}</div>
+      )}
       <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
