@@ -789,7 +789,7 @@ export function BancadaMercados({
           const semDado = avisoSemDado(valPrincipal?.premissas_sem_dado);
           return semDado ? (
             <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
-              {semDado.longo}
+              {semDado}
             </div>
           ) : null;
         })()}
