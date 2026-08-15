@@ -1,0 +1,100 @@
+import { describe, it, expect } from 'vitest';
+import { faseDaEscalacao, rotuloEscalacao } from './futebol-escalacao';
+
+// A RPC devolve UMA fase por jogo (migration 098): prefere a confirmada e cai
+// para a real quando não houver confirmada. Estes testes cobrem o que a tela
+// diz em cada caso — a regra, não a renderização.
+//
+// As duas listas são decididas em separado no banco porque discordam entre si:
+// escalação confirmada existe em 4 jogos na tabela de times e em 137 na de
+// jogadores. Por isso `faseDaEscalacao` recebe as duas e tem uma ordem de
+// preferência declarada.
+
+const time = (fase: string | null) => ({ lineup_phase: fase });
+const jogador = (fase: string | null) => ({ lineup_phase: fase });
+
+describe('faseDaEscalacao', () => {
+  it('lê a fase da lista de jogadores, que é o conteúdo principal do card', () => {
+    expect(faseDaEscalacao([time('real')], [jogador('confirmed')])).toBe('confirmed');
+  });
+
+  it('cai para a lista de times quando não há jogadores', () => {
+    expect(faseDaEscalacao([time('confirmed')], [])).toBe('confirmed');
+  });
+
+  it('devolve null quando nenhuma das duas listas tem nada', () => {
+    expect(faseDaEscalacao([], [])).toBeNull();
+  });
+
+  it('tolera payload ausente sem quebrar', () => {
+    expect(faseDaEscalacao(undefined, undefined)).toBeNull();
+    expect(faseDaEscalacao(null, null)).toBeNull();
+  });
+
+  it('ignora fase vazia ou nula dentro do item', () => {
+    expect(faseDaEscalacao([], [jogador(null)])).toBeNull();
+    expect(faseDaEscalacao([], [jogador('')])).toBeNull();
+  });
+
+  it('não inventa fase desconhecida: devolve o que veio', () => {
+    // Se a fonte passar a publicar uma terceira fase, a tela não deve fingir
+    // que é uma das duas conhecidas — quem decide o rótulo é rotuloEscalacao.
+    expect(faseDaEscalacao([], [jogador('probable')])).toBe('probable');
+  });
+});
+
+describe('rotuloEscalacao', () => {
+  it('escalação confirmada diz que foi anunciada antes do jogo', () => {
+    expect(rotuloEscalacao('confirmed', false)).toEqual({
+      titulo: 'Escalação confirmada',
+      subtitulo: 'anunciada antes do jogo',
+    });
+  });
+
+  it('a confirmada continua sendo confirmada depois do apito', () => {
+    // Ela não vira "quem entrou em campo" só porque o jogo começou: são
+    // registros diferentes, e a confirmada segue sendo o que foi anunciado.
+    expect(rotuloEscalacao('confirmed', true).titulo).toBe('Escalação confirmada');
+  });
+
+  it('escalação real diz que é registro do jogo', () => {
+    expect(rotuloEscalacao('real', true)).toEqual({
+      titulo: 'Quem entrou em campo',
+      subtitulo: 'registro do jogo',
+    });
+  });
+
+  it('sem escalação e jogo por vir: diz que ainda não saiu e quando costuma sair', () => {
+    expect(rotuloEscalacao(null, false)).toEqual({
+      titulo: 'Escalação ainda não anunciada',
+      subtitulo: 'costuma sair cerca de 1h antes',
+    });
+  });
+
+  it('sem escalação e jogo encerrado: diz que não foi registrada, sem prometer nada', () => {
+    // Não pode prometer "sai 1h antes" num jogo que já acabou.
+    expect(rotuloEscalacao(null, true)).toEqual({
+      titulo: 'Escalação não registrada',
+      subtitulo: null,
+    });
+  });
+
+  it('nunca usa a palavra "provável"', () => {
+    // Escalação provável não existe: a fonte não publica previsão de escalação
+    // em momento nenhum. O rótulo antigo da tela prometia isso.
+    const todos = [
+      rotuloEscalacao('confirmed', false),
+      rotuloEscalacao('real', true),
+      rotuloEscalacao(null, false),
+      rotuloEscalacao(null, true),
+    ];
+    for (const r of todos) {
+      expect(`${r.titulo} ${r.subtitulo ?? ''}`.toLowerCase()).not.toContain('prov');
+    }
+  });
+
+  it('fase desconhecida cai no caso conservador em vez de mentir', () => {
+    expect(rotuloEscalacao('probable', false).titulo).toBe('Escalação ainda não anunciada');
+    expect(rotuloEscalacao('probable', true).titulo).toBe('Escalação não registrada');
+  });
+});

@@ -18,6 +18,7 @@ import {
   faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import { faseDaEscalacao, rotuloEscalacao } from '@/utils/futebol-escalacao';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
@@ -301,6 +302,10 @@ export default function FutebolJogo() {
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
   const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
+  // "Já começou" inclui o jogo em andamento, não só o encerrado: depois do
+  // apito não dá para prometer que a escalação "sai daqui a pouco".
+  const emAndamento = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(fixture?.status_short ?? '');
+  const jogoComecou = finished || emAndamento;
   // jogo encerrado/iniciado não é mais oportunidade: esconde o "O que olhar" (vira só descritivo)
   const showValue = !finished && !!valueRows && valueRows.length > 0;
   const hasPlayed = finished && !!valueRows && valueRows.length > 0; // registro pós-jogo
@@ -359,10 +364,19 @@ export default function FutebolJogo() {
   // e do modelo) e a escalação fica sob o mapa — um rail de consulta contínuo, em
   // vez de uma coluna direita que ficava VAZIA quando o jogo não tinha odd nem
   // modelo (caso Santos × Remo). Jogo ENCERRADO: grade original lá embaixo.
+  // A fonte NÃO publica escalação provável. O que chega é a confirmada
+  // (anunciada antes do apito) ou a real (registro pós-jogo), uma por vez —
+  // a RPC nunca devolve as duas. O rótulo é derivado da fase, não fixo.
+  const faseEscalacao = faseDaEscalacao(extras?.lineups, extras?.lineup_players);
+  const rotulo = rotuloEscalacao(faseEscalacao, jogoComecou);
+
   const escalacaoCard = fixture ? (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
       <div className="px-5 py-3 flex items-center justify-between border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Escalação provável & desfalques</div>
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{rotulo.titulo} & desfalques</div>
+          {rotulo.subtitulo && <div className="text-[10px] text-ink-3 mt-0.5">{rotulo.subtitulo}</div>}
+        </div>
         {extras?.lineups?.length ? (
           <span className="text-[10px] tabular-nums text-ink-3">{extras.lineups.find((l) => l.team_side === 'home')?.formation || '—'} × {extras.lineups.find((l) => l.team_side === 'away')?.formation || '—'}</span>
         ) : null}
@@ -400,7 +414,9 @@ export default function FutebolJogo() {
             })}
           </div>
         ) : (
-          <p className="text-sm text-ink-3 text-center py-6">Escalação provável disponível próximo ao jogo.</p>
+          <p className="text-sm text-ink-3 text-center py-6">
+            {jogoComecou ? 'Escalação não registrada para este jogo.' : 'A escalação costuma ser anunciada cerca de 1h antes do apito.'}
+          </p>
         )}
       </div>
     </div>
