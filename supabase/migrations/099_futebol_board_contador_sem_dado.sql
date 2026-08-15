@@ -76,19 +76,24 @@ BEGIN
     RAISE EXCEPTION 'get_futebol_value_board nao existe';
   END IF;
 
-  -- Idempotencia: ja tem a coluna, nada a fazer.
-  IF position('premissas_sem_dado' in v) > 0 THEN
+  -- Idempotencia. Testa a ASSINATURA, nao o texto inteiro: procurar so por
+  -- 'premissas_sem_dado' casaria com uma mencao em comentario dentro do corpo, e
+  -- a migration sairia anunciando "nada a fazer" sem ter feito nada.
+  IF position('premissas_sem_dado integer)' in v) > 0 THEN
     RAISE NOTICE 'get_futebol_value_board ja devolve premissas_sem_dado. Nada a fazer.';
     RETURN;
   END IF;
 
-  -- Guarda: os dois pontos de alteracao tem que existir exatamente assim.
-  IF position('evidencias text[])' in v) = 0 THEN
-    RAISE EXCEPTION 'get_futebol_value_board: nao encontrei o fim do RETURNS TABLE. Definicao viva divergente do esperado.';
+  -- Guardas: cada ancora tem que existir EXATAMENTE UMA VEZ.
+  -- Contar em vez de so testar existencia importa porque replace() troca TODAS
+  -- as ocorrencias. Com a ancora repetida, a substituicao corromperia a funcao
+  -- em silencio -- e o corpo muda quando a A1 do Score mexer nele.
+  IF array_length(string_to_array(v, 'evidencias text[])'), 1) - 1 <> 1 THEN
+    RAISE EXCEPTION 'get_futebol_value_board: a ancora do RETURNS TABLE nao aparece exatamente uma vez. Definicao viva divergente do esperado.';
   END IF;
 
-  IF position(E'], null)\n  from futebol.fact_value_opportunities v' in v) = 0 THEN
-    RAISE EXCEPTION 'get_futebol_value_board: nao encontrei o fim da projecao. Definicao viva divergente do esperado.';
+  IF array_length(string_to_array(v, E'], null)\n  from futebol.fact_value_opportunities v'), 1) - 1 <> 1 THEN
+    RAISE EXCEPTION 'get_futebol_value_board: a ancora da projecao nao aparece exatamente uma vez. Definicao viva divergente do esperado.';
   END IF;
 
   -- 1. a coluna entra no fim do RETURNS TABLE
@@ -108,6 +113,14 @@ BEGIN
 
   DROP FUNCTION IF EXISTS public.get_futebol_value_board();
   EXECUTE v_novo;
+
+  -- Reemitir o grant. Neste projeto ha ALTER DEFAULT PRIVILEGES em `public`
+  -- concedendo execute a anon/authenticated/service_role, entao a funcao nova
+  -- ja nasceria com ele -- verificado no espelho. Fica explicito assim mesmo:
+  -- o DROP apaga a ACL, e depender de um padrao implicito do ambiente para
+  -- restaurar acesso e o tipo de coisa que funciona ate o dia em que alguem
+  -- muda o padrao e ninguem liga uma coisa na outra.
+  GRANT EXECUTE ON FUNCTION public.get_futebol_value_board() TO anon, authenticated, service_role;
 END
 $migration$;
 
@@ -131,9 +144,22 @@ $migration$;
 --    where r.premissas_sem_dado is distinct from v.premissas_sem_dado::int;
 --    -- esperado: 0
 --
--- C) nenhuma linha perdida no DROP + recriar:
+-- C) nenhuma linha perdida no DROP + recriar.
 --
---    select (select count(*) from public.get_futebol_value_board()) as da_rpc,
---           (select count(*) from futebol.fact_value_opportunities) as da_tabela;
---    -- esperado: iguais
+--    ⚠️ Comparar a contagem da RPC com a da tabela NAO serve como assercao: a
+--    RPC faz INNER JOIN em fact_fixtures, entao oportunidade sem fixture
+--    correspondente sai do resultado por desenho, e nao por causa do DROP.
+--    Hoje sao 0 dessas, mas isso e estado do dado, nao garantia.
+--
+--    A comparacao que de fato prova o DROP e antes/depois da propria RPC:
+--
+--    -- ANTES de aplicar:
+--    select count(*) from public.get_futebol_value_board();
+--    -- DEPOIS: mesmo numero.
+--
+--    E, se quiser explicar uma diferenca eventual:
+--    select count(*) from futebol.fact_value_opportunities v
+--    where not exists (select 1 from futebol.fact_fixtures f
+--                      where f.fixture_id = v.fixture_id);
+--    -- quantas oportunidades o INNER JOIN descarta
 -- ============================================================================

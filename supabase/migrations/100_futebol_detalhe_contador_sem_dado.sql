@@ -55,17 +55,21 @@ BEGIN
     RAISE EXCEPTION 'get_futebol_fixture_value nao existe';
   END IF;
 
-  IF position('premissas_sem_dado' in v) > 0 THEN
+  -- Idempotencia pela ASSINATURA, nao pelo texto inteiro: procurar so por
+  -- 'premissas_sem_dado' casaria com mencao em comentario dentro do corpo.
+  IF position('premissas_sem_dado integer)' in v) > 0 THEN
     RAISE NOTICE 'get_futebol_fixture_value ja devolve premissas_sem_dado. Nada a fazer.';
     RETURN;
   END IF;
 
-  IF position('contras text[])' in v) = 0 THEN
-    RAISE EXCEPTION 'get_futebol_fixture_value: nao encontrei o fim do RETURNS TABLE.';
+  -- Cada ancora tem que aparecer EXATAMENTE UMA VEZ: replace() troca todas as
+  -- ocorrencias, entao ancora repetida corromperia a funcao em silencio.
+  IF array_length(string_to_array(v, 'contras text[])'), 1) - 1 <> 1 THEN
+    RAISE EXCEPTION 'get_futebol_fixture_value: a ancora do RETURNS TABLE nao aparece exatamente uma vez.';
   END IF;
 
-  IF position(E'], null))[1:3]\n  from futebol.fact_value_opportunities v' in v) = 0 THEN
-    RAISE EXCEPTION 'get_futebol_fixture_value: nao encontrei o fim da projecao.';
+  IF array_length(string_to_array(v, E'], null))[1:3]\n  from futebol.fact_value_opportunities v'), 1) - 1 <> 1 THEN
+    RAISE EXCEPTION 'get_futebol_fixture_value: a ancora da projecao nao aparece exatamente uma vez.';
   END IF;
 
   -- Aviso se a 098 ainda nao rodou: nao impede, mas quem le o log precisa saber.
@@ -87,6 +91,11 @@ BEGIN
 
   DROP FUNCTION IF EXISTS public.get_futebol_fixture_value(bigint);
   EXECUTE v_novo;
+
+  -- Mesmo racional da 099: o DROP apaga a ACL. Ha ALTER DEFAULT PRIVILEGES no
+  -- projeto que ja repoe, mas depender de padrao implicito do ambiente para
+  -- restaurar acesso e fragil. Explicito.
+  GRANT EXECUTE ON FUNCTION public.get_futebol_fixture_value(bigint) TO anon, authenticated, service_role;
 END
 $migration$;
 
