@@ -52,6 +52,35 @@ function primeiraFase(itens: ComFase[] | null | undefined): string | null {
 }
 
 /**
+ * A escalação que a tela vai mostrar: a fase, e as duas listas JÁ FILTRADAS por
+ * ela. Use sempre isto na tela, nunca as listas cruas do payload.
+ *
+ * O motivo é concreto. As duas listas podem estar em fases diferentes, e no
+ * banco isso acontece em **139 dos 8.071 jogos** que têm as duas — sempre na
+ * mesma direção: jogadores confirmados e times vindos do registro pós-jogo,
+ * nunca o contrário.
+ *
+ * Sem o filtro, esses 139 jogos mostram o título "Escalação confirmada" com a
+ * formação do pós-jogo do lado. Com o filtro, a lista de times sai vazia e a
+ * formação simplesmente não aparece.
+ *
+ * **Não mostrar é melhor do que mostrar de outra fase**: a formação some, mas
+ * nada na tela passa a mentir.
+ */
+export function escalacaoExibida<T extends ComFase, P extends ComFase>(
+  times: T[] | null | undefined,
+  jogadores: P[] | null | undefined,
+): { fase: string | null; times: T[]; jogadores: P[] } {
+  const fase = faseDaEscalacao(times, jogadores);
+  if (!fase) return { fase: null, times: [], jogadores: [] };
+  return {
+    fase,
+    times: (times ?? []).filter((x) => x?.lineup_phase === fase),
+    jogadores: (jogadores ?? []).filter((x) => x?.lineup_phase === fase),
+  };
+}
+
+/**
  * Título e subtítulo do card, a partir da fase e do estado do jogo.
  *
  * Fase desconhecida cai no caso sem escalação de propósito: se a fonte passar a

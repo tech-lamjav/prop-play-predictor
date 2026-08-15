@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { faseDaEscalacao, rotuloEscalacao } from './futebol-escalacao';
+import { escalacaoExibida, faseDaEscalacao, rotuloEscalacao } from './futebol-escalacao';
 
 // A RPC devolve UMA fase por jogo (migration 098): prefere a confirmada e cai
 // para a real quando não houver confirmada. Estes testes cobrem o que a tela
@@ -40,6 +40,54 @@ describe('faseDaEscalacao', () => {
     // Se a fonte passar a publicar uma terceira fase, a tela não deve fingir
     // que é uma das duas conhecidas — quem decide o rótulo é rotuloEscalacao.
     expect(faseDaEscalacao([], [jogador('probable')])).toBe('probable');
+  });
+});
+
+describe('escalacaoExibida', () => {
+  // Esta é a regra que impede o card de dizer "Escalação confirmada" e mostrar
+  // ao lado a formação do registro pós-jogo. No banco isso acontece em 139 dos
+  // 8.071 jogos com as duas listas, e SEMPRE na mesma direção: jogadores
+  // confirmados e times do pós-jogo. Zero no sentido inverso.
+  const t = (fase: string) => ({ lineup_phase: fase, formation: `f-${fase}` });
+  const j = (fase: string) => ({ lineup_phase: fase, player_name: `p-${fase}` });
+
+  it('quando as duas listas concordam, devolve as duas inteiras', () => {
+    const r = escalacaoExibida([t('confirmed')], [j('confirmed')]);
+    expect(r.fase).toBe('confirmed');
+    expect(r.times).toHaveLength(1);
+    expect(r.jogadores).toHaveLength(1);
+  });
+
+  it('quando discordam, a fase é a dos jogadores e a lista de times sai VAZIA', () => {
+    // É o caso dos 139 jogos. Melhor não mostrar formação nenhuma do que
+    // mostrar a formação de uma fase diferente da que o título anuncia.
+    const r = escalacaoExibida([t('real')], [j('confirmed')]);
+    expect(r.fase).toBe('confirmed');
+    expect(r.times).toEqual([]);
+    expect(r.jogadores).toHaveLength(1);
+  });
+
+  it('sem jogadores, cai para a fase dos times e devolve os times', () => {
+    const r = escalacaoExibida([t('confirmed')], []);
+    expect(r.fase).toBe('confirmed');
+    expect(r.times).toHaveLength(1);
+    expect(r.jogadores).toEqual([]);
+  });
+
+  it('sem nada, devolve fase nula e duas listas vazias', () => {
+    const r = escalacaoExibida([], []);
+    expect(r).toEqual({ fase: null, times: [], jogadores: [] });
+  });
+
+  it('tolera payload ausente', () => {
+    expect(escalacaoExibida(undefined, undefined)).toEqual({ fase: null, times: [], jogadores: [] });
+  });
+
+  it('descarta item de fase divergente dentro da mesma lista', () => {
+    // Defesa contra a RPC um dia deixar de garantir uma fase só por lista.
+    const r = escalacaoExibida([t('confirmed'), t('real')], [j('confirmed')]);
+    expect(r.times).toHaveLength(1);
+    expect(r.times[0].lineup_phase).toBe('confirmed');
   });
 });
 

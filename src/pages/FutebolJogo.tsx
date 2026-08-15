@@ -18,7 +18,8 @@ import {
   faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
-import { faseDaEscalacao, rotuloEscalacao } from '@/utils/futebol-escalacao';
+import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
+import { isFinished, isLive } from '@/utils/futebol-datas';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
@@ -189,10 +190,12 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
 }
 
 // Oportunidades mapeadas de um jogo ENCERRADO + como performaram (green/red).
-function Pitch({ players, side, formation }: { players: FutebolLineupPlayer[]; side: 'home' | 'away'; formation: string | null }) {
+function Pitch({ players, side, formation, vazio }: { players: FutebolLineupPlayer[]; side: 'home' | 'away'; formation: string | null; vazio: string }) {
   const starters = players.filter((p) => p.team_side === side && p.is_starter && p.grid);
   if (!starters.length) {
-    return <div className="rounded-rebrand-sm grid place-items-center text-[11px] text-white/60" style={{ aspectRatio: '3 / 3.4', background: 'linear-gradient(160deg, #0e5238, #0a3d2e)' }}>Escalação próximo ao jogo</div>;
+    // O texto vem de fora porque depende do estado do jogo: "sai próximo ao
+    // jogo" mente num jogo que já acabou.
+    return <div className="rounded-rebrand-sm grid place-items-center text-[11px] text-white/60 text-center px-3" style={{ aspectRatio: '3 / 3.4', background: 'linear-gradient(160deg, #0e5238, #0a3d2e)' }}>{vazio}</div>;
   }
   const parsed = starters.map((p) => { const [r, c] = (p.grid || '1:1').split(':').map(Number); return { p, r: r || 1, c: c || 1 }; });
   const maxR = Math.max(...parsed.map((x) => x.r));
@@ -301,11 +304,10 @@ export default function FutebolJogo() {
   const stats = data?.stats || [];
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
-  const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
+  const finished = isFinished(fixture?.status_short);
   // "Já começou" inclui o jogo em andamento, não só o encerrado: depois do
   // apito não dá para prometer que a escalação "sai daqui a pouco".
-  const emAndamento = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(fixture?.status_short ?? '');
-  const jogoComecou = finished || emAndamento;
+  const jogoComecou = finished || isLive(fixture?.status_short);
   // jogo encerrado/iniciado não é mais oportunidade: esconde o "O que olhar" (vira só descritivo)
   const showValue = !finished && !!valueRows && valueRows.length > 0;
   const hasPlayed = finished && !!valueRows && valueRows.length > 0; // registro pós-jogo
@@ -365,10 +367,14 @@ export default function FutebolJogo() {
   // vez de uma coluna direita que ficava VAZIA quando o jogo não tinha odd nem
   // modelo (caso Santos × Remo). Jogo ENCERRADO: grade original lá embaixo.
   // A fonte NÃO publica escalação provável. O que chega é a confirmada
-  // (anunciada antes do apito) ou a real (registro pós-jogo), uma por vez —
-  // a RPC nunca devolve as duas. O rótulo é derivado da fase, não fixo.
-  const faseEscalacao = faseDaEscalacao(extras?.lineups, extras?.lineup_players);
-  const rotulo = rotuloEscalacao(faseEscalacao, jogoComecou);
+  // (anunciada antes do apito) ou a real (registro pós-jogo). O rótulo é
+  // derivado da fase, não fixo.
+  //
+  // As DUAS listas vêm filtradas pela fase exibida: elas podem estar em fases
+  // diferentes (139 dos 8.071 jogos), e usar as listas cruas faria o card
+  // anunciar "Escalação confirmada" com a formação do pós-jogo ao lado.
+  const escalacao = escalacaoExibida(extras?.lineups, extras?.lineup_players);
+  const rotulo = rotuloEscalacao(escalacao.fase, jogoComecou);
 
   const escalacaoCard = fixture ? (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
@@ -377,17 +383,17 @@ export default function FutebolJogo() {
           <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{rotulo.titulo} & desfalques</div>
           {rotulo.subtitulo && <div className="text-[10px] text-ink-3 mt-0.5">{rotulo.subtitulo}</div>}
         </div>
-        {extras?.lineups?.length ? (
-          <span className="text-[10px] tabular-nums text-ink-3">{extras.lineups.find((l) => l.team_side === 'home')?.formation || '—'} × {extras.lineups.find((l) => l.team_side === 'away')?.formation || '—'}</span>
+        {escalacao.times.length ? (
+          <span className="text-[10px] tabular-nums text-ink-3">{escalacao.times.find((l) => l.team_side === 'home')?.formation || '—'} × {escalacao.times.find((l) => l.team_side === 'away')?.formation || '—'}</span>
         ) : null}
       </div>
       <div className="p-5">
-        {extras?.lineup_players?.length ? (
+        {escalacao.jogadores.length ? (
           <div className="grid grid-cols-2 gap-4">
             {(['home', 'away'] as const).map((sideKey) => {
               const teamName = sideKey === 'home' ? fixture.home_team_name : fixture.away_team_name;
               const teamId = sideKey === 'home' ? fixture.home_team_id : fixture.away_team_id;
-              const formation = extras!.lineups.find((l) => l.team_side === sideKey)?.formation ?? null;
+              const formation = escalacao.times.find((l) => l.team_side === sideKey)?.formation ?? null;
               const inj = (injuries || []).filter((x) => x.team_id === teamId);
               return (
                 <div key={sideKey}>
@@ -395,7 +401,7 @@ export default function FutebolJogo() {
                     <span className="text-[12px] font-semibold tracking-tight text-ink truncate">{teamName}</span>
                     {formation && <span className="text-[10px] tabular-nums ml-auto text-ink-3">{formation}</span>}
                   </div>
-                  <Pitch players={extras!.lineup_players} side={sideKey} formation={formation} />
+                  <Pitch players={escalacao.jogadores} side={sideKey} formation={formation} vazio={rotulo.titulo} />
                   <div className="mt-3">
                     <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">Desfalques</div>
                     {inj.length === 0 ? <div className="text-[11px] text-ink-3">Sem desfalques</div> : inj.map((d, i) => {
@@ -414,8 +420,11 @@ export default function FutebolJogo() {
             })}
           </div>
         ) : (
+          // Deriva do mesmo rótulo do cabeçalho: com a regra escrita duas vezes,
+          // o card já chegou a anunciar "Quem entrou em campo" com o corpo
+          // dizendo que a escalação sai daqui a pouco.
           <p className="text-sm text-ink-3 text-center py-6">
-            {jogoComecou ? 'Escalação não registrada para este jogo.' : 'A escalação costuma ser anunciada cerca de 1h antes do apito.'}
+            {rotulo.subtitulo ? `${rotulo.titulo} · ${rotulo.subtitulo}.` : `${rotulo.titulo}.`}
           </p>
         )}
       </div>
