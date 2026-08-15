@@ -507,7 +507,8 @@ create table futebol.int_futebol_premissas_1x2 (
   "s_missing" bigint,
   "pts_premissas" bigint,
   "penalidades_1x2_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_ou cascade;
@@ -533,7 +534,8 @@ create table futebol.int_futebol_premissas_ou (
   "linha_extrema" boolean,
   "pts_premissas" bigint,
   "penalidades_ou_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_ah cascade;
@@ -557,7 +559,8 @@ create table futebol.int_futebol_premissas_ah (
   "handicap_alto" boolean,
   "pts_premissas" bigint,
   "penalidades_ah_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_btts cascade;
@@ -575,7 +578,8 @@ create table futebol.int_futebol_premissas_btts (
   "historico_seco" boolean,
   "pts_premissas" bigint,
   "penalidades_btts_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_dc cascade;
@@ -590,7 +594,8 @@ create table futebol.int_futebol_premissas_dc (
   "invicto_recente" boolean,
   "pts_premissas" bigint,
   "penalidades_dc_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.fact_value_opportunities cascade;
@@ -621,7 +626,8 @@ create table futebol.fact_value_opportunities (
   "linha_sharp_confirma" boolean,
   "pin_n_outcomes" bigint,
   "is_half_line" boolean,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 -- ── 2a. Infra do sync: estado incremental (o Cloud Run sync lê/escreve aqui) ──
@@ -667,7 +673,8 @@ create table futebol.fact_value_opportunities_hist (
   "dbt_scd_id" text,
   "dbt_updated_at" timestamp,
   "dbt_valid_from" timestamp,
-  "dbt_valid_to" timestamp
+  "dbt_valid_to" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
