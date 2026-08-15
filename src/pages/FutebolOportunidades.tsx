@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useFutebolValueBoard, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
+import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
@@ -212,6 +213,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   const hasScore = homeGoals != null && awayGoals != null;
+  const semDado = avisoSemDado(o.premissas_sem_dado);
   // Sem os números do instante em que era oportunidade, mostra "—" em vez de
   // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
   const badgeCls = o.faixa != null ? faixaBadgeCls(o.faixa) : 'bg-canvas-2 text-ink-3 border border-line';
@@ -234,6 +236,8 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
               ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name}`
               : `${o.home_team_name} × ${o.away_team_name}`}
           </div>
+          {/* Ressalva, não defeito: fala da nossa confiança, não da aposta. */}
+          {semDado && <div className="text-[11px] text-ink-3 truncate">{semDado.curto}</div>}
         </div>
       </div>
       <div className="min-w-0">
@@ -257,6 +261,7 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result;
   const hasScore = homeGoals != null && awayGoals != null;
+  const semDado = avisoSemDado(o.premissas_sem_dado);
   return (
     <button onClick={onClick} className="w-full text-left rounded-rebrand-md p-3.5 bg-white border border-line">
       <div className="flex items-start gap-3">

@@ -26,6 +26,7 @@ import {
 import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
+import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-leitura';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { isFinished } from '@/utils/futebol-datas';
@@ -778,6 +779,20 @@ export function BancadaMercados({
             saidaLabel={pickAtual}
           />
         )}
+
+        {/* Ressalva de informação faltando. Fica AQUI, no rodapé, e não na aba
+            "Contra" de propósito: aquela aba lista o que foi checado e não
+            bateu; isto é o que nem deu para checar. Juntar as duas faria a
+            tela dizer que a aposta é pior, quando o que existe para dizer é que
+            sabemos menos sobre ela. Ver futebol-sem-dado.ts e a ADR 0003. */}
+        {(() => {
+          const semDado = avisoSemDado(valPrincipal?.premissas_sem_dado);
+          return semDado ? (
+            <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
+              {semDado.longo}
+            </div>
+          ) : null;
+        })()}
 
         <div className="px-6 md:px-8 py-3.5 text-[11px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#8d8672' }}>
           {ehLinha

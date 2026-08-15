@@ -115,6 +115,11 @@ interface BoardRow {
   edge: number | null;
   prob_justa_fechamento: number | null;
   evidencias: string[] | null;
+  /**
+   * Quantas checagens ficaram sem resposta por FALTA DE DADO. Não desconta
+   * nota: a ADR 0003 é explícita que dado faltante diagnostica, não penaliza.
+   */
+  premissas_sem_dado: number | null;
 }
 
 interface Recipient {
@@ -123,6 +128,40 @@ interface Recipient {
   user_name: string | null;
   segment: "A" | "B";
   sends_without_click: number;
+}
+
+/**
+ * "Não deu para checar N coisas", ou null quando não há o que avisar.
+ *
+ * Vem em LINHA PRÓPRIA, no mesmo espírito da evidência, e não colado na linha
+ * do Score. Colado, ele vira mais um componente da nota ("Score 62 · Alta · 3
+ * sem checar") e passa a ser lido como número que desconta — que é exatamente a
+ * leitura que este aviso existe para impedir.
+ *
+ * Cabe em linha própria porque a DM manda no máximo MAX_PICKS picks. Medido
+ * sobre o histórico, na população real da DM (top 3 por dia): 98 picks em 45
+ * dias, 39% com o aviso, e em 13 dias os três vêm marcados. Três linhas a mais
+ * no pior caso.
+ *
+ * ⚠️ REGRA DUPLICADA, e de propósito. O gêmeo é `avisoSemDado` em
+ * `src/utils/futebol-sem-dado.ts`. Não dá para importar: esta função roda em
+ * Deno na edge function e não compartilha o build do front — o arquivo já
+ * duplica os rótulos do site pelo mesmo motivo, e está escrito lá que foram
+ * portados.
+ *
+ * O que NÃO pode divergir entre as duas, e vale mais que a redação:
+ *   · não aparece quando o contador é zero ou nulo
+ *   · não carrega desconto de pontos nem parece penalidade
+ *   · diz QUANTAS, nunca QUAIS (a lista de quais não existe no Postgres)
+ *
+ * A fonte da regra é a ADR 0003 do repositório `analytics-engineering`
+ * (`dbt_futebol/docs/adr/0003-dado-faltante-diagnostica-nao-elimina.md`), não
+ * deste: dado faltante diagnostica, NÃO penaliza.
+ */
+function avisoSemDado(contador: number | null | undefined): string | null {
+  if (typeof contador !== "number" || !isFinite(contador) || contador < 1) return null;
+  const n = Math.floor(contador);
+  return `Não deu para checar ${n === 1 ? "1 coisa" : `${n} coisas`}`;
 }
 
 async function buildMessage(picks: BoardRow[], userId: string): Promise<string> {
@@ -135,9 +174,13 @@ async function buildMessage(picks: BoardRow[], userId: string): Promise<string> 
     const hora = brtHourMin(kickoffDate(p.kickoff_utc));
     const pick = pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name);
     const evidencia = p.evidencias?.length ? `\n✓ ${esc(p.evidencias[0])}` : "";
+    // Linha própria, embaixo da evidência. Nunca colada na linha do Score:
+    // ali ela viraria mais um número da nota e seria lida como desconto.
+    const aviso = avisoSemDado(p.premissas_sem_dado);
+    const semDado = aviso ? `\n◦ ${esc(aviso)}` : "";
     lines.push(
       `<a href="${jogoUrl}"><b>${esc(p.home_team_name)} × ${esc(p.away_team_name)}</b></a> · ${hora}`,
-      `${esc(pick)} · odd ${p.best_odd} · Score <b>${p.score} · ${esc(p.faixa)}</b>${evidencia}`,
+      `${esc(pick)} · odd ${p.best_odd} · Score <b>${p.score} · ${esc(p.faixa)}</b>${evidencia}${semDado}`,
       ""
     );
   }
