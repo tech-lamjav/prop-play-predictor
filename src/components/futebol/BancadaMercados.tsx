@@ -360,7 +360,10 @@ export function BancadaMercados({
         const lista = nomes(p.slug === 'desfalque_proprio' ? idDoLado : idDoAdv);
         sub = lista
           ? `Fora: ${lista}.`
-          : 'A lista de desfalques deste jogo ainda não saiu: ela entra junto com a escalação provável, perto do jogo.';
+          // Não existe "escalação provável": a fonte não publica previsão de
+          // escalação em momento nenhum. O que sai perto do jogo é a escalação
+          // CONFIRMADA. Ver futebol-escalacao.ts.
+          : 'A lista de desfalques deste jogo ainda não saiu: ela entra junto com a escalação confirmada, perto do jogo.';
       }
       out.push({ t: `Penalidade: ${p.label.toLowerCase()}`, sub });
     });

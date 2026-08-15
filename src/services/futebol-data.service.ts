@@ -228,6 +228,12 @@ export interface FutebolLineup {
   team_side: 'home' | 'away';
   formation: string | null;
   coach_name: string | null;
+  /**
+   * 'confirmed' = escalação anunciada antes do apito · 'real' = registro de
+   * quem entrou em campo, montado depois do jogo. A RPC devolve UMA fase por
+   * jogo, nunca as duas. Ver `futebol-escalacao.ts`.
+   */
+  lineup_phase: string | null;
 }
 
 export interface FutebolEvent {
@@ -251,6 +257,8 @@ export interface FutebolLineupPlayer {
   shirt_number: number | null;
   position: string | null;
   grid: string | null;
+  /** Mesma fase de `FutebolLineup`. Ver `futebol-escalacao.ts`. */
+  lineup_phase: string | null;
 }
 
 export interface FutebolFixtureDetail {
