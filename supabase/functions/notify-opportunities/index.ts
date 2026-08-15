@@ -115,6 +115,11 @@ interface BoardRow {
   edge: number | null;
   prob_justa_fechamento: number | null;
   evidencias: string[] | null;
+  /**
+   * Quantas checagens ficaram sem resposta por FALTA DE DADO. Não desconta
+   * nota: a ADR 0003 é explícita que dado faltante diagnostica, não penaliza.
+   */
+  premissas_sem_dado: number | null;
 }
 
 interface Recipient {
@@ -125,23 +130,57 @@ interface Recipient {
   sends_without_click: number;
 }
 
+/**
+ * A marca de "faltou informação", curta, pra caber na linha do Score.
+ *
+ * ⚠️ REGRA DUPLICADA, e de propósito. O gêmeo dela é `avisoSemDado` em
+ * `src/utils/futebol-sem-dado.ts`. Não dá pra importar: esta função roda em Deno
+ * na edge function e não compartilha o build do front — o arquivo já duplica os
+ * rótulos do site pelo mesmo motivo, e está escrito lá que foram portados.
+ *
+ * O que NÃO pode divergir entre as duas, e vale mais que a redação:
+ *   · não aparece quando o contador é zero ou nulo
+ *   · não carrega desconto de pontos nem parece penalidade
+ *   · diz QUANTAS, nunca QUAIS (a lista de quais não existe no Postgres)
+ *
+ * A ADR 0003 é a fonte: dado faltante diagnostica, NÃO penaliza. O Score não
+ * muda por causa disso, e a marca não pode sugerir que muda.
+ */
+function marcaSemDado(contador: number | null | undefined): string {
+  if (typeof contador !== "number" || !isFinite(contador) || contador < 1) return "";
+  const n = Math.floor(contador);
+  return ` · ${n} sem checar`;
+}
+
 async function buildMessage(picks: BoardRow[], userId: string): Promise<string> {
   const lines: string[] = [
     `⚽ <b>As oportunidades de hoje</b> · ${picks.length} ${picks.length === 1 ? "jogo" : "jogos"} com valor`,
     "",
   ];
+  let algumSemDado = false;
   for (const p of picks) {
     const jogoUrl = await trackedUrl(userId, `jogo-${p.fixture_id}`);
     const hora = brtHourMin(kickoffDate(p.kickoff_utc));
     const pick = pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name);
     const evidencia = p.evidencias?.length ? `\n✓ ${esc(p.evidencias[0])}` : "";
+    // Marca curta na própria linha do Score, e a explicação UMA vez no rodapé.
+    // O motivo é medido: 36% dos picks que a DM manda carregam a ressalva, mas
+    // em 13 dias da amostra TODOS carregavam. Repetir a frase inteira por pick
+    // transformaria a mensagem num muro justamente nesses dias.
+    const semDado = marcaSemDado(p.premissas_sem_dado);
+    if (semDado) algumSemDado = true;
     lines.push(
       `<a href="${jogoUrl}"><b>${esc(p.home_team_name)} × ${esc(p.away_team_name)}</b></a> · ${hora}`,
-      `${esc(pick)} · odd ${p.best_odd} · Score <b>${p.score} · ${esc(p.faixa)}</b>${evidencia}`,
+      `${esc(pick)} · odd ${p.best_odd} · Score <b>${p.score} · ${esc(p.faixa)}</b>${semDado}${evidencia}`,
       ""
     );
   }
   lines.push(`<i>Score 0–100: quanto mais alto, mais confiança na pick.</i>`);
+  if (algumSemDado) {
+    lines.push(
+      `<i>"sem checar" quer dizer que faltou informação pra checar tudo naquele jogo. A leitura sai com menos informação, não com informação contra.</i>`
+    );
+  }
   return lines.join("\n");
 }
 
