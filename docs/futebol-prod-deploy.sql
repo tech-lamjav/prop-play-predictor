@@ -507,7 +507,8 @@ create table futebol.int_futebol_premissas_1x2 (
   "s_missing" bigint,
   "pts_premissas" bigint,
   "penalidades_1x2_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_ou cascade;
@@ -533,7 +534,8 @@ create table futebol.int_futebol_premissas_ou (
   "linha_extrema" boolean,
   "pts_premissas" bigint,
   "penalidades_ou_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_ah cascade;
@@ -557,7 +559,8 @@ create table futebol.int_futebol_premissas_ah (
   "handicap_alto" boolean,
   "pts_premissas" bigint,
   "penalidades_ah_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_btts cascade;
@@ -575,7 +578,8 @@ create table futebol.int_futebol_premissas_btts (
   "historico_seco" boolean,
   "pts_premissas" bigint,
   "penalidades_btts_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.int_futebol_premissas_dc cascade;
@@ -590,7 +594,8 @@ create table futebol.int_futebol_premissas_dc (
   "invicto_recente" boolean,
   "pts_premissas" bigint,
   "penalidades_dc_pts" bigint,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 drop table if exists futebol.fact_value_opportunities cascade;
@@ -621,7 +626,8 @@ create table futebol.fact_value_opportunities (
   "linha_sharp_confirma" boolean,
   "pin_n_outcomes" bigint,
   "is_half_line" boolean,
-  "dbt_loaded_at" timestamp
+  "dbt_loaded_at" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 -- ── 2a. Infra do sync: estado incremental (o Cloud Run sync lê/escreve aqui) ──
@@ -667,7 +673,8 @@ create table futebol.fact_value_opportunities_hist (
   "dbt_scd_id" text,
   "dbt_updated_at" timestamp,
   "dbt_valid_from" timestamp,
-  "dbt_valid_to" timestamp
+  "dbt_valid_to" timestamp,
+  "premissas_sem_dado" bigint
 );
 
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
@@ -981,7 +988,7 @@ end $function$
 ;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_value(p_fixture_id bigint)
- RETURNS TABLE(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, penalidades_globais_pts integer, penalidades_especificas_pts integer, score integer, faixa text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[])
+ RETURNS TABLE(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, penalidades_globais_pts integer, penalidades_especificas_pts integer, score integer, faixa text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
  LANGUAGE sql
  SECURITY DEFINER
  SET search_path TO ''
@@ -1091,7 +1098,8 @@ AS $function$
       case when v.outcome='No' and not coalesce(bt.ataque_trava, true) then 'Os dois ataques costumam marcar' end,
       case when not coalesce(dc.lado_coberto_forte, true) then 'O lado coberto não é claramente o mais forte' end,
       case when not coalesce(dc.adversario_limitado, true) then 'Adversário não é tão limitado' end
-    ], null))[1:3]
+    ], null))[1:3],
+    v.premissas_sem_dado::int
   from futebol.fact_value_opportunities v
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
@@ -1484,7 +1492,7 @@ end; $function$
 ;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_value_board()
- RETURNS TABLE(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, score integer, faixa text, evidencias text[])
+ RETURNS TABLE(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, score integer, faixa text, evidencias text[], premissas_sem_dado integer)
  LANGUAGE sql
  SECURITY DEFINER
  SET search_path TO ''
@@ -1546,7 +1554,8 @@ AS $function$
       case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
            when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
            when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
-    ], null)
+    ], null),
+    v.premissas_sem_dado::int
   from futebol.fact_value_opportunities v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
