@@ -785,11 +785,14 @@ export function BancadaMercados({
             bateu; isto é o que nem deu para checar. Juntar as duas faria a
             tela dizer que a aposta é pior, quando o que existe para dizer é que
             sabemos menos sobre ela. Ver futebol-sem-dado.ts e a ADR 0003. */}
-        {avisoSemDado(valPrincipal?.premissas_sem_dado) && (
-          <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
-            {avisoSemDado(valPrincipal?.premissas_sem_dado)!.longo}
-          </div>
-        )}
+        {(() => {
+          const semDado = avisoSemDado(valPrincipal?.premissas_sem_dado);
+          return semDado ? (
+            <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
+              {semDado.longo}
+            </div>
+          ) : null;
+        })()}
 
         <div className="px-6 md:px-8 py-3.5 text-[11px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#8d8672' }}>
           {ehLinha

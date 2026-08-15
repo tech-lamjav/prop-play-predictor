@@ -96,6 +96,7 @@ function HeroStat({ label, value, dark, locked }: { label: string; value: string
 function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow; onClick: () => void; atencao?: string | null; locked?: boolean }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
+  const semDado = avisoSemDado(o.premissas_sem_dado);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
   const porque = chance != null
@@ -150,9 +151,9 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
               propósito: aquilo ali é aposta com sinal contra, isto é aposta com
               menos informação. Sem ícone de aviso, sem cor de erro, sem
               desconto do lado. Ver futebol-sem-dado.ts. */}
-          {avisoSemDado(o.premissas_sem_dado) && (
+          {semDado && (
             <p className={`mt-3 text-[11px] leading-relaxed ${d ? 'text-white/55' : 'text-ink-3'}`}>
-              {avisoSemDado(o.premissas_sem_dado)!.longo}
+              {semDado.longo}
             </p>
           )}
         </div>
@@ -187,6 +188,7 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
 function OppCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () => void; locked?: boolean }) {
   const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  const semDado = avisoSemDado(o.premissas_sem_dado);
   return (
     <button onClick={onClick} className={`${CARD} p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
       <div className="flex items-start justify-between gap-3">
@@ -207,8 +209,8 @@ function OppCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () 
         <span className="shrink-0 opacity-80">· {fmtDayTime(o.kickoff_utc)}</span>
       </div>
       {/* Ressalva discreta: fala da nossa confiança, não da qualidade da aposta. */}
-      {avisoSemDado(o.premissas_sem_dado) && (
-        <div className="text-[11px] text-ink-3 mt-1.5">{avisoSemDado(o.premissas_sem_dado)!.curto}</div>
+      {semDado && (
+        <div className="text-[11px] text-ink-3 mt-1.5">{semDado.curto}</div>
       )}
       <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
         <div>

@@ -493,7 +493,7 @@ export interface FutebolValueBoardRow {
    * nota (ADR 0003: dado faltante diagnostica, não penaliza). Ver
    * `futebol-sem-dado.ts` — nunca renderizar como penalidade.
    */
-  premissas_sem_dado: number;
+  premissas_sem_dado: number | null;
 }
 
 // ── O que foi ALERTADO no Telegram (public.daily_opportunity_picks, ver 091) ──
@@ -556,7 +556,7 @@ export interface FutebolFixtureValueRow {
    * E `avisos` carregam desconto de pontos, que este não tem.
    * Ver `futebol-sem-dado.ts`.
    */
-  premissas_sem_dado: number;
+  premissas_sem_dado: number | null;
 }
 
 export interface FutebolScorer {
