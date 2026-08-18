@@ -405,9 +405,17 @@ export default function FutebolOportunidades() {
   const days = useMemo(() => {
     const set = new Set<string>();
     allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
-    // Dias que tiveram oportunidade registrada: o mart larga dia antigo (o 22/07
-    // já não tem nenhuma linha lá), e sem isto o dia ficaria inalcançável.
-    registradasAll.forEach((a) => set.add(a.game_day));
+    // O registro do Telegram NÃO cria dia sozinho (decisão do Victor, 17/08).
+    //
+    // O snapshot do board começou em 27/07. Antes disso não existe foto do
+    // apito de nada, então esses dias entrariam só com o 1 a 3 picks que o bot
+    // mandou, sem Score, sem faixa e sem chance: uma tela de traços, com cara de
+    // defeito, para dizer "não sabemos". Melhor não oferecer o dia.
+    //
+    // Nos dias que ENTRAM (têm foto do apito), o registro continua somando
+    // linha normalmente, via dayRows. Ele não é redundante: dos 7 picks
+    // enviados de 27/07 pra cá, só 1 ainda era oportunidade no apito.
+    registradasAll.forEach((a) => { if (a.game_day >= TODAY_BRT) set.add(a.game_day); });
     const now = Date.now();
     const horizon = now + 8 * 864e5; // ~8 dias à frente
     (fixtures ?? []).forEach((f) => {
