@@ -203,6 +203,20 @@ export function useFutebolValueBoard() {
   });
 }
 
+/**
+ * Histórico PIT do board (ADR 0009). Janela em dias de Brasília — a mesma do
+ * stepper — e cache mais longo que o board: o passado não muda mais.
+ */
+export function useFutebolValueHistory(from: string, to: string) {
+  return useQuery<FutebolValueBoardRow[]>({
+    queryKey: ['futebol', 'value-history', from, to],
+    queryFn: () => futebolDataService.getValueHistory(from, to),
+    staleTime: 15 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useFutebolFixtureValue(fixtureId: number | undefined) {
   return useQuery<FutebolFixtureValueRow[]>({
     queryKey: ['futebol', 'fixture-value', fixtureId],

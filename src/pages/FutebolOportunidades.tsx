@@ -4,7 +4,7 @@ import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFutebolValueBoard, useFutebolAccess, useFutebolFixturesMulti } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
@@ -16,28 +16,22 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import {
+  SAO_PAULO_TZ, kickoffMs, brtDay as brtDayStr, brtDayFromMs,
+  historyWindow, mergeBoardAndHistory, opportunityKey,
+} from '@/utils/futebol-history';
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
-const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
-function kickoffMs(raw: string | null): number | null {
-  if (!raw) return null;
-  const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
-  const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
-  return isNaN(d.getTime()) ? null : d.getTime();
-}
 function fmtHour(raw: string | null): string {
   const ms = kickoffMs(raw);
   if (ms == null) return '—';
   return new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
 }
-function brtDayStr(raw: string | null): string | null {
-  const ms = kickoffMs(raw);
-  if (ms == null) return null;
-  return new Intl.DateTimeFormat('en-CA', { timeZone: SAO_PAULO_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
-}
-const TODAY_BRT = new Intl.DateTimeFormat('en-CA', { timeZone: SAO_PAULO_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const NOW_MS = Date.now();
+const TODAY_BRT = brtDayFromMs(NOW_MS);
+const HISTORY_WINDOW = historyWindow(TODAY_BRT);
 
 function crestInitials(name: string): string {
   return name.replace(/[^A-Za-zÀ-ÿ\s]/g, '').trim().slice(0, 3).toUpperCase() || '?';
@@ -263,7 +257,11 @@ function ResultBadge({ r }: { r: BetResult }) {
 
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
-  const { data: rows, isLoading } = useFutebolValueBoard();
+  const { data: rows, isLoading: loadingBoard } = useFutebolValueBoard();
+  // Passado = snapshot PIT (a oportunidade como foi publicada), não o board
+  // recalculado. Janela padrão de 30 dias, em dias de Brasília.
+  const { data: histRows, isLoading: loadingHist } = useFutebolValueHistory(HISTORY_WINDOW.from, HISTORY_WINDOW.to);
+  const isLoading = loadingBoard || loadingHist;
   const { data: fixtures } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: access } = useFutebolAccess();
   const locked = !access?.unlocked;
@@ -272,7 +270,13 @@ export default function FutebolOportunidades() {
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
 
-  const allRows = useMemo(() => rows ?? [], [rows]);
+  // Fonte única da tela: passado do PIT, futuro do board, dia corrente unido
+  // com dedup por opportunity_key (ver `mergeBoardAndHistory`). Tudo a jusante
+  // — stepper, contador, filtros, resumo — lê daqui sem saber da costura.
+  const allRows = useMemo(
+    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], NOW_MS),
+    [rows, histRows],
+  );
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
   const goalsMap = useMemo(() => {
@@ -287,9 +291,10 @@ export default function FutebolOportunidades() {
     return g ? settleFutebol(o.market, o.outcome, o.line_value, g.gh, g.ga) : null;
   };
 
-  // Dias no stepper: dias COM oportunidade (board = passado + presente) + dias
-  // FUTUROS com jogos agendados (fixtures, janela curta) — pra navegar pra frente
-  // mesmo antes das odds entrarem (~24h antes do jogo).
+  // Dias no stepper: dias com linha em `allRows` (passado = PIT, presente/futuro
+  // = board) + dias FUTUROS com jogos agendados (fixtures, janela curta) — pra
+  // navegar pra frente mesmo antes das odds entrarem (~24h antes do jogo).
+  // Dia passado sem nenhuma linha PIT não entra: sai do stepper, de propósito.
   const days = useMemo(() => {
     const set = new Set<string>();
     allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
@@ -373,7 +378,7 @@ export default function FutebolOportunidades() {
   }, [isPastDay, comValor, goalsMap]);
 
   const go = (id: number) => navigate(`/futebol/jogo/${id}`);
-  const key = (o: FutebolValueBoardRow) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
+  const key = (o: FutebolValueBoardRow) => opportunityKey(o);
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">

@@ -585,6 +585,23 @@ export const futebolDataService = {
     });
   },
 
+  /**
+   * Histórico point-in-time: a oportunidade como foi publicada, na versão do
+   * snapshot viva no apito (ADR 0009). Mesmo shape do board — `FutebolValueBoardRow`
+   * inteiro, sem tipo novo — porque a RPC espelha o `RETURNS TABLE` dele.
+   * `p_from`/`p_to` são dias de Brasília, iguais aos do stepper.
+   */
+  async getValueHistory(from: string, to: string): Promise<FutebolValueBoardRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_value_history', {
+        p_from: from,
+        p_to: to,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolValueBoardRow[];
+    });
+  },
+
   async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValueRow[]> {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_fixture_value', {
