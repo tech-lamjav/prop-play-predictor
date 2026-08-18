@@ -30,8 +30,9 @@ Schema **`futebol`** (RPC-only, igual ao `nba_mart`):
 
 - **22 tabelas nativas** (espelho **escalar** dos marts BQ `smartbetting-dados.futebol`): `dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities, fact_value_opportunities_hist`. Colunas `ARRAY<STRING>` (`evidencias`/`avisos`) e `RECORD` (`coverage`) **não** são materializadas — o sync as pula e as RPCs **remontam** evidências/avisos a partir dos booleans das `int_futebol_premissas_*`. `fact_value_opportunities_hist` é um **dbt snapshot** (`dbt_valid_from/dbt_valid_to/dbt_scd_id`) — append-only, não é `drop+create` de dado (só de shape).
 - **Índices** das RPCs (1 por tabela, +1 composto em odds/fixtures/standings).
+- **`get_futebol_value_history(p_from, p_to)`** (2026-08-18, ADR 0009 / issue #257): histórico **point-in-time** do board — 1 linha por `opportunity_key`, na versão do `fact_value_opportunities_hist` viva no apito (`dbt_valid_from <= kickoff < dbt_valid_to`, estrito), só jogo com apito já dado, janela em **dia de Brasília**. `RETURNS TABLE` espelha campo a campo o do board **em produção** (sem `janela_deteccao` nem `premissas_sem_dado`) — o front reusa `FutebolValueBoardRow`. Trouxe o índice `fact_fixtures_kickoff_utc_idx`. O board **não** foi alterado.
 - **Helper** `public._futebol_team_form(...)` (SECURITY DEFINER).
-- **18 RPCs** `public.get_futebol_*` (SECURITY DEFINER, `search_path=''`, lendo `futebol.*`) + grants `anon`/`authenticated`/`service_role`.
+- **19 RPCs** `public.get_futebol_*` (SECURITY DEFINER, `search_path=''`, lendo `futebol.*`) + grants `anon`/`authenticated`/`service_role`.
 - **Reverse trial:** colunas `futebol_trial_started_at` e `futebol_subscription_status` em `public.users` + `get_futebol_access()`.
 
 O `.sql` é **drop+create** nas tabelas (shape determinístico) — os **dados vêm do Cloud Run sync**, não do arquivo. As funções usam `set check_function_bodies = off` (ordem-robusto) e o arquivo roda atômico (uma transação).
@@ -84,5 +85,5 @@ No ambiente alvo (prod), depois do `.sql`:
 
 ## 6. Notas
 - **Custo/latência:** as RPCs leem `futebol.*` nativo (não o BQ). O BQ é tocado só pelo Cloud Run sync (`list_rows`, grátis) — sem o scan recorrente que o FDW cobrava.
-- **Novos mercados:** quando subir um mercado novo no BQ → adicionar a tabela em `FUTEBOL_SYNC_TABLES_ORDERED` (`data-engineering/src/config.py`) + criar a tabela nativa no `.sql` + estender as 2 RPCs de valor (join por `market` + strings de evidência) + chip no front. Mercados hoje: **1X2, Gols (O/U), Handicap, BTTS, Dupla chance**.
+- **Novos mercados:** quando subir um mercado novo no BQ → adicionar a tabela em `FUTEBOL_SYNC_TABLES_ORDERED` (`data-engineering/src/config.py`) + criar a tabela nativa no `.sql` + estender as **3** RPCs de valor (join por `market` + strings de evidência): `get_futebol_fixture_value`, `get_futebol_value_board` e `get_futebol_value_history` + chip no front. Mercados hoje: **1X2, Gols (O/U), Handicap, BTTS, Dupla chance**.
 - **Drift de schema:** o `.sql` é espelho **exato** do BQ (menos colunas complexas). Se o Mateus mudar colunas no BQ, o parity check do sync aborta — realinhar o `.sql`.

@@ -1,5 +1,6 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { useAuth } from '@/hooks/use-auth';
 import {
   futebolDataService,
@@ -215,6 +216,44 @@ export function useFutebolValueHistory(from: string, to: string) {
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+}
+
+/**
+ * As linhas da tela de Oportunidades, já costuradas: passado do snapshot PIT
+ * (a oportunidade como foi publicada), presente/futuro do board, dia corrente
+ * unido com dedup por `opportunity_key` — ver `mergeBoardAndHistory`.
+ *
+ * O relógio tem de tiquetaquear: o vencedor da dedup do dia corrente depende de
+ * "o kickoff já passou?", e nenhuma das duas queries tem `refetchInterval` ou
+ * refetch no foco. Sem o tique, quem abre a tela às 15h55 continua vendo a linha
+ * do board às 16h05 — justamente o caso que a costura existe pra acertar.
+ *
+ * `historyError` sobe pra tela: se o histórico falhar, o passado some em
+ * silêncio, que é a família de falha que a ADR 0009 existe pra matar.
+ */
+export function useFutebolOportunidadesRows(from: string, to: string) {
+  const board = useFutebolValueBoard();
+  const history = useFutebolValueHistory(from, to);
+
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const rows = useMemo(
+    () => mergeBoardAndHistory(board.data ?? [], history.data ?? [], nowMs),
+    [board.data, history.data, nowMs],
+  );
+
+  return {
+    rows,
+    // O stepper cresce pra trás quando o histórico chega: esperar as duas evita
+    // a lista de dias mudando de tamanho debaixo do cursor. As duas RPCs saem em
+    // paralelo e respondem na mesma ordem de grandeza (~40 ms), então não custa.
+    isLoading: board.isLoading || history.isLoading,
+    historyError: history.error as Error | null,
+  };
 }
 
 export function useFutebolFixtureValue(fixtureId: number | undefined) {

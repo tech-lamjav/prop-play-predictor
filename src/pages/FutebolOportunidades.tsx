@@ -4,7 +4,7 @@ import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti } from '@/hooks/use-futebol-data';
+import { useFutebolOportunidadesRows, useFutebolAccess, useFutebolFixturesMulti } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
@@ -18,7 +18,7 @@ import {
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import {
   SAO_PAULO_TZ, kickoffMs, brtDay as brtDayStr, brtDayFromMs,
-  historyWindow, mergeBoardAndHistory, opportunityKey,
+  historyWindow, opportunityKey,
 } from '@/utils/futebol-history';
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -29,8 +29,7 @@ function fmtHour(raw: string | null): string {
   if (ms == null) return '—';
   return new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
 }
-const NOW_MS = Date.now();
-const TODAY_BRT = brtDayFromMs(NOW_MS);
+const TODAY_BRT = brtDayFromMs(Date.now());
 const HISTORY_WINDOW = historyWindow(TODAY_BRT);
 
 function crestInitials(name: string): string {
@@ -257,11 +256,9 @@ function ResultBadge({ r }: { r: BetResult }) {
 
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
-  const { data: rows, isLoading: loadingBoard } = useFutebolValueBoard();
   // Passado = snapshot PIT (a oportunidade como foi publicada), não o board
-  // recalculado. Janela padrão de 30 dias, em dias de Brasília.
-  const { data: histRows, isLoading: loadingHist } = useFutebolValueHistory(HISTORY_WINDOW.from, HISTORY_WINDOW.to);
-  const isLoading = loadingBoard || loadingHist;
+  // recalculado. Presente/futuro seguem do board. Janela padrão de 30 dias.
+  const { rows: allRows, isLoading, historyError } = useFutebolOportunidadesRows(HISTORY_WINDOW.from, HISTORY_WINDOW.to);
   const { data: fixtures } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: access } = useFutebolAccess();
   const locked = !access?.unlocked;
@@ -269,14 +266,6 @@ export default function FutebolOportunidades() {
   const [faixa, setFaixa] = useState<FaixaFilter>('all');
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
-
-  // Fonte única da tela: passado do PIT, futuro do board, dia corrente unido
-  // com dedup por opportunity_key (ver `mergeBoardAndHistory`). Tudo a jusante
-  // — stepper, contador, filtros, resumo — lê daqui sem saber da costura.
-  const allRows = useMemo(
-    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], NOW_MS),
-    [rows, histRows],
-  );
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
   const goalsMap = useMemo(() => {
@@ -378,7 +367,7 @@ export default function FutebolOportunidades() {
   }, [isPastDay, comValor, goalsMap]);
 
   const go = (id: number) => navigate(`/futebol/jogo/${id}`);
-  const key = (o: FutebolValueBoardRow) => opportunityKey(o);
+  const key = opportunityKey;
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
@@ -440,12 +429,14 @@ export default function FutebolOportunidades() {
         ) : (isPastDay ? comValor.length === 0 : bestRows.length === 0) ? (
           <div className="rounded-rebrand-md bg-white border border-line p-6 text-center">
             <p className="text-sm text-ink-2">
-              {isPastDay ? 'Nenhuma oportunidade com valor nesse dia.'
+              {historyError ? 'Não foi possível carregar o histórico.'
+                : isPastDay ? 'Nenhuma oportunidade com valor nesse dia.'
                 : isFutureDay ? 'Ainda sem oportunidades para este dia.'
                 : 'Nenhum jogo com odds nesse filtro.'}
             </p>
             <p className="text-xs text-ink-3 mt-1">
-              {isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
+              {historyError ? 'O passado vem de uma fonte separada da tela de hoje — tente recarregar em instantes.'
+                : isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
                 : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
                 : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
             </p>
