@@ -4,7 +4,7 @@ import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFutebolValueBoard, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
@@ -308,14 +308,6 @@ function FaixaKpi({ n, label, tone }: { n: number; label: string; tone: 'alta' |
   );
 }
 
-const Regua = () => (
-  <div className="px-5 py-2.5 flex items-center gap-2 bg-canvas-2 border-t border-line">
-    <span className="flex-1 h-px bg-line" />
-    <span className="shrink-0 px-2 text-[11px] text-ink-3">abaixo daqui: sem valor claro</span>
-    <span className="flex-1 h-px bg-line" />
-  </div>
-);
-
 // Selo de resultado (histórico): Bateu / Anulada / Não bateu (verde/cinza/vermelho).
 function ResultBadge({ r }: { r: BetResult }) {
   const b = resultBadge(r);
@@ -342,7 +334,35 @@ export default function FutebolOportunidades() {
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
 
-  const allRows = useMemo(() => rows ?? [], [rows]);
+  // ── Board (presente e futuro) + histórico (passado, na foto do apito) ─────
+  // As duas fontes viram UMA lista aqui, de uma vez, em vez de cada consumidor
+  // (days, compsOnDay, dayRows, countByDay) ter que saber de onde veio a linha.
+  // As duas RPCs devolvem as mesmas colunas na mesma ordem de propósito.
+  //
+  // Por que o passado não pode vir do board: ele é reconstruído do zero a cada
+  // execução e não expurga jogo encerrado, então a linha de um jogo de junho
+  // segue sendo reavaliada com o dado de HOJE. Medido em produção: 97% das
+  // versões nasceram depois do apito, em média 668h depois. Ler o passado pelo
+  // board mostra a nota recalculada semanas depois, não a que foi publicada, e
+  // ainda contabiliza acerto de linha que ninguém podia ter apostado.
+  // Ver migration 101 e a ADR 0009 do analytics-engineering.
+  const { data: histRows } = useFutebolValueHistory();
+  const allRows = useMemo<FutebolValueBoardRow[]>(() => {
+    // O corte por dia aqui é o que faz a tela parar de mentir ANTES de o mart
+    // parar de emitir (o expurgo é o passo 3). Continua correto depois dele.
+    const doBoard = (rows ?? []).filter((r) => {
+      const d = brtDayStr(r.kickoff_utc);
+      return d != null && d >= TODAY_BRT;
+    });
+    // Hoje as duas fontes valem ao mesmo tempo. Depois do expurgo, o jogo sai do
+    // board no apito e só o histórico tem a linha: sem esta união, o jogo das
+    // 16h sumiria da tela às 16h05 e só reapareceria amanhã.
+    const jaNoBoard = new Set(doBoard.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)));
+    const doHistorico = (histRows ?? []).filter(
+      (r) => !jaNoBoard.has(oppKey(r.fixture_id, r.market, r.outcome, r.line_value))
+    );
+    return [...doBoard, ...doHistorico];
+  }, [rows, histRows]);
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
   const goalsMap = useMemo(() => {
@@ -385,9 +405,17 @@ export default function FutebolOportunidades() {
   const days = useMemo(() => {
     const set = new Set<string>();
     allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
-    // Dias que tiveram oportunidade registrada: o mart larga dia antigo (o 22/07
-    // já não tem nenhuma linha lá), e sem isto o dia ficaria inalcançável.
-    registradasAll.forEach((a) => set.add(a.game_day));
+    // O registro do Telegram NÃO cria dia sozinho (decisão do Victor, 17/08).
+    //
+    // O snapshot do board começou em 27/07. Antes disso não existe foto do
+    // apito de nada, então esses dias entrariam só com o 1 a 3 picks que o bot
+    // mandou, sem Score, sem faixa e sem chance: uma tela de traços, com cara de
+    // defeito, para dizer "não sabemos". Melhor não oferecer o dia.
+    //
+    // Nos dias que ENTRAM (têm foto do apito), o registro continua somando
+    // linha normalmente, via dayRows. Ele não é redundante: dos 7 picks
+    // enviados de 27/07 pra cá, só 1 ainda era oportunidade no apito.
+    registradasAll.forEach((a) => { if (a.game_day >= TODAY_BRT) set.add(a.game_day); });
     const now = Date.now();
     const horizon = now + 8 * 864e5; // ~8 dias à frente
     (fixtures ?? []).forEach((f) => {
@@ -458,8 +486,12 @@ export default function FutebolOportunidades() {
   );
   const bestRows: OppLike[] = isDemo ? demoFutebolBoard : realBestRows;
   // Registro sem Score conta como com valor: foi enviado acima do corte.
+  //
+  // Não existe o "sem valor claro" como contraparte, e não é esquecimento: o
+  // gate do mart é score >= 40 e o SCORE_MEDIA também é 40, então a lista de
+  // score < 40 era sempre vazia. A seção inteira era código morto e saiu junto
+  // com este PR (achado do Matheus, 17/08, encaminhado para a [E]).
   const comValor = bestRows.filter((o) => o.score == null || o.score >= SCORE_MEDIA);
-  const semValor = bestRows.filter((o) => o.score != null && o.score < SCORE_MEDIA);
   const nAlta = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'alta').length;
   const nMedia = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
   const nBaixa = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;
@@ -604,8 +636,6 @@ export default function FutebolOportunidades() {
                   </div>
                 );
               })}
-              {!isPastDay && semValor.length > 0 && <Regua />}
-              {!isPastDay && semValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} muted locked={locked} />)}
             </div>
 
             {/* Cards (mobile) */}
@@ -620,12 +650,6 @@ export default function FutebolOportunidades() {
                   </div>
                 );
               })}
-              {!isPastDay && semValor.length > 0 && (
-                <div className="flex items-center gap-2 py-1">
-                  <span className="flex-1 h-px bg-line" /><span className="text-[11px] text-ink-3">sem valor claro</span><span className="flex-1 h-px bg-line" />
-                </div>
-              )}
-              {!isPastDay && semValor.map((o) => <div key={key(o)} className="opacity-60"><OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} /></div>)}
             </div>
           </div>
         )}

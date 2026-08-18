@@ -7,7 +7,7 @@ import { useFutebolFixturePremissas } from '@/hooks/use-futebol-data';
 import type { FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
 import { melhorLeitura, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-leitura';
 import { outcomeLabel, contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
-import { isFinished } from '@/utils/futebol-datas';
+import { isFinished, isLive } from '@/utils/futebol-datas';
 import type { JogoInfo } from './JogoResumo';
 
 /**
@@ -74,6 +74,12 @@ export function FaixaPartida({
   const resumos = useMemo(() => resumoDosMercados(rows, valueRows), [rows, valueRows]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
+  // A faixa conhecia dois estados, encerrado e "não começou", então o jogo EM
+  // ANDAMENTO caía no segundo e a tela dizia "Não começou" com a bola rolando.
+  // Passou a importar mais com a migration 101: a partir dela, o valor exibido
+  // durante o jogo é a FOTO DO APITO, e sem dizer que já começou o leitor lê um
+  // preço congelado como se ainda desse para pegar.
+  const rolando = isLive(jogo.statusShort);
 
   const pick = top
     ? outcomeLabel(top.mercado.slug, top.candidato.outcome, jogo.home, jogo.away, top.candidato.line_value)
@@ -83,16 +89,23 @@ export function FaixaPartida({
 
   const dia = (
     <div className="text-center px-1 shrink-0">
-      {fim ? (
+      {fim || rolando ? (
         <div className="tabular-nums text-[22px] md:text-[26px] font-bold leading-none text-white">
           {jogo.goalsHome ?? '-'} <span className="text-white/40">:</span> {jogo.goalsAway ?? '-'}
         </div>
       ) : (
         <div className="tabular-nums text-[15px] md:text-[17px] font-bold leading-none text-white whitespace-nowrap">{quando}</div>
       )}
-      <div className="mt-1.5 text-[9px] md:text-[9.5px] uppercase tracking-[0.1em] text-white/45">
-        {fim ? 'Encerrado' : 'Não começou'}
-      </div>
+      {rolando ? (
+        <div className="mt-1.5 inline-flex items-center gap-1.5 text-[9px] md:text-[9.5px] uppercase tracking-[0.1em] text-white/75">
+          <span className="w-1.5 h-1.5 rounded-full bg-status-danger" aria-hidden />
+          Em andamento
+        </div>
+      ) : (
+        <div className="mt-1.5 text-[9px] md:text-[9.5px] uppercase tracking-[0.1em] text-white/45">
+          {fim ? 'Encerrado' : 'Não começou'}
+        </div>
+      )}
     </div>
   );
 

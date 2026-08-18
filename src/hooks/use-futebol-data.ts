@@ -293,6 +293,28 @@ export function useFutebolValueBoard() {
 }
 
 /**
+ * O passado, na foto do apito. Janela fixa de 30 dias, que é o que o stepper
+ * navega.
+ *
+ * `staleTime` alto de propósito, e maior que o do board: isto é passado, então
+ * só muda quando um jogo novo termina. O board tem 5 minutos porque odd mexe.
+ *
+ * Ver migration 101.
+ */
+export function useFutebolValueHistory(dias = 30) {
+  const hoje = new Date();
+  const de = new Date(hoje.getTime() - dias * 864e5);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return useQuery<FutebolValueBoardRow[]>({
+    queryKey: ['futebol', 'value-history', dias, iso(hoje)],
+    queryFn: () => futebolDataService.getValueHistory(iso(de), iso(hoje)),
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
  * Tudo que foi alertado no Telegram nos últimos 90 dias (poucas linhas: 1 a 3
  * picks por dia). Buscado de uma vez porque o seletor de dias precisa saber
  * quais dias tiveram alerta, inclusive os que o mart já não guarda. Ver 091.
