@@ -830,6 +830,35 @@ export const futebolDataService = {
   },
 
   /**
+   * O board de um período JÁ PASSADO, na versão que estava viva NO APITO.
+   *
+   * Não é o mesmo dado que `getValueBoard` filtrado por data, e a diferença é o
+   * ponto inteiro desta função. O board é reconstruído do zero a cada execução e
+   * não expurga jogo encerrado, então a linha de um jogo de junho continua sendo
+   * reavaliada com o dado de hoje. Medido em produção: 97% das versões do
+   * histórico nasceram DEPOIS do apito, em média 668 horas depois.
+   *
+   * Ou seja, ler o passado pelo board mostra a nota recalculada semanas depois,
+   * e não a que foi publicada. Isto aqui lê a foto do apito. Ver migration 101 e
+   * a ADR 0009 do `analytics-engineering`.
+   *
+   * Devolve o MESMO tipo do board de propósito: as duas RPCs têm as mesmas
+   * colunas na mesma ordem, então a tela não precisa saber de onde veio a linha.
+   *
+   * Datas em `YYYY-MM-DD`, dia BRT, inclusivas nas duas pontas.
+   */
+  async getValueHistory(from: string, to: string): Promise<FutebolValueBoardRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_value_history', {
+        p_from: from,
+        p_to: to,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolValueBoardRow[];
+    });
+  },
+
+  /**
    * O que foi ALERTADO no Telegram nos últimos 90 dias (dia do jogo, BRT).
    * Sem dia = todos, porque o front precisa saber QUAIS dias tiveram alerta pra
    * montar o seletor de dias (o mart não guarda dia antigo). São poucas linhas.
