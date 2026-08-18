@@ -308,9 +308,21 @@ export default function FutebolJogo() {
   // "Já começou" inclui o jogo em andamento, não só o encerrado: depois do
   // apito não dá para prometer que a escalação "sai daqui a pouco".
   const jogoComecou = finished || isLive(fixture?.status_short);
-  // jogo encerrado/iniciado não é mais oportunidade: esconde o "O que olhar" (vira só descritivo)
-  const showValue = !finished && !!valueRows && valueRows.length > 0;
-  const hasPlayed = finished && !!valueRows && valueRows.length > 0; // registro pós-jogo
+  // Jogo encerrado OU em andamento não é mais oportunidade. O corte é
+  // `jogoComecou`, não `finished`, e isso passou a importar de verdade com a
+  // migration 101: depois dela, a get_futebol_fixture_value devolve a FOTO DO
+  // APITO assim que o kickoff passa. Cortando só por `finished`, as ~2h de bola
+  // rolando ofereceriam um preço congelado de antes do jogo como se ainda
+  // valesse. O comentário aqui já dizia "encerrado/iniciado" desde antes; era o
+  // código que olhava só metade.
+  //
+  // O `hasPlayed` que vivia aqui foi removido: ele desenhava a grade de duas
+  // colunas do pós-jogo até o d939e0c (13/08) reorganizar a tela em torno das
+  // premissas, e ficou órfão desde então, declarado e nunca usado. Quem exibe o
+  // valor de um jogo que já começou hoje é a FaixaPartida e a BancadaMercados,
+  // pelo `valueRows` — que a 101 passa a alimentar com a foto do apito, sem
+  // precisar de mudança nelas.
+  const showValue = !jogoComecou && !!valueRows && valueRows.length > 0;
 
   const playerStats = extras?.player_stats || [];
   const statsById = new Map<number, FutebolPlayerStat>(
