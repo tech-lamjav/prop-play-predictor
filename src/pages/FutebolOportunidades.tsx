@@ -412,6 +412,19 @@ export default function FutebolOportunidades() {
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
         <FutebolAccessBanner access={access} />
 
+        {/* O histórico vem de uma RPC separada da tela de hoje. Se ela falha, os
+            dias passados somem do stepper e a tela de hoje segue normal — sumiço
+            mudo, que é a família de falha que a ADR 0009 existe pra matar. Por
+            isso o aviso é incondicional, não só no estado vazio. */}
+        {historyError && (
+          <div className="rounded-rebrand-md px-5 py-3 flex items-start gap-3" style={{ background: '#fbe3e8', border: '1px solid #f5b8c4' }}>
+            <span className="mt-0.5 shrink-0" style={{ color: '#be123c' }}><AlertTriangle className="w-4 h-4" /></span>
+            <div className="text-[12px] leading-relaxed" style={{ color: '#7f1d2e' }}>
+              <span className="font-semibold">Histórico indisponível.</span> Os dias já jogados não estão sendo exibidos — o que você vê abaixo é só o de hoje em diante. Tente recarregar em instantes.
+            </div>
+          </div>
+        )}
+
         {/* Filtros — desktop: 1 linha (Mercado à esq · dropdowns à dir); mobile: 2 linhas */}
         <div className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
           <MarketChips value={mercado} onChange={setMercado} />
