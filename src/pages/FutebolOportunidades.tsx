@@ -212,7 +212,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
   o: OppLike; onClick: () => void; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
-  const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
+  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   const hasScore = homeGoals != null && awayGoals != null;
@@ -257,7 +257,7 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
   o: OppLike; onClick: () => void; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
-  const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
+  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result;
   const hasScore = homeGoals != null && awayGoals != null;
@@ -383,7 +383,7 @@ export default function FutebolOportunidades() {
   const resultOf = (o: OppLike): BetResult | null => {
     if (!FINISHED_STATUS.has(o.status_short ?? '')) return null;
     const g = goalsMap.get(o.fixture_id);
-    return g ? settleFutebol(o.market, o.outcome, o.line_value, g.gh, g.ga) : null;
+    return g ? settleFutebol(o, g.gh, g.ga) : null;
   };
 
   // ── Oportunidades REGISTRADAS ─────────────────────────────────────────────

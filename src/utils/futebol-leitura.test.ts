@@ -133,7 +133,7 @@ describe('resumoDosMercados com a saída clicada', () => {
   const doisPrecos = [value('Over', 1.5, 54), value('Under', 4.5, 61)];
 
   it('a saída clicada ganha do maior Score do mercado', () => {
-    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line: 1.5 }));
+    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line_value: 1.5 }));
     expect(g.candidato.outcome).toBe('Over');
     expect(g.value?.score).toBe(54);
   });
@@ -145,12 +145,12 @@ describe('resumoDosMercados com a saída clicada', () => {
   });
 
   it('saída clicada de OUTRO mercado não mexe neste', () => {
-    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'match_winner', outcome: 'Home', line: null }));
+    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'match_winner', outcome: 'Home', line_value: null }));
     expect(g.candidato.outcome).toBe('Under');
   });
 
   it('link apontando para saída que não existe mais cai no maior Score, não em nada', () => {
-    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line: 9.5 }));
+    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line_value: 9.5 }));
     expect(g.candidato.outcome).toBe('Under');
     expect(g.value?.score).toBe(61);
   });

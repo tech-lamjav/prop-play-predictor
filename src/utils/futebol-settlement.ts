@@ -1,6 +1,7 @@
 // ============================================================
 // futebol-settlement.ts — liquida uma oportunidade pelo placar final
 // ============================================================
+import type { Saida } from '@/utils/futebol-saida';
 // Usado no histórico da tela de Oportunidades ("bateu / não bateu"). O placar
 // vem de fact_fixtures (goals_home/goals_away). Convenções (espelham pickLabel):
 //  - asian_handicap / goals_over_under: line_value na ótica do MANDANTE.
@@ -25,12 +26,11 @@ function mapAsian(dRaw: number): BetResult {
  * mercado é desconhecido.
  */
 export function settleFutebol(
-  market: string,
-  outcome: string,
-  line: number | null,
+  s: Saida,
   goalsHome: number | null | undefined,
   goalsAway: number | null | undefined,
 ): BetResult | null {
+  const { market, outcome, line_value: line } = s;
   if (goalsHome == null || goalsAway == null) return null;
   const diff = goalsHome - goalsAway; // ótica do mandante
   const total = goalsHome + goalsAway;

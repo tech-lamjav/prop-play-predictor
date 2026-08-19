@@ -3,6 +3,7 @@ import { Check, ChevronDown, Minus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixturePremissas, useFutebolFixtureNumeros } from '@/hooks/use-futebol-data';
 import type { FutebolFixturePremissas, FutebolFixtureNumeros } from '@/services/futebol-data.service';
+import type { Saida } from '@/utils/futebol-saida';
 import {
   MERCADOS,
   PREMISSAS_OCULTAS,
@@ -63,8 +64,8 @@ function GoalDistChart({ lh, la }: { lh: number; la: number }) {
   );
 }
 
-function SeloResultado({ market, outcome, line, placar }: { market: string; outcome: string; line: number | null; placar: PlacarFinal }) {
-  const r = settleFutebol(market, outcome, line, placar.home, placar.away);
+function SeloResultado({ saida, placar }: { saida: Saida; placar: PlacarFinal }) {
+  const r = settleFutebol(saida, placar.home, placar.away);
   if (!r) return null;
   const b = resultBadge(r);
   const cls =
@@ -283,11 +284,11 @@ function PainelMercado({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-3">
-              {outcomeLabel(mercado.slug, atual.outcome, home, away, atual.line_value)}
+              {outcomeLabel(atual, home, away)}
             </span>
             {/* Jogo encerrado: o que o mapa apontava, liquidado contra o placar. */}
             {placar && (
-              <SeloResultado market={mercado.slug} outcome={atual.outcome} line={atual.line_value} placar={placar} />
+              <SeloResultado saida={atual} placar={placar} />
             )}
           </div>
           <p
@@ -336,7 +337,7 @@ function PainelMercado({
             const ativo = chave(atual) === k;
             const n = contaQueValem(mercado.slug, r.acesas);
             // Jogo encerrado: cada saída ganha o ponto do que aconteceu.
-            const res = placar ? settleFutebol(mercado.slug, r.outcome, r.line_value, placar.home, placar.away) : null;
+            const res = placar ? settleFutebol(r, placar.home, placar.away) : null;
             return (
               <button
                 key={k}
@@ -357,7 +358,7 @@ function PainelMercado({
                     }}
                   />
                 )}
-                {outcomeLabel(mercado.slug, r.outcome, home, away, r.line_value)}
+                {outcomeLabel(r, home, away)}
                 {n > 0 && <span className={ativo ? 'text-canvas/70' : 'text-forest'}> · {n}</span>}
               </button>
             );
@@ -494,7 +495,7 @@ export function MapaPremissas({
         x.c != null && contaQueValem(x.slug, x.c.acesas) >= PORTA_PREMISSAS,
       );
     const liquidados = apontados
-      .map((x) => settleFutebol(x.slug, x.c.outcome, x.c.line_value, placar.home, placar.away))
+      .map((x) => settleFutebol(x.c, placar.home, placar.away))
       .filter((r): r is NonNullable<typeof r> => r != null);
     if (!liquidados.length) return null;
     return { total: liquidados.length, hits: liquidados.filter(isHit).length };

@@ -112,15 +112,9 @@ export function JogoResumoPanel({
           )
         : null) ?? resumos.find((r) => r.mercado.slug === mercadoLeitura)?.candidato ?? null;
   const pick = best
-    ? pickLabel(best.market, best.outcome, best.line_value, fixture.home_team_name, fixture.away_team_name)
+    ? pickLabel(best, fixture.home_team_name, fixture.away_team_name)
     : topo
-      ? pickLabel(
-          topo.mercado.slug,
-          topo.candidato.outcome,
-          topo.candidato.line_value,
-          fixture.home_team_name,
-          fixture.away_team_name,
-        )
+      ? pickLabel(topo.candidato, fixture.home_team_name, fixture.away_team_name)
       : null;
 
   const temLeitura = !!best || (topo != null && topo.nValem > 0);
@@ -172,7 +166,7 @@ export function JogoResumoPanel({
 
   const desfecho =
     fim && cand && mercadoLeitura
-      ? settleFutebol(mercadoLeitura, cand.outcome, cand.line_value, fixture.goals_home, fixture.goals_away)
+      ? settleFutebol(cand, fixture.goals_home, fixture.goals_away)
       : null;
 
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;

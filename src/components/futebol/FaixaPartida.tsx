@@ -85,7 +85,7 @@ export function FaixaPartida({
   const rolando = isLive(jogo.statusShort);
 
   const pick = top
-    ? outcomeLabel(top.mercado.slug, top.candidato.outcome, jogo.home, jogo.away, top.candidato.line_value)
+    ? outcomeLabel(top.candidato, jogo.home, jogo.away)
     : null;
   const v = top?.value ?? null;
   const nValem = top ? contaQueValem(top.mercado.slug, top.candidato.acesas) : 0;

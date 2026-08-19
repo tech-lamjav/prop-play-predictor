@@ -46,7 +46,11 @@ export function RegistrarApostaModal({
     }
   }, [open, draft]);
 
-  const pick = draft ? pickLabel(draft.market, draft.outcome, draft.lineValue, draft.homeName, draft.awayName) : '';
+  // O draft veio do formulario com `lineValue` em camelCase, entao a saida se monta
+  // aqui. E o unico lugar em que ela nao chega pronta da RPC.
+  const pick = draft
+    ? pickLabel({ market: draft.market, outcome: draft.outcome, line_value: draft.lineValue }, draft.homeName, draft.awayName)
+    : '';
   const match = draft ? `${draft.homeName} x ${draft.awayName}` : '';
   const mkt = draft ? marketLabel(draft.market) : '';
   const league = draft ? competitionLabel(draft.competition) : '';

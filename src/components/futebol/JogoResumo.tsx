@@ -74,7 +74,7 @@ export function HeroLeitura({
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
   if (!top) return null;
   const lado = ladoDaSaida(top.mercado.slug, top.candidato.outcome);
-  const pick = outcomeLabel(top.mercado.slug, top.candidato.outcome, jogo.home, jogo.away, top.candidato.line_value);
+  const pick = outcomeLabel(top.candidato, jogo.home, jogo.away);
 
   // Os porquês: a evidência das acesas de maior peso, no máximo 3.
   const porques = top.candidato.acesas
@@ -88,7 +88,7 @@ export function HeroLeitura({
     });
 
   const fim = isFinished(jogo.statusShort);
-  const res = fim ? settleFutebol(top.mercado.slug, top.candidato.outcome, top.candidato.line_value, jogo.goalsHome, jogo.goalsAway) : null;
+  const res = fim ? settleFutebol(top.candidato, jogo.goalsHome, jogo.goalsAway) : null;
 
   return (
     <div
@@ -230,7 +230,7 @@ export function JogoResumo({
     if (!placar || !resumos.length) return null;
     const apontados = resumos.filter((r) => r.passa);
     const liq = apontados
-      .map((r) => settleFutebol(r.mercado.slug, r.candidato.outcome, r.candidato.line_value, placar.home, placar.away))
+      .map((r) => settleFutebol(r.candidato, placar.home, placar.away))
       .filter((x): x is NonNullable<typeof x> => x != null);
     if (!liq.length) return null;
     const hits = liq.filter(isHit).length;
@@ -314,10 +314,10 @@ export function JogoResumo({
             <span className="text-[11.5px] text-ink-3">clique para abrir a bancada</span>
           </div>
           {resumos.map((r) => {
-            const pick = outcomeLabel(r.mercado.slug, r.candidato.outcome, jogo.home, jogo.away, r.candidato.line_value);
+            const pick = outcomeLabel(r.candidato, jogo.home, jogo.away);
             const badge = scoreBadge(r);
             const res = placar
-              ? settleFutebol(r.mercado.slug, r.candidato.outcome, r.candidato.line_value, placar.home, placar.away)
+              ? settleFutebol(r.candidato, placar.home, placar.away)
               : null;
             return (
               <button

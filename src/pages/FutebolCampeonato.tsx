@@ -220,7 +220,7 @@ export default function FutebolCampeonato() {
     if (encerrada) {
       const bateram = comLeitura.filter((f) => {
         const b = bestByFixture.get(f.fixture_id)!;
-        const r = settleFutebol(b.market, b.outcome, b.line_value, f.goals_home, f.goals_away);
+        const r = settleFutebol(b, f.goals_home, f.goals_away);
         return r != null && isHit(r);
       }).length;
       return { rotulo, valor: `${bateram}/${comLeitura.length}`, texto: 'leituras bateram' };
