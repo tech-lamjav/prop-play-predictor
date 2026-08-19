@@ -161,12 +161,25 @@ export function FaixaPartida({
 
         {/* A melhor leitura, na mesma faixa. Sem preço coletado, o número grande é
             quantas premissas sustentam, que é o que existe para afirmar. */}
-        <button
-          type="button"
-          onClick={() => top && onAbrirMercado(top.mercado.slug)}
-          className="flex items-center gap-5 text-left bg-transparent border-0 p-0 cursor-pointer min-w-0"
-        >
-          <div className="flex-1 min-w-0">
+        {/* A área clicável é o TEXTO da leitura, não a faixa inteira.
+
+            Era um <button> só, envolvendo tudo, com o botão de registrar dentro:
+            HTML não permite botão dentro de botão, e o navegador não recusa, ele
+            reescreve a árvore sozinho na hora de ler a página, tirando o de dentro
+            de dentro do de fora. Ou seja, o que ia para a tela não era o que estava
+            escrito aqui, e cada navegador reescrevia do seu jeito. Para leitor de
+            tela e teclado, dois controles um dentro do outro não têm resposta: não
+            dá para dizer qual deles está em foco.
+
+            Funcionava por acaso, porque o CTA chama stopPropagation. O Score ficou
+            fora da área clicável de propósito: ele é leitura, não controle, e é o
+            vizinho do botão de registrar. */}
+        <div className="flex items-center gap-5 min-w-0">
+          <button
+            type="button"
+            onClick={() => top && onAbrirMercado(top.mercado.slug)}
+            className="flex-1 min-w-0 text-left bg-transparent border-0 p-0 cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08321f]"
+          >
             <div className="text-[10px] uppercase tracking-[0.16em] text-white/45">Melhor leitura do jogo</div>
             {/* Sem truncate: "Mais de 1,75 g…" escondia justamente a linha da
                 leitura. Aqui ela quebra em duas linhas. */}
@@ -203,7 +216,7 @@ export function FaixaPartida({
                 perto do jogo
               </div>
             )}
-          </div>
+          </button>
 
           <div className="text-center shrink-0">
             <div className="tabular-nums font-bold leading-none tracking-[-0.04em] text-[44px]" style={{ color: '#fbbf24' }}>
@@ -233,7 +246,7 @@ export function FaixaPartida({
               <div className="mt-2 text-[10px] text-white/45 max-w-[130px] mx-auto leading-snug">sem preço coletado</div>
             )}
           </div>
-        </button>
+        </div>
       </div>
     </div>
   );
