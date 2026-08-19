@@ -1051,7 +1051,7 @@ AS $function$
     from futebol.fact_value_opportunities
     where fixture_id = p_fixture_id
       and exists (select 1 from futebol.fact_fixtures fx
-                   where fx.fixture_id = p_fixture_id and fx.kickoff_utc > now())
+                   where fx.fixture_id = p_fixture_id and fx.kickoff_utc > (now() at time zone 'UTC'))
     union all
     select fixture_id, market, outcome, line_value, competition, season, edge, pts_valor,
            pts_premissas, pts_corroboracao, penalidades, score, faixa, best_odd, best_book,
@@ -1062,7 +1062,7 @@ AS $function$
     where h.fixture_id = p_fixture_id
       and exists (select 1 from futebol.fact_fixtures fx
                    where fx.fixture_id = p_fixture_id
-                     and fx.kickoff_utc <= now()
+                     and fx.kickoff_utc <= (now() at time zone 'UTC')
                      and h.dbt_valid_from <= fx.kickoff_utc
                      and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to))
   ),
@@ -1425,7 +1425,11 @@ end; $function$
 ;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_standings_official(p_competition text, p_season bigint)
- RETURNS TABLE(team_id bigint, team_name text, rank bigint, points bigint, played bigint, wins bigint, draws bigint, loses bigint, goals_for bigint, goals_against bigint, goals_diff bigint, rank_description text)
+-- migration 096: ganhou `group_name`, sem o qual a tabela de fase de grupos
+-- (Libertadores, Sul-Americana, Champions) vinha embaralhada num bloco só. Este
+-- arquivo estava no formato PRÉ-096 e devolvia 12 colunas onde o front espera
+-- 13 — mais uma da dívida da #250 achada no code review do PR #261.
+ RETURNS TABLE(team_id bigint, team_name text, rank bigint, points bigint, played bigint, wins bigint, draws bigint, loses bigint, goals_for bigint, goals_against bigint, goals_diff bigint, rank_description text, group_name text)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
@@ -1439,10 +1443,11 @@ begin
   return query
   select s.team_id, s.team_name, s.rank, s.points,
          s.played_total, s.wins_total, s.draws_total, s.loses_total,
-         s.goals_for_total, s.goals_against_total, s.goals_diff, s.rank_description
+         s.goals_for_total, s.goals_against_total, s.goals_diff, s.rank_description,
+         s.group_name
   from futebol.fact_standings_snapshot s
   where s.competition = p_competition and s.season = p_season and s.snapshot_date = v_date
-  order by s.rank;
+  order by s.group_name, s.rank;
 end; $function$
 
 ;
@@ -1770,6 +1775,440 @@ $function$
 
 ;
 
+-- ── 5c. Agenda por dia, catálogo e detalhe do jogo (migrations 091 a 096) ────
+-- ⚠️ Estas oito estavam FALTANDO neste arquivo, e é a dívida da #250 no seu
+-- tamanho real: o catch-up anterior (PR #248) só cobriu as colunas novas, e as
+-- funções que as migrations 091-096 criaram nunca entraram. Uma provisão nova a
+-- partir deste arquivo subia um app cujo calendário, agenda, mapa de premissas e
+-- números do jogo respondiam 404 — sem o parity check reclamar de nada, porque
+-- ele confere TABELA e não FUNÇÃO.
+--
+-- Achado pelo code review do PR #261, não por incidente. A seção 8 no fim deste
+-- arquivo passa a existir para que a próxima divergência apareça sozinha.
+
+CREATE OR REPLACE FUNCTION public.futebol_dia_brt(p_kickoff_utc timestamp without time zone)
+ RETURNS date
+ LANGUAGE sql
+ IMMUTABLE
+AS $function$
+  select (p_kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_alerted_picks(p_day date DEFAULT NULL::date)
+ RETURNS TABLE(game_day date, fixture_id bigint, market text, outcome text, line_value double precision, bet_description text, betting_market text, league text, match_description text, odds numeric, janela_usada text, score integer, faixa text, edge double precision, prob_justa_fechamento double precision, sent_at timestamp with time zone)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select coalesce((p.match_date at time zone 'America/Sao_Paulo')::date, p.sent_date) as game_day,
+         p.fixture_id, p.market, p.outcome, p.line_value,
+         p.bet_description, p.betting_market, p.league, p.match_description, p.odds,
+         p.janela_usada, p.score, p.faixa, p.edge, p.prob_justa_fechamento, p.created_at
+  from public.daily_opportunity_picks p
+  where p.sport = 'Futebol'
+    and coalesce((p.match_date at time zone 'America/Sao_Paulo')::date, p.sent_date)
+        >= (now() at time zone 'America/Sao_Paulo')::date - 90
+    and (p_day is null
+         or coalesce((p.match_date at time zone 'America/Sao_Paulo')::date, p.sent_date) = p_day)
+  order by game_day, p.created_at;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_competitions()
+ RETURNS TABLE(competition text, season bigint, jogos bigint, primeiro date, ultimo date)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select f.competition,
+         f.season,
+         count(*)                                  as jogos,
+         min(public.futebol_dia_brt(f.kickoff_utc)) as primeiro,
+         max(public.futebol_dia_brt(f.kickoff_utc)) as ultimo
+  from futebol.fact_fixtures f
+  where f.kickoff_utc is not null
+  group by f.competition, f.season
+  order by f.season desc, f.competition;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_days(p_from date, p_to date)
+ RETURNS TABLE(day_brt date, jogos bigint, ligas bigint)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select public.futebol_dia_brt(f.kickoff_utc) as day_brt,
+         count(*)                              as jogos,
+         count(distinct f.competition)         as ligas
+  from futebol.fact_fixtures f
+  where f.kickoff_utc is not null
+    and public.futebol_dia_brt(f.kickoff_utc) between p_from and p_to
+  group by 1
+  order by 1;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_fixtures_by_day(p_day date, p_competitions text[] DEFAULT NULL::text[])
+ RETURNS TABLE(fixture_id bigint, competition text, season bigint, day_brt date, round text, kickoff_utc timestamp without time zone, date_utc date, status_short text, status_long text, home_team_id bigint, home_team_name text, home_team_logo text, away_team_id bigint, away_team_name text, away_team_logo text, goals_home bigint, goals_away bigint)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select f.fixture_id, f.competition, f.season,
+         public.futebol_dia_brt(f.kickoff_utc),
+         f.round, f.kickoff_utc, f.date_utc,
+         f.status_short, f.status_long,
+         f.home_team_id, f.home_team_name, ht.team_logo_url,
+         f.away_team_id, f.away_team_name, at2.team_logo_url,
+         f.goals_home, f.goals_away
+  from futebol.fact_fixtures f
+  left join futebol.dim_teams ht  on ht.team_id  = f.home_team_id
+  left join futebol.dim_teams at2 on at2.team_id = f.away_team_id
+  where f.kickoff_utc is not null
+    and public.futebol_dia_brt(f.kickoff_utc) = p_day
+    and (p_competitions is null or f.competition = any(p_competitions))
+  order by f.kickoff_utc, f.competition, f.fixture_id;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_premissas(p_fixture_id bigint)
+ RETURNS TABLE(market text, outcome text, line_value double precision, pts_premissas bigint, penalidades_pts bigint, acesas text[], apagadas text[], penalidades text[])
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select 'match_winner'::text,
+         p.outcome,
+         null::double precision,
+         p.pts_premissas,
+         p.penalidades_1x2_pts,
+         array_remove(array[
+           case when p.forma                 then 'forma' end,
+           case when p.mando                 then 'mando' end,
+           case when p.superioridade_tabela  then 'superioridade_tabela' end,
+           case when p.forca_mismatch        then 'forca_mismatch' end,
+           case when p.superioridade_xg      then 'superioridade_xg' end,
+           case when p.h2h_favoravel         then 'h2h_favoravel' end,
+           case when p.desfalque_adversario  then 'desfalque_adversario' end
+         ], null),
+         array_remove(array[
+           case when not p.forma                then 'forma' end,
+           case when not p.mando                then 'mando' end,
+           case when not p.superioridade_tabela then 'superioridade_tabela' end,
+           case when not p.forca_mismatch       then 'forca_mismatch' end,
+           case when not p.superioridade_xg     then 'superioridade_xg' end,
+           case when not p.h2h_favoravel        then 'h2h_favoravel' end,
+           case when not p.desfalque_adversario then 'desfalque_adversario' end
+         ], null),
+         array_remove(array[
+           case when p.pick_empate       then 'pick_empate' end,
+           case when p.desfalque_proprio then 'desfalque_proprio' end
+         ], null)
+  from futebol.int_futebol_premissas_1x2 p
+  where p.fixture_id = p_fixture_id
+
+  union all
+
+  select 'goals_over_under'::text,
+         p.outcome,
+         p.line_value,
+         p.pts_premissas,
+         p.penalidades_ou_pts,
+         array_remove(array[
+           case when p.defesas_firmes      then 'defesas_firmes' end,
+           case when p.defesas_vazaveis    then 'defesas_vazaveis' end,
+           case when p.ataque_combinado    then 'ataque_combinado' end,
+           case when p.xg_baixo_combinado  then 'xg_baixo_combinado' end,
+           case when p.xg_combinado_alto   then 'xg_combinado_alto' end,
+           case when p.clean_sheets_altos  then 'clean_sheets_altos' end,
+           case when p.ataques_fracos      then 'ataques_fracos' end,
+           case when p.historico_under     then 'historico_under' end,
+           case when p.historico_over      then 'historico_over' end,
+           case when p.ambos_vazam         then 'ambos_vazam' end,
+           case when p.ritmo_alto          then 'ritmo_alto' end,
+           case when p.linha_subindo       then 'linha_subindo' end,
+           case when p.linha_descendo      then 'linha_descendo' end
+         ], null),
+         array_remove(array[
+           case when not p.defesas_firmes     then 'defesas_firmes' end,
+           case when not p.defesas_vazaveis   then 'defesas_vazaveis' end,
+           case when not p.ataque_combinado   then 'ataque_combinado' end,
+           case when not p.xg_baixo_combinado then 'xg_baixo_combinado' end,
+           case when not p.xg_combinado_alto  then 'xg_combinado_alto' end,
+           case when not p.clean_sheets_altos then 'clean_sheets_altos' end,
+           case when not p.ataques_fracos     then 'ataques_fracos' end,
+           case when not p.historico_under    then 'historico_under' end,
+           case when not p.historico_over     then 'historico_over' end,
+           case when not p.ambos_vazam        then 'ambos_vazam' end,
+           case when not p.ritmo_alto         then 'ritmo_alto' end,
+           case when not p.linha_subindo      then 'linha_subindo' end,
+           case when not p.linha_descendo     then 'linha_descendo' end
+         ], null),
+         array_remove(array[
+           case when p.linha_extrema then 'linha_extrema' end
+         ], null)
+  from futebol.int_futebol_premissas_ou p
+  where p.fixture_id = p_fixture_id
+
+  union all
+
+  select 'asian_handicap'::text,
+         p.outcome,
+         p.line_value,
+         p.pts_premissas,
+         p.penalidades_ah_pts,
+         array_remove(array[
+           case when p.supremacia             then 'supremacia' end,
+           case when p.tende_golear           then 'tende_golear' end,
+           case when p.adversario_fragil_fora then 'adversario_fragil_fora' end,
+           case when p.mando_forte            then 'mando_forte' end,
+           case when p.sem_rodizio            then 'sem_rodizio' end,
+           case when p.raramente_perde_por_2  then 'raramente_perde_por_2' end,
+           case when p.defesa_fora_solida     then 'defesa_fora_solida' end
+         ], null),
+         array_remove(array[
+           case when not p.supremacia             then 'supremacia' end,
+           case when not p.tende_golear           then 'tende_golear' end,
+           case when not p.adversario_fragil_fora then 'adversario_fragil_fora' end,
+           case when not p.mando_forte            then 'mando_forte' end,
+           case when not p.sem_rodizio            then 'sem_rodizio' end,
+           case when not p.raramente_perde_por_2  then 'raramente_perde_por_2' end,
+           case when not p.defesa_fora_solida     then 'defesa_fora_solida' end
+         ], null),
+         array_remove(array[
+           case when p.favorito_irregular then 'favorito_irregular' end,
+           case when p.handicap_alto      then 'handicap_alto' end
+         ], null)
+  from futebol.int_futebol_premissas_ah p
+  where p.fixture_id = p_fixture_id
+
+  union all
+
+  select 'btts'::text,
+         p.outcome,
+         null::double precision,
+         p.pts_premissas,
+         p.penalidades_btts_pts,
+         array_remove(array[
+           case when p.ambos_marcam     then 'ambos_marcam' end,
+           case when p.ataque_dos_dois  then 'ataque_dos_dois' end,
+           case when p.defesas_vazaveis then 'defesas_vazaveis' end,
+           case when p.historico_btts   then 'historico_btts' end,
+           case when p.defesa_forte     then 'defesa_forte' end,
+           case when p.ataque_trava     then 'ataque_trava' end,
+           case when p.historico_seco   then 'historico_seco' end
+         ], null),
+         array_remove(array[
+           case when not p.ambos_marcam     then 'ambos_marcam' end,
+           case when not p.ataque_dos_dois  then 'ataque_dos_dois' end,
+           case when not p.defesas_vazaveis then 'defesas_vazaveis' end,
+           case when not p.historico_btts   then 'historico_btts' end,
+           case when not p.defesa_forte     then 'defesa_forte' end,
+           case when not p.ataque_trava     then 'ataque_trava' end,
+           case when not p.historico_seco   then 'historico_seco' end
+         ], null),
+         '{}'::text[]
+  from futebol.int_futebol_premissas_btts p
+  where p.fixture_id = p_fixture_id
+
+  union all
+
+  select 'double_chance'::text,
+         p.outcome,
+         null::double precision,
+         p.pts_premissas,
+         p.penalidades_dc_pts,
+         array_remove(array[
+           case when p.lado_coberto_forte   then 'lado_coberto_forte' end,
+           case when p.equilibrio_defensivo then 'equilibrio_defensivo' end,
+           case when p.adversario_limitado  then 'adversario_limitado' end,
+           case when p.invicto_recente      then 'invicto_recente' end
+         ], null),
+         array_remove(array[
+           case when not p.lado_coberto_forte   then 'lado_coberto_forte' end,
+           case when not p.equilibrio_defensivo then 'equilibrio_defensivo' end,
+           case when not p.adversario_limitado  then 'adversario_limitado' end,
+           case when not p.invicto_recente      then 'invicto_recente' end
+         ], null),
+         '{}'::text[]
+  from futebol.int_futebol_premissas_dc p
+  where p.fixture_id = p_fixture_id
+
+  order by 1, 4 desc, 2, 3;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_numeros(p_fixture_id bigint)
+ RETURNS TABLE(side text, team_id bigint, team_name text, posicao bigint, pontos bigint, zona text, jogos bigint, jogos_casa bigint, jogos_fora bigint, v_casa bigint, e_casa bigint, d_casa bigint, v_fora bigint, e_fora bigint, d_fora bigint, gf_casa double precision, ga_casa double precision, gf_fora double precision, ga_fora double precision, gf_total double precision, ga_total double precision, clean_sheets bigint, sem_marcar bigint, forma text, h2h_jogos bigint, h2h_vitorias bigint, h2h_empates bigint, ate date)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  with jogo as (
+    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id
+    from futebol.fact_fixtures f
+    where f.fixture_id = p_fixture_id
+  ),
+  lados as (
+    select 'home'::text as side, j.home_team_id as team_id, j.competition, j.season from jogo j
+    union all
+    select 'away'::text, j.away_team_id, j.competition, j.season from jogo j
+  ),
+  stats as (
+    select distinct on (t.team_id, t.competition, t.season) t.*
+    from futebol.fact_team_season_stats t
+    join lados l on l.team_id = t.team_id and l.competition = t.competition and l.season = t.season
+    order by t.team_id, t.competition, t.season, t.snapshot_date desc
+  ),
+  h2h as (
+    select l.team_id,
+           count(*) as jogos,
+           count(*) filter (
+             where (hh.home_team_id = l.team_id and hh.goals_home > hh.goals_away)
+                or (hh.away_team_id = l.team_id and hh.goals_away > hh.goals_home)
+           ) as vitorias,
+           count(*) filter (where hh.goals_home = hh.goals_away) as empates
+    from jogo j
+    join futebol.fact_h2h hh
+      on (hh.home_team_id = j.home_team_id and hh.away_team_id = j.away_team_id)
+      or (hh.home_team_id = j.away_team_id and hh.away_team_id = j.home_team_id)
+    join lados l on true
+    where hh.goals_home is not null and hh.goals_away is not null
+    group by l.team_id
+  ),
+  tabela as (
+    select distinct on (s.team_id) s.team_id, s.rank_pos, s.pontos, s.zona
+    from (
+      select st.team_id,
+             st."rank"::bigint          as rank_pos,
+             st.points::bigint          as pontos,
+             st.rank_description        as zona
+      from jogo j,
+           public.get_futebol_standings_official(j.competition, j.season) st
+    ) s
+    order by s.team_id
+  )
+  select l.side,
+         l.team_id,
+         coalesce(st.team_name, dt.team_name),
+         tb.rank_pos,
+         tb.pontos,
+         tb.zona,
+         st.played_total,
+         st.played_home,
+         st.played_away,
+         st.wins_home,
+         st.draws_home,
+         st.loses_home,
+         st.wins_away,
+         st.draws_away,
+         st.loses_away,
+         st.goals_for_avg_home,
+         st.goals_against_avg_home,
+         st.goals_for_avg_away,
+         st.goals_against_avg_away,
+         st.goals_for_avg_total,
+         st.goals_against_avg_total,
+         st.clean_sheet_total,
+         st.failed_to_score_total,
+         st.form,
+         hh.jogos,
+         hh.vitorias,
+         hh.empates,
+         st.snapshot_date
+  from lados l
+  left join stats st on st.team_id = l.team_id
+  left join tabela tb on tb.team_id = l.team_id
+  left join h2h hh on hh.team_id = l.team_id
+  left join futebol.dim_teams dt on dt.team_id = l.team_id
+  order by l.side desc;
+$function$
+
+;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 40)
+ RETURNS TABLE(side text, team_id bigint, team_name text, past_fixture_id bigint, data date, ordem bigint, em_casa boolean, adversario text, adversario_id bigint, gols_pro integer, gols_contra integer, total_gols integer, ambos_marcaram boolean, sem_sofrer boolean, sem_marcar boolean, xg double precision, xg_contra double precision, resultado text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  with alvo as (
+    select f.fixture_id, f.competition, f.season, f.kickoff_utc,
+           f.home_team_id, f.home_team_name, f.away_team_id, f.away_team_name
+    from futebol.fact_fixtures f
+    where f.fixture_id = p_fixture_id
+  ),
+  lados as (
+    select 'home'::text as side, a.home_team_id as team_id, a.home_team_name as team_name, a.* from alvo a
+    union all
+    select 'away'::text, a.away_team_id, a.away_team_name, a.* from alvo a
+  ),
+  jogos as (
+    select l.side, l.team_id, l.team_name,
+           f.fixture_id as past_fixture_id,
+           (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date as data,
+           (f.home_team_id = l.team_id) as em_casa,
+           case when f.home_team_id = l.team_id then f.away_team_name else f.home_team_name end as adversario,
+           case when f.home_team_id = l.team_id then f.away_team_id else f.home_team_id end as adversario_id,
+           (case when f.home_team_id = l.team_id then f.goals_home else f.goals_away end)::integer as gols_pro,
+           (case when f.home_team_id = l.team_id then f.goals_away else f.goals_home end)::integer as gols_contra
+    from lados l
+    join futebol.fact_fixtures f
+      on f.competition = l.competition
+     and f.season = l.season
+     and f.status_short in ('FT', 'AET', 'PEN')
+     and f.kickoff_utc < l.kickoff_utc
+     and (f.home_team_id = l.team_id or f.away_team_id = l.team_id)
+     and f.goals_home is not null
+     and f.goals_away is not null
+  ),
+  recentes as (
+    select j.*, row_number() over (partition by j.side order by j.data desc, j.past_fixture_id desc) as rn
+    from jogos j
+  ),
+  janela as (
+    select r.*, row_number() over (partition by r.side order by r.data asc, r.past_fixture_id asc) as ordem
+    from recentes r
+    where r.rn <= greatest(p_max, 1)
+  )
+  select w.side,
+         w.team_id,
+         w.team_name,
+         w.past_fixture_id,
+         w.data,
+         w.ordem,
+         w.em_casa,
+         w.adversario,
+         w.adversario_id,
+         w.gols_pro,
+         w.gols_contra,
+         (w.gols_pro + w.gols_contra)::integer as total_gols,
+         (w.gols_pro > 0 and w.gols_contra > 0) as ambos_marcaram,
+         (w.gols_contra = 0) as sem_sofrer,
+         (w.gols_pro = 0) as sem_marcar,
+         s.expected_goals as xg,
+         sa.expected_goals as xg_contra,
+         case when w.gols_pro > w.gols_contra then 'V'
+              when w.gols_pro = w.gols_contra then 'E'
+              else 'D' end as resultado
+  from janela w
+  left join futebol.fact_fixture_stats s
+         on s.fixture_id = w.past_fixture_id and s.team_id = w.team_id
+  left join futebol.fact_fixture_stats sa
+         on sa.fixture_id = w.past_fixture_id and sa.team_id <> w.team_id
+  order by w.side, w.ordem;
+$function$
+
+;
+
 -- ── 6. Grants de execução (anon / authenticated / service_role) ──────────────
 grant execute on function public._futebol_team_form(p_team_id bigint, p_competition text, p_season bigint, p_before date) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_access() to anon, authenticated, service_role;
@@ -1791,11 +2230,68 @@ grant execute on function public.get_futebol_team_season(p_team_id bigint, p_com
 grant execute on function public.get_futebol_teams() to anon, authenticated, service_role;
 grant execute on function public.get_futebol_value_board() to anon, authenticated, service_role;
 grant execute on function public.get_futebol_value_history(p_from date, p_to date) to anon, authenticated, service_role;
+-- As oito da seção 5c (migrations 091 a 096), que faltavam junto com as funções.
+grant execute on function public.futebol_dia_brt(p_kickoff_utc timestamp without time zone) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_alerted_picks(p_day date) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_competitions() to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_days(p_from date, p_to date) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixtures_by_day(p_day date, p_competitions text[]) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_premissas(p_fixture_id bigint) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_numeros(p_fixture_id bigint) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer) to anon, authenticated, service_role;
 
 -- ── 7. Reverse trial (7 dias, sem cartão) — colunas no public.users ──────────
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
 alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
 
+
+-- ── 8. CHECAGEM DE DERIVA (rodar DEPOIS de aplicar, e sempre que desconfiar) ─
+-- ----------------------------------------------------------------------------
+-- Este arquivo já divergiu do banco onze vezes seguidas (migrations 091 a 103),
+-- e nenhuma delas apareceu sozinha: o `check_schema_parity` do sync confere
+-- TABELA, nunca FUNÇÃO, então uma RPC faltando passa verde e só quebra quando
+-- alguém provisiona ambiente novo. A divergência da vez foi achada por code
+-- review, e review não é processo.
+--
+-- FONTE DA VERDADE: o banco de DEV (kpbjuplcwiyrymafhehz). Este arquivo é um
+-- retrato dele, não o contrário. Quem cria RPC nova numa migration é responsável
+-- por trazê-la para cá no MESMO PR.
+--
+-- ⚠️ A GUARDA AUTOMÁTICA é `src/utils/shape-file-futebol.test.ts`, e ela roda
+-- na suíte de testes, sem precisar de banco. Compara ARQUIVO contra ARQUIVO:
+--
+--   · toda função que alguma migration de `supabase/migrations/` cria tem que
+--     existir aqui (foi o buraco de oito funções achado em 18/08)
+--   · toda função declarada aqui tem que ter grant, e vice-versa
+--   · o arquivo não pode ter BOM (um BOM aqui vira `syntax error at or near "ï"`
+--     no psql, e já aconteceu)
+--
+-- Quem criar RPC nova numa migration e esquecer deste arquivo vai ver o teste
+-- vermelho no próprio PR, com o nome da função e da migration que a criou.
+--
+-- As consultas abaixo são o complemento MANUAL, para conferir contra o banco
+-- vivo o que a comparação de arquivos não alcança: corpo e assinatura reais.
+-- Rodar depois de aplicar, e sempre que desconfiar.
+/*
+select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as no_banco,
+       length(pg_get_functiondef(p.oid)) as tamanho
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and (p.proname like 'get_futebol%' or p.proname like '%futebol%')
+order by 1;
+*/
+-- E esta devolve as ASSINATURAS, para pegar o caso mais traiçoeiro: a função
+-- existe nos dois lados mas o RETURNS TABLE mudou (foi o que aconteceu com a
+-- get_futebol_standings_official, que ficou sem `group_name` e devolvia 12
+-- colunas onde o front esperava 13, sem erro nenhum, só coluna sumida na tela).
+/*
+select p.proname, pg_get_function_result(p.oid) as returns
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname like 'get_futebol%'
+order by 1;
+*/
 
 -- ============================================================================
 -- §TEARDOWN do FDW BigQuery — rodar SÓ NO DEV, e SÓ depois de validar o sync novo

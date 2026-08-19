@@ -16,7 +16,9 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
-import { mergeBoardAndHistory } from '@/utils/futebol-history';
+import { mergeBoardAndHistory, opportunityKey } from '@/utils/futebol-history';
+import { parseUtc, brtDayOf, brtDateStr, fmtTime } from '@/utils/futebol-datas';
+import { useNow } from '@/hooks/use-now';
 import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -24,7 +26,6 @@ import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onb
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
 
-const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
 /**
@@ -42,9 +43,15 @@ type OppLike = Omit<FutebolValueBoardRow, 'score' | 'faixa' | 'edge' | 'prob_jus
   prob_justa_fechamento: number | null;
 };
 
-/** Chave de uma oportunidade — casa board com registro do que foi enviado. */
+/**
+ * Chave de uma oportunidade — casa board, histórico e registro do que foi
+ * enviado. Reexportada de `futebol-history.ts` com a forma que esta tela usa
+ * (argumentos soltos em vez de objeto): eram duas funções produzindo string
+ * byte a byte idêntica, e duas chaves que "por acaso" batem é o tipo de coisa
+ * que só quebra depois que alguém mexe numa delas.
+ */
 const oppKey = (fixtureId: number, market: string | null, outcome: string | null, line: number | null) =>
-  `${fixtureId}|${market ?? ''}|${outcome ?? ''}|${line ?? ''}`;
+  opportunityKey({ fixture_id: fixtureId, market, outcome, line_value: line });
 
 /**
  * Monta a linha de uma oportunidade registrada (enviada no daily) com os valores
@@ -85,23 +92,19 @@ function oppFromAlerted(a: FutebolAlertedPick, fx?: FutebolFixture): OppLike {
   };
 }
 
-function kickoffMs(raw: string | null): number | null {
-  if (!raw) return null;
-  const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
-  const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
-  return isNaN(d.getTime()) ? null : d.getTime();
-}
-function fmtHour(raw: string | null): string {
-  const ms = kickoffMs(raw);
-  if (ms == null) return '—';
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
-}
-function brtDayStr(raw: string | null): string | null {
-  const ms = kickoffMs(raw);
-  if (ms == null) return null;
-  return new Intl.DateTimeFormat('en-CA', { timeZone: SAO_PAULO_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
-}
-const TODAY_BRT = new Intl.DateTimeFormat('en-CA', { timeZone: SAO_PAULO_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+// O `kickoffMs`, o `brtDayStr` e o `TODAY_BRT` que moravam aqui eram cópia
+// literal do que `futebol-datas.ts` já exporta como `parseUtc`, `brtDayOf` e
+// `brtToday`. Saíram pelo mesmo motivo que as funções de calendário do PR #259
+// não entraram: duas cópias de aritmética de fuso é como se erra fuso.
+//
+// O `TODAY_BRT` ainda violava a regra escrita em futebol-datas.ts ("chamar na
+// hora do uso, não guardar em const de módulo"), e isso passou a MORDER quando
+// esta tela ganhou o `mergeBoardAndHistory`, que lê o relógio a cada render:
+// eram dois "hoje" diferentes, um congelado no import e outro vivo, que
+// discordam na virada do dia. Agora existe um `hoje` só, no corpo do
+// componente, e é o mesmo instante que alimenta a fusão.
+/** `HH:MM` em BRT, com travessão quando não há horário. */
+const fmtHour = (raw: string | null): string => fmtTime(raw) || '—';
 
 function crestInitials(name: string): string {
   return name.replace(/[^A-Za-zÀ-ÿ\s]/g, '').trim().slice(0, 3).toUpperCase() || '?';
@@ -353,9 +356,14 @@ export default function FutebolOportunidades() {
   // vence pelo board. É o que mantém esta lista contando a mesma história que a
   // tela de detalhe, que cai na foto do apito assim que o kickoff passa.
   const { data: histRows } = useFutebolValueHistory();
+  // UM instante para a tela inteira: a fusão, o stepper e o horizonte de dias
+  // futuros têm que concordar sobre que horas são, senão discordam na virada.
+  // E ele ANDA (useNow), porque nada mais nesta tela provoca render.
+  const agora = useNow();
+  const hoje = brtDateStr(new Date(agora));
   const allRows = useMemo<FutebolValueBoardRow[]>(
-    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], Date.now()),
-    [rows, histRows]
+    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora),
+    [rows, histRows, agora]
   );
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
@@ -398,7 +406,7 @@ export default function FutebolOportunidades() {
   // mesmo antes das odds entrarem (~24h antes do jogo).
   const days = useMemo(() => {
     const set = new Set<string>();
-    allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
+    allRows.forEach((r) => { const d = brtDayOf(r.kickoff_utc); if (d) set.add(d); });
     // O registro do Telegram NÃO cria dia sozinho (decisão do Victor, 17/08).
     //
     // O snapshot do board começou em 27/07. Antes disso não existe foto do
@@ -409,28 +417,30 @@ export default function FutebolOportunidades() {
     // Nos dias que ENTRAM (têm foto do apito), o registro continua somando
     // linha normalmente, via dayRows. Ele não é redundante: dos 7 picks
     // enviados de 27/07 pra cá, só 1 ainda era oportunidade no apito.
-    registradasAll.forEach((a) => { if (a.game_day >= TODAY_BRT) set.add(a.game_day); });
-    const now = Date.now();
-    const horizon = now + 8 * 864e5; // ~8 dias à frente
+    registradasAll.forEach((a) => { if (a.game_day >= hoje) set.add(a.game_day); });
+    // O mesmo `agora` do resto da tela, e não um Date.now() próprio: com dois
+    // relógios, o horizonte de dias futuros e a fusão discordam sobre quando o
+    // jogo virou passado.
+    const horizon = agora + 8 * 864e5; // ~8 dias à frente
     (fixtures ?? []).forEach((f) => {
-      const t = kickoffMs(f.kickoff_utc);
-      if (t != null && t > now && t < horizon && !FINISHED_STATUS.has(f.status_short ?? '')) {
-        const d = brtDayStr(f.kickoff_utc);
+      const t = parseUtc(f.kickoff_utc)?.getTime() ?? null;
+      if (t != null && t > agora && t < horizon && !FINISHED_STATUS.has(f.status_short ?? '')) {
+        const d = brtDayOf(f.kickoff_utc);
         if (d) set.add(d);
       }
     });
     return [...set].sort();
-  }, [allRows, fixtures, registradasAll]);
+  }, [allRows, fixtures, registradasAll, agora, hoje]);
   // Default: hoje se houver; senão o próximo dia futuro; senão o último disponível.
   const selectedDay = (day && days.includes(day))
     ? day
-    : (days.includes(TODAY_BRT) ? TODAY_BRT : (days.find((d) => d >= TODAY_BRT) ?? days[days.length - 1]));
-  const isPastDay = !!selectedDay && selectedDay < TODAY_BRT;
-  const isFutureDay = !!selectedDay && selectedDay > TODAY_BRT;
+    : (days.includes(hoje) ? hoje : (days.find((d) => d >= hoje) ?? days[days.length - 1]));
+  const isPastDay = !!selectedDay && selectedDay < hoje;
+  const isFutureDay = !!selectedDay && selectedDay > hoje;
 
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
-    allRows.forEach((r) => { if (brtDayStr(r.kickoff_utc) === selectedDay) s.add(r.competition); });
+    allRows.forEach((r) => { if (brtDayOf(r.kickoff_utc) === selectedDay) s.add(r.competition); });
     registradasAll.forEach((a) => { if (a.game_day === selectedDay && a.league) s.add(a.league); });
     return s;
   }, [allRows, selectedDay, registradasAll]);
@@ -445,7 +455,7 @@ export default function FutebolOportunidades() {
   // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde
   // veio o número, não de natureza.
   const dayRows = useMemo<OppLike[]>(() => {
-    const board: OppLike[] = allRows.filter((r) => brtDayStr(r.kickoff_utc) === selectedDay);
+    const board: OppLike[] = allRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay);
     const noBoard = new Set(board.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)));
     const registradas = registradasAll
       .filter((a) => a.game_day === selectedDay)
@@ -494,7 +504,7 @@ export default function FutebolOportunidades() {
   const countByDay = useMemo(() => {
     const byDay = new Map<string, FutebolValueBoardRow[]>();
     allRows.forEach((r) => {
-      const d = brtDayStr(r.kickoff_utc);
+      const d = brtDayOf(r.kickoff_utc);
       if (!d) return;
       if (!byDay.has(d)) byDay.set(d, []);
       byDay.get(d)!.push(r);

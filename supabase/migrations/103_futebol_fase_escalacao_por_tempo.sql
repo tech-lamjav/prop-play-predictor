@@ -108,13 +108,17 @@ begin
     return;
   end if;
 
-  if position(v_ancora_times in v_def) = 0 or position(v_ancora_jog in v_def) = 0 then
-    raise exception '103: não achei a regra por existência da 098 em get_futebol_fixture_extras. Aplique a 098 antes (e confira se alguém mexeu no corpo depois dela).';
+  -- Cada âncora é conferida SEPARADAMENTE e o erro diz qual falhou, como na
+  -- 101. Uma mensagem genérica obriga quem está aplicando às 3h da manhã a ir
+  -- ler o corpo da função para descobrir qual das duas divergiu.
+  if array_length(string_to_array(v_def, v_ancora_times), 1) - 1 <> 1 then
+    raise exception '103: a âncora da fase de TIMES (fact_fixture_lineups) aparece % vez(es) em get_futebol_fixture_extras, esperava exatamente 1. Aplique a 098 antes, e confira se alguém mexeu no corpo depois dela.',
+      array_length(string_to_array(v_def, v_ancora_times), 1) - 1;
   end if;
 
-  if array_length(string_to_array(v_def, v_ancora_times), 1) - 1 <> 1
-     or array_length(string_to_array(v_def, v_ancora_jog), 1) - 1 <> 1 then
-    raise exception '103: âncora duplicada em get_futebol_fixture_extras, abortando em vez de trocar o pedaço errado.';
+  if array_length(string_to_array(v_def, v_ancora_jog), 1) - 1 <> 1 then
+    raise exception '103: a âncora da fase de JOGADORES (fact_fixture_lineups_players) aparece % vez(es) em get_futebol_fixture_extras, esperava exatamente 1. Aplique a 098 antes, e confira se alguém mexeu no corpo depois dela.',
+      array_length(string_to_array(v_def, v_ancora_jog), 1) - 1;
   end if;
 
   v_novo := replace(v_def, v_ancora_times, v_novo_times);
