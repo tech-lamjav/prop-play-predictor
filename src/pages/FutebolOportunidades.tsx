@@ -538,7 +538,15 @@ export default function FutebolOportunidades() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPastDay, comValor, goalsMap]);
 
-  const go = (id: number) => navigate(`/futebol/jogo/${id}`);
+  // Esta tela lista uma linha por SAÍDA, não por mercado, e há jogos com duas
+  // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
+  // da segunda abria a tela na primeira, e o pick que o usuário leu aqui virava
+  // outro lá. O link carrega qual card foi clicado.
+  const go = (o: OppLike) => {
+    const q = new URLSearchParams({ mercado: o.market, saida: o.outcome });
+    if (o.line_value != null) q.set('linha', String(o.line_value));
+    navigate(`/futebol/jogo/${o.fixture_id}?${q}`);
+  };
   const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
@@ -631,7 +639,7 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppRow o={o} onClick={() => go(o.fixture_id)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppRow o={o} onClick={() => go(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!isPastDay && !locked && !res && (
                       <div className="px-5 pb-2 -mt-0.5">
                         <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
@@ -649,7 +657,7 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppMobileCard o={o} onClick={() => go(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!isPastDay && !locked && !res && <div className="px-1 pt-1.5"><RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} /></div>}
                   </div>
                 );

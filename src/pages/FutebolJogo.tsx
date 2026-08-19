@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, type ReactNode } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
@@ -13,6 +13,7 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies,
 } from '@/utils/futebol-tendencias';
+import { type SaidaPreferida } from '@/utils/futebol-leitura';
 import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
   faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
@@ -271,6 +272,17 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
 export default function FutebolJogo() {
   const { fixtureId } = useParams<{ fixtureId: string }>();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // A saída que o usuário clicou em Oportunidades. Sem ela, a tela escolhia sozinha
+  // a de maior Score do mercado, que nem sempre é a do card clicado.
+  const preferida = useMemo((): SaidaPreferida | null => {
+    const market = params.get('mercado');
+    const outcome = params.get('saida');
+    if (!market || !outcome) return null;
+    const linha = params.get('linha');
+    const n = linha != null ? Number(linha) : NaN;
+    return { market, outcome, line: Number.isFinite(n) ? n : null };
+  }, [params]);
   const fid = fixtureId ? Number(fixtureId) : undefined;
   const { data, isLoading, isError } = useFutebolFixtureDetail(fid);
   const { data: extras, isLoading: extrasLoading } = useFutebolFixtureExtras(fid);
@@ -344,7 +356,8 @@ export default function FutebolJogo() {
   // Duas abas (Leitura & mercados · Times) e o mercado aberto na bancada.
   const [aba, setAba] = useState<'mercados' | 'times'>('mercados');
   const bancadaLadoALado = useBancadaLadoALado();
-  const [mercadoAtivo, setMercadoAtivo] = useState('goals_over_under');
+  // Abre já no mercado do card clicado; sem link, no de gols, como sempre foi.
+  const [mercadoAtivo, setMercadoAtivo] = useState(() => preferida?.market ?? 'goals_over_under');
   const jogoInfo: JogoInfo | null = fixture
     ? {
         fixtureId: fid!,
@@ -525,6 +538,7 @@ export default function FutebolJogo() {
                   formAway={extrasLoading ? [] : extras?.form_away || []}
                   homeTeamId={fixture.home_team_id}
                   awayTeamId={fixture.away_team_id}
+                  preferida={preferida}
                   onAbrirMercado={(slug) => {
                     setMercadoAtivo(slug);
                     setAba('mercados');
@@ -575,6 +589,7 @@ export default function FutebolJogo() {
                   locked={locked}
                   mercadoAtivo={mercadoAtivo}
                   onMercado={setMercadoAtivo}
+                  preferida={preferida}
                 />
               )}
 
