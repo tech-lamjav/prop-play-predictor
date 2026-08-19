@@ -1,4 +1,5 @@
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import type { Saida } from '@/utils/futebol-saida';
 import {
   MERCADOS,
   PORTA_PREMISSAS,
@@ -27,12 +28,13 @@ export function mesmaLinha(a: number | null, b: number | null): boolean {
 /** Casa uma linha de valor (odds reais) com um candidato de premissas. */
 export function valueDoCandidato(
   valueRows: FutebolFixtureValueRow[] | null | undefined,
-  market: string,
-  outcome: string,
-  line: number | null,
+  s: Saida,
 ): FutebolFixtureValueRow | null {
   if (!valueRows?.length) return null;
-  return valueRows.find((v) => v.market === market && v.outcome === outcome && mesmaLinha(v.line_value, line)) ?? null;
+  return (
+    valueRows.find((v) => v.market === s.market && v.outcome === s.outcome && mesmaLinha(v.line_value, s.line_value)) ??
+    null
+  );
 }
 
 /** O caminho inverso: a linha de premissas da saída que tem preço. */
@@ -51,12 +53,11 @@ export function candidatoDaValue(
  * SAÍDA, não por mercado, e 18 dos 104 pares (jogo, mercado) do board têm duas ou
  * mais saídas cotadas: sem carregar qual foi clicada, abrir o card da segunda caía
  * na primeira, que é o mesmo susto de ver um pick virar outro.
+ *
+ * É uma `Saida` como qualquer outra; o apelido existe só para o parâmetro dizer
+ * de onde ela vem.
  */
-export interface SaidaPreferida {
-  market: string;
-  outcome: string;
-  line: number | null;
-}
+export type SaidaPreferida = Saida;
 
 /**
  * Quem representa o mercado quando HÁ preço coletado: a saída que o usuário clicou,
@@ -83,7 +84,7 @@ function saidaComPreco(
   if (!pares.length) return null;
   if (preferida?.market === market) {
     const clicada = pares.find(
-      (x) => x.value.outcome === preferida.outcome && mesmaLinha(x.value.line_value, preferida.line),
+      (x) => x.value.outcome === preferida.outcome && mesmaLinha(x.value.line_value, preferida.line_value),
     );
     if (clicada) return clicada;
   }
@@ -142,7 +143,7 @@ export function resumoDosMercados(
     // Denominador só do lado da saída: para um Over, "defesas firmes" e as outras do
     // Under nunca poderiam acender, então contá-las fazia "2 de 8" onde o certo é
     // "2 de 3".
-    const totalQueValem = premissasDaSaida(m, c.outcome, c.line_value, c.acesas).filter(
+    const totalQueValem = premissasDaSaida(m, c, c.acesas).filter(
       (p) => p.peso == null || p.peso > 0,
     ).length;
     const value = comPreco?.value ?? null;

@@ -54,7 +54,7 @@ export function FixtureRow({
   // Jogo encerrado não precisa mais do Score, que é uma previsão: o que importa
   // ali é se a leitura bateu. O selo vira ✓ ou ✕ pelo placar.
   const liquidacao =
-    fim && best ? settleFutebol(best.market, best.outcome, best.line_value, gh, ga) : null;
+    fim && best ? settleFutebol(best, gh, ga) : null;
   const bateu = liquidacao != null ? isHit(liquidacao) : null;
 
   return (
@@ -101,7 +101,7 @@ export function FixtureRow({
         {best ? (
           <>
             <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink truncate">
-              {pickLabel(best.market, best.outcome, best.line_value, fixture.home_team_name, fixture.away_team_name)}
+              {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
             </span>
             <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
               odd {best.best_odd.toFixed(2)}

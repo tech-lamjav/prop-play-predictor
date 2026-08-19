@@ -1,4 +1,5 @@
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
+import type { Saida } from '@/utils/futebol-saida';
 
 // Catálogo das premissas do Score: rótulo, peso e agrupamento.
 //
@@ -263,7 +264,8 @@ function fmtLinha(line: number): string {
 }
 
 /** Rótulo da saída da aposta, na linguagem do apostador. */
-export function outcomeLabel(market: string, outcome: string, home: string, away: string, line: number | null): string {
+export function outcomeLabel(s: Saida, home: string, away: string): string {
+  const { market, outcome, line_value: line } = s;
   if (market === 'match_winner') {
     if (outcome === 'Home') return `Vitória do ${home}`;
     if (outcome === 'Away') return `Vitória do ${away}`;
@@ -394,7 +396,7 @@ export function contextoDoMercado(acesasFortes: number, semCalibragem: boolean):
  * oposto: quem dá gol de vantagem (handicap negativo) é o favorito. Conferido na
  * base: Home −1,5 acende premissa de favorito, Home +0,5 acende de azarão.
  */
-export function ladoDaSaidaNoMercado(market: string, outcome: string, line: number | null): LadoPremissa | null {
+export function ladoDaSaidaNoMercado({ market, outcome, line_value: line }: Saida): LadoPremissa | null {
   if (market === 'goals_over_under') return outcome === 'Over' ? 'over' : 'under';
   if (market === 'btts') return outcome === 'Yes' ? 'sim' : 'nao';
   if (market === 'asian_handicap') {
@@ -412,13 +414,8 @@ export function ladoDaSaidaNoMercado(market: string, outcome: string, line: numb
  * `acesas` entra como rede de segurança: se o mart algum dia acender uma premissa do
  * outro lado, ela continua aparecendo em vez de sumir da tela em silêncio.
  */
-export function premissasDaSaida(
-  m: MercadoInfo,
-  outcome: string,
-  line: number | null,
-  acesas: string[] = [],
-): Premissa[] {
-  const lado = ladoDaSaidaNoMercado(m.slug, outcome, line);
+export function premissasDaSaida(m: MercadoInfo, s: Saida, acesas: string[] = []): Premissa[] {
+  const lado = ladoDaSaidaNoMercado(s);
   const acesasSet = new Set(acesas);
   return m.premissas.filter(
     (p) =>

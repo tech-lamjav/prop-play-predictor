@@ -286,8 +286,8 @@ export function BancadaMercados({
   // contradiziam na mesma tela.
   const nA = ladoA ? contaQueValem(mercado.slug, ladoA.acesas) : 0;
   const nB = ladoB ? contaQueValem(mercado.slug, ladoB.acesas) : 0;
-  const valA = ladoA ? valueDoCandidato(valueRows, mercado.slug, ladoA.outcome, ladoA.line_value) : null;
-  const valB = ladoB ? valueDoCandidato(valueRows, mercado.slug, ladoB.outcome, ladoB.line_value) : null;
+  const valA = ladoA ? valueDoCandidato(valueRows, ladoA) : null;
+  const valB = ladoB ? valueDoCandidato(valueRows, ladoB) : null;
 
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
   useEffect(() => setLadoSel(null), [mercado.slug, linha, saida]);
@@ -306,13 +306,13 @@ export function BancadaMercados({
 
 
   const labelDe = (c: FutebolFixturePremissas | null) =>
-    c ? outcomeLabel(mercado.slug, c.outcome, jogo.home, jogo.away, c.line_value) : '';
+    c ? outcomeLabel(c, jogo.home, jogo.away) : '';
 
   // Favor / apagadas do lado principal. Só as premissas DAQUELE lado: as do outro
   // medem o mesmo número ao contrário ("defesas frágeis" × "defesas firmes"), então
   // listá-las aqui como "não aconteceu" fazia a tela se contradizer.
   const visiveis = principal
-    ? premissasDaSaida(mercado, principal.outcome, principal.line_value, principal.acesas)
+    ? premissasDaSaida(mercado, principal, principal.acesas)
     : mercado.premissas.filter((p) => !PREMISSAS_OCULTAS.has(p.slug));
   const acesasSet = new Set(principal?.acesas ?? []);
   const favor = visiveis.filter((p) => acesasSet.has(p.slug)).sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0));
@@ -408,7 +408,7 @@ export function BancadaMercados({
   const veredito = useMemo(() => {
     const lbl = labelDe(principal);
     if (fim) {
-      const r = placar && principal ? settleFutebol(mercado.slug, principal.outcome, principal.line_value, placar.home, placar.away) : null;
+      const r = placar && principal ? settleFutebol(principal, placar.home, placar.away) : null;
       return r ? `O mapa apontava ${lbl}: ${resultBadge(r).label.toLowerCase()}.` : `Jogo encerrado.`;
     }
     if (valPrincipal) {
@@ -485,21 +485,21 @@ export function BancadaMercados({
   const paradasUI = ehLinha
     ? []
     : doMercado.map((o) => {
-        const val = valueDoCandidato(valueRows, mercado.slug, o.outcome, o.line_value);
+        const val = valueDoCandidato(valueRows, o);
         const n = contaQueValem(mercado.slug, o.acesas);
         return {
           chave: o.outcome,
-          rotulo: outcomeLabel(mercado.slug, o.outcome, jogo.home, jogo.away, o.line_value),
+          rotulo: outcomeLabel(o, jogo.home, jogo.away),
           ativa: o.outcome === (saida ?? melhor?.outcome),
           passa: val ? val.score >= REGUA_SCORE : n >= PORTA_PREMISSAS,
-          res: placar ? settleFutebol(mercado.slug, o.outcome, o.line_value, placar.home, placar.away) : null,
+          res: placar ? settleFutebol(o, placar.home, placar.away) : null,
           escolher: () => setSaida(o.outcome),
         };
       });
 
   const resPrincipal =
     placar && principal
-      ? settleFutebol(mercado.slug, principal.outcome, principal.line_value, placar.home, placar.away)
+      ? settleFutebol(principal, placar.home, placar.away)
       : null;
 
   return (
@@ -537,7 +537,7 @@ export function BancadaMercados({
             const larg = temScore ? `${s}%` : `${Math.min(100, (r.nValem / Math.max(r.totalQueValem, 1)) * 100)}%`;
             const regua = temScore ? `${REGUA_SCORE}%` : `${(PORTA_PREMISSAS / Math.max(r.totalQueValem, 1)) * 100}%`;
             const cor = on ? '#fbbf24' : r.passa ? (temScore && s >= 60 ? '#0a3d2e' : '#d4a017') : '#c4bda8';
-            const pick = outcomeLabel(r.mercado.slug, r.candidato.outcome, jogo.home, jogo.away, r.candidato.line_value);
+            const pick = outcomeLabel(r.candidato, jogo.home, jogo.away);
             return (
               <button
                 key={r.mercado.slug}

@@ -281,7 +281,7 @@ export default function FutebolJogo() {
     if (!market || !outcome) return null;
     const linha = params.get('linha');
     const n = linha != null ? Number(linha) : NaN;
-    return { market, outcome, line: Number.isFinite(n) ? n : null };
+    return { market, outcome, line_value: Number.isFinite(n) ? n : null };
   }, [params]);
   const fid = fixtureId ? Number(fixtureId) : undefined;
   const { data, isLoading, isError } = useFutebolFixtureDetail(fid);
