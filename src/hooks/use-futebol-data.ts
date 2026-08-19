@@ -298,10 +298,18 @@ export function useFutebolValueBoard() {
  * O passado, na foto do apito. Janela fixa de 30 dias, que é o que o stepper
  * navega.
  *
- * `staleTime` alto de propósito, e maior que o do board: isto é passado, então
- * só muda quando um jogo novo termina. O board tem 5 minutos porque odd mexe.
+ * ⚠️ `refetchInterval` de 5 minutos, e ele é ESSENCIAL, não higiene. A RPC corta
+ * em `kickoff < now()` no BANCO (migration 102), então a linha de um jogo só
+ * passa a existir aqui depois do apito dele. Sem rebuscar, o jogo das 16h nunca
+ * entra em `histRows` numa aba aberta desde as 15h, e a fusão do
+ * `futebol-history.ts` cai no board por falta de candidato — que é exatamente o
+ * defeito que a fusão existe para consertar. O `useNow` move o relógio; este
+ * intervalo move os dados. Um sem o outro não resolve.
  *
- * Ver migration 101.
+ * A defasagem máxima passa a ser de 5 minutos na lista. A tela de detalhe não
+ * tem essa defasagem: ela busca na navegação e a RPC dela já decide por kickoff.
+ *
+ * Ver migrations 101 e 102.
  */
 export function useFutebolValueHistory() {
   // Dia de BRASÍLIA, não UTC. A primeira versão disto usava `toISOString()`, que
@@ -312,8 +320,9 @@ export function useFutebolValueHistory() {
   return useQuery<FutebolValueBoardRow[]>({
     queryKey: ['futebol', 'value-history', from, to],
     queryFn: () => futebolDataService.getValueHistory(from, to),
-    staleTime: 30 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 }

@@ -6,7 +6,9 @@
 -- soubesse do outro. A base aqui é a 101 (já na develop); o que muda é o corpo
 -- da `get_futebol_value_history`, com quatro coisas que ele fez melhor.
 --
--- A assinatura NÃO muda, então `create or replace` basta, sem `drop function`.
+-- A função é recriada com `drop` + `create`, e não com `create or replace`,
+-- porque ela existe com dois contratos diferentes conforme o ambiente. O motivo
+-- completo está no comentário logo acima do `drop`.
 --
 -- ----------------------------------------------------------------------------
 -- 1. GUARDA `kickoff < now()` — é conserto de defeito, não polimento
