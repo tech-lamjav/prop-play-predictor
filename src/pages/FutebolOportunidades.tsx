@@ -16,6 +16,7 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -345,24 +346,17 @@ export default function FutebolOportunidades() {
   // versões nasceram depois do apito, em média 668h depois. Ler o passado pelo
   // board mostra a nota recalculada semanas depois, não a que foi publicada, e
   // ainda contabiliza acerto de linha que ninguém podia ter apostado.
-  // Ver migration 101 e a ADR 0009 do analytics-engineering.
+  // Ver migrations 101/102 e a ADR 0009 do analytics-engineering.
+  //
+  // A regra da fusão vive em futebol-history.ts, testada. O desempate de HOJE é
+  // por kickoff: jogo que já começou vence pelo histórico, jogo que não começou
+  // vence pelo board. É o que mantém esta lista contando a mesma história que a
+  // tela de detalhe, que cai na foto do apito assim que o kickoff passa.
   const { data: histRows } = useFutebolValueHistory();
-  const allRows = useMemo<FutebolValueBoardRow[]>(() => {
-    // O corte por dia aqui é o que faz a tela parar de mentir ANTES de o mart
-    // parar de emitir (o expurgo é o passo 3). Continua correto depois dele.
-    const doBoard = (rows ?? []).filter((r) => {
-      const d = brtDayStr(r.kickoff_utc);
-      return d != null && d >= TODAY_BRT;
-    });
-    // Hoje as duas fontes valem ao mesmo tempo. Depois do expurgo, o jogo sai do
-    // board no apito e só o histórico tem a linha: sem esta união, o jogo das
-    // 16h sumiria da tela às 16h05 e só reapareceria amanhã.
-    const jaNoBoard = new Set(doBoard.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)));
-    const doHistorico = (histRows ?? []).filter(
-      (r) => !jaNoBoard.has(oppKey(r.fixture_id, r.market, r.outcome, r.line_value))
-    );
-    return [...doBoard, ...doHistorico];
-  }, [rows, histRows]);
+  const allRows = useMemo<FutebolValueBoardRow[]>(
+    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], Date.now()),
+    [rows, histRows]
+  );
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
   const goalsMap = useMemo(() => {

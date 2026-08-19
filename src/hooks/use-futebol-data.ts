@@ -1,6 +1,8 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { brtToday } from '@/utils/futebol-datas';
+import { historyWindow } from '@/utils/futebol-history';
 import {
   futebolDataService,
   type FutebolAccess,
@@ -301,13 +303,15 @@ export function useFutebolValueBoard() {
  *
  * Ver migration 101.
  */
-export function useFutebolValueHistory(dias = 30) {
-  const hoje = new Date();
-  const de = new Date(hoje.getTime() - dias * 864e5);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+export function useFutebolValueHistory() {
+  // Dia de BRASÍLIA, não UTC. A primeira versão disto usava `toISOString()`, que
+  // dá a data em UTC: depois das 21h de Brasília o "hoje" já virava o dia
+  // seguinte e a janela inteira andava um dia, escondendo o jogo da noite.
+  const hoje = brtToday();
+  const { from, to } = historyWindow(hoje);
   return useQuery<FutebolValueBoardRow[]>({
-    queryKey: ['futebol', 'value-history', dias, iso(hoje)],
-    queryFn: () => futebolDataService.getValueHistory(iso(de), iso(hoje)),
+    queryKey: ['futebol', 'value-history', from, to],
+    queryFn: () => futebolDataService.getValueHistory(from, to),
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
