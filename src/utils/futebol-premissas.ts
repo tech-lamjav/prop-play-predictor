@@ -301,15 +301,26 @@ export const PORTA_PREMISSAS = 2;
  * valem). Vive aqui, e não no componente do mapa, porque o painel da agenda também
  * resume o jogo por ele.
  */
+/**
+ * A linha entra como candidata? Handicap zero nunca acende premissa (as 7 são de
+ * favorito ou de azarão) e o doc manda excluir explicitamente em vez de deixar
+ * sumir em silêncio.
+ *
+ * Mora aqui, e não dentro de `melhorCandidato`, porque o candidato de PREÇO precisa
+ * do mesmo corte: aplicado só de um lado, um handicap zero cotado viraria o
+ * representante do mercado e a folha abriria numa linha que a régua nem lista.
+ */
+export function linhaNegociavel(market: string, line: number | null): boolean {
+  return !(market === 'asian_handicap' && line === 0);
+}
+
 export function melhorCandidato(
   rows: FutebolFixturePremissas[],
   market: string,
 ): FutebolFixturePremissas | null {
   const doMercado = rows
     .filter((r) => r.market === market)
-    // Handicap zero nunca acende premissa (as 7 são de favorito ou de azarão) e o doc
-    // manda excluir explicitamente em vez de deixar sumir em silêncio.
-    .filter((r) => !(market === 'asian_handicap' && r.line_value === 0));
+    .filter((r) => linhaNegociavel(market, r.line_value));
   if (!doMercado.length) return null;
   const nota = (r: FutebolFixturePremissas) => contaQueValem(market, r.acesas);
   const nPen = (r: FutebolFixturePremissas) => (r.penalidades ?? []).length;

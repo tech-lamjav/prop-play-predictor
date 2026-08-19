@@ -27,7 +27,7 @@ import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
-import { valueDoCandidato, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-leitura';
+import { valueDoCandidato, resumoDosMercados, mesmaLinha, REGUA_SCORE, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { isFinished } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
@@ -85,15 +85,20 @@ function ReguaLinhas({
   forca: Map<number, number>;
 }) {
   const trilha = useRef<HTMLDivElement | null>(null);
+  // A medida da trilha é tirada UMA vez, no pointerdown, e vale o arrasto inteiro.
+  // Medindo a cada movimento, qualquer mudança de largura no meio do caminho
+  // reposicionava a mão do usuário: a parada com preço faz aparecer o botão de
+  // registrar, a trilha encolhia, e o mesmo X do cursor virava outra parada.
+  const medidaDaTrilha = useRef<DOMRect | null>(null);
   const [arrastando, setArrastando] = useState(false);
-  const i = valor != null ? paradas.findIndex((p) => Math.abs(p - valor) < 0.001) : -1;
+  const soltar = () => { setArrastando(false); medidaDaTrilha.current = null; };
+  const i = valor != null ? paradas.findIndex((p) => mesmaLinha(p, valor)) : -1;
   const idx = i < 0 ? 0 : i;
   const pos = paradas.length > 1 ? (idx / (paradas.length - 1)) * 100 : 0;
 
   const escolherPorX = (clientX: number) => {
-    const el = trilha.current;
-    if (!el || paradas.length < 2) return;
-    const r = el.getBoundingClientRect();
+    const r = medidaDaTrilha.current ?? trilha.current?.getBoundingClientRect();
+    if (!r || !r.width || paradas.length < 2) return;
     const t = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
     onEscolher(paradas[Math.round(t * (paradas.length - 1))]);
   };
@@ -109,15 +114,20 @@ function ReguaLinhas({
         aria-valuemax={paradas[paradas.length - 1]}
         aria-valuenow={valor ?? undefined}
         aria-valuetext={valor != null ? rotulo(valor) : undefined}
-        className="relative h-8 cursor-pointer select-none touch-none"
+        className="relative h-8 cursor-pointer select-none touch-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08321f]"
         onPointerDown={(e) => {
           (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          medidaDaTrilha.current = e.currentTarget.getBoundingClientRect();
           setArrastando(true);
           escolherPorX(e.clientX);
         }}
         onPointerMove={(e) => arrastando && escolherPorX(e.clientX)}
-        onPointerUp={() => setArrastando(false)}
-        onPointerCancel={() => setArrastando(false)}
+        onPointerUp={soltar}
+        onPointerCancel={soltar}
+        // Fecha o caminho em que o navegador não tem captura de ponteiro: sem ela o
+        // pointerup cai fora do elemento, "arrastando" ficava travado em true e a
+        // trilha seguia respondendo ao mouse depois de solta.
+        onLostPointerCapture={soltar}
         onKeyDown={(e) => {
           if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
             e.preventDefault();
@@ -201,6 +211,7 @@ export function BancadaMercados({
   locked,
   mercadoAtivo,
   onMercado,
+  preferida,
 }: {
   jogo: JogoInfo;
   valueRows: FutebolFixtureValueRow[] | null | undefined;
@@ -208,6 +219,8 @@ export function BancadaMercados({
   locked: boolean;
   mercadoAtivo: string;
   onMercado: (slug: string) => void;
+  /** A saída que o usuário clicou em Oportunidades, quando ele veio de lá. */
+  preferida?: SaidaPreferida | null;
 }) {
   const { data: rows, isLoading } = useFutebolFixturePremissas(jogo.fixtureId);
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
@@ -220,14 +233,24 @@ export function BancadaMercados({
   const ehLinha = TIPO_LINHA.has(mercado.slug);
   const ehAH = mercado.slug === 'asian_handicap';
 
-  const resumos = useMemo(() => resumoDosMercados(rows, valueRows), [rows, valueRows]);
+  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, preferida), [rows, valueRows, preferida]);
 
   const doMercado = useMemo(
     () => (rows ?? []).filter((r) => r.market === mercado.slug).filter((r) => !(mercado.slug === 'asian_handicap' && r.line_value === 0)),
     [rows, mercado.slug],
   );
 
-  const melhor = useMemo(() => melhorCandidato(rows ?? [], mercado.slug), [rows, mercado.slug]);
+  // O candidato que abre a folha é o MESMO do card do mercado e do hero: com preço
+  // coletado, a saída do melhor Score. Vinha só das premissas, então clicar num card
+  // que dizia "Mais de 1,5 gols" abria a régua em 4,5.
+  //
+  // Sem fallback de propósito: resumoDosMercados só deixa um mercado de fora quando
+  // melhorCandidato dele já é nulo, então um "?? melhorCandidato(...)" aqui nunca
+  // teria o que devolver, e ainda reabriria a porta das duas verdades.
+  const melhor = useMemo(
+    () => resumos.find((r) => r.mercado.slug === mercado.slug)?.candidato ?? null,
+    [resumos, mercado.slug],
+  );
 
   // TODAS as linhas cotadas do mercado, em ordem. Com pills a tela mostrava as 5
   // mais centrais e as outras 16 não existiam; na régua arrastável cabem todas.
@@ -238,17 +261,19 @@ export function BancadaMercados({
 
   const [linha, setLinha] = useState<number | null>(null);
   const [saida, setSaida] = useState<string | null>(null);
+  // Depende de `melhor`, não só de `rows`: premissas e preço chegam em requisições
+  // separadas, e quando o preço chegava depois a régua ficava parada na linha que as
+  // premissas tinham escolhido sozinhas.
   useEffect(() => {
     setLinha(melhor?.line_value != null && paradas.includes(melhor.line_value) ? melhor.line_value : paradas[Math.floor(paradas.length / 2)] ?? null);
     setSaida(melhor?.outcome ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mercado.slug, rows]);
+  }, [melhor, paradas]);
 
   // Os lados da parada atual.
   const [ladoA, ladoB] = useMemo((): [FutebolFixturePremissas | null, FutebolFixturePremissas | null] => {
     if (ehLinha) {
       const [oa, ob] = mercado.slug === 'goals_over_under' ? ['Under', 'Over'] : ['Home', 'Away'];
-      const at = (o: string) => doMercado.find((r) => r.outcome === o && r.line_value != null && Math.abs((r.line_value ?? 0) - (linha ?? NaN)) < 0.001) ?? null;
+      const at = (o: string) => doMercado.find((r) => r.outcome === o && r.line_value != null && linha != null && mesmaLinha(r.line_value, linha)) ?? null;
       return [at(oa), at(ob)];
     }
     const sel = doMercado.find((r) => r.outcome === saida) ?? melhor;
@@ -261,14 +286,22 @@ export function BancadaMercados({
   // contradiziam na mesma tela.
   const nA = ladoA ? contaQueValem(mercado.slug, ladoA.acesas) : 0;
   const nB = ladoB ? contaQueValem(mercado.slug, ladoB.acesas) : 0;
+  const valA = ladoA ? valueDoCandidato(valueRows, mercado.slug, ladoA.outcome, ladoA.line_value) : null;
+  const valB = ladoB ? valueDoCandidato(valueRows, mercado.slug, ladoB.outcome, ladoB.line_value) : null;
+
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
   useEffect(() => setLadoSel(null), [mercado.slug, linha, saida]);
   // Sub-abas da folha: a favor e contra, as duas jogo a jogo (é onde mora a auditoria).
   const [abaMotivo, setAbaMotivo] = useState<'favor' | 'contra'>('favor');
-  const principal = ladoSel === 'a' ? ladoA : ladoSel === 'b' ? ladoB : ladoB && nB > nA ? ladoB : ladoA;
-
-  const valA = ladoA ? valueDoCandidato(valueRows, mercado.slug, ladoA.outcome, ladoA.line_value) : null;
-  const valB = ladoB ? valueDoCandidato(valueRows, mercado.slug, ladoB.outcome, ladoB.line_value) : null;
+  // O lado que abre por padrão. Onde a linha tem preço é o lado que TEM preço, que é
+  // o que o card do mercado está anunciando; sem preço nenhum, o de mais premissas.
+  const ladoPadrao = (() => {
+    if (valA && valB) return valB.score > valA.score ? ladoB : ladoA;
+    if (valA) return ladoA;
+    if (valB) return ladoB;
+    return ladoB && nB > nA ? ladoB : ladoA;
+  })();
+  const principal = ladoSel === 'a' ? ladoA : ladoSel === 'b' ? ladoB : ladoPadrao;
   const valPrincipal = principal === ladoB ? valB : valA;
 
 
@@ -415,6 +448,24 @@ export function BancadaMercados({
   }
 
   const pickAtual = labelDe(principal);
+
+  const cta =
+    valPrincipal && !fim && !locked ? (
+      <RegistrarApostaCTA
+        draft={{
+          homeName: jogo.home,
+          awayName: jogo.away,
+          competition: jogo.competition,
+          kickoffUtc: jogo.kickoffUtc,
+          market: valPrincipal.market,
+          outcome: valPrincipal.outcome,
+          lineValue: valPrincipal.line_value,
+          bestOdd: valPrincipal.best_odd,
+        }}
+        variant="ambar"
+        rotulo={`Registrar ${pickAtual}`}
+      />
+    ) : null;
 
   /**
    * Quantas premissas sustentam cada linha, no lado escolhido. É o que a régua
@@ -692,22 +743,15 @@ export function BancadaMercados({
                 ))}
               </div>
             )}
-            {valPrincipal && !fim && !locked && (
-              <RegistrarApostaCTA
-                draft={{
-                  homeName: jogo.home,
-                  awayName: jogo.away,
-                  competition: jogo.competition,
-                  kickoffUtc: jogo.kickoffUtc,
-                  market: valPrincipal.market,
-                  outcome: valPrincipal.outcome,
-                  lineValue: valPrincipal.line_value,
-                  bestOdd: valPrincipal.best_odd,
-                }}
-                variant="ambar"
-                rotulo={`Registrar ${pickAtual}`}
-              />
-            )}
+            {/* Na régua o botão desce para uma fileira só dele (`basis-full`). Ele só
+                existe na parada que tem preço, e dividindo a fileira com a trilha,
+                entrar nessa parada encolhia a trilha e sair dela esticava de volta:
+                no meio do arrasto a parada debaixo do cursor mudava sozinha. Embaixo
+                ele pode aparecer e sumir à vontade, porque a largura da trilha não
+                depende dele. Reservar a altura custaria uma faixa vazia nas outras
+                17 paradas, que é pior do que a fileira entrar e sair.
+                Sem régua (1X2, ambos marcam, dupla chance) não há o que proteger. */}
+            {ehLinha && paradas.length > 1 ? cta && <div className="basis-full mt-1">{cta}</div> : cta}
           </div>
         </div>
 

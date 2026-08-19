@@ -5,7 +5,7 @@ import { Crest } from '@/components/futebol/Crest';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { useFutebolFixturePremissas } from '@/hooks/use-futebol-data';
 import type { FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
-import { melhorLeitura, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-leitura';
+import { melhorLeitura, resumoDosMercados, REGUA_SCORE, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { outcomeLabel, contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
 import { isFinished, isLive } from '@/utils/futebol-datas';
 import type { JogoInfo } from './JogoResumo';
@@ -56,6 +56,7 @@ export function FaixaPartida({
   homeTeamId,
   awayTeamId,
   onAbrirMercado,
+  preferida,
 }: {
   jogo: JogoInfo;
   valueRows: FutebolFixtureValueRow[] | null | undefined;
@@ -69,9 +70,11 @@ export function FaixaPartida({
   homeTeamId: number;
   awayTeamId: number;
   onAbrirMercado: (slug: string) => void;
+  /** A saída que o usuário clicou em Oportunidades, quando ele veio de lá. */
+  preferida?: SaidaPreferida | null;
 }) {
   const { data: rows } = useFutebolFixturePremissas(jogo.fixtureId);
-  const resumos = useMemo(() => resumoDosMercados(rows, valueRows), [rows, valueRows]);
+  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, preferida), [rows, valueRows, preferida]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
   // A faixa conhecia dois estados, encerrado e "não começou", então o jogo EM
