@@ -4,7 +4,7 @@ import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFutebolValueBoard, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
@@ -16,6 +16,9 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import { mergeBoardAndHistory, opportunityKey } from '@/utils/futebol-history';
+import { parseUtc, brtDayOf, brtDateStr, fmtTime } from '@/utils/futebol-datas';
+import { useNow } from '@/hooks/use-now';
 import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -23,7 +26,6 @@ import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onb
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
 
-const SAO_PAULO_TZ = 'America/Sao_Paulo';
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
 /**
@@ -41,9 +43,15 @@ type OppLike = Omit<FutebolValueBoardRow, 'score' | 'faixa' | 'edge' | 'prob_jus
   prob_justa_fechamento: number | null;
 };
 
-/** Chave de uma oportunidade — casa board com registro do que foi enviado. */
+/**
+ * Chave de uma oportunidade — casa board, histórico e registro do que foi
+ * enviado. Reexportada de `futebol-history.ts` com a forma que esta tela usa
+ * (argumentos soltos em vez de objeto): eram duas funções produzindo string
+ * byte a byte idêntica, e duas chaves que "por acaso" batem é o tipo de coisa
+ * que só quebra depois que alguém mexe numa delas.
+ */
 const oppKey = (fixtureId: number, market: string | null, outcome: string | null, line: number | null) =>
-  `${fixtureId}|${market ?? ''}|${outcome ?? ''}|${line ?? ''}`;
+  opportunityKey({ fixture_id: fixtureId, market, outcome, line_value: line });
 
 /**
  * Monta a linha de uma oportunidade registrada (enviada no daily) com os valores
@@ -84,23 +92,19 @@ function oppFromAlerted(a: FutebolAlertedPick, fx?: FutebolFixture): OppLike {
   };
 }
 
-function kickoffMs(raw: string | null): number | null {
-  if (!raw) return null;
-  const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
-  const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
-  return isNaN(d.getTime()) ? null : d.getTime();
-}
-function fmtHour(raw: string | null): string {
-  const ms = kickoffMs(raw);
-  if (ms == null) return '—';
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
-}
-function brtDayStr(raw: string | null): string | null {
-  const ms = kickoffMs(raw);
-  if (ms == null) return null;
-  return new Intl.DateTimeFormat('en-CA', { timeZone: SAO_PAULO_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
-}
-const TODAY_BRT = new Intl.DateTimeFormat('en-CA', { timeZone: SAO_PAULO_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+// O `kickoffMs`, o `brtDayStr` e o `TODAY_BRT` que moravam aqui eram cópia
+// literal do que `futebol-datas.ts` já exporta como `parseUtc`, `brtDayOf` e
+// `brtToday`. Saíram pelo mesmo motivo que as funções de calendário do PR #259
+// não entraram: duas cópias de aritmética de fuso é como se erra fuso.
+//
+// O `TODAY_BRT` ainda violava a regra escrita em futebol-datas.ts ("chamar na
+// hora do uso, não guardar em const de módulo"), e isso passou a MORDER quando
+// esta tela ganhou o `mergeBoardAndHistory`, que lê o relógio a cada render:
+// eram dois "hoje" diferentes, um congelado no import e outro vivo, que
+// discordam na virada do dia. Agora existe um `hoje` só, no corpo do
+// componente, e é o mesmo instante que alimenta a fusão.
+/** `HH:MM` em BRT, com travessão quando não há horário. */
+const fmtHour = (raw: string | null): string => fmtTime(raw) || '—';
 
 function crestInitials(name: string): string {
   return name.replace(/[^A-Za-zÀ-ÿ\s]/g, '').trim().slice(0, 3).toUpperCase() || '?';
@@ -208,7 +212,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
   o: OppLike; onClick: () => void; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
-  const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
+  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   const hasScore = homeGoals != null && awayGoals != null;
@@ -253,7 +257,7 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
   o: OppLike; onClick: () => void; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
-  const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
+  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result;
   const hasScore = homeGoals != null && awayGoals != null;
@@ -308,14 +312,6 @@ function FaixaKpi({ n, label, tone }: { n: number; label: string; tone: 'alta' |
   );
 }
 
-const Regua = () => (
-  <div className="px-5 py-2.5 flex items-center gap-2 bg-canvas-2 border-t border-line">
-    <span className="flex-1 h-px bg-line" />
-    <span className="shrink-0 px-2 text-[11px] text-ink-3">abaixo daqui: sem valor claro</span>
-    <span className="flex-1 h-px bg-line" />
-  </div>
-);
-
 // Selo de resultado (histórico): Bateu / Anulada / Não bateu (verde/cinza/vermelho).
 function ResultBadge({ r }: { r: BetResult }) {
   const b = resultBadge(r);
@@ -342,7 +338,33 @@ export default function FutebolOportunidades() {
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
 
-  const allRows = useMemo(() => rows ?? [], [rows]);
+  // ── Board (presente e futuro) + histórico (passado, na foto do apito) ─────
+  // As duas fontes viram UMA lista aqui, de uma vez, em vez de cada consumidor
+  // (days, compsOnDay, dayRows, countByDay) ter que saber de onde veio a linha.
+  // As duas RPCs devolvem as mesmas colunas na mesma ordem de propósito.
+  //
+  // Por que o passado não pode vir do board: ele é reconstruído do zero a cada
+  // execução e não expurga jogo encerrado, então a linha de um jogo de junho
+  // segue sendo reavaliada com o dado de HOJE. Medido em produção: 97% das
+  // versões nasceram depois do apito, em média 668h depois. Ler o passado pelo
+  // board mostra a nota recalculada semanas depois, não a que foi publicada, e
+  // ainda contabiliza acerto de linha que ninguém podia ter apostado.
+  // Ver migrations 101/102 e a ADR 0009 do analytics-engineering.
+  //
+  // A regra da fusão vive em futebol-history.ts, testada. O desempate de HOJE é
+  // por kickoff: jogo que já começou vence pelo histórico, jogo que não começou
+  // vence pelo board. É o que mantém esta lista contando a mesma história que a
+  // tela de detalhe, que cai na foto do apito assim que o kickoff passa.
+  const { data: histRows } = useFutebolValueHistory();
+  // UM instante para a tela inteira: a fusão, o stepper e o horizonte de dias
+  // futuros têm que concordar sobre que horas são, senão discordam na virada.
+  // E ele ANDA (useNow), porque nada mais nesta tela provoca render.
+  const agora = useNow();
+  const hoje = brtDateStr(new Date(agora));
+  const allRows = useMemo<FutebolValueBoardRow[]>(
+    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora),
+    [rows, histRows, agora]
+  );
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
   const goalsMap = useMemo(() => {
@@ -361,7 +383,7 @@ export default function FutebolOportunidades() {
   const resultOf = (o: OppLike): BetResult | null => {
     if (!FINISHED_STATUS.has(o.status_short ?? '')) return null;
     const g = goalsMap.get(o.fixture_id);
-    return g ? settleFutebol(o.market, o.outcome, o.line_value, g.gh, g.ga) : null;
+    return g ? settleFutebol(o, g.gh, g.ga) : null;
   };
 
   // ── Oportunidades REGISTRADAS ─────────────────────────────────────────────
@@ -384,31 +406,41 @@ export default function FutebolOportunidades() {
   // mesmo antes das odds entrarem (~24h antes do jogo).
   const days = useMemo(() => {
     const set = new Set<string>();
-    allRows.forEach((r) => { const d = brtDayStr(r.kickoff_utc); if (d) set.add(d); });
-    // Dias que tiveram oportunidade registrada: o mart larga dia antigo (o 22/07
-    // já não tem nenhuma linha lá), e sem isto o dia ficaria inalcançável.
-    registradasAll.forEach((a) => set.add(a.game_day));
-    const now = Date.now();
-    const horizon = now + 8 * 864e5; // ~8 dias à frente
+    allRows.forEach((r) => { const d = brtDayOf(r.kickoff_utc); if (d) set.add(d); });
+    // O registro do Telegram NÃO cria dia sozinho (decisão do Victor, 17/08).
+    //
+    // O snapshot do board começou em 27/07. Antes disso não existe foto do
+    // apito de nada, então esses dias entrariam só com o 1 a 3 picks que o bot
+    // mandou, sem Score, sem faixa e sem chance: uma tela de traços, com cara de
+    // defeito, para dizer "não sabemos". Melhor não oferecer o dia.
+    //
+    // Nos dias que ENTRAM (têm foto do apito), o registro continua somando
+    // linha normalmente, via dayRows. Ele não é redundante: dos 7 picks
+    // enviados de 27/07 pra cá, só 1 ainda era oportunidade no apito.
+    registradasAll.forEach((a) => { if (a.game_day >= hoje) set.add(a.game_day); });
+    // O mesmo `agora` do resto da tela, e não um Date.now() próprio: com dois
+    // relógios, o horizonte de dias futuros e a fusão discordam sobre quando o
+    // jogo virou passado.
+    const horizon = agora + 8 * 864e5; // ~8 dias à frente
     (fixtures ?? []).forEach((f) => {
-      const t = kickoffMs(f.kickoff_utc);
-      if (t != null && t > now && t < horizon && !FINISHED_STATUS.has(f.status_short ?? '')) {
-        const d = brtDayStr(f.kickoff_utc);
+      const t = parseUtc(f.kickoff_utc)?.getTime() ?? null;
+      if (t != null && t > agora && t < horizon && !FINISHED_STATUS.has(f.status_short ?? '')) {
+        const d = brtDayOf(f.kickoff_utc);
         if (d) set.add(d);
       }
     });
     return [...set].sort();
-  }, [allRows, fixtures, registradasAll]);
+  }, [allRows, fixtures, registradasAll, agora, hoje]);
   // Default: hoje se houver; senão o próximo dia futuro; senão o último disponível.
   const selectedDay = (day && days.includes(day))
     ? day
-    : (days.includes(TODAY_BRT) ? TODAY_BRT : (days.find((d) => d >= TODAY_BRT) ?? days[days.length - 1]));
-  const isPastDay = !!selectedDay && selectedDay < TODAY_BRT;
-  const isFutureDay = !!selectedDay && selectedDay > TODAY_BRT;
+    : (days.includes(hoje) ? hoje : (days.find((d) => d >= hoje) ?? days[days.length - 1]));
+  const isPastDay = !!selectedDay && selectedDay < hoje;
+  const isFutureDay = !!selectedDay && selectedDay > hoje;
 
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
-    allRows.forEach((r) => { if (brtDayStr(r.kickoff_utc) === selectedDay) s.add(r.competition); });
+    allRows.forEach((r) => { if (brtDayOf(r.kickoff_utc) === selectedDay) s.add(r.competition); });
     registradasAll.forEach((a) => { if (a.game_day === selectedDay && a.league) s.add(a.league); });
     return s;
   }, [allRows, selectedDay, registradasAll]);
@@ -423,7 +455,7 @@ export default function FutebolOportunidades() {
   // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde
   // veio o número, não de natureza.
   const dayRows = useMemo<OppLike[]>(() => {
-    const board: OppLike[] = allRows.filter((r) => brtDayStr(r.kickoff_utc) === selectedDay);
+    const board: OppLike[] = allRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay);
     const noBoard = new Set(board.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)));
     const registradas = registradasAll
       .filter((a) => a.game_day === selectedDay)
@@ -458,8 +490,12 @@ export default function FutebolOportunidades() {
   );
   const bestRows: OppLike[] = isDemo ? demoFutebolBoard : realBestRows;
   // Registro sem Score conta como com valor: foi enviado acima do corte.
+  //
+  // Não existe o "sem valor claro" como contraparte, e não é esquecimento: o
+  // gate do mart é score >= 40 e o SCORE_MEDIA também é 40, então a lista de
+  // score < 40 era sempre vazia. A seção inteira era código morto e saiu junto
+  // com este PR (achado do Matheus, 17/08, encaminhado para a [E]).
   const comValor = bestRows.filter((o) => o.score == null || o.score >= SCORE_MEDIA);
-  const semValor = bestRows.filter((o) => o.score != null && o.score < SCORE_MEDIA);
   const nAlta = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'alta').length;
   const nMedia = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
   const nBaixa = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;
@@ -468,7 +504,7 @@ export default function FutebolOportunidades() {
   const countByDay = useMemo(() => {
     const byDay = new Map<string, FutebolValueBoardRow[]>();
     allRows.forEach((r) => {
-      const d = brtDayStr(r.kickoff_utc);
+      const d = brtDayOf(r.kickoff_utc);
       if (!d) return;
       if (!byDay.has(d)) byDay.set(d, []);
       byDay.get(d)!.push(r);
@@ -502,7 +538,15 @@ export default function FutebolOportunidades() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPastDay, comValor, goalsMap]);
 
-  const go = (id: number) => navigate(`/futebol/jogo/${id}`);
+  // Esta tela lista uma linha por SAÍDA, não por mercado, e há jogos com duas
+  // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
+  // da segunda abria a tela na primeira, e o pick que o usuário leu aqui virava
+  // outro lá. O link carrega qual card foi clicado.
+  const go = (o: OppLike) => {
+    const q = new URLSearchParams({ mercado: o.market, saida: o.outcome });
+    if (o.line_value != null) q.set('linha', String(o.line_value));
+    navigate(`/futebol/jogo/${o.fixture_id}?${q}`);
+  };
   const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
@@ -595,7 +639,7 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppRow o={o} onClick={() => go(o.fixture_id)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppRow o={o} onClick={() => go(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!isPastDay && !locked && !res && (
                       <div className="px-5 pb-2 -mt-0.5">
                         <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
@@ -604,8 +648,6 @@ export default function FutebolOportunidades() {
                   </div>
                 );
               })}
-              {!isPastDay && semValor.length > 0 && <Regua />}
-              {!isPastDay && semValor.map((o) => <OppRow key={key(o)} o={o} onClick={() => go(o.fixture_id)} muted locked={locked} />)}
             </div>
 
             {/* Cards (mobile) */}
@@ -615,17 +657,11 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppMobileCard o={o} onClick={() => go(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!isPastDay && !locked && !res && <div className="px-1 pt-1.5"><RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} /></div>}
                   </div>
                 );
               })}
-              {!isPastDay && semValor.length > 0 && (
-                <div className="flex items-center gap-2 py-1">
-                  <span className="flex-1 h-px bg-line" /><span className="text-[11px] text-ink-3">sem valor claro</span><span className="flex-1 h-px bg-line" />
-                </div>
-              )}
-              {!isPastDay && semValor.map((o) => <div key={key(o)} className="opacity-60"><OppMobileCard o={o} onClick={() => go(o.fixture_id)} locked={locked} /></div>)}
             </div>
           </div>
         )}

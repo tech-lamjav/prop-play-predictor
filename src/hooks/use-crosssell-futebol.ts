@@ -8,7 +8,7 @@ import { canUseCrossSellFutebol } from '@/config/environment';
  * Regra de exibição:
  *  - 1x por dia (chave datada em localStorage), site-wide;
  *  - respeita opt-out permanente ("não mostrar de novo");
- *  - kill switch via env (VITE_CROSSSELL_FUTEBOL=off).
+ *  - desligado por padrão (campanha encerrada); religa com VITE_CROSSSELL_FUTEBOL=on.
  *
  * O gate de rota/usuário fica no CrossSellManager; aqui só cuidamos da
  * regra de frequência + persistência + eventos de analytics.

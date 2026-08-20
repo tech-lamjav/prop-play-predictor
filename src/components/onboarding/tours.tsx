@@ -197,26 +197,37 @@ export function makeFutebolOportunidadesSteps({
 
 export const FUT_JOGO_TOUR_ID = 'futebol-jogo';
 
-// Tela /futebol/jogo/:id — análise completa da partida. Várias seções são
-// condicionais (só existem em jogo com valor / com dados descritivos), daí o
-// builder com flags. Mostrado uma vez (não por jogo).
+/**
+ * Tela /futebol/jogo/:id — a leitura da partida.
+ *
+ * Refeito para a página em abas e para a bancada de mercados. O tour antigo
+ * apontava para o card "o que olhar neste jogo", para o modelo de gols e para o
+ * bloco de contexto, três alvos que deixaram de existir no redesenho, e por isso
+ * estava desligado (as três flags iam `false` e sobrava só a introdução).
+ *
+ * Régua e premissas são condicionais porque dependem do mercado aberto: 1X2 e
+ * ambos marcam não têm linha para arrastar, e jogo sem coleta não tem premissa
+ * nenhuma para mostrar.
+ */
 export function makeFutebolJogoSteps({
-  hasValue,
-  hasModel,
-  hasContext,
+  hasRegua,
+  hasPremissas,
+  ladoALado,
 }: {
-  hasValue: boolean;
-  hasModel: boolean;
-  hasContext: boolean;
+  hasRegua: boolean;
+  hasPremissas: boolean;
+  /** Bancada em duas colunas (a partir de 1280px). Empilhada, o balão ao lado
+   *  não cabe: a folha do mercado é mais alta que a tela. */
+  ladoALado: boolean;
 }): Step[] {
   const steps: Step[] = [
     {
       id: 'fut-jogo-intro',
       target: 'body',
       placement: 'center',
-      title: 'A análise do jogo',
+      title: 'A leitura do jogo',
       content:
-        'Esta é a análise completa de uma partida. Tudo que a gente reuniu pra você decidir com base em dado.',
+        'Esta tela responde uma pergunta só: o que os números deste jogo sustentam. A aposta vem depois disso, não antes.',
     },
     {
       id: 'fut-jogo-header',
@@ -224,51 +235,53 @@ export function makeFutebolJogoSteps({
       placement: 'bottom',
       title: 'O confronto',
       content:
-        'Os dois times, a forma recente (os últimos resultados) e onde e quando o jogo acontece. Toque num escudo pra abrir o perfil do time.',
+        'Os dois times, como cada um vem chegando, e à direita a melhor leitura da partida com o Score dela.',
+    },
+    {
+      id: 'fut-jogo-abas',
+      target: '[data-tour="fut-jogo-abas"]',
+      placement: 'bottom',
+      title: 'Duas abas',
+      content:
+        'Leitura e mercados é onde a análise mora. Times é o retrato dos dois: campanha, forma e confrontos diretos.',
+    },
+    {
+      id: 'fut-jogo-mercados',
+      target: '[data-tour="fut-jogo-mercados"]',
+      placement: ladoALado ? 'right' : 'bottom',
+      title: 'Os cinco mercados, sempre à vista',
+      content:
+        'Gols, resultado, handicap, ambos marcam e dupla chance ficam sempre à mão, em coluna no computador e numa fileira que rola no celular. A barra é o Score de cada um, e o tracinho é a régua que separa o que vale olhar.',
+    },
+    {
+      id: 'fut-jogo-folha',
+      target: '[data-tour="fut-jogo-folha"]',
+      placement: ladoALado ? 'left' : 'center',
+      title: 'A folha do mercado',
+      content:
+        'Clique num mercado e ele abre aqui: a aposta, a chance, a odd, a vantagem sobre o preço e o veredito em uma frase.',
     },
   ];
 
-  if (hasValue) {
+  if (hasRegua) {
     steps.push({
-      id: 'fut-jogo-oque-olhar',
-      target: '[data-tour="fut-jogo-oque-olhar"]',
-      placement: 'top',
-      title: 'O que olhar neste jogo',
+      id: 'fut-jogo-regua',
+      target: '[data-tour="fut-jogo-regua"]',
+      placement: 'bottom',
+      title: 'Arraste a linha',
       content:
-        'O resumo da partida: a aposta de maior valor, o porquê dela, os pontos de atenção e o Score de confiabilidade num só lugar.',
+        'Nos gols e no handicap dá para arrastar a bolinha e ver a leitura mudar em cada linha. As bolinhas maiores são as linhas que mais premissas sustentam.',
     });
   }
 
-  if (hasModel) {
+  if (hasPremissas) {
     steps.push({
-      id: 'fut-jogo-modelo',
-      target: '[data-tour="fut-jogo-modelo"]',
+      id: 'fut-jogo-premissas',
+      target: '[data-tour="fut-jogo-premissas"]',
       placement: 'top',
-      title: 'Nosso modelo de gols',
+      title: 'A favor e contra',
       content:
-        'A partir das médias da temporada, o modelo estima os gols esperados de cada time e a chance de cada mercado.',
-    });
-  }
-
-  if (hasValue) {
-    steps.push({
-      id: 'fut-jogo-mercados',
-      target: '[data-tour="fut-jogo-mercados"]',
-      placement: 'top',
-      title: 'Explorar mercados',
-      content:
-        'Quer ir além do resumo? Aqui estão todos os mercados e opções, com chance, odd e valor lado a lado.',
-    });
-  }
-
-  if (hasContext) {
-    steps.push({
-      id: 'fut-jogo-contexto',
-      target: '[data-tour="fut-jogo-contexto"]',
-      placement: 'top',
-      title: 'O contexto pra fechar',
-      content:
-        'E pra completar a leitura: escalação provável, desfalques, confrontos diretos e as estatísticas da temporada.',
+        'Aqui está o porquê: o que sustenta a leitura, o que faltou acontecer e, em cada premissa, o "ver os jogos" abre o gráfico dos jogos que produziram aquele número.',
     });
   }
 
@@ -277,57 +290,118 @@ export function makeFutebolJogoSteps({
 
 export const FUT_JOGOS_TOUR_ID = 'futebol-jogos';
 
-// Tela /futebol/jogos — visão geral do campeonato (rodadas, tabela,
-// artilheiros). O stepper de rodada é condicional (depende de rodadas
-// carregadas).
-export function makeFutebolJogosSteps({ hasRounds }: { hasRounds: boolean }): Step[] {
+// Tela /futebol/jogos — agenda por dia, todas as ligas juntas. O passo do painel
+// só existe no desktop, porque em telas menores o clique navega pra tela do jogo
+// e o alvo não está montado.
+export function makeFutebolJogosSteps({ hasPanel }: { hasPanel: boolean }): Step[] {
   const steps: Step[] = [
     {
       id: 'fut-jogos-intro',
       target: 'body',
       placement: 'center',
-      title: 'O campeonato inteiro',
+      title: 'Os jogos do dia',
       content:
-        'Aqui é a visão geral do campeonato: rodadas, tabela e artilheiros num lugar só.',
+        'Aqui ficam os jogos de todos os campeonatos, dia por dia. É a resposta pra "o que tem hoje".',
     },
     {
-      id: 'fut-jogos-header',
-      target: '[data-tour="fut-jogos-header"]',
+      id: 'fut-jogos-datas',
+      target: '[data-tour="fut-jogos-datas"]',
       placement: 'bottom',
-      title: 'Competição e temporada',
+      title: 'Escolha o dia',
       content:
-        'Escolha a competição (Brasileirão, Série B, Copa) e a temporada aqui em cima.',
+        'Use as setas pra andar pelos dias, ou o calendário pra pular pra qualquer data. O pontinho embaixo do dia avisa que tem jogo.',
+    },
+    {
+      id: 'fut-jogos-lista',
+      target: '[data-tour="fut-jogos-lista"]',
+      placement: 'top',
+      title: 'A leitura na própria linha',
+      content:
+        'Os jogos vêm separados por campeonato, e cada campeonato recolhe. Na linha: o mercado, a aposta, a odd e o selo do Score. Jogo encerrado troca o Score por certo ou errado, dizendo se a leitura bateu.',
+    },
+  ];
+
+  if (hasPanel) {
+    steps.push({
+      id: 'fut-jogos-painel',
+      target: '[data-tour="fut-jogos-painel"]',
+      placement: 'left',
+      title: 'O porquê, do lado',
+      content:
+        'Clique num jogo e o resumo abre aqui, sem sair da lista: o que sustenta a leitura, o que pesa contra e como os dois times chegam. Pra ver tudo, é o botão de análise completa.',
+    });
+  }
+
+  return steps;
+}
+
+export const FUT_CAMPEONATO_TOUR_ID = 'futebol-campeonato';
+
+/**
+ * Tela /futebol/campeonato/:slug — o campeonato inteiro.
+ *
+ * O último passo muda de assunto conforme a competição: liga tem tabela, copa
+ * tem chaveamento. Falar em "classificação" numa copa seria descrever uma tela
+ * que a pessoa não está vendo.
+ */
+export function makeFutebolCampeonatoSteps({
+  hasRounds,
+  ehCopa,
+  isMobile,
+}: {
+  hasRounds: boolean;
+  ehCopa: boolean;
+  /** No celular a tabela/chave vive dentro de abas, e o alvo do desktop não existe. */
+  isMobile: boolean;
+}): Step[] {
+  const steps: Step[] = [
+    {
+      id: 'fut-camp-intro',
+      target: 'body',
+      placement: 'center',
+      title: 'O campeonato inteiro',
+      content: 'Aqui é a visão de uma competição: rodada a rodada, com os números da temporada.',
+    },
+    {
+      id: 'fut-camp-header',
+      target: '[data-tour="fut-camp-header"]',
+      placement: 'bottom',
+      title: 'Competição e números',
+      content:
+        'Troque de campeonato ou de temporada aqui em cima. Embaixo ficam os números da temporada: média de gols, quanto passa de 2,5, quanto o mandante ganha e em quantos jogos os dois lados marcam.',
     },
   ];
 
   if (hasRounds) {
     steps.push({
-      id: 'fut-jogos-rodada',
-      target: '[data-tour="fut-jogos-rodada"]',
+      id: 'fut-camp-rodada',
+      target: '[data-tour="fut-camp-rodada"]',
       placement: 'bottom',
-      title: 'Navegue pelas rodadas',
-      content: 'Use as setas pra ir de uma rodada pra outra e ver os jogos de cada uma.',
+      title: ehCopa ? 'A régua de fases' : 'A régua de rodadas',
+      content: ehCopa
+        ? 'Todas as fases numa linha, da primeira até a final: clique em qualquer uma pra ver os jogos dela. As de areia já passaram, a verde é a que está aberta.'
+        : 'A temporada inteira numa linha: clique em qualquer rodada pra ver os jogos dela. As de areia já passaram, a verde é a que está aberta.',
     });
   }
 
-  steps.push(
-    {
-      id: 'fut-jogos-lista',
-      target: '[data-tour="fut-jogos-lista"]',
-      placement: 'top',
-      title: 'Os jogos da rodada',
-      content:
-        'Os jogos agrupados por dia. A etiqueta na direita mostra a faixa de valor de cada jogo. Toque pra abrir a análise completa.',
-    },
-    {
-      id: 'fut-jogos-tabela',
-      target: '[data-tour="fut-jogos-tabela"]',
-      placement: 'top',
-      title: 'Tabela e artilheiros',
-      content:
-        'Pra acompanhar a temporada: a classificação e os artilheiros, com a tabela e a lista completas a um toque.',
-    },
-  );
+  // O alvo muda por viewport: no desktop é a coluna da direita, no celular é a
+  // barra de abas (a coluna existe no DOM mas fica escondida, e apontar pra ela
+  // deixava o último passo no vazio).
+  steps.push({
+    id: 'fut-camp-tabela',
+    target: isMobile ? '[data-tour="fut-camp-abas"]' : '[data-tour="fut-camp-tabela"]',
+    placement: isMobile ? 'bottom' : 'top',
+    title: isMobile
+      ? (ehCopa ? 'Fase, chave e artilheiros' : 'Rodada, tabela e artilheiros')
+      : (ehCopa ? 'A chave e os artilheiros' : 'A tabela e os artilheiros'),
+    content: isMobile
+      ? (ehCopa
+          ? 'Nestas abas você troca entre os jogos da fase, a chave da competição (ou a tabela dos grupos, quando ela está na fase de grupos) e os artilheiros.'
+          : 'Nestas abas você troca entre os jogos da rodada, a classificação separada por zona e os artilheiros.')
+      : (ehCopa
+          ? 'Copa não tem tabela de pontos, tem chave: os confrontos fase a fase até a final, com ida e volta somadas. Na fase de grupos, este mesmo espaço mostra a tabela de cada grupo.'
+          : 'A classificação vem separada por zona, com o miolo recolhido pra caber na tela, e logo abaixo os artilheiros.'),
+  });
 
   return steps;
 }

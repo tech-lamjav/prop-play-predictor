@@ -23,6 +23,15 @@
   }
 }
 
+/* Mesmo problema com a barra de CTA das landing pages: ela é fixa no rodapé da
+   viewport e cobriria o fim do rodapé global (a linha do +18 e dos termos). A
+   classe entra no <body> pelo LpStickyCta enquanto a barra está montada. */
+@media (max-width: 639px) {
+  body.has-lp-cta {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+}
+
 /* Minimal scrollbar for modals and panels */
 .minimal-scrollbar::-webkit-scrollbar {
   width: 4px;
@@ -439,15 +448,44 @@ All colors MUST be HSL.
    fundo pra hierarquia).
    ============================================================================ */
 
+/* Calendário da agenda de futebol: o ponto do dia com jogo e o anel de hoje. Vivem
+   aqui porque o react-day-picker aplica as classes no <button> do dia, e o
+   pseudo-elemento é o único jeito de marcar sem mexer no conteúdo. */
+.fut-dia-com-jogo::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(10, 61, 46, 0.55);
+}
+.fut-dia-escolhido.fut-dia-com-jogo::after {
+  background: rgba(255, 255, 255, 0.75);
+}
+.fut-dia-hoje:not(.fut-dia-escolhido) {
+  box-shadow: inset 0 0 0 1.5px #d4a017;
+  color: #b8870f;
+}
+
 .theme-bolao {
   /* Brand */
-  --canvas: #f6f7f5;
-  --canvas-2: #eef0eb;
+  /* O chão da página é bege, não branco-acinzentado: com --canvas quase branco, o
+     card branco em cima dele sumia. O conteúdo continua branco; o bege é o chão e o
+     rótulo (cabeçalho de card). Decisão do protótipo "Futebol Jogo", vale para
+     todas as telas do tema. */
+  --canvas: #f8f4ea;
+  --canvas-2: #f1e9d6;
   --ink: #1a1d1a;
   --ink-2: #4a4f48;
   --ink-3: #8a8f86;
-  --line: #e3e6e0;
-  --line-2: #d4d8d0;
+  /* Linha areia: a borda do card precisa conversar com o chão bege. O cinza
+     esverdeado antigo virava um contorno frio em cima do areia, e as telas de
+     futebol acabaram cravando #ded2b6 no arquivo pra fugir dele. Agora é token. */
+  --line: #ded2b6;
+  --line-2: #cbbb92;
   --forest: #0a3d2e;
   --forest-2: #0f5238;
   --amber: #d4a017;

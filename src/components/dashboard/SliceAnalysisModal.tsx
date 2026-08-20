@@ -72,7 +72,7 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
               {/* Metrics row */}
               <div className="grid grid-cols-4 gap-2 mb-5">
                 {narrative.metrics.map((m, i) => (
-                  <div key={i} className="bg-ink-3/40 border border-line/60 rounded-lg p-2.5 min-w-0 overflow-hidden">
+                  <div key={i} className="bg-canvas-2 border border-line/60 rounded-lg p-2.5 min-w-0 overflow-hidden">
                     <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold truncate">
                       {m.label}
                     </div>
@@ -105,7 +105,7 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
                     return (
                       <div
                         key={i}
-                        className="flex items-start gap-2 bg-ink-3/30 border border-line/60 rounded-lg px-3 py-2"
+                        className="flex items-start gap-2 bg-canvas-2 border border-line/60 rounded-lg px-3 py-2"
                       >
                         <InsightIcon
                           name={ins.icon}
@@ -123,7 +123,7 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
-                  className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-ink-3/40 transition-colors flex-1"
+                  className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex-1"
                 >
                   Fechar
                 </button>

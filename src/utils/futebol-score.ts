@@ -1,6 +1,7 @@
 // ============================================================
 // futebol-score.ts — apresentação do Score (motor é backend)
 // ============================================================
+import type { Saida } from '@/utils/futebol-saida';
 // O Score, edge, premissas, evidências e avisos vêm prontos da
 // fact_value_opportunities (pipeline dbt no BigQuery). Aqui só ROTULAMOS
 // (mercado, pick com linha) e ajudamos a ranquear/agrupar. Nada de cálculo.
@@ -57,6 +58,19 @@ export function marketLabel(market: string): string {
   return market;
 }
 
+/**
+ * Nome curto do mercado, para etiqueta em caixa alta na lista e no painel da
+ * agenda. "Gols (Over/Under)" em 9px com letter-spacing vira uma tira de ruído.
+ */
+export function marketShort(market: string): string {
+  if (market === 'match_winner') return 'Resultado';
+  if (market === 'goals_over_under') return 'Gols';
+  if (market === 'asian_handicap') return 'Handicap';
+  if (market === 'btts') return 'Ambos marcam';
+  if (market === 'double_chance') return 'Dupla chance';
+  return market;
+}
+
 /** Linha do handicap com sinal e vírgula decimal (ex.: -1,5 / +1,5). */
 function fmtHandicapLine(line: number): string {
   const sign = line > 0 ? '+' : line < 0 ? '−' : '';
@@ -74,7 +88,8 @@ export function outcomePt(outcome: string, homeName: string, awayName: string): 
 }
 
 /** Rótulo da aposta (pick), por mercado — inclui a linha no Over/Under. */
-export function pickLabel(market: string, outcome: string, line: number | null, homeName: string, awayName: string): string {
+export function pickLabel(s: Saida, homeName: string, awayName: string): string {
+  const { market, outcome, line_value: line } = s;
   if (market === 'goals_over_under') {
     const n = line != null ? String(line).replace('.', ',') : '';
     return outcome === 'Over' ? `Mais de ${n} gols` : `Menos de ${n} gols`;

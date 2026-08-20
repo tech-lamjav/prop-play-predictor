@@ -141,7 +141,7 @@ export default function Bankroll() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas text-ink flex items-center justify-center">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink flex items-center justify-center">
         <div className="text-ink-2 text-[13px]">Carregando...</div>
       </div>
     );
@@ -200,7 +200,7 @@ export default function Bankroll() {
   };
 
   return (
-    <div className="theme-rebrand w-full min-h-screen bg-canvas text-ink">
+    <div className="theme-bolao w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
       <OnboardingTour tourId={BANKROLL_TOUR_ID} steps={bankrollSteps} run={bankrollTour.run} onFinish={bankrollTour.finish} />
 
@@ -223,7 +223,7 @@ export default function Bankroll() {
                 setMovementDate('');
                 setMovementModalOpen(true);
               }}
-              className="h-9 px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-ink-3/40 rounded-md transition-colors"
+              className="h-9 px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
             >
               <ArrowUpCircle className="w-4 h-4" />
               <span>Resgate</span>
@@ -410,11 +410,11 @@ export default function Bankroll() {
                     className="bg-white"
                     classNames={{
                       caption_label: 'text-sm font-semibold text-ink',
-                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                       head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                       day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_today: 'bg-canvas-2 text-ink font-semibold',
                       day_outside: 'text-ink-2 opacity-40',
                       day_disabled: 'text-ink-2 opacity-30',
                     }}
@@ -457,7 +457,7 @@ export default function Bankroll() {
           <AlertDialogFooter>
             <AlertDialogCancel
               disabled={deleteConfirming}
-              className="h-9 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-ink-3/40"
+              className="h-9 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-canvas-2"
             >
               Cancelar
             </AlertDialogCancel>

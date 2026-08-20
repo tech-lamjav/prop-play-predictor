@@ -1,22 +1,26 @@
-import { useState, useMemo, type ReactNode } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, AlertTriangle, ChevronDown, Check } from 'lucide-react';
+import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
+import { type JogoInfo } from '@/components/futebol/JogoResumo';
+import { FaixaPartida } from '@/components/futebol/FaixaPartida';
+import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
-  computeMatchupTendencies, headlineMarket, STRENGTH_LABEL,
-  type MarketTendency, type Strength, type MatchupTendencies,
+  computeMatchupTendencies,
 } from '@/utils/futebol-tendencias';
+import { type SaidaPreferida } from '@/utils/futebol-leitura';
 import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
   faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
+import { isFinished, isLive } from '@/utils/futebol-datas';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
@@ -25,6 +29,26 @@ import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFixtureDetail, demoFixtureValueRows, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
+
+/**
+ * A bancada fica lado a lado a partir de 1280px (o breakpoint `xl` do grid). O
+ * tour usa isto pra decidir se o balão cabe ao lado do alvo ou se precisa ir por
+ * cima: empilhada, a folha do mercado é mais alta que a tela.
+ */
+const BANCADA_MQ = '(min-width: 1280px)';
+
+function useBancadaLadoALado(): boolean {
+  const [lado, setLado] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia(BANCADA_MQ).matches : true,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(BANCADA_MQ);
+    const onChange = (e: MediaQueryListEvent) => setLado(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return lado;
+}
 
 const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
   'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
@@ -39,25 +63,6 @@ function injuryReason(r: string): string {
   if (INJURY_REASON_PT[r]) return INJURY_REASON_PT[r];
   if (/injury/i.test(r)) return 'Lesão';
   return r;
-}
-
-function InjuryCol({ injuries, teamId, teamName }: { injuries: FutebolInjury[]; teamId: number; teamName: string }) {
-  const list = injuries.filter((i) => i.team_id === teamId);
-  return (
-    <div>
-      <p className="text-sm font-semibold text-ink mb-2">{teamName} <span className="text-ink-3 text-xs font-normal">({list.length})</span></p>
-      {list.length ? list.map((i) => {
-        const t = INJURY_TYPE[i.injury_type];
-        return (
-          <div key={i.player_id} className="flex items-center gap-2 py-1 text-sm">
-            <span className={`text-[9px] font-bold rounded px-1 py-0.5 shrink-0 ${t ? t.cls : 'bg-canvas-2 text-ink-3'}`}>{t ? t.label : i.injury_type}</span>
-            <span className="truncate text-ink">{i.player_name}</span>
-            <span className="ml-auto text-[10px] text-ink-3 truncate">{injuryReason(i.injury_reason)}</span>
-          </div>
-        );
-      }) : <p className="text-xs text-ink-3">Sem desfalques.</p>}
-    </div>
-  );
 }
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
@@ -79,10 +84,21 @@ function fmtDate(raw: string | null): string {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit', year: '2-digit' }).format(d);
 }
 
+// Fases de mata-mata que a API manda em inglês. pt-BR sempre, inclusive aqui.
+const FASE_PT: Record<string, string> = {
+  'round of 32': '16-avos de final',
+  'round of 16': 'Oitavas de final',
+  'quarter-finals': 'Quartas de final',
+  'semi-finals': 'Semifinal',
+  final: 'Final',
+  '3rd place final': 'Disputa de 3º lugar',
+};
+
 function prettyRound(round: string | null): string {
   if (!round) return '';
   const m = round.match(/Regular Season\s*-\s*(\d+)/i);
-  return m ? `Rodada ${m[1]}` : round;
+  if (m) return `Rodada ${m[1]}`;
+  return FASE_PT[round.trim().toLowerCase()] ?? round;
 }
 
 function crestInitials(name: string): string {
@@ -107,6 +123,9 @@ const FORM_COLORS: Record<string, string> = {
   L: 'bg-status-danger text-canvas',
 };
 
+/** W/D/L da API em português. O DS é explícito: pt-BR sempre, inclusive em micro-rótulo. */
+const RESULTADO_PT: Record<string, string> = { W: 'V', D: 'E', L: 'D' };
+
 function FormChips({ form }: { form: FutebolFormResult[] }) {
   if (!form?.length) return <span className="text-xs text-ink-3">Sem histórico</span>;
   const ordered = [...form].reverse(); // antigo → recente
@@ -115,10 +134,10 @@ function FormChips({ form }: { form: FutebolFormResult[] }) {
       {ordered.map((g) => (
         <span
           key={g.fixture_id}
-          title={`${g.side === 'home' ? 'vs' : '@'} ${g.opponent} • ${g.goals_for}-${g.goals_against}`}
+          title={`${g.side === 'home' ? 'contra' : 'fora, contra'} ${g.opponent} · ${g.goals_for} a ${g.goals_against}`}
           className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center ${FORM_COLORS[g.result] || ''}`}
         >
-          {g.result}
+          {RESULTADO_PT[g.result] ?? g.result}
         </span>
       ))}
     </div>
@@ -136,62 +155,9 @@ const STAT_ROWS: { key: keyof FutebolTeamStats; label: string }[] = [
   { key: 'passes_pct', label: 'Passes certos (%)' },
 ];
 
-function StatRow({ label, home, away }: { label: string; home: number | null; away: number | null }) {
-  const h = typeof home === 'number' ? home : null;
-  const a = typeof away === 'number' ? away : null;
-  const total = (h ?? 0) + (a ?? 0);
-  const hPct = total > 0 ? ((h ?? 0) / total) * 100 : 50;
-  return (
-    <div className="py-2">
-      <div className="flex items-center justify-between text-sm tabular-nums mb-1">
-        <span className="font-bold text-ink w-12">{h ?? '—'}</span>
-        <span className="text-[11px] text-ink-3 uppercase tracking-wide">{label}</span>
-        <span className="font-bold text-ink w-12 text-right">{a ?? '—'}</span>
-      </div>
-      <div className="flex h-1.5 rounded overflow-hidden bg-canvas-2">
-        <div className="bg-forest" style={{ width: `${hPct}%` }} />
-        <div className="bg-amber" style={{ width: `${100 - hPct}%` }} />
-      </div>
-    </div>
-  );
-}
-
 function RatingBadge({ value }: { value: number }) {
   const cls = value >= 7.5 ? 'bg-forest text-canvas' : value >= 6.5 ? 'bg-canvas-2 text-ink border border-line' : 'bg-status-danger/15 text-status-danger';
   return <span className={`text-[10px] font-bold tabular-nums rounded px-1 py-0.5 ${cls}`}>{value.toFixed(1)}</span>;
-}
-
-function LineupColumn({ players, side, statsById }: { players: FutebolLineupPlayer[]; side: 'home' | 'away'; statsById: Map<number, FutebolPlayerStat> }) {
-  const list = players.filter((p) => p.team_side === side);
-  const starters = list.filter((p) => p.is_starter);
-  const bench = list.filter((p) => !p.is_starter);
-  const Row = (p: FutebolLineupPlayer) => {
-    const st = p.player_id != null ? statsById.get(p.player_id) : undefined;
-    return (
-      <div key={`${p.player_id}-${p.player_slot}`} className="flex items-center gap-2 py-1 text-sm">
-        <span className="w-6 text-[11px] text-ink-3 tabular-nums text-right">{p.shirt_number ?? '–'}</span>
-        <span className="truncate text-ink">{p.player_name}</span>
-        {st?.goals ? <span className="text-[10px] font-bold text-forest">{st.goals}G</span> : null}
-        {st?.assists ? <span className="text-[10px] font-bold text-amber-2">{st.assists}A</span> : null}
-        <span className="ml-auto flex items-center gap-2">
-          {p.position && <span className="text-[10px] text-ink-3">{p.position}</span>}
-          {st?.rating != null && <RatingBadge value={st.rating} />}
-        </span>
-      </div>
-    );
-  };
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wide text-ink-3 mb-1">Titulares</p>
-      {starters.length ? starters.map(Row) : <p className="text-xs text-ink-3">—</p>}
-      {bench.length > 0 && (
-        <>
-          <p className="text-[10px] uppercase tracking-wide text-ink-3 mt-3 mb-1">Banco</p>
-          {bench.map(Row)}
-        </>
-      )}
-    </div>
-  );
 }
 
 const GOAL_SUFFIX: Record<string, string> = { Penalty: ' (pênalti)', 'Own Goal': ' (gol contra)' };
@@ -199,109 +165,6 @@ const GOAL_SUFFIX: Record<string, string> = { Penalty: ' (pênalti)', 'Own Goal'
 function eventMinute(e: FutebolEvent): string {
   if (e.minute == null) return '—';
   return e.minute_extra ? `${e.minute}+${e.minute_extra}'` : `${e.minute}'`;
-}
-
-function EventRow({ e }: { e: FutebolEvent }) {
-  const sideColor = e.team_side === 'home' ? 'text-forest' : 'text-amber-2';
-  const dot = e.team_side === 'home' ? 'bg-forest' : 'bg-amber';
-  let indicator: ReactNode;
-  let text: ReactNode;
-
-  if (e.event_type === 'Goal') {
-    indicator = <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />;
-    text = (
-      <span className="text-ink-2">
-        <b className="text-ink">{e.player_name}</b> Gol{e.event_detail ? GOAL_SUFFIX[e.event_detail] || '' : ''}
-        {e.assist_player_name && <span className="text-ink-3"> · assist. {e.assist_player_name}</span>}
-      </span>
-    );
-  } else if (e.event_type === 'Card') {
-    const red = (e.event_detail || '').toLowerCase().includes('red');
-    indicator = <span className={`w-2 h-3 rounded-sm ${red ? 'bg-status-danger' : 'bg-amber'}`} />;
-    text = <span className="text-ink-2">{e.player_name} · {red ? 'Vermelho' : 'Amarelo'}</span>;
-  } else if (e.event_type === 'subst') {
-    indicator = <span className="text-[8px] font-bold text-ink-3">SUB</span>;
-    text = (
-      <span className="text-ink-2">
-        <span className="text-status-success">Entra {e.assist_player_name}</span>
-        <span className="text-ink-3"> · Sai {e.player_name}</span>
-      </span>
-    );
-  } else if (e.event_type === 'Var') {
-    indicator = <span className="text-[8px] font-bold text-ink-3 border border-line rounded px-1 leading-tight">VAR</span>;
-    text = <span className="text-ink-3">{e.event_detail}{e.player_name ? ` (${e.player_name})` : ''}</span>;
-  } else {
-    indicator = <span className={`w-2 h-2 rounded-full ${dot}`} />;
-    text = <span className="text-ink-2">{e.event_type} {e.player_name}</span>;
-  }
-
-  return (
-    <div className="flex items-center gap-3 py-1.5">
-      <span className={`w-9 shrink-0 text-xs tabular-nums text-right font-semibold ${sideColor}`}>{eventMinute(e)}</span>
-      <span className="w-8 shrink-0 flex items-center justify-center">{indicator}</span>
-      <span className="text-sm flex-1 min-w-0">{text}</span>
-    </div>
-  );
-}
-
-const STRENGTH_CHIP: Record<Strength, string> = {
-  alta: 'bg-forest text-canvas',
-  media: 'bg-amber text-canvas',
-  baixa: 'bg-canvas-2 text-ink-3 border border-line',
-};
-const STRENGTH_BAR: Record<Strength, string> = {
-  alta: 'bg-forest',
-  media: 'bg-amber',
-  baixa: 'bg-ink-3',
-};
-
-function TendencyRow({ m }: { m: MarketTendency }) {
-  const pct = Math.round(m.prob * 100);
-  return (
-    <div className="py-2">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-sm text-ink font-medium truncate">{m.label}</span>
-        <span className="flex items-center gap-2 shrink-0 tabular-nums">
-          <span className="text-sm font-bold text-ink">{pct}%</span>
-          <span className="text-[10px] text-ink-3">justa {m.fairOdds.toFixed(2)}</span>
-        </span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 rounded overflow-hidden bg-canvas-2">
-          <div className={`h-full ${STRENGTH_BAR[m.strength]}`} style={{ width: `${pct}%` }} />
-        </div>
-        <span className={`text-[9px] font-bold rounded px-1 py-0.5 shrink-0 ${STRENGTH_CHIP[m.strength]}`}>{STRENGTH_LABEL[m.strength]}</span>
-      </div>
-      <p className="text-[10px] text-ink-3 mt-1">{m.reading}</p>
-    </div>
-  );
-}
-
-
-
-// Distribuição de gols do jogo (Poisson sobre λ total) — gráfico de barras vertical
-function GoalDistChart({ lh, la }: { lh: number; la: number }) {
-  const lambda = lh + la;
-  const fact = (n: number) => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
-  const pois = (k: number) => (Math.exp(-lambda) * Math.pow(lambda, k)) / fact(k);
-  const bars = [0, 1, 2, 3].map((k) => ({ k: String(k), p: pois(k) }));
-  const acc = bars.reduce((s, b) => s + b.p, 0);
-  bars.push({ k: '4+', p: Math.max(0, 1 - acc) });
-  const max = Math.max(...bars.map((b) => b.p), 0.001);
-  return (
-    <div>
-      <div className="flex items-end gap-2 h-24">
-        {bars.map((b) => (
-          <div key={b.k} className="flex-1 flex flex-col items-center justify-end h-full gap-1">
-            <span className="text-[9px] text-ink-3 tabular-nums">{Math.round(b.p * 100)}%</span>
-            <div className="w-full bg-forest/80 rounded-t" style={{ height: `${(b.p / max) * 100}%` }} />
-            <span className="text-[10px] text-ink-2 font-semibold">{b.k}</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-[10px] text-ink-3 mt-1.5 text-center">chance de cada placar de gols (modelo) · esperado {lambda.toFixed(1)}</p>
-    </div>
-  );
 }
 
 const CARD = 'bg-white border border-line rounded-rebrand-xl';
@@ -328,246 +191,12 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
 }
 
 // Oportunidades mapeadas de um jogo ENCERRADO + como performaram (green/red).
-function PlayedOpportunities({ rows, homeName, awayName, goalsHome, goalsAway }: {
-  rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; goalsHome: number | null; goalsAway: number | null;
-}) {
-  const valueOpps = [...rows].filter((r) => r.score >= SCORE_MEDIA).sort((a, b) => b.score - a.score);
-  if (!valueOpps.length) return null;
-
-  const settled = valueOpps.map((o) => ({ o, r: settleFutebol(o.market, o.outcome, o.line_value, goalsHome, goalsAway) }));
-  const greens = settled.filter((s) => s.r && isHit(s.r)).length;
-  const reds = settled.filter((s) => s.r === 'lost' || s.r === 'half_lost').length;
-  const voids = settled.filter((s) => s.r === 'push').length;
-
-  return (
-    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-      <div className="px-5 py-3.5 flex items-center justify-between gap-3 bg-canvas-2 border-b border-line">
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Oportunidades deste jogo</div>
-          <div className="text-[11px] text-ink-3 mt-0.5">{valueOpps.length} mapeada{valueOpps.length === 1 ? '' : 's'} · resultado pelo placar</div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {greens > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#dcefe2', color: '#0a3d2e' }}>{greens} green</span>}
-          {reds > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#fbe3e8', color: '#be123c' }}>{reds} red</span>}
-          {voids > 0 && <span className="inline-flex items-center h-6 px-2 rounded-full text-[11px] font-bold tabular-nums" style={{ background: '#eef0ec', color: '#5a625a' }}>{voids} anul.</span>}
-        </div>
-      </div>
-      <div className="divide-y divide-line">
-        {settled.map(({ o, r }) => {
-          const chance = chancePct(o.prob_justa_fechamento);
-          const spine = !r ? 'border-l-line-2'
-            : isHit(r) ? 'border-l-[#2f7d50]'
-            : r === 'push' ? 'border-l-line-2'
-            : 'border-l-[#be123c]';
-          return (
-            <div key={`${o.market}-${o.outcome}-${o.line_value}`} className={`px-5 py-3.5 flex items-center gap-3.5 border-l-4 ${spine}`}>
-              <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[15px] w-9 h-9 shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-semibold text-ink truncate leading-tight">{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</div>
-                <div className="text-[11px] text-ink-3 truncate mt-0.5">{marketLabel(o.market)}{chance != null ? ` · ${chance}% chance` : ''} · odd {o.best_odd.toFixed(2)}</div>
-              </div>
-              {r && <ResultBadge r={r} big />}
-            </div>
-          );
-        })}
-      </div>
-      <p className="px-5 py-2.5 text-[10px] text-ink-3 border-t border-line">Resultado calculado pelo placar final. Não é recomendação.</p>
-    </div>
-  );
-}
-
-function WhatToWatch({ rows, homeName, awayName, competition, kickoffUtc, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; competition: string; kickoffUtc: string | null; locked?: boolean }) {
-  const ranked = [...rows].sort((a, b) => b.score - a.score);
-  const valueOpps = ranked.filter((r) => r.score >= SCORE_MEDIA); // todas as mapeadas (com valor)
-  const top = valueOpps[0];
-  const others = valueOpps.slice(1);
-  const note = 'Leitura de risco, não recomendação de aposta.';
-
-  if (!top) {
-    return (
-      <div className="rounded-rebrand-xl border border-line border-l-4 border-l-amber bg-white p-5">
-        <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3">O que olhar neste jogo</div>
-        <div className="text-lg font-bold text-ink mt-1.5">Sem valor claro nos mercados</div>
-        <p className="text-sm text-ink-2 mt-1">As melhores odds estão alinhadas ao risco real — nada que se destaque aqui. Os dados abaixo seguem pra você tirar sua própria conclusão.</p>
-        <p className="text-[10px] text-ink-3 mt-3">{note}</p>
-      </div>
-    );
-  }
-
-  const pick = pickLabel(top.market, top.outcome, top.line_value, homeName, awayName);
-  const verdict = valorVerdict(top.edge);
-  const porque = top.evidencias ?? [];
-  // Pontos de atenção: contras (premissas que não bateram) + avisos (penalidades)
-  const atencao = [...(top.contras ?? []), ...(top.avisos ?? [])];
-
-  const vColor = verdict.toLowerCase().includes('forte') ? 'text-forest' : 'text-amber-2';
-  const chance = chancePct(top.prob_justa_fechamento);
-
-  return (
-    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-      <div className="px-5 py-3 flex items-center justify-between bg-canvas-2 border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">O que olhar neste jogo{valueOpps.length > 1 ? ` · ${valueOpps.length} oportunidades` : ''}</div>
-        <span className={`text-[11px] font-semibold ${vColor}`}>{verdict}</span>
-      </div>
-      <div className="p-5 md:p-6 grid md:grid-cols-[1fr_260px] gap-6">
-        {/* Veredito + por quê + atenção */}
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(top.market)}</span>
-            <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(top.faixa)}`}>Faixa {faixaWord(top.faixa)}</span>
-          </div>
-          <div className="text-2xl md:text-[30px] font-bold tracking-tight mt-2 text-ink leading-tight"><Blur active={!!locked} strength={9}>{pick}</Blur></div>
-          {porque.length > 0 && (
-            <div className="mt-4">
-              <div className="text-[10px] uppercase tracking-[0.16em] font-bold mb-2 text-forest">Por quê</div>
-              <ul className="flex flex-col gap-1.5">
-                {porque.map((p, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-ink-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 bg-forest" /><span><Blur active={!!locked}>{p}</Blur></span></li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {atencao.length > 0 && (
-            <div className="mt-4">
-              <div className="text-[10px] uppercase tracking-[0.16em] font-bold mb-2 text-amber-2">Pontos de atenção</div>
-              <ul className="flex flex-col gap-1.5">
-                {atencao.map((p, i) => (
-                  <li key={i} className="flex items-start gap-2 text-[13px] leading-snug text-ink-2"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 bg-amber" /><span>{p}</span></li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        {/* Painel de confiabilidade + 2ª opção */}
-        <div className="md:pl-6 md:border-l md:border-line flex flex-col gap-4">
-          <div className="rounded-rebrand-md p-4 text-white" style={{ background: 'linear-gradient(135deg, #0a3d2e, #08321f)' }}>
-            <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-white/50">Confiabilidade</div>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-[44px] font-bold tabular-nums tracking-tight leading-none" style={{ color: '#fbbf24' }}>{top.score}</span>
-              <span className="text-[13px] text-white/40">/100</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              {chance != null && <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Chance</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1"><Blur active={!!locked}>{chance}%</Blur></div></div>}
-              <div><div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Odd</div><div className="text-[18px] font-semibold tabular-nums leading-none mt-1"><Blur active={!!locked}>{top.best_odd.toFixed(2)}</Blur></div></div>
-            </div>
-          </div>
-          {others.length > 0 && (
-            <div className="rounded-rebrand-md p-3 bg-canvas-2 border border-line">
-              <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-2 text-ink-3">Outras oportunidades neste jogo</div>
-              <div className="flex flex-col gap-2.5">
-                {others.map((o) => {
-                  const oc = chancePct(o.prob_justa_fechamento);
-                  return (
-                    <div key={`${o.market}-${o.outcome}-${o.line_value}`} className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={!!locked}>{pickLabel(o.market, o.outcome, o.line_value, homeName, awayName)}</Blur></div>
-                        <div className="text-[10px] text-ink-3 truncate">{marketLabel(o.market)}<Blur active={!!locked}>{oc != null ? ` · ${oc}%` : ''} · {o.best_odd.toFixed(2)}</Blur></div>
-                      </div>
-                      <span className={`text-[11px] font-bold tabular-nums px-1.5 h-5 inline-flex items-center rounded shrink-0 ${faixaBadgeCls(o.faixa)}`}>{o.score}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          <p className="text-[10px] text-ink-3 leading-snug">{note}</p>
-        </div>
-      </div>
-      {!locked && (
-        <RegistrarApostaCTA
-          variant="footer"
-          draft={{ homeName, awayName, competition, kickoffUtc, market: top.market, outcome: top.outcome, lineValue: top.line_value, bestOdd: top.best_odd }}
-        />
-      )}
-    </div>
-  );
-}
-
-// "Explorar mercados" — todas as opções por mercado (Chance · Odd · Valor · ★ melhor)
-function ResultExplorer({ rows, homeName, awayName, locked }: { rows: FutebolFixtureValueRow[]; homeName: string; awayName: string; locked?: boolean }) {
-  const markets = [...new Set(rows.map((r) => r.market))];
-  return (
-    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-      <div className="px-5 py-3 flex items-center justify-between border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Explorar mercados</div>
-        <span className="text-[10px] text-ink-3">{markets.length} mercado{markets.length === 1 ? '' : 's'}</span>
-      </div>
-      {markets.map((mk, mi) => {
-        const list = rows.filter((r) => r.market === mk).sort((a, b) => a.outcome_order - b.outcome_order);
-        const bestScore = Math.max(...list.map((r) => r.score));
-        return (
-          <div key={mk} className={mi ? 'border-t border-line' : ''}>
-            <div className="px-5 py-2 flex items-center gap-2 bg-canvas-2">
-              <span className="text-[11px] font-semibold tracking-tight text-ink">{marketLabel(mk)}</span>
-              <span className="ml-auto grid grid-cols-[52px_52px_56px] gap-2 text-right text-[9px] uppercase tracking-[0.14em] font-bold text-ink-3">
-                <span>Chance</span><span>Odd</span><span>Valor</span>
-              </span>
-            </div>
-            {list.map((r) => {
-              const chance = chancePct(r.prob_justa_fechamento);
-              const isBest = r.score === bestScore;
-              return (
-                <div key={`${r.outcome}-${r.line_value}`} className="px-5 py-2.5 grid grid-cols-[1fr_52px_52px_56px] gap-2 items-center border-t border-line/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isBest && <span className="text-[10px]" style={{ color: '#fbbf24' }} title="melhor opção do mercado">★</span>}
-                    <span className={`text-[12px] font-medium tracking-tight truncate ${isBest ? 'text-ink' : 'text-ink-2'}`}>{pickLabel(r.market, r.outcome, r.line_value, homeName, awayName)}</span>
-                  </div>
-                  <div className="text-right tabular-nums text-[12px] text-ink-2">{chance != null ? `${chance}%` : '—'}</div>
-                  <div className="text-right tabular-nums text-[12px] font-semibold text-ink">{r.best_odd.toFixed(2)}</div>
-                  <div className="text-right tabular-nums text-[12px] font-semibold" style={{ color: r.edge > 0 ? 'var(--forest)' : '#9aa097' }}><Blur active={!!locked}>{r.edge > 0 ? fmtEdgeScore(r.edge) : 'sem valor'}</Blur></div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// "Nosso modelo de gols" — Poisson sobre médias da temporada (rebrand card)
-function ModelCard({ tendencies, head, homeName, awayName }: { tendencies: MatchupTendencies; head: MarketTendency | null; homeName: string; awayName: string }) {
-  const { lh, la } = tendencies.lambdas;
-  return (
-    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-      <div className="px-5 py-3 border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Nosso modelo de gols</div>
-      </div>
-      <div className="p-5">
-        {head && <div className="text-[13px] leading-snug text-ink-2">{head.reading}</div>}
-        <div className="flex items-center gap-6 mt-4">
-          <div className="text-center"><div className="text-[28px] font-bold tabular-nums tracking-tight leading-none text-forest">{lh.toFixed(1)}</div><div className="text-[10px] mt-1 text-ink-3 max-w-[90px] truncate mx-auto">{homeName}</div></div>
-          <div className="text-[14px] text-ink-3">×</div>
-          <div className="text-center"><div className="text-[28px] font-bold tabular-nums tracking-tight leading-none text-ink-2">{la.toFixed(1)}</div><div className="text-[10px] mt-1 text-ink-3 max-w-[90px] truncate mx-auto">{awayName}</div></div>
-          <div className="text-[10px] text-ink-3 leading-tight">gols<br/>esperados</div>
-        </div>
-        <div className="mt-5"><GoalDistChart lh={lh} la={la} /></div>
-        {head && (
-          <div className="rounded-rebrand-sm bg-canvas-2 border border-line p-3 mt-4">
-            <p className="text-[9px] uppercase tracking-[0.16em] text-ink-3 mb-1 font-bold">Leitura principal · {head.group}</p>
-            <div className="flex items-end justify-between gap-2">
-              <span className="text-[15px] font-bold text-ink leading-tight">{head.label}</span>
-              <span className="text-[22px] font-extrabold text-forest tabular-nums leading-none">{Math.round(head.prob * 100)}%</span>
-            </div>
-          </div>
-        )}
-        <div className="divide-y divide-line mt-2">
-          {tendencies.markets.filter((mk) => mk.key !== head?.key).map((mk) => (
-            <TendencyRow key={mk.key} m={mk} />
-          ))}
-        </div>
-        <p className="mt-4 text-[10px] leading-snug text-ink-3">Conta baseada nas médias da temporada. Não é valor de mercado.</p>
-      </div>
-    </div>
-  );
-}
-
-// Campo (pitch) com o XI provável a partir do `grid` (linha:coluna da API)
-function Pitch({ players, side, formation }: { players: FutebolLineupPlayer[]; side: 'home' | 'away'; formation: string | null }) {
+function Pitch({ players, side, formation, vazio }: { players: FutebolLineupPlayer[]; side: 'home' | 'away'; formation: string | null; vazio: string }) {
   const starters = players.filter((p) => p.team_side === side && p.is_starter && p.grid);
   if (!starters.length) {
-    return <div className="rounded-rebrand-sm grid place-items-center text-[11px] text-white/60" style={{ aspectRatio: '3 / 3.4', background: 'linear-gradient(160deg, #0e5238, #0a3d2e)' }}>Escalação próximo ao jogo</div>;
+    // O texto vem de fora porque depende do estado do jogo: "sai próximo ao
+    // jogo" mente num jogo que já acabou.
+    return <div className="rounded-rebrand-sm grid place-items-center text-[11px] text-white/60 text-center px-3" style={{ aspectRatio: '3 / 3.4', background: 'linear-gradient(160deg, #0e5238, #0a3d2e)' }}>{vazio}</div>;
   }
   const parsed = starters.map((p) => { const [r, c] = (p.grid || '1:1').split(':').map(Number); return { p, r: r || 1, c: c || 1 }; });
   const maxR = Math.max(...parsed.map((x) => x.r));
@@ -643,6 +272,17 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
 export default function FutebolJogo() {
   const { fixtureId } = useParams<{ fixtureId: string }>();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // A saída que o usuário clicou em Oportunidades. Sem ela, a tela escolhia sozinha
+  // a de maior Score do mercado, que nem sempre é a do card clicado.
+  const preferida = useMemo((): SaidaPreferida | null => {
+    const market = params.get('mercado');
+    const outcome = params.get('saida');
+    if (!market || !outcome) return null;
+    const linha = params.get('linha');
+    const n = linha != null ? Number(linha) : NaN;
+    return { market, outcome, line_value: Number.isFinite(n) ? n : null };
+  }, [params]);
   const fid = fixtureId ? Number(fixtureId) : undefined;
   const { data, isLoading, isError } = useFutebolFixtureDetail(fid);
   const { data: extras, isLoading: extrasLoading } = useFutebolFixtureExtras(fid);
@@ -660,7 +300,6 @@ export default function FutebolJogo() {
     if (!fixture || !tend?.home || !tend?.away) return null;
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
-  const head = tendencies ? headlineMarket(tendencies.markets) : null;
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
   const { data: realValueRows } = useFutebolFixtureValue(fid);
   const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
@@ -677,10 +316,27 @@ export default function FutebolJogo() {
   const stats = data?.stats || [];
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
-  const finished = fixture?.status_short === 'FT' || fixture?.status_short === 'AET' || fixture?.status_short === 'PEN';
-  // jogo encerrado/iniciado não é mais oportunidade: esconde o "O que olhar" (vira só descritivo)
+  const finished = isFinished(fixture?.status_short);
+  // "Já começou" inclui o jogo em andamento, não só o encerrado: depois do
+  // apito não dá para prometer que a escalação "sai daqui a pouco".
+  const jogoComecou = finished || isLive(fixture?.status_short);
+  // Jogo em andamento CONTINUA mostrando a leitura, de propósito (decisão do
+  // Victor, 17/08). Esconder tiraria informação de quem abriu a tela justamente
+  // porque o jogo está rolando; o que faltava não era esconder, era DIZER que
+  // já começou. Quem diz agora é a FaixaPartida, com o estado "Em andamento"
+  // que ela não tinha (antes o jogo ao vivo aparecia como "Não começou").
+  //
+  // Isso importa mais depois da migration 101: durante o jogo o valor exibido é
+  // a FOTO DO APITO, e sem o rótulo o leitor toma um preço congelado por preço
+  // corrente.
+  //
+  // O `hasPlayed` que vivia aqui foi removido: ele desenhava a grade de duas
+  // colunas do pós-jogo até o d939e0c (13/08) reorganizar a tela em torno das
+  // premissas, e ficou órfão desde então, declarado e nunca usado. Quem exibe o
+  // valor de um jogo que já começou hoje é a FaixaPartida e a BancadaMercados,
+  // pelo `valueRows` — que a 101 passa a alimentar com a foto do apito, sem
+  // precisar de mudança nelas.
   const showValue = !finished && !!valueRows && valueRows.length > 0;
-  const hasPlayed = finished && !!valueRows && valueRows.length > 0; // registro pós-jogo
 
   const playerStats = extras?.player_stats || [];
   const statsById = new Map<number, FutebolPlayerStat>(
@@ -697,20 +353,160 @@ export default function FutebolJogo() {
     (h2h && h2h.length) || extras?.form_home?.length || extras?.form_away?.length
   );
 
+  // Duas abas (Leitura & mercados · Times) e o mercado aberto na bancada.
+  const [aba, setAba] = useState<'mercados' | 'times'>('mercados');
+  const bancadaLadoALado = useBancadaLadoALado();
+  // Abre já no mercado do card clicado; sem link, no de gols, como sempre foi.
+  const [mercadoAtivo, setMercadoAtivo] = useState(() => preferida?.market ?? 'goals_over_under');
+  const jogoInfo: JogoInfo | null = fixture
+    ? {
+        fixtureId: fid!,
+        homeId: fixture.home_team_id,
+        awayId: fixture.away_team_id,
+        home: fixture.home_team_name,
+        away: fixture.away_team_name,
+        competition: fixture.competition,
+        season: fixture.season,
+        kickoffUtc: fixture.kickoff_utc,
+        statusShort: fixture.status_short,
+        goalsHome: fixture.goals_home,
+        goalsAway: fixture.goals_away,
+      }
+    : null;
+
+  // O tour fala do que está montado: a régua só existe nos mercados de linha, e
+  // as premissas só quando a coleta trouxe alguma para este jogo. A query é a
+  // mesma da bancada, então sai do cache do react-query, sem ida extra à rede.
+  const { data: premissasDoJogo } = useFutebolFixturePremissas(fid);
   const jogoSteps = useMemo(
-    () => makeFutebolJogoSteps({
-      hasValue: showValue,
-      hasModel: !!tendencies,
-      hasContext: hasDescriptive || !!homeProfile || !!awayProfile,
-    }),
-    [showValue, tendencies, hasDescriptive, homeProfile, awayProfile],
+    () =>
+      makeFutebolJogoSteps({
+        hasRegua: mercadoAtivo === 'goals_over_under' || mercadoAtivo === 'asian_handicap',
+        hasPremissas: (premissasDoJogo?.length ?? 0) > 0,
+        ladoALado: bancadaLadoALado,
+      }),
+    [mercadoAtivo, premissasDoJogo, bancadaLadoALado],
   );
+
+  // ── Cards de contexto, montados uma vez e posicionados conforme o estado ──
+  // Jogo FUTURO: h2h + estatísticas entram no trilho da direita (junto do veredito
+  // e do modelo) e a escalação fica sob o mapa — um rail de consulta contínuo, em
+  // vez de uma coluna direita que ficava VAZIA quando o jogo não tinha odd nem
+  // modelo (caso Santos × Remo). Jogo ENCERRADO: grade original lá embaixo.
+  // A fonte NÃO publica escalação provável. O que chega é a confirmada
+  // (anunciada antes do apito) ou a real (registro pós-jogo). O rótulo é
+  // derivado da fase, não fixo.
+  //
+  // As DUAS listas vêm filtradas pela fase exibida: elas podem estar em fases
+  // diferentes (139 dos 8.071 jogos), e usar as listas cruas faria o card
+  // anunciar "Escalação confirmada" com a formação do pós-jogo ao lado.
+  const escalacao = escalacaoExibida(extras?.lineups, extras?.lineup_players);
+  const rotulo = rotuloEscalacao(escalacao.fase, jogoComecou);
+
+  const escalacaoCard = fixture ? (
+    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
+      <div className="px-5 py-3 flex items-center justify-between border-b border-line">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{rotulo.titulo} & desfalques</div>
+          {rotulo.subtitulo && <div className="text-[10px] text-ink-3 mt-0.5">{rotulo.subtitulo}</div>}
+        </div>
+        {escalacao.times.length ? (
+          <span className="text-[10px] tabular-nums text-ink-3">{escalacao.times.find((l) => l.team_side === 'home')?.formation || '—'} × {escalacao.times.find((l) => l.team_side === 'away')?.formation || '—'}</span>
+        ) : null}
+      </div>
+      <div className="p-5">
+        {escalacao.jogadores.length ? (
+          <div className="grid grid-cols-2 gap-4">
+            {(['home', 'away'] as const).map((sideKey) => {
+              const teamName = sideKey === 'home' ? fixture.home_team_name : fixture.away_team_name;
+              const teamId = sideKey === 'home' ? fixture.home_team_id : fixture.away_team_id;
+              const formation = escalacao.times.find((l) => l.team_side === sideKey)?.formation ?? null;
+              const inj = (injuries || []).filter((x) => x.team_id === teamId);
+              return (
+                <div key={sideKey}>
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span className="text-[12px] font-semibold tracking-tight text-ink truncate">{teamName}</span>
+                    {formation && <span className="text-[10px] tabular-nums ml-auto text-ink-3">{formation}</span>}
+                  </div>
+                  <Pitch players={escalacao.jogadores} side={sideKey} formation={formation} vazio={rotulo.titulo} />
+                  <div className="mt-3">
+                    <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">Desfalques</div>
+                    {inj.length === 0 ? <div className="text-[11px] text-ink-3">Sem desfalques</div> : inj.map((d, i) => {
+                      const duvida = /quest|doubt|dúvid/i.test(d.injury_type || '');
+                      return (
+                        <div key={i} className={`flex items-center gap-2 py-1.5 text-[12px] ${i ? 'border-t border-line/60' : ''}`}>
+                          <span className="font-semibold tracking-tight text-ink truncate">{d.player_name}</span>
+                          <span className="text-[10px] text-ink-3 truncate">{d.injury_reason || d.injury_type}</span>
+                          <span className="px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold ml-auto shrink-0" style={duvida ? { background: '#fef7df', color: '#9a6c00' } : { background: '#fde2e7', color: '#9a1f2e' }}>{duvida ? 'Dúvida' : 'Fora'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Deriva do mesmo rótulo do cabeçalho: com a regra escrita duas vezes,
+          // o card já chegou a anunciar "Quem entrou em campo" com o corpo
+          // dizendo que a escalação sai daqui a pouco.
+          <p className="text-sm text-ink-3 text-center py-6">
+            {rotulo.subtitulo ? `${rotulo.titulo} · ${rotulo.subtitulo}.` : `${rotulo.titulo}.`}
+          </p>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  const h2hCard = fixture ? (
+    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
+      <div className="px-5 py-3 border-b border-line"><div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Confrontos diretos</div></div>
+      <div className="p-5">
+        {h2hLoading ? <p className="text-xs text-ink-3">Carregando…</p> : h2h && h2h.length ? (
+          <>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[20px] font-semibold tabular-nums text-forest shrink-0">{h2hHomeWins}</span>
+              <div className="flex-1 h-2 rounded-full overflow-hidden flex bg-canvas-2">
+                <div style={{ width: `${h2hPct(h2hHomeWins)}%`, background: 'var(--forest)' }} />
+                <div style={{ width: `${h2hPct(h2hDraws)}%`, background: 'var(--ink-3)' }} />
+                <div style={{ width: `${h2hPct(h2hAwayWins)}%`, background: '#be123c' }} />
+              </div>
+              <span className="text-[20px] font-semibold tabular-nums shrink-0" style={{ color: '#be123c' }}>{h2hAwayWins}</span>
+            </div>
+            <p className="text-[11px] mb-2 text-ink-3">{h2hTotal} confronto{h2hTotal === 1 ? '' : 's'} · {h2hHomeWins} {fixture.home_team_name} · {h2hDraws} empate · {h2hAwayWins} {fixture.away_team_name}</p>
+            {h2h.slice(0, 6).map((m) => {
+              const win = (m.goals_home ?? 0) > (m.goals_away ?? 0) ? 'home' : (m.goals_away ?? 0) > (m.goals_home ?? 0) ? 'away' : 'draw';
+              return (
+                <div key={m.fixture_id} className="grid grid-cols-[1fr_auto_60px] gap-2 items-center py-2 text-[12px] border-t border-line/60">
+                  <span className="text-[11px] text-ink-3 truncate">{fmtDate(m.date_utc)} · {m.competition}</span>
+                  <span className="font-semibold tabular-nums text-ink">{m.goals_home} × {m.goals_away}</span>
+                  <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#be123c' : 'var(--ink-3)' }}>{win === 'home' ? 'Casa' : win === 'away' ? 'Fora' : 'Empate'}</span>
+                </div>
+              );
+            })}
+          </>
+        ) : <p className="text-xs text-ink-3">Sem confrontos diretos no histórico.</p>}
+      </div>
+    </div>
+  ) : null;
+
+  const statsCard = fixture && (homeProfile || awayProfile) ? (
+    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
+      <div className="px-5 py-3 flex items-center justify-between border-b border-line">
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Estatísticas · temporada</div>
+        <span className="text-[10px] flex items-center gap-2"><span className="text-forest font-semibold truncate max-w-[90px]">{fixture.home_team_name}</span><span className="text-ink-3 truncate max-w-[90px]">{fixture.away_team_name}</span></span>
+      </div>
+      <div className="p-5"><StatsCompare home={homeProfile} away={awayProfile} /></div>
+    </div>
+  ) : null;
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
       <AnalyticsNav variant="rebrand" showBack />
       <OnboardingTour tourId={FUT_JOGO_TOUR_ID} steps={jogoSteps} run={jogoTour.run} onFinish={jogoTour.finish} />
-      <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-6 flex-1">
+      {/* 1480px pra bater com a agenda. Em max-w-6xl (1152) sobravam ~290px de ar
+          numa tela de 1440, e todo bloco esticava na mesma largura. */}
+      <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-28 w-full bg-canvas-2 rounded-rebrand-md" />
@@ -724,175 +520,89 @@ export default function FutebolJogo() {
         ) : (
           <>
             {isDemo && <div className="mb-4"><DemoRibbon show /></div>}
-            {/* Header */}
-            <div data-tour="fut-jogo-header" className="bg-white border border-line border-l-4 border-l-forest rounded-rebrand-xl p-5 md:p-6">
-              <div className="flex items-center justify-center gap-2 mb-5 text-[10px] uppercase tracking-[0.16em] text-ink-3">
-                {isDemo && <DemoBadge />}<span>{prettyRound(fixture.round)}</span>
-                {fixture.venue_name && (
-                  <><span>•</span><MapPin className="w-3 h-3" /><span>{fixture.venue_name}{fixture.venue_city ? `, ${fixture.venue_city}` : ''}</span></>
-                )}
+
+            {/* Protótipo "Futebol Jogo" (Claude Design): o confronto e a melhor
+                leitura moram na MESMA faixa forest, colada no cabeçalho. Eram dois
+                blocos disputando o topo da tela. */}
+            {jogoInfo && (
+              <div data-tour="fut-jogo-header">
+                {isDemo && <div className="mb-2"><DemoBadge /></div>}
+                <FaixaPartida
+                  jogo={jogoInfo}
+                  valueRows={valueRows}
+                  locked={locked}
+                  rodada={prettyRound(fixture.round)}
+                  estadio={fixture.venue_name ? `${fixture.venue_name}${fixture.venue_city ? `, ${fixture.venue_city}` : ''}` : null}
+                  quando={fmtDateTime(fixture.kickoff_utc)}
+                  formHome={extrasLoading ? [] : extras?.form_home || []}
+                  formAway={extrasLoading ? [] : extras?.form_away || []}
+                  homeTeamId={fixture.home_team_id}
+                  awayTeamId={fixture.away_team_id}
+                  preferida={preferida}
+                  onAbrirMercado={(slug) => {
+                    setMercadoAtivo(slug);
+                    setAba('mercados');
+                  }}
+                />
               </div>
-              <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
-                <button
-                  onClick={() => navigate(`/futebol/time/${fixture.home_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
-                  className="flex flex-col items-center gap-2 group"
-                >
-                  <Crest name={fixture.home_team_name} logo={getFutebolTeamLogoUrl(fixture.home_team_id)} />
-                  <span className="text-base font-semibold text-ink text-center group-hover:text-forest leading-tight">{fixture.home_team_name}</span>
-                  {!extrasLoading && <FormChips form={extras?.form_home || []} />}
-                </button>
-                <div className="px-2 md:px-4 text-center pt-1">
-                  {finished ? (
-                    <div className="text-4xl md:text-5xl font-extrabold text-ink tabular-nums leading-none">
-                      {fixture.goals_home ?? '-'} <span className="text-ink-3">:</span> {fixture.goals_away ?? '-'}
-                    </div>
-                  ) : (
-                    <div className="text-lg md:text-xl font-bold text-ink tabular-nums leading-none">{fmtDateTime(fixture.kickoff_utc)}</div>
-                  )}
-                  <div className="text-[10px] uppercase tracking-wide text-ink-3 mt-2">
-                    {finished ? 'Encerrado' : (fixture.status_long || 'Agendado')}
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate(`/futebol/time/${fixture.away_team_id}?c=${fixture.competition}&s=${fixture.season}`)}
-                  className="flex flex-col items-center gap-2 group"
-                >
-                  <Crest name={fixture.away_team_name} logo={getFutebolTeamLogoUrl(fixture.away_team_id)} />
-                  <span className="text-base font-semibold text-ink text-center group-hover:text-forest leading-tight">{fixture.away_team_name}</span>
-                  {!extrasLoading && <FormChips form={extras?.form_away || []} />}
-                </button>
+            )}
+
+            {!finished && showValue && <FutebolAccessBanner access={access} className="mt-5" />}
+
+            {/* Duas abas: a leitura com os 5 mercados de um lado, os times do outro.
+                O antigo "Resumo" virou a própria faixa da partida mais a coluna de
+                mercados, então deixou de ser uma aba. */}
+            <div className="mt-5 flex items-center justify-between gap-4 flex-wrap">
+              <div
+                data-tour="fut-jogo-abas"
+                className="inline-flex p-[3px] rounded-[11px]"
+                style={{ background: 'var(--canvas-2)', border: '1px solid #ded2b6' }}
+              >
+                {(
+                  [
+                    ['mercados', 'Leitura & mercados'],
+                    ['times', 'Times'],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setAba(k)}
+                    className={`h-8 px-4 rounded-lg text-[13px] cursor-pointer transition border-0 ${
+                      aba === k ? 'bg-white text-ink font-semibold shadow-sm' : 'bg-transparent text-ink-2 font-medium'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
+              <span className="text-[11.5px]" style={{ color: '#8d8672' }}>
+                Leitura de risco, não recomendação de aposta
+              </span>
             </div>
 
-            {/* Jogo ENCERRADO: oportunidades (resultado) + nosso modelo, lado a lado (~40/60) */}
-            {finished && (hasPlayed || tendencies) && (
-              <div className={`mt-5 grid gap-5 items-start ${hasPlayed && tendencies ? 'lg:grid-cols-[2fr_3fr]' : 'grid-cols-1'}`}>
-                {hasPlayed && valueRows && (
-                  <PlayedOpportunities rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} goalsHome={fixture.goals_home} goalsAway={fixture.goals_away} />
-                )}
-                {tendencies && (
-                  <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
-                )}
-              </div>
-            )}
+            <div className="mt-4">
+              {aba === 'mercados' && (
+                <BancadaMercados
+                  jogo={jogoInfo}
+                  valueRows={valueRows}
+                  tendencies={tendencies}
+                  locked={locked}
+                  mercadoAtivo={mercadoAtivo}
+                  onMercado={setMercadoAtivo}
+                  preferida={preferida}
+                />
+              )}
 
-            {/* Jogo FUTURO: acesso + veredito + nosso modelo, lado a lado */}
-            {!finished && showValue && <FutebolAccessBanner access={access} className="mt-5" />}
-            {!finished && (showValue || tendencies) && (
-              <div className={`mt-5 grid gap-5 items-start ${showValue && tendencies ? 'lg:grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
-                {showValue && valueRows && (
-                  <div data-tour="fut-jogo-oque-olhar">
-                    <WhatToWatch rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} competition={fixture.competition} kickoffUtc={fixture.kickoff_utc} locked={locked} />
+              {aba === 'times' && (
+                <div data-tour="fut-jogo-contexto" className="flex flex-col gap-5">
+                  <div className="grid lg:grid-cols-2 gap-5 items-start">
+                    {statsCard}
+                    {h2hCard}
                   </div>
-                )}
-                {tendencies && (
-                  <div data-tour="fut-jogo-modelo">
-                    <ModelCard tendencies={tendencies} head={head} homeName={fixture.home_team_name} awayName={fixture.away_team_name} />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Explorar mercados — largura total (só pré-jogo, é interativo pra decidir) */}
-            {showValue && valueRows && (
-              <div data-tour="fut-jogo-mercados" className="mt-5">
-                <ResultExplorer rows={valueRows} homeName={fixture.home_team_name} awayName={fixture.away_team_name} locked={locked} />
-              </div>
-            )}
-
-            {/* Contexto — escalação (pitch) + confrontos diretos + estatísticas */}
-            {(hasDescriptive || homeProfile || awayProfile) && (
-              <div data-tour="fut-jogo-contexto" className="mt-5 grid lg:grid-cols-[1.3fr_1fr] gap-5 items-start">
-                {/* Escalação provável & desfalques */}
-                <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-                  <div className="px-5 py-3 flex items-center justify-between border-b border-line">
-                    <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Escalação provável & desfalques</div>
-                    {extras?.lineups?.length ? (
-                      <span className="text-[10px] tabular-nums text-ink-3">{extras.lineups.find((l) => l.team_side === 'home')?.formation || '—'} × {extras.lineups.find((l) => l.team_side === 'away')?.formation || '—'}</span>
-                    ) : null}
-                  </div>
-                  <div className="p-5">
-                    {extras?.lineup_players?.length ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        {(['home', 'away'] as const).map((sideKey) => {
-                          const teamName = sideKey === 'home' ? fixture.home_team_name : fixture.away_team_name;
-                          const teamId = sideKey === 'home' ? fixture.home_team_id : fixture.away_team_id;
-                          const formation = extras!.lineups.find((l) => l.team_side === sideKey)?.formation ?? null;
-                          const inj = (injuries || []).filter((x) => x.team_id === teamId);
-                          return (
-                            <div key={sideKey}>
-                              <div className="flex items-center gap-2 mb-2.5">
-                                <span className="text-[12px] font-semibold tracking-tight text-ink truncate">{teamName}</span>
-                                {formation && <span className="text-[10px] tabular-nums ml-auto text-ink-3">{formation}</span>}
-                              </div>
-                              <Pitch players={extras!.lineup_players} side={sideKey} formation={formation} />
-                              <div className="mt-3">
-                                <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">Desfalques</div>
-                                {inj.length === 0 ? <div className="text-[11px] text-ink-3">Sem desfalques</div> : inj.map((d, i) => {
-                                  const duvida = /quest|doubt|dúvid/i.test(d.injury_type || '');
-                                  return (
-                                    <div key={i} className={`flex items-center gap-2 py-1.5 text-[12px] ${i ? 'border-t border-line/60' : ''}`}>
-                                      <span className="font-semibold tracking-tight text-ink truncate">{d.player_name}</span>
-                                      <span className="text-[10px] text-ink-3 truncate">{d.injury_reason || d.injury_type}</span>
-                                      <span className="px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold ml-auto shrink-0" style={duvida ? { background: '#fef7df', color: '#9a6c00' } : { background: '#fde2e7', color: '#9a1f2e' }}>{duvida ? 'Dúvida' : 'Fora'}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-ink-3 text-center py-6">Escalação provável disponível próximo ao jogo.</p>
-                    )}
-                  </div>
+                  {escalacaoCard}
                 </div>
-
-                {/* Confrontos diretos + Estatísticas */}
-                <div className="flex flex-col gap-5">
-                  <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-                    <div className="px-5 py-3 border-b border-line"><div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Confrontos diretos</div></div>
-                    <div className="p-5">
-                      {h2hLoading ? <p className="text-xs text-ink-3">Carregando…</p> : h2h && h2h.length ? (
-                        <>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[20px] font-semibold tabular-nums text-forest shrink-0">{h2hHomeWins}</span>
-                            <div className="flex-1 h-2 rounded-full overflow-hidden flex bg-canvas-2">
-                              <div style={{ width: `${h2hPct(h2hHomeWins)}%`, background: 'var(--forest)' }} />
-                              <div style={{ width: `${h2hPct(h2hDraws)}%`, background: 'var(--ink-3)' }} />
-                              <div style={{ width: `${h2hPct(h2hAwayWins)}%`, background: '#be123c' }} />
-                            </div>
-                            <span className="text-[20px] font-semibold tabular-nums shrink-0" style={{ color: '#be123c' }}>{h2hAwayWins}</span>
-                          </div>
-                          <p className="text-[11px] mb-2 text-ink-3">{h2hTotal} confronto{h2hTotal === 1 ? '' : 's'} · {h2hHomeWins} {fixture.home_team_name} · {h2hDraws} empate · {h2hAwayWins} {fixture.away_team_name}</p>
-                          {h2h.slice(0, 6).map((m) => {
-                            const win = (m.goals_home ?? 0) > (m.goals_away ?? 0) ? 'home' : (m.goals_away ?? 0) > (m.goals_home ?? 0) ? 'away' : 'draw';
-                            return (
-                              <div key={m.fixture_id} className="grid grid-cols-[1fr_auto_60px] gap-2 items-center py-2 text-[12px] border-t border-line/60">
-                                <span className="text-[11px] text-ink-3 truncate">{fmtDate(m.date_utc)} · {m.competition}</span>
-                                <span className="font-semibold tabular-nums text-ink">{m.goals_home} × {m.goals_away}</span>
-                                <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#be123c' : 'var(--ink-3)' }}>{win === 'home' ? 'Casa' : win === 'away' ? 'Fora' : 'Empate'}</span>
-                              </div>
-                            );
-                          })}
-                        </>
-                      ) : <p className="text-xs text-ink-3">Sem confrontos diretos no histórico.</p>}
-                    </div>
-                  </div>
-
-                  {(homeProfile || awayProfile) && (
-                    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-                      <div className="px-5 py-3 flex items-center justify-between border-b border-line">
-                        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Estatísticas · temporada</div>
-                        <span className="text-[10px] flex items-center gap-2"><span className="text-forest font-semibold truncate max-w-[90px]">{fixture.home_team_name}</span><span className="text-ink-3 truncate max-w-[90px]">{fixture.away_team_name}</span></span>
-                      </div>
-                      <div className="p-5"><StatsCompare home={homeProfile} away={awayProfile} /></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
       </div>

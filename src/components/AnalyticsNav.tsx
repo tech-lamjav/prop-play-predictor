@@ -60,6 +60,9 @@ const FUTEBOL_ITEMS: SubItem[] = [
   { name: 'Hoje', href: '/futebol', icon: LayoutGrid },
   { name: 'Oportunidades', href: '/futebol/oportunidades', icon: Zap },
   { name: 'Jogos', href: '/futebol/jogos', icon: Calendar },
+  // "Jogos" é a agenda por dia (todas as ligas); "Campeonatos" é a navegação por
+  // liga, com rodada, tabela e artilheiros.
+  { name: 'Campeonatos', href: '/futebol/campeonatos', icon: Trophy },
 ];
 
 const BETINHO_ITEMS: SubItem[] = [
@@ -80,6 +83,18 @@ interface AnalyticsNavProps {
    * call sites que passam `variant="rebrand"` explicitamente.
    */
   variant?: 'rebrand';
+  /**
+   * Esconde a tab bar fixa do mobile, mantendo só o cabeçalho. Usado nas
+   * landing pages de tráfego pago: lá o rodapé da viewport é do CTA, e duas
+   * barras fixas brigariam pelo mesmo espaço do polegar.
+   */
+  semTabBar?: boolean;
+  /**
+   * Esconde as seções de produto do centro do cabeçalho (Análises, Betinho,
+   * Bolão). Nas landing pages elas são porta de saída: o visitante veio de
+   * anúncio pra uma oferta só, e cada link desses tira ele dela.
+   */
+  semSecoes?: boolean;
 }
 
 export default function AnalyticsNav({
@@ -87,6 +102,8 @@ export default function AnalyticsNav({
   showBack,
   backTo,
   title,
+  semTabBar,
+  semSecoes,
 }: AnalyticsNavProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -96,9 +113,21 @@ export default function AnalyticsNav({
   const path = location.pathname;
   const isActive = (href: string) => path === href;
 
+  /**
+   * A tela pertence à seção? Vale a rota exata e as filhas dela. A faixa 2 usava
+   * só igualdade, então bastava abrir um detalhe para o contexto sumir: em
+   * /analise-360/1 e em /game/:id o cabeçalho ficava com uma faixa só, e a
+   * pessoa perdia a navegação da NBA no meio do caminho. O futebol nunca teve
+   * esse problema porque já testava por prefixo.
+   */
+  const daSecao = (href: string) => path === href || path.startsWith(`${href}/`);
+  // Rotas de detalhe da NBA que não moram embaixo de nenhum item do menu.
+  const NBA_DETALHES = ['/game/', '/nba-dashboard/'];
+
   const futebolActive = path.startsWith('/futebol');
-  const nbaActive = NBA_ITEMS.some((i) => isActive(i.href));
-  const betinhoActive = BETINHO_ITEMS.some((i) => isActive(i.href));
+  const nbaActive =
+    NBA_ITEMS.some((i) => daSecao(i.href)) || NBA_DETALHES.some((p) => path.startsWith(p));
+  const betinhoActive = BETINHO_ITEMS.some((i) => daSecao(i.href));
   const bolaoActive = path.startsWith('/bolao');
   const analisesActive = futebolActive || nbaActive;
 
@@ -181,7 +210,7 @@ export default function AnalyticsNav({
           </div>
 
           {/* Centro: seções do produto */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className={`${semSecoes ? 'hidden' : 'hidden md:flex'} items-center gap-1`}>
             <button type="button" onClick={() => go(nbaActive ? '/home-nba' : '/futebol')} className={sectionCls(analisesActive)}>
               <BarChart3 className="w-[15px] h-[15px]" strokeWidth={analisesActive ? 2.2 : 2} />
               Análises
@@ -330,14 +359,16 @@ export default function AnalyticsNav({
       </nav>
 
       {/* ─────────── Tab bar mobile (fixa no rodapé da viewport) ─────────── */}
-      <MobileTabBar
-        analisesActive={analisesActive}
-        betinhoActive={betinhoActive}
-        bolaoActive={bolaoActive}
-        nbaActive={nbaActive}
-        perfilActive={path.startsWith('/perfil')}
-        onGo={go}
-      />
+      {!semTabBar && (
+        <MobileTabBar
+          analisesActive={analisesActive}
+          betinhoActive={betinhoActive}
+          bolaoActive={bolaoActive}
+          nbaActive={nbaActive}
+          perfilActive={path.startsWith('/perfil')}
+          onGo={go}
+        />
+      )}
     </>
   );
 }

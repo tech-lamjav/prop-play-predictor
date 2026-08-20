@@ -128,7 +128,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
       {displayEntries.length > 0 && (
         <div className="flex items-center justify-end gap-3 text-[10px] text-ink-2 mb-2 -mt-1">
           <span className="inline-flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-ink-3 border border-line" /> identidade da etiqueta
+            <span className="w-2 h-2 rounded-full bg-canvas-2 border border-line" /> identidade da etiqueta
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="w-2.5 h-1.5 rounded-sm bg-forest" /> lucro
@@ -164,7 +164,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
                     )}
                     <span className="truncate">{entry.name}</span>
                   </div>
-                  <div className="relative h-5 bg-ink-3/40 rounded overflow-hidden">
+                  <div className="relative h-5 bg-canvas-2 rounded overflow-hidden">
                     <div className="absolute top-0 bottom-0 left-1/2 w-px bg-line" />
                     {positive ? (
                       <div
@@ -218,7 +218,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
                       {entry.roi > 0 ? '+' : ''}{entry.roi.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="h-1.5 bg-ink-3/60 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-canvas-2 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${positive ? 'bg-forest' : 'bg-rose-700'}`}
                       style={{ width: `${width}%` }}

@@ -41,6 +41,9 @@ const Paywall = lazyWithRetry(() => import("./pages/Paywall"));
 const PaywallDashboard = lazyWithRetry(() => import("./pages/PaywallDashboard"));
 const PaywallPlatform = lazyWithRetry(() => import("./pages/PaywallPlatform"));
 const Planos = lazyWithRetry(() => import("./pages/Planos"));
+// Variações de LP de teste (tráfego pago, noindex). Uma rota por variação,
+// resolvida pelo registry em pages/lp/variants.ts.
+const LpVariant = lazyWithRetry(() => import("./pages/lp/LpVariant"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
@@ -56,6 +59,8 @@ const FutebolHoje = lazyWithRetry(() => import("./pages/FutebolHoje"));
 const FutebolOportunidades = lazyWithRetry(() => import("./pages/FutebolOportunidades"));
 const FutebolJogos = lazyWithRetry(() => import("./pages/FutebolJogos"));
 const FutebolJogo = lazyWithRetry(() => import("./pages/FutebolJogo"));
+const FutebolCampeonatos = lazyWithRetry(() => import("./pages/FutebolCampeonatos"));
+const FutebolCampeonato = lazyWithRetry(() => import("./pages/FutebolCampeonato"));
 const FutebolTime = lazyWithRetry(() => import("./pages/FutebolTime"));
 const FutebolAssinar = lazyWithRetry(() => import("./pages/FutebolAssinar"));
 const FutebolLP = lazyWithRetry(() => import("./pages/FutebolLP"));
@@ -72,7 +77,7 @@ const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
 const queryClient = new QueryClient();
 
 const LazyFallback = () => (
-  <div className="min-h-screen bg-canvas flex items-center justify-center">
+  <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest"></div>
   </div>
 );
@@ -157,6 +162,10 @@ const App = () => (
             <Route path="/futebol/oportunidades" element={<FutebolOportunidades />} />
             <Route path="/futebol/jogos" element={<FutebolJogos />} />
             <Route path="/futebol/jogo/:fixtureId" element={<FutebolJogo />} />
+            {/* Rodada, tabela e artilheiros saíram da agenda (/futebol/jogos) e
+                moraram aqui, porque são conceitos por liga. */}
+            <Route path="/futebol/campeonatos" element={<FutebolCampeonatos />} />
+            <Route path="/futebol/campeonato/:slug" element={<FutebolCampeonato />} />
             <Route path="/futebol/time/:teamId" element={<FutebolTime />} />
             <Route path="/futebol/assinar" element={<FutebolAssinar />} />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
@@ -165,6 +174,7 @@ const App = () => (
             <Route path="/paywall-dashboard" element={<PaywallDashboard />} />
             <Route path="/paywall-platform" element={<PaywallPlatform />} />
             <Route path="/planos" element={<Planos />} />
+            <Route path="/lp/:slug" element={<LpVariant />} />
             <Route path="/como-usar" element={<ComoUsar />} />
             <Route path="/report" element={
               <ProtectedRoute>

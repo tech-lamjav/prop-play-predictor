@@ -93,7 +93,7 @@ function HeroStat({ label, value, dark, locked }: { label: string; value: string
 // ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
 function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow; onClick: () => void; atencao?: string | null; locked?: boolean }) {
-  const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
+  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
@@ -175,7 +175,7 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
 
 // ── Card de oportunidade ───────────────────────────────────
 function OppCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () => void; locked?: boolean }) {
-  const pick = pickLabel(o.market, o.outcome, o.line_value, o.home_team_name, o.away_team_name);
+  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   return (
     <button onClick={onClick} className={`${CARD} p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>

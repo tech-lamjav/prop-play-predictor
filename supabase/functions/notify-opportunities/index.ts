@@ -115,6 +115,11 @@ interface BoardRow {
   edge: number | null;
   prob_justa_fechamento: number | null;
   evidencias: string[] | null;
+  /**
+   * Quantas checagens ficaram sem resposta por FALTA DE DADO. Não desconta
+   * nota: a ADR 0003 é explícita que dado faltante diagnostica, não penaliza.
+   */
+  premissas_sem_dado: number | null;
 }
 
 interface Recipient {
@@ -124,6 +129,13 @@ interface Recipient {
   segment: "A" | "B";
   sends_without_click: number;
 }
+
+// O aviso de premissa sem dado NÃO entra na DM, e a duplicação da regra que
+// existia aqui saiu junto. Medido: aparecia em 39% dos picks do top 3, e a
+// distância de Score entre "tudo conferido" e "6+ sem dado" é de 4 pontos. Numa
+// mensagem de três picks, isso é uma ressalva a cada três linhas sobre algo que
+// não muda a decisão. Ele vive na folha de mercado, onde o leitor já está
+// olhando premissa por premissa. Ver src/utils/futebol-sem-dado.ts.
 
 async function buildMessage(picks: BoardRow[], userId: string): Promise<string> {
   const lines: string[] = [

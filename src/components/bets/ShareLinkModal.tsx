@@ -130,7 +130,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                 <Badge
                   key={i}
                   variant="secondary"
-                  className="bg-ink-3 border-line text-ink text-xs"
+                  className="bg-canvas-2 border-line text-ink text-xs"
                 >
                   {chip.label}
                 </Badge>
@@ -148,7 +148,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
             <div className="flex gap-2">
               <Popover open={isDateFromOpen} onOpenChange={setIsDateFromOpen} modal>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 h-10 bg-canvas border-line text-ink rounded-md hover:bg-ink-3/40 hover:text-ink text-xs justify-start py-1.5">
+                  <Button variant="outline" className="flex-1 h-10 bg-canvas border-line text-ink rounded-md hover:bg-canvas-2 hover:text-ink text-xs justify-start py-1.5">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-forest" />
                     {localDateFrom
                       ? format(new Date(localDateFrom + 'T12:00:00'), 'dd/MM/yyyy')
@@ -167,11 +167,11 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                     className="bg-white"
                     classNames={{
                       caption_label: 'text-sm font-semibold text-ink',
-                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                       head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                       day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_today: 'bg-canvas-2 text-ink font-semibold',
                       day_outside: 'text-ink-2 opacity-40',
                       day_disabled: 'text-ink-2 opacity-30',
                     }}
@@ -181,7 +181,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
 
               <Popover open={isDateToOpen} onOpenChange={setIsDateToOpen} modal>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 h-10 bg-canvas border-line text-ink rounded-md hover:bg-ink-3/40 hover:text-ink text-xs justify-start py-1.5">
+                  <Button variant="outline" className="flex-1 h-10 bg-canvas border-line text-ink rounded-md hover:bg-canvas-2 hover:text-ink text-xs justify-start py-1.5">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-forest" />
                     {localDateTo
                       ? format(new Date(localDateTo + 'T12:00:00'), 'dd/MM/yyyy')
@@ -200,11 +200,11 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                     className="bg-white"
                     classNames={{
                       caption_label: 'text-sm font-semibold text-ink',
-                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-ink-3/40 hover:text-ink rounded-md inline-flex items-center justify-center',
+                      nav_button: 'h-7 w-7 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md inline-flex items-center justify-center',
                       head_cell: 'text-ink-2 rounded-md w-9 font-medium text-[0.7rem] uppercase tracking-[0.08em]',
-                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-ink-3/40 rounded-md aria-selected:opacity-100',
+                      day: 'h-9 w-9 p-0 font-normal text-ink hover:bg-canvas-2 rounded-md aria-selected:opacity-100',
                       day_selected: 'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
-                      day_today: 'bg-ink-3 text-ink font-semibold',
+                      day_today: 'bg-canvas-2 text-ink font-semibold',
                       day_outside: 'text-ink-2 opacity-40',
                       day_disabled: 'text-ink-2 opacity-30',
                     }}

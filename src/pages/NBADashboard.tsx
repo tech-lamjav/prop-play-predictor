@@ -627,7 +627,7 @@ export default function NBADashboard() {
 
   if (!player && playerLookupDone && !isDemo) {
     return (
-      <div className="w-full min-h-screen bg-canvas text-ink flex flex-col items-center justify-center gap-4 px-4">
+      <div className="theme-bolao w-full min-h-screen bg-canvas text-ink flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-ink opacity-80">Jogador não encontrado.</p>
         <Button
           variant="outline"
@@ -641,7 +641,7 @@ export default function NBADashboard() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-canvas text-ink">
+    <div className="theme-bolao w-full min-h-screen bg-canvas text-ink">
       <AnalyticsNav variant="rebrand" showBack />
       <OnboardingTour tourId={NBA_DASH_TOUR_ID} steps={dashSteps} run={dashTour.run} onFinish={dashTour.finish} />
       <main className="container mx-auto px-3 py-4">

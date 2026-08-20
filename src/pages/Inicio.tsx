@@ -146,8 +146,10 @@ export default function Inicio() {
             </h1>
           </header>
 
-          {/* Mobile: retângulos empilhados. Desktop: 2 colunas. */}
-          <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4">
+          {/* Mobile: retângulos empilhados. Desktop: os três lado a lado, porque
+              com duas colunas o terceiro caía sozinho numa segunda linha e
+              parecia menos importante que os outros. */}
+          <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {DESTINOS.map((d) => {
               const Icon = d.icon;
               return (

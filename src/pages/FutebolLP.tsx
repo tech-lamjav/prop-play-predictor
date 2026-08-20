@@ -430,7 +430,10 @@ const FutebolLP = () => {
               {
                 num: "04",
                 title: "A leitura do jogo inteira",
-                text: "Modelo de gols, escalação provável, desfalques, confrontos diretos e estatísticas da temporada — pra você bater o martelo com o jogo na frente, não no escuro.",
+                // "Escalação provável" não existe: a fonte não publica previsão
+                // de escalação em momento nenhum. O que sai antes do apito é a
+                // CONFIRMADA. Ver src/utils/futebol-escalacao.ts.
+                text: "Modelo de gols, escalação confirmada, desfalques, confrontos diretos e estatísticas da temporada — pra você bater o martelo com o jogo na frente, não no escuro.",
               },
             ].map((f) => (
               <div key={f.num} className="grid grid-cols-[56px_1fr] sm:grid-cols-[88px_1fr] gap-4 sm:gap-8 py-7 border-t border-line last:border-b">

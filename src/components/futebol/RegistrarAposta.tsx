@@ -46,7 +46,11 @@ export function RegistrarApostaModal({
     }
   }, [open, draft]);
 
-  const pick = draft ? pickLabel(draft.market, draft.outcome, draft.lineValue, draft.homeName, draft.awayName) : '';
+  // O draft veio do formulario com `lineValue` em camelCase, entao a saida se monta
+  // aqui. E o unico lugar em que ela nao chega pronta da RPC.
+  const pick = draft
+    ? pickLabel({ market: draft.market, outcome: draft.outcome, line_value: draft.lineValue }, draft.homeName, draft.awayName)
+    : '';
   const match = draft ? `${draft.homeName} x ${draft.awayName}` : '';
   const mkt = draft ? marketLabel(draft.market) : '';
   const league = draft ? competitionLabel(draft.competition) : '';
@@ -178,12 +182,32 @@ export function RegistrarApostaModal({
  * - 'text': linha discreta (estilo bolão) — usada FORA da área clicável da linha/card
  *   da Oportunidades, pra não disparar a navegação e só abrir o modal.
  */
-export function RegistrarApostaCTA({ draft, variant = 'footer' }: { draft: FutebolBetDraft; variant?: 'footer' | 'text' }) {
+export function RegistrarApostaCTA({
+  draft,
+  variant = 'footer',
+  rotulo,
+}: {
+  draft: FutebolBetDraft;
+  /** `ambar` é o botão sólido da faixa da partida e da folha do mercado. */
+  variant?: 'footer' | 'text' | 'ambar';
+  rotulo?: string;
+}) {
   const [open, setOpen] = useState(false);
   const trigger = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault(); setOpen(true); };
 
   return (
     <>
+      {variant === 'ambar' && (
+        <button
+          type="button"
+          onClick={trigger}
+          className="inline-flex items-center justify-center h-9 px-4 rounded-[9px] text-[12.5px] font-bold whitespace-nowrap transition hover:brightness-95"
+          style={{ background: '#fbbf24', color: '#1a1d1a' }}
+        >
+          {rotulo ?? 'Registrar aposta'}
+        </button>
+      )}
+
       {variant === 'footer' && (
         <div className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 md:px-6 py-3 border-t border-line" style={{ background: 'var(--canvas-2)' }}>
           <span className="text-[13px] font-semibold text-ink">Apostou nessa oportunidade?</span>

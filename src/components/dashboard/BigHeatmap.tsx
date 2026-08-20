@@ -174,7 +174,7 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
               } ${
                 hideEmpty
                   ? 'bg-forest-tint text-forest border border-forest/30'
-                  : 'bg-white text-ink-2 border border-line hover:bg-ink-3/40'
+                  : 'bg-white text-ink-2 border border-line hover:bg-canvas-2'
               }`}
               title={hideEmpty ? `${hiddenCount} ${hiddenCount === 1 ? 'linha/coluna oculta' : 'linhas/colunas ocultas'}. Clique para mostrar todas.` : 'Esconder linhas e colunas vazias'}
               aria-pressed={hideEmpty}
@@ -198,7 +198,7 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
                     } ${
                       metric === m
                         ? 'bg-forest text-white'
-                        : 'bg-white text-ink-2 border border-line hover:bg-ink-3/40'
+                        : 'bg-white text-ink-2 border border-line hover:bg-canvas-2'
                     }`}
                   >
                     {label}

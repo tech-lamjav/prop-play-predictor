@@ -61,7 +61,7 @@ export default function PremiumRoute({
 
   if (authLoading || isCheckingSubscription) {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-forest border-t-transparent" />
       </div>
     );
@@ -79,7 +79,7 @@ export default function PremiumRoute({
 
   if (subscriptionStatus !== 'premium') {
     return (
-      <div className="theme-rebrand min-h-screen bg-canvas flex items-center justify-center">
+      <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-2 border-forest border-t-transparent" />
       </div>
     );
