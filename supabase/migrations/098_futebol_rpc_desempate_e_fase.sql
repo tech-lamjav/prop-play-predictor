@@ -132,16 +132,20 @@ BEGIN
     RAISE EXCEPTION 'get_futebol_fixture_value nao existe';
   END IF;
 
+  -- Guarda de idempotencia PRIMEIRO (aprendido no db push de 19/08: num banco
+  -- que ja recebeu esta migration na mao e depois evoluiu com as 099-105, a
+  -- ancora antiga nao existe mais; checar divergencia antes de checar "ja
+  -- aplicada" fazia a migration abortar exatamente onde deveria sair quieta).
+  IF position('d.janela_usada is not distinct from v.janela_usada' in v) > 0
+     OR position('left join d on' in v) = 0 THEN
+    RAISE NOTICE 'get_futebol_fixture_value ja tem o desempate (ou foi superada pela 105). Nada a fazer.';
+    RETURN;
+  END IF;
+
   -- Guarda: se a definicao viva nao for a esperada, aborta sem tocar em nada.
   IF position('distinct on (fixture_id, outcome_side, line_value)' in v) = 0
      OR position('left join d on d.fixture_id = v.fixture_id and d.outcome_side = v.outcome and d.line_value is not distinct from v.line_value' in v) = 0 THEN
     RAISE EXCEPTION 'get_futebol_fixture_value: definicao viva divergente do esperado. Revisar antes de aplicar.';
-  END IF;
-
-  -- Guarda de idempotencia: se ja tem o desempate, nao faz nada.
-  IF position('d.janela_usada is not distinct from v.janela_usada' in v) > 0 THEN
-    RAISE NOTICE 'get_futebol_fixture_value ja tem o desempate. Nada a fazer.';
-    RETURN;
   END IF;
 
   v := replace(v,
