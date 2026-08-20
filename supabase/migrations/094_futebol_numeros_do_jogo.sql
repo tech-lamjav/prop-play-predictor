@@ -33,6 +33,13 @@
 -- 19/08, quando o primeiro `db push` real quebrou aqui): o select pulava as tres
 -- colunas de h2h que a declaracao promete, e a coluna 25 devolvia `date` onde o
 -- contrato diz `bigint`. Corpo abaixo = versao viva (shape file, mesma revisao).
+-- Rationale que a v2 nao levou pro corpo (o shape file vem do pg_get_functiondef,
+-- que nao guarda comentario de declaracao; fica aqui):
+--   * h2h_jogos/h2h_vitorias/h2h_empates existem porque `h2h_favoravel` e uma
+--     premissa que acende e, sem numero, ficava na tela como afirmacao sem
+--     lastro, que e o pior caso possivel;
+--   * stats: um time pode ter varios snapshots; interessa o mais recente;
+--   * h2h: confronto direto conta por lado quantos cada um venceu.
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_numeros(p_fixture_id bigint)
  RETURNS TABLE(side text, team_id bigint, team_name text, posicao bigint, pontos bigint, zona text, jogos bigint, jogos_casa bigint, jogos_fora bigint, v_casa bigint, e_casa bigint, d_casa bigint, v_fora bigint, e_fora bigint, d_fora bigint, gf_casa double precision, ga_casa double precision, gf_fora double precision, ga_fora double precision, gf_total double precision, ga_total double precision, clean_sheets bigint, sem_marcar bigint, forma text, h2h_jogos bigint, h2h_vitorias bigint, h2h_empates bigint, ate date)
  LANGUAGE sql

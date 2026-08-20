@@ -1158,7 +1158,7 @@ AS $function$
       case when v.pen_odd_outlier then 'Só uma casa paga essa odd — pode ser linha furada' end,
       case when v.pen_poucas_casas then 'Poucas casas cotando esse mercado' end,
       case when v.pen_odd_longshot then 'Odd alta (zebra) — entra com cautela' end,
-      case when v.pen_odd_juice and v.market <> 'double_chance' then 'Odd baixa — retorno pequeno pro risco' end,
+      case when v.pen_odd_juice then 'Odd baixa — retorno pequeno pro risco' end,
       case when p.pick_empate then 'Empate é o resultado mais difícil de prever' end,
       case when p.desfalque_proprio then 'Time apostado com desfalque de titular importante' end,
       case when o.linha_extrema then 'Linha extrema — pouco confiável' end,
