@@ -627,7 +627,13 @@ create table futebol.fact_value_opportunities (
   "pin_n_outcomes" bigint,
   "is_half_line" boolean,
   "dbt_loaded_at" timestamp,
-  "premissas_sem_dado" bigint
+  "premissas_sem_dado" bigint,
+  -- AE#87 (19/08/2026): as 4 flags de penalidade publicadas pelo mart, para a
+  -- RPC ler em vez de rederivar do int_futebol_odds_devig (issue #267)
+  "pen_odd_outlier" boolean,
+  "pen_poucas_casas" boolean,
+  "pen_odd_longshot" boolean,
+  "pen_odd_juice" boolean
 );
 
 -- ── 2a. Infra do sync: estado incremental (o Cloud Run sync lê/escreve aqui) ──
@@ -674,7 +680,13 @@ create table futebol.fact_value_opportunities_hist (
   "dbt_updated_at" timestamp,
   "dbt_valid_from" timestamp,
   "dbt_valid_to" timestamp,
-  "premissas_sem_dado" bigint
+  "premissas_sem_dado" bigint,
+  -- AE#87 (19/08/2026): as 4 flags de penalidade publicadas pelo mart, para a
+  -- RPC ler em vez de rederivar do int_futebol_odds_devig (issue #267)
+  "pen_odd_outlier" boolean,
+  "pen_poucas_casas" boolean,
+  "pen_odd_longshot" boolean,
+  "pen_odd_juice" boolean
 );
 
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
@@ -1042,12 +1054,17 @@ AS $function$
   -- kickoff já passado lê a FOTO DO APITO no snapshot. É *kickoff passado* e
   -- não *jogo terminado*, senão as ~2h de bola rolando ficariam sem linha
   -- depois que o mart passar a expurgar os status ao vivo (ADR 0009).
+  -- migration 105: os avisos de penalidade leem as colunas pen_* do proprio mart
+  -- (AE#87). O CTE sobre int_futebol_odds_devig foi removido: ele rederivava as
+  -- flags e, no prd, 76 de 126 linhas exibiam aviso de janela errada (issue #267).
+  -- No hist, pen_* pode ser NULL em versao aberta antes do AE#87: NULL nao gera aviso.
   with v_src as (
     select fixture_id, market, outcome, line_value, competition, season, edge, pts_valor,
            pts_premissas, pts_corroboracao, penalidades, score, faixa, best_odd, best_book,
            avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
            penalidades_globais_pts, penalidades_especificas_pts, modelo_api_concorda,
-           linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado
+           linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado,
+           pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
     from futebol.fact_value_opportunities
     where fixture_id = p_fixture_id
       and exists (select 1 from futebol.fact_fixtures fx
@@ -1057,7 +1074,8 @@ AS $function$
            pts_premissas, pts_corroboracao, penalidades, score, faixa, best_odd, best_book,
            avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
            penalidades_globais_pts, penalidades_especificas_pts, modelo_api_concorda,
-           linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado
+           linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado,
+           pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
     from futebol.fact_value_opportunities_hist h
     where h.fixture_id = p_fixture_id
       and exists (select 1 from futebol.fact_fixtures fx
@@ -1065,17 +1083,6 @@ AS $function$
                      and fx.kickoff_utc <= (now() at time zone 'UTC')
                      and h.dbt_valid_from <= fx.kickoff_utc
                      and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to))
-  ),
-  -- migration 098: o DISTINCT ON ignorava `market_id` e `janela_usada`.
-  -- Sem `janela_usada`, o aviso de penalidade vinha de janela arbitrária (uma
-  -- Over 2.5 que fechou em 2,05 exibia "zebra" calculado do 5,20 do `daily`).
-  -- Sem `market_id`, Gols (5) e Gols do 1º tempo (6) colidiam na mesma linha.
-  d as (
-    select distinct on (fixture_id, market_id, outcome_side, line_value, janela_usada)
-      fixture_id, market_id, outcome_side, line_value, janela_usada,
-      pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
-    from futebol.int_futebol_odds_devig
-    order by fixture_id, market_id, outcome_side, line_value, janela_usada
   )
   select v.market, v.outcome,
     (case when v.market = 'match_winner'
@@ -1148,10 +1155,10 @@ AS $function$
            when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
     ], null),
     array_remove(array[
-      case when d.pen_odd_outlier then 'Só uma casa paga essa odd — pode ser linha furada' end,
-      case when d.pen_poucas_casas then 'Poucas casas cotando esse mercado' end,
-      case when d.pen_odd_longshot then 'Odd alta (zebra) — entra com cautela' end,
-      case when d.pen_odd_juice and v.market <> 'double_chance' then 'Odd baixa — retorno pequeno pro risco' end,
+      case when v.pen_odd_outlier then 'Só uma casa paga essa odd — pode ser linha furada' end,
+      case when v.pen_poucas_casas then 'Poucas casas cotando esse mercado' end,
+      case when v.pen_odd_longshot then 'Odd alta (zebra) — entra com cautela' end,
+      case when v.pen_odd_juice and v.market <> 'double_chance' then 'Odd baixa — retorno pequeno pro risco' end,
       case when p.pick_empate then 'Empate é o resultado mais difícil de prever' end,
       case when p.desfalque_proprio then 'Time apostado com desfalque de titular importante' end,
       case when o.linha_extrema then 'Linha extrema — pouco confiável' end,
@@ -1185,7 +1192,6 @@ AS $function$
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
-  left join d on d.fixture_id = v.fixture_id and d.outcome_side = v.outcome and d.line_value is not distinct from v.line_value and d.janela_usada is not distinct from v.janela_usada and d.market_id = (case v.market when 'match_winner' then 1 when 'asian_handicap' then 4 when 'goals_over_under' then 5 when 'btts' then 8 when 'double_chance' then 12 end)
   where v.fixture_id = p_fixture_id
   order by (case v.market when 'match_winner' then 1 when 'goals_over_under' then 2 when 'asian_handicap' then 3 when 'btts' then 4 when 'double_chance' then 5 else 9 end), 3;
 $function$
