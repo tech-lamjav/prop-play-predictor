@@ -29,41 +29,22 @@
 -- temporada. Essas quatro continuam sem embasamento numérico até existir o agregado.
 -- ============================================================
 
+-- v2 (01/08, aplicada na mao no dev e nunca trazida de volta pro arquivo ate
+-- 19/08, quando o primeiro `db push` real quebrou aqui): o select pulava as tres
+-- colunas de h2h que a declaracao promete, e a coluna 25 devolvia `date` onde o
+-- contrato diz `bigint`. Corpo abaixo = versao viva (shape file, mesma revisao).
+-- Rationale que a v2 nao levou pro corpo (o shape file vem do pg_get_functiondef,
+-- que nao guarda comentario de declaracao; fica aqui):
+--   * h2h_jogos/h2h_vitorias/h2h_empates existem porque `h2h_favoravel` e uma
+--     premissa que acende e, sem numero, ficava na tela como afirmacao sem
+--     lastro, que e o pior caso possivel;
+--   * stats: um time pode ter varios snapshots; interessa o mais recente;
+--   * h2h: confronto direto conta por lado quantos cada um venceu.
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_numeros(p_fixture_id bigint)
-RETURNS TABLE(
-  side          text,
-  team_id       bigint,
-  team_name     text,
-  posicao       bigint,
-  pontos        bigint,
-  zona          text,
-  jogos         bigint,
-  jogos_casa    bigint,
-  jogos_fora    bigint,
-  v_casa        bigint,
-  e_casa        bigint,
-  d_casa        bigint,
-  v_fora        bigint,
-  e_fora        bigint,
-  d_fora        bigint,
-  gf_casa       double precision,
-  ga_casa       double precision,
-  gf_fora       double precision,
-  ga_fora       double precision,
-  gf_total      double precision,
-  ga_total      double precision,
-  clean_sheets  bigint,
-  sem_marcar    bigint,
-  forma         text,
-  -- Confronto direto, do ponto de vista DESTE lado. Existe porque
-  -- `h2h_favoravel` é uma premissa que acende e, sem número, ficava na tela como
-  -- afirmação sem lastro, que é o pior caso possível.
-  h2h_jogos     bigint,
-  h2h_vitorias  bigint,
-  h2h_empates   bigint,
-  ate           date
-)
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO ''
+ RETURNS TABLE(side text, team_id bigint, team_name text, posicao bigint, pontos bigint, zona text, jogos bigint, jogos_casa bigint, jogos_fora bigint, v_casa bigint, e_casa bigint, d_casa bigint, v_fora bigint, e_fora bigint, d_fora bigint, gf_casa double precision, ga_casa double precision, gf_fora double precision, ga_fora double precision, gf_total double precision, ga_total double precision, clean_sheets bigint, sem_marcar bigint, forma text, h2h_jogos bigint, h2h_vitorias bigint, h2h_empates bigint, ate date)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
 AS $function$
   with jogo as (
     select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id
@@ -75,21 +56,19 @@ AS $function$
     union all
     select 'away'::text, j.away_team_id, j.competition, j.season from jogo j
   ),
-  -- Um time pode ter vários snapshots; interessa o mais recente.
   stats as (
     select distinct on (t.team_id, t.competition, t.season) t.*
     from futebol.fact_team_season_stats t
     join lados l on l.team_id = t.team_id and l.competition = t.competition and l.season = t.season
     order by t.team_id, t.competition, t.season, t.snapshot_date desc
   ),
-  -- Confronto direto: conta por lado quantos cada um venceu.
   h2h as (
     select l.team_id,
-           count(*)                                          as jogos,
+           count(*) as jogos,
            count(*) filter (
              where (hh.home_team_id = l.team_id and hh.goals_home > hh.goals_away)
                 or (hh.away_team_id = l.team_id and hh.goals_away > hh.goals_home)
-           )                                                 as vitorias,
+           ) as vitorias,
            count(*) filter (where hh.goals_home = hh.goals_away) as empates
     from jogo j
     join futebol.fact_h2h hh
@@ -135,10 +114,14 @@ AS $function$
          st.clean_sheet_total,
          st.failed_to_score_total,
          st.form,
+         hh.jogos,
+         hh.vitorias,
+         hh.empates,
          st.snapshot_date
   from lados l
   left join stats st on st.team_id = l.team_id
   left join tabela tb on tb.team_id = l.team_id
+  left join h2h hh on hh.team_id = l.team_id
   left join futebol.dim_teams dt on dt.team_id = l.team_id
   order by l.side desc;
 $function$;
