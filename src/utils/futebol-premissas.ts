@@ -106,12 +106,18 @@ export function rotuloPremissa(p: Premissa, lado: 'home' | 'away' | null, negati
 /** Resultado (1X2). Teto de premissa 51 → 30, de 7 ativas para 4. */
 const P_1X2: Premissa[] = [
   P('forma', 'Em boa fase, vem ganhando', 'Não vem em boa fase', 'decide', 10),
-  P('mando', 'Manda bem em casa', 'Não manda bem em casa', 'decide', 8, {
+  // O rótulo base é o NEUTRO, e as variantes de mando ficam explícitas. Antes o base
+  // era "Manda bem em casa" e o mandante caía nele por omissão, o que funcionava na
+  // tela mas deixava o empate sem frase própria: o SQL tinha inventado um "Mando
+  // relevante" que não existia aqui. Agora os três casos moram no mesmo lugar.
+  P('mando', 'Mando relevante', 'Mando não pesa a favor', 'decide', 8, {
+    labelCasa: 'Manda bem em casa',
+    negativoCasa: 'Não manda bem em casa',
     labelFora: 'Vai bem fora de casa',
     negativoFora: 'Não vai bem fora de casa',
   }),
   P('superioridade_tabela', 'Bem à frente na tabela', 'Não está bem à frente na tabela', 'decide', 8),
-  P('forca_mismatch', 'Ataque forte contra defesa frágil', 'O ataque não pega uma defesa frágil', 'decide', 4, {
+  P('forca_mismatch', 'Ataque forte contra defesa frágil do adversário', 'O ataque não pega uma defesa frágil', 'decide', 4, {
     motivo: 'entende o jogo, mas o preço já cobra quase tudo',
   }),
   P('superioridade_xg', 'Cria mais chances de gol que o adversário', 'Não cria mais chances de gol que o adversário', 'preco', 0, {
@@ -120,7 +126,7 @@ const P_1X2: Premissa[] = [
   P('h2h_favoravel', 'Leva vantagem no histórico do confronto', 'Não leva vantagem no histórico do confronto', 'preco', 0, {
     motivo: 'todo mundo olha, então já está na odd',
   }),
-  P('desfalque_adversario', 'Adversário desfalcado', 'Adversário sem desfalque conhecido', 'preco', 0, {
+  P('desfalque_adversario', 'Adversário com desfalque de titular importante', 'Adversário sem desfalque conhecido', 'preco', 0, {
     motivo: 'sem dado em 99,5% dos jogos futuros',
   }),
 ];
@@ -132,7 +138,7 @@ const P_OU: Premissa[] = [
   P('ataque_combinado', 'Os dois somam muitos gols', 'Os dois não somam muitos gols', 'decide', 12, { lado: 'over' }),
   P('xg_baixo_combinado', 'Os dois criam pouca chance de gol', 'Os dois criam bastante chance de gol', 'decide', 10, { lado: 'under' }),
   P('xg_combinado_alto', 'Os dois criam muita chance de gol', 'Os dois não criam muita chance de gol', 'decide', 10, { lado: 'over' }),
-  P('clean_sheets_altos', 'Os dois seguram muito jogo sem sofrer gol', 'Os dois sofrem gol na maioria dos jogos', 'decide', 10, { lado: 'under' }),
+  P('clean_sheets_altos', 'Os dois passam muitos jogos sem sofrer gol', 'Não costumam segurar o placar zerado', 'decide', 10, { lado: 'under' }),
   P('ataques_fracos', 'Ataques fracos dos dois lados', 'Os ataques não são fracos', 'decide', 3, { lado: 'under', motivo: 'o preço já cobra' }),
   P('historico_under', 'Histórico de jogo com poucos gols', 'O histórico não é de jogo com poucos gols', 'preco', 3, { lado: 'under', motivo: 'sinal fraco' }),
   P('ambos_vazam', 'Os dois sofrem gol quase todo jogo', 'Os dois não sofrem gol quase todo jogo', 'preco', 0, {
@@ -157,8 +163,17 @@ const P_AH: Premissa[] = [
     labelCasa: 'Defesa sólida em casa',
     negativoCasa: 'A defesa não é sólida em casa',
   }),
-  P('sem_rodizio', 'Não deve poupar jogadores', 'Pode poupar jogadores', 'decide', 3, { lado: 'favorito' }),
-  P('raramente_perde_por_2', 'Raramente perde por dois ou mais', 'Perde por dois ou mais com frequência', 'decide', 3, {
+  P('sem_rodizio', 'Deve entrar com força máxima', 'Pode poupar jogadores', 'decide', 3, { lado: 'favorito' }),
+  // O rótulo antigo era "Raramente perde por dois ou mais", e ele enunciava uma
+  // CONDIÇÃO DE APOSTA que só vale em duas das sete linhas do handicap: num +0,5 a
+  // aposta morre em qualquer derrota, então a margem da derrota não responde nada.
+  // Chegou ao usuário numa DM de +0,5 e não fechou a conta (issue #272).
+  //
+  // O sinal, porém, é real: gradada contra o placar dos 90 minutos no lado azarão,
+  // ela separa em TODAS as linhas de meio gol, inclusive no +0,5, e o efeito
+  // sobrevive ao controle por faixa de odd acima de 1,30. Ela funciona como atalho
+  // para solidez defensiva geral. Logo o defeito era a frase, não o cálculo.
+  P('raramente_perde_por_2', 'Quando perde, perde apertado', 'Costuma perder por muitos gols', 'decide', 3, {
     lado: 'azarao',
     motivo: 'sinal quase nulo, mas é o que abre a porta do azarão',
   }),
@@ -182,30 +197,69 @@ const P_BTTS: Premissa[] = [
   P('ataque_dos_dois', 'Os dois atacam bem', 'Os dois não atacam bem', 'decide', null, { lado: 'sim' }),
   P('defesas_vazaveis', 'Defesas frágeis dos dois lados', 'As defesas não são frágeis', 'decide', null, { lado: 'sim' }),
   P('defesa_forte', 'Defesa forte de um dos lados', 'Nenhum dos lados tem defesa forte', 'decide', null, { lado: 'nao' }),
-  P('ataque_trava', 'Ataque que trava', 'Nenhum dos ataques trava', 'decide', null, { lado: 'nao' }),
-  P('historico_btts', 'Histórico dos dois marcando', 'O histórico não é dos dois marcando', 'preco', null, { lado: 'sim', motivo: 'histórico já está na odd' }),
-  P('historico_seco', 'Histórico de jogo seco', 'O histórico não é de jogo seco', 'preco', null, { lado: 'nao', motivo: 'histórico já está na odd' }),
+  P('ataque_trava', 'Um dos ataques costuma passar em branco', 'Os dois ataques costumam marcar', 'decide', null, { lado: 'nao' }),
+  P('historico_btts', 'Nos últimos jogos, os dois marcaram', 'O histórico não é dos dois marcando', 'preco', null, { lado: 'sim', motivo: 'histórico já está na odd' }),
+  P('historico_seco', 'Jogos recentes sem os dois marcarem', 'O histórico não é de jogo seco', 'preco', null, { lado: 'nao', motivo: 'histórico já está na odd' }),
 ];
 
 /** Dupla chance. PENDENTE no doc: Score máximo simulado 39 contra régua de 40. */
 const P_DC: Premissa[] = [
   P('lado_coberto_forte', 'O lado coberto é forte', 'O lado coberto não é forte', 'decide', null),
   P('equilibrio_defensivo', 'Equilíbrio defensivo', 'Sem equilíbrio defensivo', 'decide', null),
-  P('adversario_limitado', 'Adversário limitado', 'O adversário não é limitado', 'decide', null),
+  P('adversario_limitado', 'Adversário com campanha fraca', 'Adversário não é tão limitado', 'decide', null),
   P('invicto_recente', 'Invicto nos últimos jogos', 'Não está invicto nos últimos jogos', 'preco', null, { motivo: 'histórico já está na odd' }),
 ];
 
 /** Penalidades, por mercado. Peso negativo. */
 const PEN: Record<string, Premissa[]> = {
   match_winner: [
-    P('pick_empate', 'Aposta no empate', 'Não é aposta no empate', 'decide', 0, { motivo: 'suspensa até ter amostra' }),
-    P('desfalque_proprio', 'O próprio time está desfalcado', 'O próprio time não tem desfalque', 'decide', -15),
+    P('pick_empate', 'Empate é o resultado mais difícil de prever', 'Não é aposta no empate', 'decide', 0, { motivo: 'suspensa até ter amostra' }),
+    P('desfalque_proprio', 'Time apostado com desfalque de titular importante', 'O próprio time não tem desfalque', 'decide', -15),
   ],
   goals_over_under: [P('linha_extrema', 'Linha muito longe do normal', 'A linha não está longe do normal', 'decide', -10)],
   asian_handicap: [P('handicap_alto', 'Handicap muito alto', 'O handicap não é alto', 'decide', 0, { motivo: 'efeito zero nos dois testes' })],
   btts: [],
   double_chance: [],
 };
+
+/**
+ * Avisos que não pertencem a mercado nenhum: eles falam do PREÇO, então valem para
+ * qualquer aposta.
+ *
+ * Não estavam neste catálogo porque a tela consome o array de avisos da RPC como
+ * texto cru, e por isso a copy deles nunca passou por aqui. Consequência medida na
+ * issue #272: os quatro nasceram com travessão, que a régua de copy do produto
+ * proíbe, e ninguém viu porque não havia um lugar onde eles fossem lidos.
+ *
+ * A ordem é por severidade, que é a ordem em que devem ser oferecidos.
+ */
+const AVISOS_GLOBAIS: Premissa[] = [
+  P('pen_odd_outlier', 'Só uma casa paga essa odd, pode ser linha furada', 'A odd não está fora da curva', 'decide', -30),
+  P('pen_odd_longshot', 'Odd alta de zebra, entra com cautela', 'A odd não é de zebra', 'decide', -15),
+  P('pen_poucas_casas', 'Poucas casas cotando esse mercado', 'O mercado tem casas suficientes', 'decide', -12),
+  P('pen_odd_juice', 'Odd baixa, retorno pequeno pro risco', 'A odd não é baixa demais', 'decide', -10),
+];
+
+/**
+ * Evidências que não pertencem a mercado nenhum: falam do PREÇO, então valem para
+ * qualquer aposta e competem por peso com as premissas do mercado.
+ *
+ * Mesma história dos avisos globais: o SQL publicava esta como evidência e ela não
+ * existia neste catálogo, então a tela e a DM nunca puderam concordar sobre ela.
+ * O peso 8 é o da corroboração por linha sharp, e é ele que define onde ela entra
+ * na fila de cada mercado.
+ */
+const EVIDENCIAS_GLOBAIS: Premissa[] = [
+  // A corroboração são DOIS sinais e TRÊS frases: quando os dois acendem, a frase é
+  // uma terceira, e as duas individuais somem. `corroboracao_ambos` é um slug
+  // derivado, calculado no SQL antes da tradução, para que a precedência viva num
+  // lugar só em vez de virar `case` repetido em três funções.
+  P('corroboracao_ambos', 'As principais casas e o modelo da API apontam o mesmo lado', 'Nem as casas nem o modelo apontam esse lado', 'preco', 8),
+  P('linha_sharp_confirma', 'As principais casas vêm baixando a odd desse lado', 'As casas não vêm baixando a odd desse lado', 'preco', 8),
+  // Peso 0 porque a recalibragem tirou os +7 da API da nota (o modelo troca mando por
+  // empate errando 14 pontos). Continua sendo mostrado, mas é o último da fila.
+  P('modelo_api_concorda', 'Modelo da API concorda com esse lado', 'O modelo da API não aponta esse lado', 'preco', 0),
+];
 
 export interface MercadoInfo {
   slug: string;
@@ -428,3 +482,169 @@ export function premissasDaSaida(m: MercadoInfo, s: Saida, acesas: string[] = []
 // cards e o usuário troca de lado clicando. Listar os espelhos ("defesas frágeis"
 // embaixo de uma análise de "defesas firmes") fazia a tela se contradizer, mesmo
 // sem número, porque o rótulo já é a negação do que está sendo afirmado ao lado.
+
+// ── A copy que a camada de serving publica ───────────────────────────────────
+//
+// Este bloco existe porque a copy da premissa vivia em DOIS lugares: aqui, que
+// serve a tela, e o SQL das RPCs, que serve a DM do Telegram. Eles divergiram em
+// 27 de 36 premissas, e ninguém viu, porque nada comparava os dois (issue #272).
+//
+// Agora este catálogo é a fonte única, e o SQL passa a ler de uma tabela de apoio
+// semeada a partir do que `copyDeServing()` devolve. A guarda de paridade compara
+// a semente com esta função e quebra no PR quando os dois se afastam.
+//
+// Três defeitos concretos que a ORDEM resolve, todos medidos:
+//   · a DM mostra o primeiro item do array, e a ordem do SQL era a ordem em que
+//     ele foi escrito. No azarão do handicap, 12.736 linhas mostravam a premissa
+//     de 3 pontos tendo a de 10 disponível
+//   · a `favorito_irregular` aparecia na DM em 4.268 linhas, sendo que a tela a
+//     esconde de propósito (acende em 43% das linhas e vale zero)
+//   · a `mando` do Resultado, que vale 8 pontos, não estava no array do SQL:
+//     existia a coluna no banco e a entrada aqui, e a DM nunca a mostrava
+
+/** O que a camada de serving publica: o motivo, o contra-motivo e o aviso. */
+export type TipoCopy = 'evidencia' | 'contra' | 'aviso';
+
+/**
+ * O mando da aposta a que aquele texto pertence.
+ *
+ * `any` é o texto neutro e é o que vale quando o mando não muda a frase, ou quando a
+ * saída não tem mando (empate, mais e menos gols). `home` e `away` só existem onde a
+ * frase muda de verdade, e quem decide isso é `rotuloPremissa`, para a regra não ser
+ * reescrita aqui.
+ */
+export type MandoCopy = 'any' | 'home' | 'away';
+
+export interface LinhaCopy {
+  tipo: TipoCopy;
+  market: string;
+  slug: string;
+  mando: MandoCopy;
+  /**
+   * Posição dentro do seu tipo e mercado. 1 é o primeiro a ser oferecido.
+   *
+   * As variantes de mando do MESMO slug compartilham a posição: a ordem é do slug, o
+   * mando só escolhe qual frase sai.
+   */
+  ordem: number;
+  texto: string;
+}
+
+/**
+ * Quais premissas produzem um contra quando NÃO acendem.
+ *
+ * É um subconjunto deliberado, e ele preserva exatamente o que o SQL já emitia:
+ * mostrar o contra de toda premissa apagada encheria a tela de negativas. A chave
+ * é mercado+slug porque o mesmo slug existe em dois mercados.
+ */
+const CONTRAS_ELEGIVEIS = new Set([
+  'match_winner:forca_mismatch',
+  'match_winner:mando',
+  'match_winner:superioridade_tabela',
+  'goals_over_under:ataque_combinado',
+  'goals_over_under:ritmo_alto',
+  'goals_over_under:xg_combinado_alto',
+  'goals_over_under:defesas_firmes',
+  'goals_over_under:clean_sheets_altos',
+  'goals_over_under:xg_baixo_combinado',
+  'asian_handicap:supremacia',
+  'asian_handicap:tende_golear',
+  'asian_handicap:raramente_perde_por_2',
+  'asian_handicap:defesa_fora_solida',
+  'btts:ambos_marcam',
+  'btts:defesas_vazaveis',
+  'btts:defesa_forte',
+  'btts:ataque_trava',
+  'double_chance:lado_coberto_forte',
+  'double_chance:adversario_limitado',
+]);
+
+/**
+ * Contras que só fazem sentido quando a aposta TEM mando.
+ *
+ * O SQL já fazia isso com um `and v.outcome <> 'Draw'` solto: dizer "o mando não pesa
+ * a favor" numa aposta no empate é ruído, porque não há mando de que falar. Aqui a
+ * regra vira a ausência do texto neutro, o que dispensa a exceção no SQL.
+ */
+const CONTRAS_SO_COM_MANDO = new Set(['match_winner:mando']);
+
+/**
+ * Peso para ordenar.
+ *
+ * `null` é mercado sem calibragem, e ele ordena ACIMA de qualquer peso numérico de
+ * propósito. Não é para dar prioridade a quem não foi medido: é para os itens
+ * GLOBAIS (que têm peso numérico) ficarem atrás das premissas do próprio mercado
+ * quando aquele mercado não tem escala. Sem isso, uma aposta de Ambos Marcam saía
+ * na DM justificada pelo movimento da odd em vez de pelo jogo.
+ *
+ * Nos mercados calibrados não há premissa com peso `null`, então isto não altera
+ * nada lá, e entre os `null` o `sort` estável preserva a ordem declarada.
+ */
+const chaveDeOrdem = (p: Premissa) => (p.peso == null ? Number.POSITIVE_INFINITY : p.peso);
+
+/** Numera 1..n preservando a ordem recebida. */
+function numerar(tipo: TipoCopy, market: string, itens: Premissa[], negativo = false): LinhaCopy[] {
+  const out: LinhaCopy[] = [];
+  itens.forEach((p, i) => {
+    const ordem = i + 1;
+    const neutro = negativo ? p.negativo : p.label;
+    const soComMando = tipo === 'contra' && CONTRAS_SO_COM_MANDO.has(`${market}:${p.slug}`);
+    if (!soComMando) out.push({ tipo, market, slug: p.slug, mando: 'any', ordem, texto: neutro });
+    // A variante só entra quando a frase muda mesmo. Emitir as três sempre triplicaria
+    // a tabela para repetir o mesmo texto.
+    for (const lado of ['home', 'away'] as const) {
+      const texto = rotuloPremissa(p, lado, negativo);
+      if (texto !== neutro) out.push({ tipo, market, slug: p.slug, mando: lado, ordem, texto });
+    }
+  });
+  return out;
+}
+
+/**
+ * As evidências de um mercado, na ordem em que devem ser oferecidas: peso
+ * decrescente, e sem as ocultas.
+ *
+ * Premissa de peso zero CONTINUA entrando, no fim da fila. Ela não some porque
+ * motivo fraco é melhor que motivo nenhum, e a ordem já garante que ela só apareça
+ * quando não houver nada acima dela.
+ */
+export function evidenciasDoMercado(market: string): Premissa[] {
+  const m = mercadoDe(market);
+  if (!m) return [];
+  return [...m.premissas, ...EVIDENCIAS_GLOBAIS]
+    .filter((p) => !PREMISSAS_OCULTAS.has(p.slug))
+    .sort((a, b) => chaveDeOrdem(b) - chaveDeOrdem(a));
+}
+
+/**
+ * Os avisos de um mercado, do mais severo para o menos, com os globais dentro.
+ *
+ * Os globais entram em cada mercado em vez de virar um grupo à parte porque assim a
+ * ordem de exibição é uma lista só, sem regra de "primeiro os globais" escrita em
+ * dois lugares. O preço disso é repetir quatro linhas por mercado na tabela de
+ * apoio, o que é barato.
+ */
+export function avisosDoMercado(market: string): Premissa[] {
+  const m = mercadoDe(market);
+  if (!m) return [];
+  return [...AVISOS_GLOBAIS, ...m.penalidades].sort((a, b) => chaveDeOrdem(a) - chaveDeOrdem(b));
+}
+
+/**
+ * Toda a copy que a camada de serving publica, achatada e já ordenada.
+ *
+ * É exatamente o conteúdo da tabela de apoio no banco. A migration semeia a partir
+ * desta lista e a guarda de paridade a compara com a semente.
+ */
+export function copyDeServing(): LinhaCopy[] {
+  const out: LinhaCopy[] = [];
+
+  for (const m of MERCADOS) {
+    const evidencias = evidenciasDoMercado(m.slug);
+    out.push(...numerar('evidencia', m.slug, evidencias));
+    out.push(...numerar('contra', m.slug, evidencias.filter((p) => CONTRAS_ELEGIVEIS.has(`${m.slug}:${p.slug}`)), true));
+    out.push(...numerar('aviso', m.slug, avisosDoMercado(m.slug)));
+  }
+
+  return out;
+}
