@@ -1044,6 +1044,224 @@ end $function$
 
 ;
 
+-- ── Copy das premissas (migration 106) ──────────────────────────────────────
+-- ── A copy das premissas, uma vez só ────────────────────────────────────────
+-- Antes desta tabela, o texto de cada premissa existia em DUAS fontes
+-- independentes: o catálogo do app (`src/utils/futebol-premissas.ts`), que serve a
+-- tela, e a cascata de `case when` dentro destas três RPCs, que serve a DM do
+-- Telegram. Medido em 20/08: de 36 premissas presentes nas duas, 27 tinham TEXTO
+-- DIFERENTE. Ninguém viu porque nada comparava as duas.
+--
+-- E a cascata era a TERCEIRA cópia verbatim de si mesma, como o comentário da
+-- migration 102 já registrava: "mercado novo agora mexe em três RPCs".
+--
+-- Agora o catálogo do app é a fonte, esta tabela é a projeção dele no banco, e a
+-- guarda `futebol-copy-paridade.test.ts` quebra o PR quando os dois se afastam.
+create table if not exists public.futebol_premissa_copy (
+  tipo   text    not null check (tipo in ('evidencia', 'contra', 'aviso')),
+  market text    not null,
+  slug   text    not null,
+  -- 'any' é o texto neutro; 'home'/'away' só existem onde a frase muda de verdade.
+  mando  text    not null check (mando in ('any', 'home', 'away')),
+  -- Posição na fila. É o que conserta o defeito de origem: a DM mostra o PRIMEIRO
+  -- item do array, e a ordem da cascata era a ordem em que ela foi escrita. No
+  -- azarão do handicap, 12.736 linhas mostravam a premissa de 3 pontos tendo a de
+  -- 10 pontos disponível.
+  ordem  integer not null,
+  texto  text    not null,
+  primary key (tipo, market, slug, mando)
+);
+
+-- RLS ligada e SEM policy, de propósito: nada acessa esta tabela direto. As três
+-- RPCs são SECURITY DEFINER e leem como dono, então a ausência de policy é o que
+-- garante que ninguém leia por fora.
+alter table public.futebol_premissa_copy enable row level security;
+
+-- Travessão é proibido em copy visível (régua do produto), e cinco dos oito avisos
+-- nasceram com um. A regra vira constraint porque regra que depende de alguém ler
+-- não é regra.
+alter table public.futebol_premissa_copy drop constraint if exists futebol_premissa_copy_sem_travessao;
+alter table public.futebol_premissa_copy add  constraint futebol_premissa_copy_sem_travessao
+  check (texto not like '%' || chr(8212) || '%' and texto not like '%' || chr(8211) || '%');
+
+-- Semente idempotente: a tabela é uma projeção do catálogo, então ela é reescrita
+-- inteira em vez de sofrer upsert linha por linha. Assim premissa REMOVIDA do
+-- catálogo também desaparece daqui.
+delete from public.futebol_premissa_copy;
+insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, texto) values
+  ('evidencia', 'goals_over_under', 'defesas_firmes', 'any', 1, 'Defesas firmes dos dois lados'),
+  ('evidencia', 'goals_over_under', 'defesas_vazaveis', 'any', 2, 'Defesas frágeis dos dois lados'),
+  ('evidencia', 'goals_over_under', 'ataque_combinado', 'any', 3, 'Os dois somam muitos gols'),
+  ('evidencia', 'goals_over_under', 'xg_baixo_combinado', 'any', 4, 'Os dois criam pouca chance de gol'),
+  ('evidencia', 'goals_over_under', 'xg_combinado_alto', 'any', 5, 'Os dois criam muita chance de gol'),
+  ('evidencia', 'goals_over_under', 'clean_sheets_altos', 'any', 6, 'Os dois passam muitos jogos sem sofrer gol'),
+  ('evidencia', 'goals_over_under', 'corroboracao_ambos', 'any', 7, 'As principais casas e o modelo da API apontam o mesmo lado'),
+  ('evidencia', 'goals_over_under', 'linha_sharp_confirma', 'any', 8, 'As principais casas vêm baixando a odd desse lado'),
+  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 9, 'Ataques fracos dos dois lados'),
+  ('evidencia', 'goals_over_under', 'historico_under', 'any', 10, 'Histórico de jogo com poucos gols'),
+  ('evidencia', 'goals_over_under', 'ambos_vazam', 'any', 11, 'Os dois sofrem gol quase todo jogo'),
+  ('evidencia', 'goals_over_under', 'ritmo_alto', 'any', 12, 'Jogo de ritmo alto'),
+  ('evidencia', 'goals_over_under', 'historico_over', 'any', 13, 'Histórico de jogo com muitos gols'),
+  ('evidencia', 'goals_over_under', 'linha_subindo', 'any', 14, 'Mercado puxando a linha pra cima'),
+  ('evidencia', 'goals_over_under', 'linha_descendo', 'any', 15, 'Mercado puxando a linha pra baixo'),
+  ('evidencia', 'goals_over_under', 'modelo_api_concorda', 'any', 16, 'Modelo da API concorda com esse lado'),
+  ('contra', 'goals_over_under', 'defesas_firmes', 'any', 1, 'As defesas não são firmes'),
+  ('contra', 'goals_over_under', 'ataque_combinado', 'any', 2, 'Os dois não somam muitos gols'),
+  ('contra', 'goals_over_under', 'xg_baixo_combinado', 'any', 3, 'Os dois criam bastante chance de gol'),
+  ('contra', 'goals_over_under', 'xg_combinado_alto', 'any', 4, 'Os dois não criam muita chance de gol'),
+  ('contra', 'goals_over_under', 'clean_sheets_altos', 'any', 5, 'Não costumam segurar o placar zerado'),
+  ('contra', 'goals_over_under', 'ritmo_alto', 'any', 6, 'O jogo não é de ritmo alto'),
+  ('aviso', 'goals_over_under', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'goals_over_under', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'goals_over_under', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'goals_over_under', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
+  ('aviso', 'goals_over_under', 'linha_extrema', 'any', 5, 'Linha muito longe do normal'),
+  ('evidencia', 'match_winner', 'forma', 'any', 1, 'Em boa fase, vem ganhando'),
+  ('evidencia', 'match_winner', 'mando', 'any', 2, 'Mando relevante'),
+  ('evidencia', 'match_winner', 'mando', 'home', 2, 'Manda bem em casa'),
+  ('evidencia', 'match_winner', 'mando', 'away', 2, 'Vai bem fora de casa'),
+  ('evidencia', 'match_winner', 'superioridade_tabela', 'any', 3, 'Bem à frente na tabela'),
+  ('evidencia', 'match_winner', 'corroboracao_ambos', 'any', 4, 'As principais casas e o modelo da API apontam o mesmo lado'),
+  ('evidencia', 'match_winner', 'linha_sharp_confirma', 'any', 5, 'As principais casas vêm baixando a odd desse lado'),
+  ('evidencia', 'match_winner', 'forca_mismatch', 'any', 6, 'Ataque forte contra defesa frágil do adversário'),
+  ('evidencia', 'match_winner', 'superioridade_xg', 'any', 7, 'Cria mais chances de gol que o adversário'),
+  ('evidencia', 'match_winner', 'h2h_favoravel', 'any', 8, 'Leva vantagem no histórico do confronto'),
+  ('evidencia', 'match_winner', 'desfalque_adversario', 'any', 9, 'Adversário com desfalque de titular importante'),
+  ('evidencia', 'match_winner', 'modelo_api_concorda', 'any', 10, 'Modelo da API concorda com esse lado'),
+  ('contra', 'match_winner', 'mando', 'home', 1, 'Não manda bem em casa'),
+  ('contra', 'match_winner', 'mando', 'away', 1, 'Não vai bem fora de casa'),
+  ('contra', 'match_winner', 'superioridade_tabela', 'any', 2, 'Não está bem à frente na tabela'),
+  ('contra', 'match_winner', 'forca_mismatch', 'any', 3, 'O ataque não pega uma defesa frágil'),
+  ('aviso', 'match_winner', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'match_winner', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'match_winner', 'desfalque_proprio', 'any', 3, 'Time apostado com desfalque de titular importante'),
+  ('aviso', 'match_winner', 'pen_poucas_casas', 'any', 4, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'match_winner', 'pen_odd_juice', 'any', 5, 'Odd baixa, retorno pequeno pro risco'),
+  ('aviso', 'match_winner', 'pick_empate', 'any', 6, 'Empate é o resultado mais difícil de prever'),
+  ('evidencia', 'asian_handicap', 'tende_golear', 'any', 1, 'Costuma ganhar por muitos gols'),
+  ('evidencia', 'asian_handicap', 'supremacia', 'any', 2, 'Muito superior ao adversário'),
+  ('evidencia', 'asian_handicap', 'defesa_fora_solida', 'any', 3, 'Defesa sólida jogando fora'),
+  ('evidencia', 'asian_handicap', 'defesa_fora_solida', 'home', 3, 'Defesa sólida em casa'),
+  ('evidencia', 'asian_handicap', 'corroboracao_ambos', 'any', 4, 'As principais casas e o modelo da API apontam o mesmo lado'),
+  ('evidencia', 'asian_handicap', 'linha_sharp_confirma', 'any', 5, 'As principais casas vêm baixando a odd desse lado'),
+  ('evidencia', 'asian_handicap', 'sem_rodizio', 'any', 6, 'Deve entrar com força máxima'),
+  ('evidencia', 'asian_handicap', 'raramente_perde_por_2', 'any', 7, 'Quando perde, perde apertado'),
+  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'any', 8, 'Adversário fraco fora de casa'),
+  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'away', 8, 'Adversário fraco em casa'),
+  ('evidencia', 'asian_handicap', 'mando_forte', 'any', 9, 'Manda muito bem em casa'),
+  ('evidencia', 'asian_handicap', 'mando_forte', 'away', 9, 'Vai muito bem fora de casa'),
+  ('evidencia', 'asian_handicap', 'modelo_api_concorda', 'any', 10, 'Modelo da API concorda com esse lado'),
+  ('contra', 'asian_handicap', 'tende_golear', 'any', 1, 'Não costuma ganhar por muitos gols'),
+  ('contra', 'asian_handicap', 'supremacia', 'any', 2, 'Não é muito superior ao adversário'),
+  ('contra', 'asian_handicap', 'defesa_fora_solida', 'any', 3, 'A defesa não é sólida jogando fora'),
+  ('contra', 'asian_handicap', 'defesa_fora_solida', 'home', 3, 'A defesa não é sólida em casa'),
+  ('contra', 'asian_handicap', 'raramente_perde_por_2', 'any', 4, 'Costuma perder por muitos gols'),
+  ('aviso', 'asian_handicap', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'asian_handicap', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'asian_handicap', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'asian_handicap', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
+  ('aviso', 'asian_handicap', 'handicap_alto', 'any', 5, 'Handicap muito alto'),
+  ('evidencia', 'btts', 'ambos_marcam', 'any', 1, 'Os dois costumam marcar'),
+  ('evidencia', 'btts', 'ataque_dos_dois', 'any', 2, 'Os dois atacam bem'),
+  ('evidencia', 'btts', 'defesas_vazaveis', 'any', 3, 'Defesas frágeis dos dois lados'),
+  ('evidencia', 'btts', 'defesa_forte', 'any', 4, 'Defesa forte de um dos lados'),
+  ('evidencia', 'btts', 'ataque_trava', 'any', 5, 'Um dos ataques costuma passar em branco'),
+  ('evidencia', 'btts', 'historico_btts', 'any', 6, 'Nos últimos jogos, os dois marcaram'),
+  ('evidencia', 'btts', 'historico_seco', 'any', 7, 'Jogos recentes sem os dois marcarem'),
+  ('evidencia', 'btts', 'corroboracao_ambos', 'any', 8, 'As principais casas e o modelo da API apontam o mesmo lado'),
+  ('evidencia', 'btts', 'linha_sharp_confirma', 'any', 9, 'As principais casas vêm baixando a odd desse lado'),
+  ('evidencia', 'btts', 'modelo_api_concorda', 'any', 10, 'Modelo da API concorda com esse lado'),
+  ('contra', 'btts', 'ambos_marcam', 'any', 1, 'Os dois não costumam marcar'),
+  ('contra', 'btts', 'defesas_vazaveis', 'any', 2, 'As defesas não são frágeis'),
+  ('contra', 'btts', 'defesa_forte', 'any', 3, 'Nenhum dos lados tem defesa forte'),
+  ('contra', 'btts', 'ataque_trava', 'any', 4, 'Os dois ataques costumam marcar'),
+  ('aviso', 'btts', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'btts', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'btts', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'btts', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
+  ('evidencia', 'double_chance', 'lado_coberto_forte', 'any', 1, 'O lado coberto é forte'),
+  ('evidencia', 'double_chance', 'equilibrio_defensivo', 'any', 2, 'Equilíbrio defensivo'),
+  ('evidencia', 'double_chance', 'adversario_limitado', 'any', 3, 'Adversário com campanha fraca'),
+  ('evidencia', 'double_chance', 'invicto_recente', 'any', 4, 'Invicto nos últimos jogos'),
+  ('evidencia', 'double_chance', 'corroboracao_ambos', 'any', 5, 'As principais casas e o modelo da API apontam o mesmo lado'),
+  ('evidencia', 'double_chance', 'linha_sharp_confirma', 'any', 6, 'As principais casas vêm baixando a odd desse lado'),
+  ('evidencia', 'double_chance', 'modelo_api_concorda', 'any', 7, 'Modelo da API concorda com esse lado'),
+  ('contra', 'double_chance', 'lado_coberto_forte', 'any', 1, 'O lado coberto não é forte'),
+  ('contra', 'double_chance', 'adversario_limitado', 'any', 2, 'Adversário não é tão limitado'),
+  ('aviso', 'double_chance', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'double_chance', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'double_chance', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'double_chance', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco');
+
+-- ── Os dois helpers ─────────────────────────────────────────────────────────
+-- Junta num objeto só tudo que pode acender numa linha, e resolve a precedência da
+-- corroboração.
+--
+-- O nome da coluna booleana nas tabelas de premissa É o slug, então não existe
+-- cascata de `case when` para escrever: as chaves do jsonb já são os slugs. É por
+-- isso que a premissa nova passa a custar uma linha de semente e nada mais.
+--
+-- A corroboração é o único caso que não é "slug aceso vira texto": são dois sinais
+-- e três frases (as duas individuais e uma combinada). As três chaves saem daqui
+-- já resolvidas, e por vir DEPOIS no `||` elas vencem as do `v`.
+create or replace function public.futebol_flags(
+  p_v jsonb, p_p jsonb, p_o jsonb, p_ah jsonb, p_bt jsonb, p_dc jsonb
+) returns jsonb
+ language sql
+ immutable
+ set search_path to ''
+as $function$
+  select coalesce(p_v, '{}'::jsonb)
+      || coalesce(p_p, '{}'::jsonb)
+      || coalesce(p_o, '{}'::jsonb)
+      || coalesce(p_ah, '{}'::jsonb)
+      || coalesce(p_bt, '{}'::jsonb)
+      || coalesce(p_dc, '{}'::jsonb)
+      || jsonb_build_object(
+           'corroboracao_ambos',
+             coalesce((p_v->>'modelo_api_concorda')::boolean, false)
+             and coalesce((p_v->>'linha_sharp_confirma')::boolean, false),
+           'modelo_api_concorda',
+             coalesce((p_v->>'modelo_api_concorda')::boolean, false)
+             and not coalesce((p_v->>'linha_sharp_confirma')::boolean, false),
+           'linha_sharp_confirma',
+             coalesce((p_v->>'linha_sharp_confirma')::boolean, false)
+             and not coalesce((p_v->>'modelo_api_concorda')::boolean, false)
+         )
+$function$;
+
+-- Traduz as flags acesas para a copy, na ordem certa.
+--
+-- `contra` procura 'false' em vez de 'true', e é por isso que NULL não gera contra:
+-- em jsonb um booleano nulo vira null, que não casa com 'false'. É o mesmo
+-- comportamento do `not coalesce(x, true)` que a cascata usava, e continua honrando
+-- a ADR 0003 (dado faltante diagnostica, não elimina).
+--
+-- O `distinct on` com o desempate pelo mando escolhe a variante específica quando
+-- ela existe e cai no texto neutro quando não existe.
+create or replace function public.futebol_copy(
+  p_tipo text, p_market text, p_mando text, p_flags jsonb
+) returns text[]
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  select coalesce(array_agg(t.texto order by t.ordem), array[]::text[])
+  from (
+    select distinct on (c.slug) c.ordem, c.texto
+    from public.futebol_premissa_copy c
+    join jsonb_each_text(p_flags) f on f.key = c.slug
+    where c.tipo = p_tipo
+      and c.market = p_market
+      and c.mando in ('any', coalesce(p_mando, 'any'))
+      and f.value = case when p_tipo = 'contra' then 'false' else 'true' end
+    order by c.slug, (c.mando <> 'any') desc
+  ) t
+$function$;
+
+grant execute on function public.futebol_flags(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb) to anon, authenticated, service_role;
+grant execute on function public.futebol_copy(text, text, text, jsonb) to anon, authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_value(p_fixture_id bigint)
  RETURNS TABLE(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, penalidades_globais_pts integer, penalidades_especificas_pts integer, score integer, faixa text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
  LANGUAGE sql
@@ -1100,91 +1318,9 @@ AS $function$
     v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int,
     v.penalidades_globais_pts::int, v.penalidades_especificas_pts::int, v.score::int, v.faixa,
     v.modelo_api_concorda, v.linha_sharp_confirma,
-    array_remove(array[
-      case when p.forca_mismatch then 'Ataque forte contra defesa frágil do adversário' end,
-      case when p.superioridade_xg then 'Cria mais chances de gol do que o adversário' end,
-      case when p.mando then (case v.outcome when 'Home' then 'Manda bem em casa' when 'Away' then 'Vai bem fora de casa' else 'Mando relevante' end) end,
-      case when p.desfalque_adversario then 'Adversário com desfalque de titular importante' end,
-      case when p.superioridade_tabela then 'Bem à frente na tabela' end,
-      case when p.forma then 'Em boa fase (vitórias recentes)' end,
-      case when p.h2h_favoravel then 'Histórico favorável no confronto direto' end
-    ], null)
-    || array_remove(array[
-      case when o.ataque_combinado then 'Os dois somam muitos gols (casa + fora)' end,
-      case when o.defesas_vazaveis then 'Defesas frágeis dos dois lados' end,
-      case when o.xg_combinado_alto then 'Os dois criam muitas chances de gol' end,
-      case when o.ritmo_alto then 'Jogo de ritmo alto (muitas finalizações)' end,
-      case when o.ambos_vazam then 'Os dois sofrem gol quase todo jogo' end,
-      case when o.historico_over then 'Últimos jogos goleadores' end,
-      case when o.linha_subindo then 'Mercado puxando a linha pra cima' end,
-      case when o.defesas_firmes then 'Defesas firmes dos dois lados' end,
-      case when o.clean_sheets_altos then 'Os dois passam muitos jogos sem sofrer gol' end,
-      case when o.xg_baixo_combinado then 'Os dois criam pouca coisa na frente' end,
-      case when o.ataques_fracos then 'Ataque fraco (passam em branco com frequência)' end,
-      case when o.historico_under then 'Últimos jogos truncados' end,
-      case when o.linha_descendo then 'Mercado puxando a linha pra baixo' end
-    ], null)
-    || array_remove(array[
-      case when ah.supremacia then 'Muito superior ao adversário' end,
-      case when ah.tende_golear then 'Costuma vencer com boa diferença de gols' end,
-      case when ah.adversario_fragil_fora then 'Adversário tem defesa frágil' end,
-      case when ah.mando_forte then 'Manda muito bem em casa' end,
-      case when ah.sem_rodizio then 'Deve entrar com força máxima' end,
-      case when ah.raramente_perde_por_2 then 'Raramente perde por 2 gols ou mais' end,
-      case when ah.defesa_fora_solida then 'Defesa sólida jogando fora' end,
-      case when ah.favorito_irregular then 'O favorito não costuma golear' end
-    ], null)
-    || array_remove(array[
-      case when bt.ambos_marcam then 'Os dois quase sempre marcam' end,
-      case when bt.ataque_dos_dois then 'Os dois ataques vêm produzindo' end,
-      case when bt.defesas_vazaveis then 'As duas defesas sofrem gol com frequência' end,
-      case when bt.historico_btts then 'Nos últimos jogos, os dois marcaram' end,
-      case when bt.defesa_forte then 'Uma das defesas segura bem o placar' end,
-      case when bt.ataque_trava then 'Um dos ataques costuma passar em branco' end,
-      case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
-    ], null)
-    || array_remove(array[
-      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
-      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
-      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
-      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
-    ], null)
-    || array_remove(array[
-      case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
-           when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
-           when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
-    ], null),
-    array_remove(array[
-      case when v.pen_odd_outlier then 'Só uma casa paga essa odd — pode ser linha furada' end,
-      case when v.pen_poucas_casas then 'Poucas casas cotando esse mercado' end,
-      case when v.pen_odd_longshot then 'Odd alta (zebra) — entra com cautela' end,
-      case when v.pen_odd_juice then 'Odd baixa — retorno pequeno pro risco' end,
-      case when p.pick_empate then 'Empate é o resultado mais difícil de prever' end,
-      case when p.desfalque_proprio then 'Time apostado com desfalque de titular importante' end,
-      case when o.linha_extrema then 'Linha extrema — pouco confiável' end,
-      case when ah.handicap_alto then 'Handicap alto (2,5+ gols) — raramente confiável' end
-    ], null),
-    (array_remove(array[
-      case when not coalesce(p.forca_mismatch, true) then 'Sem vantagem clara de ataque × defesa' end,
-      case when not coalesce(p.mando, true) and v.outcome <> 'Draw' then 'Mando não pesa a favor' end,
-      case when not coalesce(p.superioridade_tabela, true) then 'Times equilibrados na tabela' end,
-      case when v.outcome='Over' and not coalesce(o.ataque_combinado, true) then 'Os dois não somam tantos gols' end,
-      case when v.outcome='Over' and not coalesce(o.ritmo_alto, true) then 'Jogo não costuma ser de ritmo alto' end,
-      case when v.outcome='Over' and not coalesce(o.xg_combinado_alto, true) then 'O volume de chances não é tão alto' end,
-      case when v.outcome='Under' and not coalesce(o.defesas_firmes, true) then 'As defesas não são tão firmes' end,
-      case when v.outcome='Under' and not coalesce(o.clean_sheets_altos, true) then 'Não costumam segurar o placar zerado' end,
-      case when v.outcome='Under' and not coalesce(o.xg_baixo_combinado, true) then 'Criam chances demais pra um jogo truncado' end,
-      case when ah.is_favorito and not coalesce(ah.supremacia, true) then 'Não é tão superior assim ao adversário' end,
-      case when ah.is_favorito and not coalesce(ah.tende_golear, true) then 'Nem sempre vence com boa diferença' end,
-      case when ah.is_azarao and not coalesce(ah.raramente_perde_por_2, true) then 'Já levou goleada algumas vezes' end,
-      case when ah.is_azarao and not coalesce(ah.defesa_fora_solida, true) then 'Defesa fora não é das mais sólidas' end,
-      case when v.outcome='Yes' and not coalesce(bt.ambos_marcam, true) then 'Nem sempre os dois marcam' end,
-      case when v.outcome='Yes' and not coalesce(bt.defesas_vazaveis, true) then 'As defesas não são tão vazadas' end,
-      case when v.outcome='No' and not coalesce(bt.defesa_forte, true) then 'Nenhuma defesa é tão sólida' end,
-      case when v.outcome='No' and not coalesce(bt.ataque_trava, true) then 'Os dois ataques costumam marcar' end,
-      case when not coalesce(dc.lado_coberto_forte, true) then 'O lado coberto não é claramente o mais forte' end,
-      case when not coalesce(dc.adversario_limitado, true) then 'Adversário não é tão limitado' end
-    ], null))[1:3],
+    public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
+    public.futebol_copy('aviso', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
+    (public.futebol_copy('contra', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))))[1:3],
     v.premissas_sem_dado::int
   from v_src v
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
@@ -1592,60 +1728,7 @@ AS $function$
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int, v.score::int, v.faixa,
-    array_remove(array[
-      case when p.forca_mismatch then 'Ataque forte contra defesa frágil do adversário' end,
-      case when p.superioridade_xg then 'Cria mais chances de gol do que o adversário' end,
-      case when p.mando then (case v.outcome when 'Home' then 'Manda bem em casa' when 'Away' then 'Vai bem fora de casa' else 'Mando relevante' end) end,
-      case when p.desfalque_adversario then 'Adversário com desfalque de titular importante' end,
-      case when p.superioridade_tabela then 'Bem à frente na tabela' end,
-      case when p.forma then 'Em boa fase (vitórias recentes)' end,
-      case when p.h2h_favoravel then 'Histórico favorável no confronto direto' end
-    ], null)
-    || array_remove(array[
-      case when o.ataque_combinado then 'Os dois somam muitos gols (casa + fora)' end,
-      case when o.defesas_vazaveis then 'Defesas frágeis dos dois lados' end,
-      case when o.xg_combinado_alto then 'Os dois criam muitas chances de gol' end,
-      case when o.ritmo_alto then 'Jogo de ritmo alto (muitas finalizações)' end,
-      case when o.ambos_vazam then 'Os dois sofrem gol quase todo jogo' end,
-      case when o.historico_over then 'Últimos jogos goleadores' end,
-      case when o.linha_subindo then 'Mercado puxando a linha pra cima' end,
-      case when o.defesas_firmes then 'Defesas firmes dos dois lados' end,
-      case when o.clean_sheets_altos then 'Os dois passam muitos jogos sem sofrer gol' end,
-      case when o.xg_baixo_combinado then 'Os dois criam pouca coisa na frente' end,
-      case when o.ataques_fracos then 'Ataque fraco (passam em branco com frequência)' end,
-      case when o.historico_under then 'Últimos jogos truncados' end,
-      case when o.linha_descendo then 'Mercado puxando a linha pra baixo' end
-    ], null)
-    || array_remove(array[
-      case when ah.supremacia then 'Muito superior ao adversário' end,
-      case when ah.tende_golear then 'Costuma vencer com boa diferença de gols' end,
-      case when ah.adversario_fragil_fora then 'Adversário tem defesa frágil' end,
-      case when ah.mando_forte then 'Manda muito bem em casa' end,
-      case when ah.sem_rodizio then 'Deve entrar com força máxima' end,
-      case when ah.raramente_perde_por_2 then 'Raramente perde por 2 gols ou mais' end,
-      case when ah.defesa_fora_solida then 'Defesa sólida jogando fora' end,
-      case when ah.favorito_irregular then 'O favorito não costuma golear' end
-    ], null)
-    || array_remove(array[
-      case when bt.ambos_marcam then 'Os dois quase sempre marcam' end,
-      case when bt.ataque_dos_dois then 'Os dois ataques vêm produzindo' end,
-      case when bt.defesas_vazaveis then 'As duas defesas sofrem gol com frequência' end,
-      case when bt.historico_btts then 'Nos últimos jogos, os dois marcaram' end,
-      case when bt.defesa_forte then 'Uma das defesas segura bem o placar' end,
-      case when bt.ataque_trava then 'Um dos ataques costuma passar em branco' end,
-      case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
-    ], null)
-    || array_remove(array[
-      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
-      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
-      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
-      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
-    ], null)
-    || array_remove(array[
-      case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
-           when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
-           when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
-    ], null),
+    public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     v.premissas_sem_dado::int
   from futebol.fact_value_opportunities v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
@@ -1714,60 +1797,7 @@ AS $function$
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int, v.score::int, v.faixa,
-    array_remove(array[
-      case when p.forca_mismatch then 'Ataque forte contra defesa frágil do adversário' end,
-      case when p.superioridade_xg then 'Cria mais chances de gol do que o adversário' end,
-      case when p.mando then (case v.outcome when 'Home' then 'Manda bem em casa' when 'Away' then 'Vai bem fora de casa' else 'Mando relevante' end) end,
-      case when p.desfalque_adversario then 'Adversário com desfalque de titular importante' end,
-      case when p.superioridade_tabela then 'Bem à frente na tabela' end,
-      case when p.forma then 'Em boa fase (vitórias recentes)' end,
-      case when p.h2h_favoravel then 'Histórico favorável no confronto direto' end
-    ], null)
-    || array_remove(array[
-      case when o.ataque_combinado then 'Os dois somam muitos gols (casa + fora)' end,
-      case when o.defesas_vazaveis then 'Defesas frágeis dos dois lados' end,
-      case when o.xg_combinado_alto then 'Os dois criam muitas chances de gol' end,
-      case when o.ritmo_alto then 'Jogo de ritmo alto (muitas finalizações)' end,
-      case when o.ambos_vazam then 'Os dois sofrem gol quase todo jogo' end,
-      case when o.historico_over then 'Últimos jogos goleadores' end,
-      case when o.linha_subindo then 'Mercado puxando a linha pra cima' end,
-      case when o.defesas_firmes then 'Defesas firmes dos dois lados' end,
-      case when o.clean_sheets_altos then 'Os dois passam muitos jogos sem sofrer gol' end,
-      case when o.xg_baixo_combinado then 'Os dois criam pouca coisa na frente' end,
-      case when o.ataques_fracos then 'Ataque fraco (passam em branco com frequência)' end,
-      case when o.historico_under then 'Últimos jogos truncados' end,
-      case when o.linha_descendo then 'Mercado puxando a linha pra baixo' end
-    ], null)
-    || array_remove(array[
-      case when ah.supremacia then 'Muito superior ao adversário' end,
-      case when ah.tende_golear then 'Costuma vencer com boa diferença de gols' end,
-      case when ah.adversario_fragil_fora then 'Adversário tem defesa frágil' end,
-      case when ah.mando_forte then 'Manda muito bem em casa' end,
-      case when ah.sem_rodizio then 'Deve entrar com força máxima' end,
-      case when ah.raramente_perde_por_2 then 'Raramente perde por 2 gols ou mais' end,
-      case when ah.defesa_fora_solida then 'Defesa sólida jogando fora' end,
-      case when ah.favorito_irregular then 'O favorito não costuma golear' end
-    ], null)
-    || array_remove(array[
-      case when bt.ambos_marcam then 'Os dois quase sempre marcam' end,
-      case when bt.ataque_dos_dois then 'Os dois ataques vêm produzindo' end,
-      case when bt.defesas_vazaveis then 'As duas defesas sofrem gol com frequência' end,
-      case when bt.historico_btts then 'Nos últimos jogos, os dois marcaram' end,
-      case when bt.defesa_forte then 'Uma das defesas segura bem o placar' end,
-      case when bt.ataque_trava then 'Um dos ataques costuma passar em branco' end,
-      case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
-    ], null)
-    || array_remove(array[
-      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
-      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
-      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
-      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
-    ], null)
-    || array_remove(array[
-      case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
-           when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
-           when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
-    ], null),
+    public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     v.premissas_sem_dado::int
   from pit v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
