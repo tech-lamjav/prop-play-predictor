@@ -55,4 +55,18 @@ jobs:
       #
       # As duas passavam na máquina de quem as escreveu e nunca no PR de mais ninguém.
       # Guarda que não roda é documentação.
+      #
+      # O TZ é obrigatório e não é preferência. O runner do GitHub roda em UTC e as
+      # máquinas de desenvolvimento em Brasília, então três testes de prazo falhavam
+      # com exatamente 3 horas de diferença ("Hoje 22:00" virava "Amanhã 01:00").
+      #
+      # Declarar o fuso é o conserto certo em vez de reescrever os testes, porque o
+      # produto É brasileiro: a tela formata em BRT, a RPC tem `futebol_dia_brt`, a DM
+      # calcula a hora do jogo em BRT e o dia do board vira às 21:30 BRT. Um teste de
+      # prazo que passasse em qualquer fuso estaria testando menos do que o produto faz.
+      #
+      # Vai aqui, e não no `vitest.config.ts`, porque o Node fixa o fuso no primeiro uso
+      # de `Date`: mudar `process.env.TZ` dentro do setup pode chegar tarde demais.
       - run: npm run test:run
+        env:
+          TZ: America/Sao_Paulo
