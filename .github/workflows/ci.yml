@@ -29,3 +29,20 @@ jobs:
           VITE_STRIPE_PUBLISHABLE_KEY: placeholder
           VITE_STRIPE_PRICE_ID_BETINHO: placeholder
           VITE_STRIPE_PRICE_ID_PLATFORM: placeholder
+
+      # Os testes rodam DEPOIS do build, e a ordem é requisito, não preferência:
+      # `src/seo/gen-route-heads.test.ts` lê `dist/index.html`, que só existe depois
+      # que o build (e o postbuild) rodaram.
+      #
+      # Este passo não existia até 21/08/2026, e a ausência dele era o defeito: o
+      # repositório tinha guardas escritas justamente para impedir divergência
+      # silenciosa, e nenhuma delas era executada. Duas em particular:
+      #
+      #   · `src/utils/shape-file-futebol.test.ts` (#262), escrita depois de o shape
+      #     file divergir das migrations ONZE vezes seguidas
+      #   · `src/utils/futebol-copy-paridade.test.ts` (#272), escrita depois de a copy
+      #     das premissas divergir em 27 de 36 entre a tela e a DM
+      #
+      # As duas passavam na máquina de quem as escreveu e nunca no PR de mais ninguém.
+      # Guarda que não roda é documentação.
+      - run: npm run test:run
