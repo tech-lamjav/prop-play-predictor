@@ -10,9 +10,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 24, e não 18, por dois motivos que só apareceram quando o passo de teste
+      # abaixo passou a existir:
+      #
+      #   · o vitest 4 exige `^20 || ^22 || >=24`. No 18 ele nem sobe: quebra em
+      #     `node:util` não exportar `styleText`, que só existe do 20.12 em diante
+      #   · o Node 18 saiu de suporte em abril de 2025
+      #
+      # 24 é o que roda nas máquinas de desenvolvimento, então o CI passa a executar a
+      # mesma coisa que a gente executa antes de abrir o PR. O `lint` e o `build`
+      # continuam válidos: o vite pede `^18 || >=20`.
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
           cache: npm
 
       - run: npm ci
