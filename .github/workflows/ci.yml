@@ -10,9 +10,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 24, e não 18, por dois motivos que só apareceram quando o passo de teste
+      # abaixo passou a existir:
+      #
+      #   · o vitest 4 exige `^20 || ^22 || >=24`. No 18 ele nem sobe: quebra em
+      #     `node:util` não exportar `styleText`, que só existe do 20.12 em diante
+      #   · o Node 18 saiu de suporte em abril de 2025
+      #
+      # 24 é o que roda nas máquinas de desenvolvimento, então o CI passa a executar a
+      # mesma coisa que a gente executa antes de abrir o PR. O `lint` e o `build`
+      # continuam válidos: o vite pede `^18 || >=20`.
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -29,3 +39,34 @@ jobs:
           VITE_STRIPE_PUBLISHABLE_KEY: placeholder
           VITE_STRIPE_PRICE_ID_BETINHO: placeholder
           VITE_STRIPE_PRICE_ID_PLATFORM: placeholder
+
+      # Os testes rodam DEPOIS do build, e a ordem é requisito, não preferência:
+      # `src/seo/gen-route-heads.test.ts` lê `dist/index.html`, que só existe depois
+      # que o build (e o postbuild) rodaram.
+      #
+      # Este passo não existia até 21/08/2026, e a ausência dele era o defeito: o
+      # repositório tinha guardas escritas justamente para impedir divergência
+      # silenciosa, e nenhuma delas era executada. Duas em particular:
+      #
+      #   · `src/utils/shape-file-futebol.test.ts` (#262), escrita depois de o shape
+      #     file divergir das migrations ONZE vezes seguidas
+      #   · `src/utils/futebol-copy-paridade.test.ts` (#272), escrita depois de a copy
+      #     das premissas divergir em 27 de 36 entre a tela e a DM
+      #
+      # As duas passavam na máquina de quem as escreveu e nunca no PR de mais ninguém.
+      # Guarda que não roda é documentação.
+      #
+      # O TZ é obrigatório e não é preferência. O runner do GitHub roda em UTC e as
+      # máquinas de desenvolvimento em Brasília, então três testes de prazo falhavam
+      # com exatamente 3 horas de diferença ("Hoje 22:00" virava "Amanhã 01:00").
+      #
+      # Declarar o fuso é o conserto certo em vez de reescrever os testes, porque o
+      # produto É brasileiro: a tela formata em BRT, a RPC tem `futebol_dia_brt`, a DM
+      # calcula a hora do jogo em BRT e o dia do board vira às 21:30 BRT. Um teste de
+      # prazo que passasse em qualquer fuso estaria testando menos do que o produto faz.
+      #
+      # Vai aqui, e não no `vitest.config.ts`, porque o Node fixa o fuso no primeiro uso
+      # de `Date`: mudar `process.env.TZ` dentro do setup pode chegar tarde demais.
+      - run: npm run test:run
+        env:
+          TZ: America/Sao_Paulo
