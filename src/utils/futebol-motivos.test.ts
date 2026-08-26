@@ -49,4 +49,58 @@ describe('separarMotivosDoContrato', () => {
     expect(contratoJuventudeCrbOver15.componentes_score.reduce((total, componente) => total + componente.pontos, 0))
       .toBe(contratoJuventudeCrbOver15.score);
   });
+
+  it('declara o lado aplicável dos outros quatro mercados no contrato do backend', () => {
+    const migration = readFileSync(resolve(__dirname, '../../supabase/migrations/20260826113000_109_futebol_motivos_outros_mercados.sql'), 'utf8');
+
+    expect(migration).toMatch(/when 'match_winner' then case v\.outcome[\s\S]*when 'Home' then array\[[\s\S]*when 'Away' then array\[[\s\S]*else array\[\]::text\[\]/);
+    expect(migration).toMatch(/when 'asian_handicap' then case[\s\S]*v\.outcome = 'Home' and v\.line_value < 0[\s\S]*v\.outcome = 'Away' and v\.line_value > 0[\s\S]*when v\.line_value <> 0 then array\[/);
+    expect(migration).toMatch(/when 'btts' then case v\.outcome[\s\S]*when 'Yes' then array\[[\s\S]*when 'No' then array\[/);
+    expect(migration).toContain("when 'double_chance' then array[");
+    expect(migration).toContain("where slug <> 'favorito_irregular'");
+    expect(migration).not.toContain("where v.market = 'goals_over_under'");
+  });
+
+  it.each([
+    {
+      mercado: 'Resultado',
+      favor: [{ id: 'mando', tipo: 'premissa' }],
+      contra: [
+        { id: 'forma', tipo: 'premissa' },
+        { id: 'aviso_1', tipo: 'penalidade', texto: 'A escalação reduz a confiança' },
+      ],
+    },
+    {
+      mercado: 'Handicap asiático',
+      favor: [{ id: 'mando_forte', tipo: 'premissa' }],
+      contra: [
+        { id: 'supremacia', tipo: 'premissa' },
+        { id: 'handicap_alto', tipo: 'penalidade' },
+      ],
+    },
+    {
+      mercado: 'Ambos marcam',
+      favor: [{ id: 'defesa_forte', tipo: 'premissa' }],
+      contra: [
+        { id: 'ataque_trava', tipo: 'premissa' },
+        { id: 'aviso_1', tipo: 'penalidade', texto: 'Dado de mercado pede cautela' },
+      ],
+    },
+    {
+      mercado: 'Dupla chance',
+      favor: [{ id: 'equilibrio_defensivo', tipo: 'premissa' }],
+      contra: [
+        { id: 'lado_coberto_forte', tipo: 'premissa' },
+        { id: 'aviso_1', tipo: 'penalidade', texto: 'Mercado com liquidez reduzida' },
+      ],
+    },
+  ] as const)('$mercado mantém favor, contra e alerta separados', ({ favor, contra }) => {
+    const motivosFavor = separarMotivosDoContrato(favor);
+    const motivosContra = separarMotivosDoContrato(contra);
+
+    expect(motivosFavor.slugsDePremissas).toEqual([favor[0].id]);
+    expect(motivosContra.slugsDePremissas).toContain(contra[0].id);
+    expect(motivosContra.slugsDePremissas.length + motivosContra.motivosSemDrilldown.length)
+      .toBe(contra.length);
+  });
 });

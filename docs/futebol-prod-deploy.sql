@@ -2353,7 +2353,7 @@ AS $function$
   order by 1, 5 nulls first, 4;
 $function$;
 
--- ── 5d. Contrato de motivos da leitura de Gols (migration 108) ───────────────
+-- ── 5d. Contrato de motivos da leitura dos cinco mercados (migration 109) ────
 -- O banco escolhe o grupo de cada motivo. A tela apenas renderiza o contrato,
 -- sem converter uma premissa do lado oposto em uma frase "contra".
 create or replace function public.get_futebol_fixture_reason_contract(p_fixture_id bigint)
@@ -2377,14 +2377,54 @@ as $function$
       v.pts_corroboracao, v.penalidades as penalidades_score,
       v.modelo_api_concorda, v.linha_sharp_confirma, v.avisos,
       p.acesas, p.apagadas, p.penalidades as penalidades_ativas,
-      case v.outcome
-        when 'Over' then array[
-          'defesas_vazaveis', 'ataque_combinado', 'xg_combinado_alto',
-          'ambos_vazam', 'ritmo_alto', 'historico_over', 'linha_subindo'
-        ]::text[]
-        when 'Under' then array[
-          'defesas_firmes', 'xg_baixo_combinado', 'clean_sheets_altos',
-          'ataques_fracos', 'historico_under', 'linha_descendo'
+      case v.market
+        when 'goals_over_under' then case v.outcome
+          when 'Over' then array[
+            'defesas_vazaveis', 'ataque_combinado', 'xg_combinado_alto',
+            'ambos_vazam', 'ritmo_alto', 'historico_over', 'linha_subindo'
+          ]::text[]
+          when 'Under' then array[
+            'defesas_firmes', 'xg_baixo_combinado', 'clean_sheets_altos',
+            'ataques_fracos', 'historico_under', 'linha_descendo'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'match_winner' then case v.outcome
+          when 'Home' then array[
+            'forma', 'mando', 'superioridade_tabela', 'forca_mismatch',
+            'superioridade_xg', 'h2h_favoravel', 'desfalque_adversario'
+          ]::text[]
+          when 'Away' then array[
+            'forma', 'mando', 'superioridade_tabela', 'forca_mismatch',
+            'superioridade_xg', 'h2h_favoravel', 'desfalque_adversario'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'asian_handicap' then case
+          -- A linha é guardada na ótica do mandante. Para o visitante, o
+          -- sinal representa a saída espelhada e precisa ser lido ao contrário.
+          when (v.outcome = 'Home' and v.line_value < 0)
+            or (v.outcome = 'Away' and v.line_value > 0) then array[
+            'tende_golear', 'supremacia', 'sem_rodizio',
+            'adversario_fragil_fora', 'mando_forte'
+          ]::text[]
+          when v.line_value <> 0 then array[
+            'defesa_fora_solida', 'raramente_perde_por_2'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'btts' then case v.outcome
+          when 'Yes' then array[
+            'ambos_marcam', 'ataque_dos_dois', 'defesas_vazaveis', 'historico_btts'
+          ]::text[]
+          when 'No' then array[
+            'defesa_forte', 'ataque_trava', 'historico_seco'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'double_chance' then array[
+          'lado_coberto_forte', 'equilibrio_defensivo',
+          'adversario_limitado', 'invicto_recente'
         ]::text[]
         else array[]::text[]
       end as aplicaveis
@@ -2393,7 +2433,6 @@ as $function$
       on p.market = v.market
      and p.outcome = v.outcome
      and p.line_value is not distinct from v.line_value
-    where v.market = 'goals_over_under'
   )
   select
     b.market,
@@ -2440,6 +2479,7 @@ as $function$
     || coalesce((
       select jsonb_agg(jsonb_build_object('id', slug, 'tipo', 'penalidade') order by slug)
       from unnest(b.penalidades_ativas) slug
+      where slug <> 'favorito_irregular'
     ), '[]'::jsonb)
     || coalesce((
       select jsonb_agg(jsonb_build_object('id', 'aviso_' || ord, 'tipo', 'penalidade', 'texto', texto) order by ord)

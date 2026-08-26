@@ -98,7 +98,7 @@ export interface FutebolFixtureScoreComponent {
 }
 
 /**
- * Motivos da saída cotada em Gols (RPC get_futebol_fixture_reason_contract).
+ * Motivos de qualquer saída cotada da Bancada (RPC get_futebol_fixture_reason_contract).
  * A separação favor/contra é autoridade do backend; não derive o lado pelo slug.
  */
 export interface FutebolFixtureReasonContractRow {
@@ -683,7 +683,7 @@ export const futebolDataService = {
     });
   },
 
-  /** Contrato de motivos da saída cotada. Hoje cobre apenas Gols (migration 108). */
+  /** Contrato de motivos da saída cotada nos cinco mercados (migration 109). */
   async getFixtureReasonContract(fixtureId: number): Promise<FutebolFixtureReasonContractRow[]> {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_fixture_reason_contract', {
