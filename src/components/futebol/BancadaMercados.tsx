@@ -487,7 +487,6 @@ export function BancadaMercados({
     : requerContratoMotivos
       ? { premissas: [], extras: [] }
       : { premissas: naoAconteceu, extras: contras };
-  const componentesScore = contratoMotivos?.componentes_score ?? [];
 
   // O veredito em uma frase, sem inventar número.
   const veredito = useMemo(() => {
@@ -896,20 +895,6 @@ export function BancadaMercados({
         {mercado.aviso && (
           <div className="px-6 md:px-8 py-3 text-[12px] leading-relaxed" style={{ background: '#fef7df', borderBottom: '1px solid #fde68a', color: '#5a3c00' }}>
             {mercado.aviso}
-          </div>
-        )}
-
-        {contratoMotivos && componentesScore.length > 0 && (
-          <div className="px-6 md:px-8 py-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[11.5px]" style={{ borderBottom: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
-            <span className="font-semibold" style={{ color: '#0a3d2e' }}>Score {contratoMotivos.score}</span>
-            <span>=</span>
-            {componentesScore.map((componente, index) => (
-              <span key={componente.id} className="inline-flex items-baseline gap-1">
-                {index > 0 && <span>{componente.pontos < 0 ? '−' : '+'}</span>}
-                <strong className="tabular-nums" style={{ color: '#0a3d2e' }}>{Math.abs(componente.pontos)}</strong>
-                <span>{componente.texto.toLowerCase()}</span>
-              </span>
-            ))}
           </div>
         )}
 
