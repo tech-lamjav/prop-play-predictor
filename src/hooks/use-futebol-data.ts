@@ -11,6 +11,7 @@ import {
   type FutebolFixtureByDay,
   type FutebolFixtureDay,
   type FutebolFixturePremissas,
+  type FutebolFixtureReasonContractRow,
   type FutebolFixtureNumeros,
   type FutebolFixtureHistorico,
   type FutebolCompetitionInfo,
@@ -98,6 +99,18 @@ export function useFutebolFixturePremissas(fixtureId: number | undefined) {
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Motivos já agrupados pelo backend. Hoje cobre as saídas cotadas de Gols. */
+export function useFutebolFixtureReasonContract(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureReasonContractRow[]>({
+    queryKey: ['futebol', 'fixture-reason-contract', fixtureId],
+    queryFn: () => futebolDataService.getFixtureReasonContract(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 }

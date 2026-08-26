@@ -82,6 +82,35 @@ export interface FutebolFixturePremissas {
   penalidades: string[];
 }
 
+/** Um motivo do contrato de leitura: o banco define o grupo e o front apenas o exibe. */
+export interface FutebolFixtureReasonItem {
+  id: string;
+  tipo: 'premissa' | 'componente_score' | 'penalidade';
+  texto?: string;
+  pontos?: number;
+}
+
+/** Parcela do score, devolvida pelo backend para a tela não recalcular o total. */
+export interface FutebolFixtureScoreComponent {
+  id: 'premissas' | 'valor_de_mercado' | 'corroboracao' | 'penalidades';
+  texto: string;
+  pontos: number;
+}
+
+/**
+ * Motivos da saída cotada em Gols (RPC get_futebol_fixture_reason_contract).
+ * A separação favor/contra é autoridade do backend; não derive o lado pelo slug.
+ */
+export interface FutebolFixtureReasonContractRow {
+  market: string;
+  outcome: string;
+  line_value: number | null;
+  score: number;
+  componentes_score: FutebolFixtureScoreComponent[];
+  favor: FutebolFixtureReasonItem[];
+  contra: FutebolFixtureReasonItem[];
+}
+
 /**
  * Números de temporada de um lado do confronto (RPC get_futebol_fixture_numeros).
  * Serve para EMBASAR as premissas: sem o número, "em boa fase" é adjetivo.
@@ -651,6 +680,17 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolFixturePremissas[];
+    });
+  },
+
+  /** Contrato de motivos da saída cotada. Hoje cobre apenas Gols (migration 108). */
+  async getFixtureReasonContract(fixtureId: number): Promise<FutebolFixtureReasonContractRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_reason_contract', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureReasonContractRow[];
     });
   },
 

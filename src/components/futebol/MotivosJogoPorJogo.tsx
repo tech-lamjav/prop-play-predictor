@@ -432,7 +432,7 @@ function LinhaPremissa({
 export function MotivosJogoPorJogo({
   premissas,
   modo,
-  contras,
+  extras,
   historico,
   numeros,
   lado,
@@ -441,8 +441,8 @@ export function MotivosJogoPorJogo({
 }: {
   premissas: Premissa[];
   modo: 'favor' | 'contra';
-  /** Só no modo contra: o que o preço e as penalidades pesam. */
-  contras?: { t: string; sub?: string }[];
+  /** Componentes que o backend já descreveu e não têm drilldown jogo a jogo. */
+  extras?: { t: string; sub?: string; pontos?: number }[];
   historico: FutebolFixtureHistorico[] | undefined;
   numeros: FutebolFixtureNumeros[] | undefined;
   lado: 'home' | 'away' | null;
@@ -468,6 +468,15 @@ export function MotivosJogoPorJogo({
   const chave = itens.map((x) => x.p.slug).join('|');
   useEffect(() => setAberta(primeira), [chave, primeira]);
 
+  const total = itens.length + (extras?.length ?? 0);
+  const blocosOrdenados = useMemo(
+    () => [
+      ...itens.map((item) => ({ tipo: 'premissa' as const, peso: item.p.peso ?? 0, item })),
+      ...(extras ?? []).map((extra) => ({ tipo: 'extra' as const, peso: extra.pontos ?? 0, extra })),
+    ].sort((a, b) => b.peso - a.peso),
+    [itens, extras],
+  );
+
   if (!historico) {
     return <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>Carregando os jogos anteriores.</div>;
   }
@@ -477,10 +486,10 @@ export function MotivosJogoPorJogo({
       <div className="flex items-center justify-between gap-4 mb-3.5 flex-wrap">
         <div className="text-[12.5px]" style={{ color: '#8d8672' }}>
           {modo === 'favor'
-            ? itens.length > 0
-              ? `${itens.length} ${itens.length === 1 ? 'premissa sustenta' : 'premissas sustentam'} ${saidaLabel.toLowerCase()}. Clique numa linha para ver os jogos que produziram o número.`
-              : 'Nenhuma premissa a favor desta saída.'
-            : itens.length > 0 || (contras?.length ?? 0) > 0
+            ? total > 0
+              ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
+              : 'Nenhum motivo a favor desta saída.'
+            : total > 0
               ? 'O que o jogo e o preço colocam contra esta saída.'
               : 'Nada pesando contra esta saída: todas as premissas que valem aconteceram.'}
         </div>
@@ -498,43 +507,47 @@ export function MotivosJogoPorJogo({
         )}
       </div>
 
-      {modo === 'contra' && (contras?.length ?? 0) > 0 && (
-        <div className="flex flex-col gap-2.5 mb-2.5">
-          {contras!.map((c, i) => (
+      <div className="flex flex-col gap-2.5">
+        {blocosOrdenados.map((bloco) => {
+          if (bloco.tipo === 'extra') {
+            const c = bloco.extra;
+            return (
             <div
-              key={i}
+              key={`extra-${c.t}`}
               className="flex gap-3 items-start p-4 rounded-[14px]"
               style={{ border: '1px solid #ded2b6', background: '#fdfbf6' }}
             >
               <span
                 className="shrink-0 w-[22px] h-[22px] rounded-md grid place-items-center text-[13px] font-bold"
-                style={{ background: '#fdf3d9', color: '#b8870f' }}
+                style={modo === 'favor'
+                  ? { background: '#e7f1e9', color: '#0a6549' }
+                  : { background: '#fdf3d9', color: '#b8870f' }}
               >
-                −
+                {modo === 'favor' ? '+' : '−'}
               </span>
               <div>
                 <div className="text-[13px] font-semibold leading-snug text-ink">{c.t}</div>
                 {c.sub && <div className="text-[12px] leading-relaxed mt-0.5" style={{ color: '#8d8672' }}>{c.sub}</div>}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+            );
+          }
 
-      <div className="flex flex-col gap-2.5">
-        {itens.map(({ p, ev, story }) => (
-          <LinhaPremissa
-            key={p.slug}
-            p={p}
-            modo={modo}
-            lado={lado}
-            ev={ev}
-            story={story}
-            aberta={aberta === p.slug}
-            onAlternar={() => setAberta(aberta === p.slug ? null : p.slug)}
-            saidaLabel={saidaLabel}
-          />
-        ))}
+          const { p, ev, story } = bloco.item;
+          return (
+            <LinhaPremissa
+              key={p.slug}
+              p={p}
+              modo={modo}
+              lado={lado}
+              ev={ev}
+              story={story}
+              aberta={aberta === p.slug}
+              onAlternar={() => setAberta(aberta === p.slug ? null : p.slug)}
+              saidaLabel={saidaLabel}
+            />
+          );
+        })}
       </div>
 
       {itens.some((x) => x.story == null) && (

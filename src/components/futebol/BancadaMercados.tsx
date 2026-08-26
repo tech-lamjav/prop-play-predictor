@@ -8,8 +8,9 @@ import {
   useFutebolFixtureHistorico,
   useFutebolFixtureInjuries,
   useFutebolFixtureOdds,
+  useFutebolFixtureReasonContract,
 } from '@/hooks/use-futebol-data';
-import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import type { FutebolFixturePremissas, FutebolFixtureReasonContractRow, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import {
   MERCADOS,
   PORTA_PREMISSAS,
@@ -30,6 +31,7 @@ import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, REGUA_SCORE, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
+import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
@@ -244,6 +246,11 @@ export function BancadaMercados({
   const { data: historico } = useFutebolFixtureHistorico(jogo.fixtureId);
   const { data: injuries } = useFutebolFixtureInjuries(jogo.fixtureId);
   const { data: oddsRows } = useFutebolFixtureOdds(jogo.fixtureId);
+  const {
+    data: reasonContractRows,
+    isLoading: carregandoContratoMotivos,
+    isError: falhaContratoMotivos,
+  } = useFutebolFixtureReasonContract(jogo.fixtureId);
 
   const fim = isFinished(jogo.statusShort);
   const jogoJaComecou = useJogoJaComecou(jogo.kickoffUtc);
@@ -347,6 +354,19 @@ export function BancadaMercados({
     ? leituraDaCotacao(mercado.slug, principal.outcome, principal.line_value, valueRows, oddsRows)
     : { estado: 'sem_cotacao' as const, odd: null };
 
+  // Em Gols, o banco é a fonte do grupo de cada motivo. Ele evita transformar uma
+  // premissa do lado oposto em frase negativa e mantém contador e detalhe iguais.
+  const contratoMotivos = useMemo((): FutebolFixtureReasonContractRow | null => {
+    if (!principal || mercado.slug !== 'goals_over_under') return null;
+    return reasonContractRows?.find((r) =>
+      r.market === principal.market &&
+      r.outcome === principal.outcome &&
+      mesmaLinha(r.line_value, principal.line_value),
+    ) ?? null;
+  }, [reasonContractRows, principal, mercado.slug]);
+  const requerContratoMotivos = mercado.slug === 'goals_over_under' && valPrincipal != null;
+  const contratoMotivosIndisponivel = requerContratoMotivos && !contratoMotivos;
+
 
   const labelDe = (c: FutebolFixturePremissas | null) =>
     c ? outcomeLabel(c, jogo.home, jogo.away) : '';
@@ -412,12 +432,28 @@ export function BancadaMercados({
   // modelos dbt, não aqui.
   const favorVisivel = favor.filter((p) => p.peso !== 0 || evDe(p.slug) != null);
 
+  const motivosDoContrato = (itens: FutebolFixtureReasonContractRow['favor']) => {
+    const separados = separarMotivosDoContrato(itens);
+    return {
+      premissas: separados.slugsDePremissas
+        .map((slug) => premissaDe(mercado.slug, slug))
+        .filter((p): p is Premissa => p != null),
+      extras: separados.motivosSemDrilldown,
+    };
+  };
+  const motivosFavor = contratoMotivos
+    ? motivosDoContrato(contratoMotivos.favor)
+    : requerContratoMotivos
+      ? { premissas: [], extras: [] }
+      : { premissas: favorVisivel, extras: [] };
+
   // Contras: os do backend (quando há preço) + penalidades ativas.
   //
   // A penalidade de desfalque aparecia como título solto, sem dizer QUEM está fora.
   // Aqui ela puxa a lista de desfalques do lado certo; quando a lista ainda não
   // saiu, a tela diz isso em vez de deixar a linha muda.
   const contras = useMemo(() => {
+    if (requerContratoMotivos) return [];
     const out: { t: string; sub?: string }[] = [];
     (valPrincipal?.contras ?? []).forEach((t) => out.push({ t }));
     (valPrincipal?.avisos ?? []).forEach((t) => out.push({ t }));
@@ -445,7 +481,12 @@ export function BancadaMercados({
       out.push({ t: `Penalidade: ${p.label.toLowerCase()}`, sub });
     });
     return out;
-  }, [valPrincipal, penAtivas, injuries, ladoPrincipal, jogo.homeId, jogo.awayId]);
+  }, [requerContratoMotivos, valPrincipal, penAtivas, injuries, ladoPrincipal, jogo.homeId, jogo.awayId]);
+  const motivosContra = contratoMotivos
+    ? motivosDoContrato(contratoMotivos.contra)
+    : requerContratoMotivos
+      ? { premissas: [], extras: [] }
+      : { premissas: naoAconteceu, extras: contras };
 
   // O veredito em uma frase, sem inventar número.
   const veredito = useMemo(() => {
@@ -673,13 +714,13 @@ export function BancadaMercados({
               veredito ganharam altura mínima. */}
           <div className="relative flex items-end justify-between gap-7 flex-wrap">
             <div className="min-w-0">
-              <div className="flex items-center gap-2.5 h-6">
+              <div className="flex items-center gap-2.5 min-h-6 md:h-6">
                 <span className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,.45)' }}>
                   Mercado aberto · {mercado.label}
                 </span>
                 {cotacaoPrincipal.estado === 'cotada' && (
                   <span
-                    className="inline-flex items-center h-5 px-2 rounded-full text-[9px] font-bold uppercase tracking-[0.08em]"
+                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
                     style={{ background: '#dcefe2', color: '#0a3d2e' }}
                   >
                     Cotada · fora dos filtros
@@ -687,7 +728,7 @@ export function BancadaMercados({
                 )}
                 {cotacaoPrincipal.estado === 'sem_cotacao' && (
                   <span
-                    className="inline-flex items-center h-5 px-2 rounded-full text-[9px] font-bold uppercase tracking-[0.08em]"
+                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
                     style={{ background: '#ede4ce', color: '#6b6350' }}
                   >
                     Sem cotação
@@ -861,8 +902,8 @@ export function BancadaMercados({
         <div data-tour="fut-jogo-premissas" className="px-6 md:px-8 pt-4 flex items-center gap-2" style={{ borderBottom: '1px solid #f1e9d6' }}>
           {(
             [
-              ['favor', 'A favor', favorVisivel.length],
-              ['contra', 'Contra', naoAconteceu.length + contras.length],
+              ['favor', 'A favor', contratoMotivosIndisponivel ? null : motivosFavor.premissas.length + motivosFavor.extras.length],
+              ['contra', 'Contra', contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
             ] as const
           ).map(([k, rot, n]) => {
             const on = abaMotivo === k;
@@ -887,7 +928,7 @@ export function BancadaMercados({
               >
                 {rot}
                 <span className="tabular-nums text-[11px] font-bold" style={{ color: on ? '#0a3d2e' : '#8d8672' }}>
-                  {n}
+                  {n ?? '—'}
                 </span>
               </button>
             );
@@ -897,10 +938,19 @@ export function BancadaMercados({
           </span>
         </div>
 
-        {abaMotivo === 'favor' ? (
+        {contratoMotivosIndisponivel ? (
+          <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>
+            {carregandoContratoMotivos
+              ? 'Carregando os motivos desta leitura.'
+              : falhaContratoMotivos
+                ? 'Os motivos desta leitura estão sendo atualizados. Tente novamente em instantes.'
+                : 'Os motivos desta leitura ainda não estão disponíveis.'}
+          </div>
+        ) : abaMotivo === 'favor' ? (
           <MotivosJogoPorJogo
-            premissas={favorVisivel}
+            premissas={motivosFavor.premissas}
             modo="favor"
+            extras={motivosFavor.extras}
             historico={historico}
             numeros={numeros}
             lado={ladoPrincipal}
@@ -909,9 +959,9 @@ export function BancadaMercados({
           />
         ) : (
           <MotivosJogoPorJogo
-            premissas={naoAconteceu}
+            premissas={motivosContra.premissas}
             modo="contra"
-            contras={contras}
+            extras={motivosContra.extras}
             historico={historico}
             numeros={numeros}
             lado={ladoPrincipal}
