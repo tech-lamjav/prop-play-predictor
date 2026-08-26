@@ -31,7 +31,7 @@ import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, REGUA_SCORE, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
-import { isFinished } from '@/utils/futebol-datas';
+import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import type { JogoInfo } from './JogoResumo';
 
@@ -55,6 +55,21 @@ const TIPO_LINHA = new Set(['goals_over_under', 'asian_handicap']);
 /** Linha em pt-BR. Sinal só no handicap: "+2,5 gols" não existe. */
 function fmtLinha(v: number, comSinal: boolean): string {
   return `${comSinal && v > 0 ? '+' : ''}${String(v).replace('.', ',')}`;
+}
+
+/** Reavalia a tela no apito, mesmo se a fonte ainda não atualizou o status. */
+function useJogoJaComecou(kickoffUtc: string | null): boolean {
+  const [agora, setAgora] = useState(() => new Date());
+
+  useEffect(() => {
+    const kickoff = parseUtc(kickoffUtc);
+    if (!kickoff || hasKickoffPassed(kickoffUtc, agora)) return;
+    const espera = Math.min(kickoff.getTime() - agora.getTime(), 2_147_483_647);
+    const timer = window.setTimeout(() => setAgora(new Date()), espera);
+    return () => window.clearTimeout(timer);
+  }, [kickoffUtc, agora]);
+
+  return hasKickoffPassed(kickoffUtc, agora);
 }
 
 /**
@@ -231,6 +246,7 @@ export function BancadaMercados({
   const { data: oddsRows } = useFutebolFixtureOdds(jogo.fixtureId);
 
   const fim = isFinished(jogo.statusShort);
+  const jogoJaComecou = useJogoJaComecou(jogo.kickoffUtc);
   const placar = fim ? { home: jogo.goalsHome, away: jogo.goalsAway } : null;
   const mercado: MercadoInfo = MERCADOS.find((m) => m.slug === mercadoAtivo) ?? MERCADOS[0];
   const ehLinha = TIPO_LINHA.has(mercado.slug);
@@ -260,10 +276,22 @@ export function BancadaMercados({
   // Sem fallback de propósito: resumoDosMercados só deixa um mercado de fora quando
   // melhorCandidato dele já é nulo, então um "?? melhorCandidato(...)" aqui nunca
   // teria o que devolver, e ainda reabriria a porta das duas verdades.
-  const melhor = useMemo(
-    () => resumos.find((r) => r.mercado.slug === mercado.slug)?.candidato ?? null,
-    [resumos, mercado.slug],
-  );
+  const candidatoInicialDoMercado = useMemo(() => {
+    const resumo = resumos.find((r) => r.mercado.slug === mercado.slug) ?? null;
+    // Primeiro, a oportunidade de maior score (ou a que veio pelo link). Sem ela,
+    // uma candidata que já tem cotação é mais útil que uma linha só analisada.
+    if (resumo?.value) return resumo.candidato;
+
+    const candidataCotada = [...doMercado]
+      .filter((c) => leituraDaCotacao(mercado.slug, c.outcome, c.line_value, valueRows, oddsRows).estado === 'cotada')
+      .sort(
+        (a, b) =>
+          contaQueValem(mercado.slug, b.acesas) - contaQueValem(mercado.slug, a.acesas) ||
+          (a.line_value ?? 0) - (b.line_value ?? 0) ||
+          a.outcome.localeCompare(b.outcome),
+      )[0];
+    return candidataCotada ?? resumo?.candidato ?? null;
+  }, [resumos, mercado.slug, doMercado, valueRows, oddsRows]);
 
   // TODAS as linhas cotadas do mercado, em ordem. Com pills a tela mostrava as 5
   // mais centrais e as outras 16 não existiam; na régua arrastável cabem todas.
@@ -274,13 +302,13 @@ export function BancadaMercados({
 
   const [linha, setLinha] = useState<number | null>(null);
   const [saida, setSaida] = useState<string | null>(null);
-  // Depende de `melhor`, não só de `rows`: premissas e preço chegam em requisições
+  // Depende do candidato inicial, não só de `rows`: premissas e preço chegam em requisições
   // separadas, e quando o preço chegava depois a régua ficava parada na linha que as
   // premissas tinham escolhido sozinhas.
   useEffect(() => {
-    setLinha(melhor?.line_value != null && paradas.includes(melhor.line_value) ? melhor.line_value : paradas[Math.floor(paradas.length / 2)] ?? null);
-    setSaida(melhor?.outcome ?? null);
-  }, [melhor, paradas]);
+    setLinha(candidatoInicialDoMercado?.line_value != null && paradas.includes(candidatoInicialDoMercado.line_value) ? candidatoInicialDoMercado.line_value : paradas[Math.floor(paradas.length / 2)] ?? null);
+    setSaida(candidatoInicialDoMercado?.outcome ?? null);
+  }, [candidatoInicialDoMercado, paradas]);
 
   // Os lados da parada atual.
   const [ladoA, ladoB] = useMemo((): [FutebolFixturePremissas | null, FutebolFixturePremissas | null] => {
@@ -289,9 +317,9 @@ export function BancadaMercados({
       const at = (o: string) => doMercado.find((r) => r.outcome === o && r.line_value != null && linha != null && mesmaLinha(r.line_value, linha)) ?? null;
       return [at(oa), at(ob)];
     }
-    const sel = doMercado.find((r) => r.outcome === saida) ?? melhor;
+    const sel = doMercado.find((r) => r.outcome === saida) ?? candidatoInicialDoMercado;
     return [sel ?? null, null];
-  }, [ehLinha, doMercado, linha, saida, melhor, mercado.slug]);
+  }, [ehLinha, doMercado, linha, saida, candidatoInicialDoMercado, mercado.slug]);
 
   // Principal = o lado analisado. Começa no que tem mais contexto e o usuário troca
   // clicando no outro card: é assim que ele vê as premissas do outro lado, em vez de
@@ -466,9 +494,14 @@ export function BancadaMercados({
   }
 
   const pickAtual = labelDe(principal);
+  const cotacaoDoDraft = cotacaoPrincipal.estado === 'oportunidade'
+    ? { bestOdd: cotacaoPrincipal.odd, oddKind: 'melhor' as const }
+    : cotacaoPrincipal.estado === 'cotada'
+      ? { bestOdd: cotacaoPrincipal.odd, oddKind: 'referencia' as const }
+      : { bestOdd: null, oddKind: 'sem_cotacao' as const };
 
   const cta =
-    principal && cotacaoPrincipal.estado !== 'sem_cotacao' && !fim && !locked ? (
+    principal && !jogoJaComecou && !locked ? (
       <RegistrarApostaCTA
         draft={{
           homeName: jogo.home,
@@ -478,8 +511,7 @@ export function BancadaMercados({
           market: principal.market,
           outcome: principal.outcome,
           lineValue: principal.line_value,
-          bestOdd: cotacaoPrincipal.odd,
-          oddKind: cotacaoPrincipal.estado === 'cotada' ? 'referencia' : 'melhor',
+          ...cotacaoDoDraft,
         }}
         variant="ambar"
         rotulo="Adicionar à gestão"
@@ -509,7 +541,7 @@ export function BancadaMercados({
         return {
           chave: o.outcome,
           rotulo: outcomeLabel(o, jogo.home, jogo.away),
-          ativa: o.outcome === (saida ?? melhor?.outcome),
+          ativa: o.outcome === (saida ?? candidatoInicialDoMercado?.outcome),
           passa: val ? val.score >= REGUA_SCORE : n >= PORTA_PREMISSAS,
           res: placar ? settleFutebol(o, placar.home, placar.away) : null,
           escolher: () => setSaida(o.outcome),
@@ -653,6 +685,14 @@ export function BancadaMercados({
                     Cotada · fora dos filtros
                   </span>
                 )}
+                {cotacaoPrincipal.estado === 'sem_cotacao' && (
+                  <span
+                    className="inline-flex items-center h-5 px-2 rounded-full text-[9px] font-bold uppercase tracking-[0.08em]"
+                    style={{ background: '#ede4ce', color: '#6b6350' }}
+                  >
+                    Sem cotação
+                  </span>
+                )}
                 {resPrincipal && <SeloRes r={resPrincipal} />}
               </div>
               <div className="mt-1.5 text-[28px] md:text-[34px] font-semibold leading-tight tracking-[-0.035em] text-white min-h-[42px] md:min-h-[46px]">
@@ -761,7 +801,7 @@ export function BancadaMercados({
                   valor={linha}
                   onEscolher={setLinha}
                   rotulo={(v) => fmtLinha(v, ehAH)}
-                  destaque={melhor?.line_value ?? null}
+                  destaque={candidatoInicialDoMercado?.line_value ?? null}
                   forca={forcaPorLinha}
                 />
               </>
