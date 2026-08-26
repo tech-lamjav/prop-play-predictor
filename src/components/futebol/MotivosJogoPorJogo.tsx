@@ -432,7 +432,7 @@ function LinhaPremissa({
 export function MotivosJogoPorJogo({
   premissas,
   modo,
-  contras,
+  extras,
   historico,
   numeros,
   lado,
@@ -441,8 +441,8 @@ export function MotivosJogoPorJogo({
 }: {
   premissas: Premissa[];
   modo: 'favor' | 'contra';
-  /** Só no modo contra: o que o preço e as penalidades pesam. */
-  contras?: { t: string; sub?: string }[];
+  /** Componentes que o backend já descreveu e não têm drilldown jogo a jogo. */
+  extras?: { t: string; sub?: string }[];
   historico: FutebolFixtureHistorico[] | undefined;
   numeros: FutebolFixtureNumeros[] | undefined;
   lado: 'home' | 'away' | null;
@@ -472,15 +472,17 @@ export function MotivosJogoPorJogo({
     return <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>Carregando os jogos anteriores.</div>;
   }
 
+  const total = itens.length + (extras?.length ?? 0);
+
   return (
     <div className="p-5 md:p-7">
       <div className="flex items-center justify-between gap-4 mb-3.5 flex-wrap">
         <div className="text-[12.5px]" style={{ color: '#8d8672' }}>
           {modo === 'favor'
-            ? itens.length > 0
-              ? `${itens.length} ${itens.length === 1 ? 'premissa sustenta' : 'premissas sustentam'} ${saidaLabel.toLowerCase()}. Clique numa linha para ver os jogos que produziram o número.`
-              : 'Nenhuma premissa a favor desta saída.'
-            : itens.length > 0 || (contras?.length ?? 0) > 0
+            ? total > 0
+              ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
+              : 'Nenhum motivo a favor desta saída.'
+            : total > 0
               ? 'O que o jogo e o preço colocam contra esta saída.'
               : 'Nada pesando contra esta saída: todas as premissas que valem aconteceram.'}
         </div>
@@ -498,9 +500,9 @@ export function MotivosJogoPorJogo({
         )}
       </div>
 
-      {modo === 'contra' && (contras?.length ?? 0) > 0 && (
+      {(extras?.length ?? 0) > 0 && (
         <div className="flex flex-col gap-2.5 mb-2.5">
-          {contras!.map((c, i) => (
+          {extras!.map((c, i) => (
             <div
               key={i}
               className="flex gap-3 items-start p-4 rounded-[14px]"
@@ -508,9 +510,11 @@ export function MotivosJogoPorJogo({
             >
               <span
                 className="shrink-0 w-[22px] h-[22px] rounded-md grid place-items-center text-[13px] font-bold"
-                style={{ background: '#fdf3d9', color: '#b8870f' }}
+                style={modo === 'favor'
+                  ? { background: '#e7f1e9', color: '#0a6549' }
+                  : { background: '#fdf3d9', color: '#b8870f' }}
               >
-                −
+                {modo === 'favor' ? '+' : '−'}
               </span>
               <div>
                 <div className="text-[13px] font-semibold leading-snug text-ink">{c.t}</div>
