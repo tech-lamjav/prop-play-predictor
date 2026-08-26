@@ -714,13 +714,13 @@ export function BancadaMercados({
               veredito ganharam altura mínima. */}
           <div className="relative flex items-end justify-between gap-7 flex-wrap">
             <div className="min-w-0">
-              <div className="flex items-center gap-2.5 h-6">
+              <div className="flex items-center gap-2.5 min-h-6 md:h-6">
                 <span className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,.45)' }}>
                   Mercado aberto · {mercado.label}
                 </span>
                 {cotacaoPrincipal.estado === 'cotada' && (
                   <span
-                    className="inline-flex items-center h-5 px-2 rounded-full text-[9px] font-bold uppercase tracking-[0.08em]"
+                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
                     style={{ background: '#dcefe2', color: '#0a3d2e' }}
                   >
                     Cotada · fora dos filtros
@@ -728,7 +728,7 @@ export function BancadaMercados({
                 )}
                 {cotacaoPrincipal.estado === 'sem_cotacao' && (
                   <span
-                    className="inline-flex items-center h-5 px-2 rounded-full text-[9px] font-bold uppercase tracking-[0.08em]"
+                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
                     style={{ background: '#ede4ce', color: '#6b6350' }}
                   >
                     Sem cotação
