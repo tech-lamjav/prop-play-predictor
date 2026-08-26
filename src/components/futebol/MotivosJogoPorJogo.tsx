@@ -442,7 +442,7 @@ export function MotivosJogoPorJogo({
   premissas: Premissa[];
   modo: 'favor' | 'contra';
   /** Componentes que o backend já descreveu e não têm drilldown jogo a jogo. */
-  extras?: { t: string; sub?: string }[];
+  extras?: { t: string; sub?: string; pontos?: number }[];
   historico: FutebolFixtureHistorico[] | undefined;
   numeros: FutebolFixtureNumeros[] | undefined;
   lado: 'home' | 'away' | null;
@@ -468,11 +468,18 @@ export function MotivosJogoPorJogo({
   const chave = itens.map((x) => x.p.slug).join('|');
   useEffect(() => setAberta(primeira), [chave, primeira]);
 
+  const total = itens.length + (extras?.length ?? 0);
+  const blocosOrdenados = useMemo(
+    () => [
+      ...itens.map((item) => ({ tipo: 'premissa' as const, peso: item.p.peso ?? 0, item })),
+      ...(extras ?? []).map((extra) => ({ tipo: 'extra' as const, peso: extra.pontos ?? 0, extra })),
+    ].sort((a, b) => b.peso - a.peso),
+    [itens, extras],
+  );
+
   if (!historico) {
     return <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>Carregando os jogos anteriores.</div>;
   }
-
-  const total = itens.length + (extras?.length ?? 0);
 
   return (
     <div className="p-5 md:p-7">
@@ -500,11 +507,13 @@ export function MotivosJogoPorJogo({
         )}
       </div>
 
-      {(extras?.length ?? 0) > 0 && (
-        <div className="flex flex-col gap-2.5 mb-2.5">
-          {extras!.map((c, i) => (
+      <div className="flex flex-col gap-2.5">
+        {blocosOrdenados.map((bloco) => {
+          if (bloco.tipo === 'extra') {
+            const c = bloco.extra;
+            return (
             <div
-              key={i}
+              key={`extra-${c.t}`}
               className="flex gap-3 items-start p-4 rounded-[14px]"
               style={{ border: '1px solid #ded2b6', background: '#fdfbf6' }}
             >
@@ -521,24 +530,24 @@ export function MotivosJogoPorJogo({
                 {c.sub && <div className="text-[12px] leading-relaxed mt-0.5" style={{ color: '#8d8672' }}>{c.sub}</div>}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+            );
+          }
 
-      <div className="flex flex-col gap-2.5">
-        {itens.map(({ p, ev, story }) => (
-          <LinhaPremissa
-            key={p.slug}
-            p={p}
-            modo={modo}
-            lado={lado}
-            ev={ev}
-            story={story}
-            aberta={aberta === p.slug}
-            onAlternar={() => setAberta(aberta === p.slug ? null : p.slug)}
-            saidaLabel={saidaLabel}
-          />
-        ))}
+          const { p, ev, story } = bloco.item;
+          return (
+            <LinhaPremissa
+              key={p.slug}
+              p={p}
+              modo={modo}
+              lado={lado}
+              ev={ev}
+              story={story}
+              aberta={aberta === p.slug}
+              onAlternar={() => setAberta(aberta === p.slug ? null : p.slug)}
+              saidaLabel={saidaLabel}
+            />
+          );
+        })}
       </div>
 
       {itens.some((x) => x.story == null) && (

@@ -10,6 +10,6 @@ export function separarMotivosDoContrato(itens: readonly FutebolFixtureReasonIte
     slugsDePremissas: itens.filter((item) => !item.texto).map((item) => item.id),
     motivosSemDrilldown: itens
       .filter((item) => item.texto)
-      .map((item) => ({ t: item.texto as string })),
+      .map((item) => ({ t: item.texto as string, pontos: item.pontos })),
   };
 }

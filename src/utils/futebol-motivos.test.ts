@@ -25,8 +25,8 @@ describe('separarMotivosDoContrato', () => {
       { id: 'xg_combinado_alto', tipo: 'premissa' },
       { id: 'ritmo_alto', tipo: 'premissa' },
       { id: 'linha_subindo', tipo: 'premissa' },
-      { id: 'valor_de_mercado', tipo: 'componente_score', texto: 'A cotação oferece valor' },
-        { id: 'corroboracao', tipo: 'componente_score', texto: 'Movimento de mercado confirma a leitura' },
+        { id: 'valor_de_mercado', tipo: 'componente_score', texto: 'A cotação oferece valor', pontos: 16 },
+        { id: 'corroboracao', tipo: 'componente_score', texto: 'Movimento de mercado confirma a leitura', pontos: 8 },
       ],
       contra: [
       { id: 'defesas_vazaveis', tipo: 'premissa' },
@@ -40,8 +40,8 @@ describe('separarMotivosDoContrato', () => {
 
     expect(favor.slugsDePremissas).toEqual(['xg_combinado_alto', 'ritmo_alto', 'linha_subindo']);
     expect(favor.motivosSemDrilldown).toEqual([
-      { t: 'A cotação oferece valor' },
-      { t: 'Movimento de mercado confirma a leitura' },
+      { t: 'A cotação oferece valor', pontos: 16 },
+      { t: 'Movimento de mercado confirma a leitura', pontos: 8 },
     ]);
     expect(contra.slugsDePremissas).toEqual(['defesas_vazaveis', 'ataque_combinado', 'ambos_vazam', 'historico_over']);
     expect(contra.slugsDePremissas).not.toContain('defesas_firmes');
