@@ -133,3 +133,13 @@ export function isFinished(status: string | null | undefined): boolean {
 export function isLive(status: string | null | undefined): boolean {
   return status === '1H' || status === '2H' || status === 'HT' || status === 'ET' || status === 'BT' || status === 'P' || status === 'LIVE';
 }
+
+/**
+ * O momento real do início vence o status recebido da fonte. Ela pode demorar a
+ * trocar de "NS" para "1H", mas não devemos continuar oferecendo registro de
+ * aposta depois do apito inicial.
+ */
+export function hasKickoffPassed(kickoffUtc: string | null | undefined, now = new Date()): boolean {
+  const kickoff = parseUtc(kickoffUtc);
+  return kickoff != null && kickoff.getTime() <= now.getTime();
+}

@@ -415,6 +415,7 @@ export function JogoResumo({
                 outcome: top.value.outcome,
                 lineValue: top.value.line_value,
                 bestOdd: top.value.best_odd,
+                oddKind: 'melhor',
               }}
             />
           </div>

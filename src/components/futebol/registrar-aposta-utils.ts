@@ -2,7 +2,7 @@
 // pra manter o Fast Refresh feliz: o .tsx exporta só componentes).
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
-export interface FutebolBetDraft {
+interface FutebolBetDraftBase {
   homeName: string;
   awayName: string;
   competition: string;
@@ -10,9 +10,13 @@ export interface FutebolBetDraft {
   market: string;
   outcome: string;
   lineValue: number | null;
-  bestOdd: number;
-  oddKind?: 'melhor' | 'referencia';
 }
+
+/** A origem da odd determina se o formulário começa preenchido. */
+export type FutebolBetDraft = FutebolBetDraftBase & (
+  | { bestOdd: number; oddKind: 'melhor' | 'referencia' }
+  | { bestOdd: null; oddKind: 'sem_cotacao' }
+);
 
 /**
  * Monta o draft a partir de uma linha do board de oportunidades. Aceita

@@ -11,6 +11,7 @@ import {
   yearOf,
   isFinished,
   isLive,
+  hasKickoffPassed,
 } from './futebol-datas';
 
 // Os testes não dependem do fuso da máquina: todo formatador recebe
@@ -165,5 +166,17 @@ describe('isFinished / isLive', () => {
     expect(isLive('NS')).toBe(false);
     expect(isFinished(null)).toBe(false);
     expect(isLive(null)).toBe(false);
+  });
+});
+
+describe('hasKickoffPassed', () => {
+  const now = new Date('2026-08-26T19:30:00Z');
+
+  it('fecha a gestão no horário do apito, mesmo que o status ainda não tenha mudado', () => {
+    expect(hasKickoffPassed('2026-08-26T19:30:00', now)).toBe(true);
+  });
+
+  it('mantém a gestão disponível antes do início', () => {
+    expect(hasKickoffPassed('2026-08-26T19:31:00', now)).toBe(false);
   });
 });

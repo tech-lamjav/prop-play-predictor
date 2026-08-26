@@ -237,6 +237,7 @@ export function FaixaPartida({
                     outcome: v.outcome,
                     lineValue: v.line_value,
                     bestOdd: v.best_odd,
+                    oddKind: 'melhor',
                   }}
                   variant="ambar"
                 />

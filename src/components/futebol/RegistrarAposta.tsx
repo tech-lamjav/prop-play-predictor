@@ -149,8 +149,10 @@ export function RegistrarApostaModal({
             </div>
             <p className="text-[11px] text-ink-3 -mt-2">
               {draft?.oddKind === 'referencia'
-                ? `Confirme a cotação na sua casa antes de registrar. A referência coletada foi ${draft.bestOdd.toFixed(2)}.`
-                : `Pegou outra odd? Ajuste acima — preenchemos com a melhor que encontramos (${draft?.bestOdd.toFixed(2)}).`}
+                ? `Confirme a cotação na sua casa antes de registrar. A referência coletada foi ${draft.bestOdd?.toFixed(2)}.`
+                : draft?.oddKind === 'sem_cotacao'
+                  ? 'Informe a odd que você encontrou para registrar a aposta.'
+                  : `Pegou outra odd? Ajuste acima — preenchemos com a melhor que encontramos (${draft?.bestOdd?.toFixed(2)}).`}
             </p>
 
             {/* Retorno potencial */}

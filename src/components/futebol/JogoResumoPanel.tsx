@@ -379,6 +379,7 @@ export function JogoResumoPanel({
                 outcome: best.outcome,
                 lineValue: best.line_value,
                 bestOdd: best.best_odd,
+                oddKind: 'melhor',
               }}
               variant="ambar"
               rotulo="Registrar"
