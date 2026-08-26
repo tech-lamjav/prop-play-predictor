@@ -11,6 +11,7 @@ export interface FutebolBetDraft {
   outcome: string;
   lineValue: number | null;
   bestOdd: number;
+  oddKind?: 'melhor' | 'referencia';
 }
 
 /**
@@ -33,5 +34,6 @@ export function draftFromBoardRow(o: DraftSource): FutebolBetDraft {
     outcome: o.outcome,
     lineValue: o.line_value,
     bestOdd: o.best_odd,
+    oddKind: 'melhor',
   };
 }
