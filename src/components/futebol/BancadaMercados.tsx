@@ -7,6 +7,7 @@ import {
   useFutebolFixtureNumeros,
   useFutebolFixtureHistorico,
   useFutebolFixtureInjuries,
+  useFutebolFixtureOdds,
 } from '@/hooks/use-futebol-data';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import {
@@ -28,6 +29,7 @@ import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, REGUA_SCORE, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { isFinished } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
@@ -226,6 +228,7 @@ export function BancadaMercados({
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
   const { data: historico } = useFutebolFixtureHistorico(jogo.fixtureId);
   const { data: injuries } = useFutebolFixtureInjuries(jogo.fixtureId);
+  const { data: oddsRows } = useFutebolFixtureOdds(jogo.fixtureId);
 
   const fim = isFinished(jogo.statusShort);
   const placar = fim ? { home: jogo.goalsHome, away: jogo.goalsAway } : null;
@@ -234,6 +237,16 @@ export function BancadaMercados({
   const ehAH = mercado.slug === 'asian_handicap';
 
   const resumos = useMemo(() => resumoDosMercados(rows, valueRows, preferida), [rows, valueRows, preferida]);
+  const mercadosCotados = useMemo(
+    () => resumos.filter((r) => leituraDaCotacao(
+      r.mercado.slug,
+      r.candidato.outcome,
+      r.candidato.line_value,
+      valueRows,
+      oddsRows,
+    ).estado !== 'sem_cotacao').length,
+    [resumos, valueRows, oddsRows],
+  );
 
   const doMercado = useMemo(
     () => (rows ?? []).filter((r) => r.market === mercado.slug).filter((r) => !(mercado.slug === 'asian_handicap' && r.line_value === 0)),
@@ -288,7 +301,6 @@ export function BancadaMercados({
   const nB = ladoB ? contaQueValem(mercado.slug, ladoB.acesas) : 0;
   const valA = ladoA ? valueDoCandidato(valueRows, ladoA) : null;
   const valB = ladoB ? valueDoCandidato(valueRows, ladoB) : null;
-
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
   useEffect(() => setLadoSel(null), [mercado.slug, linha, saida]);
   // Sub-abas da folha: a favor e contra, as duas jogo a jogo (é onde mora a auditoria).
@@ -303,6 +315,9 @@ export function BancadaMercados({
   })();
   const principal = ladoSel === 'a' ? ladoA : ladoSel === 'b' ? ladoB : ladoPadrao;
   const valPrincipal = principal === ladoB ? valB : valA;
+  const cotacaoPrincipal = principal
+    ? leituraDaCotacao(mercado.slug, principal.outcome, principal.line_value, valueRows, oddsRows)
+    : { estado: 'sem_cotacao' as const, odd: null };
 
 
   const labelDe = (c: FutebolFixturePremissas | null) =>
@@ -416,11 +431,14 @@ export function BancadaMercados({
       if (valPrincipal.score >= REGUA_SCORE) return `${lbl} passa a régua, em faixa média: leitura razoável e algum valor.`;
       return `Abaixo da régua de ${REGUA_SCORE}: ${lbl} entra como consulta, não como aposta.`;
     }
+    if (cotacaoPrincipal.estado === 'cotada') {
+      return `${lbl} tem cotação, mas ficou fora dos filtros de oportunidade.`;
+    }
     const n = principal ? contaQueValem(mercado.slug, principal.acesas) : 0;
     if (n >= PORTA_PREMISSAS) return `O jogo aponta para ${lbl}, mas falta o preço: as odds entram perto do jogo.`;
     return `O jogo não sustenta esta saída.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [principal, valPrincipal, fim, mercado.slug, placar]);
+  }, [principal, valPrincipal, cotacaoPrincipal.estado, fim, mercado.slug, placar]);
 
   // Distribuição de gols: só no mercado de gols, cortada pela linha selecionada.
   const dist = useMemo(() => {
@@ -450,20 +468,21 @@ export function BancadaMercados({
   const pickAtual = labelDe(principal);
 
   const cta =
-    valPrincipal && !fim && !locked ? (
+    principal && cotacaoPrincipal.estado !== 'sem_cotacao' && !fim && !locked ? (
       <RegistrarApostaCTA
         draft={{
           homeName: jogo.home,
           awayName: jogo.away,
           competition: jogo.competition,
           kickoffUtc: jogo.kickoffUtc,
-          market: valPrincipal.market,
-          outcome: valPrincipal.outcome,
-          lineValue: valPrincipal.line_value,
-          bestOdd: valPrincipal.best_odd,
+          market: principal.market,
+          outcome: principal.outcome,
+          lineValue: principal.line_value,
+          bestOdd: cotacaoPrincipal.odd,
+          oddKind: cotacaoPrincipal.estado === 'cotada' ? 'referencia' : 'melhor',
         }}
         variant="ambar"
-        rotulo={`Registrar ${pickAtual}`}
+        rotulo="Adicionar à gestão"
       />
     ) : null;
 
@@ -523,6 +542,8 @@ export function BancadaMercados({
           <div className="mt-1 text-[11.5px] leading-relaxed" style={{ color: '#6b6350' }}>
             {resumos.some((r) => r.value)
               ? `${resumos.filter((r) => r.passa).length} de ${resumos.length} passam a régua de ${REGUA_SCORE}. A barra é o Score; o tracinho é a régua.`
+              : mercadosCotados > 0
+                ? `${mercadosCotados} de ${resumos.length} mercados têm cotação. Os demais continuam analisados pelas premissas.`
               : `Sem preço ainda: a barra conta as premissas e o tracinho é a porta de ${PORTA_PREMISSAS}.`}
           </div>
         </div>
@@ -533,6 +554,14 @@ export function BancadaMercados({
           {resumos.map((r) => {
             const on = r.mercado.slug === mercado.slug;
             const temScore = r.value != null;
+            const leituraCotacao = leituraDaCotacao(
+              r.mercado.slug,
+              r.candidato.outcome,
+              r.candidato.line_value,
+              valueRows,
+              oddsRows,
+            );
+            const candidataCotada = leituraCotacao.estado === 'cotada';
             const s = temScore ? r.value!.score : r.nValem;
             const larg = temScore ? `${s}%` : `${Math.min(100, (r.nValem / Math.max(r.totalQueValem, 1)) * 100)}%`;
             const regua = temScore ? `${REGUA_SCORE}%` : `${(PORTA_PREMISSAS / Math.max(r.totalQueValem, 1)) * 100}%`;
@@ -555,12 +584,14 @@ export function BancadaMercados({
                   >
                     {r.mercado.label}
                   </span>
-                  <span
-                    className="tabular-nums text-[18px] font-bold shrink-0"
-                    style={{ color: on ? '#fbbf24' : r.passa ? (temScore && s >= 60 ? '#0a3d2e' : '#b8870f') : '#8d8672' }}
-                  >
-                    <Blur active={locked && temScore}>{String(s)}</Blur>
-                  </span>
+                  {!candidataCotada && (
+                    <span
+                      className="tabular-nums text-[18px] font-bold shrink-0"
+                      style={{ color: on ? '#fbbf24' : r.passa ? (temScore && s >= 60 ? '#0a3d2e' : '#b8870f') : '#8d8672' }}
+                    >
+                      <Blur active={locked && temScore}>{String(s)}</Blur>
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 text-[11.5px] truncate" style={{ color: on ? 'rgba(255,255,255,.6)' : '#8d8672' }}>
                   {pick}
@@ -572,19 +603,23 @@ export function BancadaMercados({
                       <Blur active={locked}>{r.value!.best_odd.toFixed(2)}</Blur>
                     </>
                   ) : (
-                    ' · sem preço'
+                    leituraCotacao.estado === 'cotada'
+                      ? ` · cotada @ ${leituraCotacao.odd.toFixed(2)}`
+                      : ' · sem cotação'
                   )}
                 </div>
-                <div
-                  className="relative mt-2.5 h-1.5 rounded-full"
-                  style={{ background: on ? 'rgba(255,255,255,.16)' : '#f1e9d6' }}
-                >
-                  <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: larg, background: cor }} />
+                {!candidataCotada && (
                   <div
-                    className="absolute -top-[3px] -bottom-[3px] w-0"
-                    style={{ left: regua, borderLeft: `1px dashed ${on ? 'rgba(255,255,255,.6)' : '#8d8672'}` }}
-                  />
-                </div>
+                    className="relative mt-2.5 h-1.5 rounded-full"
+                    style={{ background: on ? 'rgba(255,255,255,.16)' : '#f1e9d6' }}
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: larg, background: cor }} />
+                    <div
+                      className="absolute -top-[3px] -bottom-[3px] w-0"
+                      style={{ left: regua, borderLeft: `1px dashed ${on ? 'rgba(255,255,255,.6)' : '#8d8672'}` }}
+                    />
+                  </div>
+                )}
               </button>
             );
           })}
@@ -610,6 +645,14 @@ export function BancadaMercados({
                 <span className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,.45)' }}>
                   Mercado aberto · {mercado.label}
                 </span>
+                {cotacaoPrincipal.estado === 'cotada' && (
+                  <span
+                    className="inline-flex items-center h-5 px-2 rounded-full text-[9px] font-bold uppercase tracking-[0.08em]"
+                    style={{ background: '#dcefe2', color: '#0a3d2e' }}
+                  >
+                    Cotada · fora dos filtros
+                  </span>
+                )}
                 {resPrincipal && <SeloRes r={resPrincipal} />}
               </div>
               <div className="mt-1.5 text-[28px] md:text-[34px] font-semibold leading-tight tracking-[-0.035em] text-white min-h-[42px] md:min-h-[46px]">
@@ -635,7 +678,9 @@ export function BancadaMercados({
               <div className="min-w-[52px]">
                 <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
-                  {valPrincipal ? <Blur active={locked}>{valPrincipal.best_odd.toFixed(2)}</Blur> : '—'}
+                  {cotacaoPrincipal.odd != null
+                    ? <Blur active={locked}>{cotacaoPrincipal.odd.toFixed(2)}</Blur>
+                    : '—'}
                 </div>
               </div>
               <div className="min-w-[76px]">
@@ -651,6 +696,7 @@ export function BancadaMercados({
                   )}
                 </div>
               </div>
+              {cotacaoPrincipal.estado !== 'cotada' && (
               <div className="text-center pl-6 min-w-[128px]" style={{ borderLeft: '1px solid rgba(255,255,255,.15)' }}>
                 <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
                   {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
@@ -661,6 +707,7 @@ export function BancadaMercados({
                     : 'premissas a favor'}
                 </div>
               </div>
+              )}
             </div>
           </div>
 
@@ -754,6 +801,15 @@ export function BancadaMercados({
             {ehLinha && paradas.length > 1 ? cta && <div className="basis-full mt-1">{cta}</div> : cta}
           </div>
         </div>
+
+        {cotacaoPrincipal.estado === 'cotada' && (
+          <div
+            className="px-6 md:px-8 py-3 text-[12px] leading-relaxed"
+            style={{ background: '#edf5ef', borderBottom: '1px solid #cfe4d5', color: '#0a3d2e' }}
+          >
+            Confirme a cotação na sua casa antes de registrar.
+          </div>
+        )}
 
         {mercado.aviso && (
           <div className="px-6 md:px-8 py-3 text-[12px] leading-relaxed" style={{ background: '#fef7df', borderBottom: '1px solid #fde68a', color: '#5a3c00' }}>

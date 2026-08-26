@@ -426,6 +426,8 @@ export interface FutebolOddsRow {
   line: number | null;
   pinnacle_odd: number | null;
   avg_odd: number | null;
+  /** Mediana discreta das odds observadas na janela usada pela consulta. */
+  reference_odd: number | null;
   best_odd: number;
   best_book: string;
   n_books: number;
@@ -805,7 +807,7 @@ export const futebolDataService = {
 
   async getFixtureOdds(fixtureId: number): Promise<FutebolOddsRow[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_odds', {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_quotes', {
         p_fixture_id: fixtureId,
       });
       if (error) throw error;
