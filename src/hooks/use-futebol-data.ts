@@ -103,7 +103,7 @@ export function useFutebolFixturePremissas(fixtureId: number | undefined) {
   });
 }
 
-/** Motivos já agrupados pelo backend. Hoje cobre as saídas cotadas de Gols. */
+/** Motivos já agrupados pelo backend para qualquer saída cotada da Bancada. */
 export function useFutebolFixtureReasonContract(fixtureId: number | undefined) {
   return useQuery<FutebolFixtureReasonContractRow[]>({
     queryKey: ['futebol', 'fixture-reason-contract', fixtureId],

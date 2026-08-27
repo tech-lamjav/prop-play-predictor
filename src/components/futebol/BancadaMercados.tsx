@@ -354,17 +354,18 @@ export function BancadaMercados({
     ? leituraDaCotacao(mercado.slug, principal.outcome, principal.line_value, valueRows, oddsRows)
     : { estado: 'sem_cotacao' as const, odd: null };
 
-  // Em Gols, o banco é a fonte do grupo de cada motivo. Ele evita transformar uma
-  // premissa do lado oposto em frase negativa e mantém contador e detalhe iguais.
+  // Nas saídas cotadas, o banco é a fonte do grupo de cada motivo. Ele evita
+  // transformar uma premissa do lado oposto em frase negativa e mantém contador
+  // e detalhe iguais nos cinco mercados.
   const contratoMotivos = useMemo((): FutebolFixtureReasonContractRow | null => {
-    if (!principal || mercado.slug !== 'goals_over_under') return null;
+    if (!principal) return null;
     return reasonContractRows?.find((r) =>
       r.market === principal.market &&
       r.outcome === principal.outcome &&
       mesmaLinha(r.line_value, principal.line_value),
     ) ?? null;
-  }, [reasonContractRows, principal, mercado.slug]);
-  const requerContratoMotivos = mercado.slug === 'goals_over_under' && valPrincipal != null;
+  }, [reasonContractRows, principal]);
+  const requerContratoMotivos = valPrincipal != null;
   const contratoMotivosIndisponivel = requerContratoMotivos && !contratoMotivos;
 
 
