@@ -18,3 +18,12 @@ export interface Saida {
   outcome: string;
   line_value: number | null;
 }
+
+/**
+ * Linha na ótica do time escolhido. O banco normaliza o handicap pela ótica do
+ * mandante; quem escolhe o visitante recebe o sinal oposto na tela.
+ */
+export function linhaDaSaida({ market, outcome, line_value }: Saida): number | null {
+  if (market === 'asian_handicap' && outcome === 'Away' && line_value != null) return -line_value;
+  return line_value;
+}

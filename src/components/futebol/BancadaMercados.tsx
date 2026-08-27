@@ -34,6 +34,7 @@ import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
+import { linhaDaSaida } from '@/utils/futebol-saida';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import type { JogoInfo } from './JogoResumo';
 
@@ -536,6 +537,11 @@ export function BancadaMercados({
   }
 
   const pickAtual = labelDe(principal);
+  const linhaExibida = linhaDaSaida({
+    market: mercado.slug,
+    outcome: principal?.outcome ?? 'Home',
+    line_value: linha,
+  });
   const cotacaoDoDraft = cotacaoPrincipal.estado === 'oportunidade'
     ? { bestOdd: cotacaoPrincipal.odd, oddKind: 'melhor' as const }
     : cotacaoPrincipal.estado === 'cotada'
@@ -727,6 +733,14 @@ export function BancadaMercados({
                     Cotada · fora dos filtros
                   </span>
                 )}
+                {cotacaoPrincipal.estado === 'oportunidade' && (
+                  <span
+                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
+                    style={{ background: '#fbbf24', color: '#1a1d1a' }}
+                  >
+                    Oportunidade
+                  </span>
+                )}
                 {cotacaoPrincipal.estado === 'sem_cotacao' && (
                   <span
                     className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
@@ -778,7 +792,6 @@ export function BancadaMercados({
                   )}
                 </div>
               </div>
-              {cotacaoPrincipal.estado !== 'cotada' && (
               <div className="text-center pl-6 min-w-[128px]" style={{ borderLeft: '1px solid rgba(255,255,255,.15)' }}>
                 <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
                   {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
@@ -789,7 +802,6 @@ export function BancadaMercados({
                     : 'premissas a favor'}
                 </div>
               </div>
-              )}
             </div>
           </div>
 
@@ -836,13 +848,16 @@ export function BancadaMercados({
                 {/* O número antes da trilha: com ele depois, no celular a régua
                     quebrava a linha e o valor ficava sozinho, solto embaixo. */}
                 <span className="tabular-nums text-[22px] font-bold leading-none shrink-0 min-w-[58px]" style={{ color: '#fbbf24' }}>
-                  {linha != null ? fmtLinha(linha, ehAH) : '—'}
+                  {linhaExibida != null ? fmtLinha(linhaExibida, ehAH) : '—'}
                 </span>
                 <ReguaLinhas
                   paradas={paradas}
                   valor={linha}
                   onEscolher={setLinha}
-                  rotulo={(v) => fmtLinha(v, ehAH)}
+                  rotulo={(v) => fmtLinha(
+                    linhaDaSaida({ market: mercado.slug, outcome: principal?.outcome ?? 'Home', line_value: v }) ?? v,
+                    ehAH,
+                  )}
                   destaque={candidatoInicialDoMercado?.line_value ?? null}
                   forca={forcaPorLinha}
                 />
