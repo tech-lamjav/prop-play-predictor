@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { copyDeServing, type LinhaCopy } from './futebol-premissas';
+import { copyDeServing, premissaDe, rotuloPremissa, type LinhaCopy } from './futebol-premissas';
 
 // ============================================================================
 // A guarda que impede a copy da premissa de divergir de novo (issue #272)
@@ -120,5 +120,26 @@ describe('a copy da serving é a copy do catálogo', () => {
       (l) => l.tipo === 'evidencia' && l.market === 'asian_handicap' && l.slug === 'raramente_perde_por_2',
     );
     expect(linha?.texto).toBe('Quando perde, perde apertado');
+  });
+
+  it('descreve premissa apagada como ausência de sinal, sem afirmar o oposto', () => {
+    const casos = [
+      ['match_winner', 'forma', null],
+      ['goals_over_under', 'ataque_combinado', null],
+      ['asian_handicap', 'defesa_fora_solida', 'home'],
+      ['btts', 'ambos_marcam', null],
+      ['double_chance', 'lado_coberto_forte', null],
+    ] as const;
+
+    for (const [mercado, slug, lado] of casos) {
+      const premissa = premissaDe(mercado, slug);
+      expect(premissa, `${mercado}:${slug} existe no catálogo`).not.toBeNull();
+      expect(rotuloPremissa(premissa!, lado, true)).toMatch(/não entr(?:ou|aram) como sinal a favor/i);
+    }
+
+    const forma = premissaDe('match_winner', 'forma')!;
+    const mando = premissaDe('match_winner', 'mando')!;
+    expect(rotuloPremissa(forma, 'home', true)).not.toBe('Não vem em boa fase');
+    expect(rotuloPremissa(mando, 'home', true)).not.toBe('Não manda bem em casa');
   });
 });
