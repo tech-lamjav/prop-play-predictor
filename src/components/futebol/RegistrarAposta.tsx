@@ -152,16 +152,17 @@ export function RegistrarApostaModal({
             </div>
 
             {atalhos.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 -mt-1">
-                <span className="text-[11px] font-semibold text-ink-3 mr-0.5">Usar unidade</span>
+              <div className="flex flex-nowrap items-center gap-1.5 -mt-1">
+                <span className="shrink-0 text-[11px] font-semibold text-ink-3">Unidade</span>
                 {atalhos.map((atalho) => (
                   <button
                     key={atalho.unidades}
                     type="button"
                     onClick={() => setStake(atalho.valor.toFixed(2))}
-                    className="h-8 px-3 rounded-rebrand-sm border border-forest/20 bg-forest/5 text-[11.5px] font-semibold text-forest hover:bg-forest/10 transition"
+                    className="h-8 shrink-0 whitespace-nowrap px-2.5 rounded-rebrand-sm border border-forest/20 bg-forest/5 text-[11.5px] font-semibold text-forest hover:bg-forest/10 transition"
                   >
-                    {atalho.unidades === 1 ? '1 unidade' : '½ unidade'} · {fmtBRL(atalho.valor)}
+                    <span className="sm:hidden">{atalho.unidades === 1 ? '1 un.' : '½ un.'} · {fmtBRL(atalho.valor)}</span>
+                    <span className="hidden sm:inline">{atalho.unidades === 1 ? '1 unidade' : '½ unidade'} · {fmtBRL(atalho.valor)}</span>
                   </button>
                 ))}
               </div>

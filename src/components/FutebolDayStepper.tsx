@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TZ = 'America/Sao_Paulo';
@@ -37,11 +37,20 @@ export default function FutebolDayStepper({
   days, value, onChange, counts, className = '',
 }: { days: string[]; value: string; onChange: (d: string) => void; counts?: Record<string, number>; className?: string }) {
   const activeRef = useRef<HTMLButtonElement>(null);
-  // Mantém o dia selecionado sempre visível (centralizado) — navegação fluida.
-  useEffect(() => {
+  const jaPosicionou = useRef(false);
+  // Na primeira abertura a régua pode ter dezenas de dias e começar lá no
+  // histórico. Posiciona antes da pintura para não mostrar essa janela antiga;
+  // depois disso, as trocas feitas pelo usuário continuam com animação suave.
+  useLayoutEffect(() => {
+    if (!activeRef.current) return;
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
-  }, [value]);
+    activeRef.current.scrollIntoView({
+      inline: 'center',
+      block: 'nearest',
+      behavior: reduce || !jaPosicionou.current ? 'auto' : 'smooth',
+    });
+    jaPosicionou.current = true;
+  }, [value, days.length]);
 
   if (!days.length) return null;
   const today = todayStr();
