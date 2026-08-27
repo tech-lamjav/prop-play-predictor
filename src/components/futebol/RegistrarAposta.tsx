@@ -14,9 +14,10 @@ import { Receipt, Check, Loader2, ArrowRight } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
+import { useUserUnit } from '@/hooks/use-user-unit';
 import { pickLabel, marketLabel } from '@/utils/futebol-score';
 import { competitionLabel } from '@/utils/futebol-competitions';
-import type { FutebolBetDraft } from './registrar-aposta-utils';
+import { atalhosDaUnidade, type FutebolBetDraft } from './registrar-aposta-utils';
 
 function kickoffDate(raw: string | null): string | null {
   if (!raw) return null;
@@ -32,6 +33,7 @@ export function RegistrarApostaModal({
   open, onOpenChange, draft,
 }: { open: boolean; onOpenChange: (o: boolean) => void; draft: FutebolBetDraft | null }) {
   const { user } = useAuth();
+  const { config: unidade } = useUserUnit();
   const [stake, setStake] = useState('');
   const [odd, setOdd] = useState('');
   const [saving, setSaving] = useState(false);
@@ -59,6 +61,7 @@ export function RegistrarApostaModal({
   const oddN = parseFloat(odd.replace(',', '.'));
   const valid = !isNaN(stakeN) && stakeN > 0 && !isNaN(oddN) && oddN > 1;
   const retorno = valid ? stakeN * oddN : null;
+  const atalhos = atalhosDaUnidade(unidade.unit_value);
 
   const handleSave = async () => {
     if (!draft || !user?.id || !valid) return;
@@ -147,6 +150,22 @@ export function RegistrarApostaModal({
                 />
               </label>
             </div>
+
+            {atalhos.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 -mt-1">
+                <span className="text-[11px] font-semibold text-ink-3 mr-0.5">Usar unidade</span>
+                {atalhos.map((atalho) => (
+                  <button
+                    key={atalho.unidades}
+                    type="button"
+                    onClick={() => setStake(atalho.valor.toFixed(2))}
+                    className="h-8 px-3 rounded-rebrand-sm border border-forest/20 bg-forest/5 text-[11.5px] font-semibold text-forest hover:bg-forest/10 transition"
+                  >
+                    {atalho.unidades === 1 ? '1 unidade' : '½ unidade'} · {fmtBRL(atalho.valor)}
+                  </button>
+                ))}
+              </div>
+            )}
             <p className="text-[11px] text-ink-3 -mt-2">
               {draft?.oddKind === 'referencia'
                 ? `Confirme a cotação na sua casa antes de registrar. A referência coletada foi ${draft.bestOdd?.toFixed(2)}.`

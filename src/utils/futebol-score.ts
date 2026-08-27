@@ -1,7 +1,7 @@
 // ============================================================
 // futebol-score.ts — apresentação do Score (motor é backend)
 // ============================================================
-import type { Saida } from '@/utils/futebol-saida';
+import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 // O Score, edge, premissas, evidências e avisos vêm prontos da
 // fact_value_opportunities (pipeline dbt no BigQuery). Aqui só ROTULAMOS
 // (mercado, pick com linha) e ajudamos a ranquear/agrupar. Nada de cálculo.
@@ -96,8 +96,7 @@ export function pickLabel(s: Saida, homeName: string, awayName: string): string 
   }
   if (market === 'asian_handicap') {
     const team = outcome === 'Home' ? homeName : awayName;
-    // line_value vem na ótica do mandante; pro visitante o handicap do próprio time é o oposto.
-    const sideLine = line != null ? (outcome === 'Away' ? -line : line) : null;
+    const sideLine = linhaDaSaida(s);
     return sideLine != null ? `${team} ${fmtHandicapLine(sideLine)}` : team;
   }
   if (market === 'btts') {

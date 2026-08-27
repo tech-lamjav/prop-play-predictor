@@ -1,5 +1,5 @@
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
-import type { Saida } from '@/utils/futebol-saida';
+import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 
 // Catálogo das premissas do Score: rótulo, peso e agrupamento.
 //
@@ -332,7 +332,7 @@ export function outcomeLabel(s: Saida, home: string, away: string): string {
     // `line` vem na ótica do mandante (mesma convenção do pickLabel e da liquidação):
     // o handicap do visitante é o oposto, senão o card do Vasco dizia "Vasco −1,5"
     // numa linha em que ele recebe +1,5.
-    const daSaida = line != null ? (outcome === 'Away' ? -line : line) : null;
+    const daSaida = linhaDaSaida(s);
     const time = outcome === 'Home' ? home : away;
     return daSaida != null ? `${time} ${daSaida > 0 ? '+' : '−'}${fmtLinha(Math.abs(daSaida))}` : time;
   }

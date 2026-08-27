@@ -18,6 +18,20 @@ export type FutebolBetDraft = FutebolBetDraftBase & (
   | { bestOdd: null; oddKind: 'sem_cotacao' }
 );
 
+export interface AtalhoDeUnidade {
+  unidades: 0.5 | 1;
+  valor: number;
+}
+
+/** Atalhos só existem quando a unidade efetiva do Betinho é válida. */
+export function atalhosDaUnidade(unitValue: number | null | undefined): AtalhoDeUnidade[] {
+  if (unitValue == null || !Number.isFinite(unitValue) || unitValue <= 0) return [];
+  return [
+    { unidades: 1, valor: unitValue },
+    { unidades: 0.5, valor: unitValue / 2 },
+  ];
+}
+
 /**
  * Monta o draft a partir de uma linha do board de oportunidades. Aceita
  * qualquer linha que tenha estes campos (o histórico monta linha de
