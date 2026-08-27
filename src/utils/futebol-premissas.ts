@@ -32,11 +32,8 @@ export interface Premissa {
   /** Rótulo para o usuário. Segue as strings que o backend já manda no Telegram. */
   label: string;
   /**
-   * O mesmo rótulo escrito no negativo, para quando a premissa NÃO acendeu.
-   *
-   * Existe porque "Os dois somam muitos gols" com um "não aconteceu" embaixo é lido
-   * como afirmação: o olho pega o título e passa. Escrito "Os dois não somam muitos
-   * gols", a linha diz o que é sem depender do rodapé.
+   * Rótulo para quando a premissa não acendeu. Ele descreve a ausência de sinal na
+   * régua, nunca inventa que o fato oposto aconteceu.
    */
   negativo: string;
   grupo: GrupoPremissa;
@@ -105,50 +102,50 @@ export function rotuloPremissa(p: Premissa, lado: 'home' | 'away' | null, negati
 
 /** Resultado (1X2). Teto de premissa 51 → 30, de 7 ativas para 4. */
 const P_1X2: Premissa[] = [
-  P('forma', 'Em boa fase, vem ganhando', 'Não vem em boa fase', 'decide', 10),
+  P('forma', 'Em boa fase, vem ganhando', 'A forma recente não entrou como sinal a favor', 'decide', 10),
   // O rótulo base é o NEUTRO, e as variantes de mando ficam explícitas. Antes o base
   // era "Manda bem em casa" e o mandante caía nele por omissão, o que funcionava na
   // tela mas deixava o empate sem frase própria: o SQL tinha inventado um "Mando
   // relevante" que não existia aqui. Agora os três casos moram no mesmo lugar.
-  P('mando', 'Mando relevante', 'Mando não pesa a favor', 'decide', 8, {
+  P('mando', 'Mando relevante', 'O mando não entrou como sinal a favor', 'decide', 8, {
     labelCasa: 'Manda bem em casa',
-    negativoCasa: 'Não manda bem em casa',
+    negativoCasa: 'Em casa, o mando não entrou como sinal a favor',
     labelFora: 'Vai bem fora de casa',
-    negativoFora: 'Não vai bem fora de casa',
+    negativoFora: 'Fora de casa, o mando não entrou como sinal a favor',
   }),
-  P('superioridade_tabela', 'Bem à frente na tabela', 'Não está bem à frente na tabela', 'decide', 8),
-  P('forca_mismatch', 'Ataque forte contra defesa frágil do adversário', 'O ataque não pega uma defesa frágil', 'decide', 4, {
+  P('superioridade_tabela', 'Bem à frente na tabela', 'A posição na tabela não entrou como sinal a favor', 'decide', 8),
+  P('forca_mismatch', 'Ataque forte contra defesa frágil do adversário', 'O duelo entre ataque e defesa não entrou como sinal a favor', 'decide', 4, {
     motivo: 'entende o jogo, mas o preço já cobra quase tudo',
   }),
-  P('superioridade_xg', 'Cria mais chances de gol que o adversário', 'Não cria mais chances de gol que o adversário', 'preco', 0, {
+  P('superioridade_xg', 'Cria mais chances de gol que o adversário', 'A criação de chances não entrou como sinal a favor', 'preco', 0, {
     motivo: 'chance de gol prevê gols, não quem ganha',
   }),
-  P('h2h_favoravel', 'Leva vantagem no histórico do confronto', 'Não leva vantagem no histórico do confronto', 'preco', 0, {
+  P('h2h_favoravel', 'Leva vantagem no histórico do confronto', 'O histórico do confronto não entrou como sinal a favor', 'preco', 0, {
     motivo: 'todo mundo olha, então já está na odd',
   }),
-  P('desfalque_adversario', 'Adversário com desfalque de titular importante', 'Adversário sem desfalque conhecido', 'preco', 0, {
+  P('desfalque_adversario', 'Adversário com desfalque de titular importante', 'Os desfalques do adversário não entraram como sinal a favor', 'preco', 0, {
     motivo: 'sem dado em 99,5% dos jogos futuros',
   }),
 ];
 
 /** Gols (Over/Under). Teto do Over 56 → 34, do Under 52 → 40. De 13 ativas para 8. */
 const P_OU: Premissa[] = [
-  P('defesas_firmes', 'Defesas firmes dos dois lados', 'As defesas não são firmes', 'decide', 14, { lado: 'under' }),
-  P('defesas_vazaveis', 'Defesas frágeis dos dois lados', 'As defesas não são frágeis', 'decide', 12, { lado: 'over' }),
-  P('ataque_combinado', 'Os dois somam muitos gols', 'Os dois não somam muitos gols', 'decide', 12, { lado: 'over' }),
-  P('xg_baixo_combinado', 'Os dois criam pouca chance de gol', 'Os dois criam bastante chance de gol', 'decide', 10, { lado: 'under' }),
-  P('xg_combinado_alto', 'Os dois criam muita chance de gol', 'Os dois não criam muita chance de gol', 'decide', 10, { lado: 'over' }),
-  P('clean_sheets_altos', 'Os dois passam muitos jogos sem sofrer gol', 'Não costumam segurar o placar zerado', 'decide', 10, { lado: 'under' }),
-  P('ataques_fracos', 'Ataques fracos dos dois lados', 'Os ataques não são fracos', 'decide', 3, { lado: 'under', motivo: 'o preço já cobra' }),
-  P('historico_under', 'Histórico de jogo com poucos gols', 'O histórico não é de jogo com poucos gols', 'preco', 3, { lado: 'under', motivo: 'sinal fraco' }),
-  P('ambos_vazam', 'Os dois sofrem gol quase todo jogo', 'Os dois não sofrem gol quase todo jogo', 'preco', 0, {
+  P('defesas_firmes', 'Defesas firmes dos dois lados', 'A solidez das defesas não entrou como sinal a favor', 'decide', 14, { lado: 'under' }),
+  P('defesas_vazaveis', 'Defesas frágeis dos dois lados', 'A fragilidade das defesas não entrou como sinal a favor', 'decide', 12, { lado: 'over' }),
+  P('ataque_combinado', 'Os dois somam muitos gols', 'O ataque dos dois times não entrou como sinal a favor', 'decide', 12, { lado: 'over' }),
+  P('xg_baixo_combinado', 'Os dois criam pouca chance de gol', 'O baixo volume de chances não entrou como sinal a favor', 'decide', 10, { lado: 'under' }),
+  P('xg_combinado_alto', 'Os dois criam muita chance de gol', 'O alto volume de chances não entrou como sinal a favor', 'decide', 10, { lado: 'over' }),
+  P('clean_sheets_altos', 'Os dois passam muitos jogos sem sofrer gol', 'Os jogos sem sofrer gol não entraram como sinal a favor', 'decide', 10, { lado: 'under' }),
+  P('ataques_fracos', 'Ataques fracos dos dois lados', 'A limitação dos ataques não entrou como sinal a favor', 'decide', 3, { lado: 'under', motivo: 'o preço já cobra' }),
+  P('historico_under', 'Histórico de jogo com poucos gols', 'O histórico de poucos gols não entrou como sinal a favor', 'preco', 3, { lado: 'under', motivo: 'sinal fraco' }),
+  P('ambos_vazam', 'Os dois sofrem gol quase todo jogo', 'Os gols sofridos não entraram como sinal a favor', 'preco', 0, {
     lado: 'over',
     motivo: 'o preço cobra mais do que ela vale',
   }),
-  P('ritmo_alto', 'Jogo de ritmo alto', 'O jogo não é de ritmo alto', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),
-  P('historico_over', 'Histórico de jogo com muitos gols', 'O histórico não é de jogo com muitos gols', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),
-  P('linha_subindo', 'Mercado puxando a linha pra cima', 'O mercado não está puxando a linha pra cima', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),
-  P('linha_descendo', 'Mercado puxando a linha pra baixo', 'O mercado não está puxando a linha pra baixo', 'preco', 0, {
+  P('ritmo_alto', 'Jogo de ritmo alto', 'O ritmo do jogo não entrou como sinal a favor', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),
+  P('historico_over', 'Histórico de jogo com muitos gols', 'O histórico de muitos gols não entrou como sinal a favor', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),
+  P('linha_subindo', 'Mercado puxando a linha pra cima', 'O movimento da linha não entrou como sinal a favor', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),
+  P('linha_descendo', 'Mercado puxando a linha pra baixo', 'O movimento da linha não entrou como sinal a favor', 'preco', 0, {
     lado: 'under',
     motivo: 'atrapalha nos dois testes',
   }),
@@ -156,14 +153,14 @@ const P_OU: Premissa[] = [
 
 /** Handicap asiático. Teto equilibrado em 35 nos dois lados (azarão era 13). */
 const P_AH: Premissa[] = [
-  P('tende_golear', 'Costuma ganhar por muitos gols', 'Não costuma ganhar por muitos gols', 'decide', 16, { lado: 'favorito' }),
-  P('supremacia', 'Muito superior ao adversário', 'Não é muito superior ao adversário', 'decide', 12, { lado: 'favorito' }),
-  P('defesa_fora_solida', 'Defesa sólida jogando fora', 'A defesa não é sólida jogando fora', 'decide', 10, {
+  P('tende_golear', 'Costuma ganhar por muitos gols', 'A margem das vitórias não entrou como sinal a favor', 'decide', 16, { lado: 'favorito' }),
+  P('supremacia', 'Muito superior ao adversário', 'A superioridade sobre o adversário não entrou como sinal a favor', 'decide', 12, { lado: 'favorito' }),
+  P('defesa_fora_solida', 'Defesa sólida jogando fora', 'A solidez defensiva não entrou como sinal a favor', 'decide', 10, {
     lado: 'azarao',
     labelCasa: 'Defesa sólida em casa',
-    negativoCasa: 'A defesa não é sólida em casa',
+    negativoCasa: 'Em casa, a solidez defensiva não entrou como sinal a favor',
   }),
-  P('sem_rodizio', 'Deve entrar com força máxima', 'Pode poupar jogadores', 'decide', 3, { lado: 'favorito' }),
+  P('sem_rodizio', 'Deve entrar com força máxima', 'A escalação esperada não entrou como sinal a favor', 'decide', 3, { lado: 'favorito' }),
   // O rótulo antigo era "Raramente perde por dois ou mais", e ele enunciava uma
   // CONDIÇÃO DE APOSTA que só vale em duas das sete linhas do handicap: num +0,5 a
   // aposta morre em qualquer derrota, então a margem da derrota não responde nada.
@@ -173,41 +170,41 @@ const P_AH: Premissa[] = [
   // ela separa em TODAS as linhas de meio gol, inclusive no +0,5, e o efeito
   // sobrevive ao controle por faixa de odd acima de 1,30. Ela funciona como atalho
   // para solidez defensiva geral. Logo o defeito era a frase, não o cálculo.
-  P('raramente_perde_por_2', 'Quando perde, perde apertado', 'Costuma perder por muitos gols', 'decide', 3, {
+  P('raramente_perde_por_2', 'Quando perde, perde apertado', 'A margem das derrotas não entrou como sinal a favor', 'decide', 3, {
     lado: 'azarao',
     motivo: 'sinal quase nulo, mas é o que abre a porta do azarão',
   }),
-  P('adversario_fragil_fora', 'Adversário fraco fora de casa', 'O adversário não é fraco fora de casa', 'preco', 2, {
+  P('adversario_fragil_fora', 'Adversário fraco fora de casa', 'O desempenho do adversário não entrou como sinal a favor', 'preco', 2, {
     lado: 'favorito',
     motivo: 'o preço já cobra tudo',
     labelFora: 'Adversário fraco em casa',
-    negativoFora: 'O adversário não é fraco em casa',
+    negativoFora: 'O desempenho do adversário não entrou como sinal a favor',
   }),
-  P('mando_forte', 'Manda muito bem em casa', 'Não manda tão bem em casa', 'preco', 2, {
+  P('mando_forte', 'Manda muito bem em casa', 'O mando não entrou como sinal a favor', 'preco', 2, {
     lado: 'favorito',
     motivo: 'o preço já cobra tudo',
     labelFora: 'Vai muito bem fora de casa',
-    negativoFora: 'Não vai tão bem fora de casa',
+    negativoFora: 'O mando não entrou como sinal a favor',
   }),
 ];
 
 /** Ambos marcam. PENDENTE no doc: hoje nunca publica (a Pinnacle não cota o mercado). */
 const P_BTTS: Premissa[] = [
-  P('ambos_marcam', 'Os dois costumam marcar', 'Os dois não costumam marcar', 'decide', null, { lado: 'sim' }),
-  P('ataque_dos_dois', 'Os dois atacam bem', 'Os dois não atacam bem', 'decide', null, { lado: 'sim' }),
-  P('defesas_vazaveis', 'Defesas frágeis dos dois lados', 'As defesas não são frágeis', 'decide', null, { lado: 'sim' }),
-  P('defesa_forte', 'Defesa forte de um dos lados', 'Nenhum dos lados tem defesa forte', 'decide', null, { lado: 'nao' }),
-  P('ataque_trava', 'Um dos ataques costuma passar em branco', 'Os dois ataques costumam marcar', 'decide', null, { lado: 'nao' }),
-  P('historico_btts', 'Nos últimos jogos, os dois marcaram', 'O histórico não é dos dois marcando', 'preco', null, { lado: 'sim', motivo: 'histórico já está na odd' }),
-  P('historico_seco', 'Jogos recentes sem os dois marcarem', 'O histórico não é de jogo seco', 'preco', null, { lado: 'nao', motivo: 'histórico já está na odd' }),
+  P('ambos_marcam', 'Os dois costumam marcar', 'Os gols dos dois times não entraram como sinal a favor', 'decide', null, { lado: 'sim' }),
+  P('ataque_dos_dois', 'Os dois atacam bem', 'O ataque dos dois times não entrou como sinal a favor', 'decide', null, { lado: 'sim' }),
+  P('defesas_vazaveis', 'Defesas frágeis dos dois lados', 'A fragilidade das defesas não entrou como sinal a favor', 'decide', null, { lado: 'sim' }),
+  P('defesa_forte', 'Defesa forte de um dos lados', 'A força defensiva não entrou como sinal a favor', 'decide', null, { lado: 'nao' }),
+  P('ataque_trava', 'Um dos ataques costuma passar em branco', 'A limitação ofensiva não entrou como sinal a favor', 'decide', null, { lado: 'nao' }),
+  P('historico_btts', 'Nos últimos jogos, os dois marcaram', 'O histórico de ambos marcam não entrou como sinal a favor', 'preco', null, { lado: 'sim', motivo: 'histórico já está na odd' }),
+  P('historico_seco', 'Jogos recentes sem os dois marcarem', 'O histórico de jogos secos não entrou como sinal a favor', 'preco', null, { lado: 'nao', motivo: 'histórico já está na odd' }),
 ];
 
 /** Dupla chance. PENDENTE no doc: Score máximo simulado 39 contra régua de 40. */
 const P_DC: Premissa[] = [
-  P('lado_coberto_forte', 'O lado coberto é forte', 'O lado coberto não é forte', 'decide', null),
-  P('equilibrio_defensivo', 'Equilíbrio defensivo', 'Sem equilíbrio defensivo', 'decide', null),
-  P('adversario_limitado', 'Adversário com campanha fraca', 'Adversário não é tão limitado', 'decide', null),
-  P('invicto_recente', 'Invicto nos últimos jogos', 'Não está invicto nos últimos jogos', 'preco', null, { motivo: 'histórico já está na odd' }),
+  P('lado_coberto_forte', 'O lado coberto é forte', 'A força do lado coberto não entrou como sinal a favor', 'decide', null),
+  P('equilibrio_defensivo', 'Equilíbrio defensivo', 'O equilíbrio defensivo não entrou como sinal a favor', 'decide', null),
+  P('adversario_limitado', 'Adversário com campanha fraca', 'A campanha do adversário não entrou como sinal a favor', 'decide', null),
+  P('invicto_recente', 'Invicto nos últimos jogos', 'A sequência invicta não entrou como sinal a favor', 'preco', null, { motivo: 'histórico já está na odd' }),
 ];
 
 /** Penalidades, por mercado. Peso negativo. */
@@ -254,11 +251,11 @@ const EVIDENCIAS_GLOBAIS: Premissa[] = [
   // uma terceira, e as duas individuais somem. `corroboracao_ambos` é um slug
   // derivado, calculado no SQL antes da tradução, para que a precedência viva num
   // lugar só em vez de virar `case` repetido em três funções.
-  P('corroboracao_ambos', 'As principais casas e o modelo da API apontam o mesmo lado', 'Nem as casas nem o modelo apontam esse lado', 'preco', 8),
-  P('linha_sharp_confirma', 'As principais casas vêm baixando a odd desse lado', 'As casas não vêm baixando a odd desse lado', 'preco', 8),
+  P('corroboracao_ambos', 'As principais casas e o modelo da API apontam o mesmo lado', 'A corroboração não entrou como sinal a favor', 'preco', 8),
+  P('linha_sharp_confirma', 'As principais casas vêm baixando a odd desse lado', 'O movimento das casas não entrou como sinal a favor', 'preco', 8),
   // Peso 0 porque a recalibragem tirou os +7 da API da nota (o modelo troca mando por
   // empate errando 14 pontos). Continua sendo mostrado, mas é o último da fila.
-  P('modelo_api_concorda', 'Modelo da API concorda com esse lado', 'O modelo da API não aponta esse lado', 'preco', 0),
+  P('modelo_api_concorda', 'Modelo da API concorda com esse lado', 'O modelo da API não entrou como sinal a favor', 'preco', 0),
 ];
 
 export interface MercadoInfo {
