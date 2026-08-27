@@ -8,6 +8,7 @@
 //
 // URL: /go?u=<user_id>&d=<dest>&s=<hmac>&c=<campanha?>
 //   dest permitidos: "board" → /futebol · "jogo-<id>" → /futebol/jogo/<id>
+//                    · "jogo-<id>|mercado|saída|linha" → leitura exata
 //                    · "bank" → /bets (resumo semanal, item 04)
 //   c = campanha (default "daily_opportunities" p/ retrocompat). Só a campanha
 //       do daily zera a régua de reativação (opportunity_dispatch_state).
@@ -25,22 +26,45 @@ import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const SITE = "https://www.smartbetting.app";
 const DAILY_CAMPAIGN = "daily_opportunities";
+const PUBLISHED_CAMPAIGN = "published_opportunities";
 
 function destUrl(dest: string, campaign: string): string {
-  const utm = `utm_source=telegram&utm_campaign=${encodeURIComponent(campaign)}`;
+  const utm = `utm_source=telegram&utm_campaign=${
+    encodeURIComponent(campaign)
+  }`;
   if (dest === "board") return `${SITE}/futebol?${utm}`;
   if (dest === "bank") return `${SITE}/bets?${utm}`;
-  const jogo = dest.match(/^jogo-(\d+)$/);
-  if (jogo) return `${SITE}/futebol/jogo/${jogo[1]}?${utm}`;
+  const jogo = dest.match(/^jogo-(\d+)(?:\|([^|]+)\|([^|]+)\|([^|]*))?$/);
+  if (jogo) {
+    const params = new URLSearchParams({
+      utm_source: "telegram",
+      utm_campaign: campaign,
+    });
+    if (jogo[2] && jogo[3]) {
+      params.set("mercado", jogo[2]);
+      params.set("saida", jogo[3]);
+      if (jogo[4]) params.set("linha", jogo[4]);
+    }
+    return `${SITE}/futebol/jogo/${jogo[1]}?${params.toString()}`;
+  }
   return SITE; // destino desconhecido → home (nunca mostrar erro pro usuário)
 }
 
 async function hmacHex(msg: string): Promise<string> {
   const key = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(CRON_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    "raw",
+    new TextEncoder().encode(CRON_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(msg),
+  );
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0"))
+    .join("").slice(0, 16);
 }
 
 serve(async (req) => {
@@ -56,20 +80,33 @@ serve(async (req) => {
     if (u && d && s && CRON_SECRET && s === (await hmacHex(`${u}:${d}`))) {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL") || "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "",
       );
-      await supabase.from("notification_clicks").insert({ user_id: u, campaign, destination: d });
+      await supabase.from("notification_clicks").insert({
+        user_id: u,
+        campaign,
+        destination: d,
+      });
       // clique no daily = engajou → zera a régua da reativação (só p/ o daily)
       if (campaign === DAILY_CAMPAIGN) {
         await supabase
           .from("opportunity_dispatch_state")
-          .update({ sends_without_click: 0, last_click_at: new Date().toISOString() })
+          .update({
+            sends_without_click: 0,
+            last_click_at: new Date().toISOString(),
+          })
           .eq("user_id", u);
       }
+      const event = campaign === DAILY_CAMPAIGN
+        ? "daily_opportunities_click"
+        : campaign === PUBLISHED_CAMPAIGN
+        ? "published_opportunities_click"
+        : "weekly_summary_clicked";
       await trackEvent(
-        campaign === DAILY_CAMPAIGN ? "daily_opportunities_click" : "weekly_summary_clicked",
+        event,
         { destination: d, campaign, channel: "telegram" },
-        u, generateTraceId()
+        u,
+        generateTraceId(),
       ).catch(() => {});
     }
   } catch (e) {

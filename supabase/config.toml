@@ -27,6 +27,10 @@ verify_jwt = false
 # Job de cron (aviso de kickoff no Telegram do dono) — header x-cron-secret (CRON_SECRET).
 verify_jwt = false
 
+[functions.notify-published-opportunities]
+# Job de cron: alerta uma Oportunidade recém-publicada no painel.
+verify_jwt = false
+
 [functions.ingest-wc-squads]
 # Ingestão de elencos sob demanda — protegida pelo header x-cron-secret (CRON_SECRET).
 verify_jwt = false
