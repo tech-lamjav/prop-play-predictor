@@ -276,9 +276,27 @@ export default function Settings() {
             <CardDescription>Receba no Telegram quando uma nova oportunidade entrar no painel.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isLoadingPublicationAlerts ? (
+            {isLoadingPublicationAlerts || !publicationAlerts ? (
               <p className="text-sm text-ink-2">Carregando...</p>
-            ) : !publicationAlerts?.telegramLinked ? (
+            ) : !publicationAlerts.accessActive ? (
+              // Acesso inativo vem antes do vínculo: nada é entregue nesse
+              // estado, então chamar para conectar prometeria algo que o
+              // backend não cumpre.
+              <>
+                <p className="text-sm text-ink-2">
+                  Indisponíveis enquanto seu acesso ao Futebol estiver inativo. Sua preferência está {publicationAlerts.enabled ? 'ativada' : 'pausada'} e será mantida quando voltar.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePublicationAlerts}
+                  disabled={isSavingPublicationAlerts}
+                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                >
+                  {publicationAlerts.enabled ? 'Pausar para quando voltar' : 'Retomar para quando voltar'}
+                </Button>
+              </>
+            ) : !publicationAlerts.telegramLinked ? (
               <>
                 <p className="text-sm text-ink-2">
                   Conecte seu Telegram para escolher se quer receber esses alertas.
@@ -293,21 +311,6 @@ export default function Settings() {
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Conectar Telegram
-                </Button>
-              </>
-            ) : !publicationAlerts.accessActive ? (
-              <>
-                <p className="text-sm text-ink-2">
-                  Indisponíveis enquanto seu acesso ao Futebol estiver inativo. Sua preferência está {publicationAlerts.enabled ? 'ativada' : 'pausada'} e será mantida quando voltar.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePublicationAlerts}
-                  disabled={isSavingPublicationAlerts}
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
-                >
-                  {publicationAlerts.enabled ? 'Pausar para quando voltar' : 'Retomar para quando voltar'}
                 </Button>
               </>
             ) : (

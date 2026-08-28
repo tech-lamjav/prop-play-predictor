@@ -361,7 +361,9 @@ export default function Onboarding() {
         <AnalyticsNav variant="rebrand" />
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 max-w-screen-2xl mx-auto w-full">
           {/* Gancho */}
-          <div className="order-1 px-6 pt-10 sm:px-10 lg:col-start-1 lg:row-start-1 lg:self-end lg:px-16 lg:pt-0">
+          {/* pt no desktop também: sem ele, quando o conteúdo da coluna
+              esquerda passa da altura da tela, o gancho encosta no cabeçalho. */}
+          <div className="order-1 px-6 pt-10 sm:px-10 lg:col-start-1 lg:row-start-1 lg:self-end lg:px-16 lg:pt-12">
             <div className="mx-auto max-w-md lg:mx-0">
               {/* Quem chega de Oportunidades já sabe o que quer: a introdução
                   fala do alerta que o trouxe. Os benefícios abaixo e a mecânica

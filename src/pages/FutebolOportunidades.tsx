@@ -611,8 +611,12 @@ export default function FutebolOportunidades() {
         <FutebolAccessBanner access={access} />
         {publicationAlerts && (
           <>
+            {/* Também exige enabled: o cartão afirma que os alertas estão
+                ligados, e quem já pausou veria essa frase logo acima do atalho
+                dizendo o contrário. */}
             {publicationAlerts.telegramLinked
               && publicationAlerts.accessActive
+              && publicationAlerts.enabled
               && !publicationAlerts.onboardingAcknowledged && (
               <AlertasPublicacaoCartao
                 onDismiss={handleAcknowledgeAlerts}

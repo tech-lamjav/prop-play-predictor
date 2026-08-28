@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Send, X } from 'lucide-react';
+import { ArrowRight, Bell, ChevronRight, Send, X } from 'lucide-react';
 
 // Superfícies do controle de alertas dentro de Oportunidades. Ficam aqui, sem
 // hook nem navegação própria, para que a página continue sendo a única dona do
@@ -74,33 +74,56 @@ export function AlertasPublicacaoAtalho({
   const { telegramLinked, accessActive, enabled } = estado;
   const ativo = telegramLinked && accessActive && enabled;
 
-  const titulo = !telegramLinked
-    ? 'Conecte o Telegram para receber alertas'
-    : !accessActive
-      ? 'Alertas indisponíveis com o acesso atual'
+  // O acesso vem antes do vínculo: sem assinatura nem teste ativo, nenhum
+  // alerta é entregue, então convidar para conectar levaria a pessoa a um
+  // fluxo que termina numa promessa que o backend não cumpre.
+  const titulo = !accessActive
+    ? 'Alertas indisponíveis com o acesso atual'
+    : !telegramLinked
+      ? 'Conecte o Telegram para receber alertas'
       : enabled
         ? 'Alertas do Telegram ativos'
         : 'Alertas do Telegram pausados';
 
-  const descricao = !telegramLinked
-    ? 'Conecte em um toque e receba as novas oportunidades antes do jogo.'
-    : !accessActive
-      ? 'Sua preferência está salva e volta a valer quando o acesso retornar.'
+  const descricao = !accessActive
+    ? 'Sua preferência está salva e volta a valer quando o acesso retornar.'
+    : !telegramLinked
+      ? 'Conecte em um toque e receba as novas oportunidades antes do jogo.'
       : enabled
         ? 'Vamos avisar quando uma oportunidade for publicada antes do jogo.'
         : 'Retome nas configurações quando quiser voltar a receber.';
 
+  // Quem já conectou vê só status, então a linha fica discreta. Quem não
+  // conectou está diante de um convite, e convite tem que parecer botão.
+  if (accessActive && !telegramLinked) {
+    return (
+      <button
+        type="button"
+        onClick={onConnect}
+        className="w-full rounded-rebrand-md bg-forest-tint border border-forest/25 px-4 py-3.5 text-left flex items-center gap-3.5 hover:bg-forest/10 transition-colors"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-forest">
+          <Send className="w-[18px] h-[18px] text-white" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-bold text-ink">{titulo}</span>
+          <span className="block text-[12px] text-ink-2 mt-0.5">{descricao}</span>
+        </span>
+        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-forest px-3.5 py-2 text-[13px] font-bold text-white">
+          Conectar
+          <ArrowRight className="w-3.5 h-3.5" />
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
-      onClick={telegramLinked ? onOpenSettings : onConnect}
+      onClick={onOpenSettings}
       className="w-full rounded-rebrand-md bg-white border border-line px-4 py-3 text-left flex items-center gap-3 hover:bg-canvas-2 transition-colors"
     >
-      {telegramLinked ? (
-        <span className={`w-2 h-2 rounded-full shrink-0 ${ativo ? 'bg-forest' : 'bg-ink-3'}`} />
-      ) : (
-        <Send className="w-4 h-4 text-forest shrink-0" />
-      )}
+      <span className={`w-2 h-2 rounded-full shrink-0 ${ativo ? 'bg-forest' : 'bg-ink-3'}`} />
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] font-bold text-ink">{titulo}</span>
         <span className="block text-[12px] text-ink-2 mt-0.5">{descricao}</span>

@@ -62,6 +62,24 @@ describe('AlertasPublicacaoAtalho', () => {
     expect(screen.getByText(/preferência está salva/i)).toBeInTheDocument();
   });
 
+  it('acesso inativo vence o convite de conectar, para não prometer entrega', async () => {
+    const onConnect = vi.fn();
+    const onOpenSettings = vi.fn();
+    render(
+      <AlertasPublicacaoAtalho
+        estado={{ ...ligado, telegramLinked: false, accessActive: false }}
+        onConnect={onConnect}
+        onOpenSettings={onOpenSettings}
+      />,
+    );
+
+    expect(screen.getByText('Alertas indisponíveis com o acesso atual')).toBeInTheDocument();
+    expect(screen.queryByText('Conectar')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button'));
+    expect(onConnect).not.toHaveBeenCalled();
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
   it('sem Telegram conectado, chama a conexão em vez das configurações', async () => {
     const onOpenSettings = vi.fn();
     const onConnect = vi.fn();

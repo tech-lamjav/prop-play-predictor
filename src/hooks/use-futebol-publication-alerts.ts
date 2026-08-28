@@ -70,11 +70,16 @@ export function useFutebolPublicationAlerts() {
   const acknowledgeMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Usuário não autenticado');
-      const { error } = await supabase
+      // O select devolve as linhas afetadas. Sem ele, um update que não achou
+      // linha nenhuma volta sem erro, o cartão sumiria da sessão e voltaria em
+      // toda recarga, para sempre, sem nada indicar o motivo.
+      const { data, error } = await supabase
         .from('users')
         .update({ futebol_publication_alerts_ack_at: new Date().toISOString() })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('id');
       if (error) throw error;
+      if (!data?.length) throw new Error('Não foi possível salvar: nenhum registro atualizado');
     },
     onSuccess: () => {
       queryClient.setQueryData<FutebolPublicationAlerts | null>(queryKey, (current) =>
