@@ -8,9 +8,10 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import UserNav from '../components/UserNav';
 import { useSettingsData } from '../hooks/use-settings-data';
+import { useFutebolPublicationAlerts } from '../hooks/use-futebol-publication-alerts';
 import { useToast } from '../hooks/use-toast';
 import { stripeService } from '../services/stripe.service';
-import { User, CreditCard, ArrowLeft, Send, ExternalLink, Compass } from 'lucide-react';
+import { User, CreditCard, ArrowLeft, Send, ExternalLink, Compass, Bell } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { telegramBotUrl } from '../config/environment';
@@ -64,6 +65,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profile, subscription, isLoading, isSaving, error, updateProfile } = useSettingsData();
+  const { data: publicationAlerts, isLoading: isLoadingPublicationAlerts, isSaving: isSavingPublicationAlerts, setEnabled } = useFutebolPublicationAlerts();
 
   const [portalLoading, setPortalLoading] = useState(false);
 
@@ -123,6 +125,26 @@ export default function Settings() {
       });
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handlePublicationAlerts = async () => {
+    if (!publicationAlerts) return;
+    try {
+      const enabled = !publicationAlerts.enabled;
+      await setEnabled(enabled);
+      toast({
+        title: enabled ? 'Alertas retomados' : 'Alertas pausados',
+        description: enabled
+          ? 'As próximas oportunidades publicadas poderão chegar no seu Telegram.'
+          : 'Você não receberá novas oportunidades até retomar.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Não foi possível salvar',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -240,6 +262,74 @@ export default function Settings() {
                 {isSaving ? 'Salvando...' : 'Salvar alterações'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Alertas de oportunidades */}
+        <Card className="mb-8 bg-white border border-line text-ink">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-forest" />
+              <CardTitle>Alertas de oportunidades</CardTitle>
+            </div>
+            <CardDescription>Receba no Telegram quando uma nova oportunidade entrar no painel.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingPublicationAlerts ? (
+              <p className="text-sm text-ink-2">Carregando...</p>
+            ) : !publicationAlerts?.telegramLinked ? (
+              <>
+                <p className="text-sm text-ink-2">
+                  Conecte seu Telegram para escolher se quer receber esses alertas.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(`${telegramBotUrl}?start=force_contact`, '_blank')}
+                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Conectar Telegram
+                </Button>
+              </>
+            ) : !publicationAlerts.accessActive ? (
+              <>
+                <p className="text-sm text-ink-2">
+                  Indisponíveis enquanto seu acesso ao Futebol estiver inativo. Sua preferência está {publicationAlerts.enabled ? 'ativada' : 'pausada'} e será mantida quando voltar.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePublicationAlerts}
+                  disabled={isSavingPublicationAlerts}
+                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                >
+                  {publicationAlerts.enabled ? 'Pausar para quando voltar' : 'Retomar para quando voltar'}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${publicationAlerts.enabled ? 'bg-forest/10 text-forest' : 'bg-canvas-2 text-ink-2'}`}>
+                    {publicationAlerts.enabled ? 'Ativos' : 'Pausados'}
+                  </span>
+                  <p className="text-sm text-ink-2">
+                    {publicationAlerts.enabled
+                      ? 'Você será avisado sobre novas oportunidades antes do jogo.'
+                      : 'Nenhuma nova oportunidade será enviada até você retomar.'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={publicationAlerts.enabled ? 'outline' : 'default'}
+                  onClick={handlePublicationAlerts}
+                  disabled={isSavingPublicationAlerts}
+                  className={publicationAlerts.enabled ? 'bg-white border-line text-ink hover:bg-canvas-2' : 'bg-forest hover:bg-forest-soft text-white'}
+                >
+                  {isSavingPublicationAlerts ? 'Salvando...' : publicationAlerts.enabled ? 'Pausar alertas' : 'Retomar alertas'}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 

@@ -5,6 +5,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
+import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
@@ -330,6 +331,7 @@ export default function FutebolOportunidades() {
   const { data: rows, isLoading } = useFutebolValueBoard();
   const { data: fixtures } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: access } = useFutebolAccess();
+  const { data: publicationAlerts } = useFutebolPublicationAlerts();
   const oppTour = useOnboardingTour(FUT_OPP_TOUR_ID, { enabled: !isLoading });
   const isDemo = oppTour.run; // durante o tour, preenche a tela com exemplo
   const locked = isDemo ? false : !access?.unlocked;
@@ -598,6 +600,36 @@ export default function FutebolOportunidades() {
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
         <DemoRibbon show={isDemo} />
         <FutebolAccessBanner access={access} />
+        {publicationAlerts && (
+          <button
+            type="button"
+            onClick={() => navigate('/settings')}
+            className="w-full rounded-rebrand-md bg-white border border-line px-4 py-3 text-left flex items-center gap-3 hover:bg-canvas-2 transition-colors"
+          >
+            <span className={`w-2 h-2 rounded-full shrink-0 ${publicationAlerts.telegramLinked && publicationAlerts.accessActive && publicationAlerts.enabled ? 'bg-forest' : 'bg-ink-3'}`} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-bold text-ink">
+                {!publicationAlerts.telegramLinked
+                  ? 'Conecte o Telegram para receber alertas'
+                  : !publicationAlerts.accessActive
+                    ? 'Alertas indisponíveis com o acesso atual'
+                    : publicationAlerts.enabled
+                      ? 'Alertas do Telegram ativos'
+                      : 'Alertas do Telegram pausados'}
+              </span>
+              <span className="block text-[12px] text-ink-2 mt-0.5">
+                {!publicationAlerts.telegramLinked
+                  ? 'Escolha nas configurações como quer receber novas oportunidades.'
+                  : !publicationAlerts.accessActive
+                    ? 'Sua preferência está salva e volta a valer quando o acesso retornar.'
+                    : publicationAlerts.enabled
+                      ? 'Vamos avisar quando uma oportunidade for publicada antes do jogo.'
+                      : 'Retome nas configurações quando quiser voltar a receber.'}
+              </span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-ink-3 shrink-0" />
+          </button>
+        )}
 
         {/* Filtros — desktop: 1 linha (Mercado à esq · dropdowns à dir); mobile: 2 linhas */}
         <div data-tour="fut-opp-filtros" className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
