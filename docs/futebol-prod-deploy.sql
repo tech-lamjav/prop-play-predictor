@@ -2548,6 +2548,10 @@ BEGIN
 END;
 $function$;
 
+alter table public.users add column if not exists futebol_trial_started_at timestamptz;
+alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
+alter table public.users add column if not exists futebol_publication_alerts_enabled boolean not null default true;
+
 CREATE OR REPLACE FUNCTION public.get_futebol_publication_alert_recipients()
 RETURNS TABLE(user_id uuid, chat_id text, user_name text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
@@ -2555,6 +2559,7 @@ AS $function$
   SELECT u.id, u.telegram_chat_id::text, u.name::text
   FROM public.users u
   WHERE u.telegram_chat_id IS NOT NULL
+    AND coalesce(u.futebol_publication_alerts_enabled, true) = true
     AND (
       coalesce(u.futebol_subscription_status, 'free') = 'premium'
       OR (
@@ -2586,6 +2591,7 @@ BEGIN
     WHERE d.user_id = u.id
       AND d.status IN ('pending', 'failed')
       AND u.telegram_chat_id IS NOT NULL
+      AND coalesce(u.futebol_publication_alerts_enabled, true) = true
       AND EXISTS (
         SELECT 1 FROM public.futebol_publication_alerts a
         WHERE a.batch_id = d.batch_id AND a.kickoff_utc > now()

@@ -505,6 +505,9 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           email: string
+          futebol_publication_alerts_enabled: boolean
+          futebol_subscription_status: string
+          futebol_trial_started_at: string | null
           has_report_access: boolean | null
           id: string
           name: string | null
@@ -544,6 +547,9 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           email: string
+          futebol_publication_alerts_enabled?: boolean
+          futebol_subscription_status?: string
+          futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
           name?: string | null
@@ -583,6 +589,9 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           email?: string
+          futebol_publication_alerts_enabled?: boolean
+          futebol_subscription_status?: string
+          futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
           name?: string | null

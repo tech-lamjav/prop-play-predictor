@@ -8,11 +8,19 @@
 export interface MessagePrefs {
   settlementMuted: boolean;
   weeklyMuted: boolean;
+  publicationEnabled: boolean;
+  publicationAvailable: boolean;
 }
 
 export function prefsText(p: MessagePrefs): string {
   const liq = p.settlementMuted ? "silenciada 🔕" : "ativada";
   const res = p.weeklyMuted ? "silenciado 🔕" : "ativado";
+  const publication = p.publicationAvailable
+    ? (p.publicationEnabled ? "ativados" : "pausados 🔕")
+    : "indisponíveis";
+  const publicationExplanation = p.publicationAvailable
+    ? "Quando uma oportunidade entra no painel antes do jogo."
+    : `Seu acesso ao Futebol está inativo. A preferência está ${p.publicationEnabled ? "ativada" : "pausada"} e será mantida quando você voltar.`;
   return [
     `📬 <b>O que eu te mando</b>`,
     "",
@@ -24,6 +32,9 @@ export function prefsText(p: MessagePrefs): string {
     "",
     `⚽ Oportunidades do dia — <b>automático</b>`,
     `<i>Só em dia com pick bom. Se você não clica, ele para sozinho.</i>`,
+    "",
+    `⚽ Alertas de oportunidades — <b>${publication}</b>`,
+    `<i>${publicationExplanation}</i>`,
   ].join("\n");
 }
 
@@ -32,5 +43,6 @@ export function prefsKeyboard(p: MessagePrefs): unknown[][] {
   return [
     [{ text: p.settlementMuted ? "Reativar liquidação" : "Silenciar liquidação", callback_data: "prefliq" }],
     [{ text: p.weeklyMuted ? "Reativar resumo semanal" : "Silenciar resumo semanal", callback_data: "prefres" }],
+    [{ text: p.publicationEnabled ? "Pausar alertas de oportunidades" : "Retomar alertas de oportunidades", callback_data: "prefpub" }],
   ];
 }

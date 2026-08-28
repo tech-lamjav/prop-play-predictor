@@ -480,11 +480,16 @@ serve(async (req) => {
     if (command === "/mensagens") {
       const { data: pref } = await supabase
         .from("users").select(
-          "settlement_reminders_muted, weekly_summary_muted",
+          "settlement_reminders_muted, weekly_summary_muted, futebol_publication_alerts_enabled, futebol_subscription_status, futebol_trial_started_at",
         ).eq("id", user.id).maybeSingle();
+      const accessActive = pref?.futebol_subscription_status === "premium" ||
+        (!!pref?.futebol_trial_started_at &&
+          new Date(pref.futebol_trial_started_at).getTime() + 7 * 86400000 > Date.now());
       const p = {
         settlementMuted: pref?.settlement_reminders_muted ?? false,
         weeklyMuted: pref?.weekly_summary_muted ?? false,
+        publicationEnabled: pref?.futebol_publication_alerts_enabled ?? true,
+        publicationAvailable: accessActive,
       };
       await sendTelegramMessage(chatId, prefsText(p), {
         parse_mode: "HTML",

@@ -120,15 +120,20 @@ async function handleCallbackQuery(
     return ok("weekly summary muted");
   }
 
-  // prefliq / prefres — toggles do centro de controle /mensagens (Onda 6).
+  // prefliq / prefres / prefpub — toggles do centro de controle /mensagens.
   // Alterna a preferência e REESCREVE a própria mensagem com o estado novo.
-  if (data === "prefliq" || data === "prefres") {
+  if (data === "prefliq" || data === "prefres" || data === "prefpub") {
     const { data: cur } = await supabase
-      .from("users").select("settlement_reminders_muted, weekly_summary_muted")
+      .from("users").select("settlement_reminders_muted, weekly_summary_muted, futebol_publication_alerts_enabled, futebol_subscription_status, futebol_trial_started_at")
       .eq("id", user.id).maybeSingle();
+    const publicationAvailable = cur?.futebol_subscription_status === "premium" ||
+      (!!cur?.futebol_trial_started_at &&
+        new Date(cur.futebol_trial_started_at).getTime() + 7 * 86400000 > Date.now());
     const p = {
       settlementMuted: cur?.settlement_reminders_muted ?? false,
       weeklyMuted: cur?.weekly_summary_muted ?? false,
+      publicationEnabled: cur?.futebol_publication_alerts_enabled ?? true,
+      publicationAvailable,
     };
     let toast: string;
     if (data === "prefliq") {
@@ -147,7 +152,7 @@ async function handleCallbackQuery(
         user.id,
         traceId,
       ).catch(() => {});
-    } else {
+    } else if (data === "prefres") {
       p.weeklyMuted = !p.weeklyMuted;
       await supabase.from("users").update({
         weekly_summary_muted: p.weeklyMuted,
@@ -157,6 +162,22 @@ async function handleCallbackQuery(
         : "📊 Resumo semanal reativado.";
       await trackEvent(
         p.weeklyMuted ? "weekly_summary_muted" : "weekly_summary_unmuted",
+        { via: "prefs", channel: "telegram" },
+        user.id,
+        traceId,
+      ).catch(() => {});
+    } else {
+      p.publicationEnabled = !p.publicationEnabled;
+      await supabase.from("users").update({
+        futebol_publication_alerts_enabled: p.publicationEnabled,
+      }).eq("id", user.id);
+      toast = p.publicationEnabled
+        ? "⚽ Alertas de oportunidades retomados."
+        : "🔕 Alertas de oportunidades pausados.";
+      await trackEvent(
+        p.publicationEnabled
+          ? "futebol_publication_alerts_resumed"
+          : "futebol_publication_alerts_paused",
         { via: "prefs", channel: "telegram" },
         user.id,
         traceId,
