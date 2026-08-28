@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import UserNav from '../components/UserNav';
 import { useSettingsData } from '../hooks/use-settings-data';
 import { useFutebolPublicationAlerts } from '../hooks/use-futebol-publication-alerts';
+import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '../utils/onboarding-return';
 import { useToast } from '../hooks/use-toast';
 import { stripeService } from '../services/stripe.service';
 import { User, CreditCard, ArrowLeft, Send, ExternalLink, Compass, Bell } from 'lucide-react';
@@ -282,10 +283,12 @@ export default function Settings() {
                 <p className="text-sm text-ink-2">
                   Conecte seu Telegram para escolher se quer receber esses alertas.
                 </p>
+                {/* Vai para o onboarding já existente, e não direto ao bot: é lá
+                    que a conexão é explicada e confirmada. */}
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => window.open(`${telegramBotUrl}?start=force_contact`, '_blank')}
+                  onClick={() => navigate(onboardingHref(ONBOARDING_SRC_ALERTAS_FUTEBOL, '/settings'))}
                   className="bg-white border-line text-ink hover:bg-canvas-2"
                 >
                   <Send className="w-4 h-4 mr-2" />
