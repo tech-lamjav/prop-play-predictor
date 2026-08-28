@@ -2551,6 +2551,7 @@ $function$;
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
 alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
 alter table public.users add column if not exists futebol_publication_alerts_enabled boolean not null default true;
+alter table public.users add column if not exists futebol_publication_alerts_ack_at timestamptz;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_publication_alert_recipients()
 RETURNS TABLE(user_id uuid, chat_id text, user_name text)

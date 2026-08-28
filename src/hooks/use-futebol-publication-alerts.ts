@@ -6,6 +6,8 @@ export interface FutebolPublicationAlerts {
   enabled: boolean;
   telegramLinked: boolean;
   accessActive: boolean;
+  /** O cartão explicativo já foi dispensado alguma vez, em qualquer dispositivo. */
+  onboardingAcknowledged: boolean;
 }
 
 function hasActiveFutebolAccess(status: string | null, trialStartedAt: string | null): boolean {
@@ -31,7 +33,7 @@ export function useFutebolPublicationAlerts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('users')
-        .select('telegram_chat_id, futebol_publication_alerts_enabled, futebol_subscription_status, futebol_trial_started_at')
+        .select('telegram_chat_id, futebol_publication_alerts_enabled, futebol_publication_alerts_ack_at, futebol_subscription_status, futebol_trial_started_at')
         .eq('id', user!.id)
         .maybeSingle();
       if (error) throw error;
@@ -40,6 +42,7 @@ export function useFutebolPublicationAlerts() {
         enabled: data.futebol_publication_alerts_enabled ?? true,
         telegramLinked: !!data.telegram_chat_id,
         accessActive: hasActiveFutebolAccess(data.futebol_subscription_status, data.futebol_trial_started_at),
+        onboardingAcknowledged: !!data.futebol_publication_alerts_ack_at,
       };
     },
     staleTime: 30 * 1000,
@@ -62,9 +65,34 @@ export function useFutebolPublicationAlerts() {
     },
   });
 
+  // Dispensar a explicação é independente de pausar: grava só o reconhecimento
+  // e nunca toca em futebol_publication_alerts_enabled.
+  const acknowledgeMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('Usuário não autenticado');
+      // O select devolve as linhas afetadas. Sem ele, um update que não achou
+      // linha nenhuma volta sem erro, o cartão sumiria da sessão e voltaria em
+      // toda recarga, para sempre, sem nada indicar o motivo.
+      const { data, error } = await supabase
+        .from('users')
+        .update({ futebol_publication_alerts_ack_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('Não foi possível salvar: nenhum registro atualizado');
+    },
+    onSuccess: () => {
+      queryClient.setQueryData<FutebolPublicationAlerts | null>(queryKey, (current) =>
+        current ? { ...current, onboardingAcknowledged: true } : current,
+      );
+    },
+  });
+
   return {
     ...query,
     setEnabled: mutation.mutateAsync,
     isSaving: mutation.isPending,
+    acknowledgeOnboarding: acknowledgeMutation.mutateAsync,
+    isAcknowledging: acknowledgeMutation.isPending,
   };
 }

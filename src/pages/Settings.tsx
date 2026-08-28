@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import UserNav from '../components/UserNav';
 import { useSettingsData } from '../hooks/use-settings-data';
 import { useFutebolPublicationAlerts } from '../hooks/use-futebol-publication-alerts';
+import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '../utils/onboarding-return';
 import { useToast } from '../hooks/use-toast';
 import { stripeService } from '../services/stripe.service';
 import { User, CreditCard, ArrowLeft, Send, ExternalLink, Compass, Bell } from 'lucide-react';
@@ -275,24 +276,12 @@ export default function Settings() {
             <CardDescription>Receba no Telegram quando uma nova oportunidade entrar no painel.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isLoadingPublicationAlerts ? (
+            {isLoadingPublicationAlerts || !publicationAlerts ? (
               <p className="text-sm text-ink-2">Carregando...</p>
-            ) : !publicationAlerts?.telegramLinked ? (
-              <>
-                <p className="text-sm text-ink-2">
-                  Conecte seu Telegram para escolher se quer receber esses alertas.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => window.open(`${telegramBotUrl}?start=force_contact`, '_blank')}
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Conectar Telegram
-                </Button>
-              </>
             ) : !publicationAlerts.accessActive ? (
+              // Acesso inativo vem antes do vínculo: nada é entregue nesse
+              // estado, então chamar para conectar prometeria algo que o
+              // backend não cumpre.
               <>
                 <p className="text-sm text-ink-2">
                   Indisponíveis enquanto seu acesso ao Futebol estiver inativo. Sua preferência está {publicationAlerts.enabled ? 'ativada' : 'pausada'} e será mantida quando voltar.
@@ -305,6 +294,23 @@ export default function Settings() {
                   className="bg-white border-line text-ink hover:bg-canvas-2"
                 >
                   {publicationAlerts.enabled ? 'Pausar para quando voltar' : 'Retomar para quando voltar'}
+                </Button>
+              </>
+            ) : !publicationAlerts.telegramLinked ? (
+              <>
+                <p className="text-sm text-ink-2">
+                  Conecte seu Telegram para escolher se quer receber esses alertas.
+                </p>
+                {/* Vai para o onboarding já existente, e não direto ao bot: é lá
+                    que a conexão é explicada e confirmada. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(onboardingHref(ONBOARDING_SRC_ALERTAS_FUTEBOL, '/settings'))}
+                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Conectar Telegram
                 </Button>
               </>
             ) : (

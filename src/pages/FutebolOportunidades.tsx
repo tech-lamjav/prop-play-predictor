@@ -9,6 +9,7 @@ import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-ale
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
+import { AlertasPublicacaoAtalho, AlertasPublicacaoCartao } from '@/components/futebol/AlertasPublicacao';
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
@@ -19,6 +20,7 @@ import {
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { mergeBoardAndHistory, opportunityKey } from '@/utils/futebol-history';
 import { parseUtc, brtDayOf, brtDateStr, fmtTime } from '@/utils/futebol-datas';
+import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
 import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -331,7 +333,7 @@ export default function FutebolOportunidades() {
   const { data: rows, isLoading } = useFutebolValueBoard();
   const { data: fixtures } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
   const { data: access } = useFutebolAccess();
-  const { data: publicationAlerts } = useFutebolPublicationAlerts();
+  const { data: publicationAlerts, acknowledgeOnboarding, isAcknowledging } = useFutebolPublicationAlerts();
   const oppTour = useOnboardingTour(FUT_OPP_TOUR_ID, { enabled: !isLoading });
   const isDemo = oppTour.run; // durante o tour, preenche a tela com exemplo
   const locked = isDemo ? false : !access?.unlocked;
@@ -339,6 +341,13 @@ export default function FutebolOportunidades() {
   const [faixa, setFaixa] = useState<FaixaFilter>('all');
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
+
+  // Dispensar o cartão é só marcar que a explicação foi lida; a preferência de
+  // alerta continua onde estava. Um erro aqui não pode quebrar o painel: o
+  // cartão simplesmente reaparece na próxima visita.
+  const handleAcknowledgeAlerts = () => {
+    acknowledgeOnboarding().catch(() => {});
+  };
 
   // ── Board (presente e futuro) + histórico (passado, na foto do apito) ─────
   // As duas fontes viram UMA lista aqui, de uma vez, em vez de cada consumidor
@@ -601,34 +610,25 @@ export default function FutebolOportunidades() {
         <DemoRibbon show={isDemo} />
         <FutebolAccessBanner access={access} />
         {publicationAlerts && (
-          <button
-            type="button"
-            onClick={() => navigate('/settings')}
-            className="w-full rounded-rebrand-md bg-white border border-line px-4 py-3 text-left flex items-center gap-3 hover:bg-canvas-2 transition-colors"
-          >
-            <span className={`w-2 h-2 rounded-full shrink-0 ${publicationAlerts.telegramLinked && publicationAlerts.accessActive && publicationAlerts.enabled ? 'bg-forest' : 'bg-ink-3'}`} />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-bold text-ink">
-                {!publicationAlerts.telegramLinked
-                  ? 'Conecte o Telegram para receber alertas'
-                  : !publicationAlerts.accessActive
-                    ? 'Alertas indisponíveis com o acesso atual'
-                    : publicationAlerts.enabled
-                      ? 'Alertas do Telegram ativos'
-                      : 'Alertas do Telegram pausados'}
-              </span>
-              <span className="block text-[12px] text-ink-2 mt-0.5">
-                {!publicationAlerts.telegramLinked
-                  ? 'Escolha nas configurações como quer receber novas oportunidades.'
-                  : !publicationAlerts.accessActive
-                    ? 'Sua preferência está salva e volta a valer quando o acesso retornar.'
-                    : publicationAlerts.enabled
-                      ? 'Vamos avisar quando uma oportunidade for publicada antes do jogo.'
-                      : 'Retome nas configurações quando quiser voltar a receber.'}
-              </span>
-            </span>
-            <ChevronRight className="w-4 h-4 text-ink-3 shrink-0" />
-          </button>
+          <>
+            {/* Também exige enabled: o cartão afirma que os alertas estão
+                ligados, e quem já pausou veria essa frase logo acima do atalho
+                dizendo o contrário. */}
+            {publicationAlerts.telegramLinked
+              && publicationAlerts.accessActive
+              && publicationAlerts.enabled
+              && !publicationAlerts.onboardingAcknowledged && (
+              <AlertasPublicacaoCartao
+                onDismiss={handleAcknowledgeAlerts}
+                isDismissing={isAcknowledging}
+              />
+            )}
+            <AlertasPublicacaoAtalho
+              estado={publicationAlerts}
+              onConnect={() => navigate(onboardingHref(ONBOARDING_SRC_ALERTAS_FUTEBOL, '/futebol/oportunidades'))}
+              onOpenSettings={() => navigate('/settings')}
+            />
+          </>
         )}
 
         {/* Filtros — desktop: 1 linha (Mercado à esq · dropdowns à dir); mobile: 2 linhas */}
