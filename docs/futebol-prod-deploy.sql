@@ -2488,6 +2488,131 @@ as $function$
   from base b;
 $function$;
 
+-- ── 5e. Alertas de publicação no Telegram (migration 111) ───────────────────
+-- São RPCs internas da Edge Function; não expor a anon/autenticated.
+CREATE OR REPLACE FUNCTION public.claim_futebol_publication_alert_batch(
+  p_sync_at timestamptz,
+  p_opportunities jsonb
+)
+RETURNS TABLE(batch_id uuid, alert_id uuid, opportunity_key text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_batch_id uuid;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext('futebol-publication-alerts'));
+
+  WITH incoming AS (
+    SELECT * FROM jsonb_to_recordset(p_opportunities) AS x(
+      opportunity_key text, fixture_id bigint, home_team_name text,
+      away_team_name text, competition text, kickoff_utc timestamptz,
+      market text, outcome text, line_value double precision, best_odd numeric,
+      score integer, faixa text, janela_usada text, edge double precision,
+      prob_justa_fechamento double precision, evidencias text[]
+    )
+  )
+  INSERT INTO public.futebol_publication_alert_batches (sync_at)
+  SELECT p_sync_at WHERE EXISTS (
+    SELECT 1 FROM incoming i WHERE NOT EXISTS (
+      SELECT 1 FROM public.futebol_publication_alerts a
+      WHERE a.opportunity_key = i.opportunity_key
+    )
+  )
+  RETURNING id INTO v_batch_id;
+
+  IF v_batch_id IS NULL THEN RETURN; END IF;
+
+  RETURN QUERY
+  WITH incoming AS (
+    SELECT * FROM jsonb_to_recordset(p_opportunities) AS x(
+      opportunity_key text, fixture_id bigint, home_team_name text,
+      away_team_name text, competition text, kickoff_utc timestamptz,
+      market text, outcome text, line_value double precision, best_odd numeric,
+      score integer, faixa text, janela_usada text, edge double precision,
+      prob_justa_fechamento double precision, evidencias text[]
+    )
+  ), inserted AS (
+    INSERT INTO public.futebol_publication_alerts (
+      batch_id, opportunity_key, fixture_id, home_team_name, away_team_name,
+      competition, kickoff_utc, market, outcome, line_value, best_odd, score,
+      faixa, janela_usada, edge, prob_justa_fechamento, evidencias
+    )
+    SELECT v_batch_id, i.opportunity_key, i.fixture_id, i.home_team_name,
+      i.away_team_name, i.competition, i.kickoff_utc, i.market, i.outcome,
+      i.line_value, i.best_odd, i.score, i.faixa, i.janela_usada, i.edge,
+      i.prob_justa_fechamento, i.evidencias
+    FROM incoming i ON CONFLICT (opportunity_key) DO NOTHING
+    RETURNING id, opportunity_key
+  )
+  SELECT v_batch_id, i.id, i.opportunity_key FROM inserted i;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_publication_alert_recipients()
+RETURNS TABLE(user_id uuid, chat_id text, user_name text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+  SELECT u.id, u.telegram_chat_id::text, u.name::text
+  FROM public.users u
+  WHERE u.telegram_chat_id IS NOT NULL
+    AND (
+      coalesce(u.futebol_subscription_status, 'free') = 'premium'
+      OR (
+        u.futebol_trial_started_at IS NOT NULL
+        AND u.futebol_trial_started_at + interval '7 days' > now()
+      )
+    );
+$function$;
+
+CREATE OR REPLACE FUNCTION public.claim_futebol_publication_alert_deliveries()
+RETURNS TABLE(batch_id uuid, user_id uuid, chat_id text, attempt_id uuid, opportunities jsonb)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+BEGIN
+  UPDATE public.futebol_publication_alert_deliveries d
+  SET status = 'expired', attempt_id = NULL, claimed_at = NULL
+  WHERE d.status IN ('pending', 'failed', 'processing')
+    AND NOT EXISTS (
+      SELECT 1 FROM public.futebol_publication_alerts a
+      WHERE a.batch_id = d.batch_id AND a.kickoff_utc > now()
+    );
+
+  RETURN QUERY
+  WITH claimed AS (
+    UPDATE public.futebol_publication_alert_deliveries d
+    SET status = 'processing', attempts = d.attempts + 1,
+        attempt_id = gen_random_uuid(), claimed_at = now(), last_attempt_at = now()
+    FROM public.users u
+    WHERE d.user_id = u.id
+      AND d.status IN ('pending', 'failed')
+      AND u.telegram_chat_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM public.futebol_publication_alerts a
+        WHERE a.batch_id = d.batch_id AND a.kickoff_utc > now()
+      )
+      AND (
+        coalesce(u.futebol_subscription_status, 'free') = 'premium'
+        OR (u.futebol_trial_started_at IS NOT NULL
+          AND u.futebol_trial_started_at + interval '7 days' > now())
+      )
+    RETURNING d.batch_id, d.user_id, u.telegram_chat_id::text, d.attempt_id
+  )
+  SELECT c.batch_id, c.user_id, c.telegram_chat_id, c.attempt_id,
+    jsonb_agg(jsonb_build_object(
+      'alert_id', a.id, 'fixture_id', a.fixture_id,
+      'home_team_name', a.home_team_name, 'away_team_name', a.away_team_name,
+      'competition', a.competition, 'kickoff_utc', a.kickoff_utc,
+      'market', a.market, 'outcome', a.outcome, 'line_value', a.line_value,
+      'best_odd', a.best_odd, 'score', a.score, 'faixa', a.faixa,
+      'evidencias', a.evidencias
+    ) ORDER BY a.score DESC)
+  FROM claimed c
+  JOIN public.futebol_publication_alerts a ON a.batch_id = c.batch_id
+  WHERE a.kickoff_utc > now()
+  GROUP BY c.batch_id, c.user_id, c.telegram_chat_id, c.attempt_id;
+END;
+$function$;
+
 -- ── 6. Grants de execução (anon / authenticated / service_role) ──────────────
 grant execute on function public._futebol_team_form(p_team_id bigint, p_competition text, p_season bigint, p_before date) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_access() to anon, authenticated, service_role;
@@ -2520,6 +2645,12 @@ grant execute on function public.get_futebol_fixture_premissas(p_fixture_id bigi
 grant execute on function public.get_futebol_fixture_numeros(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_reason_contract(p_fixture_id bigint) to anon, authenticated, service_role;
+revoke all on function public.claim_futebol_publication_alert_batch(timestamptz, jsonb) from public, anon, authenticated;
+grant execute on function public.claim_futebol_publication_alert_batch(timestamptz, jsonb) to service_role;
+revoke all on function public.get_futebol_publication_alert_recipients() from public, anon, authenticated;
+grant execute on function public.get_futebol_publication_alert_recipients() to service_role;
+revoke all on function public.claim_futebol_publication_alert_deliveries() from public, anon, authenticated;
+grant execute on function public.claim_futebol_publication_alert_deliveries() to service_role;
 
 -- ── 7. Reverse trial (7 dias, sem cartão) — colunas no public.users ──────────
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
