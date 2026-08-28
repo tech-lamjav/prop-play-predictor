@@ -41,6 +41,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { logMessageRun } from "../shared/runs.ts";
+import { readWithRetry } from "../shared/retry.ts";
 import {
   type Candidate,
   type FinishedMatch,
@@ -283,7 +284,10 @@ serve(async (req) => {
 
   try {
     // 1) Apostas candidatas (pendentes, usuário linkado, cadência ok)
-    const { data: candData, error: candErr } = await supabase.rpc("get_settlement_reminder_candidates");
+    const { data: candData, error: candErr } = await readWithRetry(
+      "get_settlement_reminder_candidates",
+      () => supabase.rpc("get_settlement_reminder_candidates"),
+    );
     if (candErr) throw candErr;
     const candidates: Candidate[] = candData ?? [];
     if (candidates.length === 0) return json({ ok: true, candidates: 0, sent: 0 });
@@ -304,13 +308,15 @@ serve(async (req) => {
     }
 
     // 2a) wc_matches (Copa)
-    const { data: wcData, error: wcErr } = await supabase
-      .from("wc_matches")
-      .select(
-        "id, stage, home_team, away_team, home_team_code, away_team_code, match_date, match_time_brasilia, home_score, away_score, fulltime_home, fulltime_away, is_finished"
-      )
-      .eq("is_finished", true)
-      .gte("match_date", new Date(since).toISOString().slice(0, 10));
+    const { data: wcData, error: wcErr } = await readWithRetry("wc_matches", () =>
+      supabase
+        .from("wc_matches")
+        .select(
+          "id, stage, home_team, away_team, home_team_code, away_team_code, match_date, match_time_brasilia, home_score, away_score, fulltime_home, fulltime_away, is_finished"
+        )
+        .eq("is_finished", true)
+        .gte("match_date", new Date(since).toISOString().slice(0, 10))
+    );
     if (wcErr) throw wcErr;
 
     const wcFinished: FinishedMatch[] = (wcData ?? [])
@@ -333,11 +339,13 @@ serve(async (req) => {
     //     placar de 90'; nunca CANC/ABD/WO/PST (sem placar válido). Ligas ligadas.
     const { data: enData } = await supabase.from("leagues_config").select("league_id").eq("enabled", true);
     const enabledLeagues = new Set<number>((enData ?? []).map((l: any) => l.league_id));
-    const { data: fxData, error: fxErr } = await supabase
-      .from("fixtures")
-      .select("fixture_id, league_id, home_team_id, home_team, away_team_id, away_team, kickoff_utc, status_short, goals_home, goals_away, fulltime_home, fulltime_away")
-      .in("status_short", ["FT", "AET", "PEN"])
-      .gte("kickoff_utc", new Date(since).toISOString());
+    const { data: fxData, error: fxErr } = await readWithRetry("fixtures", () =>
+      supabase
+        .from("fixtures")
+        .select("fixture_id, league_id, home_team_id, home_team, away_team_id, away_team, kickoff_utc, status_short, goals_home, goals_away, fulltime_home, fulltime_away")
+        .in("status_short", ["FT", "AET", "PEN"])
+        .gte("kickoff_utc", new Date(since).toISOString())
+    );
     if (fxErr) throw fxErr;
 
     const fxFinished: FinishedMatch[] = (fxData ?? [])
