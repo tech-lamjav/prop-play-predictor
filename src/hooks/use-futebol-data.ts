@@ -12,6 +12,7 @@ import {
   type FutebolFixtureDay,
   type FutebolFixturePremissas,
   type FutebolFixtureReasonContractRow,
+  type FutebolFixtureDisponibilidade,
   type FutebolFixtureNumeros,
   type FutebolFixtureHistorico,
   type FutebolCompetitionInfo,
@@ -99,6 +100,18 @@ export function useFutebolFixturePremissas(fixtureId: number | undefined) {
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Desde quando cada saída está publicada, por oportunidade (issue #300). */
+export function useFutebolFixtureDisponibilidade(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureDisponibilidade[]>({
+    queryKey: ['futebol', 'fixture-disponivel-desde', fixtureId],
+    queryFn: () => futebolDataService.getFixtureDisponibilidade(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 }

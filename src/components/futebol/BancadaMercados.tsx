@@ -9,6 +9,7 @@ import {
   useFutebolFixtureInjuries,
   useFutebolFixtureOdds,
   useFutebolFixtureReasonContract,
+  useFutebolFixtureDisponibilidade,
 } from '@/hooks/use-futebol-data';
 import type { FutebolFixturePremissas, FutebolFixtureReasonContractRow, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import {
@@ -32,6 +33,7 @@ import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
+import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
@@ -253,6 +255,7 @@ export function BancadaMercados({
     isLoading: carregandoContratoMotivos,
     isError: falhaContratoMotivos,
   } = useFutebolFixtureReasonContract(jogo.fixtureId);
+  const { data: disponibilidade } = useFutebolFixtureDisponibilidade(jogo.fixtureId);
 
   const fim = isFinished(jogo.statusShort);
   const jogoJaComecou = useJogoJaComecou(jogo.kickoffUtc);
@@ -1022,6 +1025,22 @@ export function BancadaMercados({
             </div>
           ) : null;
         })()}
+
+        {/* Desde quando esta saída está publicada. Responde a pergunta que o
+            usuário faz de verdade — "desde quando isso está aqui?" — e que a
+            tela respondia com a janela de odds, que é outra coisa (issue #300).
+
+            Preso a valPrincipal de propósito. A RPC devolve a corrida da última
+            versão que o snapshot tem, inclusive de chave já retirada do board;
+            é o que faz o campo continuar respondendo em jogo encerrado, que lê
+            a foto do apito. Sem esta trava, arrastar a régua até uma parada sem
+            cotação mostraria "disponível desde" de algo que não está publicado. */}
+        {valPrincipal && rotuloDisponivelDesde(disponivelDesdeDaSaida(disponibilidade, principal)) && (
+          <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
+            <span className="font-semibold">Disponível desde: </span>
+            {rotuloDisponivelDesde(disponivelDesdeDaSaida(disponibilidade, principal))}
+          </div>
+        )}
 
         {/* Ressalva de informação faltando. Fica AQUI, no rodapé, e não na aba
             "Contra" de propósito: aquela aba lista o que foi checado e não
