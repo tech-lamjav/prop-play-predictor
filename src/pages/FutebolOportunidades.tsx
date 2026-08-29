@@ -80,11 +80,13 @@ function oppFromAlerted(a: FutebolAlertedPick, fx?: FutebolFixture): OppLike {
     avg_odd: Number(a.odds),
     n_casas: 0,
     janela_usada: a.janela_usada ?? '',
+    score_versao: 'legacy',
     pts_valor: 0,
     pts_premissas: 0,
     pts_corroboracao: 0,
     penalidades: 0,
     evidencias: [],
+    premissas_sem_dado: 0,
     // Números do instante em que era oportunidade. Null nas enviadas antes da
     // migration 091 (o pipeline sobrescreve a janela e destrói chance/valor/Score
     // da manhã); daí em diante vêm preenchidos e a linha fica igual à do board.

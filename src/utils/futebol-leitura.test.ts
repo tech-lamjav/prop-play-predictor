@@ -35,6 +35,7 @@ const VALUE_BASE: FutebolFixtureValueRow = {
   n_casas: 5,
   janela_usada: 'fechamento',
   prob_justa_fechamento: 0.6114,
+  score_versao: 'legacy',
   pts_valor: 20,
   pts_premissas: 34,
   pts_corroboracao: 0,
