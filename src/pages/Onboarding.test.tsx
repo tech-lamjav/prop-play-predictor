@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import Onboarding from './Onboarding';
@@ -36,7 +36,14 @@ function renderOnboarding(search = '') {
   );
 }
 
-describe('Onboarding', () => {
+// Folga nos DOIS limites, que são independentes: o do vitest cobre importar,
+// montar e esperar; o da testing-library governa cada findBy/waitFor e vem com
+// 1s. A tela espera duas idas ao Supabase antes de pintar, e com a suíte
+// inteira em paralelo qualquer um dos dois estoura por saturação da máquina,
+// não por regressão. Rodando sozinho, o arquivo leva meio segundo.
+configure({ asyncUtilTimeout: 10_000 });
+
+describe('Onboarding', { timeout: 20_000 }, () => {
   beforeEach(() => {
     mocks.navigate.mockReset();
     mocks.single.mockResolvedValue({ data: { telegram_chat_id: null } });
