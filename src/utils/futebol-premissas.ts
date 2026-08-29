@@ -72,6 +72,16 @@ export const PREMISSAS_OCULTAS = new Set([
   // "favorito_irregular sai da tela": acende em 43% das linhas, vale 0 ponto, e
   // aparecia como evidência ("O favorito não costuma golear").
   'favorito_irregular',
+  // Score de contexto (spec #301): estas cinco descrevem PREÇO — movimento de
+  // linha, movimento das casas e concordância do modelo. Elas não medem o
+  // contexto do jogo, então deixam de ser razão. O preço continua publicado
+  // como informação (odd, edge, casas) e como porta de segurança na faixa de
+  // odd; o que acaba é ele se apresentar como premissa.
+  'corroboracao_ambos',
+  'linha_sharp_confirma',
+  'modelo_api_concorda',
+  'linha_subindo',
+  'linha_descendo',
 ]);
 
 const P = (

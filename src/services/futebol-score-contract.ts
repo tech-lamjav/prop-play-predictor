@@ -26,15 +26,16 @@ function scoreVersion(row: RawScoreRow): FutebolScoreVersion {
     typeof row.pts_valor === 'number' &&
     typeof row.pts_corroboracao === 'number';
   if (row.score_versao == null) {
+    // Sem o campo, só a forma antiga identifica a linha. Uma resposta que não
+    // traz nem o campo nem os componentes é contrato desconhecido, não legacy.
     if (temFormaLegacy) return 'legacy';
     throw new Error('O contrato novo do Score exige score_versao: contexto_v1');
   }
-  if (row.score_versao === 'legacy') {
-    if (!temFormaLegacy) {
-      throw new Error('O contrato legacy exige pts_valor e pts_corroboracao');
-    }
-    return 'legacy';
-  }
+  // score_versao diz em que ESCALA a nota foi calculada, não que a resposta
+  // carregue os componentes de preço. Depois da virada, a RPC tem uma forma só
+  // e o histórico continua devolvendo linhas legacy sem pts_valor — é o caso
+  // permanente do point-in-time, não um contrato malformado.
+  if (row.score_versao === 'legacy') return 'legacy';
   if (row.score_versao === 'contexto_v1') return 'contexto_v1';
   throw new Error(`Versão do Score desconhecida: ${String(row.score_versao)}`);
 }
