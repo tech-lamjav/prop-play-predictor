@@ -14,6 +14,7 @@ Deno.test("publicação: uma oportunidade pré-live nova entra no lote uma únic
       line_value: 1.5,
       kickoff_utc: "2026-08-27 19:30:00",
       score: 46,
+      faixa: "Média",
     }],
   });
 
@@ -34,6 +35,7 @@ Deno.test("publicação: a mesma oportunidade não volta ao lote quando já foi 
       line_value: 1.5,
       kickoff_utc: "2026-08-27 19:30:00",
       score: 62,
+      faixa: "Alta",
     }],
   });
 
@@ -51,13 +53,14 @@ Deno.test("publicação: não inclui oportunidade depois do kickoff", () => {
       line_value: 1.5,
       kickoff_utc: "2026-08-27 11:59:59",
       score: 62,
+      faixa: "Alta",
     }],
   });
 
   assertEquals(batch.newOpportunities.length, 0);
 });
 
-Deno.test("publicação: candidata abaixo da régua do painel não entra no lote", () => {
+Deno.test("publicação: candidata em faixa Baixa não entra no lote", () => {
   const batch = planPublicationBatch({
     now,
     alreadyAlerted: new Set<string>(),
@@ -68,10 +71,43 @@ Deno.test("publicação: candidata abaixo da régua do painel não entra no lote
       line_value: 1.5,
       kickoff_utc: "2026-08-27T19:30:00Z",
       score: 39,
+      faixa: "Baixa",
     }],
   });
 
   assertEquals(batch.newOpportunities.length, 0);
+});
+
+Deno.test("publicação: quem decide é a faixa do backend, não o número do Score", () => {
+  // O corte por número era 40, calibrado para a fórmula antiga. Na escala nova
+  // um 39 pode ser Média e um 44 pode ser Baixa: aplicar o número mandaria para
+  // o Telegram um conjunto diferente do que o painel publica.
+  const batch = planPublicationBatch({
+    now,
+    alreadyAlerted: new Set<string>(),
+    board: [
+      {
+        fixture_id: 1,
+        market: "goals_over_under",
+        outcome: "Over",
+        line_value: 1.5,
+        kickoff_utc: "2026-08-27T19:30:00Z",
+        score: 39,
+        faixa: "Média",
+      },
+      {
+        fixture_id: 2,
+        market: "match_winner",
+        outcome: "Home",
+        line_value: null,
+        kickoff_utc: "2026-08-27T19:30:00Z",
+        score: 44,
+        faixa: "Baixa",
+      },
+    ],
+  });
+
+  assertEquals(batch.newOpportunities.map((o) => o.fixture_id), [1]);
 });
 
 Deno.test("publicação: lote mantém todas as novas e detalha as três de maior Score", () => {
@@ -86,6 +122,7 @@ Deno.test("publicação: lote mantém todas as novas e detalha as três de maior
         line_value: 1.5,
         kickoff_utc: "2026-08-27 19:30:00",
         score: 43,
+        faixa: "Média",
       },
       {
         fixture_id: 2,
@@ -94,6 +131,7 @@ Deno.test("publicação: lote mantém todas as novas e detalha as três de maior
         line_value: 1.5,
         kickoff_utc: "2026-08-27 19:30:00",
         score: 58,
+        faixa: "Alta",
       },
       {
         fixture_id: 3,
@@ -102,6 +140,7 @@ Deno.test("publicação: lote mantém todas as novas e detalha as três de maior
         line_value: 1.5,
         kickoff_utc: "2026-08-27 19:30:00",
         score: 70,
+        faixa: "Alta",
       },
       {
         fixture_id: 4,
@@ -110,6 +149,7 @@ Deno.test("publicação: lote mantém todas as novas e detalha as três de maior
         line_value: 1.5,
         kickoff_utc: "2026-08-27 19:30:00",
         score: 51,
+        faixa: "Média",
       },
     ],
   });

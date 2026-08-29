@@ -23,20 +23,25 @@ const base = (over: Partial<FutebolValueBoardRow>): FutebolValueBoardRow => ({
   n_casas: 6,
   janela_usada: 't1h',
   prob_justa_fechamento: 0.5,
-  pts_valor: 20,
+  // Preço não soma na nota desde o Score de contexto (spec #301). Os campos
+  // seguem no tipo durante a janela de compatibilidade e a demonstração os
+  // mantém zerados, para não ensinar a fórmula aposentada.
+  pts_valor: 0,
   pts_premissas: 20,
-  pts_corroboracao: 15,
+  pts_corroboracao: 0,
   penalidades: 0,
   score: 50,
   faixa: 'Média',
   evidencias: [],
   ...over,
-  score_versao: over.score_versao ?? 'legacy',
+  score_versao: over.score_versao ?? 'contexto_v1',
   premissas_sem_dado: over.premissas_sem_dado ?? 0,
 });
 
 // "Melhor por jogo" (é o que a tela de Oportunidades exibe). Mistura de faixas
-// pra mostrar a régua (com valor × sem valor).
+// pra mostrar a classificação do backend. As notas seguem as fronteiras do
+// Score de contexto — 55 para Alta, 25 para Média (spec #301) —, senão a
+// demonstração ensinaria a régua aposentada.
 export const demoFutebolBoard: FutebolValueBoardRow[] = [
   base({
     fixture_id: 9001, home_team_id: 121, away_team_id: 127,
@@ -74,7 +79,7 @@ export const demoFutebolBoard: FutebolValueBoardRow[] = [
     fixture_id: 9005, home_team_id: 135, away_team_id: 118,
     home_team_name: 'Cruzeiro', away_team_name: 'Bahia',
     market: 'match_winner', outcome: 'Home', best_odd: 1.72, avg_odd: 1.7,
-    edge: -0.008, prob_justa_fechamento: 0.6, score: 34, faixa: 'Baixa',
+    edge: -0.008, prob_justa_fechamento: 0.6, score: 18, faixa: 'Baixa',
     kickoff_utc: '2025-08-10T19:00:00Z',
     evidencias: [],
   }),
@@ -220,11 +225,11 @@ export const demoFixtureDetail: FutebolFixtureDetail = {
 const vr = (over: Partial<FutebolFixtureValueRow>): FutebolFixtureValueRow => ({
   market: 'match_winner', outcome: 'Home', outcome_order: 1, line_value: null,
   edge: 0.05, best_odd: 2, best_book: 'Bet365', avg_odd: 1.95, n_casas: 6, janela_usada: 't1h',
-  prob_justa_fechamento: 0.5, pts_valor: 20, pts_premissas: 20, pts_corroboracao: 15,
+  prob_justa_fechamento: 0.5, pts_valor: 0, pts_premissas: 20, pts_corroboracao: 0,
   penalidades: 0, penalidades_globais_pts: 0, penalidades_especificas_pts: 0,
   score: 50, faixa: 'Média', modelo_api_concorda: true, linha_sharp_confirma: true,
   evidencias: [], avisos: [], contras: [], ...over,
-  score_versao: over.score_versao ?? 'legacy',
+  score_versao: over.score_versao ?? 'contexto_v1',
   premissas_sem_dado: over.premissas_sem_dado ?? 0,
 });
 
@@ -241,9 +246,9 @@ export const demoFixtureValueRows: FutebolFixtureValueRow[] = [
     avisos: [],
   }),
   vr({ market: 'match_winner', outcome: 'Draw', outcome_order: 2, best_odd: 3.30, avg_odd: 3.2, edge: 0.02, prob_justa_fechamento: 0.28, score: 46, faixa: 'Média' }),
-  vr({ market: 'match_winner', outcome: 'Away', outcome_order: 3, best_odd: 3.60, avg_odd: 3.5, edge: -0.03, prob_justa_fechamento: 0.24, score: 33, faixa: 'Baixa' }),
-  vr({ market: 'goals_over_under', outcome: 'Over', outcome_order: 1, line_value: 2.5, best_odd: 1.95, avg_odd: 1.9, edge: 0.06, prob_justa_fechamento: 0.55, score: 58, faixa: 'Média' }),
-  vr({ market: 'goals_over_under', outcome: 'Under', outcome_order: 2, line_value: 2.5, best_odd: 1.90, avg_odd: 1.85, edge: -0.01, prob_justa_fechamento: 0.45, score: 39, faixa: 'Baixa' }),
+  vr({ market: 'match_winner', outcome: 'Away', outcome_order: 3, best_odd: 3.60, avg_odd: 3.5, edge: -0.03, prob_justa_fechamento: 0.24, score: 19, faixa: 'Baixa' }),
+  vr({ market: 'goals_over_under', outcome: 'Over', outcome_order: 1, line_value: 2.5, best_odd: 1.95, avg_odd: 1.9, edge: 0.06, prob_justa_fechamento: 0.55, score: 48, faixa: 'Média' }),
+  vr({ market: 'goals_over_under', outcome: 'Under', outcome_order: 2, line_value: 2.5, best_odd: 1.90, avg_odd: 1.85, edge: -0.01, prob_justa_fechamento: 0.45, score: 21, faixa: 'Baixa' }),
 ];
 
 // Artilheiros de exemplo.

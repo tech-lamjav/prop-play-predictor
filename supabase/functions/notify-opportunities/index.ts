@@ -7,7 +7,7 @@
 //
 //   1. Lê o board (mesma fonte do site — zero lógica duplicada)
 //   2. Jogos de HOJE ainda não iniciados → melhor pick por jogo → top 3
-//      por Score, com corte mínimo (>= 40 / faixa Média)
+//      por Score, restrito à faixa Média para cima
 //   3. SEM oportunidade boa → NÃO manda nada (o silêncio no dia fraco é o
 //      que torna a mensagem crível no dia forte)
 //   4. Envia pros dois segmentos (RPC get_opportunity_recipients):
@@ -29,6 +29,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
+import { ehFaixaPublicavel } from "../shared/faixa.ts";
 import { logMessageRun } from "../shared/runs.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -36,7 +37,9 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SITE = "https://www.smartbetting.app";
 
-const MIN_SCORE = 40;   // corte: faixa Média pra cima
+// O corte por número saiu na virada do Score de contexto (spec #301): 40 era
+// da fórmula antiga e, na escala nova, selecionaria outro conjunto. Quem decide
+// é a faixa publicada pelo backend, lida por ehFaixaPublicavel.
 const MAX_PICKS = 3;    // top N do dia
 const CAMPAIGN = "daily_opportunities";
 
@@ -208,7 +211,7 @@ serve(async (req) => {
     const today = brtDay(now);
     const todayRows = ((board ?? []) as BoardRow[]).filter((r) => {
       const k = kickoffDate(r.kickoff_utc);
-      return k.getTime() > now.getTime() && brtDay(k) === today && r.score >= MIN_SCORE;
+      return k.getTime() > now.getTime() && brtDay(k) === today && ehFaixaPublicavel(r.faixa);
     });
 
     // principais oportunidades do dia por Score — pode ter mais de uma do mesmo jogo

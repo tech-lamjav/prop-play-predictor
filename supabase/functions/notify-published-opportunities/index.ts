@@ -32,7 +32,8 @@ interface BoardRow extends PublicationBoardRow {
   competition: string;
   status_short: string;
   best_odd: number;
-  faixa: string;
+  /** Técnica: viaja para o instantâneo e nunca para a mensagem. */
+  score_versao: string | null;
   janela_usada: string | null;
   edge: number | null;
   prob_justa_fechamento: number | null;
@@ -168,6 +169,7 @@ function payload(row: BoardRow & { key: string }) {
     best_odd: row.best_odd,
     score: row.score,
     faixa: row.faixa,
+    score_versao: row.score_versao ?? "legacy",
     janela_usada: row.janela_usada,
     edge: row.edge,
     prob_justa_fechamento: row.prob_justa_fechamento,

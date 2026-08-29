@@ -60,7 +60,7 @@ const OPPS: MockOpp[] = [
   },
   {
     id: "bah-flu", home: "Bahia", away: "Fluminense", homeId: 118, awayId: 124, comp: "Brasileirão", hora: "19:00",
-    market: "Resultado (1X2)", pick: "Bahia", faixa: "Baixa", score: 34,
+    market: "Resultado (1X2)", pick: "Bahia", faixa: "Baixa", score: 19,
     chance: 44, odd: 2.30, edge: 0.011,
     porque: ["Leve vantagem do mando"],
     atencao: ["A odd está perto do justo — valor magro", "Fluminense reage bem fora de casa"],
@@ -116,8 +116,11 @@ const FutebolLP = () => {
   const selected = useMemo(() => OPPS.find((o) => o.id === selectedId) ?? OPPS[0], [selectedId]);
   const v = verdict(selected.edge);
 
-  const comValor = OPPS.filter((o) => o.score >= 40);
-  const semValor = OPPS.filter((o) => o.score < 40);
+  // Separado pela FAIXA, como o produto faz. O corte por número que existia
+  // aqui era da fórmula antiga e, na escala do Score de contexto, classificaria
+  // errado a própria demonstração (spec #301).
+  const comValor = OPPS.filter((o) => o.faixa !== "Baixa");
+  const semValor = OPPS.filter((o) => o.faixa === "Baixa");
 
   const goAuth = () => navigate("/auth");
   const goProduct = () => navigate("/futebol");
