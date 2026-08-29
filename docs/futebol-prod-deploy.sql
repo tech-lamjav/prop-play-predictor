@@ -633,7 +633,11 @@ create table futebol.fact_value_opportunities (
   "pen_odd_outlier" boolean,
   "pen_poucas_casas" boolean,
   "pen_odd_longshot" boolean,
-  "pen_odd_juice" boolean
+  "pen_odd_juice" boolean,
+  -- Escala do Score (spec #301): legacy ou contexto_v1. Nunca nulo.
+  -- No fim de proposito: a migration 112 entra por alter table add column, que
+  -- acrescenta no fim, e as duas provisoes precisam ter a mesma ordem de coluna.
+  "score_versao" text not null default 'legacy'
 );
 
 -- ── 2a. Infra do sync: estado incremental (o Cloud Run sync lê/escreve aqui) ──
@@ -686,7 +690,11 @@ create table futebol.fact_value_opportunities_hist (
   "pen_odd_outlier" boolean,
   "pen_poucas_casas" boolean,
   "pen_odd_longshot" boolean,
-  "pen_odd_juice" boolean
+  "pen_odd_juice" boolean,
+  -- Escala do Score (spec #301): legacy ou contexto_v1. Nunca nulo.
+  -- No fim de proposito: a migration 112 entra por alter table add column, que
+  -- acrescenta no fim, e as duas provisoes precisam ter a mesma ordem de coluna.
+  "score_versao" text not null default 'legacy'
 );
 
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
@@ -1095,16 +1103,11 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'goals_over_under', 'xg_baixo_combinado', 'any', 4, 'Os dois criam pouca chance de gol'),
   ('evidencia', 'goals_over_under', 'xg_combinado_alto', 'any', 5, 'Os dois criam muita chance de gol'),
   ('evidencia', 'goals_over_under', 'clean_sheets_altos', 'any', 6, 'Os dois passam muitos jogos sem sofrer gol'),
-  ('evidencia', 'goals_over_under', 'corroboracao_ambos', 'any', 7, 'As principais casas e o modelo da API apontam o mesmo lado'),
-  ('evidencia', 'goals_over_under', 'linha_sharp_confirma', 'any', 8, 'As principais casas vêm baixando a odd desse lado'),
-  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 9, 'Ataques fracos dos dois lados'),
-  ('evidencia', 'goals_over_under', 'historico_under', 'any', 10, 'Histórico de jogo com poucos gols'),
-  ('evidencia', 'goals_over_under', 'ambos_vazam', 'any', 11, 'Os dois sofrem gol quase todo jogo'),
-  ('evidencia', 'goals_over_under', 'ritmo_alto', 'any', 12, 'Jogo de ritmo alto'),
-  ('evidencia', 'goals_over_under', 'historico_over', 'any', 13, 'Histórico de jogo com muitos gols'),
-  ('evidencia', 'goals_over_under', 'linha_subindo', 'any', 14, 'Mercado puxando a linha pra cima'),
-  ('evidencia', 'goals_over_under', 'linha_descendo', 'any', 15, 'Mercado puxando a linha pra baixo'),
-  ('evidencia', 'goals_over_under', 'modelo_api_concorda', 'any', 16, 'Modelo da API concorda com esse lado'),
+  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 7, 'Ataques fracos dos dois lados'),
+  ('evidencia', 'goals_over_under', 'historico_under', 'any', 8, 'Histórico de jogo com poucos gols'),
+  ('evidencia', 'goals_over_under', 'ambos_vazam', 'any', 9, 'Os dois sofrem gol quase todo jogo'),
+  ('evidencia', 'goals_over_under', 'ritmo_alto', 'any', 10, 'Jogo de ritmo alto'),
+  ('evidencia', 'goals_over_under', 'historico_over', 'any', 11, 'Histórico de jogo com muitos gols'),
   ('contra', 'goals_over_under', 'defesas_firmes', 'any', 1, 'A solidez das defesas não entrou como sinal a favor'),
   ('contra', 'goals_over_under', 'ataque_combinado', 'any', 2, 'O ataque dos dois times não entrou como sinal a favor'),
   ('contra', 'goals_over_under', 'xg_baixo_combinado', 'any', 3, 'O baixo volume de chances não entrou como sinal a favor'),
@@ -1121,13 +1124,10 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'match_winner', 'mando', 'home', 2, 'Manda bem em casa'),
   ('evidencia', 'match_winner', 'mando', 'away', 2, 'Vai bem fora de casa'),
   ('evidencia', 'match_winner', 'superioridade_tabela', 'any', 3, 'Bem à frente na tabela'),
-  ('evidencia', 'match_winner', 'corroboracao_ambos', 'any', 4, 'As principais casas e o modelo da API apontam o mesmo lado'),
-  ('evidencia', 'match_winner', 'linha_sharp_confirma', 'any', 5, 'As principais casas vêm baixando a odd desse lado'),
-  ('evidencia', 'match_winner', 'forca_mismatch', 'any', 6, 'Ataque forte contra defesa frágil do adversário'),
-  ('evidencia', 'match_winner', 'superioridade_xg', 'any', 7, 'Cria mais chances de gol que o adversário'),
-  ('evidencia', 'match_winner', 'h2h_favoravel', 'any', 8, 'Leva vantagem no histórico do confronto'),
-  ('evidencia', 'match_winner', 'desfalque_adversario', 'any', 9, 'Adversário com desfalque de titular importante'),
-  ('evidencia', 'match_winner', 'modelo_api_concorda', 'any', 10, 'Modelo da API concorda com esse lado'),
+  ('evidencia', 'match_winner', 'forca_mismatch', 'any', 4, 'Ataque forte contra defesa frágil do adversário'),
+  ('evidencia', 'match_winner', 'superioridade_xg', 'any', 5, 'Cria mais chances de gol que o adversário'),
+  ('evidencia', 'match_winner', 'h2h_favoravel', 'any', 6, 'Leva vantagem no histórico do confronto'),
+  ('evidencia', 'match_winner', 'desfalque_adversario', 'any', 7, 'Adversário com desfalque de titular importante'),
   ('contra', 'match_winner', 'mando', 'home', 1, 'Em casa, o mando não entrou como sinal a favor'),
   ('contra', 'match_winner', 'mando', 'away', 1, 'Fora de casa, o mando não entrou como sinal a favor'),
   ('contra', 'match_winner', 'superioridade_tabela', 'any', 2, 'A posição na tabela não entrou como sinal a favor'),
@@ -1142,15 +1142,12 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'asian_handicap', 'supremacia', 'any', 2, 'Muito superior ao adversário'),
   ('evidencia', 'asian_handicap', 'defesa_fora_solida', 'any', 3, 'Defesa sólida jogando fora'),
   ('evidencia', 'asian_handicap', 'defesa_fora_solida', 'home', 3, 'Defesa sólida em casa'),
-  ('evidencia', 'asian_handicap', 'corroboracao_ambos', 'any', 4, 'As principais casas e o modelo da API apontam o mesmo lado'),
-  ('evidencia', 'asian_handicap', 'linha_sharp_confirma', 'any', 5, 'As principais casas vêm baixando a odd desse lado'),
-  ('evidencia', 'asian_handicap', 'sem_rodizio', 'any', 6, 'Deve entrar com força máxima'),
-  ('evidencia', 'asian_handicap', 'raramente_perde_por_2', 'any', 7, 'Quando perde, perde apertado'),
-  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'any', 8, 'Adversário fraco fora de casa'),
-  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'away', 8, 'Adversário fraco em casa'),
-  ('evidencia', 'asian_handicap', 'mando_forte', 'any', 9, 'Manda muito bem em casa'),
-  ('evidencia', 'asian_handicap', 'mando_forte', 'away', 9, 'Vai muito bem fora de casa'),
-  ('evidencia', 'asian_handicap', 'modelo_api_concorda', 'any', 10, 'Modelo da API concorda com esse lado'),
+  ('evidencia', 'asian_handicap', 'sem_rodizio', 'any', 4, 'Deve entrar com força máxima'),
+  ('evidencia', 'asian_handicap', 'raramente_perde_por_2', 'any', 5, 'Quando perde, perde apertado'),
+  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'any', 6, 'Adversário fraco fora de casa'),
+  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'away', 6, 'Adversário fraco em casa'),
+  ('evidencia', 'asian_handicap', 'mando_forte', 'any', 7, 'Manda muito bem em casa'),
+  ('evidencia', 'asian_handicap', 'mando_forte', 'away', 7, 'Vai muito bem fora de casa'),
   ('contra', 'asian_handicap', 'tende_golear', 'any', 1, 'A margem das vitórias não entrou como sinal a favor'),
   ('contra', 'asian_handicap', 'supremacia', 'any', 2, 'A superioridade sobre o adversário não entrou como sinal a favor'),
   ('contra', 'asian_handicap', 'defesa_fora_solida', 'any', 3, 'A solidez defensiva não entrou como sinal a favor'),
@@ -1168,9 +1165,6 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'btts', 'ataque_trava', 'any', 5, 'Um dos ataques costuma passar em branco'),
   ('evidencia', 'btts', 'historico_btts', 'any', 6, 'Nos últimos jogos, os dois marcaram'),
   ('evidencia', 'btts', 'historico_seco', 'any', 7, 'Jogos recentes sem os dois marcarem'),
-  ('evidencia', 'btts', 'corroboracao_ambos', 'any', 8, 'As principais casas e o modelo da API apontam o mesmo lado'),
-  ('evidencia', 'btts', 'linha_sharp_confirma', 'any', 9, 'As principais casas vêm baixando a odd desse lado'),
-  ('evidencia', 'btts', 'modelo_api_concorda', 'any', 10, 'Modelo da API concorda com esse lado'),
   ('contra', 'btts', 'ambos_marcam', 'any', 1, 'Os gols dos dois times não entraram como sinal a favor'),
   ('contra', 'btts', 'defesas_vazaveis', 'any', 2, 'A fragilidade das defesas não entrou como sinal a favor'),
   ('contra', 'btts', 'defesa_forte', 'any', 3, 'A força defensiva não entrou como sinal a favor'),
@@ -1183,9 +1177,6 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'double_chance', 'equilibrio_defensivo', 'any', 2, 'Equilíbrio defensivo'),
   ('evidencia', 'double_chance', 'adversario_limitado', 'any', 3, 'Adversário com campanha fraca'),
   ('evidencia', 'double_chance', 'invicto_recente', 'any', 4, 'Invicto nos últimos jogos'),
-  ('evidencia', 'double_chance', 'corroboracao_ambos', 'any', 5, 'As principais casas e o modelo da API apontam o mesmo lado'),
-  ('evidencia', 'double_chance', 'linha_sharp_confirma', 'any', 6, 'As principais casas vêm baixando a odd desse lado'),
-  ('evidencia', 'double_chance', 'modelo_api_concorda', 'any', 7, 'Modelo da API concorda com esse lado'),
   ('contra', 'double_chance', 'lado_coberto_forte', 'any', 1, 'A força do lado coberto não entrou como sinal a favor'),
   ('contra', 'double_chance', 'adversario_limitado', 'any', 2, 'A campanha do adversário não entrou como sinal a favor'),
   ('aviso', 'double_chance', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
@@ -1262,25 +1253,22 @@ $function$;
 grant execute on function public.futebol_flags(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb) to anon, authenticated, service_role;
 grant execute on function public.futebol_copy(text, text, text, jsonb) to anon, authenticated, service_role;
 
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_fixture_value(bigint);
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_value(p_fixture_id bigint)
- RETURNS TABLE(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, penalidades_globais_pts integer, penalidades_especificas_pts integer, score integer, faixa text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
- LANGUAGE sql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  -- migration 101: a fonte deixa de ser fixa. Kickoff no futuro lê o board;
-  -- kickoff já passado lê a FOTO DO APITO no snapshot. É *kickoff passado* e
-  -- não *jogo terminado*, senão as ~2h de bola rolando ficariam sem linha
-  -- depois que o mart passar a expurgar os status ao vivo (ADR 0009).
-  -- migration 105: os avisos de penalidade leem as colunas pen_* do proprio mart
-  -- (AE#87). O CTE sobre int_futebol_odds_devig foi removido: ele rederivava as
-  -- flags e, no prd, 76 de 126 linhas exibiam aviso de janela errada (issue #267).
-  -- No hist, pen_* pode ser NULL em versao aberta antes do AE#87: NULL nao gera aviso.
+ returns table(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, penalidades_especificas_pts integer, score integer, faixa text, score_versao text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
+ language sql
+ security definer
+ set search_path to ''
+as $function$
+  -- migration 101: kickoff no futuro lê o board; kickoff já passado lê a FOTO DO
+  -- APITO no snapshot. migration 105: os avisos leem as colunas pen_* do mart.
   with v_src as (
-    select fixture_id, market, outcome, line_value, competition, season, edge, pts_valor,
-           pts_premissas, pts_corroboracao, penalidades, score, faixa, best_odd, best_book,
+    select fixture_id, market, outcome, line_value, competition, season, edge,
+           pts_premissas, penalidades, score, faixa, score_versao, best_odd, best_book,
            avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
-           penalidades_globais_pts, penalidades_especificas_pts, modelo_api_concorda,
+           penalidades_especificas_pts, modelo_api_concorda,
            linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado,
            pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
     from futebol.fact_value_opportunities
@@ -1288,10 +1276,10 @@ AS $function$
       and exists (select 1 from futebol.fact_fixtures fx
                    where fx.fixture_id = p_fixture_id and fx.kickoff_utc > (now() at time zone 'UTC'))
     union all
-    select fixture_id, market, outcome, line_value, competition, season, edge, pts_valor,
-           pts_premissas, pts_corroboracao, penalidades, score, faixa, best_odd, best_book,
+    select fixture_id, market, outcome, line_value, competition, season, edge,
+           pts_premissas, penalidades, score, faixa, score_versao, best_odd, best_book,
            avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
-           penalidades_globais_pts, penalidades_especificas_pts, modelo_api_concorda,
+           penalidades_especificas_pts, modelo_api_concorda,
            linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado,
            pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
     from futebol.fact_value_opportunities_hist h
@@ -1315,8 +1303,8 @@ AS $function$
           then (3000 + case v.outcome when '1X' then 1 else 2 end)
           else 0 end),
     v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
-    v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int,
-    v.penalidades_globais_pts::int, v.penalidades_especificas_pts::int, v.score::int, v.faixa,
+    v.pts_premissas::int, v.penalidades::int,
+    v.penalidades_especificas_pts::int, v.score::int, v.faixa, v.score_versao,
     v.modelo_api_concorda, v.linha_sharp_confirma,
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     public.futebol_copy('aviso', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
@@ -1330,9 +1318,7 @@ AS $function$
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   where v.fixture_id = p_fixture_id
   order by (case v.market when 'match_winner' then 1 when 'goals_over_under' then 2 when 'asian_handicap' then 3 when 'btts' then 4 when 'double_chance' then 5 else 9 end), 3;
-$function$
-
-;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixtures(p_competition text, p_season bigint, p_round text DEFAULT NULL::text)
  RETURNS TABLE(fixture_id bigint, round text, kickoff_utc timestamp without time zone, date_utc date, status_short text, status_long text, home_team_id bigint, home_team_name text, home_team_logo text, away_team_id bigint, away_team_name text, away_team_logo text, goals_home bigint, goals_away bigint)
@@ -1718,16 +1704,19 @@ end; $function$
 
 ;
 
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_value_board();
 CREATE OR REPLACE FUNCTION public.get_futebol_value_board()
- RETURNS TABLE(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, score integer, faixa text, evidencias text[], premissas_sem_dado integer)
- LANGUAGE sql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ language sql
+ security definer
+ set search_path to ''
+as $function$
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
-    v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int, v.score::int, v.faixa,
+    v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     v.premissas_sem_dado::int
   from futebol.fact_value_opportunities v
@@ -1738,9 +1727,7 @@ AS $function$
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   order by v.score desc, v.edge desc;
-$function$
-
-;
+$function$;
 
 -- ── 5b. Histórico point-in-time do board (ADR 0009, migrations 101 e 102) ────
 -- O board é reconstruído inteiro a cada execução e não filtra data, então ler o
@@ -1771,18 +1758,21 @@ $function$
 -- outras em `get_futebol_value_board` e `get_futebol_fixture_value`). Mercado
 -- novo mexe em três RPCs. Extrair exige tocar nas três de uma vez.
 
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_value_history(date, date);
 CREATE OR REPLACE FUNCTION public.get_futebol_value_history(p_from date, p_to date)
- RETURNS TABLE(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, score integer, faixa text, evidencias text[], premissas_sem_dado integer)
- LANGUAGE sql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ language sql
+ security definer
+ set search_path to ''
+as $function$
   with pit as (
     select distinct on (h.opportunity_key)
       h.fixture_id, h.market, h.outcome, h.line_value, h.edge,
       h.best_odd, h.best_book, h.avg_odd, h.n_casas, h.janela_usada,
-      h.prob_justa_fechamento, h.pts_valor, h.pts_premissas, h.pts_corroboracao,
-      h.penalidades, h.score, h.faixa,
+      h.prob_justa_fechamento, h.pts_premissas,
+      h.penalidades, h.score, h.faixa, h.score_versao,
       h.modelo_api_concorda, h.linha_sharp_confirma, h.premissas_sem_dado
     from futebol.fact_value_opportunities_hist h
     join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
@@ -1796,7 +1786,7 @@ AS $function$
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
-    v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int, v.score::int, v.faixa,
+    v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     v.premissas_sem_dado::int
   from pit v
@@ -1807,9 +1797,7 @@ AS $function$
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   order by f.kickoff_utc desc, v.score desc, v.edge desc;
-$function$
-
-;
+$function$;
 
 -- ── 5c. Agenda por dia, catálogo e detalhe do jogo (migrations 091 a 096) ────
 -- ⚠️ Estas oito estavam FALTANDO neste arquivo, e é a dívida da #250 no seu
@@ -2356,13 +2344,15 @@ $function$;
 -- ── 5d. Contrato de motivos da leitura dos cinco mercados (migration 109) ────
 -- O banco escolhe o grupo de cada motivo. A tela apenas renderiza o contrato,
 -- sem converter uma premissa do lado oposto em uma frase "contra".
-create or replace function public.get_futebol_fixture_reason_contract(p_fixture_id bigint)
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_fixture_reason_contract(bigint);
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_reason_contract(p_fixture_id bigint)
 returns table(
   market text,
   outcome text,
   line_value double precision,
   score integer,
-  componentes_score jsonb,
   favor jsonb,
   contra jsonb
 )
@@ -2373,19 +2363,17 @@ set search_path to ''
 as $function$
   with base as (
     select
-      v.market, v.outcome, v.line_value, v.score, v.pts_valor, v.pts_premissas,
-      v.pts_corroboracao, v.penalidades as penalidades_score,
-      v.modelo_api_concorda, v.linha_sharp_confirma, v.avisos,
+      v.market, v.outcome, v.line_value, v.score,
       p.acesas, p.apagadas, p.penalidades as penalidades_ativas,
       case v.market
         when 'goals_over_under' then case v.outcome
           when 'Over' then array[
             'defesas_vazaveis', 'ataque_combinado', 'xg_combinado_alto',
-            'ambos_vazam', 'ritmo_alto', 'historico_over', 'linha_subindo'
+            'ambos_vazam', 'ritmo_alto', 'historico_over'
           ]::text[]
           when 'Under' then array[
             'defesas_firmes', 'xg_baixo_combinado', 'clean_sheets_altos',
-            'ataques_fracos', 'historico_under', 'linha_descendo'
+            'ataques_fracos', 'historico_under'
           ]::text[]
           else array[]::text[]
         end
@@ -2439,38 +2427,16 @@ as $function$
     b.outcome,
     b.line_value,
     b.score,
-    coalesce((
-      select jsonb_agg(jsonb_build_object('id', id, 'texto', texto, 'pontos', pontos) order by ordem)
-      from (values
-        (1, 'premissas', 'Premissas', b.pts_premissas),
-        (2, 'valor_de_mercado', 'Valor de mercado', b.pts_valor),
-        (3, 'corroboracao', 'Corroboração', b.pts_corroboracao),
-        (4, 'penalidades', 'Penalidades', b.penalidades_score)
-      ) as componente(ordem, id, texto, pontos)
-      where pontos <> 0
-    ), '[]'::jsonb),
+    -- Sem o gate `pts_premissas > 0` que existia aqui. Ele era herança da nota
+    -- antiga, em que a linha podia ser publicada só pelo preço e as premissas
+    -- não contribuíam. No Score de contexto, premissa aplicável e acesa É
+    -- contribuição por definição — e manter o gate deixaria A favor vazio numa
+    -- linha legacy publicada pelo preço, entre esta migration e a troca do mart.
     coalesce((
       select jsonb_agg(jsonb_build_object('id', slug, 'tipo', 'premissa') order by slug)
       from unnest(b.acesas) slug
-      where slug = any(b.aplicaveis) and b.pts_premissas > 0
-    ), '[]'::jsonb)
-    || case when b.pts_valor > 0
-      then jsonb_build_array(jsonb_build_object(
-        'id', 'valor_de_mercado', 'tipo', 'componente_score',
-        'texto', 'A cotação oferece valor', 'pontos', b.pts_valor
-      ))
-      else '[]'::jsonb end
-    || case when b.pts_corroboracao > 0
-      then jsonb_build_array(jsonb_build_object(
-        'id', 'corroboracao', 'tipo', 'componente_score', 'pontos', b.pts_corroboracao,
-        'texto', case
-          when b.modelo_api_concorda and b.linha_sharp_confirma then 'Modelo e movimento de mercado confirmam a leitura'
-          when b.modelo_api_concorda then 'Modelo confirma a leitura'
-          when b.linha_sharp_confirma then 'Movimento de mercado confirma a leitura'
-          else 'Corroboração confirma a leitura'
-        end
-      ))
-      else '[]'::jsonb end,
+      where slug = any(b.aplicaveis)
+    ), '[]'::jsonb),
     coalesce((
       select jsonb_agg(jsonb_build_object('id', slug, 'tipo', 'premissa') order by slug)
       from unnest(b.apagadas) slug
@@ -2480,10 +2446,6 @@ as $function$
       select jsonb_agg(jsonb_build_object('id', slug, 'tipo', 'penalidade') order by slug)
       from unnest(b.penalidades_ativas) slug
       where slug <> 'favorito_irregular'
-    ), '[]'::jsonb)
-    || coalesce((
-      select jsonb_agg(jsonb_build_object('id', 'aviso_' || ord, 'tipo', 'penalidade', 'texto', texto) order by ord)
-      from unnest(b.avisos) with ordinality as a(texto, ord)
     ), '[]'::jsonb)
   from base b;
 $function$;

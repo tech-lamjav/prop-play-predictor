@@ -986,6 +986,18 @@ export function BancadaMercados({
           />
         )}
 
+        {/* Leitura de risco do PREÇO. Saiu da aba "Contra" na virada do Score de
+            contexto (spec #301): aquela aba é premissa do jogo, e odd de zebra
+            ou casa única não é premissa nenhuma — é característica da cotação.
+            Mas a informação continua valendo, então desce para o rodapé em vez
+            de sumir, ao lado da ressalva de dado faltando. */}
+        {(valPrincipal?.avisos ?? []).length > 0 && (
+          <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
+            <span className="font-semibold">Sobre a cotação: </span>
+            {(valPrincipal?.avisos ?? []).join(' · ')}
+          </div>
+        )}
+
         {/* Ressalva de informação faltando. Fica AQUI, no rodapé, e não na aba
             "Contra" de propósito: aquela aba lista o que foi checado e não
             bateu; isto é o que nem deu para checar. Juntar as duas faria a

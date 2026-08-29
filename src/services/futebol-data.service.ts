@@ -95,23 +95,20 @@ export interface FutebolFixtureReasonItem {
   pontos?: number;
 }
 
-/** Parcela do score, devolvida pelo backend para a tela não recalcular o total. */
-export interface FutebolFixtureScoreComponent {
-  id: 'premissas' | 'valor_de_mercado' | 'corroboracao' | 'penalidades';
-  texto: string;
-  pontos: number;
-}
-
 /**
  * Motivos de qualquer saída cotada da Bancada (RPC get_futebol_fixture_reason_contract).
  * A separação favor/contra é autoridade do backend; não derive o lado pelo slug.
+ *
+ * `componentes_score` saiu no contrato de contexto (spec #301): o Score deixou
+ * de ser uma soma de partes exibível, então a RPC não devolve mais a
+ * decomposição. Campo extra numa resposta antiga é inofensivo em runtime, então
+ * o tipo pode andar na frente da virada.
  */
 export interface FutebolFixtureReasonContractRow {
   market: string;
   outcome: string;
   line_value: number | null;
   score: number;
-  componentes_score: FutebolFixtureScoreComponent[];
   favor: FutebolFixtureReasonItem[];
   contra: FutebolFixtureReasonItem[];
 }

@@ -29,7 +29,14 @@ import { copyDeServing, premissaDe, rotuloPremissa, type LinhaCopy } from './fut
 // ============================================================================
 
 const RAIZ = resolve(__dirname, '../..');
-const MIGRATION = resolve(RAIZ, 'supabase/migrations/106_futebol_copy_das_premissas.sql');
+// A migration que SEMEIA a tabela hoje. A 106 criou a mecânica e semeou a
+// primeira vez; a 112 regera a semente inteira no Score de contexto, então é
+// ela que precisa bater com o catálogo. Apontar para a 106 cobraria dela uma
+// decisão que não existia quando foi escrita.
+const MIGRATION = resolve(
+  RAIZ,
+  'supabase/migrations/20260829120000_112_futebol_score_contexto_contrato.sql',
+);
 const SHAPE = resolve(RAIZ, 'docs/futebol-prod-deploy.sql');
 const RPCS = ['get_futebol_fixture_value', 'get_futebol_value_board', 'get_futebol_value_history'];
 
@@ -52,7 +59,9 @@ function semente(sql: string): LinhaCopy[] {
 
 /** O corpo de uma função dentro de um .sql, do `create` ao `$function$` final. */
 function corpoDaFuncao(sql: string, nome: string): string {
-  const re = new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${nome}\\(`, 'i');
+  // A migration da virada usa `create` puro, porque as RPCs são derrubadas
+  // antes: o retorno tabular mudou e `create or replace` recusaria.
+  const re = new RegExp(`create\\s+(?:or\\s+replace\\s+)?function\\s+public\\.${nome}\\(`, 'i');
   const m = sql.match(re);
   expect(m, `não achei ${nome}`).not.toBeNull();
   const i = m!.index!;
@@ -66,7 +75,7 @@ describe('a copy da serving é a copy do catálogo', () => {
   const esperado = copyDeServing();
 
   for (const [nome, arquivo] of [
-    ['migration 106', MIGRATION],
+    ['migration 112', MIGRATION],
     ['shape file', SHAPE],
   ] as const) {
     describe(nome, () => {

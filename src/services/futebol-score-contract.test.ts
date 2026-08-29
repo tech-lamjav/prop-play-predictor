@@ -86,11 +86,19 @@ describe('compatibilidade do contrato do Score de contexto', () => {
     );
   });
 
-  it('não permite rotular a forma nova como legacy', () => {
-    expect(() => normalizeFutebolValueBoardRows([{
+  it('aceita legacy sem componentes de preço, que é o histórico depois da virada', () => {
+    // Depois da virada a RPC tem uma forma só, sem pts_valor. O histórico
+    // point-in-time continua devolvendo linhas calculadas na escala antiga, e
+    // elas precisam continuar abrindo: legacy é a ESCALA da nota, não a
+    // presença dos componentes na resposta.
+    const [row] = normalizeFutebolValueBoardRows([{
       ...boardBase,
       score_versao: 'legacy',
-    }])).toThrow('O contrato legacy exige pts_valor e pts_corroboracao');
+    }]);
+
+    expect(row.score_versao).toBe('legacy');
+    expect(row.pts_valor).toBe(0);
+    expect(row.pts_corroboracao).toBe(0);
   });
 
   it('adapta o detalhe novo sem exigir penalidade global de odd', () => {
