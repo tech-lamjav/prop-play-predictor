@@ -491,6 +491,10 @@ export function BancadaMercados({
       ? { premissas: [], extras: [] }
       : { premissas: naoAconteceu, extras: contras };
 
+  // Zero motivo listado a favor. Alimenta o veredito, para ele não afirmar um
+  // cenário que a aba ao lado não consegue mostrar.
+  const semMotivosAFavor = motivosFavor.premissas.length + motivosFavor.extras.length === 0;
+
   // O veredito em uma frase, sem inventar número.
   const veredito = useMemo(() => {
     const lbl = labelDe(principal);
@@ -499,6 +503,12 @@ export function BancadaMercados({
       return r ? `O mapa apontava ${lbl}: ${resultBadge(r).label.toLowerCase()}.` : `Jogo encerrado.`;
     }
     if (valPrincipal) {
+      // Sem nenhum motivo listado, o veredito não afirma cenário. Acontece na
+      // janela da virada: a nota legacy podia vir do preço, e o contrato antigo
+      // devolvia só os componentes de preço em A favor — que a tela não mostra
+      // mais. Prometer "o cenário está bem a favor" acima de uma aba vazia é a
+      // tela se contradizendo.
+      if (semMotivosAFavor) return `${lbl} está publicada, mas o cenário do jogo não foi detalhado aqui.`;
       if (ehFaixaAlta(valPrincipal.faixa)) return `O cenário do jogo está bem a favor de ${lbl}.`;
       if (ehDestaque(valPrincipal.faixa)) return `${lbl} tem parte do cenário a favor: leitura parcial.`;
       return `Pouco do cenário sustenta ${lbl}: entra como consulta, não como aposta.`;
@@ -510,7 +520,7 @@ export function BancadaMercados({
     if (n >= PORTA_PREMISSAS) return `O jogo aponta para ${lbl}, mas falta o preço: as odds entram perto do jogo.`;
     return `O jogo não sustenta esta saída.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [principal, valPrincipal, cotacaoPrincipal.estado, fim, mercado.slug, placar]);
+  }, [principal, valPrincipal, cotacaoPrincipal.estado, fim, mercado.slug, placar, semMotivosAFavor]);
 
   // Distribuição de gols: só no mercado de gols, cortada pela linha selecionada.
   const dist = useMemo(() => {

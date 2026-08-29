@@ -490,7 +490,7 @@ export function MotivosJogoPorJogo({
               ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
               : 'Nenhum motivo a favor desta saída.'
             : total > 0
-              ? 'O que o jogo e o preço colocam contra esta saída.'
+              ? 'O que o jogo deixa de sustentar nesta saída.'
               : 'Nada pesando contra esta saída: todas as premissas que valem aconteceram.'}
         </div>
         {itens.some((x) => x.story != null) && (
