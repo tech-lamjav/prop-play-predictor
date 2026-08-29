@@ -1,3 +1,5 @@
+import { ehFaixaPublicavel } from "../shared/faixa.ts";
+
 export interface PublicationBoardRow {
   fixture_id: number;
   market: string;
@@ -5,11 +7,13 @@ export interface PublicationBoardRow {
   line_value: number | null;
   kickoff_utc: string;
   score: number;
+  /** A classificação do backend. É ela que decide, não o número. */
+  faixa: string;
 }
 
-// O painel só publica oportunidades a partir da faixa Média. O detector deve
-// receber exatamente o mesmo conjunto, nunca candidatas de score inferior.
-export const MIN_PUBLICATION_SCORE = 40;
+// O painel mostra da faixa Média para cima, e o detector precisa receber
+// exatamente o mesmo conjunto. O corte por número que existia aqui era da
+// fórmula antiga: na escala nova ele selecionaria outra coisa (spec #301).
 
 function kickoffDate(kickoffUtc: string): Date {
   return new Date(
@@ -46,7 +50,7 @@ export function planPublicationBatch<T extends PublicationBoardRow>({
 } {
   const newOpportunities = board
     .filter((row) =>
-      row.score >= MIN_PUBLICATION_SCORE &&
+      ehFaixaPublicavel(row.faixa) &&
       kickoffDate(row.kickoff_utc).getTime() > now.getTime()
     )
     .map((row) => ({ ...row, key: opportunityKey(row) }))

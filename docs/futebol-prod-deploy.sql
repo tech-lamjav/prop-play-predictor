@@ -2462,48 +2462,85 @@ AS $function$
 DECLARE
   v_batch_id uuid;
 BEGIN
+  -- O advisory lock torna o polling idempotente mesmo se dois crons
+  -- coincidirem: sem ele, duas execuções sobrepostas não enxergam as linhas
+  -- ainda não commitadas uma da outra, criam dois lotes e mandam duas mensagens
+  -- para o mesmo destinatário no mesmo minuto.
   PERFORM pg_advisory_xact_lock(hashtext('futebol-publication-alerts'));
 
   WITH incoming AS (
-    SELECT * FROM jsonb_to_recordset(p_opportunities) AS x(
-      opportunity_key text, fixture_id bigint, home_team_name text,
-      away_team_name text, competition text, kickoff_utc timestamptz,
-      market text, outcome text, line_value double precision, best_odd numeric,
-      score integer, faixa text, janela_usada text, edge double precision,
-      prob_justa_fechamento double precision, evidencias text[]
+    SELECT *
+    FROM jsonb_to_recordset(p_opportunities) AS x(
+      opportunity_key text,
+      fixture_id bigint,
+      home_team_name text,
+      away_team_name text,
+      competition text,
+      kickoff_utc timestamptz,
+      market text,
+      outcome text,
+      line_value double precision,
+      best_odd numeric,
+      score integer,
+      faixa text,
+      score_versao text,
+      janela_usada text,
+      edge double precision,
+      prob_justa_fechamento double precision,
+      evidencias text[]
     )
   )
   INSERT INTO public.futebol_publication_alert_batches (sync_at)
-  SELECT p_sync_at WHERE EXISTS (
-    SELECT 1 FROM incoming i WHERE NOT EXISTS (
+  SELECT p_sync_at
+  WHERE EXISTS (
+    SELECT 1 FROM incoming i
+    WHERE NOT EXISTS (
       SELECT 1 FROM public.futebol_publication_alerts a
       WHERE a.opportunity_key = i.opportunity_key
     )
   )
   RETURNING id INTO v_batch_id;
 
-  IF v_batch_id IS NULL THEN RETURN; END IF;
+  IF v_batch_id IS NULL THEN
+    RETURN;
+  END IF;
 
   RETURN QUERY
   WITH incoming AS (
-    SELECT * FROM jsonb_to_recordset(p_opportunities) AS x(
-      opportunity_key text, fixture_id bigint, home_team_name text,
-      away_team_name text, competition text, kickoff_utc timestamptz,
-      market text, outcome text, line_value double precision, best_odd numeric,
-      score integer, faixa text, janela_usada text, edge double precision,
-      prob_justa_fechamento double precision, evidencias text[]
+    SELECT *
+    FROM jsonb_to_recordset(p_opportunities) AS x(
+      opportunity_key text,
+      fixture_id bigint,
+      home_team_name text,
+      away_team_name text,
+      competition text,
+      kickoff_utc timestamptz,
+      market text,
+      outcome text,
+      line_value double precision,
+      best_odd numeric,
+      score integer,
+      faixa text,
+      score_versao text,
+      janela_usada text,
+      edge double precision,
+      prob_justa_fechamento double precision,
+      evidencias text[]
     )
   ), inserted AS (
     INSERT INTO public.futebol_publication_alerts (
       batch_id, opportunity_key, fixture_id, home_team_name, away_team_name,
       competition, kickoff_utc, market, outcome, line_value, best_odd, score,
-      faixa, janela_usada, edge, prob_justa_fechamento, evidencias
+      faixa, score_versao, janela_usada, edge, prob_justa_fechamento, evidencias
     )
     SELECT v_batch_id, i.opportunity_key, i.fixture_id, i.home_team_name,
-      i.away_team_name, i.competition, i.kickoff_utc, i.market, i.outcome,
-      i.line_value, i.best_odd, i.score, i.faixa, i.janela_usada, i.edge,
-      i.prob_justa_fechamento, i.evidencias
-    FROM incoming i ON CONFLICT (opportunity_key) DO NOTHING
+           i.away_team_name, i.competition, i.kickoff_utc, i.market,
+           i.outcome, i.line_value, i.best_odd, i.score, i.faixa,
+           -- Alerta antigo permanece legacy; o detector novo manda a escala.
+           coalesce(i.score_versao, 'legacy'),
+           i.janela_usada, i.edge, i.prob_justa_fechamento, i.evidencias
+    FROM incoming i
+    ON CONFLICT (opportunity_key) DO NOTHING
     RETURNING id, opportunity_key
   )
   SELECT v_batch_id, i.id, i.opportunity_key FROM inserted i;
@@ -2512,6 +2549,13 @@ $function$;
 
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
 alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
+-- ⚠️ DÍVIDA: as tabelas da migration 111 (futebol_publication_alerts,
+-- _batches, _deliveries e _pick_refs) nunca entraram neste arquivo, embora as
+-- funções que as usam tenham entrado. Um ALTER TABLE aqui abortaria a provisão
+-- inteira, porque check_function_bodies=off cobre corpo de função e não DDL de
+-- tabela. A coluna score_versao é da migration 113; trazer as tabelas para cá é
+-- a correção de verdade, e é o mesmo modo de falha da issue #250.
+
 alter table public.users add column if not exists futebol_publication_alerts_enabled boolean not null default true;
 alter table public.users add column if not exists futebol_publication_alerts_ack_at timestamptz;
 
