@@ -24,7 +24,6 @@ Disallow: /paywall-dashboard
 Disallow: /paywall-platform
 Disallow: /futebol/oportunidades
 Disallow: /futebol/jogos
-Disallow: /futebol/assinar
 Disallow: /bolao/entrar
 
 User-agent: Bingbot
@@ -47,7 +46,6 @@ Disallow: /paywall-dashboard
 Disallow: /paywall-platform
 Disallow: /futebol/oportunidades
 Disallow: /futebol/jogos
-Disallow: /futebol/assinar
 Disallow: /bolao/entrar
 
 # Scrapers de social: liberados pra montar o card de compartilhamento.
@@ -77,7 +75,6 @@ Disallow: /paywall-dashboard
 Disallow: /paywall-platform
 Disallow: /futebol/oportunidades
 Disallow: /futebol/jogos
-Disallow: /futebol/assinar
 Disallow: /bolao/entrar
 
 Sitemap: https://www.smartbetting.app/sitemap.xml
