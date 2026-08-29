@@ -67,8 +67,8 @@ const PRECO = { valor: "39,90", de: "49,90" };
  * trial do Futebol libera tudo por 7 dias, sem cartão.
  *
  * O documento de copy fecha em "QUERO ACESSAR A SMARTBET" com acesso após o
- * pagamento, mas o gateway não existe (/futebol/assinar mostra "Pagamento via
- * PIX em breve"). Prometer pagamento seria prometer o que a página não entrega,
+ * pagamento, mas o gateway não existe (/planos mostra "Pagamento em breve" para
+ * quem já tem conta). Prometer pagamento seria prometer o que a página não entrega,
  * e o trial é verdade e converte melhor em tráfego frio.
  */
 const CTA = {

@@ -50,7 +50,7 @@ export function FutebolTrialChip() {
     const ending = d <= 2;
     return (
       <button
-        onClick={() => navigate('/futebol/assinar')}
+        onClick={() => navigate('/planos')}
         title={`Teste grátis · ${d} ${dayWord(d)} restantes`}
         className={`hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[11px] font-semibold border transition ${
           ending ? 'border-amber/50 bg-amber/15 text-amber-2 hover:bg-amber/25' : 'border-line bg-canvas-2 text-ink-2 hover:bg-canvas'
@@ -64,7 +64,7 @@ export function FutebolTrialChip() {
   const expired = access.state === 'expired';
   return (
     <button
-      onClick={() => navigate(expired ? '/futebol/assinar' : '/auth')}
+      onClick={() => navigate(expired ? '/planos' : '/auth')}
       className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-bold bg-forest text-canvas hover:bg-forest-2 transition"
     >
       {expired ? <Lock className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
@@ -101,7 +101,7 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
         </div>
       </div>
       <button
-        onClick={() => navigate(expired ? '/futebol/assinar' : '/auth')}
+        onClick={() => navigate(expired ? '/planos' : '/auth')}
         className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-rebrand-sm bg-forest text-canvas text-[12px] font-bold px-4 h-9 hover:bg-forest-2 transition"
       >
         {expired ? 'Assinar Futebol' : 'Criar conta grátis'}
