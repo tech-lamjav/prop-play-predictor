@@ -8,11 +8,22 @@
 -- de segurança nas faixas por mercado, mas não compõe a nota nem destrava a
 -- publicação.
 --
--- ⚠️ NÃO APLICAR ISOLADAMENTE EM PRODUÇÃO. Esta migration é metade de uma virada
--- combinada com analytics-engineering#109, que troca o mart e o sync. A ordem
--- documentada é: migration → mart → sync manual → smoke test → reabertura. Até
--- o mart publicar contexto_v1, as RPCs devolvem score_versao = 'legacy' e a
--- nota continua na escala antiga.
+-- ⚠️ NÃO APLICAR ISOLADAMENTE. Esta migration é metade de uma virada combinada
+-- com analytics-engineering#109, que troca o mart e o sync.
+--
+-- ⚠️ E NÃO APLICAR ANTES DO MART. A seção 1 acrescenta score_versao nas tabelas
+-- do mart no Postgres. O pre-flight de paridade do sync aborta quando encontra
+-- coluna que existe no Postgres e NÃO existe no BigQuery — e aborta antes de
+-- qualquer carga, então o board simplesmente congela. Não é hipótese: foi o que
+-- aconteceu de 26 a 29/08/2026, quando o AE #103 removeu duas colunas do
+-- BigQuery e o Postgres ficou com elas. O sync abortou de hora em hora, em
+-- produção e em dev, por cerca de 72 execuções (issue #302).
+--
+-- Ordem correta: o BigQuery publica score_versao PRIMEIRO (ou as duas pontas
+-- sobem na mesma janela com o sync pausado); depois esta migration; depois o
+-- sync manual; depois o smoke test; e só então a reabertura. Enquanto o mart
+-- não publicar contexto_v1, as RPCs devolvem score_versao = 'legacy' e a nota
+-- continua na escala antiga.
 --
 -- Por que DROP e CREATE em vez de CREATE OR REPLACE: o retorno tabular muda nas
 -- três RPCs, e o Postgres recusa `create or replace` que altere o RETURNS TABLE

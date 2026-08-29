@@ -263,4 +263,15 @@ describe('motivos sem preço, corroboração e penalidade de odd', () => {
       expect(sql(), slug).not.toMatch(new RegExp(`\\('evidencia',\\s*'\\w+',\\s*'${slug}'`, 'i'));
     }
   });
+
+  it('o shape file não descreve as premissas de movimento de linha, que o mart não publica mais', () => {
+    // O AE #103 removeu linha_subindo e linha_descendo do modelo de gols, e as
+    // colunas caíram no Postgres. O shape file continuou declarando as duas, e
+    // esse tipo de divergência não aparece sozinha: o parity check do sync
+    // aborta quando existe coluna no Postgres que não existe no BigQuery, e foi
+    // o que derrubou o sync por três dias, cerca de 72 execuções (issue #302).
+    for (const slug of ['linha_subindo', 'linha_descendo']) {
+      expect(SHAPE, slug).not.toContain(slug);
+    }
+  });
 });

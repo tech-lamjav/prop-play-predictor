@@ -524,13 +524,11 @@ create table futebol.int_futebol_premissas_ou (
   "ritmo_alto" boolean,
   "ambos_vazam" boolean,
   "historico_over" boolean,
-  "linha_subindo" boolean,
   "defesas_firmes" boolean,
   "clean_sheets_altos" boolean,
   "xg_baixo_combinado" boolean,
   "ataques_fracos" boolean,
   "historico_under" boolean,
-  "linha_descendo" boolean,
   "linha_extrema" boolean,
   "pts_premissas" bigint,
   "penalidades_ou_pts" bigint,
@@ -1956,9 +1954,7 @@ AS $function$
            case when p.historico_under     then 'historico_under' end,
            case when p.historico_over      then 'historico_over' end,
            case when p.ambos_vazam         then 'ambos_vazam' end,
-           case when p.ritmo_alto          then 'ritmo_alto' end,
-           case when p.linha_subindo       then 'linha_subindo' end,
-           case when p.linha_descendo      then 'linha_descendo' end
+           case when p.ritmo_alto          then 'ritmo_alto' end
          ], null),
          array_remove(array[
            case when not p.defesas_firmes     then 'defesas_firmes' end,
@@ -1971,9 +1967,7 @@ AS $function$
            case when not p.historico_under    then 'historico_under' end,
            case when not p.historico_over     then 'historico_over' end,
            case when not p.ambos_vazam        then 'ambos_vazam' end,
-           case when not p.ritmo_alto         then 'ritmo_alto' end,
-           case when not p.linha_subindo      then 'linha_subindo' end,
-           case when not p.linha_descendo     then 'linha_descendo' end
+           case when not p.ritmo_alto         then 'ritmo_alto' end
          ], null),
          array_remove(array[
            case when p.linha_extrema then 'linha_extrema' end
