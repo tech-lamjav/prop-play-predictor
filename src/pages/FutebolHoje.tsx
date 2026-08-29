@@ -11,7 +11,7 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, freqEmDez, groupBoardByFixture,
-  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, SCORE_MEDIA,
+  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque,
 } from '@/utils/futebol-score';
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -301,7 +301,11 @@ export default function FutebolHoje() {
 
   const realOppsByFixture = useMemo(() => board.map((bf) => bf.best), [board]);
   const oppsByFixture = isDemo ? demoFutebolBoard : realOppsByFixture;
-  const heroOpp = oppsByFixture[0] && oppsByFixture[0].score >= SCORE_MEDIA ? oppsByFixture[0] : null;
+  // O destaque é a primeira em faixa Alta ou Média, e não necessariamente a de
+  // maior Score: faixa não é função pura do Score, porque as portas de odd por
+  // mercado podem deixar a linha mais bem pontuada fora do destaque. Testar só a
+  // posição zero fazia o bloco sumir num dia que tinha destaque.
+  const heroOpp = oppsByFixture.find((o) => ehDestaque(o.faixa)) ?? null;
   // "Ponto de atenção" do hero: vem do detalhe (contras/avisos) do jogo em destaque
   const { data: heroRows } = useFutebolFixtureValue(heroOpp?.fixture_id);
   const heroAtencao = useMemo(() => {
@@ -310,12 +314,12 @@ export default function FutebolHoje() {
     const list = row ? [...(row.contras ?? []), ...(row.avisos ?? [])] : [];
     return list[0] ?? null;
   }, [heroOpp, heroRows]);
-  const moreOpps = (heroOpp ? oppsByFixture.slice(1) : oppsByFixture).filter((o) => o.score >= SCORE_MEDIA).slice(0, 4);
+  const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoFutebolBoard.length : dayRows.length;
   const gameList = isDemo ? demoFutebolFixtures : dayGames;
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
-  // melhor valor entre as oportunidades realmente exibidas (score ≥ Média), não o edge bruto de longshots
-  const surfaced = oppsByFixture.filter((o) => o.score >= SCORE_MEDIA);
+  // melhor valor entre as oportunidades realmente exibidas, não o edge bruto de longshots
+  const surfaced = oppsByFixture.filter((o) => ehDestaque(o.faixa));
   const melhorValor = surfaced.length ? Math.round(Math.max(...surfaced.map((o) => o.edge)) * 100) : null;
 
   // contagem de jogos por dia (BRT) — pros chips do stepper

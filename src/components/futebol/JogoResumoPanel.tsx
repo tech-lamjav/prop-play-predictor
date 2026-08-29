@@ -11,9 +11,9 @@ import {
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { chancePct, pickLabel } from '@/utils/futebol-score';
-import { marketShort } from '@/utils/futebol-score';
+import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
 import { contaQueValem, premissaDe, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
-import { melhorLeitura, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-leitura';
+import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
 import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
@@ -251,7 +251,7 @@ export function JogoResumoPanel({
                 {best ? best.score : nValem}
               </div>
               <div className="mt-1 text-[9px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                {best ? `Score · ${best.score >= 60 ? 'faixa alta' : best.score >= REGUA_SCORE ? 'faixa média' : 'abaixo da régua'}` : 'premissas a favor'}
+                {best ? `Score · ${rotuloDaFaixa(best.faixa)}` : 'premissas a favor'}
               </div>
             </div>
           </div>

@@ -52,11 +52,17 @@ const VALUE_BASE: FutebolFixtureValueRow = {
   premissas_sem_dado: 0,
 };
 
-const value = (outcome: string, line: number | null, score: number): FutebolFixtureValueRow => ({
+const value = (
+  outcome: string,
+  line: number | null,
+  score: number,
+  faixa = 'Média',
+): FutebolFixtureValueRow => ({
   ...VALUE_BASE,
   outcome,
   line_value: line,
   score,
+  faixa,
 });
 
 const OVER_15 = ['defesas_vazaveis', 'ataque_combinado', 'xg_combinado_alto'];
@@ -121,9 +127,13 @@ describe('resumoDosMercados', () => {
     expect(r.value?.score).toBe(58);
   });
 
-  it('passa a régua pelo Score da própria saída', () => {
-    expect(gols(resumoDosMercados(rows, [value('Over', 1.5, 54)])).passa).toBe(true);
-    expect(gols(resumoDosMercados(rows, [value('Over', 1.5, 31)])).passa).toBe(false);
+  it('destaca pela faixa que o backend publicou, não por régua local', () => {
+    // A régua de 40 saiu na virada do Score de contexto (spec #301). Um Score
+    // baixo em faixa Média continua sendo destaque, e um Score alto em faixa
+    // Baixa não é: quem classifica é o backend.
+    expect(gols(resumoDosMercados(rows, [value('Over', 1.5, 54, 'Alta')])).passa).toBe(true);
+    expect(gols(resumoDosMercados(rows, [value('Over', 1.5, 31, 'Média')])).passa).toBe(true);
+    expect(gols(resumoDosMercados(rows, [value('Over', 1.5, 54, 'Baixa')])).passa).toBe(false);
   });
 });
 

@@ -14,10 +14,10 @@ import {
   premissaDe,
 } from '@/utils/futebol-premissas';
 import { evidenciaDe, ladoDaSaida, manchete } from '@/utils/futebol-evidencias';
-import { melhorLeitura, resumoDosMercados, REGUA_SCORE, type MercadoResumo } from '@/utils/futebol-leitura';
+import { melhorLeitura, resumoDosMercados, type MercadoResumo } from '@/utils/futebol-leitura';
 import { fmtDayShort, isFinished } from '@/utils/futebol-datas';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
-import { faixaWord } from '@/utils/futebol-score';
+import { ehDestaque, ehFaixaAlta, faixaWord } from '@/utils/futebol-score';
 
 /**
  * Aba RESUMO da tela de jogo (Protótipo 1b do Claude Design):
@@ -47,8 +47,9 @@ export interface JogoInfo {
 function scoreBadge(r: MercadoResumo): { texto: string; cls: string; style?: React.CSSProperties } {
   if (r.value) {
     const s = r.value.score;
-    if (s >= 60) return { texto: String(s), cls: 'bg-forest text-canvas border-forest' };
-    if (s >= REGUA_SCORE)
+    // Cor pela FAIXA que o backend publicou, não por número comparado aqui.
+    if (ehFaixaAlta(r.value.faixa)) return { texto: String(s), cls: 'bg-forest text-canvas border-forest' };
+    if (ehDestaque(r.value.faixa))
       return { texto: String(s), cls: '', style: { background: 'rgba(212,160,23,.15)', color: '#b8870f', border: '1px solid rgba(212,160,23,.4)' } };
     return { texto: String(s), cls: 'bg-canvas-2 text-ink-3 border-line' };
   }
@@ -261,15 +262,19 @@ export function JogoResumo({
   const ate = numeros?.[0]?.ate ?? null;
   const temValor = (valueRows?.length ?? 0) > 0;
 
-  const foraDaRegua = resumos.filter((r) => !r.passa).map((r) => r.mercado.label.toLowerCase());
+  // Só os mercados COTADOS têm faixa. `passa` também é verdadeiro por premissas
+  // num mercado sem odds, e juntar os dois faria a frase atribuir faixa a quem
+  // não tem preço coletado.
+  const cotados = resumos.filter((r) => r.value);
+  const emFaixaBaixa = cotados.filter((r) => !r.passa).map((r) => r.mercado.label.toLowerCase());
   const juntar = (arr: string[]) => (arr.length <= 1 ? arr[0] ?? '' : `${arr.slice(0, -1).join(', ')} e ${arr[arr.length - 1]}`);
   const nota = fim && retro
     ? retro
     : !temValor
       ? 'Sem preço coletado ainda: as odds entram perto do jogo, e com elas o Score fecha.'
-      : foraDaRegua.length
-        ? `${juntar(foraDaRegua)} ${foraDaRegua.length === 1 ? 'fica' : 'ficam'} abaixo da régua de ${REGUA_SCORE}, ${foraDaRegua.length === 1 ? 'entra' : 'entram'} como consulta.`
-        : `Os cinco mercados passam a régua de ${REGUA_SCORE} neste jogo.`;
+      : emFaixaBaixa.length
+        ? `${juntar(emFaixaBaixa)} ${emFaixaBaixa.length === 1 ? 'fica' : 'ficam'} em faixa baixa, ${emFaixaBaixa.length === 1 ? 'entra' : 'entram'} como consulta.`
+        : `${cotados.length === 1 ? 'O mercado cotado aparece' : `Os ${cotados.length} mercados cotados aparecem`} em faixa Alta ou Média neste jogo.`;
 
   if (isLoading) {
     return (
