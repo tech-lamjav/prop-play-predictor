@@ -1,4 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
+import {
+  normalizeFutebolFixtureValueRows,
+  normalizeFutebolValueBoardRows,
+  type FutebolScoreVersion,
+} from './futebol-score-contract';
 
 // As RPCs de futebol ainda não estão nos tipos gerados do Supabase (existem
 // só no dev, lendo BigQuery via FDW no schema bq_futebol). Cast pra any, mesmo
@@ -512,6 +517,7 @@ export interface FutebolValueBoardRow {
   n_casas: number;
   janela_usada: string;    // t15m | t1h | t24h
   prob_justa_fechamento: number; // "Chance" (prob justa devigada) 0..1
+  score_versao: FutebolScoreVersion;
   pts_valor: number;
   pts_premissas: number;
   pts_corroboracao: number;
@@ -565,6 +571,7 @@ export interface FutebolFixtureValueRow {
   n_casas: number;
   janela_usada: string;
   prob_justa_fechamento: number;
+  score_versao: FutebolScoreVersion;
   pts_valor: number;
   pts_premissas: number;
   pts_corroboracao: number;
@@ -867,7 +874,7 @@ export const futebolDataService = {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_value_board');
       if (error) throw error;
-      return (data || []) as FutebolValueBoardRow[];
+      return normalizeFutebolValueBoardRows(data || []);
     });
   },
 
@@ -896,7 +903,7 @@ export const futebolDataService = {
         p_to: to,
       });
       if (error) throw error;
-      return (data || []) as FutebolValueBoardRow[];
+      return normalizeFutebolValueBoardRows(data || []);
     });
   },
 
@@ -922,7 +929,7 @@ export const futebolDataService = {
         p_fixture_id: fixtureId,
       });
       if (error) throw error;
-      return (data || []) as FutebolFixtureValueRow[];
+      return normalizeFutebolFixtureValueRows(data || []);
     });
   },
 

@@ -31,6 +31,8 @@ const base = (over: Partial<FutebolValueBoardRow>): FutebolValueBoardRow => ({
   faixa: 'Média',
   evidencias: [],
   ...over,
+  score_versao: over.score_versao ?? 'legacy',
+  premissas_sem_dado: over.premissas_sem_dado ?? 0,
 });
 
 // "Melhor por jogo" (é o que a tela de Oportunidades exibe). Mistura de faixas
@@ -222,6 +224,8 @@ const vr = (over: Partial<FutebolFixtureValueRow>): FutebolFixtureValueRow => ({
   penalidades: 0, penalidades_globais_pts: 0, penalidades_especificas_pts: 0,
   score: 50, faixa: 'Média', modelo_api_concorda: true, linha_sharp_confirma: true,
   evidencias: [], avisos: [], contras: [], ...over,
+  score_versao: over.score_versao ?? 'legacy',
+  premissas_sem_dado: over.premissas_sem_dado ?? 0,
 });
 
 export const demoFixtureValueRows: FutebolFixtureValueRow[] = [
