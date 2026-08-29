@@ -162,20 +162,53 @@ export function fronteirasDoScore(versao: FutebolScoreVersion): { media: number;
 }
 
 /**
- * A versão que a tela deve assumir para um conjunto de linhas. Basta uma linha
- * no contrato novo para a leitura já ser a nova: o histórico continua trazendo
- * linhas legacy para sempre, e elas não podem prender a legenda no passado.
+ * A escala de uma janela da tela.
+ *
+ * `indefinida` cobre os dois casos em que não dá para afirmar um corte: a janela
+ * mistura as duas escalas (acontece no dia da virada, quando a foto do apito
+ * ainda é legacy e o board já é contexto_v1), ou não há linha nenhuma que
+ * declare a sua escala.
  */
-export function versaoPredominante(
+export type VersaoDaJanela = FutebolScoreVersion | 'indefinida';
+
+/**
+ * Só vota quem declara a escala. Linha sem o campo — a oportunidade registrada,
+ * que vem de uma tabela que nunca guardou versão — se abstém, em vez de contar
+ * como legacy: contando, quase todo dia teria uma e a legenda ficaria sem
+ * números para sempre, não só na virada.
+ */
+export function versaoDaJanela(
   linhas: readonly { score_versao?: FutebolScoreVersion }[],
-): FutebolScoreVersion {
-  return linhas.some((l) => l.score_versao === 'contexto_v1') ? 'contexto_v1' : 'legacy';
+): VersaoDaJanela {
+  let temLegacy = false;
+  let temContexto = false;
+  for (const l of linhas) {
+    if (l.score_versao === 'contexto_v1') temContexto = true;
+    else if (l.score_versao === 'legacy') temLegacy = true;
+  }
+  if (temContexto && !temLegacy) return 'contexto_v1';
+  if (temLegacy && !temContexto) return 'legacy';
+  return 'indefinida';
 }
 
-/** As três faixas, na ordem em que a legenda as apresenta. */
+/**
+ * As três faixas, na ordem em que a legenda as apresenta.
+ *
+ * Numa janela indefinida o selo sai: ou as duas escalas convivem e um número
+ * descreveria errado metade da lista, ou não há linha nenhuma declarando escala
+ * e o número seria chute. As três faixas seguem explicadas em palavras, que
+ * valem nos dois casos.
+ */
 export function opcoesDeFaixa(
-  versao: FutebolScoreVersion,
-): { tone: Faixa; rotulo: string; selo: string }[] {
+  versao: VersaoDaJanela,
+): { tone: Faixa; rotulo: string; selo: string | null }[] {
+  if (versao === 'indefinida') {
+    return [
+      { tone: 'alta', rotulo: 'Alta', selo: null },
+      { tone: 'media', rotulo: 'Média', selo: null },
+      { tone: 'baixa', rotulo: 'Baixa', selo: null },
+    ];
+  }
   const { media, alta } = fronteirasDoScore(versao);
   return [
     { tone: 'alta', rotulo: 'Alta', selo: `${alta}+` },
@@ -257,4 +290,45 @@ export function groupBoardByFixture(rows: FutebolValueBoardRow[]): BoardFixture[
     out.push({ fixtureId, best, all });
   }
   return out.sort((a, b) => b.best.score - a.best.score);
+}
+
+
+/**
+ * Ordem da faixa para ranquear a lista. Sem faixa vai para o fim: não dá para
+ * colocar numa banda a linha que não declara nenhuma.
+ */
+export function ordemDaFaixa(faixa: string | null | undefined): number {
+  if (faixa == null) return 3;
+  switch (faixaTone(faixa)) {
+    case 'alta': return 0;
+    case 'media': return 1;
+    default: return 2;
+  }
+}
+
+/**
+ * Ranqueia por FAIXA e só depois por Score.
+ *
+ * A ordenação era só pelo Score, e isso vira comparação entre escalas no dia da
+ * virada: um 46 legacy ao lado de um 46 de contexto não medem a mesma coisa. A
+ * faixa é comparável, porque cada escala tem a sua fronteira e as duas produzem
+ * as mesmas três palavras. Dentro da faixa o Score continua desempatando.
+ */
+export function compararOportunidades(
+  a: { faixa: string | null; score: number | null },
+  b: { faixa: string | null; score: number | null },
+): number {
+  // Sem Score vem primeiro: é a oportunidade registrada de antes da migration
+  // 091, que foi enviada no daily e portanto estava entre as melhores do dia —
+  // o número daquele instante é que não foi guardado. A promoção olha o Score, e
+  // não a faixa, para não empurrar ao topo uma linha que tem nota mas não tem
+  // banda declarada.
+  const aSemNota = a.score == null;
+  const bSemNota = b.score == null;
+  if (aSemNota !== bSemNota) return aSemNota ? -1 : 1;
+  if (aSemNota && bSemNota) return 0;
+
+  const porFaixa = ordemDaFaixa(a.faixa) - ordemDaFaixa(b.faixa);
+  if (porFaixa !== 0) return porFaixa;
+  return (b.score as number) - (a.score as number);
 }

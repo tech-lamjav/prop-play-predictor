@@ -16,7 +16,7 @@ import { competitionLabel, sortCompetitions, ALL_COMPETITIONS } from '@/utils/fu
 import {
   pickLabel, marketLabel, fmtEdgeScore,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
-  opcoesDeFaixa, passaNoFiltroDeFaixa, versaoPredominante, ehDestaque,
+  opcoesDeFaixa, passaNoFiltroDeFaixa, versaoDaJanela, ehDestaque, compararOportunidades,
   FAIXA_FILTRO_PADRAO, type FaixaFilter,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
@@ -41,11 +41,16 @@ const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
  * foram guardados. Ela continua sendo oportunidade do dia; só esses campos ficam
  * vazios. FutebolValueBoardRow é atribuível a isto (number → number | null).
  */
-type OppLike = Omit<FutebolValueBoardRow, 'score' | 'faixa' | 'edge' | 'prob_justa_fechamento'> & {
+type OppLike = Omit<FutebolValueBoardRow, 'score' | 'faixa' | 'edge' | 'prob_justa_fechamento' | 'score_versao'> & {
   score: number | null;
   faixa: string | null;
   edge: number | null;
   prob_justa_fechamento: number | null;
+  /**
+   * Ausente na oportunidade registrada: a tabela de picks nunca guardou versão,
+   * e carimbá-la de legacy faria a legenda achar que toda janela é mista.
+   */
+  score_versao?: FutebolValueBoardRow['score_versao'];
 };
 
 /**
@@ -82,7 +87,6 @@ function oppFromAlerted(a: FutebolAlertedPick, fx?: FutebolFixture): OppLike {
     avg_odd: Number(a.odds),
     n_casas: 0,
     janela_usada: a.janela_usada ?? '',
-    score_versao: 'legacy',
     pts_valor: 0,
     pts_premissas: 0,
     pts_corroboracao: 0,
@@ -500,12 +504,7 @@ export default function FutebolOportunidades() {
   // topo do ranking, então na hora do envio ela era das melhores do dia — o
   // número exato daquele instante é que não foi guardado.
   const realBestRows = useMemo(
-    () => [...filtered].sort((a, b) => {
-      if (a.score == null && b.score == null) return 0;
-      if (a.score == null) return -1;
-      if (b.score == null) return 1;
-      return b.score - a.score;
-    }),
+    () => [...filtered].sort(compararOportunidades),
     [filtered]
   );
   const bestRows: OppLike[] = isDemo ? demoFutebolBoard : realBestRows;
@@ -747,9 +746,11 @@ export default function FutebolOportunidades() {
             <ul className="mt-2 space-y-2 text-[12px] text-ink-2">
               {/* Os números saem de FAIXA_ALTA_MIN e FAIXA_MEDIA_MIN, em um
                   lugar só, para a legenda não voltar a divergir do backend. */}
-              {opcoesDeFaixa(versaoPredominante(dayRows)).map(({ tone, rotulo, selo }) => (
+              {opcoesDeFaixa(versaoDaJanela(dayRows)).map(({ tone, rotulo, selo }) => (
                 <li key={tone} className="flex items-center gap-2">
-                  <span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls(rotulo)}`}>{selo}</span>
+                  {/* Sem selo na janela mista: as duas escalas têm cortes
+                      diferentes, e um número descreveria errado metade da lista. */}
+                  {selo && <span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls(rotulo)}`}>{selo}</span>}
                   {tone === 'alta' ? 'Alta, cenário bem presente' : tone === 'media' ? 'Média, cenário parcial' : 'Baixa, pouco cenário a favor'}
                 </li>
               ))}

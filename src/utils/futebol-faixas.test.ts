@@ -11,7 +11,6 @@ import {
   fronteirasDoScore,
   opcoesDeFaixa,
   passaNoFiltroDeFaixa,
-  versaoPredominante,
 } from './futebol-score';
 
 // ============================================================================
@@ -42,15 +41,6 @@ describe('fronteiras da faixa', () => {
     expect(fronteirasDoScore('legacy')).toEqual({ media: 40, alta: 60 });
     expect(fronteirasDoScore('contexto_v1')).toEqual({ media: 25, alta: 55 });
     expect(opcoesDeFaixa('legacy').map((o) => o.selo)).toEqual(['60+', '40+', '<40']);
-  });
-
-  it('basta uma linha no contrato novo para a leitura ser a nova', () => {
-    // O histórico traz linhas legacy para sempre; elas não podem prender a
-    // legenda na escala antiga depois da virada.
-    expect(versaoPredominante([])).toBe('legacy');
-    expect(versaoPredominante([{ score_versao: 'legacy' }])).toBe('legacy');
-    expect(versaoPredominante([{ score_versao: 'legacy' }, { score_versao: 'contexto_v1' }]))
-      .toBe('contexto_v1');
   });
 });
 
