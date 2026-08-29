@@ -96,6 +96,22 @@ export interface FutebolFixtureReasonItem {
 }
 
 /**
+ * Desde quando cada saída está publicada, por oportunidade
+ * (RPC get_futebol_fixture_disponivel_desde, issue #300).
+ *
+ * É o início da disponibilidade CONTÍNUA ATUAL: uma rejeição seguida de
+ * reativação reinicia o relógio. Vem `null` quando a chave já existia antes de
+ * o snapshot estrear, porque ali o horário dataria a estreia e não a
+ * publicação — melhor vazio que inventado.
+ */
+export interface FutebolFixtureDisponibilidade {
+  market: string;
+  outcome: string;
+  line_value: number | null;
+  disponivel_desde: string | null;
+}
+
+/**
  * Motivos de qualquer saída cotada da Bancada (RPC get_futebol_fixture_reason_contract).
  * A separação favor/contra é autoridade do backend; não derive o lado pelo slug.
  *
@@ -695,6 +711,17 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolFixtureReasonContractRow[];
+    });
+  },
+
+  /** Desde quando cada saída está publicada (issue #300). */
+  async getFixtureDisponibilidade(fixtureId: number): Promise<FutebolFixtureDisponibilidade[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_disponivel_desde', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureDisponibilidade[];
     });
   },
 
