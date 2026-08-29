@@ -1,4 +1,5 @@
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import { ehDestaque } from '@/utils/futebol-score';
 import type { Saida } from '@/utils/futebol-saida';
 import {
   MERCADOS,
@@ -113,13 +114,13 @@ export interface MercadoResumo {
   /** Linha de valor real (odds), quando coletada. */
   value: FutebolFixtureValueRow | null;
   /**
-   * Passa a régua? Com odds, régua de Score (40). Sem odds, a porta de contexto
-   * (2+ premissas) — que é o que existe para afirmar.
+   * Destaque na leitura. Com odds, quem decide é a FAIXA publicada pelo
+   * backend: a régua local de 40 saiu na virada do Score de contexto (spec
+   * #301), porque era calibrada para a fórmula antiga e classificaria errado a
+   * escala nova. Sem odds, continua a porta de contexto (2+ premissas).
    */
   passa: boolean;
 }
-
-export const REGUA_SCORE = 40;
 
 export function resumoDosMercados(
   rows: FutebolFixturePremissas[] | null | undefined,
@@ -147,7 +148,7 @@ export function resumoDosMercados(
       (p) => p.peso == null || p.peso > 0,
     ).length;
     const value = comPreco?.value ?? null;
-    const passa = value ? value.score >= REGUA_SCORE : nValem >= PORTA_PREMISSAS;
+    const passa = value ? ehDestaque(value.faixa) : nValem >= PORTA_PREMISSAS;
     return [{ mercado: m, candidato: c, nValem, totalQueValem, value, passa }];
   });
 }

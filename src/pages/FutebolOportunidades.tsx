@@ -15,7 +15,9 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore,
-  faixaBadgeCls, faixaWord, faixaTone, chancePct, SCORE_MEDIA,
+  faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
+  opcoesDeFaixa, passaNoFiltroDeFaixa, versaoPredominante, ehDestaque,
+  FAIXA_FILTRO_PADRAO, type FaixaFilter,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { mergeBoardAndHistory, opportunityKey } from '@/utils/futebol-history';
@@ -125,7 +127,6 @@ const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
 type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
-type FaixaFilter = 'all' | 'alta' | 'media';
 type CompFilter = string; // 'all' | slug da competição (data-driven)
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -251,7 +252,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
       </div>
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{chance != null ? `${chance}%` : '—'}</Blur></div>
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{o.best_odd.toFixed(2)}</Blur></div>
-      <div className="text-right tabular-nums text-[14px] font-bold text-forest"><Blur active={showLock}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</Blur></div>
+      <div className={`text-right tabular-nums text-[14px] font-bold ${edgeToneCls(o.edge)}`}><Blur active={showLock}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</Blur></div>
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
     </button>
   );
@@ -340,7 +341,7 @@ export default function FutebolOportunidades() {
   const isDemo = oppTour.run; // durante o tour, preenche a tela com exemplo
   const locked = isDemo ? false : !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
-  const [faixa, setFaixa] = useState<FaixaFilter>('all');
+  const [faixa, setFaixa] = useState<FaixaFilter>(FAIXA_FILTRO_PADRAO);
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
 
@@ -458,7 +459,13 @@ export default function FutebolOportunidades() {
     return s;
   }, [allRows, selectedDay, registradasAll]);
 
-  const faixaOptions = [{ value: 'all', label: 'Todas' }, { value: 'alta', label: 'Alta' }, { value: 'media', label: 'Média' }];
+  const faixaOptions = [
+    { value: 'destaque', label: 'Alta e Média' },
+    { value: 'alta', label: 'Alta' },
+    { value: 'media', label: 'Média' },
+    { value: 'baixa', label: 'Baixa' },
+    { value: 'all', label: 'Todas' },
+  ];
   const compOptions = [
     { value: 'all', label: 'Todas' },
     ...sortCompetitions([...compsOnDay]).map((c) => ({ value: c, label: competitionLabel(c) })),
@@ -481,7 +488,7 @@ export default function FutebolOportunidades() {
     () => dayRows.filter((r) => {
       if (mercado !== 'all' && r.market !== mercado) return false;
       // Sem faixa não dá pra classificar, então o filtro de faixa a esconde.
-      if (faixa !== 'all' && (r.faixa == null || faixaTone(r.faixa) !== faixa)) return false;
+      if (!passaNoFiltroDeFaixa(faixa, r.faixa)) return false;
       if (comp !== 'all' && r.competition !== comp) return false;
       return true;
     }),
@@ -502,16 +509,20 @@ export default function FutebolOportunidades() {
     [filtered]
   );
   const bestRows: OppLike[] = isDemo ? demoFutebolBoard : realBestRows;
-  // Registro sem Score conta como com valor: foi enviado acima do corte.
-  //
-  // Não existe o "sem valor claro" como contraparte, e não é esquecimento: o
-  // gate do mart é score >= 40 e o SCORE_MEDIA também é 40, então a lista de
-  // score < 40 era sempre vazia. A seção inteira era código morto e saiu junto
-  // com este PR (achado do Matheus, 17/08, encaminhado para a [E]).
-  const comValor = bestRows.filter((o) => o.score == null || o.score >= SCORE_MEDIA);
-  const nAlta = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'alta').length;
-  const nMedia = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
-  const nBaixa = bestRows.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;
+  // A lista mostra o que o backend publicou. O corte local por número de Score
+  // saiu na virada do Score de contexto (spec #301): a régua era calibrada para
+  // a fórmula antiga e aplicá-la à escala nova classificaria errado.
+  const comValor = bestRows;
+  // A distribuição descreve o DIA, e por isso sai de dayRows e não de bestRows:
+  // contar sobre a lista já filtrada faria o resumo dizer "Baixa 0" sempre que o
+  // filtro escondesse a faixa Baixa, que é justamente o padrão.
+  // Quantas o dia tem e o filtro escondeu. Serve ao estado vazio: sem isto ele
+  // diz "não há oportunidade nesse dia" quando o que houve foi um filtro.
+  const escondidasPeloFiltro = (isDemo ? demoFutebolBoard.length : dayRows.length) - bestRows.length;
+  const distribuicao = isDemo ? demoFutebolBoard : dayRows;
+  const nAlta = distribuicao.filter((o) => faixaTone(o.faixa ?? '') === 'alta' && o.faixa != null).length;
+  const nMedia = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
+  const nBaixa = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;
 
   // Contagem de oportunidades COM VALOR por dia (badge do stepper).
   const countByDay = useMemo(() => {
@@ -523,7 +534,9 @@ export default function FutebolOportunidades() {
       byDay.get(d)!.push(r);
     });
     const out: Record<string, number> = {};
-    byDay.forEach((rs, d) => { out[d] = rs.filter((o) => o.score >= SCORE_MEDIA).length; });
+    // Conta o mesmo recorte que a lista abre por padrão (Alta e Média), senão o
+    // selo promete um número que a tela não mostra ao ser aberta.
+    byDay.forEach((rs, d) => { out[d] = rs.filter((o) => ehDestaque(o.faixa)).length; });
     // Registrada que o board não tem entra na conta, senão dia que só tem
     // registro apareceria zerado no seletor.
     registradasAll.forEach((a) => {
@@ -593,7 +606,14 @@ export default function FutebolOportunidades() {
               </>
             ) : (
               <>
-                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{comValor.length} aposta{comValor.length === 1 ? '' : 's'} com valor</h1>
+                {/* O título não afirma "com valor" quando a pessoa pediu para
+                    ver a faixa Baixa: ali ela está olhando o que o cenário NÃO
+                    sustenta, e chamar aquilo de aposta com valor contradiz a
+                    própria legenda. */}
+                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
+                  {comValor.length} {comValor.length === 1 ? 'oportunidade' : 'oportunidades'}
+                  {faixa === 'baixa' ? ' em faixa baixa' : faixa === 'all' ? '' : ' com valor'}
+                </h1>
                 <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Onde a odd paga acima da chance estimada · em ordem de confiança'}</p>
               </>
             )}
@@ -649,13 +669,19 @@ export default function FutebolOportunidades() {
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
         ) : (isPastDay ? comValor.length === 0 : bestRows.length === 0) ? (
           <div className="rounded-rebrand-md bg-white border border-line p-6 text-center">
+            {/* Quando o dia TEM oportunidade e a lista está vazia, quem esvaziou
+                foi o filtro. Culpar o dado nesse caso manda a pessoa embora de
+                uma tela que só precisava de um clique em Todas. */}
             <p className="text-sm text-ink-2">
-              {isPastDay ? 'Nenhuma oportunidade com valor nesse dia.'
+              {escondidasPeloFiltro > 0 ? 'Nenhuma oportunidade nesse filtro.'
+                : isPastDay ? 'Nenhuma oportunidade com valor nesse dia.'
                 : isFutureDay ? 'Ainda sem oportunidades para este dia.'
                 : 'Nenhum jogo com odds nesse filtro.'}
             </p>
             <p className="text-xs text-ink-3 mt-1">
-              {isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
+              {escondidasPeloFiltro > 0
+                ? `Este dia tem ${escondidasPeloFiltro} ${escondidasPeloFiltro === 1 ? 'oportunidade' : 'oportunidades'} em outra faixa ou mercado. Troque o filtro para ver.`
+                : isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
                 : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
                 : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
             </p>
@@ -713,15 +739,20 @@ export default function FutebolOportunidades() {
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Como ler o Score</div>
             <p className="text-[12px] text-ink-2 mt-2 leading-relaxed">
-              O <b className="text-ink">Score (0–100)</b> mostra o quanto a oportunidade é <b className="text-ink">confiável</b>, não a chance de acerto. Ele junta quatro coisas: o tamanho do valor (o quanto a odd paga acima do risco real), o cenário do jogo (ataque, defesa, mando, forma…), se a odd não é exagerada (nem zebra, nem mixaria) e se as principais casas vêm concordando com esse lado. Por isso uma "zebra" com valor alto bancada por uma casa só fica com score baixo.
+              O <b className="text-ink">Score (0–100)</b> mede <b className="text-ink">quanto do cenário favorável está presente</b> nessa linha: ataque, defesa, mando, forma, histórico do confronto. Ele não mede chance de acerto e não olha o preço. A odd e a diferença para o preço justo aparecem ao lado, separadas, porque preço e cenário são duas leituras diferentes e misturá-las esconde as duas.
             </p>
           </div>
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Faixas</div>
             <ul className="mt-2 space-y-2 text-[12px] text-ink-2">
-              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Alta')}`}>60+</span> Alta, oportunidade de destaque</li>
-              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Média')}`}>40+</span> Média, vale acompanhar</li>
-              <li className="flex items-center gap-2"><span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls('Baixa')}`}>&lt;40</span> Baixa, não sinaliza</li>
+              {/* Os números saem de FAIXA_ALTA_MIN e FAIXA_MEDIA_MIN, em um
+                  lugar só, para a legenda não voltar a divergir do backend. */}
+              {opcoesDeFaixa(versaoPredominante(dayRows)).map(({ tone, rotulo, selo }) => (
+                <li key={tone} className="flex items-center gap-2">
+                  <span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls(rotulo)}`}>{selo}</span>
+                  {tone === 'alta' ? 'Alta, cenário bem presente' : tone === 'media' ? 'Média, cenário parcial' : 'Baixa, pouco cenário a favor'}
+                </li>
+              ))}
             </ul>
             <p className="text-[10px] text-ink-3 mt-3 leading-snug">
               Odds pré-jogo (não ao vivo). Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance; outros entram conforme liberados.

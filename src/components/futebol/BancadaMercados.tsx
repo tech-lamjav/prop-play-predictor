@@ -29,7 +29,8 @@ import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
-import { valueDoCandidato, resumoDosMercados, mesmaLinha, REGUA_SCORE, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { valueDoCandidato, resumoDosMercados, mesmaLinha, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
@@ -498,9 +499,9 @@ export function BancadaMercados({
       return r ? `O mapa apontava ${lbl}: ${resultBadge(r).label.toLowerCase()}.` : `Jogo encerrado.`;
     }
     if (valPrincipal) {
-      if (valPrincipal.score >= 60) return `O jogo e o preço concordam: ${lbl} é onde este jogo paga.`;
-      if (valPrincipal.score >= REGUA_SCORE) return `${lbl} passa a régua, em faixa média: leitura razoável e algum valor.`;
-      return `Abaixo da régua de ${REGUA_SCORE}: ${lbl} entra como consulta, não como aposta.`;
+      if (ehFaixaAlta(valPrincipal.faixa)) return `O cenário do jogo está bem a favor de ${lbl}.`;
+      if (ehDestaque(valPrincipal.faixa)) return `${lbl} tem parte do cenário a favor: leitura parcial.`;
+      return `Pouco do cenário sustenta ${lbl}: entra como consulta, não como aposta.`;
     }
     if (cotacaoPrincipal.estado === 'cotada') {
       return `${lbl} tem cotação, mas ficou fora dos filtros de oportunidade.`;
@@ -590,7 +591,7 @@ export function BancadaMercados({
           chave: o.outcome,
           rotulo: outcomeLabel(o, jogo.home, jogo.away),
           ativa: o.outcome === (saida ?? candidatoInicialDoMercado?.outcome),
-          passa: val ? val.score >= REGUA_SCORE : n >= PORTA_PREMISSAS,
+          passa: val ? ehDestaque(val.faixa) : n >= PORTA_PREMISSAS,
           res: placar ? settleFutebol(o, placar.home, placar.away) : null,
           escolher: () => setSaida(o.outcome),
         };
@@ -620,8 +621,11 @@ export function BancadaMercados({
             Os 5 mercados
           </div>
           <div className="mt-1 text-[11.5px] leading-relaxed" style={{ color: '#6b6350' }}>
+            {/* A frase conta só os mercados COTADOS. `passa` também é verdadeiro
+                para mercado sem odds, pela porta de premissas, e contar os dois
+                juntos afirmaria uma faixa para quem não tem faixa nenhuma. */}
             {resumos.some((r) => r.value)
-              ? `${resumos.filter((r) => r.passa).length} de ${resumos.length} passam a régua de ${REGUA_SCORE}. A barra é o Score; o tracinho é a régua.`
+              ? `${resumos.filter((r) => r.value && r.passa).length} de ${resumos.filter((r) => r.value).length} mercados cotados em faixa Alta ou Média. A barra é o Score; o tracinho marca onde começa a faixa Alta.`
               : mercadosCotados > 0
                 ? `${mercadosCotados} de ${resumos.length} mercados têm cotação. Os demais continuam analisados pelas premissas.`
               : `Sem preço ainda: a barra conta as premissas e o tracinho é a porta de ${PORTA_PREMISSAS}.`}
@@ -644,8 +648,11 @@ export function BancadaMercados({
             const candidataCotada = leituraCotacao.estado === 'cotada';
             const s = temScore ? r.value!.score : r.nValem;
             const larg = temScore ? `${s}%` : `${Math.min(100, (r.nValem / Math.max(r.totalQueValem, 1)) * 100)}%`;
-            const regua = temScore ? `${REGUA_SCORE}%` : `${(PORTA_PREMISSAS / Math.max(r.totalQueValem, 1)) * 100}%`;
-            const cor = on ? '#fbbf24' : r.passa ? (temScore && s >= 60 ? '#0a3d2e' : '#d4a017') : '#c4bda8';
+            // O tracinho marca onde começa a faixa Alta NA ESCALA daquela linha.
+            const regua = temScore
+              ? `${fronteirasDoScore(r.value!.score_versao).alta}%`
+              : `${(PORTA_PREMISSAS / Math.max(r.totalQueValem, 1)) * 100}%`;
+            const cor = on ? '#fbbf24' : r.passa ? (temScore && ehFaixaAlta(r.value!.faixa) ? '#0a3d2e' : '#d4a017') : '#c4bda8';
             const pick = outcomeLabel(r.candidato, jogo.home, jogo.away);
             return (
               <button
@@ -798,7 +805,7 @@ export function BancadaMercados({
                 </div>
                 <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
                   {valPrincipal
-                    ? `Score · ${valPrincipal.score >= 60 ? 'faixa alta' : valPrincipal.score >= REGUA_SCORE ? 'faixa média' : 'abaixo da régua'}`
+                    ? `Score · ${rotuloDaFaixa(valPrincipal.faixa)}`
                     : 'premissas a favor'}
                 </div>
               </div>

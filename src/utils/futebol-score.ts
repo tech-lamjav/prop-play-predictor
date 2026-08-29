@@ -8,6 +8,7 @@ import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 // Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance.
 // ============================================================
 import type { FutebolFixtureValueRow, FutebolValueBoardRow } from '@/services/futebol-data.service';
+import type { FutebolScoreVersion } from '@/services/futebol-score-contract';
 
 export type Faixa = 'alta' | 'media' | 'baixa';
 
@@ -135,9 +136,107 @@ export function bestOf(rows: FutebolFixtureValueRow[]): FutebolFixtureValueRow |
   return rows.reduce<FutebolFixtureValueRow | null>((b, r) => (b == null || r.score > b.score ? r : b), null);
 }
 
-/** Limiares de faixa (espelham o backend). */
-export const SCORE_ALTA = 60;
-export const SCORE_MEDIA = 40;
+/**
+ * Fronteiras do Score de contexto (spec #301). As duas pertencem à faixa de
+ * cima: 25 é Média, 55 é Alta.
+ *
+ * Elas existem aqui para a LEGENDA declarar o número certo, e para mais nada.
+ * Quem classifica é o backend: a faixa chega pronta na resposta, e o front que
+ * recalcula é o front que discorda da metodologia sem saber.
+ */
+export const FAIXA_MEDIA_MIN = 25;
+export const FAIXA_ALTA_MIN = 55;
+
+/**
+ * As fronteiras da escala em que a nota foi calculada.
+ *
+ * Durante a janela da virada o board ainda chega em `legacy`, e anunciar 55+ ao
+ * lado de uma nota legacy de 57 classificaria errado na cara do usuário: ela é
+ * Média naquela escala. A versão não aparece na tela, mas decide o número que
+ * a legenda mostra.
+ */
+export function fronteirasDoScore(versao: FutebolScoreVersion): { media: number; alta: number } {
+  return versao === 'contexto_v1'
+    ? { media: FAIXA_MEDIA_MIN, alta: FAIXA_ALTA_MIN }
+    : { media: 40, alta: 60 };
+}
+
+/**
+ * A versão que a tela deve assumir para um conjunto de linhas. Basta uma linha
+ * no contrato novo para a leitura já ser a nova: o histórico continua trazendo
+ * linhas legacy para sempre, e elas não podem prender a legenda no passado.
+ */
+export function versaoPredominante(
+  linhas: readonly { score_versao?: FutebolScoreVersion }[],
+): FutebolScoreVersion {
+  return linhas.some((l) => l.score_versao === 'contexto_v1') ? 'contexto_v1' : 'legacy';
+}
+
+/** As três faixas, na ordem em que a legenda as apresenta. */
+export function opcoesDeFaixa(
+  versao: FutebolScoreVersion,
+): { tone: Faixa; rotulo: string; selo: string }[] {
+  const { media, alta } = fronteirasDoScore(versao);
+  return [
+    { tone: 'alta', rotulo: 'Alta', selo: `${alta}+` },
+    { tone: 'media', rotulo: 'Média', selo: `${media}+` },
+    { tone: 'baixa', rotulo: 'Baixa', selo: `<${media}` },
+  ];
+}
+
+/**
+ * O filtro de faixa do painel. `destaque` é o padrão e mostra Alta e Média;
+ * Baixa e Todas continuam a um toque de distância.
+ */
+export type FaixaFilter = 'destaque' | 'alta' | 'media' | 'baixa' | 'all';
+
+export const FAIXA_FILTRO_PADRAO: FaixaFilter = 'destaque';
+
+export function passaNoFiltroDeFaixa(filtro: FaixaFilter, faixa: string | null | undefined): boolean {
+  if (filtro === 'all') return true;
+  // Sem faixa guardada é a oportunidade REGISTRADA de antes da migration 091:
+  // ela foi enviada no daily, ou seja, estava acima do corte no dia. Esconder do
+  // padrão apagaria da lista uma oportunidade que existiu de verdade, então ela
+  // conta como destaque. O que não dá é afirmar QUAL faixa era, e por isso ela
+  // fica fora dos filtros específicos.
+  if (faixa == null) return filtro === 'destaque';
+  const tone = faixaTone(faixa);
+  if (filtro === 'destaque') return tone !== 'baixa';
+  return tone === filtro;
+}
+
+/**
+ * Cor da diferença para o preço justo. Positivo em verde; zero ou negativo em
+ * cor neutra, nunca em vermelho: a diferença é informação, e um preço abaixo do
+ * justo não é erro da leitura nem desvantagem a ser anunciada.
+ */
+export function edgeToneCls(edge: number | null | undefined): string {
+  return typeof edge === 'number' && edge > 0 ? 'text-forest' : 'text-ink-2';
+}
+
+/**
+ * A faixa em palavras, para o selo do Score. Existia em três cópias, cada uma
+ * comparando o número contra 60 e 40 por conta própria — e era esse trio que
+ * classificaria errado assim que a escala mudasse.
+ */
+export function rotuloDaFaixa(faixa: string | null | undefined): string {
+  if (faixa == null) return 'sem faixa';
+  switch (faixaTone(faixa)) {
+    case 'alta': return 'faixa alta';
+    case 'media': return 'faixa média';
+    default: return 'faixa baixa';
+  }
+}
+
+/** A linha está na faixa de destaque do painel (Alta ou Média). */
+export function ehDestaque(faixa: string | null | undefined): boolean {
+  return faixa != null && faixaTone(faixa) !== 'baixa';
+}
+
+/** A linha está na faixa Alta. */
+export function ehFaixaAlta(faixa: string | null | undefined): boolean {
+  return faixa != null && faixaTone(faixa) === 'alta';
+}
 
 // Board: melhor oportunidade por fixture.
 export interface BoardFixture {

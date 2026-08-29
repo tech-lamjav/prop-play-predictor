@@ -1,7 +1,6 @@
 import { Crest } from './Crest';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
-import { chancePct, marketShort, pickLabel } from '@/utils/futebol-score';
-import { REGUA_SCORE } from '@/utils/futebol-leitura';
+import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -48,7 +47,7 @@ export function FixtureRow({
       venceu ? 'font-bold text-ink' : perdeu ? 'font-medium text-ink-3' : 'font-semibold text-ink'
     }`;
 
-  const alto = !!best && best.score >= 60;
+  const alto = ehFaixaAlta(best?.faixa);
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;
 
   // Jogo encerrado não precisa mais do Score, que é uma previsão: o que importa
@@ -128,7 +127,7 @@ export function FixtureRow({
                 : { borderRadius: 11, background: '#fbe3e8', border: '1px solid #f0c2cc', color: '#be123c' }
               : alto
                 ? { borderRadius: 11, background: '#0a3d2e', color: '#fff' }
-                : best.score >= REGUA_SCORE
+                : ehDestaque(best.faixa)
                   ? { borderRadius: 11, background: '#fdf3d9', border: '1px solid #eccf85', color: '#b8870f' }
                   : { borderRadius: 11, background: '#f4eddc', color: '#8d8672' }
         }
