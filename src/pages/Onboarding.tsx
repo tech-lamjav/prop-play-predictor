@@ -10,6 +10,8 @@ import {
   Check,
   Loader2,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   Image as ImageIcon,
   Flame,
@@ -190,6 +192,16 @@ function BetinhoCarousel() {
     emblaApi?.scrollTo(i);
     play();
   };
+  // As setas reiniciam pelo mesmo motivo: quem navegou na mão não quer o
+  // carrossel pulando sozinho meio segundo depois.
+  const anterior = () => {
+    emblaApi?.scrollPrev();
+    play();
+  };
+  const proximo = () => {
+    emblaApi?.scrollNext();
+    play();
+  };
 
   return (
     <div className="w-full max-w-[380px]">
@@ -207,16 +219,39 @@ function BetinhoCarousel() {
         {SLIDES[selected]?.label}
       </p>
 
-      <div className="mt-2 flex justify-center gap-2">
-        {SLIDES.map((s, i) => (
-          <button
-            key={s.key}
-            type="button"
-            aria-label={`Ir para o slide ${i + 1}`}
-            onClick={() => goTo(i)}
-            className={`h-2 rounded-full transition-all ${i === selected ? 'w-6 bg-amber' : 'w-2 bg-white/30'}`}
-          />
-        ))}
+      {/* As setas ficam na mesma linha dos pontos, e não sobrepostas ao card:
+          ali elas não cobrem o conteúdo do slide nem competem com o CTA, e no
+          celular continuam alcançáveis pelo polegar. */}
+      <div className="mt-2 flex items-center justify-center gap-4">
+        <button
+          type="button"
+          aria-label="Slide anterior"
+          onClick={anterior}
+          className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          {SLIDES.map((s, i) => (
+            <button
+              key={s.key}
+              type="button"
+              aria-label={`Ir para o slide ${i + 1}`}
+              onClick={() => goTo(i)}
+              className={`h-2 rounded-full transition-all ${i === selected ? 'w-6 bg-amber' : 'w-2 bg-white/30'}`}
+            />
+          ))}
+        </div>
+
+        <button
+          type="button"
+          aria-label="Próximo slide"
+          onClick={proximo}
+          className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );

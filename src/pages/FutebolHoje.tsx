@@ -4,40 +4,36 @@ import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolFixtureValue, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
+import { AjudaCampo } from '@/components/futebol/AjudaCampo';
+import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD, TEXTO_VALOR } from '@/utils/futebol-ajuda-copy';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
 import {
-  pickLabel, marketLabel, fmtEdgeScore, freqEmDez, groupBoardByFixture,
-  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque,
+  pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
+  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, versaoDaJanela,
 } from '@/utils/futebol-score';
-import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUTEBOL_TOUR_ID, makeFutebolSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFutebolBoard, demoFutebolFixtures } from '@/components/onboarding/demo/futebol';
-
-const SAO_PAULO_TZ = 'America/Sao_Paulo';
+// Aritmética de fuso vem de um lugar só. As cópias locais que existiam aqui
+// eram idênticas às de futebol-datas.ts, e duas cópias da mesma conta de fuso é
+// como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
+import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished } from '@/utils/futebol-datas';
+import { mergeBoardAndHistory } from '@/utils/futebol-history';
+import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
+import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
+import { ladoDaSaida } from '@/utils/futebol-evidencias';
+import { premissaDe, rotuloPremissa } from '@/utils/futebol-premissas';
+import { useNow } from '@/hooks/use-now';
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
 const DAY_WINDOW = 8;
 
-function parseUtc(raw: string | null): Date | null {
-  if (!raw) return null;
-  const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
-  const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
-  return isNaN(d.getTime()) ? null : d;
-}
-function brtDateStr(d: Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: SAO_PAULO_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
-}
-function fmtTime(raw: string | null): string {
-  const d = parseUtc(raw);
-  if (!d) return '';
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' }).format(d);
-}
 function fmtDayTime(raw: string | null): string {
   const d = parseUtc(raw);
   if (!d) return '—';
@@ -48,9 +44,6 @@ function fmtTodayHeader(d: Date): string {
   const s = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'long' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-function isFinished(s: string | null): boolean {
-  return s === 'FT' || s === 'AET' || s === 'PEN';
-}
 function crestInitials(name: string): string {
   return name.replace(/[^A-Za-zÀ-ÿ\s]/g, '').trim().slice(0, 3).toUpperCase() || '?';
 }
@@ -60,6 +53,9 @@ function Crest({ teamId, name, size = 24 }: { teamId: number; name: string; size
   if (logo && !err) return <img src={logo} alt={name} onError={() => setErr(true)} style={{ width: size, height: size }} className="object-contain shrink-0" loading="lazy" />;
   return <div style={{ width: size, height: size }} className="rounded-full bg-canvas-2 border border-line grid place-items-center text-[9px] font-bold text-ink-2 shrink-0">{crestInitials(name)}</div>;
 }
+
+/** Um motivo do contrato, com o slug preservado para servir de chave. */
+type Motivo = { slug: string; texto: string };
 
 const CARD = 'bg-white border border-line rounded-rebrand-md';
 const LABEL = 'text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3';
@@ -79,11 +75,13 @@ function Kpi({ label, value, sub, tone = 'ink', anchor }: { label: string; value
 }
 
 // Número do hero (Chance / Odd / Se paga em / Valor)
-function HeroStat({ label, value, dark, locked }: { label: string; value: string; dark?: boolean; locked?: boolean }) {
+function HeroStat({ label, value, dark, locked, ajuda }: { label: string; value: string; dark?: boolean; locked?: boolean; ajuda?: string }) {
   return (
     <div>
       <div className="text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.5)' : undefined }}>
-        <span className={dark ? '' : 'text-ink-3'}>{label}</span>
+        {ajuda
+          ? <AjudaCampo rotulo={label} titulo={label} texto={ajuda} escuro={dark} />
+          : <span className={dark ? '' : 'text-ink-3'}>{label}</span>}
       </div>
       <div className={`text-[20px] font-bold tabular-nums leading-none mt-1 ${dark ? '' : 'text-ink'}`}><Blur active={!!locked}>{value}</Blur></div>
     </div>
@@ -92,14 +90,14 @@ function HeroStat({ label, value, dark, locked }: { label: string; value: string
 
 // ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
-function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow; onClick: () => void; atencao?: string | null; locked?: boolean }) {
+function TopValueHero({ o, onClick, favor, contra, textoScore, locked }: { o: FutebolValueBoardRow; onClick: () => void; favor: Motivo[]; contra: Motivo[]; textoScore: string; locked?: boolean }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
   const porque = chance != null
     ? <>O mercado dá <b className={d ? 'text-white' : 'text-ink'}>~{chance}% de chance</b>; na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b> isso paga acima do risco real — é aí que está o valor.</>
-    : <>Na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b>, se paga se acontecer ~{freqEmDez(o.best_odd)} em cada 10 vezes ou mais — e a leitura do jogo aponta nessa direção.</>;
+    : <>Na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b>, a aposta se paga a partir de <b className={d ? 'text-white' : 'text-ink'}>{Math.round(100 / o.best_odd)}%</b> de acerto — e a leitura do jogo aponta nessa direção.</>;
 
   return (
     <div className={`rounded-2xl overflow-hidden relative ${d ? 'text-white' : 'bg-white border border-line border-l-4 border-l-amber'}`}
@@ -115,11 +113,16 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
           </span>
           <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
           <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}><Blur active={!!locked} strength={9}>{pick}</Blur></div>
-          <div className={`flex items-center gap-1.5 text-[13px] mt-2 ${d ? 'text-white/70' : 'text-ink-2'}`}>
-            <Crest teamId={o.home_team_id} name={o.home_team_name} size={18} />
-            <span>{o.home_team_name} × {o.away_team_name}</span>
-            <Crest teamId={o.away_team_id} name={o.away_team_name} size={18} />
-            <span className="opacity-70">· {fmtDayTime(o.kickoff_utc)}</span>
+          {/* No celular a data desce para a própria linha. Tudo numa fileira só,
+              os nomes quebravam no meio e o escudo do visitante ficava órfão
+              entre 'Bournemouth ×' e 'Everton'. No desktop cabe e segue inline. */}
+          <div className={`text-[13px] mt-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-1.5 ${d ? 'text-white/70' : 'text-ink-2'}`}>
+            <span className="flex items-center gap-1.5">
+              <Crest teamId={o.home_team_id} name={o.home_team_name} size={18} />
+              <span>{o.home_team_name} × {o.away_team_name}</span>
+              <Crest teamId={o.away_team_id} name={o.away_team_name} size={18} />
+            </span>
+            <span className="opacity-70"><span className="hidden sm:inline">· </span>{fmtDayTime(o.kickoff_utc)}</span>
           </div>
           <button onClick={onClick} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
@@ -127,31 +130,56 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
           </button>
         </div>
 
-        {/* Meio — por quê + ponto de atenção */}
-        <div className="md:col-span-5 flex flex-col">
-          <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
-          <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}><Blur active={!!locked}>{porque}</Blur></p>
-          {ev && (
-            <p className={`flex items-start gap-1.5 text-[12px] mt-3 ${d ? 'text-white/80' : 'text-ink-2'}`}>
-              <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${d ? 'text-emerald-300' : 'text-status-success'}`} /><span>{ev}</span>
-            </p>
+        {/* Meio — o que sustenta e o que pesa contra.
+
+            Antes era uma frase sobre chance e odd. Ela repetia os números da
+            coluna da direita e não dava argumento nenhum: as premissas do jogo
+            é que explicam a leitura, e são elas que a tela de detalhe mostra.
+            Vêm do mesmo contrato do backend, então as duas telas concordam. */}
+        <div className="md:col-span-5 flex flex-col gap-4">
+          {favor.length > 0 && (
+            <div>
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>A favor</div>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {favor.map((m) => (
+                  <li key={m.slug} className={`flex items-start gap-2 text-[14px] leading-snug ${d ? 'text-white/90' : 'text-ink'}`}>
+                    <Check className={`w-4 h-4 mt-0.5 shrink-0 ${d ? 'text-emerald-300' : 'text-status-success'}`} />
+                    <span><Blur active={!!locked}>{m.texto}</Blur></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-          {atencao && (
-            <div className="mt-4 rounded-lg p-3 flex items-start gap-2"
-              style={d ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' } : { background: '#fef7df', border: '1px solid #fde68a' }}>
-              <span style={{ color: d ? '#fde68a' : '#9a6c00' }} className="mt-0.5 shrink-0"><AlertTriangle className="w-3.5 h-3.5" /></span>
-              <div className={`text-[12px] leading-relaxed ${d ? 'text-white/80' : ''}`} style={d ? undefined : { color: '#5a3c00' }}>
-                <span className="font-semibold" style={{ color: d ? '#fde68a' : '#9a6c00' }}>Ponto de atenção · </span>{atencao}
-              </div>
+
+          {contra.length > 0 && (
+            <div>
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Contra</div>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {contra.map((m) => (
+                  <li key={m.slug} className={`flex items-start gap-2 text-[14px] leading-snug ${d ? 'text-white/70' : 'text-ink-2'}`}>
+                    <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${d ? '' : 'text-amber-2'}`} style={d ? { color: '#fde68a' } : undefined} />
+                    <span><Blur active={!!locked}>{m.texto}</Blur></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {favor.length === 0 && contra.length === 0 && (
+            <div>
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
+              <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}><Blur active={!!locked}>{porque}</Blur></p>
             </div>
           )}
         </div>
 
-        {/* Direita — confiabilidade + números */}
-        <div className={`md:col-span-3 flex flex-col justify-between md:pl-6 ${d ? '' : 'md:border-l md:border-line'}`}
-          style={d ? { borderLeft: '1px solid rgba(255,255,255,0.1)' } : undefined}>
+        {/* Direita — Score + números */}
+        {/* A divisória é do layout de DUAS colunas. No celular elas viram uma
+            pilha, e a borda sobrava como um risco solto ao lado do Score. Ela
+            era estilo inline, que não aceita breakpoint — virou classe md:. */}
+        <div className={`md:col-span-3 flex flex-col justify-between md:pl-6 md:border-l ${d ? 'md:border-white/10' : 'md:border-line'}`}>
           <div>
-            <div className={`text-[10px] uppercase tracking-[0.16em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Confiabilidade</div>
+            <AjudaCampo rotulo="Score" titulo="Score" texto={textoScore} escuro={d} />
             <div className="flex items-baseline gap-1.5 mt-1">
               <span className={`text-[56px] md:text-[64px] font-bold tabular-nums leading-none ${d ? '' : 'text-amber-2'}`} style={d ? { color: '#fbbf24' } : undefined}>{o.score}</span>
               <span className={`text-[16px] ${d ? 'text-white/40' : 'text-ink-3'}`}>/100</span>
@@ -160,11 +188,13 @@ function TopValueHero({ o, onClick, atencao, locked }: { o: FutebolValueBoardRow
               style={d ? { background: 'rgba(220,239,226,0.15)', color: '#dcefe2' } : undefined}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />Faixa {faixaWord(o.faixa)}
             </span>
-            <div className="grid grid-cols-2 gap-x-5 gap-y-3 mt-5">
-              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} locked={locked} />}
-              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} locked={locked} />
-              <HeroStat label="Se paga em" value={`~${freqEmDez(o.best_odd)}/10`} dark={d} locked={locked} />
-              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} locked={locked} />
+            {/* Os três numa linha só: eles são a mesma leitura — a chance
+                estimada, o preço e a diferença entre os dois — e lidos em
+                sequência dizem mais do que empilhados. */}
+            <div className="grid grid-cols-3 gap-x-3 gap-y-3 mt-5">
+              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} locked={locked} ajuda={TEXTO_CHANCE} />}
+              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} locked={locked} ajuda={TEXTO_ODD} />
+              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} locked={locked} ajuda={TEXTO_VALOR} />
             </div>
           </div>
         </div>
@@ -242,46 +272,101 @@ export default function FutebolHoje() {
   const navigate = useNavigate();
   // Todas as ligas do mart (data-driven), não mais um allowlist de 3.
   const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
-  const { data: valueRows, isLoading: l3 } = useFutebolValueBoard();
+  const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
+  const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
+  const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
+  // UM instante para a tela inteira, e ele anda: o seletor de dias e o corte de
+  // "já começou" têm que concordar sobre que horas são.
+  const agora = useNow();
   const { data: access } = useFutebolAccess();
-  const loading = lFix || l3;
+  const loading = lFix || l3 || lHist || lReg;
   const futebolTour = useOnboardingTour(FUTEBOL_TOUR_ID, { enabled: !loading });
   const isDemo = futebolTour.run; // durante o tour, preenche a tela com exemplo
   const locked = isDemo ? false : !access?.unlocked;
 
-  const todayStr = brtDateStr(new Date());
+  const todayStr = brtDateStr(new Date(agora));
   const [day, setDay] = useState<string | null>(null);
 
   // dias (BRT) com jogos ainda não começados — base da navegação por dias.
   // Limita aos próximos dias (não varre a temporada inteira do Brasileirão).
   const days = useMemo(() => {
-    const now = Date.now();
+    const now = agora;
+    const hoje = brtDateStr(new Date(now));
     const set = new Set<string>();
     allGames.forEach((f) => {
       const d = parseUtc(f.kickoff_utc || f.date_utc);
       const t = d?.getTime();
-      if (d && t != null && t > now && !isFinished(f.status_short)) set.add(brtDateStr(d));
+      if (!d || t == null) return;
+      const dia = brtDateStr(d);
+      // HOJE fica no seletor o dia inteiro, mesmo depois de o último jogo entrar
+      // em campo. Antes o dia só entrava se tivesse jogo por começar, e por volta
+      // das 21h — quando o último começa — hoje sumia da lista e a tela pulava
+      // sozinha para amanhã, com quem estava lendo junto.
+      if (dia === hoje || (t > now && !isFinished(f.status_short))) set.add(dia);
     });
     return [...set].sort().slice(0, DAY_WINDOW);
-  }, [allGames]);
+  }, [allGames, agora]);
   const selectedDay = (day && days.includes(day)) ? day : (days.includes(todayStr) ? todayStr : days[0] ?? todayStr);
   const selectedDate = new Date(`${selectedDay}T12:00:00Z`);
   const isToday = selectedDay === todayStr;
 
   // oportunidades (value rows) do dia selecionado, ainda não começadas. O Score já
   // vem pronto do backend (fact_value_opportunities); aqui só filtramos e ranqueamos.
-  const dayRows = useMemo(() => {
-    if (!valueRows?.length) return [];
-    const now = Date.now();
-    return valueRows.filter((r) => {
-      const d = parseUtc(r.kickoff_utc);
-      const t = d?.getTime();
-      return d != null && t! > now && brtDateStr(d) === selectedDay && !isFinished(r.status_short);
-    });
-  }, [valueRows, selectedDay]);
+  // TODAS as oportunidades do dia, tenham os jogos começado ou não. Esta tela é
+  // o retrato do dia, e antes ela escondia o que já tinha entrado em campo: numa
+  // noite de sábado com sete oportunidades publicadas, mostrava zero.
+  //
+  // Quem quiser só o que ainda dá para acompanhar tem o filtro na tela de
+  // Oportunidades.
+  // MESMA fonte da tela de Oportunidades, de propósito: as duas telas falam da
+  // mesma lista, e divergir aqui seria o produto contando duas histórias.
+  // A regra da fusão vive em futebol-history.ts, testada.
+  //
+  // O que mudou foi tirar o corte de "só jogo que ainda não começou", que era
+  // exclusivo desta tela: ele zerava a home toda noite, num dia que teve
+  // oportunidades. Quem quer só o que dá para acompanhar tem o filtro no painel.
+  const valueRows = useMemo(
+    () => mergeBoardAndHistory(boardRows ?? [], histRows ?? [], agora),
+    [boardRows, histRows, agora],
+  );
+  // As oportunidades REGISTRADAS entram aqui pelo mesmo motivo que entram no
+  // painel: elas existiram no dia e o board não as tem mais, porque o mart é
+  // full-refresh. Sem elas a home mostrava três num dia de seis, e as duas telas
+  // contavam histórias diferentes do mesmo dia.
+  const registradasAll = useMemo(
+    () => (alertedRaw ?? []).filter((a) => !!a.market && !!a.outcome),
+    [alertedRaw],
+  );
+  const fixturePorId = useMemo(() => {
+    const m = new Map<number, FutebolFixture>();
+    (allGames ?? []).forEach((f) => m.set(f.fixture_id, f));
+    return m;
+  }, [allGames]);
+
+  const dayRows = useMemo<OppLike[]>(
+    () => oportunidadesDoDia({
+      doBoard: valueRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay),
+      registradas: registradasAll,
+      dia: selectedDay,
+      fixturePorId,
+    }),
+    [valueRows, selectedDay, registradasAll, fixturePorId],
+  );
+
+  // Os blocos visuais precisam de Score e faixa para existir. A oportunidade
+  // registrada ANTES da migration 091 não guardou esses números, então ela conta
+  // no total do dia — que é o que o painel também conta — mas não vira card com
+  // número inventado.
+  const comNumeros = useMemo(
+    () => dayRows.filter(
+      (r): r is FutebolValueBoardRow =>
+        r.score != null && r.faixa != null && r.edge != null && r.prob_justa_fechamento != null,
+    ),
+    [dayRows],
+  );
 
   // melhor oportunidade por jogo, ordenado por Score
-  const board = useMemo(() => groupBoardByFixture(dayRows), [dayRows]);
+  const board = useMemo(() => groupBoardByFixture(comNumeros), [comNumeros]);
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
     if (isDemo) { demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r)); return m; }
@@ -299,21 +384,48 @@ export default function FutebolHoje() {
       .sort((a, b) => (parseUtc(a.kickoff_utc)?.getTime() ?? 0) - (parseUtc(b.kickoff_utc)?.getTime() ?? 0));
   }, [allGames, selectedDay]);
 
-  const realOppsByFixture = useMemo(() => board.map((bf) => bf.best), [board]);
-  const oppsByFixture = isDemo ? demoFutebolBoard : realOppsByFixture;
+  // Uma linha por OPORTUNIDADE, não por jogo. Colapsar por jogo escondia a
+  // segunda linha do mesmo confronto — num dia com duas oportunidades no
+  // Bournemouth × Everton, a lista mostrava uma e sumia com a outra. A grade de
+  // jogos ao lado continua com uma linha por partida, que é o papel dela.
+  const realOpps = useMemo(
+    () => [...comNumeros].sort((a, b) => compararOportunidades(a, b)),
+    [comNumeros],
+  );
+  const oppsByFixture = isDemo ? demoFutebolBoard : realOpps;
   // O destaque é a primeira em faixa Alta ou Média, e não necessariamente a de
   // maior Score: faixa não é função pura do Score, porque as portas de odd por
   // mercado podem deixar a linha mais bem pontuada fora do destaque. Testar só a
   // posição zero fazia o bloco sumir num dia que tinha destaque.
   const heroOpp = oppsByFixture.find((o) => ehDestaque(o.faixa)) ?? null;
-  // "Ponto de atenção" do hero: vem do detalhe (contras/avisos) do jogo em destaque
-  const { data: heroRows } = useFutebolFixtureValue(heroOpp?.fixture_id);
-  const heroAtencao = useMemo(() => {
-    if (!heroOpp || !heroRows?.length) return null;
-    const row = heroRows.find((r) => r.market === heroOpp.market && r.outcome === heroOpp.outcome && (r.line_value ?? null) === (heroOpp.line_value ?? null));
-    const list = row ? [...(row.contras ?? []), ...(row.avisos ?? [])] : [];
-    return list[0] ?? null;
-  }, [heroOpp, heroRows]);
+  // A favor e Contra do destaque, do MESMO contrato que a tela de detalhe usa.
+  // O backend decide o grupo de cada motivo; aqui só se traduz o slug pelo
+  // catálogo e se corta a lista no que cabe no card.
+  const { data: contratoMotivos } = useFutebolFixtureReasonContract(heroOpp?.fixture_id);
+  const { favor: heroFavor, contra: heroContra } = useMemo(() => {
+    const vazio = { favor: [] as Motivo[], contra: [] as Motivo[] };
+    if (!heroOpp || !contratoMotivos?.length) return vazio;
+    const linha = contratoMotivos.find(
+      (r) => r.market === heroOpp.market && r.outcome === heroOpp.outcome
+        && (r.line_value ?? null) === (heroOpp.line_value ?? null),
+    );
+    if (!linha) return vazio;
+    const lado = ladoDaSaida(heroOpp.market, heroOpp.outcome);
+    const traduzir = (itens: typeof linha.favor, negativo: boolean) =>
+      separarMotivosDoContrato(itens)
+        .slugsDePremissas.map((slug) => ({ slug, prem: premissaDe(heroOpp.market, slug) }))
+        .filter((x): x is { slug: string; prem: NonNullable<typeof x.prem> } => x.prem != null)
+        .map(({ slug, prem }) => ({ slug, texto: rotuloPremissa(prem, lado, negativo) }));
+    return {
+      // Três e duas: o card tem altura fixa e a leitura tem que caber de relance.
+      favor: traduzir(linha.favor, false).slice(0, 3),
+      contra: traduzir(linha.contra, true).slice(0, 2),
+    };
+  }, [heroOpp, contratoMotivos]);
+  // A escala da janela, e não a da linha: a registrada não declara versão.
+  const textoScore = textoDoScore(
+    versaoDaJanela(dayRows) === 'contexto_v1' ? 'contexto_v1' : 'legacy',
+  );
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoFutebolBoard.length : dayRows.length;
   const gameList = isDemo ? demoFutebolFixtures : dayGames;
@@ -384,7 +496,7 @@ export default function FutebolHoje() {
         {loading ? (
           <Skeleton className="h-64 w-full bg-canvas-2 rounded-2xl" />
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} atencao={heroAtencao} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} locked={locked} />
+          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} textoScore={textoScore} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} locked={locked} />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
