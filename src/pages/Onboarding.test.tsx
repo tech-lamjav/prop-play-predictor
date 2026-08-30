@@ -59,6 +59,15 @@ describe('Onboarding', { timeout: 20_000 }, () => {
     expect(screen.getByRole('button', { name: /Conectar meu Telegram/i })).toBeInTheDocument();
   });
 
+  it('o carrossel tem seta para os dois lados, além dos pontos', async () => {
+    // Sem elas, quem quer rever um slide precisa esperar o autoplay dar a volta.
+    renderOnboarding();
+
+    expect(await screen.findByRole('button', { name: 'Slide anterior' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Próximo slide' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ir para o slide 1' })).toBeInTheDocument();
+  });
+
   it('sem origem, mantém o onboarding genérico', async () => {
     renderOnboarding();
 

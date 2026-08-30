@@ -2696,7 +2696,14 @@ AS $function$
         partition by h.opportunity_key order by h.dbt_valid_from
       ) as fim_da_anterior
     from futebol.fact_value_opportunities_hist h
+    join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
+    -- Só versões anteriores ao apito. O mart é full-refresh e continua
+    -- reescrevendo o jogo depois de encerrado — medido: 97% das versões nascem
+    -- DEPOIS do apito, em média 668h depois. Sem este corte, uma chave fechada
+    -- e reaberta no dia seguinte faria a tela dizer "disponível desde" um
+    -- horário posterior ao fim da partida.
     where h.fixture_id = p_fixture_id
+      and h.dbt_valid_from < fx.kickoff_utc
   ), ilhas as (
     select
       v.*,

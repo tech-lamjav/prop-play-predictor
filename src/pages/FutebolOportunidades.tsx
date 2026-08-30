@@ -20,8 +20,9 @@ import {
   FAIXA_FILTRO_PADRAO, type FaixaFilter,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
-import { mergeBoardAndHistory, opportunityKey } from '@/utils/futebol-history';
-import { parseUtc, brtDayOf, brtDateStr, fmtTime } from '@/utils/futebol-datas';
+import { mergeBoardAndHistory } from '@/utils/futebol-history';
+import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
+import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed } from '@/utils/futebol-datas';
 import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
 import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
@@ -32,76 +33,6 @@ import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
 
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
-
-/**
- * Linha da lista. O board (mart) sempre traz Score, faixa, chance e valor; uma
- * oportunidade REGISTRADA (que existiu no dia e o board não tem mais, porque o
- * mart é full-refresh e re-escolhe a janela de odds) pode não ter esses números
- * do instante em que era oportunidade — nas enviadas antes da migration 091 não
- * foram guardados. Ela continua sendo oportunidade do dia; só esses campos ficam
- * vazios. FutebolValueBoardRow é atribuível a isto (number → number | null).
- */
-type OppLike = Omit<FutebolValueBoardRow, 'score' | 'faixa' | 'edge' | 'prob_justa_fechamento' | 'score_versao'> & {
-  score: number | null;
-  faixa: string | null;
-  edge: number | null;
-  prob_justa_fechamento: number | null;
-  /**
-   * Ausente na oportunidade registrada: a tabela de picks nunca guardou versão,
-   * e carimbá-la de legacy faria a legenda achar que toda janela é mista.
-   */
-  score_versao?: FutebolValueBoardRow['score_versao'];
-};
-
-/**
- * Chave de uma oportunidade — casa board, histórico e registro do que foi
- * enviado. Reexportada de `futebol-history.ts` com a forma que esta tela usa
- * (argumentos soltos em vez de objeto): eram duas funções produzindo string
- * byte a byte idêntica, e duas chaves que "por acaso" batem é o tipo de coisa
- * que só quebra depois que alguém mexe numa delas.
- */
-const oppKey = (fixtureId: number, market: string | null, outcome: string | null, line: number | null) =>
-  opportunityKey({ fixture_id: fixtureId, market, outcome, line_value: line });
-
-/**
- * Monta a linha de uma oportunidade registrada (enviada no daily) com os valores
- * do momento do envio. Sem fixture casado, cai pro "Casa × Fora" do registro:
- * é melhor manter a oportunidade na lista sem escudo do que perder o registro.
- */
-function oppFromAlerted(a: FutebolAlertedPick, fx?: FutebolFixture): OppLike {
-  const [rawHome, rawAway] = a.match_description.split('×');
-  return {
-    fixture_id: a.fixture_id,
-    home_team_id: fx?.home_team_id ?? 0,
-    away_team_id: fx?.away_team_id ?? 0,
-    home_team_name: fx?.home_team_name ?? (rawHome?.trim() || 'Casa'),
-    away_team_name: fx?.away_team_name ?? (rawAway?.trim() || 'Fora'),
-    competition: a.league ?? '',
-    kickoff_utc: fx?.kickoff_utc ?? null,
-    status_short: fx?.status_short ?? null,
-    market: a.market!,
-    outcome: a.outcome!,
-    line_value: a.line_value,
-    best_odd: Number(a.odds),
-    best_book: '',
-    avg_odd: Number(a.odds),
-    n_casas: 0,
-    janela_usada: a.janela_usada ?? '',
-    pts_valor: 0,
-    pts_premissas: 0,
-    pts_corroboracao: 0,
-    penalidades: 0,
-    evidencias: [],
-    premissas_sem_dado: 0,
-    // Números do instante em que era oportunidade. Null nas enviadas antes da
-    // migration 091 (o pipeline sobrescreve a janela e destrói chance/valor/Score
-    // da manhã); daí em diante vêm preenchidos e a linha fica igual à do board.
-    score: a.score,
-    faixa: a.faixa,
-    edge: a.edge,
-    prob_justa_fechamento: a.prob_justa_fechamento,
-  };
-}
 
 // O `kickoffMs`, o `brtDayStr` e o `TODAY_BRT` que moravam aqui eram cópia
 // literal do que `futebol-datas.ts` já exporta como `parseUtc`, `brtDayOf` e
@@ -346,6 +277,10 @@ export default function FutebolOportunidades() {
   const locked = isDemo ? false : !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
   const [faixa, setFaixa] = useState<FaixaFilter>(FAIXA_FILTRO_PADRAO);
+  // Desligado por padrão: a lista é o retrato do dia, e esconder o que já entrou
+  // em campo apagaria metade dele numa noite de sábado. Quem está caçando aposta
+  // agora liga e vê só o que dá para acompanhar.
+  const [soEmAberto, setSoEmAberto] = useState(false);
   const [comp, setComp] = useState<CompFilter>('all');
   const [day, setDay] = useState<string | null>(null);
 
@@ -478,15 +413,15 @@ export default function FutebolOportunidades() {
   // Lista do dia = board + oportunidades registradas que o board não tem mais.
   // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde
   // veio o número, não de natureza.
-  const dayRows = useMemo<OppLike[]>(() => {
-    const board: OppLike[] = allRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay);
-    const noBoard = new Set(board.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)));
-    const registradas = registradasAll
-      .filter((a) => a.game_day === selectedDay)
-      .filter((a) => !noBoard.has(oppKey(a.fixture_id, a.market, a.outcome, a.line_value)))
-      .map((a) => oppFromAlerted(a, fixtureMap.get(a.fixture_id)));
-    return [...board, ...registradas];
-  }, [allRows, selectedDay, registradasAll, fixtureMap]);
+  const dayRows = useMemo<OppLike[]>(
+    () => oportunidadesDoDia({
+      doBoard: allRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay),
+      registradas: registradasAll,
+      dia: selectedDay,
+      fixturePorId: fixtureMap,
+    }),
+    [allRows, selectedDay, registradasAll, fixtureMap],
+  );
 
   const filtered = useMemo(
     () => dayRows.filter((r) => {
@@ -494,9 +429,18 @@ export default function FutebolOportunidades() {
       // Sem faixa não dá pra classificar, então o filtro de faixa a esconde.
       if (!passaNoFiltroDeFaixa(faixa, r.faixa)) return false;
       if (comp !== 'all' && r.competition !== comp) return false;
+      // Em aberto = o apito inicial ainda não soou. O status vem depois, e às
+      // vezes atrasado, então quem manda é o relógio (ver futebol-datas.ts).
+      if (
+        soEmAberto &&
+        (r.kickoff_utc == null ||
+          hasKickoffPassed(r.kickoff_utc, new Date(agora)) ||
+          FINISHED_STATUS.has(r.status_short ?? ''))
+      )
+        return false;
       return true;
     }),
-    [dayRows, mercado, faixa, comp]
+    [dayRows, mercado, faixa, comp, soEmAberto, agora]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
@@ -659,6 +603,20 @@ export default function FutebolOportunidades() {
           {/* `flex-wrap`: os dois filtros somam ~294px e não cabem lado a lado
               abaixo de ~340px. Sem isso a linha `shrink-0` estourava a página. */}
           <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
+            {/* Chip em vez de mais um dropdown: é liga-desliga, e o estado tem
+                que ser legível sem abrir nada. */}
+            <button
+              type="button"
+              aria-pressed={soEmAberto}
+              onClick={() => setSoEmAberto((v) => !v)}
+              className={`h-9 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0 ${
+                soEmAberto
+                  ? 'bg-forest text-canvas border-forest'
+                  : 'bg-white text-ink-2 border-line hover:bg-canvas-2 hover:text-ink'
+              }`}
+            >
+              Só jogos em aberto
+            </button>
             <FilterSelect label="Faixa" value={faixa} options={faixaOptions} onChange={(v) => setFaixa(v as FaixaFilter)} />
             <FilterSelect label="Competição" value={comp} options={compOptions} onChange={(v) => setComp(v as CompFilter)} />
           </div>
@@ -679,7 +637,7 @@ export default function FutebolOportunidades() {
             </p>
             <p className="text-xs text-ink-3 mt-1">
               {escondidasPeloFiltro > 0
-                ? `Este dia tem ${escondidasPeloFiltro} ${escondidasPeloFiltro === 1 ? 'oportunidade' : 'oportunidades'} em outra faixa ou mercado. Troque o filtro para ver.`
+                ? `Este dia tem ${escondidasPeloFiltro} ${escondidasPeloFiltro === 1 ? 'oportunidade' : 'oportunidades'}${soEmAberto ? ' de jogos que já começaram ou em outro filtro. Desligue "Só jogos em aberto" para ver.' : ' em outra faixa ou mercado. Troque o filtro para ver.'}`
                 : isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
                 : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
                 : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}

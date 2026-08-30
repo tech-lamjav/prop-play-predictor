@@ -39,3 +39,6 @@ CLAUDE.md
 /*.jpeg
 /*.webp
 .playwright-mcp/
+
+# Cache do tsc --noEmit; muda a cada checagem local.
+*.tsbuildinfo
