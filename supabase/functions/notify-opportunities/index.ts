@@ -30,6 +30,7 @@ import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { ehFaixaPublicavel } from "../shared/faixa.ts";
+import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
 import { logMessageRun } from "../shared/runs.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -207,9 +208,14 @@ serve(async (req) => {
     const { data: board, error: bErr } = await supabase.rpc("get_futebol_value_board");
     if (bErr) throw bErr;
 
+    // 1b) a vitrine — MESMA fonte que o painel lê (migration 116). Sem isto o
+    // alerta vaza: o painel esconde o mercado e a DM continua mandando.
+    const mercadosOcultos = await carregarMercadosOcultos(supabase);
+
     const now = new Date();
     const today = brtDay(now);
-    const todayRows = ((board ?? []) as BoardRow[]).filter((r) => {
+    const naVitrine = filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos);
+    const todayRows = naVitrine.filter((r) => {
       const k = kickoffDate(r.kickoff_utc);
       return k.getTime() > now.getTime() && brtDay(k) === today && ehFaixaPublicavel(r.faixa);
     });

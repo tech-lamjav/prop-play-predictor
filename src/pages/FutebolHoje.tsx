@@ -4,7 +4,7 @@ import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useFutebolMercadosOcultos } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
@@ -26,6 +26,7 @@ import { demoFutebolBoard, demoFutebolFixtures } from '@/components/onboarding/d
 // como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
 import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
+import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
@@ -331,17 +332,26 @@ export default function FutebolHoje() {
   // O que mudou foi tirar o corte de "só jogo que ainda não começou", que era
   // exclusivo desta tela: ele zerava a home toda noite, num dia que teve
   // oportunidades. Quem quer só o que dá para acompanhar tem o filtro no painel.
+  // A vitrine (#324). O board já vem filtrado do service, mas a fusão reabre o
+  // dia corrente pela linha do histórico, que não é filtrado de propósito.
+  const { data: mercadosOcultos } = useFutebolMercadosOcultos();
+  const ocultos = useMemo(() => mercadosOcultos ?? [], [mercadosOcultos]);
   const valueRows = useMemo(
-    () => mergeBoardAndHistory(boardRows ?? [], histRows ?? [], agora),
-    [boardRows, histRows, agora],
+    () => mergeBoardAndHistory(boardRows ?? [], histRows ?? [], agora, ocultos),
+    [boardRows, histRows, agora, ocultos],
   );
   // As oportunidades REGISTRADAS entram aqui pelo mesmo motivo que entram no
   // painel: elas existiram no dia e o board não as tem mais, porque o mart é
   // full-refresh. Sem elas a home mostrava três num dia de seis, e as duas telas
   // contavam histórias diferentes do mesmo dia.
+  // A home mostra o dia corrente, então aqui a vitrine (#324) vale sem exceção:
+  // não há linha de dia passado a preservar como registro.
   const registradasAll = useMemo(
-    () => (alertedRaw ?? []).filter((a) => !!a.market && !!a.outcome),
-    [alertedRaw],
+    () =>
+      (alertedRaw ?? []).filter(
+        (a) => !!a.market && !!a.outcome && !mercadoEstaOculto(a.market, ocultos),
+      ),
+    [alertedRaw, ocultos],
   );
   const fixturePorId = useMemo(() => {
     const m = new Map<number, FutebolFixture>();

@@ -4,6 +4,14 @@ import {
   normalizeFutebolValueBoardRows,
   type FutebolScoreVersion,
 } from './futebol-score-contract';
+import { filtrarMercadosOcultos } from '@/utils/futebol-mercados-ocultos';
+
+// A vitrine muda por UPDATE no banco, não por release, então a lista não pode
+// ser lida uma vez e congelada pela vida da aba. Cinco minutos é curto o
+// bastante para devolver um mercado sem pedir refresh, e longo o bastante para
+// não somar uma chamada a cada carga do board.
+const MERCADOS_OCULTOS_TTL_MS = 5 * 60 * 1000;
+let mercadosOcultosCache: { valor: string[]; expiraEm: number } | null = null;
 
 // As RPCs de futebol ainda não estão nos tipos gerados do Supabase (existem
 // só no dev, lendo BigQuery via FDW no schema bq_futebol). Cast pra any, mesmo
@@ -894,11 +902,44 @@ export const futebolDataService = {
     });
   },
 
+  /**
+   * Os mercados que estão fora da VITRINE — não fora do board.
+   *
+   * A lista vem do banco (migration 116) e não de constante, porque devolver um
+   * mercado à tela tem de ser um UPDATE e não um release, e porque o Telegram
+   * roda em outro runtime e precisa ler a MESMA fonte.
+   *
+   * ⚠️ Falha em silêncio, de propósito. O `withRetry` trata "função não existe"
+   * como erro definitivo, então um front publicado antes da migration mataria o
+   * board inteiro por causa de uma leitura de configuração. Sem a lista o
+   * comportamento é o de hoje — nada escondido —, que é degradação e não
+   * regressão. Ver prop-play-predictor#324.
+   */
+  async getMercadosOcultos(): Promise<string[]> {
+    const agora = Date.now();
+    if (mercadosOcultosCache && agora < mercadosOcultosCache.expiraEm) {
+      return mercadosOcultosCache.valor;
+    }
+    try {
+      const { data, error } = await supabaseClient.rpc('get_futebol_mercados_ocultos');
+      if (error) throw error;
+      const valor = (data || []) as string[];
+      mercadosOcultosCache = { valor, expiraEm: agora + MERCADOS_OCULTOS_TTL_MS };
+      return valor;
+    } catch {
+      // Sem cache válido e sem resposta: nada escondido, board vivo.
+      return mercadosOcultosCache?.valor ?? [];
+    }
+  },
+
   async getValueBoard(): Promise<FutebolValueBoardRow[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_value_board');
+      const [{ data, error }, ocultos] = await Promise.all([
+        supabaseClient.rpc('get_futebol_value_board'),
+        this.getMercadosOcultos(),
+      ]);
       if (error) throw error;
-      return normalizeFutebolValueBoardRows(data || []);
+      return filtrarMercadosOcultos(normalizeFutebolValueBoardRows(data || []), ocultos);
     });
   },
 
@@ -919,6 +960,12 @@ export const futebolDataService = {
    * colunas na mesma ordem, então a tela não precisa saber de onde veio a linha.
    *
    * Datas em `YYYY-MM-DD`, dia BRT, inclusivas nas duas pontas.
+   *
+   * ⚠️ NÃO aplica `filtrarMercadosOcultos`, e isso é decisão, não esquecimento.
+   * O histórico é o registro do que foi PUBLICADO e visto: até o Handicap sair
+   * da vitrine ele apareceu na tela, e o assinante pode ter apostado nele.
+   * Escondê-lo aqui reescreveria o passado dele e mudaria a performance exibida.
+   * Ver prop-play-predictor#324.
    */
   async getValueHistory(from: string, to: string): Promise<FutebolValueBoardRow[]> {
     return withRetry(async () => {
@@ -949,11 +996,12 @@ export const futebolDataService = {
 
   async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValueRow[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_value', {
-        p_fixture_id: fixtureId,
-      });
+      const [{ data, error }, ocultos] = await Promise.all([
+        supabaseClient.rpc('get_futebol_fixture_value', { p_fixture_id: fixtureId }),
+        this.getMercadosOcultos(),
+      ]);
       if (error) throw error;
-      return normalizeFutebolFixtureValueRows(data || []);
+      return filtrarMercadosOcultos(normalizeFutebolFixtureValueRows(data || []), ocultos);
     });
   },
 

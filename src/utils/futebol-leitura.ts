@@ -1,4 +1,5 @@
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { ehDestaque } from '@/utils/futebol-score';
 import type { Saida } from '@/utils/futebol-saida';
 import {
@@ -126,9 +127,13 @@ export function resumoDosMercados(
   rows: FutebolFixturePremissas[] | null | undefined,
   valueRows: FutebolFixtureValueRow[] | null | undefined,
   preferida?: SaidaPreferida | null,
+  // Os mercados fora da vitrine (#324). A prateleira do detalhe sai do CATÁLOGO
+  // e não do board, então filtrar as linhas do board não bastava: o mercado
+  // escondido continuava como chip, com barra de Score e sem odd.
+  ocultos: readonly string[] = [],
 ): MercadoResumo[] {
   if (!rows?.length) return [];
-  return MERCADOS.flatMap((m) => {
+  return filtrarCatalogoDeMercados(MERCADOS, ocultos).flatMap((m) => {
     // Com preço coletado quem representa o mercado é a saída do melhor Score; sem
     // preço, a saída com mais premissas. Rótulo e números na MESMA saída, sempre.
     //
