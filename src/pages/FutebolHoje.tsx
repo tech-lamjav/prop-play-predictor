@@ -270,8 +270,14 @@ function GameRailRow({ f, best, onClick }: { f: FutebolFixture & { competition?:
 
 export default function FutebolHoje() {
   const navigate = useNavigate();
-  // Todas as ligas do mart (data-driven), não mais um allowlist de 3.
-  const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
+  // Todas as ligas do mart (data-driven), não mais um allowlist de 3. Aqui a
+  // temporada segue única de propósito: esta tela só olha o dia corrente, então
+  // não tem a virada de temporada que o histórico de Oportunidades enfrenta.
+  const fixtureScopes = useMemo(
+    () => ALL_COMPETITIONS.map((competition) => ({ competition, season: 2026 })),
+    [],
+  );
+  const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();

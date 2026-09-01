@@ -33,4 +33,19 @@ describe('FutebolDayStepper', () => {
       behavior: 'auto',
     }));
   });
+
+  it('mantém o atalho Hoje dentro da régua rolável sem alargar a página', () => {
+    const { container } = render(
+      <FutebolDayStepper
+        days={['2026-08-25', '2026-08-26', '2026-08-27']}
+        value="2026-08-25"
+        onChange={vi.fn()}
+      />,
+    );
+
+    const previous = container.querySelector('button[aria-label="Dia anterior"]');
+    const rail = previous?.nextElementSibling;
+
+    expect(rail).toHaveClass('min-w-0', 'flex-1');
+  });
 });

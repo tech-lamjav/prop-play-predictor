@@ -199,9 +199,11 @@ export function versaoDaJanela(
  * e o número seria chute. As três faixas seguem explicadas em palavras, que
  * valem nos dois casos.
  */
+export type OpcaoDeFaixa = { tone: Faixa; rotulo: string; selo: string | null };
+
 export function opcoesDeFaixa(
   versao: VersaoDaJanela,
-): { tone: Faixa; rotulo: string; selo: string | null }[] {
+): OpcaoDeFaixa[] {
   if (versao === 'indefinida') {
     return [
       { tone: 'alta', rotulo: 'Alta', selo: null },
@@ -217,25 +219,27 @@ export function opcoesDeFaixa(
   ];
 }
 
+/** Seleção múltipla da tela de oportunidades: começa nas faixas publicáveis. */
+export const FAIXAS_FILTRO_PADRAO: readonly Faixa[] = ['alta', 'media'];
+
 /**
- * O filtro de faixa do painel. `destaque` é o padrão e mostra Alta e Média;
- * Baixa e Todas continuam a um toque de distância.
+ * O filtro de faixa do painel, em seleção múltipla.
+ *
+ * Sem faixa guardada é a oportunidade REGISTRADA de antes da migration 091:
+ * ela foi enviada no daily, ou seja, estava acima do corte no dia. Esconder do
+ * padrão apagaria da lista uma oportunidade que existiu de verdade, então ela
+ * entra sempre que Alta E Média estão as duas selecionadas — aí a lista não
+ * afirma qual das duas ela era. Basta uma delas ficar de fora e a seleção passa
+ * a afirmar uma faixa: com só Alta marcada, mostrá-la seria dizer que era Alta,
+ * e isso o dado não sustenta. Por isso ela some de qualquer seleção que aponte
+ * uma faixa só.
  */
-export type FaixaFilter = 'destaque' | 'alta' | 'media' | 'baixa' | 'all';
-
-export const FAIXA_FILTRO_PADRAO: FaixaFilter = 'destaque';
-
-export function passaNoFiltroDeFaixa(filtro: FaixaFilter, faixa: string | null | undefined): boolean {
-  if (filtro === 'all') return true;
-  // Sem faixa guardada é a oportunidade REGISTRADA de antes da migration 091:
-  // ela foi enviada no daily, ou seja, estava acima do corte no dia. Esconder do
-  // padrão apagaria da lista uma oportunidade que existiu de verdade, então ela
-  // conta como destaque. O que não dá é afirmar QUAL faixa era, e por isso ela
-  // fica fora dos filtros específicos.
-  if (faixa == null) return filtro === 'destaque';
-  const tone = faixaTone(faixa);
-  if (filtro === 'destaque') return tone !== 'baixa';
-  return tone === filtro;
+export function passaNoFiltroDeFaixas(
+  selecionadas: readonly Faixa[],
+  faixa: string | null | undefined,
+): boolean {
+  if (faixa == null) return selecionadas.includes('alta') && selecionadas.includes('media');
+  return selecionadas.includes(faixaTone(faixa));
 }
 
 /**
