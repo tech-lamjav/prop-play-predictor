@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   FAIXA_ALTA_MIN,
   FAIXA_MEDIA_MIN,
-  FAIXA_FILTRO_PADRAO,
+  FAIXAS_FILTRO_PADRAO,
   edgeToneCls,
   ehDestaque,
   ehFaixaAlta,
@@ -10,7 +10,7 @@ import {
   rotuloDaFaixa,
   fronteirasDoScore,
   opcoesDeFaixa,
-  passaNoFiltroDeFaixa,
+  passaNoFiltroDeFaixas,
 } from './futebol-score';
 
 // ============================================================================
@@ -58,46 +58,50 @@ describe('faixaTone lê a classificação do backend', () => {
 
 describe('filtro de faixa do painel', () => {
   it('abre em Alta e Média', () => {
-    expect(FAIXA_FILTRO_PADRAO).toBe('destaque');
+    expect(FAIXAS_FILTRO_PADRAO).toEqual(['alta', 'media']);
   });
 
   it('o padrão mostra Alta e Média e esconde Baixa', () => {
-    expect(passaNoFiltroDeFaixa('destaque', 'Alta')).toBe(true);
-    expect(passaNoFiltroDeFaixa('destaque', 'Média')).toBe(true);
-    expect(passaNoFiltroDeFaixa('destaque', 'Baixa')).toBe(false);
+    expect(passaNoFiltroDeFaixas(FAIXAS_FILTRO_PADRAO, 'Alta')).toBe(true);
+    expect(passaNoFiltroDeFaixas(FAIXAS_FILTRO_PADRAO, 'Média')).toBe(true);
+    expect(passaNoFiltroDeFaixas(FAIXAS_FILTRO_PADRAO, 'Baixa')).toBe(false);
   });
 
   it('Baixa continua acessível por escolha explícita', () => {
-    expect(passaNoFiltroDeFaixa('baixa', 'Baixa')).toBe(true);
-    expect(passaNoFiltroDeFaixa('baixa', 'Alta')).toBe(false);
-    expect(passaNoFiltroDeFaixa('baixa', 'Média')).toBe(false);
+    expect(passaNoFiltroDeFaixas(['baixa'], 'Baixa')).toBe(true);
+    expect(passaNoFiltroDeFaixas(['baixa'], 'Alta')).toBe(false);
+    expect(passaNoFiltroDeFaixas(['baixa'], 'Média')).toBe(false);
   });
 
   it('Todas não esconde nenhuma faixa', () => {
     for (const faixa of ['Alta', 'Média', 'Baixa']) {
-      expect(passaNoFiltroDeFaixa('all', faixa), faixa).toBe(true);
+      expect(passaNoFiltroDeFaixas(['alta', 'media', 'baixa'], faixa), faixa).toBe(true);
     }
   });
 
   it('Alta e Média isoladas mostram só a sua', () => {
-    expect(passaNoFiltroDeFaixa('alta', 'Alta')).toBe(true);
-    expect(passaNoFiltroDeFaixa('alta', 'Média')).toBe(false);
-    expect(passaNoFiltroDeFaixa('media', 'Média')).toBe(true);
-    expect(passaNoFiltroDeFaixa('media', 'Alta')).toBe(false);
+    expect(passaNoFiltroDeFaixas(['alta'], 'Alta')).toBe(true);
+    expect(passaNoFiltroDeFaixas(['alta'], 'Média')).toBe(false);
+    expect(passaNoFiltroDeFaixas(['media'], 'Média')).toBe(true);
+    expect(passaNoFiltroDeFaixas(['media'], 'Alta')).toBe(false);
   });
 
   it('oportunidade registrada sem faixa continua no padrão', () => {
     // Enviada no daily antes da migration 091: estava acima do corte naquele
     // dia, mas o número não foi guardado. Some do padrão e a lista apaga uma
     // oportunidade que existiu — inclusive em dia cujo seletor a contou.
-    expect(passaNoFiltroDeFaixa('destaque', null)).toBe(true);
-    expect(passaNoFiltroDeFaixa('all', null)).toBe(true);
+    expect(passaNoFiltroDeFaixas(FAIXAS_FILTRO_PADRAO, null)).toBe(true);
+    expect(passaNoFiltroDeFaixas(['alta', 'media', 'baixa'], null)).toBe(true);
   });
 
-  it('mas ela não entra nos filtros específicos, que afirmariam uma faixa', () => {
-    expect(passaNoFiltroDeFaixa('alta', null)).toBe(false);
-    expect(passaNoFiltroDeFaixa('media', null)).toBe(false);
-    expect(passaNoFiltroDeFaixa('baixa', null)).toBe(false);
+  it('mas ela não entra em nenhuma seleção que afirmaria a faixa dela', () => {
+    // Com só Alta marcada, exibi-la é dizer que era Alta — e o número não foi
+    // guardado. Vale para toda seleção que não tenha Alta e Média juntas.
+    expect(passaNoFiltroDeFaixas(['alta'], null)).toBe(false);
+    expect(passaNoFiltroDeFaixas(['media'], null)).toBe(false);
+    expect(passaNoFiltroDeFaixas(['baixa'], null)).toBe(false);
+    expect(passaNoFiltroDeFaixas(['alta', 'baixa'], null)).toBe(false);
+    expect(passaNoFiltroDeFaixas(['media', 'baixa'], null)).toBe(false);
   });
 });
 

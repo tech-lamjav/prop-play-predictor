@@ -24,6 +24,18 @@ _Avoid_: Candidata, linha cotada
 O momento em que uma oportunidade passa a estar disponível no painel para o usuário. Não significa envio de notificação.
 _Avoid_: Alerta, envio, publicação no Telegram
 
+**Alerta de publicação**:
+O aviso enviado no Telegram quando uma oportunidade é publicada no painel, para que o usuário possa vê-la antes do jogo.
+_Avoid_: Oportunidade, publicação no painel
+
+**Status de alertas**:
+O estado persistente de alertas de publicação de quem já conectou o Telegram: ativo ou pausado. É uma informação discreta com acesso a gerenciamento, não um convite.
+_Avoid_: CTA de conexão, aviso importante
+
+**Convite de conexão**:
+A chamada para quem ainda não conectou o Telegram, explicando que a conexão permite receber alertas de publicação. É uma ação de entrada, não um status.
+_Avoid_: Status de alertas
+
 **Disponível desde**:
 O início do período contínuo atual de publicação de uma oportunidade. Se ela deixa de ser oportunidade e depois volta, o horário reinicia na reativação.
 _Avoid_: Primeira aparição histórica, última atualização da odd

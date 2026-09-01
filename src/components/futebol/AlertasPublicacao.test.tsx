@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AlertasPublicacaoAtalho, AlertasPublicacaoCartao } from './AlertasPublicacao';
+import { AlertasPublicacaoAtalho, AlertasPublicacaoCartao, AlertasPublicacaoStatus } from './AlertasPublicacao';
 
 describe('AlertasPublicacaoCartao', () => {
   it('explica que os alertas já estão ligados e podem ser pausados', () => {
@@ -25,75 +25,71 @@ describe('AlertasPublicacaoCartao', () => {
   });
 });
 
+describe('AlertasPublicacaoStatus', () => {
+  const conectado = { telegramLinked: true, accessActive: true, enabled: true };
+
+  it('mostra o estado ativo em um card compacto e só Gerenciar abre as configurações', async () => {
+    const onOpenSettings = vi.fn();
+    render(<AlertasPublicacaoStatus estado={conectado} onOpenSettings={onOpenSettings} />);
+
+    expect(screen.getByRole('region', { name: 'Status dos alertas no Telegram' })).toBeInTheDocument();
+    expect(screen.getByText('Telegram ativo')).toBeInTheDocument();
+    expect(screen.queryByText(/Você recebe um aviso quando novas oportunidades forem publicadas/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Gerenciar alertas do Telegram' }));
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('mantém o mesmo formato quando está pausado', () => {
+    render(<AlertasPublicacaoStatus estado={{ ...conectado, enabled: false }} onOpenSettings={vi.fn()} />);
+    expect(screen.getByText('Telegram pausado')).toBeInTheDocument();
+    expect(screen.queryByText(/Ative para receber um aviso/i)).not.toBeInTheDocument();
+  });
+
+  it('continua visível sem acesso ativo, dizendo que a preferência está salva', () => {
+    // Sumir aqui deixaria quem perdeu o acesso sem saber se um dia ligou os
+    // alertas — e a preferência é persistente, não morre com o acesso.
+    render(<AlertasPublicacaoStatus estado={{ ...conectado, accessActive: false }} onOpenSettings={vi.fn()} />);
+    expect(screen.getByText('Alertas sem acesso')).toBeInTheDocument();
+    expect(screen.getByText(/volta a valer quando o acesso retornar/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gerenciar alertas do Telegram' })).toBeInTheDocument();
+  });
+});
+
 describe('AlertasPublicacaoAtalho', () => {
   const ligado = { telegramLinked: true, accessActive: true, enabled: true };
 
-  it('mostra alertas ligados e leva ao controle em Configurações', async () => {
-    const onOpenSettings = vi.fn();
-    const onConnect = vi.fn();
-    render(<AlertasPublicacaoAtalho estado={ligado} onConnect={onConnect} onOpenSettings={onOpenSettings} />);
-
-    expect(screen.getByText('Alertas do Telegram ativos')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button'));
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
-    expect(onConnect).not.toHaveBeenCalled();
-  });
-
-  it('mostra alertas pausados quando a preferência está desligada', () => {
+  it('não ocupa espaço para quem já conectou o Telegram', () => {
     render(
       <AlertasPublicacaoAtalho
-        estado={{ ...ligado, enabled: false }}
+        estado={ligado}
         onConnect={vi.fn()}
-        onOpenSettings={vi.fn()}
       />,
     );
-    expect(screen.getByText('Alertas do Telegram pausados')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('separa acesso inativo de pausa escolhida pelo usuário', () => {
-    render(
-      <AlertasPublicacaoAtalho
-        estado={{ ...ligado, accessActive: false }}
-        onConnect={vi.fn()}
-        onOpenSettings={vi.fn()}
-      />,
-    );
-    expect(screen.getByText('Alertas indisponíveis com o acesso atual')).toBeInTheDocument();
-    expect(screen.getByText(/preferência está salva/i)).toBeInTheDocument();
-  });
-
-  it('acesso inativo vence o convite de conectar, para não prometer entrega', async () => {
-    const onConnect = vi.fn();
-    const onOpenSettings = vi.fn();
+  it('não ocupa espaço nem convida quem está sem acesso ativo', () => {
     render(
       <AlertasPublicacaoAtalho
         estado={{ ...ligado, telegramLinked: false, accessActive: false }}
-        onConnect={onConnect}
-        onOpenSettings={onOpenSettings}
+        onConnect={vi.fn()}
       />,
     );
-
-    expect(screen.getByText('Alertas indisponíveis com o acesso atual')).toBeInTheDocument();
-    expect(screen.queryByText('Conectar')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button'));
-    expect(onConnect).not.toHaveBeenCalled();
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('sem Telegram conectado, chama a conexão em vez das configurações', async () => {
-    const onOpenSettings = vi.fn();
+  it('explica o benefício e inicia a conexão para quem ainda não conectou', async () => {
     const onConnect = vi.fn();
     render(
       <AlertasPublicacaoAtalho
         estado={{ ...ligado, telegramLinked: false }}
         onConnect={onConnect}
-        onOpenSettings={onOpenSettings}
       />,
     );
 
-    expect(screen.getByText('Conecte o Telegram para receber alertas')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button'));
+    expect(screen.getByText('Receba alertas de publicação no Telegram')).toBeInTheDocument();
+    expect(screen.getByText(/ser avisado quando uma oportunidade for publicada no painel/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Conectar Telegram/i }));
     expect(onConnect).toHaveBeenCalledTimes(1);
-    expect(onOpenSettings).not.toHaveBeenCalled();
   });
 });

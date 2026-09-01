@@ -62,11 +62,11 @@ export default function FutebolDayStepper({
   const arrow = 'w-9 h-9 grid place-items-center rounded-md shrink-0 border border-line bg-white text-ink-2 enabled:hover:bg-canvas-2 disabled:opacity-30 disabled:cursor-default transition';
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex min-w-0 items-center gap-2 ${className}`}>
       <button type="button" className={arrow} disabled={!hasPrev} onClick={() => hasPrev && onChange(days[i - 1])} aria-label="Dia anterior">
         <ChevronLeft className="w-4 h-4" />
       </button>
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-hide">
         {days.map((s) => {
           const { wd, d, mon } = dayParts(s);
           const isToday = s === today;

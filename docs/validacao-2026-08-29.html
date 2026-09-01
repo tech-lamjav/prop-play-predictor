@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validação de 29/08</title>
+<style>
+  :root {
+    --forest:#0a3d2e; --forest-2:#08321f; --amber:#d4a017; --amber-soft:#fbbf24;
+    --canvas:#fdfbf6; --surface:#ffffff; --line:#e6dcc4; --line-2:#ded2b6;
+    --ink:#1a1d1a; --ink-2:#5a625a; --ink-3:#8d8672;
+    --ok:#1d7a4f; --nao:#a83232; --talvez:#8a6d1f;
+    --ok-bg:#e8f4ed; --nao-bg:#faeaea; --talvez-bg:#faf3e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas:#12140f; --surface:#1a1d17; --line:#2e3327; --line-2:#3b412f;
+      --ink:#f0ece0; --ink-2:#b3b3a4; --ink-3:#8a8b7c;
+      --forest:#7dd6ab; --forest-2:#5cbf90; --amber:#e8b83a;
+      --ok:#6fce9c; --nao:#e08585; --talvez:#d8b45c;
+      --ok-bg:#16301f; --nao-bg:#341c1c; --talvez-bg:#302816;
+    }
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--canvas); color:var(--ink);
+    font:16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:920px; margin:0 auto; padding:40px 24px 80px; }
+  header { border-bottom:2px solid var(--line-2); padding-bottom:22px; margin-bottom:36px; }
+  .eyebrow { font-size:11px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--ink-3); }
+  h1 { font-size:clamp(28px,4vw,38px); line-height:1.12; margin:10px 0 8px; letter-spacing:-.02em; text-wrap:balance; }
+  .sub { color:var(--ink-2); font-size:15px; max-width:62ch; margin:0; }
+  h2 {
+    font-size:20px; margin:44px 0 6px; letter-spacing:-.01em;
+    padding-top:22px; border-top:1px solid var(--line);
+  }
+  h2:first-of-type { border-top:none; padding-top:0; }
+  h2 .n { color:var(--ink-3); font-variant-numeric:tabular-nums; margin-right:10px; font-weight:600; }
+  .lead { color:var(--ink-2); font-size:14.5px; margin:0 0 20px; max-width:64ch; }
+  .card {
+    background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; padding:18px 20px; margin-bottom:14px;
+  }
+  .card.top { display:flex; gap:14px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; }
+  .card h3 { font-size:15.5px; margin:0 0 2px; letter-spacing:-.005em; }
+  .card .id { font-size:12px; color:var(--ink-3); font-weight:700; letter-spacing:.06em; }
+  .chip {
+    display:inline-flex; align-items:center; gap:6px; flex:0 0 auto;
+    font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    padding:5px 10px; border-radius:999px; white-space:nowrap;
+  }
+  .chip.ok    { background:var(--ok-bg);    color:var(--ok); }
+  .chip.nao   { background:var(--nao-bg);   color:var(--nao); }
+  .chip.talvez{ background:var(--talvez-bg);color:var(--talvez); }
+  .medida {
+    margin-top:12px; padding:12px 14px; border-radius:8px;
+    background:var(--canvas); border:1px solid var(--line);
+    font-size:13.5px; color:var(--ink-2);
+  }
+  .medida b { color:var(--ink); font-variant-numeric:tabular-nums; }
+  .medida .rot { display:block; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); font-weight:700; margin-bottom:6px; }
+  .acao { margin-top:12px; font-size:14px; }
+  .acao b { color:var(--forest); }
+  ul { margin:10px 0 0; padding-left:20px; }
+  li { margin-bottom:7px; color:var(--ink-2); font-size:14.5px; }
+  li b, p b { color:var(--ink); }
+  .check { list-style:none; padding-left:0; }
+  .check li { display:flex; gap:10px; align-items:flex-start; }
+  .check li::before {
+    content:""; flex:0 0 auto; width:15px; height:15px; margin-top:4px;
+    border:1.5px solid var(--line-2); border-radius:4px; background:var(--surface);
+  }
+  .aviso {
+    background:var(--talvez-bg); border:1px solid color-mix(in srgb, var(--talvez) 35%, transparent);
+    border-radius:10px; padding:16px 18px; margin:18px 0; font-size:14.5px; color:var(--ink);
+  }
+  .aviso b { color:var(--talvez); }
+  code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px;
+         background:var(--canvas); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+  footer { margin-top:50px; padding-top:20px; border-top:1px solid var(--line);
+           font-size:13px; color:var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Futebol · Score de contexto</div>
+  <h1>O que dá para validar hoje</h1>
+  <p class="sub">
+    Medido no banco de dev em 29/08/2026, às 23h24. O mart foi carregado às 22h46 e o sync
+    rodou às 23h13, então o dado abaixo reflete o BigQuery de agora — não é foto velha.
+    Universo: 8 linhas no board vivo e 19.036 versões no snapshot.
+  </p>
+</header>
+
+<h2><span class="n">1</span>As tarefas do Mateus que esperam você</h2>
+<p class="lead">
+  Cinco estão em review no ClickUp. Para cada uma, o que o dado mostra e o que ele não consegue
+  provar. A leitura final é sua.
+</p>
+
+<div class="aviso">
+  <b>Antes de ler como reprovação.</b> Algumas dessas tarefas são de decisão, não de código.
+  A A6, por exemplo, diz explicitamente que especifica o denominador de uma normalização que a
+  A1 e a A4 ainda vão escrever. Nesses casos, "não aparece no dado" é o esperado, e o que você
+  revisa é a decisão escrita, não o mart.
+</div>
+
+<div class="card">
+  <div class="card top">
+    <div>
+      <div class="id">A1</div>
+      <h3>Remover da nota: edge, corroborações e as quatro penalidades de odd</h3>
+    </div>
+    <span class="chip nao">Não aparece no mart</span>
+  </div>
+  <div class="medida">
+    <span class="rot">Medição</span>
+    <b>18.965</b> das <b>19.036</b> versões do snapshot ainda têm <code>pts_valor</code> diferente
+    de zero — 99,6%. No board vivo são <b>8 de 8</b>. Três das oito ainda carregam penalidade de
+    odd, e em seis delas o Score não é igual à nota de premissas.
+  </div>
+  <p class="acao">
+    O critério da tarefa é <b>score = nota de premissas normalizada, nada mais soma nem subtrai</b>.
+    O dado de hoje não mostra isso. Vale perguntar ao Mateus se a mudança está no dbt mas ainda não
+    foi promovida, antes de bater o martelo.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card top">
+    <div>
+      <div class="id">A3</div>
+      <h3>Quatro casas no mínimo e sem linha suspeita</h3>
+    </div>
+    <span class="chip talvez">Metade sim, metade não</span>
+  </div>
+  <div class="medida">
+    <span class="rot">Mínimo de casas — aparentemente aplicado</span>
+    Nas 19.036 versões, o mínimo de casas é <b>4</b> e existem <b>zero</b> linhas com menos de 4.
+    A tarefa dizia que o corte era 3 e precisava subir; o dado mostra 4.
+  </div>
+  <div class="medida">
+    <span class="rot">Linha suspeita — não aplicado</span>
+    <b>137</b> versões publicadas têm <code>pen_odd_outlier</code> ligado, e <b>2</b> delas estão no
+    board de hoje, no mercado de gols. A barreira deveria matar essas linhas.
+  </div>
+  <p class="acao">
+    Dá para aceitar o corte de casas e devolver a barreira de linha suspeita. São duas coisas na
+    mesma tarefa e elas estão em estados diferentes.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card top">
+    <div>
+      <div class="id">A5</div>
+      <h3>Porta de odd por mercado: faixa de risco e retorno</h3>
+    </div>
+    <span class="chip nao">Não aparece no mart</span>
+  </div>
+  <div class="medida">
+    <span class="rot">Medição no board de hoje</span>
+    O mercado de Resultado publica odd de <b>1,20</b> a <b>4,35</b>. A faixa pedida para os
+    mercados gerais é de 1,50 a 4,00, inclusiva. Os dois extremos estão fora.
+  </div>
+  <p class="acao">
+    Não deu para conferir a faixa de Dupla chance, de 1,25 a 2,00: não há linha desse mercado no
+    board de hoje.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card top">
+    <div>
+      <div class="id">A6</div>
+      <h3>Trocar o denominador da nota por um teto alcançável</h3>
+    </div>
+    <span class="chip talvez">O dado não decide</span>
+  </div>
+  <div class="medida">
+    <span class="rot">Medição</span>
+    Maior Score no snapshot: <b>88</b>. No board de hoje: <b>60</b> no Gols, <b>53</b> no
+    Resultado, <b>41</b> no Handicap.
+  </div>
+  <p class="acao">
+    A própria tarefa diz que ela vem <b>depois</b> da A1 e especifica a normalização que a A1 e a
+    A4 vão escrever. Enquanto a A1 não estiver no mart, não há o que medir aqui — o que você
+    revisa é o teto escolhido, não o número que sai.
+  </p>
+</div>
+
+<div class="card">
+  <div class="card top">
+    <div>
+      <div class="id">A7</div>
+      <h3>Guardar o funil completo, não só o que passa</h3>
+    </div>
+    <span class="chip talvez">Fora do meu alcance</span>
+  </div>
+  <div class="medida">
+    <span class="rot">Medição</span>
+    O schema de futebol no Postgres tem <b>24</b> tabelas e <b>nenhuma</b> de funil.
+  </div>
+  <p class="acao">
+    Isso <b>não</b> prova que a tarefa não foi feita. O sync espelha uma lista escolhida de tabelas,
+    e um funil de análise pode viver só no BigQuery, o que seria razoável. Para validar, é preciso
+    olhar lá — ou perguntar ao Mateus onde ele ficou.
+  </p>
+</div>
+
+<h2><span class="n">2</span>O que dá para ver no app agora</h2>
+<p class="lead">
+  Entregas de hoje que já estão em develop e não dependem da janela. Rode o app e confira.
+</p>
+
+<div class="card">
+  <h3>Paywall única</h3>
+  <ul class="check">
+    <li>Em Oportunidades, a pílula <b>Teste · Nd</b> no cabeçalho leva para <code>/planos</code>, e não mais para a página antiga do futebol</li>
+    <li>Abrir <code>/futebol/assinar</code> direto redireciona para <code>/planos</code></li>
+    <li>Logado, o botão Assinar diz <b>Pagamento em breve</b> e fica desabilitado, em vez de te jogar na home sem aviso</li>
+    <li>Deslogado, o botão continua levando para criar conta</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Disponível desde</h3>
+  <ul class="check">
+    <li>No detalhe de um jogo com oportunidade, o rodapé mostra <b>Disponível desde</b> com data e hora de Brasília</li>
+    <li>Arrastando a régua para uma linha sem cotação, a frase some — ela só fala de oportunidade publicada</li>
+  </ul>
+  <p class="acao">A função já está aplicada no dev, então isso funciona hoje.</p>
+</div>
+
+<div class="card">
+  <h3>Painel nas faixas novas</h3>
+  <ul class="check">
+    <li>O filtro de faixa abre em <b>Alta e Média</b>, e ganhou as opções <b>Baixa</b> e <b>Todas</b>, que não existiam</li>
+    <li>A distribuição Alta / Média / Baixa no topo descreve o dia inteiro, mesmo com filtro aplicado</li>
+    <li>A coluna Valor é verde quando positiva e neutra quando zero ou negativa — nunca vermelha</li>
+    <li>A legenda de faixas mostra <b>60+, 40+ e menos de 40</b>. Isso está certo: o board ainda vem na escala antiga, e a legenda segue a escala do dado. Ela vira 55 e 25 sozinha depois da virada</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Detalhe e histórico</h3>
+  <ul class="check">
+    <li>A aba Contra diz <b>"o que o jogo deixa de sustentar"</b>, sem citar preço</li>
+    <li>Avisos de cotação — odd de zebra, poucas casas — aparecem no rodapé como <b>Sobre a cotação</b>, e não como premissa</li>
+    <li>Nenhuma premissa de movimento de linha ou de concordância do modelo aparece em A favor</li>
+    <li>A lista é ordenada por faixa, e o Score só desempata dentro da faixa</li>
+  </ul>
+</div>
+
+<h2><span class="n">3</span>O que só dá para validar na janela</h2>
+<p class="lead">
+  Depende do mart publicar o contrato novo. Nada disso é observável antes.
+</p>
+<ul>
+  <li>O Score virar contexto puro, e a legenda passar sozinha para 55 e 25</li>
+  <li>A favor e Contra sem os componentes de preço vindos do backend</li>
+  <li>O Telegram alertando o mesmo conjunto que o painel publica</li>
+  <li>O histórico marcando registros antigos como escala anterior e os novos como a nova</li>
+</ul>
+
+<h2><span class="n">4</span>O que trava a janela</h2>
+<p class="lead">
+  Comentei na issue #309 marcando o Mateus, com o roteiro completo. Faltam duas respostas dele.
+</p>
+<ul>
+  <li><b>Dá para pausar o sync durante a janela?</b> Se der, as duas pontas sobem juntas. Se não, o BigQuery publica <code>score_versao</code> primeiro e a migration vem depois</li>
+  <li><b>Qual data.</b></li>
+</ul>
+<div class="aviso">
+  <b>Por que a ordem importa.</b> O pre-flight de paridade do sync aborta quando existe coluna no
+  Postgres que não existe no BigQuery. Aplicar a migration antes do mart congelaria o board —
+  exatamente o que aconteceu de 26 a 29 de agosto, quando o sync abortou de hora em hora por cerca
+  de 72 execuções sem sincronizar nada.
+</div>
+
+<footer>
+  Arquivo local, gerado em 29/08/2026. As medições saem do projeto de dev
+  <code>kpbjuplcwiyrymafhehz</code>. Para refazer, as consultas estão no histórico da sessão.
+</footer>
+
+</div>
+</body>
+</html>

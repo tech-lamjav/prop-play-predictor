@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
+import type { FixtureScope } from '@/utils/futebol-competitions';
 import {
   futebolDataService,
   type FutebolAccess,
@@ -171,29 +172,28 @@ export function useFutebolCompetitions() {
  * Achata tudo taggeando cada jogo com sua `competition`. Usado no /futebol
  * (Hoje) pra listar jogos de todas as ligas, não só de um allowlist fixo.
  */
-export function useFutebolFixturesMulti(competitions: string[], season: number) {
-  const results = useQueries({
-    queries: competitions.map((competition) => ({
+export function useFutebolFixturesMulti(scopes: FixtureScope[]) {
+  return useQueries({
+    queries: scopes.map(({ competition, season }) => ({
       queryKey: ['futebol', 'fixtures', competition, season, 'all'],
       queryFn: () => futebolDataService.getFixtures(competition, season),
       staleTime: 5 * 60 * 1000,
       gcTime: 15 * 60 * 1000,
       refetchOnWindowFocus: false,
     })),
-  });
-  const isLoading = results.some((r) => r.isLoading);
-  // react-query faz structural sharing → o ref de r.data só muda quando o dado
-  // muda; memoizar por esses refs evita reflatten a cada render.
-  const dataRefs = results.map((r) => r.data);
-  const data = useMemo(
-    () =>
-      results.flatMap((r, i) =>
-        (r.data ?? []).map((f) => ({ ...f, competition: competitions[i] }))
+    // O achatamento mora no `combine` porque um useMemo aqui fora não tem como
+    // ficar correto: a lista de competições cresce quando o catálogo chega, e um
+    // array de dependências de tamanho variável é o que o React proíbe —
+    // depender de `results` cru seria pior ainda, já que é um array novo a cada
+    // render e o memo nunca casaria. O react-query faz structural sharing dos
+    // resultados e só reexecuta o `combine` quando algum deles muda de fato.
+    combine: (results) => ({
+      isLoading: results.some((r) => r.isLoading),
+      data: results.flatMap((r, i) =>
+        (r.data ?? []).map((f) => ({ ...f, competition: scopes[i].competition }))
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [...dataRefs, competitions]
-  );
-  return { data, isLoading };
+    }),
+  });
 }
 
 export function useFutebolFixtureDetail(fixtureId: number | undefined) {

@@ -1,4 +1,4 @@
-import { ArrowRight, Bell, ChevronRight, Send, X } from 'lucide-react';
+import { ArrowRight, Bell, Send, X } from 'lucide-react';
 
 // Superfícies do controle de alertas dentro de Oportunidades. Ficam aqui, sem
 // hook nem navegação própria, para que a página continue sendo a única dona do
@@ -59,76 +59,92 @@ export function AlertasPublicacaoCartao({
 }
 
 /**
- * Atalho compacto e permanente. Quem ainda não conectou o Telegram vai para o
- * onboarding existente; os demais vão para o mesmo controle em Configurações.
+ * Status persistente de quem já conectou o Telegram. Recebe o mesmo estado que
+ * o convite ao lado para que as duas superfícies leiam a situação da mesma
+ * forma. Sem acesso ativo ele continua aparecendo: a preferência é persistente
+ * e some-la deixaria a pessoa sem saber se um dia ligou os alertas.
+ */
+export function AlertasPublicacaoStatus({
+  estado,
+  onOpenSettings,
+}: {
+  estado: AlertasPublicacaoEstado;
+  onOpenSettings: () => void;
+}) {
+  const { accessActive, enabled } = estado;
+  const ativo = accessActive && enabled;
+  const rotulo = !accessActive
+    ? 'Alertas sem acesso'
+    : enabled ? 'Telegram ativo' : 'Telegram pausado';
+  return (
+    <div
+      role="region"
+      aria-label="Status dos alertas no Telegram"
+      className={`w-full sm:w-auto min-h-[52px] rounded-rebrand-md border px-3 py-2 flex items-center gap-2 ${
+        ativo ? 'bg-forest-tint border-forest/20' : 'bg-canvas-2 border-line'
+      }`}
+    >
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${ativo ? 'bg-forest/10' : 'bg-ink-3/10'}`}>
+        <Bell className={`w-3.5 h-3.5 ${ativo ? 'text-forest' : 'text-ink-3'}`} />
+      </span>
+      <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ativo ? 'bg-forest' : 'bg-ink-3'}`} />
+          <p className="text-[12px] font-bold whitespace-nowrap text-ink">{rotulo}</p>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            aria-label="Gerenciar alertas do Telegram"
+            className="ml-1 text-[11px] font-semibold text-forest hover:text-forest-soft underline underline-offset-2"
+          >
+            Gerenciar
+          </button>
+        </div>
+        {/* Visível, não só para leitor de tela: sem a frase, quem perdeu o
+            acesso lê "Alertas sem acesso" e conclui que a preferência sumiu. */}
+        {!accessActive && (
+          <p className="text-[11px] leading-snug text-ink-2 mt-0.5 max-w-[34ch]">
+            Sua preferência está salva e volta a valer quando o acesso retornar.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Convite de conexão para quem ainda não pode receber alertas. Não aparece
+ * para quem já conectou nem para quem está sem acesso ativo.
  */
 export function AlertasPublicacaoAtalho({
   estado,
   onConnect,
-  onOpenSettings,
 }: {
   estado: AlertasPublicacaoEstado;
   onConnect: () => void;
-  onOpenSettings: () => void;
 }) {
-  const { telegramLinked, accessActive, enabled } = estado;
-  const ativo = telegramLinked && accessActive && enabled;
-
-  // O acesso vem antes do vínculo: sem assinatura nem teste ativo, nenhum
-  // alerta é entregue, então convidar para conectar levaria a pessoa a um
-  // fluxo que termina numa promessa que o backend não cumpre.
-  const titulo = !accessActive
-    ? 'Alertas indisponíveis com o acesso atual'
-    : !telegramLinked
-      ? 'Conecte o Telegram para receber alertas'
-      : enabled
-        ? 'Alertas do Telegram ativos'
-        : 'Alertas do Telegram pausados';
-
-  const descricao = !accessActive
-    ? 'Sua preferência está salva e volta a valer quando o acesso retornar.'
-    : !telegramLinked
-      ? 'Conecte em um toque e receba as novas oportunidades antes do jogo.'
-      : enabled
-        ? 'Vamos avisar quando uma oportunidade for publicada antes do jogo.'
-        : 'Retome nas configurações quando quiser voltar a receber.';
-
-  // Quem já conectou vê só status, então a linha fica discreta. Quem não
-  // conectou está diante de um convite, e convite tem que parecer botão.
-  if (accessActive && !telegramLinked) {
-    return (
-      <button
-        type="button"
-        onClick={onConnect}
-        className="w-full rounded-rebrand-md bg-forest-tint border border-forest/25 px-4 py-3.5 text-left flex items-center gap-3.5 hover:bg-forest/10 transition-colors"
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-forest">
-          <Send className="w-[18px] h-[18px] text-white" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[14px] font-bold text-ink">{titulo}</span>
-          <span className="block text-[12px] text-ink-2 mt-0.5">{descricao}</span>
-        </span>
-        <span className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-forest px-3.5 py-2 text-[13px] font-bold text-white">
-          Conectar
-          <ArrowRight className="w-3.5 h-3.5" />
-        </span>
-      </button>
-    );
-  }
+  const { telegramLinked, accessActive } = estado;
+  if (!accessActive || telegramLinked) return null;
 
   return (
     <button
       type="button"
-      onClick={onOpenSettings}
-      className="w-full rounded-rebrand-md bg-white border border-line px-4 py-3 text-left flex items-center gap-3 hover:bg-canvas-2 transition-colors"
+      onClick={onConnect}
+      className="w-full rounded-rebrand-md bg-forest-tint border border-forest/25 px-4 py-3.5 text-left flex flex-col items-stretch gap-3 hover:bg-forest/10 transition-colors sm:flex-row sm:items-center sm:gap-3.5"
     >
-      <span className={`w-2 h-2 rounded-full shrink-0 ${ativo ? 'bg-forest' : 'bg-ink-3'}`} />
-      <span className="min-w-0 flex-1">
-        <span className="block text-[13px] font-bold text-ink">{titulo}</span>
-        <span className="block text-[12px] text-ink-2 mt-0.5">{descricao}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-3.5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-forest">
+          <Send className="w-[18px] h-[18px] text-white" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-bold text-ink">Receba alertas de publicação no Telegram</span>
+          <span className="block text-[12px] text-ink-2 mt-0.5">Conecte sua conta para ser avisado quando uma oportunidade for publicada no painel, antes do jogo.</span>
+        </span>
       </span>
-      <ChevronRight className="w-4 h-4 text-ink-3 shrink-0" />
+      <span className="w-full shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-forest px-3.5 py-2 text-[13px] font-bold text-white sm:w-auto">
+        Conectar Telegram
+        <ArrowRight className="w-3.5 h-3.5" />
+      </span>
     </button>
   );
 }

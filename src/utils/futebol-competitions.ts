@@ -61,6 +61,55 @@ export const ALL_COMPETITIONS: string[] = [
   'copa_mundo',
 ];
 
+/** Uma liga em uma temporada: o par que identifica uma consulta de calendário. */
+export type FixtureScope = { competition: string; season: number };
+
+type CatalogoDeCompeticoes = readonly {
+  competition: string;
+  season: number;
+  primeiro?: string | null;
+  ultimo?: string | null;
+}[];
+
+/** Compara só a parte da data: o catálogo pode devolver timestamp completo. */
+const dia = (valor: string): string => valor.slice(0, 10);
+
+/**
+ * Competições e temporadas cujo calendário precisa ser carregado para cobrir
+ * uma janela de dias.
+ *
+ * Duas coisas, das duas metades da #323. A lista vem do catálogo do mart, que é
+ * a fonte de verdade — `ALL_COMPETITIONS` fica só como fallback enquanto a
+ * consulta carrega, porque usá-la como escopo definitivo deixa pick publicado
+ * em liga nova sem fixture, placar e liquidação. E a temporada não é presumida:
+ * cravar uma só apagava do histórico todo pick de temporada diferente da
+ * corrente, o que acontece em qualquer virada de temporada dentro da janela de
+ * 30 dias. Entram as temporadas cujo intervalo de jogos cruza a janela.
+ */
+export function fixtureScopesFor(
+  catalog: CatalogoDeCompeticoes | undefined,
+  janela: { from: string; to: string },
+  temporadaDeFallback: number,
+): FixtureScope[] {
+  const vistos = new Set<string>();
+  const escopos: FixtureScope[] = [];
+  for (const item of catalog ?? []) {
+    // Temporada sem datas no catálogo entra: não dá para provar que ela está
+    // fora da janela, e deixá-la de fora custa placar e liquidação.
+    const cruzaAJanela = !item.primeiro || !item.ultimo
+      || (dia(item.primeiro) <= janela.to && dia(item.ultimo) >= janela.from);
+    if (!cruzaAJanela) continue;
+    const season = Number(item.season);
+    const chave = `${item.competition}:${season}`;
+    if (vistos.has(chave)) continue;
+    vistos.add(chave);
+    escopos.push({ competition: item.competition, season });
+  }
+  return escopos.length > 0
+    ? escopos
+    : ALL_COMPETITIONS.map((competition) => ({ competition, season: temporadaDeFallback }));
+}
+
 function humanize(slug: string): string {
   return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }

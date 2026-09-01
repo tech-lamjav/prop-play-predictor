@@ -1,28 +1,29 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronDown, AlertTriangle } from 'lucide-react';
+import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
-import { AlertasPublicacaoAtalho, AlertasPublicacaoCartao } from '@/components/futebol/AlertasPublicacao';
+import { AlertasPublicacaoAtalho, AlertasPublicacaoCartao, AlertasPublicacaoStatus } from '@/components/futebol/AlertasPublicacao';
+import { FaixasLegenda } from '@/components/futebol/FaixasLegenda';
+import { OportunidadesFiltros, type MarketFilter } from '@/components/futebol/OportunidadesFiltros';
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel, sortCompetitions, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
+import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
-  opcoesDeFaixa, passaNoFiltroDeFaixa, versaoDaJanela, ehDestaque, compararOportunidades,
-  FAIXA_FILTRO_PADRAO, type FaixaFilter,
+  opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, ehDestaque, compararOportunidades,
+  FAIXAS_FILTRO_PADRAO, type Faixa,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
-import { mergeBoardAndHistory } from '@/utils/futebol-history';
+import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
-import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed } from '@/utils/futebol-datas';
+import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
 import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
 import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
@@ -60,93 +61,6 @@ function Crest({ teamId, name, size = 20 }: { teamId: number; name: string; size
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
-
-type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
-type CompFilter = string; // 'all' | slug da competição (data-driven)
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick}
-      className={`h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0 ${active ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink border-line hover:bg-canvas-2'}`}>
-      {children}
-    </button>
-  );
-}
-
-const MARKET_ITEMS: { value: MarketFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'match_winner', label: 'Resultado' },
-  { value: 'goals_over_under', label: 'Gols' },
-  { value: 'btts', label: 'Ambos marcam' },
-  { value: 'asian_handicap', label: 'Handicap' },
-  { value: 'double_chance', label: 'Dupla chance' },
-];
-
-// Mercado: label + chips com rolagem horizontal + bolinha-seta quando há mais à direita.
-function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: MarketFilter) => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [more, setMore] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const check = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-    check();
-    el.addEventListener('scroll', check, { passive: true });
-    window.addEventListener('resize', check);
-    return () => { el.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
-  }, []);
-  return (
-    <div className="flex items-center gap-2.5 min-w-0 sm:flex-1">
-      <span className={`${LABEL} shrink-0`}>Mercado</span>
-      <div className="relative min-w-0 flex-1">
-        <div ref={ref} className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -my-1 py-1 pr-7">
-          {MARKET_ITEMS.map((m) => (
-            <Chip key={m.value} active={value === m.value} onClick={() => onChange(m.value)}>{m.label}</Chip>
-          ))}
-        </div>
-        {more && (
-          <button
-            type="button"
-            aria-label="Ver mais mercados"
-            onClick={() => ref.current?.scrollBy({ left: 160, behavior: 'smooth' })}
-            className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white border border-line grid place-items-center shadow-sm hover:bg-canvas-2"
-          >
-            <ChevronRight className="w-3.5 h-3.5 text-ink-2" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Dropdown compacto de filtro (label + valor atual + opções). Limpo no mobile.
-function FilterSelect({ label, value, options, onChange }: {
-  label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void;
-}) {
-  const current = options.find((o) => o.value === value);
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="inline-flex items-center gap-1.5 h-9 px-3 rounded-rebrand-sm border border-line bg-white text-[12px] font-semibold text-ink hover:bg-canvas-2 transition shrink-0">
-          <span className="text-ink-3 font-medium uppercase tracking-[0.1em] text-[10px]">{label}</span>
-          <span>{current?.label ?? '—'}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-ink-3" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="theme-bolao bg-white border-line min-w-[160px]">
-        {options.map((o) => (
-          <DropdownMenuItem
-            key={o.value}
-            onClick={() => onChange(o.value)}
-            className={`cursor-pointer text-[13px] ${o.value === value ? 'text-forest font-semibold' : 'text-ink'}`}
-          >
-            {o.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 // Linha da tabela (desktop)
 function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
@@ -194,50 +108,64 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
 }
 
 // Card (mobile)
-function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals }: {
+function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals, canRegister = false }: {
   o: OppLike; onClick: () => void; locked?: boolean;
-  result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
+  result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null; canRegister?: boolean;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result;
   const hasScore = homeGoals != null && awayGoals != null;
   return (
-    <button onClick={onClick} className="w-full text-left rounded-rebrand-md p-3.5 bg-white border border-line">
-      <div className="flex items-start gap-3">
-        <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
-          <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
-          <Crest teamId={o.away_team_id} name={o.away_team_name} size={24} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
-            {o.faixa != null && (
-              <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
-            )}
-            {result && <ResultBadge r={result} />}
+    <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
+      <button onClick={onClick} className="w-full text-left p-3.5">
+        <div className="flex items-start gap-3">
+          <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
+            <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
+            <Crest teamId={o.away_team_id} name={o.away_team_name} size={24} />
           </div>
-          <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink"><Blur active={showLock}>{pick}</Blur></div>
-          <div className="text-[11px] text-ink-3 truncate">
-            {hasScore
-              ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`
-              : `${o.home_team_name} × ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
+              {o.faixa != null && (
+                <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+              )}
+              {result && <ResultBadge r={result} />}
+            </div>
+            <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink"><Blur active={showLock}>{pick}</Blur></div>
+            <div className="text-[11px] text-ink-3 truncate">
+              {hasScore
+                ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`
+                : `${o.home_team_name} × ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`}
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
+            <div className="text-[22px] font-bold tabular-nums tracking-tight leading-none text-forest">{o.score ?? '—'}</div>
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
-          <div className="text-[22px] font-bold tabular-nums tracking-tight leading-none text-forest">{o.score ?? '—'}</div>
+        <div className="grid grid-cols-3 gap-1 mt-3 pt-2.5 border-t border-line">
+          {/* A cor do Valor sai de `edgeToneCls`, a mesma da linha do desktop:
+              verde só quando positivo, neutro em zero ou negativo. Verde fixo
+              aqui pintava de vantagem uma diferença que não existe. */}
+          {[
+            { label: 'Chance', valor: chance != null ? `${chance}%` : '—', cls: 'text-ink' },
+            { label: 'Odd', valor: o.best_odd.toFixed(2), cls: 'text-ink' },
+            { label: 'Valor', valor: o.edge != null ? fmtEdgeScore(o.edge) : '—', cls: edgeToneCls(o.edge) },
+          ].map(({ label, valor, cls }) => (
+            <div key={label}>
+              <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{label}</div>
+              <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${cls}`}><Blur active={showLock}>{valor}</Blur></div>
+            </div>
+          ))}
         </div>
-      </div>
-      <div className="grid grid-cols-3 gap-1 mt-3 pt-2.5 border-t border-line">
-        {[['Chance', chance != null ? `${chance}%` : '—'], ['Odd', o.best_odd.toFixed(2)], ['Valor', o.edge != null ? fmtEdgeScore(o.edge) : '—']].map(([l, v], i) => (
-          <div key={l}>
-            <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{l}</div>
-            <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${i === 2 ? 'text-forest' : 'text-ink'}`}><Blur active={showLock}>{v}</Blur></div>
-          </div>
-        ))}
-      </div>
-    </button>
+      </button>
+      {canRegister && (
+        <div className="px-3.5 pb-3.5 -mt-0.5">
+          <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -269,19 +197,32 @@ function ResultBadge({ r }: { r: BetResult }) {
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
   const { data: rows, isLoading } = useFutebolValueBoard();
-  const { data: fixtures } = useFutebolFixturesMulti(ALL_COMPETITIONS, 2026);
+  const { data: catalog } = useFutebolCompetitions();
   const { data: access } = useFutebolAccess();
   const { data: publicationAlerts, acknowledgeOnboarding, isAcknowledging } = useFutebolPublicationAlerts();
+  // No primeiro contato, o cartão explica a novidade sozinho. Depois de
+  // dispensado, ele dá lugar ao status compacto para não repetir a mesma ideia,
+  // então o status espera exatamente enquanto o cartão está na tela.
+  // Também exige enabled: o cartão afirma que os alertas estão ligados, e quem
+  // já pausou veria essa frase logo acima do atalho dizendo o contrário.
+  const showAlertCard = !!publicationAlerts?.telegramLinked
+    && publicationAlerts.accessActive
+    && publicationAlerts.enabled
+    && !publicationAlerts.onboardingAcknowledged;
+  // Sem acesso ativo o status continua: a preferência é persistente e some-la
+  // deixaria quem perdeu o acesso sem saber se um dia ligou os alertas.
+  const showAlertStatus = !!publicationAlerts?.telegramLinked && !showAlertCard;
   const oppTour = useOnboardingTour(FUT_OPP_TOUR_ID, { enabled: !isLoading });
   const isDemo = oppTour.run; // durante o tour, preenche a tela com exemplo
   const locked = isDemo ? false : !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
-  const [faixa, setFaixa] = useState<FaixaFilter>(FAIXA_FILTRO_PADRAO);
+  const [faixasSelecionadas, setFaixasSelecionadas] = useState<Faixa[]>([...FAIXAS_FILTRO_PADRAO]);
   // Desligado por padrão: a lista é o retrato do dia, e esconder o que já entrou
   // em campo apagaria metade dele numa noite de sábado. Quem está caçando aposta
   // agora liga e vê só o que dá para acompanhar.
   const [soEmAberto, setSoEmAberto] = useState(false);
-  const [comp, setComp] = useState<CompFilter>('all');
+  // `null` significa todas: acompanha automaticamente as competições daquele dia.
+  const [competicoesSelecionadas, setCompeticoesSelecionadas] = useState<string[] | null>(null);
   const [day, setDay] = useState<string | null>(null);
 
   // Dispensar o cartão é só marcar que a explicação foi lida; a preferência de
@@ -314,6 +255,19 @@ export default function FutebolOportunidades() {
   // E ele ANDA (useNow), porque nada mais nesta tela provoca render.
   const agora = useNow();
   const hoje = brtDateStr(new Date(agora));
+  // A janela do calendário é a mesma que a tela navega: o histórico para trás e
+  // os dias futuros para a frente. É ela que decide quais temporadas carregar,
+  // em vez de uma temporada cravada no código — na virada de temporada, cravar
+  // uma só deixava o pick da outra sem fixture, sem placar e sem liquidação.
+  const janelaDeFixtures = useMemo(() => ({
+    from: historyWindow(hoje).from,
+    to: addDays(hoje, HISTORY_WINDOW_DAYS),
+  }), [hoje]);
+  const fixtureScopes = useMemo(
+    () => fixtureScopesFor(catalog, janelaDeFixtures, Number(hoje.slice(0, 4))),
+    [catalog, janelaDeFixtures, hoje],
+  );
+  const { data: fixtures } = useFutebolFixturesMulti(fixtureScopes);
   const allRows = useMemo<FutebolValueBoardRow[]>(
     () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora),
     [rows, histRows, agora]
@@ -391,6 +345,14 @@ export default function FutebolOportunidades() {
   const isPastDay = !!selectedDay && selectedDay < hoje;
   const isFutureDay = !!selectedDay && selectedDay > hoje;
 
+  // Cada dia tem o seu elenco de ligas, e uma seleção feita ontem não descreve
+  // hoje: manter aquelas ligas marcadas esconderia o dia inteiro. Depende do
+  // `selectedDay`, não do `day` cru — o `day` pode apontar para um dia que saiu
+  // da lista, e aí a tela troca de dia sem que este efeito rode.
+  useEffect(() => {
+    setCompeticoesSelecionadas(null);
+  }, [selectedDay]);
+
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
     allRows.forEach((r) => { if (brtDayOf(r.kickoff_utc) === selectedDay) s.add(r.competition); });
@@ -398,17 +360,7 @@ export default function FutebolOportunidades() {
     return s;
   }, [allRows, selectedDay, registradasAll]);
 
-  const faixaOptions = [
-    { value: 'destaque', label: 'Alta e Média' },
-    { value: 'alta', label: 'Alta' },
-    { value: 'media', label: 'Média' },
-    { value: 'baixa', label: 'Baixa' },
-    { value: 'all', label: 'Todas' },
-  ];
-  const compOptions = [
-    { value: 'all', label: 'Todas' },
-    ...sortCompetitions([...compsOnDay]).map((c) => ({ value: c, label: competitionLabel(c) })),
-  ];
+  const compOptions = sortCompetitions([...compsOnDay]).map((c) => ({ value: c, label: competitionLabel(c) }));
 
   // Lista do dia = board + oportunidades registradas que o board não tem mais.
   // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde
@@ -427,8 +379,8 @@ export default function FutebolOportunidades() {
     () => dayRows.filter((r) => {
       if (mercado !== 'all' && r.market !== mercado) return false;
       // Sem faixa não dá pra classificar, então o filtro de faixa a esconde.
-      if (!passaNoFiltroDeFaixa(faixa, r.faixa)) return false;
-      if (comp !== 'all' && r.competition !== comp) return false;
+      if (!passaNoFiltroDeFaixas(faixasSelecionadas, r.faixa)) return false;
+      if (competicoesSelecionadas && !competicoesSelecionadas.includes(r.competition)) return false;
       // Em aberto = o apito inicial ainda não soou. O status vem depois, e às
       // vezes atrasado, então quem manda é o relógio (ver futebol-datas.ts).
       if (
@@ -440,7 +392,7 @@ export default function FutebolOportunidades() {
         return false;
       return true;
     }),
-    [dayRows, mercado, faixa, comp, soEmAberto, agora]
+    [dayRows, mercado, faixasSelecionadas, competicoesSelecionadas, soEmAberto, agora]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
@@ -539,8 +491,8 @@ export default function FutebolOportunidades() {
 
       {/* Header + KPIs de faixa */}
       <div className="bg-white border-b border-line">
-        <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex items-end justify-between gap-4">
-          <div>
+        <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col items-stretch gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="w-full min-w-0 sm:w-auto">
             <div className={`${LABEL} flex items-center gap-2`}>{isPastDay ? 'Histórico' : 'Oportunidades'}{isDemo && <DemoBadge />}</div>
             {isPastDay && resumo && resumo.settled > 0 ? (
               <>
@@ -555,17 +507,28 @@ export default function FutebolOportunidades() {
                     própria legenda. */}
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
                   {comValor.length} {comValor.length === 1 ? 'oportunidade' : 'oportunidades'}
-                  {faixa === 'baixa' ? ' em faixa baixa' : faixa === 'all' ? '' : ' com valor'}
+                  {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa'
+                    ? ' em faixa baixa'
+                    : faixasSelecionadas.includes('baixa') ? '' : ' com valor'}
                 </h1>
-                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Onde a odd paga acima da chance estimada · em ordem de confiança'}</p>
+                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Análises pré-jogo com Score, argumentos a favor e contra e preço de mercado para apoiar sua decisão.'}</p>
               </>
             )}
           </div>
-          {!isLoading && bestRows.length > 0 && (
-            <div className="hidden sm:flex items-center gap-2">
-              <FaixaKpi n={nAlta} label="Alta" tone="alta" />
-              <FaixaKpi n={nMedia} label="Média" tone="media" />
-              <FaixaKpi n={nBaixa} label="Baixa" tone="baixa" />
+          {/* Um nó só: no celular esta coluna vira a linha de baixo e o status
+              ocupa a largura toda; no desktop ele senta ao lado dos KPIs. */}
+          {(showAlertStatus || (!isLoading && distribuicao.length > 0)) && (
+            <div className="flex items-end gap-2">
+              {showAlertStatus && publicationAlerts && (
+                <AlertasPublicacaoStatus estado={publicationAlerts} onOpenSettings={() => navigate('/settings')} />
+              )}
+              {!isLoading && distribuicao.length > 0 && (
+                <div className="hidden sm:flex items-end gap-2">
+                  <FaixaKpi n={nAlta} label="Alta" tone="alta" />
+                  <FaixaKpi n={nMedia} label="Média" tone="media" />
+                  <FaixaKpi n={nBaixa} label="Baixa" tone="baixa" />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -576,13 +539,7 @@ export default function FutebolOportunidades() {
         <FutebolAccessBanner access={access} />
         {publicationAlerts && (
           <>
-            {/* Também exige enabled: o cartão afirma que os alertas estão
-                ligados, e quem já pausou veria essa frase logo acima do atalho
-                dizendo o contrário. */}
-            {publicationAlerts.telegramLinked
-              && publicationAlerts.accessActive
-              && publicationAlerts.enabled
-              && !publicationAlerts.onboardingAcknowledged && (
+            {showAlertCard && (
               <AlertasPublicacaoCartao
                 onDismiss={handleAcknowledgeAlerts}
                 isDismissing={isAcknowledging}
@@ -591,36 +548,21 @@ export default function FutebolOportunidades() {
             <AlertasPublicacaoAtalho
               estado={publicationAlerts}
               onConnect={() => navigate(onboardingHref(ONBOARDING_SRC_ALERTAS_FUTEBOL, '/futebol/oportunidades'))}
-              onOpenSettings={() => navigate('/settings')}
             />
           </>
         )}
 
-        {/* Filtros — desktop: 1 linha (Mercado à esq · dropdowns à dir); mobile: 2 linhas */}
-        <div data-tour="fut-opp-filtros" className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
-          <MarketChips value={mercado} onChange={setMercado} />
-          <div className="h-px bg-line/70 sm:hidden" />
-          {/* `flex-wrap`: os dois filtros somam ~294px e não cabem lado a lado
-              abaixo de ~340px. Sem isso a linha `shrink-0` estourava a página. */}
-          <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
-            {/* Chip em vez de mais um dropdown: é liga-desliga, e o estado tem
-                que ser legível sem abrir nada. */}
-            <button
-              type="button"
-              aria-pressed={soEmAberto}
-              onClick={() => setSoEmAberto((v) => !v)}
-              className={`h-9 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0 ${
-                soEmAberto
-                  ? 'bg-forest text-canvas border-forest'
-                  : 'bg-white text-ink-2 border-line hover:bg-canvas-2 hover:text-ink'
-              }`}
-            >
-              Só jogos em aberto
-            </button>
-            <FilterSelect label="Faixa" value={faixa} options={faixaOptions} onChange={(v) => setFaixa(v as FaixaFilter)} />
-            <FilterSelect label="Competição" value={comp} options={compOptions} onChange={(v) => setComp(v as CompFilter)} />
-          </div>
-        </div>
+        <OportunidadesFiltros
+          mercado={mercado}
+          onMercadoChange={setMercado}
+          soEmAberto={soEmAberto}
+          onSoEmAbertoChange={setSoEmAberto}
+          faixasSelecionadas={faixasSelecionadas}
+          onFaixasChange={setFaixasSelecionadas}
+          competicoesSelecionadas={competicoesSelecionadas}
+          onCompeticoesChange={setCompeticoesSelecionadas}
+          competicaoOptions={compOptions}
+        />
 
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
@@ -673,10 +615,16 @@ export default function FutebolOportunidades() {
                 const res = resultOf(o);
                 const g = goalsMap.get(o.fixture_id);
                 return (
-                  <div key={key(o)}>
-                    <OppMobileCard o={o} onClick={() => go(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
-                    {!isPastDay && !locked && !res && <div className="px-1 pt-1.5"><RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} /></div>}
-                  </div>
+                  <OppMobileCard
+                    key={key(o)}
+                    o={o}
+                    onClick={() => go(o)}
+                    locked={locked}
+                    result={res}
+                    homeGoals={g?.gh}
+                    awayGoals={g?.ga}
+                    canRegister={!isPastDay && !locked && !res}
+                  />
                 );
               })}
             </div>
@@ -696,24 +644,18 @@ export default function FutebolOportunidades() {
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Como ler o Score</div>
             <p className="text-[12px] text-ink-2 mt-2 leading-relaxed">
-              O <b className="text-ink">Score (0–100)</b> mede <b className="text-ink">quanto do cenário favorável está presente</b> nessa linha: ataque, defesa, mando, forma, histórico do confronto. Ele não mede chance de acerto e não olha o preço. A odd e a diferença para o preço justo aparecem ao lado, separadas, porque preço e cenário são duas leituras diferentes e misturá-las esconde as duas.
+              O <b className="text-ink">Score (0–100)</b> resume <b className="text-ink">quanto do cenário desta linha foi confirmado pelas premissas do modelo</b>. Ele não é chance de acerto e não inclui odd ou preço. Os argumentos a favor e contra mostram o que sustenta a leitura; chance estimada, odd e valor aparecem ao lado, cada um com uma função diferente.
             </p>
           </div>
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Faixas</div>
-            <ul className="mt-2 space-y-2 text-[12px] text-ink-2">
-              {/* Os números saem de FAIXA_ALTA_MIN e FAIXA_MEDIA_MIN, em um
-                  lugar só, para a legenda não voltar a divergir do backend. */}
-              {opcoesDeFaixa(versaoDaJanela(dayRows)).map(({ tone, rotulo, selo }) => (
-                <li key={tone} className="flex items-center gap-2">
-                  {/* Sem selo na janela mista: as duas escalas têm cortes
-                      diferentes, e um número descreveria errado metade da lista. */}
-                  {selo && <span className={`w-9 text-center text-[11px] font-bold rounded px-1 py-0.5 ${faixaBadgeCls(rotulo)}`}>{selo}</span>}
-                  {tone === 'alta' ? 'Alta, cenário bem presente' : tone === 'media' ? 'Média, cenário parcial' : 'Baixa, pouco cenário a favor'}
-                </li>
-              ))}
-            </ul>
+            <FaixasLegenda opcoes={opcoesDeFaixa(versaoDaJanela(dayRows))} />
             <p className="text-[10px] text-ink-3 mt-3 leading-snug">
+              As faixas organizam a leitura do cenário; não representam chance de acerto.
+            </p>
+            {/* Único lugar da tela que declara a natureza da cotação e o que
+                está coberto. Sem isso a pessoa supõe que a odd é ao vivo. */}
+            <p className="text-[10px] text-ink-3 mt-2 leading-snug">
               Odds pré-jogo (não ao vivo). Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance; outros entram conforme liberados.
             </p>
           </div>
