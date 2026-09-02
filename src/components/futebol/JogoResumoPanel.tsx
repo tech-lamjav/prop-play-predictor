@@ -13,6 +13,7 @@ import {
   useVitrine,
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { chancePct, pickLabel } from '@/utils/futebol-score';
 import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
 import { contaQueValem, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
@@ -145,6 +146,11 @@ export function JogoResumoPanel({
   // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
   const carregandoLeitura = demo ? false : leituraCarregando || premissasCarregando;
   const temLeitura = !!best || (topo != null && topo.nValem > 0);
+  // Os dois links do painel levam à MESMA leitura que ele está exibindo (#344).
+  // Sem isso a tela do jogo abria no desempate padrão — normalmente gols — e o
+  // pick que a pessoa acabou de ler não estava mais na tela. Sem preço não há
+  // saída para filtrar, e aí abre a tela inteira, que é o honesto.
+  const paraOJogo = hrefDaSaida(best, fixture.fixture_id);
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
 
@@ -236,7 +242,7 @@ export function JogoResumoPanel({
             o texto tem 13,5px e sozinho ficava em ~18px, abaixo do mínimo de
             alvo de clique. A margem negativa devolve o espaço ao layout. */}
         <Link
-          to={`/futebol/jogo/${fixture.fixture_id}`}
+          to={paraOJogo}
           className="text-[13.5px] font-semibold tracking-tight text-ink truncate hover:underline py-1.5 -my-1.5"
           title="Abrir a tela do jogo"
         >
@@ -448,7 +454,7 @@ export function JogoResumoPanel({
 
         <div className="mt-4 flex gap-2">
           <Link
-            to={`/futebol/jogo/${fixture.fixture_id}`}
+            to={paraOJogo}
             className="flex-1 h-10 rounded-[10px] bg-forest text-canvas text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-forest-2 transition"
           >
             {temLeitura ? 'Ver a análise dos 5 mercados' : 'Ver a análise completa'} <ArrowRight className="w-4 h-4" />
