@@ -1,6 +1,8 @@
 import { Crest } from './Crest';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
+import { interceptarCliqueSimples } from '@/utils/navegacao-por-link';
 import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
@@ -29,6 +31,7 @@ export function FixtureRow({
   best,
   leituraCarregando,
   selected = false,
+  to,
   onClick,
 }: {
   fixture: FutebolFixture;
@@ -45,6 +48,15 @@ export function FixtureRow({
    */
   leituraCarregando: boolean;
   selected?: boolean;
+  /**
+   * Para onde o NAVEGADOR leva: a tela do jogo.
+   *
+   * O clique simples não chega lá — ele é interceptado e abre o painel lateral.
+   * Mas o clique do meio, o Ctrl+clique e o «abrir em nova aba» do botão direito
+   * escapam do intercepto e usam este destino. É o comportamento pedido na #341:
+   * na aba nova o usuário quer o jogo inteiro, não a lista com o painel aberto.
+   */
+  to: string;
   onClick: () => void;
 }) {
   const fim = isFinished(fixture.status_short);
@@ -74,8 +86,9 @@ export function FixtureRow({
   const bateu = liquidacao != null ? isHit(liquidacao) : null;
 
   return (
-    <button
-      onClick={onClick}
+    <Link
+      to={to}
+      onClick={interceptarCliqueSimples(onClick)}
       aria-current={selected ? 'true' : undefined}
       className="w-full text-left px-3 sm:px-4 py-2.5 flex items-center gap-2.5 sm:gap-3.5 transition"
       style={{
@@ -178,6 +191,6 @@ export function FixtureRow({
         {!best ? '—' : bateu != null ? (bateu ? '✓' : '✕') : best.score}
       </div>
       )}
-    </button>
+    </Link>
   );
 }

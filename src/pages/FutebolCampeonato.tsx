@@ -314,6 +314,10 @@ export default function FutebolCampeonato() {
                   fixture={f}
                   best={bestByFixture.get(f.fixture_id) ?? null}
                   leituraCarregando={leituraCarregando}
+                  to={`/futebol/jogo/${f.fixture_id}`}
+                  // Aqui não há painel: o clique simples vai para o mesmo lugar
+                  // que o `to`. O `<Link>` resolve sozinho, e o intercepto só
+                  // devolve a navegação ao roteador.
                   onClick={() => navigate(`/futebol/jogo/${f.fixture_id}`)}
                 />
               ))}

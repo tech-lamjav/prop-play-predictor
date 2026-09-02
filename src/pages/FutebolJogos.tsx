@@ -333,6 +333,7 @@ export default function FutebolJogos() {
                               best={bestByFixture.get(f.fixture_id) ?? null}
                               leituraCarregando={leituraCarregando}
                               selected={f.fixture_id === jogoParam}
+                              to={`/futebol/jogo/${f.fixture_id}`}
                               onClick={() => openJogo(f)}
                             />
                           ))}

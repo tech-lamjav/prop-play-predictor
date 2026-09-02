@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { usePostHog } from '@posthog/react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,8 +65,8 @@ const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
-function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
-  o: OppLike; onClick: () => void; muted?: boolean; locked?: boolean;
+function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
+  o: OppLike; to: string; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
@@ -77,7 +77,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
   // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
   const badgeCls = o.faixa != null ? faixaBadgeCls(o.faixa) : 'bg-canvas-2 text-ink-3 border border-line';
   return (
-    <button onClick={onClick} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
+    <Link to={to} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
       <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[16px] w-10 h-9 ${badgeCls}`}>{o.score ?? '—'}</span>
       <span className={`px-1.5 h-5 w-fit inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${badgeCls}`}>{o.faixa != null ? faixaWord(o.faixa) : '—'}</span>
       <div className="flex items-center gap-2.5 min-w-0">
@@ -105,13 +105,13 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{o.best_odd.toFixed(2)}</Blur></div>
       <div className={`text-right tabular-nums text-[14px] font-bold ${edgeToneCls(o.edge)}`}><Blur active={showLock}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</Blur></div>
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
-    </button>
+    </Link>
   );
 }
 
 // Card (mobile)
-function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals, canRegister = false }: {
-  o: OppLike; onClick: () => void; locked?: boolean;
+function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegister = false }: {
+  o: OppLike; to: string; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null; canRegister?: boolean;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
@@ -120,7 +120,7 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals, canRe
   const hasScore = homeGoals != null && awayGoals != null;
   return (
     <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
-      <button onClick={onClick} className="w-full text-left p-3.5">
+      <Link to={to} className="block w-full text-left p-3.5">
         <div className="flex items-start gap-3">
           <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
@@ -161,7 +161,7 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals, canRe
             </div>
           ))}
         </div>
-      </button>
+      </Link>
       {canRegister && (
         <div className="px-3.5 pb-3.5 -mt-0.5">
           <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
@@ -500,10 +500,11 @@ export default function FutebolOportunidades() {
   // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
   // da segunda abria a tela na primeira, e o pick que o usuário leu aqui virava
   // outro lá. O link carrega qual card foi clicado.
-  const go = (o: OppLike) => {
+  /** A URL da saída clicada. Vira  de link, não argumento de navigate (#341). */
+  const hrefDoJogo = (o: OppLike) => {
     const q = new URLSearchParams({ mercado: o.market, saida: o.outcome });
     if (o.line_value != null) q.set('linha', String(o.line_value));
-    navigate(`/futebol/jogo/${o.fixture_id}?${q}`);
+    return `/futebol/jogo/${o.fixture_id}?${q}`;
   };
   const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
@@ -657,7 +658,7 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppRow o={o} onClick={() => go(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppRow o={o} to={hrefDoJogo(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!isPastDay && !locked && !res && (
                       <div className="px-5 pb-2 -mt-0.5">
                         <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
@@ -677,7 +678,7 @@ export default function FutebolOportunidades() {
                   <OppMobileCard
                     key={key(o)}
                     o={o}
-                    onClick={() => go(o)}
+                    to={hrefDoJogo(o)}
                     locked={locked}
                     result={res}
                     homeGoals={g?.gh}
