@@ -24,6 +24,22 @@ _Avoid_: Candidata, linha cotada
 O momento em que uma oportunidade passa a estar disponível no painel para o usuário. Não significa envio de notificação, e não garante exibição: uma oportunidade de mercado fora da **vitrine** é publicada e não aparece.
 _Avoid_: Alerta, envio, publicação no Telegram
 
+**Motivo**:
+Uma premissa que o backend agrupou como **A favor** ou **Contra** de uma saída publicada. O agrupamento é decisão do backend; a tela só traduz o slug para texto. Não existe motivo que a tela conclua sozinha.
+_Avoid_: Razão, justificativa
+
+**Porquê**:
+O mesmo que **motivo a favor** — é o nome que a tela usa quando mostra só o lado positivo.
+_Avoid_: Tratar como conceito separado de motivo
+
+**O que o jogo mostra**:
+As premissas acesas de uma **linha analisada** sem preço. Não é motivo, porque sem preço não há aposta a favor de quê. Tem nome próprio na tela justamente para não ser lido como razão de apostar.
+_Avoid_: Motivo, porquê
+
+**Evidência**:
+O número que embasa uma premissa: a média, o histórico, o placar que sustenta a frase. Ela acompanha a premissa e não a substitui — sem evidência a premissa continua verdadeira, só fica sem lastro na tela.
+_Avoid_: Motivo, prova, justificativa
+
 **Board**:
 O conjunto do que o backend publica — tudo que passou nas portas de qualidade de dado, gravado no funil e no histórico. É o universo, não o que está na tela.
 _Avoid_: Painel, vitrine, lista

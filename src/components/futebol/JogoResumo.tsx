@@ -13,8 +13,9 @@ import {
   pesoForte,
   premissaDe,
 } from '@/utils/futebol-premissas';
-import { evidenciaDe, ladoDaSaida, manchete } from '@/utils/futebol-evidencias';
+import { ladoDaSaida, manchete } from '@/utils/futebol-evidencias';
 import { melhorLeitura, resumoDosMercados, type MercadoResumo } from '@/utils/futebol-leitura';
+import { premissasAcesasDaLeitura } from '@/utils/futebol-motivos';
 import { fmtDayShort, isFinished } from '@/utils/futebol-datas';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
 import { ehDestaque, ehFaixaAlta, faixaWord } from '@/utils/futebol-score';
@@ -77,16 +78,24 @@ export function HeroLeitura({
   const lado = ladoDaSaida(top.mercado.slug, top.candidato.outcome);
   const pick = outcomeLabel(top.candidato, jogo.home, jogo.away);
 
-  // Os porquês: a evidência das acesas de maior peso, no máximo 3.
-  const porques = top.candidato.acesas
-    .map((s) => premissaDe(top.mercado.slug, s))
-    .filter((p): p is NonNullable<typeof p> => p != null)
-    .sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0))
-    .slice(0, 3)
-    .map((p) => {
-      const ev = evidenciaDe(p.slug, numeros, lado);
-      return ev ? `${p.label}: ${ev.texto.charAt(0).toLowerCase()}${ev.texto.slice(1)}.` : `${p.label}.`;
-    });
+  // Os porquês, montados pela mesma função que o painel da lista usa (#332).
+  // Os parâmetros preservam exatamente o que esta tela fazia: corte em três,
+  // premissa de peso zero incluída, e sem cair no histórico do time.
+  const porques = premissasAcesasDaLeitura(
+    {
+      mercado: top.mercado.slug,
+      acesas: top.candidato.acesas,
+      numeros,
+      historico: undefined,
+      lado,
+      linha: null,
+    },
+    { max: 3, incluirPesoZero: true },
+  ).map(({ premissa, evidencia }) =>
+    evidencia
+      ? `${premissa.label}: ${evidencia.texto.charAt(0).toLowerCase()}${evidencia.texto.slice(1)}.`
+      : `${premissa.label}.`,
+  );
 
   const fim = isFinished(jogo.statusShort);
   const res = fim ? settleFutebol(top.candidato, jogo.goalsHome, jogo.goalsAway) : null;

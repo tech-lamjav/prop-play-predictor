@@ -1,5 +1,12 @@
-import type { FutebolFixtureReasonItem } from '@/services/futebol-data.service';
-import { PREMISSAS_OCULTAS } from '@/utils/futebol-premissas';
+import type {
+  FutebolFixtureHistorico,
+  FutebolFixtureNumeros,
+  FutebolFixturePremissas,
+  FutebolFixtureReasonItem,
+} from '@/services/futebol-data.service';
+import { PREMISSAS_OCULTAS, premissaDe, type Premissa } from '@/utils/futebol-premissas';
+import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
+import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 
 /**
  * Um item do contrato que não é razão de contexto e por isso não vai para a
@@ -77,4 +84,79 @@ export function estadoDosMotivos(
 ): EstadoDosMotivos {
   if (favor.length > 0 || contra.length > 0) return 'motivos';
   return carregando ? 'carregando' : 'sem_motivos';
+}
+
+/** Uma premissa acesa com o número que a embasa, quando existe. */
+export type PremissaComEvidencia = { premissa: Premissa; evidencia: Evidencia | null };
+
+/** O que cada tela pede de diferente. */
+export type OpcoesDasPremissasAcesas = {
+  /** Quantas exibir. Resumo do jogo pede 3; painel da lista pede 4. */
+  max: number;
+  /**
+   * Premissa de peso zero entra na lista?
+   *
+   * Peso zero não é premissa quebrada: é premissa que a recalibragem tirou da
+   * conta e manteve visível, porque ela descreve o jogo mesmo sem pontuar.
+   * O resumo mostra; o painel não.
+   */
+  incluirPesoZero: boolean;
+};
+
+/**
+ * As premissas acesas de uma leitura, ordenadas por peso e prontas para a tela.
+ *
+ * ⚠️ O nome diz o que ela faz, e não o que a tela chama o resultado, de
+ * propósito. Pelo glossário, **motivo** é o que o backend agrupou — "não existe
+ * motivo que a tela conclua sozinha" —, e esta função monta a lista aqui, a
+ * partir das premissas acesas. Chamá-la de motivo seria o código contradizer o
+ * vocabulário.
+ *
+ * Depois do #334 ela fica só para **linha analisada sem preço**, onde o que a
+ * tela mostra tem nome próprio: "o que o jogo mostra". Leitura com preço passa a
+ * ler o contrato.
+ *
+ * O que ela faz existir agora é o lugar: enquanto a montagem viveu dentro de
+ * duas telas, elas divergiram sem ninguém ver.
+ *
+ * A evidência do histórico do time é tentada sempre. Não é opção porque não é
+ * observável: quem não a quer passa `historico` vazio, e aí ela é nula de
+ * qualquer jeito.
+ */
+export function premissasAcesasDaLeitura(
+  entrada: {
+    /** Slug do mercado da leitura. */
+    mercado: string;
+    /** Slugs das premissas que acenderam para a saída escolhida. */
+    acesas: readonly string[] | null | undefined;
+    numeros: FutebolFixtureNumeros[] | undefined;
+    historico: FutebolFixtureHistorico[] | undefined;
+    lado: 'home' | 'away' | null;
+    /**
+     * A linha da saída, quando o texto da evidência depende dela.
+     *
+     * ⚠️ Vem separada de propósito, e não derivada do candidato. As duas telas
+     * divergem aqui: o painel passa a linha e o resumo não, e o resumo tem
+     * candidato com linha — derivar mudaria o texto dele. Enquanto o #332
+     * promete comportamento idêntico, a divergência fica explícita. Ela some no
+     * #334, junto com as outras.
+     */
+    linha: number | null;
+  },
+  opcoes: OpcoesDasPremissasAcesas,
+): PremissaComEvidencia[] {
+  const { mercado, acesas, numeros, historico, lado, linha } = entrada;
+
+  return (acesas ?? [])
+    .map((slug) => premissaDe(mercado, slug))
+    .filter((p): p is Premissa => p != null)
+    .filter((p) => opcoes.incluirPesoZero || p.peso == null || p.peso > 0)
+    .sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0))
+    .slice(0, opcoes.max)
+    .map((premissa) => ({
+      premissa,
+      evidencia:
+        evidenciaDe(premissa.slug, numeros, lado, true, linha) ??
+        evidenciaDoHistorico(premissa.slug, historico, lado, linha),
+    }));
 }
