@@ -31,7 +31,7 @@ import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
-import { valueDoCandidato, resumoDosMercados, mesmaLinha, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { valueDoCandidato, resumoDosMercados, mesmaLinha, candidatoQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
@@ -305,22 +305,10 @@ export function BancadaMercados({
   // Sem fallback de propósito: resumoDosMercados só deixa um mercado de fora quando
   // melhorCandidato dele já é nulo, então um "?? melhorCandidato(...)" aqui nunca
   // teria o que devolver, e ainda reabriria a porta das duas verdades.
-  const candidatoInicialDoMercado = useMemo(() => {
-    const resumo = resumos.find((r) => r.mercado.slug === mercado.slug) ?? null;
-    // Primeiro, a oportunidade de maior score (ou a que veio pelo link). Sem ela,
-    // uma candidata que já tem cotação é mais útil que uma linha só analisada.
-    if (resumo?.value) return resumo.candidato;
-
-    const candidataCotada = [...doMercado]
-      .filter((c) => leituraDaCotacao(mercado.slug, c.outcome, c.line_value, valueRows, oddsRows).estado === 'cotada')
-      .sort(
-        (a, b) =>
-          contaQueValem(mercado.slug, b.acesas) - contaQueValem(mercado.slug, a.acesas) ||
-          (a.line_value ?? 0) - (b.line_value ?? 0) ||
-          a.outcome.localeCompare(b.outcome),
-      )[0];
-    return candidataCotada ?? resumo?.candidato ?? null;
-  }, [resumos, mercado.slug, doMercado, valueRows, oddsRows]);
+  const candidatoInicialDoMercado = useMemo(
+    () => candidatoQueAbreAFolha(resumos.find((r) => r.mercado.slug === mercado.slug)),
+    [resumos, mercado.slug],
+  );
 
   // TODAS as linhas cotadas do mercado, em ordem. Com pills a tela mostrava as 5
   // mais centrais e as outras 16 não existiam; na régua arrastável cabem todas.

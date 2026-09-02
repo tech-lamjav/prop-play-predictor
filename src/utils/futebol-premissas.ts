@@ -1,5 +1,5 @@
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
-import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
+import { linhaDaSaida, mesmaLinha, type Saida } from '@/utils/futebol-saida';
 
 // Catálogo das premissas do Score: rótulo, peso e agrupamento.
 //
@@ -380,11 +380,26 @@ export function linhaNegociavel(market: string, line: number | null): boolean {
 export function melhorCandidato(
   rows: FutebolFixturePremissas[],
   market: string,
+  /**
+   * A saída que veio pelo link, quando houver.
+   *
+   * Ela já era respeitada entre as linhas COM preço, mas este caminho — o sem
+   * preço — a ignorava. Resultado: vindo do painel de um jogo sem oportunidade,
+   * o link carregava a leitura e a tela abria noutra (#346).
+   */
+  preferida?: Saida | null,
 ): FutebolFixturePremissas | null {
   const doMercado = rows
     .filter((r) => r.market === market)
     .filter((r) => linhaNegociavel(market, r.line_value));
   if (!doMercado.length) return null;
+
+  if (preferida?.market === market) {
+    const clicada = doMercado.find(
+      (r) => r.outcome === preferida.outcome && mesmaLinha(r.line_value, preferida.line_value),
+    );
+    if (clicada) return clicada;
+  }
   const nota = (r: FutebolFixturePremissas) => contaQueValem(market, r.acesas);
   const nPen = (r: FutebolFixturePremissas) => (r.penalidades ?? []).length;
   // Distância da linha padrão do mercado de gols. Desempata linhas empatadas em
