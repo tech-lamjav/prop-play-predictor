@@ -138,14 +138,27 @@ export function bestOf(rows: FutebolFixtureValueRow[]): FutebolFixtureValueRow |
 
 /**
  * Fronteiras do Score de contexto (spec #301). As duas pertencem à faixa de
- * cima: 25 é Média, 55 é Alta.
+ * cima: 30 é Média, 60 é Alta.
  *
  * Elas existem aqui para a LEGENDA declarar o número certo, e para mais nada.
  * Quem classifica é o backend: a faixa chega pronta na resposta, e o front que
- * recalcula é o front que discorda da metodologia sem saber.
+ * recalcula é o front que discorda da metodologia sem saber. Por isso estes
+ * números têm de ser os MESMOS do `CASE` das faixas no mart — se divergirem, a
+ * legenda mente em cima de um rótulo correto.
+ *
+ * ⚠️ Eram 25 e 55, medidos pela #107. Viraram 30 e 60 por DECISÃO DE PRODUTO em
+ * 01/09/2026, registrada na `analytics-engineering#109`, e não por leitura de
+ * evidência: a #107 concluiu que nenhum par da grade discrimina — os oito
+ * passam nas restrições de forma e nenhum separa Alta de Baixa além de um
+ * erro-padrão. O 30/60 está na mesma grade medida, então não é número novo.
+ *
+ * O que ele compra, contra o 25/55: a faixa Alta deixa de ser a segunda melhor
+ * e passa a ser a melhor (ROI −3,6 contra −4,6), e o board padrão encolhe de
+ * 63,5% para 52,8% do total. O que ele não conserta: a Média segue sendo o
+ * fundo, igual ao 25/55 — faixa é rótulo, não porta.
  */
-export const FAIXA_MEDIA_MIN = 25;
-export const FAIXA_ALTA_MIN = 55;
+export const FAIXA_MEDIA_MIN = 30;
+export const FAIXA_ALTA_MIN = 60;
 
 /**
  * As fronteiras da escala em que a nota foi calculada.
