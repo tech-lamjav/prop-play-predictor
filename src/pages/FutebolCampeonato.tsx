@@ -19,6 +19,7 @@ import {
 import type { Competition, FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { brtDayOf, fmtDayHeader, isFinished } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
+import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import { ChaveamentoBracket } from '@/components/futebol/ChaveamentoBracket';
@@ -114,7 +115,9 @@ export default function FutebolCampeonato() {
   const { data: fixtures, isLoading, isError } = useFutebolFixtures(competition, season);
   const { data: standings, isLoading: loadingStandings } = useFutebolStandings(competition, season, true);
   const { data: leaders, isLoading: loadingLeaders } = useFutebolLeaders(competition, season, true);
-  const { data: board } = useFutebolValueBoard();
+  // Mesma regra da agenda: enquanto o board não respondeu, a linha não conclui
+  // "sem leitura ainda" e o contador não afirma um total.
+  const { data: board, isLoading: leituraCarregando } = useFutebolValueBoard();
 
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
@@ -210,6 +213,12 @@ export default function FutebolCampeonato() {
     const encerrada = jogosDaRodada.length > 0 && jogosDaRodada.every((f) => isFinished(f.status_short));
     const rotulo = encerrada ? (porPontos ? 'Rodada encerrada' : 'Fase encerrada') : porPontos ? 'Nesta rodada' : 'Nesta fase';
 
+    // Enquanto o board não respondeu, `bestByFixture` está vazio e "sem leitura
+    // nesta rodada" seria a mesma conclusão prematura que a linha evita. "Sem
+    // jogos" não: essa não depende do board, e a rodada vazia é vazia agora.
+    if (leituraCarregando && jogosDaRodada.length) {
+      return { rotulo, valor: '', texto: 'carregando…' };
+    }
     if (!comLeitura.length) {
       return {
         rotulo,
@@ -231,7 +240,7 @@ export default function FutebolCampeonato() {
       valor: String(comLeitura.length),
       texto: melhor ? `com leitura · melhor Score ${melhor}` : 'com leitura',
     };
-  }, [jogosDaRodada, bestByFixture, porPontos]);
+  }, [jogosDaRodada, bestByFixture, porPontos, leituraCarregando]);
 
   const nTimes = standings?.length ?? new Set((fixtures ?? []).map((f) => f.home_team_id)).size;
   const ondeEstamos = currentRound
@@ -295,7 +304,8 @@ export default function FutebolCampeonato() {
                   {fmtDayHeader(day)}
                 </span>
                 <span className="text-[10.5px]" style={{ color: '#8d8672' }}>
-                  {games.length} {games.length === 1 ? 'jogo' : 'jogos'} · {comLeitura} com leitura
+                  {games.length} {games.length === 1 ? 'jogo' : 'jogos'}
+                  {sufixoDeLeitura(leituraCarregando, comLeitura)}
                 </span>
               </div>
               {games.map((f) => (
@@ -303,6 +313,7 @@ export default function FutebolCampeonato() {
                   key={f.fixture_id}
                   fixture={f}
                   best={bestByFixture.get(f.fixture_id) ?? null}
+                  leituraCarregando={leituraCarregando}
                   onClick={() => navigate(`/futebol/jogo/${f.fixture_id}`)}
                 />
               ))}

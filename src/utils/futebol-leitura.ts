@@ -165,3 +165,16 @@ export function melhorLeitura(resumos: MercadoResumo[]): MercadoResumo | null {
   if (comValor.length) return [...comValor].sort((a, b) => (b.value!.score) - (a.value!.score))[0];
   return [...resumos].sort((a, b) => b.nValem - a.nValem)[0];
 }
+
+/**
+ * O sufixo "· N com leitura" dos contadores da agenda e do campeonato.
+ *
+ * Vazio enquanto o board não respondeu. Contar leituras a partir de um mapa
+ * ainda vazio faz a tela afirmar "0 com leitura" antes de existir resposta — a
+ * mesma conclusão prematura que o esqueleto da linha evita, só que em número.
+ * Some em vez de mostrar zero: um contador que aparece atrasado é menos errado
+ * do que um que mente e depois se corrige.
+ */
+export function sufixoDeLeitura(carregando: boolean, comLeitura: number): string {
+  return carregando ? '' : ` · ${comLeitura} com leitura`;
+}

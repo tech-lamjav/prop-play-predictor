@@ -301,7 +301,7 @@ export default function FutebolJogo() {
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
-  const { data: realValueRows } = useFutebolFixtureValue(fid);
+  const { data: realValueRows, isLoading: valorCarregando } = useFutebolFixtureValue(fid);
   const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
   const { data: access } = useFutebolAccess();
   const locked = isDemo ? false : !access?.unlocked;
@@ -377,7 +377,12 @@ export default function FutebolJogo() {
   // O tour fala do que está montado: a régua só existe nos mercados de linha, e
   // as premissas só quando a coleta trouxe alguma para este jogo. A query é a
   // mesma da bancada, então sai do cache do react-query, sem ida extra à rede.
-  const { data: premissasDoJogo } = useFutebolFixturePremissas(fid);
+  const { data: premissasDoJogo, isLoading: premissasCarregando } = useFutebolFixturePremissas(fid);
+  // A leitura da faixa se apoia em DUAS fontes: as premissas e as linhas de
+  // valor. Enquanto qualquer uma está em voo a faixa não tem como concluir
+  // "Sem leitura ainda", então ela mostra o esqueleto. No tour não há espera:
+  // os dados são de mentira e chegam prontos.
+  const leituraCarregando = isDemo ? false : premissasCarregando || valorCarregando;
   const jogoSteps = useMemo(
     () =>
       makeFutebolJogoSteps({
@@ -529,7 +534,9 @@ export default function FutebolJogo() {
                 {isDemo && <div className="mb-2"><DemoBadge /></div>}
                 <FaixaPartida
                   jogo={jogoInfo}
+                  premissas={premissasDoJogo}
                   valueRows={valueRows}
+                  leituraCarregando={leituraCarregando}
                   locked={locked}
                   rodada={prettyRound(fixture.round)}
                   estadio={fixture.venue_name ? `${fixture.venue_name}${fixture.venue_city ? `, ${fixture.venue_city}` : ''}` : null}

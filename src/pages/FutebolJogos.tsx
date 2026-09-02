@@ -10,6 +10,7 @@ import { useFutebolFixturesByDay, useFutebolFixtureDays, useFutebolValueBoard } 
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
+import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -83,10 +84,16 @@ export default function FutebolJogos() {
   const { from, to } = useMemo(() => monthRange(dia), [dia]);
   const { data: fixtures, isLoading, isError } = useFutebolFixturesByDay(dia);
   const { data: dias } = useFutebolFixtureDays(from, to);
-  const { data: board } = useFutebolValueBoard();
+  // O carregando do board é separado do carregando dos jogos do dia: a agenda
+  // consegue listar o confronto antes de saber se ele tem leitura, e é isso que
+  // ela deve fazer. O que ela não pode é contar "0 com leitura" nem escrever
+  // "sem leitura ainda" enquanto a resposta não chegou — isso é conclusão.
+  const { data: board, isLoading: boardCarregando } = useFutebolValueBoard();
 
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
   const isDemo = jogosTour.run;
+  // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
+  const leituraCarregando = isDemo ? false : boardCarregando;
 
   const effFixtures = useMemo<FutebolFixtureByDay[]>(
     () => (isDemo ? makeDemoAgenda(dia) : (fixtures ?? [])),
@@ -219,7 +226,7 @@ export default function FutebolJogos() {
               ? 'carregando…'
               : total === 0
                 ? 'nenhum jogo neste dia'
-                : `${total} ${total === 1 ? 'jogo' : 'jogos'} · ${grupos.length} ${grupos.length === 1 ? 'campeonato' : 'campeonatos'} · ${comLeitura} com leitura`}
+                : `${total} ${total === 1 ? 'jogo' : 'jogos'} · ${grupos.length} ${grupos.length === 1 ? 'campeonato' : 'campeonatos'}${sufixoDeLeitura(leituraCarregando, comLeitura)}`}
           </span>
           <div className="ml-auto min-w-0" data-tour="fut-jogos-datas">
             <AgendaDateStrip selectedDay={dia} onSelectDay={selectDay} jogosPorDia={jogosPorDia} />
@@ -306,8 +313,11 @@ export default function FutebolJogos() {
                             <ArrowUpRight className="w-3.5 h-3.5" />
                           </Link>
                           <span className="ml-auto text-[10.5px] shrink-0 tabular-nums" style={{ color: '#8d8672' }}>
-                            {jogos.length} {jogos.length === 1 ? 'jogo' : 'jogos'} ·{' '}
-                            {jogos.filter((j) => bestByFixture.has(j.fixture_id)).length} com leitura
+                            {jogos.length} {jogos.length === 1 ? 'jogo' : 'jogos'}
+                            {sufixoDeLeitura(
+                              leituraCarregando,
+                              jogos.filter((j) => bestByFixture.has(j.fixture_id)).length,
+                            )}
                           </span>
                         </div>
                         {!recolhido &&
@@ -316,6 +326,7 @@ export default function FutebolJogos() {
                               key={f.fixture_id}
                               fixture={f}
                               best={bestByFixture.get(f.fixture_id) ?? null}
+                              leituraCarregando={leituraCarregando}
                               selected={f.fixture_id === jogoParam}
                               onClick={() => openJogo(f)}
                             />
@@ -334,6 +345,7 @@ export default function FutebolJogos() {
                   <JogoResumoPanel
                     fixture={selected}
                     best={bestByFixture.get(selected.fixture_id) ?? null}
+                    leituraCarregando={leituraCarregando}
                     onClose={closePanel}
                     demo={
                       isDemo ? { premissas: demoFutebolPremissas, numeros: demoFutebolNumeros } : undefined
