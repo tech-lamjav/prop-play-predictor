@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
-import { useFutebolFixturePremissas, useFutebolFixtureNumeros } from '@/hooks/use-futebol-data';
+import { useFutebolFixturePremissas, useFutebolFixtureNumeros, useVitrine } from '@/hooks/use-futebol-data';
 import type {
   FutebolFixtureValueRow,
   FutebolInjury,
@@ -188,7 +188,11 @@ export function JogoResumo({
   const { data: rows, isLoading } = useFutebolFixturePremissas(jogo.fixtureId);
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
 
-  const resumos = useMemo(() => resumoDosMercados(rows, valueRows), [rows, valueRows]);
+  // A vitrine (#324): a prateleira sai do CATÁLOGO, não do board, então filtrar
+  // as linhas não basta — sem isto o mercado escondido volta como chip, com
+  // barra de Score e sem odd.
+  const { ocultos } = useVitrine();
+  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, null, ocultos), [rows, valueRows, ocultos]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
   const placar = useMemo(

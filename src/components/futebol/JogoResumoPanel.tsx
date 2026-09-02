@@ -9,6 +9,7 @@ import {
   useFutebolFixtureNumeros,
   useFutebolFixtureInjuries,
   useFutebolFixtureHistorico,
+  useVitrine,
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { chancePct, pickLabel } from '@/utils/futebol-score';
@@ -108,7 +109,9 @@ export function JogoResumoPanel({
 
   // A leitura: com preço, a melhor do value board; sem preço, o mercado com mais
   // premissas. É a mesma conta da tela de jogo, então os dois nunca divergem.
-  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null), [premissas, best]);
+  // A vitrine (#324): mesma razão do JogoResumo — a prateleira sai do catálogo.
+  const { ocultos } = useVitrine();
+  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null, null, ocultos), [premissas, best, ocultos]);
   const topo = useMemo(() => melhorLeitura(resumos), [resumos]);
 
   const mercadoLeitura = best ? best.market : topo?.mercado.slug ?? null;

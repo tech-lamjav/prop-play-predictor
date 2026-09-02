@@ -8,7 +8,7 @@ import { type JogoInfo } from '@/components/futebol/JogoResumo';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies,
@@ -301,6 +301,9 @@ export default function FutebolJogo() {
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
+  // A vitrine (#324) desce por prop para a FaixaPartida, que é de apresentação
+  // e não tem consulta própria.
+  const { ocultos } = useVitrine();
   const { data: realValueRows, isLoading: valorCarregando } = useFutebolFixtureValue(fid);
   const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
   const { data: access } = useFutebolAccess();
@@ -536,6 +539,7 @@ export default function FutebolJogo() {
                   jogo={jogoInfo}
                   premissas={premissasDoJogo}
                   valueRows={valueRows}
+                  ocultos={ocultos}
                   leituraCarregando={leituraCarregando}
                   locked={locked}
                   rodada={prettyRound(fixture.round)}

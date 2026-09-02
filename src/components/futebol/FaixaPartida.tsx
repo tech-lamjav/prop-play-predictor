@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { MapPin } from 'lucide-react';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { Crest } from '@/components/futebol/Crest';
+import { useVitrine } from '@/hooks/use-futebol-data';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 
 import type { FutebolFixturePremissas, FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
@@ -60,6 +61,7 @@ export function FaixaPartida({
   awayTeamId,
   onAbrirMercado,
   preferida,
+  ocultos,
 }: {
   jogo: JogoInfo;
   /** As premissas do jogo. Vêm da página: ela já faz essa query e é a dona do estado. */
@@ -85,8 +87,15 @@ export function FaixaPartida({
   onAbrirMercado: (slug: string) => void;
   /** A saída que o usuário clicou em Oportunidades, quando ele veio de lá. */
   preferida?: SaidaPreferida | null;
+  /**
+   * Os mercados fora da vitrine (#324). Vem por PROP e não por hook: este é um
+   * componente de apresentação, sem consulta própria, e um hook aqui passaria a
+   * exigir QueryClient de quem só queria desenhar a faixa — foi o que quebrou os
+   * três testes dele na primeira tentativa.
+   */
+  ocultos: readonly string[];
 }) {
-  const resumos = useMemo(() => resumoDosMercados(premissas, valueRows, preferida), [premissas, valueRows, preferida]);
+  const resumos = useMemo(() => resumoDosMercados(premissas, valueRows, preferida, ocultos), [premissas, valueRows, preferida, ocultos]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
   // A faixa conhecia dois estados, encerrado e "não começou", então o jogo EM

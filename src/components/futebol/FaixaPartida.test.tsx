@@ -44,6 +44,7 @@ function renderFaixa(props: Partial<Parameters<typeof FaixaPartida>[0]> = {}) {
       homeTeamId={10}
       awayTeamId={20}
       onAbrirMercado={vi.fn()}
+      ocultos={[]}
       {...props}
     />,
   );
