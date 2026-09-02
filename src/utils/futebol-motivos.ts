@@ -192,10 +192,25 @@ export function premissasAcesasDaLeitura(
  * degradação: cabe ao chamador não concluir nada enquanto isso, com
  * `estadoDosMotivos`.
  */
+export type SaidaExplicavel = {
+  market: string;
+  outcome: string;
+  line_value: number | null;
+  /** As premissas acesas, quando a tela as tem. A home lê do board e não tem. */
+  acesas?: readonly string[];
+};
+
 export function explicacaoDaLeitura(
   entrada: {
     mercado: string;
-    candidato: FutebolFixturePremissas | null | undefined;
+    /**
+     * A saída escolhida, no mínimo que a explicação precisa dela.
+     *
+     * Estrutural de propósito: o resumo e o painel passam a linha de premissas,
+     * e a home passa a linha do board — que não tem `acesas`, e nem precisa,
+     * porque lá sempre há preço e a fonte é o contrato.
+     */
+    candidato: SaidaExplicavel | null | undefined;
     /** A leitura tem preço coletado? É o que decide a fonte e o rótulo. */
     temPreco: boolean;
     contrato: FutebolFixtureReasonContractRow[] | undefined;

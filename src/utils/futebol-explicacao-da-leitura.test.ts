@@ -259,3 +259,41 @@ describe('explicacaoDaLeitura', () => {
     });
   });
 });
+
+describe('a linha casa com folga, porque ela vem em float', () => {
+  // A home comparava a linha do contrato com `===` estrito. Linha vem em float,
+  // e 2.5 de uma fonte não é necessariamente 2.5 da outra: a tela podia não
+  // casar e mostrar o texto de fallback em vez dos motivos. Era bug vivo até
+  // ela passar a usar esta função, que compara com folga.
+  it('casa apesar do resíduo de ponto flutuante', () => {
+    const r = explicacaoDaLeitura(
+      {
+        mercado: GOLS,
+        candidato: candidato(['defesas_firmes'], 0.1 + 0.2), // 0.30000000000000004
+        temPreco: true,
+        contrato: [linhaDoContrato(['ataque_combinado'], [], 0.3)],
+        ...semContexto,
+      },
+      opcoes,
+    );
+
+    expect(r.rotulo).toBe('Por quê');
+    expect(slugs(r.itens)).toEqual(['ataque_combinado']);
+  });
+
+  it('não casa linhas que são de fato diferentes', () => {
+    const r = explicacaoDaLeitura(
+      {
+        mercado: GOLS,
+        candidato: candidato(['defesas_firmes'], 2.5),
+        temPreco: true,
+        contrato: [linhaDoContrato(['ataque_combinado'], [], 3.5)],
+        ...semContexto,
+      },
+      opcoes,
+    );
+
+    expect(r.rotulo).toBe('O que o jogo mostra');
+    expect(slugs(r.itens)).toEqual(['defesas_firmes']);
+  });
+});
