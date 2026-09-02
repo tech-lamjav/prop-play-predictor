@@ -16,7 +16,8 @@ import { chancePct, pickLabel } from '@/utils/futebol-score';
 import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
 import { contaQueValem, premissaDe, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
 import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
-import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
+import { premissasAcesasDaLeitura } from '@/utils/futebol-motivos';
+import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type {
@@ -141,18 +142,20 @@ export function JogoResumoPanel({
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
 
-  // Os porquês: premissas acesas que valem, com o número que as embasa.
-  const porques = (cand?.acesas ?? [])
-    .map((s) => premissaDe(mercadoLeitura!, s))
-    .filter((p): p is NonNullable<typeof p> => p != null && (p.peso == null || p.peso > 0))
-    .sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0))
-    .slice(0, 4)
-    .map((p) => ({
-      p,
-      ev:
-        evidenciaDe(p.slug, numeros, lado, true, cand?.line_value ?? null) ??
-        evidenciaDoHistorico(p.slug, historico, lado, cand?.line_value ?? null),
-    }));
+  // Os porquês, montados pela mesma função que o resumo do jogo usa (#332).
+  // Os parâmetros preservam exatamente o que esta tela fazia: corte em quatro,
+  // premissa de peso zero excluída, e com fallback para o histórico do time.
+  const porques = premissasAcesasDaLeitura(
+    {
+      mercado: mercadoLeitura ?? '',
+      acesas: cand?.acesas,
+      numeros,
+      historico,
+      lado,
+      linha: cand?.line_value ?? null,
+    },
+    { max: 4, incluirPesoZero: false },
+  );
 
   // O que pesou contra: as premissas do lado que NÃO aconteceram.
   const contra = topo && cand && mercadoLeitura
@@ -285,7 +288,7 @@ export function JogoResumoPanel({
               Por que · {nValem} {nValem === 1 ? 'premissa a favor' : 'premissas a favor'}
             </div>
             <div className="mt-2.5 flex flex-col gap-2.5">
-              {porques.map(({ p, ev }) => (
+              {porques.map(({ premissa: p, evidencia: ev }) => (
                 <div key={p.slug} className="flex gap-2.5 items-start">
                   <span
                     className="shrink-0 mt-0.5 h-[18px] px-1.5 rounded inline-flex items-center text-[9px] font-bold uppercase tracking-[0.08em]"
