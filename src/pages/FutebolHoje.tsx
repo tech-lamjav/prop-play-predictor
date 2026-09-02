@@ -4,13 +4,13 @@ import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
 import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD, TEXTO_VALOR } from '@/utils/futebol-ajuda-copy';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
+import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, versaoDaJanela,
@@ -25,7 +25,7 @@ import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futeb
 // Aritmética de fuso vem de um lugar só. As cópias locais que existiam aqui
 // eram idênticas às de futebol-datas.ts, e duas cópias da mesma conta de fuso é
 // como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
-import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished } from '@/utils/futebol-datas';
+import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
@@ -289,21 +289,34 @@ function GameRailRow({ f, best, onClick }: { f: FutebolFixture & { competition?:
 
 export default function FutebolHoje() {
   const navigate = useNavigate();
-  // Todas as ligas do mart (data-driven), não mais um allowlist de 3. Aqui a
-  // temporada segue única de propósito: esta tela só olha o dia corrente, então
-  // não tem a virada de temporada que o histórico de Oportunidades enfrenta.
+  // UM instante para a tela inteira, e ele anda: o seletor de dias, o corte de
+  // "já começou" e a janela do calendário têm que concordar sobre que horas são.
+  const agora = useNow();
+  const todayStr = brtDateStr(new Date(agora));
+  const { data: catalog } = useFutebolCompetitions();
+  // As ligas saem do catálogo do mart, não de uma lista escrita à mão (#323).
+  // Pedir o calendário pela lista fixa deixava pick publicado em liga de fora
+  // sem fixture — e sem fixture não há horário, placar nem liquidação: a linha
+  // aparecia na tela e era incapaz de fechar. Medido em produção em 02/09/2026:
+  // 5 dos 23 picks dos últimos 90 dias estavam em ligas de fora.
+  //
+  // A temporada também sai da janela em vez de cravada. O comentário que estava
+  // aqui defendia cravar 2026 alegando que esta tela só olha o dia corrente —
+  // ela olha até DAY_WINDOW dias à frente, e manter a mesma regra dos dois lados
+  // custa menos que uma exceção que precisa ser defendida a cada leitura.
+  const janelaDeFixtures = useMemo(
+    () => ({ from: todayStr, to: addDays(todayStr, DAY_WINDOW) }),
+    [todayStr],
+  );
   const fixtureScopes = useMemo(
-    () => ALL_COMPETITIONS.map((competition) => ({ competition, season: 2026 })),
-    [],
+    () => fixtureScopesFor(catalog, janelaDeFixtures, Number(todayStr.slice(0, 4))),
+    [catalog, janelaDeFixtures, todayStr],
   );
   const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
   const { ocultos, isLoading: lVitrine } = useVitrine();
-  // UM instante para a tela inteira, e ele anda: o seletor de dias e o corte de
-  // "já começou" têm que concordar sobre que horas são.
-  const agora = useNow();
   // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
   // conteúdo renderiza borrado, desborrando quando a resposta volta. Para quem
   // paga, isso é o mesmo defeito do card de motivos, num lugar diferente.
@@ -318,7 +331,6 @@ export default function FutebolHoje() {
   // ele mesmo inventou, que era o defeito.
   const locked = isDemo ? false : !access?.unlocked;
 
-  const todayStr = brtDateStr(new Date(agora));
   const [day, setDay] = useState<string | null>(null);
 
   // dias (BRT) com jogos ainda não começados — base da navegação por dias.

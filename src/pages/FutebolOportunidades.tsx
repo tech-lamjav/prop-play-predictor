@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { usePostHog } from '@posthog/react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -20,7 +21,7 @@ import {
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, ehDestaque, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
 } from '@/utils/futebol-score';
-import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
@@ -197,6 +198,7 @@ function ResultBadge({ r }: { r: BetResult }) {
 
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const { data: rows, isLoading: lBoard } = useFutebolValueBoard();
   // A vitrine entra no gate de carregamento (#324): sem ela a lista renderiza
   // sem filtro e o mercado escondido aparece por um instante antes de sumir. O
@@ -465,21 +467,34 @@ export default function FutebolOportunidades() {
     return out;
   }, [allRows, registradasAll]);
 
-  // Resumo do dia passado: quantas das "com valor" bateram.
-  const resumo = useMemo(() => {
-    if (!isPastDay) return null;
-    let hit = 0, miss = 0, push = 0, settled = 0;
-    comValor.forEach((o) => {
-      const r = resultOf(o);
-      if (!r) return;
-      settled++;
-      if (r === 'push') push++;
-      else if (isHit(r)) hit++;
-      else miss++;
-    });
-    return { hit, miss, push, settled };
+  // Resumo do dia passado. O denominador é o que foi PUBLICADO, e não o que
+  // liquidou: contar só a linha com resultado fazia a manchete dizer "2 de 3"
+  // num dia de seis, com as três sem fixture saindo da conta em silêncio (#323).
+  const resumo = useMemo(
+    () => (isPastDay
+      ? resumoDoDia(comValor.map((o) => ({
+        // Quem sabe se o fixture veio é o mapa, não o `kickoff_utc`: a linha do
+        // board traz horário mesmo quando o calendário não trouxe o jogo.
+        temFixture: fixtureMap.has(o.fixture_id),
+        resultado: resultOf(o),
+      })))
+      : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPastDay, comValor, goalsMap]);
+    [isPastDay, comValor, goalsMap, fixtureMap],
+  );
+
+  // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
+  // e some do histórico sem barulho — foi assim que a #323 passou despercebida
+  // até alguém conferir a mão. A tela mostra a pendência para quem está olhando
+  // aquele dia; este evento é para quem não está.
+  useEffect(() => {
+    if (!resumo || resumo.semFixture === 0) return;
+    posthog?.capture('futebol_pick_sem_fixture', {
+      dia: selectedDay,
+      sem_fixture: resumo.semFixture,
+      publicadas: resumo.total,
+    });
+  }, [resumo, selectedDay, posthog]);
 
   // Esta tela lista uma linha por SAÍDA, não por mercado, e há jogos com duas
   // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
@@ -516,10 +531,32 @@ export default function FutebolOportunidades() {
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col items-stretch gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="w-full min-w-0 sm:w-auto">
             <div className={`${LABEL} flex items-center gap-2`}>{isPastDay ? 'Histórico' : 'Oportunidades'}{isDemo && <DemoBadge />}</div>
-            {isPastDay && resumo && resumo.settled > 0 ? (
+            {/* Entra também quando NADA liquidou mas houve pendência: senão o
+                dia em que todas ficam sem fixture não mostra nada, que é o pior
+                caso do defeito e não o caso benigno. */}
+            {isPastDay && resumo && (resumo.settled > 0 || resumo.pendentes > 0) ? (
               <>
-                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
-                <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades com valor deste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
+                {resumo.settled > 0 ? (
+                  <>
+                    <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
+                    <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades com valor deste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
+                  </>
+                ) : (
+                  <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">Nenhuma oportunidade deste dia liquidou</h1>
+                )}
+                {/* A pendência aparece em vez de encolher o denominador. Dizer
+                    "2 de 3" num dia de seis não é arredondamento: é a tela
+                    escondendo justamente a linha que não fechou (#323).
+                    Vale para as DUAS causas: contar só a falta de fixture
+                    deixava o jogo adiado invisível, com o mesmo efeito. */}
+                {resumo.pendentes > 0 ? (
+                  <p className="text-[12px] mt-1 text-amber-2">
+                    {resumo.pendentes} de {resumo.total} sem resultado
+                    {resumo.semFixture > 0
+                      ? ` · ${resumo.semFixture} sem jogo no calendário`
+                      : ' · jogo adiado ou ainda sem placar'}
+                  </p>
+                ) : null}
               </>
             ) : (
               <>
