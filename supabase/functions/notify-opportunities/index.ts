@@ -30,6 +30,7 @@ import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { ehFaixaPublicavel } from "../shared/faixa.ts";
+import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
 import { logMessageRun } from "../shared/runs.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -207,9 +208,15 @@ serve(async (req) => {
     const { data: board, error: bErr } = await supabase.rpc("get_futebol_value_board");
     if (bErr) throw bErr;
 
+    // 1b) a vitrine — MESMA fonte que o painel lê (migration 116). Sem isto o
+    // alerta vaza: o painel esconde o mercado e a DM continua mandando.
+    const vitrine = await carregarMercadosOcultos(supabase);
+    const mercadosOcultos = vitrine.mercados;
+
     const now = new Date();
     const today = brtDay(now);
-    const todayRows = ((board ?? []) as BoardRow[]).filter((r) => {
+    const naVitrine = filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos);
+    const todayRows = naVitrine.filter((r) => {
       const k = kickoffDate(r.kickoff_utc);
       return k.getTime() > now.getTime() && brtDay(k) === today && ehFaixaPublicavel(r.faixa);
     });
@@ -234,6 +241,11 @@ serve(async (req) => {
     if (mode === "report") {
       return json({
         ok: true, mode,
+        // `origem: "fallback"` significa que a lista do banco não respondeu e a
+        // mensagem saiu pela lista embutida. Não é erro — a DM sai correta —,
+        // mas é o sinal de que a vitrine pode estar desatualizada, e sem ele
+        // isso sobreviveria em silêncio.
+        vitrine: { origem: vitrine.origem, ocultos: mercadosOcultos },
         picks: picks.map((p) => ({
           jogo: `${p.home_team_name} × ${p.away_team_name}`,
           pick: pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name),

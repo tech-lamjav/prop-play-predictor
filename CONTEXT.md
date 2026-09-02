@@ -21,8 +21,20 @@ Uma candidata aprovada pelas regras de publicação vigentes.
 _Avoid_: Candidata, linha cotada
 
 **Publicação no painel**:
-O momento em que uma oportunidade passa a estar disponível no painel para o usuário. Não significa envio de notificação.
+O momento em que uma oportunidade passa a estar disponível no painel para o usuário. Não significa envio de notificação, e não garante exibição: uma oportunidade de mercado fora da **vitrine** é publicada e não aparece.
 _Avoid_: Alerta, envio, publicação no Telegram
+
+**Board**:
+O conjunto do que o backend publica — tudo que passou nas portas de qualidade de dado, gravado no funil e no histórico. É o universo, não o que está na tela.
+_Avoid_: Painel, vitrine, lista
+
+**Vitrine**:
+O recorte do board que o assinante de fato vê, no painel e nas DMs. Um mercado pode sair da vitrine sem sair do board: ele continua publicado e medido, e só deixa de ser exibido e alertado. A lista mora no banco (`futebol_mercados_ocultos`), não em código, porque devolver um mercado à tela é um UPDATE e não um release.
+_Avoid_: Gate, porta, filtro de faixa
+
+**Mercado oculto**:
+Mercado retirado da vitrine por decisão de produto, com data e motivo registrados. Não é porta de publicação: nada muda no gate, no mart nem nas RPCs. O histórico de dias passados continua mostrando o mercado, porque é registro do que foi publicado e visto.
+_Avoid_: Mercado desativado, mercado removido
 
 **Alerta de publicação**:
 O aviso enviado no Telegram quando uma oportunidade é publicada no painel, para que o usuário possa vê-la antes do jogo.

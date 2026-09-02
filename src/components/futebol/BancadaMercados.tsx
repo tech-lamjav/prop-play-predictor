@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import {
+  useFutebolMercadosOcultos,
   useFutebolFixturePremissas,
   useFutebolFixtureNumeros,
   useFutebolFixtureHistorico,
@@ -33,6 +34,7 @@ import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
+import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
@@ -260,11 +262,29 @@ export function BancadaMercados({
   const fim = isFinished(jogo.statusShort);
   const jogoJaComecou = useJogoJaComecou(jogo.kickoffUtc);
   const placar = fim ? { home: jogo.goalsHome, away: jogo.goalsAway } : null;
-  const mercado: MercadoInfo = MERCADOS.find((m) => m.slug === mercadoAtivo) ?? MERCADOS[0];
+  // A vitrine (#324). Sem ela a prateleira sairia do catálogo inteiro, e o
+  // mercado escondido voltaria como chip — com barra de Score e sem odd.
+  const { data: mercadosOcultos } = useFutebolMercadosOcultos();
+  // Memoizado porque `?? []` cria array novo a cada render e envenenaria as
+  // dependências dos useMemo abaixo.
+  const ocultos = useMemo(() => mercadosOcultos ?? [], [mercadosOcultos]);
+  const mercadosVisiveis = useMemo(
+    () => filtrarCatalogoDeMercados(MERCADOS, ocultos),
+    [ocultos],
+  );
+
+  // `mercadoAtivo` vem de fora e pode apontar para um mercado que saiu da
+  // vitrine (link antigo, estado guardado). O fallback é o primeiro VISÍVEL, e
+  // não `MERCADOS[0]`, senão a aba ressuscitaria o que a lista escondeu.
+  const mercado: MercadoInfo =
+    mercadosVisiveis.find((m) => m.slug === mercadoAtivo) ?? mercadosVisiveis[0] ?? MERCADOS[0];
   const ehLinha = TIPO_LINHA.has(mercado.slug);
   const ehAH = mercado.slug === 'asian_handicap';
 
-  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, preferida), [rows, valueRows, preferida]);
+  const resumos = useMemo(
+    () => resumoDosMercados(rows, valueRows, preferida, ocultos),
+    [rows, valueRows, preferida, ocultos],
+  );
   const mercadosCotados = useMemo(
     () => resumos.filter((r) => leituraDaCotacao(
       r.mercado.slug,
@@ -631,7 +651,10 @@ export function BancadaMercados({
       <div data-tour="fut-jogo-mercados" className="min-w-0 xl:col-start-1 xl:row-start-1 xl:border-r" style={{ borderColor: '#ded2b6', background: '#fdfbf6' }}>
         <div className="px-5 pt-4 pb-3.5" style={{ borderBottom: '1px solid #f1e9d6' }}>
           <div className="text-[10px] uppercase tracking-[0.18em] font-bold" style={{ color: '#8d8672' }}>
-            Os 5 mercados
+            {/* Conta o que a VITRINE mostra, não o catálogo: com um mercado
+                escondido (#324) o rótulo fixo "Os 5 mercados" mentiria em cima
+                de uma lista de quatro. */}
+            {resumos.length === 1 ? 'O mercado' : `Os ${resumos.length} mercados`}
           </div>
           <div className="mt-1 text-[11.5px] leading-relaxed" style={{ color: '#6b6350' }}>
             {/* A frase conta só os mercados COTADOS. `passa` também é verdadeiro

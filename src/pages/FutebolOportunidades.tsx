@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useFutebolMercadosOcultos } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
@@ -21,6 +21,7 @@ import {
   FAIXAS_FILTRO_PADRAO, type Faixa,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
@@ -268,9 +269,14 @@ export default function FutebolOportunidades() {
     [catalog, janelaDeFixtures, hoje],
   );
   const { data: fixtures } = useFutebolFixturesMulti(fixtureScopes);
+  // A vitrine (#324): board e detalhe já vêm filtrados do service, mas a fusão
+  // com o histórico reabre o dia corrente — jogo que já começou hoje vence pela
+  // linha do histórico, que NÃO é filtrado de propósito.
+  const { data: mercadosOcultos } = useFutebolMercadosOcultos();
+  const ocultos = useMemo(() => mercadosOcultos ?? [], [mercadosOcultos]);
   const allRows = useMemo<FutebolValueBoardRow[]>(
-    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora),
-    [rows, histRows, agora]
+    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora, ocultos),
+    [rows, histRows, agora, ocultos]
   );
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").
@@ -304,8 +310,18 @@ export default function FutebolOportunidades() {
   // Sem market/outcome não há como casar com o board nem liquidar (linhas
   // anteriores ao 091 podem vir sem).
   const registradasAll = useMemo(
-    () => (alertedRaw ?? []).filter((a) => !!a.market && !!a.outcome),
-    [alertedRaw]
+    () =>
+      (alertedRaw ?? []).filter(
+        (a) =>
+          !!a.market &&
+          !!a.outcome &&
+          // A vitrine (#324) vale de hoje para a frente. Dia passado é registro
+          // do que foi enviado e visto, e some-lo reescreveria o que o
+          // assinante recebeu. Sem este corte, um Handicap alertado ANTES de o
+          // mercado sair da vitrine voltava como linha do painel de hoje.
+          (a.game_day < hoje || !mercadoEstaOculto(a.market, ocultos)),
+      ),
+    [alertedRaw, hoje, ocultos]
   );
 
   // Dias no stepper: dias COM oportunidade (board = passado + presente) + dias

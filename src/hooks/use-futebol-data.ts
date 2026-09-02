@@ -416,3 +416,22 @@ export function useFutebolMatchupMarkets(
     refetchOnWindowFocus: false,
   });
 }
+
+/**
+ * Os mercados fora da VITRINE — não fora do board.
+ *
+ * A lista vem do banco para que devolver um mercado à tela seja um UPDATE e não
+ * um release. Fica aqui, e não em constante, porque o detalhe do jogo monta a
+ * prateleira a partir do CATÁLOGO de mercados e não do board: sem esta lista o
+ * mercado escondido continuaria como chip, com barra de Score e sem odd, que é
+ * pior do que não ter escondido. Ver prop-play-predictor#324.
+ */
+export function useFutebolMercadosOcultos() {
+  return useQuery<string[]>({
+    queryKey: ['futebol', 'mercados-ocultos'],
+    queryFn: () => futebolDataService.getMercadosOcultos(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}

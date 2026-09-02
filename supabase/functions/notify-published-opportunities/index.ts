@@ -14,6 +14,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { trackedUrl } from "../shared/links.ts";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { logMessageRun } from "../shared/runs.ts";
+import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
 import { planPublicationBatch, type PublicationBoardRow } from "./planner.ts";
 import {
   type PublishedMessageOpportunity,
@@ -356,6 +357,11 @@ serve(async (req) => {
       "get_futebol_value_board",
     );
     if (boardError) throw boardError;
+    // A vitrine, da MESMA fonte que o painel lê (migration 116). Este é o
+    // segundo canal de alerta: esconder o mercado só no `notify-opportunities`
+    // deixaria o alerta de publicação continuar mandando. Ver #324.
+    const vitrine = await carregarMercadosOcultos(supabase);
+    const mercadosOcultos = vitrine.mercados;
     const now = new Date();
     const { data: existing, error: existingError } = await supabase
       .from("futebol_publication_alerts")
@@ -366,7 +372,7 @@ serve(async (req) => {
       alreadyAlerted: new Set(
         (existing ?? []).map((row: any) => row.opportunity_key as string),
       ),
-      board: (board ?? []) as BoardRow[],
+      board: filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos),
     });
 
     const { data: recipients, error: recipientsError } = await supabase.rpc(

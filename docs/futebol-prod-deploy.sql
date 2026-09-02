@@ -2756,6 +2756,54 @@ grant execute on function public.get_futebol_publication_alert_recipients() to s
 revoke all on function public.claim_futebol_publication_alert_deliveries() from public, anon, authenticated;
 grant execute on function public.claim_futebol_publication_alert_deliveries() to service_role;
 
+-- ── Vitrine do produto: mercado fora da tela (migration 116, issue #324) ────
+-- Um mercado pode sair da VITRINE sem sair do BOARD: o backend continua
+-- publicando e gravando no histórico, e só o que o assinante vê muda. Parar de
+-- publicar pararia de medir, e é a medição que decide quando o mercado volta.
+--
+-- A lista mora aqui e não em constante porque são dois consumidores em runtimes
+-- diferentes — o painel (browser) e as DMs do Telegram (edge functions, Deno) —
+-- e devolver o mercado à tela tem de ser um UPDATE, não um release.
+create table if not exists public.futebol_mercados_ocultos (
+  market text primary key,
+  -- A linha sobrevive a "oculto = false": ela é o registro de que o mercado JÁ
+  -- esteve fora, e "oculto_desde" diz desde quando. É o que torna o antes/depois
+  -- comparável quando ele voltar.
+  oculto boolean not null default true,
+  oculto_desde timestamptz not null default now(),
+  motivo text not null
+);
+
+-- RLS ligada e SEM policy, no mesmo padrão da futebol_premissa_copy: nada lê a
+-- tabela direto, só a RPC security definer abaixo.
+alter table public.futebol_mercados_ocultos enable row level security;
+
+comment on table public.futebol_mercados_ocultos is
+  'Mercados retirados da vitrine do produto. Não é gate: o board continua publicando.';
+
+create or replace function public.get_futebol_mercados_ocultos()
+returns text[]
+ language sql
+ stable
+ security definer
+ set search_path to ''
+as $function$
+  select coalesce(array_agg(market order by market), array[]::text[])
+    from public.futebol_mercados_ocultos
+   where oculto;
+$function$;
+
+grant execute on function public.get_futebol_mercados_ocultos() to anon, authenticated, service_role;
+
+insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)
+values (
+  'asian_handicap',
+  true,
+  timestamptz '2026-09-01 00:00:00+00',
+  'ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols. Investigacao na B3 (ClickUp wdx6zev656). Decisao do PM em 31/08/2026, prop-play-predictor#324.'
+)
+on conflict (market) do nothing;
+
 -- ── 7. Reverse trial (7 dias, sem cartão) — colunas no public.users ──────────
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
 alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
