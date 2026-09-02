@@ -16,8 +16,8 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 import {
-  demoFutebolBoard,
   demoFutebolNumeros,
   demoFutebolPremissas,
   makeDemoAgenda,
@@ -100,15 +100,20 @@ export default function FutebolJogos() {
     [isDemo, dia, fixtures],
   );
 
+  // A demonstração herda a escala do produto (#333). Aqui a janela É o board:
+  // a agenda não recorta por dia o que já veio do dia, e é dele que a leitura
+  // de cada confronto sai.
+  const demoBoard = useDemoFutebolBoard(board);
+
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
     if (isDemo) {
-      demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r));
+      demoBoard.forEach((r) => m.set(r.fixture_id, r));
       return m;
     }
     groupBoardByFixture(board || []).forEach((bf) => m.set(bf.fixtureId, bf.best));
     return m;
-  }, [board, isDemo]);
+  }, [board, isDemo, demoBoard]);
 
   const jogosPorDia = useMemo(() => {
     const m = new Map<string, number>();

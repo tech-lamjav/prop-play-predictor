@@ -32,7 +32,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
+import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
@@ -392,6 +392,11 @@ export default function FutebolOportunidades() {
     [allRows, selectedDay, registradasAll, fixtureMap],
   );
 
+  // A demonstração herda a escala do produto (#333). A janela passada aqui é a
+  // MESMA que a tela exibe: herdar de outra faz o tour anunciar uma régua e a
+  // legenda ao lado dele anunciar outra, que é o defeito inteiro de volta.
+  const demoBoard = useDemoFutebolBoard(dayRows);
+
   const filtered = useMemo(
     () => dayRows.filter((r) => {
       if (mercado !== 'all' && r.market !== mercado) return false;
@@ -420,7 +425,7 @@ export default function FutebolOportunidades() {
     () => [...filtered].sort(compararOportunidades),
     [filtered]
   );
-  const bestRows: OppLike[] = isDemo ? demoFutebolBoard : realBestRows;
+  const bestRows: OppLike[] = isDemo ? demoBoard : realBestRows;
   // A lista mostra o que o backend publicou. O corte local por número de Score
   // saiu na virada do Score de contexto (spec #301): a régua era calibrada para
   // a fórmula antiga e aplicá-la à escala nova classificaria errado.
@@ -430,8 +435,8 @@ export default function FutebolOportunidades() {
   // filtro escondesse a faixa Baixa, que é justamente o padrão.
   // Quantas o dia tem e o filtro escondeu. Serve ao estado vazio: sem isto ele
   // diz "não há oportunidade nesse dia" quando o que houve foi um filtro.
-  const escondidasPeloFiltro = (isDemo ? demoFutebolBoard.length : dayRows.length) - bestRows.length;
-  const distribuicao = isDemo ? demoFutebolBoard : dayRows;
+  const escondidasPeloFiltro = (isDemo ? demoBoard.length : dayRows.length) - bestRows.length;
+  const distribuicao = isDemo ? demoBoard : dayRows;
   const nAlta = distribuicao.filter((o) => faixaTone(o.faixa ?? '') === 'alta' && o.faixa != null).length;
   const nMedia = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
   const nBaixa = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;

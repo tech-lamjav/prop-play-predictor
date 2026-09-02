@@ -45,3 +45,6 @@ CLAUDE.md
 
 # Artefatos de trabalho entre sessoes (handoff, rascunho de spec)
 .scratch/
+
+# Worktrees do Claude Code — repositórios à parte, não conteúdo deste
+.claude/worktrees/
