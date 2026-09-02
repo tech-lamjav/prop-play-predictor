@@ -20,6 +20,7 @@ import type { Competition, FutebolFixture, FutebolValueBoardRow } from '@/servic
 import { brtDayOf, fmtDayHeader, isFinished } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
+import { hrefDaSaida, hrefDoJogo } from '@/utils/futebol-links';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import { ChaveamentoBracket } from '@/components/futebol/ChaveamentoBracket';
@@ -316,7 +317,7 @@ export default function FutebolCampeonato() {
                   leituraCarregando={leituraCarregando}
                   // Sem `onClick`: aqui não há painel, então o clique simples vai
                   // para o mesmo lugar que o do meio e o `<Link>` basta.
-                  to={`/futebol/jogo/${f.fixture_id}`}
+                  to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
                 />
               ))}
             </div>
@@ -349,7 +350,9 @@ export default function FutebolCampeonato() {
         rounds={rounds}
         idxSelecionado={roundIdx}
         competition={competition}
-        hrefDoJogo={(id) => `/futebol/jogo/${id}`}
+        // O chaveamento mostra confronto, não pick: sem filtro, mas pelo
+        // módulo — URL de jogo montada à mão foi como a #344 começou.
+        hrefDoJogo={hrefDoJogo}
       />
     ) : null;
   const grupos = <GruposFase rows={standings} loading={loadingStandings} hrefDoTime={hrefDoTime} />;

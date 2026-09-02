@@ -28,6 +28,7 @@ import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futeb
 import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
@@ -572,7 +573,7 @@ export default function FutebolHoje() {
         {loading ? (
           <Skeleton className="h-64 w-full bg-canvas-2 rounded-2xl" />
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} to={`/futebol/jogo/${heroOpp.fixture_id}`} locked={locked} />
+          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} to={hrefDaSaida(heroOpp.fixture_id, heroOpp)} locked={locked} />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
@@ -602,7 +603,7 @@ export default function FutebolHoje() {
               <div className="grid sm:grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
             ) : moreOpps.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
-                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} to={`/futebol/jogo/${o.fixture_id}`} locked={locked} />)}
+                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} />)}
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>
@@ -624,7 +625,7 @@ export default function FutebolHoje() {
             ) : gameList.length > 0 ? (
               <div className={`${CARD} overflow-hidden`}>
                 {gameList.map((f) => (
-                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={`/futebol/jogo/${f.fixture_id}`} />
+                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))} />
                 ))}
               </div>
             ) : (

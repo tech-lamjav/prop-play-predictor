@@ -23,6 +23,7 @@ import {
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
@@ -500,12 +501,9 @@ export default function FutebolOportunidades() {
   // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
   // da segunda abria a tela na primeira, e o pick que o usuário leu aqui virava
   // outro lá. O link carrega qual card foi clicado.
-  /** A URL da saída clicada: destino de link, não argumento de navigate (#341). */
-  const hrefDoJogo = (o: OppLike) => {
-    const q = new URLSearchParams({ mercado: o.market, saida: o.outcome });
-    if (o.line_value != null) q.set('linha', String(o.line_value));
-    return `/futebol/jogo/${o.fixture_id}?${q}`;
-  };
+  // A montagem da URL saiu daqui para `futebol-links.ts` (#344): esta tela era a
+  // única que carregava a saída clicada, e a home e o painel abriam a tela do
+  // jogo no desempate padrão. Com um lugar só, a próxima origem não esquece.
   const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
@@ -658,7 +656,7 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppRow o={o} to={hrefDoJogo(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!isPastDay && !locked && !res && (
                       <div className="px-5 pb-2 -mt-0.5">
                         <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
@@ -678,7 +676,7 @@ export default function FutebolOportunidades() {
                   <OppMobileCard
                     key={key(o)}
                     o={o}
-                    to={hrefDoJogo(o)}
+                    to={hrefDaSaida(o.fixture_id, o)}
                     locked={locked}
                     result={res}
                     homeGoals={g?.gh}

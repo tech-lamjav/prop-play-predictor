@@ -11,6 +11,7 @@ import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futeb
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -336,7 +337,9 @@ export default function FutebolJogos() {
                               best={bestByFixture.get(f.fixture_id) ?? null}
                               leituraCarregando={leituraCarregando}
                               selected={f.fixture_id === jogoParam}
-                              to={`/futebol/jogo/${f.fixture_id}`}
+                              // A linha mostra o pick; o link leva a ELE, e não
+                              // ao desempate padrão da tela do jogo (#344).
+                              to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
                               onClick={hasPanel ? () => abrirPainel(f) : undefined}
                             />
                           ))}
