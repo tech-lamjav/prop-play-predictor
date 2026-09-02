@@ -87,3 +87,55 @@ export function resultBadge(r: BetResult): { label: string; tone: 'won' | 'lost'
 export function isHit(r: BetResult): boolean {
   return r === 'won' || r === 'half_won';
 }
+
+/**
+ * Uma linha do dia, do ponto de vista da liquidação: quando o jogo é, e o que
+ * deu. `kickoff_utc` nulo significa que o calendário não trouxe o fixture —
+ * então não há nem horário nem placar para liquidar.
+ */
+export type LinhaLiquidavel = {
+  kickoff_utc: string | null;
+  resultado: BetResult | null;
+};
+
+export type ResumoDoDia = {
+  hit: number;
+  miss: number;
+  push: number;
+  /** Linhas com resultado. `hit + miss + push`. */
+  settled: number;
+  /** Tem fixture, ainda sem resultado: o jogo não acabou (ou foi adiado). */
+  aguardando: number;
+  /** Não tem fixture. Pick publicado num jogo que o calendário não trouxe. */
+  semFixture: number;
+  /** O que foi PUBLICADO no dia. É o denominador honesto. */
+  total: number;
+};
+
+/**
+ * O resumo do dia, contando também o que não liquidou.
+ *
+ * A manchete dizia "2 de 3 deram green" num dia de seis oportunidades: o resumo
+ * só somava linha com resultado, então quem não tinha fixture saía da conta sem
+ * deixar rastro — e a taxa de acerto ficava sobre um denominador que encolheu
+ * sozinho. Ver #323.
+ *
+ * `aguardando` e `semFixture` são separados de propósito. O primeiro é o
+ * relógio e se resolve sozinho; o segundo é anomalia — pick publicado num jogo
+ * que o calendário não trouxe — e é o que merece aparecer na tela e virar
+ * sinal, em vez de sumir.
+ */
+export function resumoDoDia(linhas: readonly LinhaLiquidavel[]): ResumoDoDia {
+  let hit = 0, miss = 0, push = 0, aguardando = 0, semFixture = 0;
+  for (const l of linhas) {
+    if (l.resultado == null) {
+      if (l.kickoff_utc == null) semFixture++;
+      else aguardando++;
+      continue;
+    }
+    if (l.resultado === 'push') push++;
+    else if (isHit(l.resultado)) hit++;
+    else miss++;
+  }
+  return { hit, miss, push, settled: hit + miss + push, aguardando, semFixture, total: linhas.length };
+}
