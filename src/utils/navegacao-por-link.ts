@@ -48,7 +48,11 @@ export function ehCliqueSimples(e: CliqueDeMouse): boolean {
  * recurso existe para dar.
  */
 export function interceptarCliqueSimples(acao: () => void) {
-  return (e: MouseEvent): void => {
+  // Pede o mínimo que usa — a decisão mais o `preventDefault` — e não o
+  // `MouseEvent` inteiro. Exigir o evento completo obrigava o teste a inventar
+  // um DOM ou a mentir com `as never`, e um `as never` no teste é o teste
+  // deixando de provar o formato que a função realmente precisa.
+  return (e: CliqueDeMouse & Pick<MouseEvent, 'preventDefault'>): void => {
     if (!ehCliqueSimples(e)) return;
     e.preventDefault();
     acao();

@@ -500,7 +500,7 @@ export default function FutebolOportunidades() {
   // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
   // da segunda abria a tela na primeira, e o pick que o usuário leu aqui virava
   // outro lá. O link carrega qual card foi clicado.
-  /** A URL da saída clicada. Vira  de link, não argumento de navigate (#341). */
+  /** A URL da saída clicada: destino de link, não argumento de navigate (#341). */
   const hrefDoJogo = (o: OppLike) => {
     const q = new URLSearchParams({ mercado: o.market, saida: o.outcome });
     if (o.line_value != null) q.set('linha', String(o.line_value));

@@ -57,7 +57,15 @@ export function FixtureRow({
    * na aba nova o usuário quer o jogo inteiro, não a lista com o painel aberto.
    */
   to: string;
-  onClick: () => void;
+  /**
+   * O que o clique SIMPLES faz, quando não é ir para `to`.
+   *
+   * Opcional de propósito. Sem ele, o `<Link>` navega sozinho e o clique simples
+   * leva ao mesmo lugar que o clique do meio — que é o caso da maioria das
+   * telas. Passá-lo apontando para o próprio `to` seria cancelar o link para
+   * refazer à mão o que ele já faria.
+   */
+  onClick?: () => void;
 }) {
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
@@ -88,7 +96,7 @@ export function FixtureRow({
   return (
     <Link
       to={to}
-      onClick={interceptarCliqueSimples(onClick)}
+      onClick={onClick && interceptarCliqueSimples(onClick)}
       aria-current={selected ? 'true' : undefined}
       className="w-full text-left px-3 sm:px-4 py-2.5 flex items-center gap-2.5 sm:gap-3.5 transition"
       style={{

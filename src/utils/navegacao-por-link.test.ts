@@ -54,19 +54,23 @@ describe('interceptarCliqueSimples', () => {
   it('no clique simples, segura o link e roda a ação', () => {
     const acao = vi.fn();
     const preventDefault = vi.fn();
-    interceptarCliqueSimples(acao)({ ...clique(), preventDefault } as never);
+    interceptarCliqueSimples(acao)({ ...clique(), preventDefault });
 
     expect(preventDefault).toHaveBeenCalledOnce();
     expect(acao).toHaveBeenCalledOnce();
   });
 
   it('no clique do meio, não faz nada — o navegador abre o href', () => {
-    // O ponto inteiro do recurso. Se `preventDefault` fosse chamado aqui, a aba
-    // nova não abriria, e se a ação rodasse, o painel abriria na aba de trás
-    // sem ninguém ter pedido.
+    // ⚠️ Esta guarda é cinto E suspensório, não o mecanismo do recurso. Quem
+    // abre a aba nova é o `href`, e o navegador nem chega a chamar este `onClick`
+    // no botão do meio: ele dispara `auxclick`, e o React só escuta `click`.
+    //
+    // Fica porque a função é genérica e barata de proteger, e porque o dia em
+    // que alguém a ligar a um `onAuxClick` — ou em que um navegador voltar a
+    // disparar `click` no botão do meio — o comportamento certo já está fixado.
     const acao = vi.fn();
     const preventDefault = vi.fn();
-    interceptarCliqueSimples(acao)({ ...clique({ button: 1 }), preventDefault } as never);
+    interceptarCliqueSimples(acao)({ ...clique({ button: 1 }), preventDefault });
 
     expect(preventDefault).not.toHaveBeenCalled();
     expect(acao).not.toHaveBeenCalled();
@@ -75,7 +79,7 @@ describe('interceptarCliqueSimples', () => {
   it('no Ctrl + clique, também deixa passar', () => {
     const acao = vi.fn();
     const preventDefault = vi.fn();
-    interceptarCliqueSimples(acao)({ ...clique({ ctrlKey: true }), preventDefault } as never);
+    interceptarCliqueSimples(acao)({ ...clique({ ctrlKey: true }), preventDefault });
 
     expect(preventDefault).not.toHaveBeenCalled();
     expect(acao).not.toHaveBeenCalled();

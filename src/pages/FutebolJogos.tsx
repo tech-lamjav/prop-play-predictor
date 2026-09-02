@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, CalendarOff, ChevronDown } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,7 +73,6 @@ function monthRange(dayKey: string): { from: string; to: string } {
 const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function FutebolJogos() {
-  const navigate = useNavigate();
   const hasPanel = useHasPanel();
   const [params, setParams] = useSearchParams();
 
@@ -175,11 +174,15 @@ export default function FutebolJogos() {
     setParams({ dia: d }, { replace: true });
   };
 
-  const openJogo = (f: FutebolFixtureByDay) => {
-    if (!hasPanel) {
-      navigate(`/futebol/jogo/${f.fixture_id}`);
-      return;
-    }
+  /**
+   * O que o clique SIMPLES faz na linha: abrir o painel.
+   *
+   * Só existe quando há painel. Em tela estreita não há, e aí não interceptamos
+   * nada — o `<Link>` da linha navega sozinho para a tela do jogo, que é o mesmo
+   * destino do clique do meio. A versão anterior cancelava o link para chamar
+   * `navigate` na mesma URL do `href`, o que funcionava e não servia para nada.
+   */
+  const abrirPainel = (f: FutebolFixtureByDay) => {
     // push: o voltar do navegador fecha o painel, que é o que o usuário espera.
     setParams({ dia, jogo: String(f.fixture_id) });
   };
@@ -334,7 +337,7 @@ export default function FutebolJogos() {
                               leituraCarregando={leituraCarregando}
                               selected={f.fixture_id === jogoParam}
                               to={`/futebol/jogo/${f.fixture_id}`}
-                              onClick={() => openJogo(f)}
+                              onClick={hasPanel ? () => abrirPainel(f) : undefined}
                             />
                           ))}
                       </div>

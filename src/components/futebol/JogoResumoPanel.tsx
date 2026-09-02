@@ -232,9 +232,12 @@ export function JogoResumoPanel({
         {/* O título leva à tela do jogo (#341). Era o único caminho para lá que
             não existia: o painel só tinha o botão do rodapé, que fica abaixo da
             dobra em painel comprido. */}
+        {/* `py-1.5 -my-1.5` dá 24px de altura de alvo sem empurrar o cabeçalho:
+            o texto tem 13,5px e sozinho ficava em ~18px, abaixo do mínimo de
+            alvo de clique. A margem negativa devolve o espaço ao layout. */}
         <Link
           to={`/futebol/jogo/${fixture.fixture_id}`}
-          className="text-[13.5px] font-semibold tracking-tight text-ink truncate hover:underline"
+          className="text-[13.5px] font-semibold tracking-tight text-ink truncate hover:underline py-1.5 -my-1.5"
           title="Abrir a tela do jogo"
         >
           {fixture.home_team_name} × {fixture.away_team_name}
