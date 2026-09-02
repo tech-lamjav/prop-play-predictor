@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useFutebolMercadosOcultos } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
@@ -197,7 +197,13 @@ function ResultBadge({ r }: { r: BetResult }) {
 
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
-  const { data: rows, isLoading } = useFutebolValueBoard();
+  const { data: rows, isLoading: lBoard } = useFutebolValueBoard();
+  // A vitrine entra no gate de carregamento (#324): sem ela a lista renderiza
+  // sem filtro e o mercado escondido aparece por um instante antes de sumir. O
+  // board já vem filtrado do service, mas a fusão com o histórico e os picks
+  // registrados reabrem o dia corrente.
+  const { ocultos, isLoading: lVitrine } = useVitrine();
+  const isLoading = lBoard || lVitrine;
   const { data: catalog } = useFutebolCompetitions();
   const { data: access } = useFutebolAccess();
   const { data: publicationAlerts, acknowledgeOnboarding, isAcknowledging } = useFutebolPublicationAlerts();
@@ -269,11 +275,6 @@ export default function FutebolOportunidades() {
     [catalog, janelaDeFixtures, hoje],
   );
   const { data: fixtures } = useFutebolFixturesMulti(fixtureScopes);
-  // A vitrine (#324): board e detalhe já vêm filtrados do service, mas a fusão
-  // com o histórico reabre o dia corrente — jogo que já começou hoje vence pela
-  // linha do histórico, que NÃO é filtrado de propósito.
-  const { data: mercadosOcultos } = useFutebolMercadosOcultos();
-  const ocultos = useMemo(() => mercadosOcultos ?? [], [mercadosOcultos]);
   const allRows = useMemo<FutebolValueBoardRow[]>(
     () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora, ocultos),
     [rows, histRows, agora, ocultos]

@@ -4,7 +4,7 @@ import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useFutebolMercadosOcultos } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
@@ -28,7 +28,7 @@ import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished } fro
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
-import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
+import { estadoDosMotivos, separarMotivosDoContrato, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { premissaDe, rotuloPremissa } from '@/utils/futebol-premissas';
 import { useNow } from '@/hooks/use-now';
@@ -55,8 +55,6 @@ function Crest({ teamId, name, size = 24 }: { teamId: number; name: string; size
   return <div style={{ width: size, height: size }} className="rounded-full bg-canvas-2 border border-line grid place-items-center text-[9px] font-bold text-ink-2 shrink-0">{crestInitials(name)}</div>;
 }
 
-/** Um motivo do contrato, com o slug preservado para servir de chave. */
-type Motivo = { slug: string; texto: string };
 
 const CARD = 'bg-white border border-line rounded-rebrand-md';
 const LABEL = 'text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3';
@@ -91,11 +89,12 @@ function HeroStat({ label, value, dark, locked, ajuda }: { label: string; value:
 
 // ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
-function TopValueHero({ o, onClick, favor, contra, textoScore, locked }: { o: FutebolValueBoardRow; onClick: () => void; favor: Motivo[]; contra: Motivo[]; textoScore: string; locked?: boolean }) {
+function TopValueHero({ o, onClick, favor, contra, textoScore, locked, carregandoMotivos = false }: { o: FutebolValueBoardRow; onClick: () => void; favor: Motivo[]; contra: Motivo[]; textoScore: string; locked?: boolean; carregandoMotivos?: boolean }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
+  const estado = estadoDosMotivos(favor, contra, carregandoMotivos);
   const porque = chance != null
     ? <>O mercado dá <b className={d ? 'text-white' : 'text-ink'}>~{chance}% de chance</b>; na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b> isso paga acima do risco real — é aí que está o valor.</>
     : <>Na odd <b className={d ? 'text-white' : 'text-ink'}>{o.best_odd.toFixed(2)}</b>, a aposta se paga a partir de <b className={d ? 'text-white' : 'text-ink'}>{Math.round(100 / o.best_odd)}%</b> de acerto — e a leitura do jogo aponta nessa direção.</>;
@@ -138,7 +137,7 @@ function TopValueHero({ o, onClick, favor, contra, textoScore, locked }: { o: Fu
             é que explicam a leitura, e são elas que a tela de detalhe mostra.
             Vêm do mesmo contrato do backend, então as duas telas concordam. */}
         <div className="md:col-span-5 flex flex-col gap-4">
-          {favor.length > 0 && (
+          {estado === 'motivos' && favor.length > 0 && (
             <div>
               <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>A favor</div>
               <ul className="mt-2 flex flex-col gap-1.5">
@@ -152,7 +151,7 @@ function TopValueHero({ o, onClick, favor, contra, textoScore, locked }: { o: Fu
             </div>
           )}
 
-          {contra.length > 0 && (
+          {estado === 'motivos' && contra.length > 0 && (
             <div>
               <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Contra</div>
               <ul className="mt-2 flex flex-col gap-1.5">
@@ -166,7 +165,25 @@ function TopValueHero({ o, onClick, favor, contra, textoScore, locked }: { o: Fu
             </div>
           )}
 
-          {favor.length === 0 && contra.length === 0 && (
+          {/* Enquanto os motivos não chegam, esqueleto — e NÃO o texto do
+              "Por quê". Os motivos vêm de uma segunda consulta que só começa
+              depois de o destaque ser escolhido, então a lista vazia acontece
+              sempre por alguns instantes; mostrar o fallback ali fazia a tela
+              trocar de conteúdo na cara do usuário.
+              As duas barras têm a altura de linha do parágrafo que substituem
+              (17px e 19px vezes o leading de 1,4), para a troca não pular o
+              layout. */}
+          {estado === 'carregando' && (
+            <div>
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
+              <div className="mt-2 flex flex-col gap-2" aria-hidden>
+                <Skeleton className={`h-[24px] md:h-[27px] w-full ${d ? 'bg-white/15' : 'bg-canvas-2'}`} />
+                <Skeleton className={`h-[24px] md:h-[27px] w-3/4 ${d ? 'bg-white/15' : 'bg-canvas-2'}`} />
+              </div>
+            </div>
+          )}
+
+          {estado === 'sem_motivos' && (
             <div>
               <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
               <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}><Blur active={!!locked}>{porque}</Blur></p>
@@ -282,11 +299,17 @@ export default function FutebolHoje() {
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
+  const { ocultos, isLoading: lVitrine } = useVitrine();
   // UM instante para a tela inteira, e ele anda: o seletor de dias e o corte de
   // "já começou" têm que concordar sobre que horas são.
   const agora = useNow();
-  const { data: access } = useFutebolAccess();
-  const loading = lFix || l3 || lHist || lReg;
+  // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
+  // conteúdo renderiza borrado, desborrando quando a resposta volta. Para quem
+  // paga, isso é o mesmo defeito do card de motivos, num lugar diferente.
+  const { data: access, isLoading: lAccess } = useFutebolAccess();
+  // A vitrine entra no gate: sem ela a lista renderiza sem filtro e o mercado
+  // escondido aparece por um instante antes de sumir (#324).
+  const loading = lFix || l3 || lHist || lReg || lVitrine || lAccess;
   const futebolTour = useOnboardingTour(FUTEBOL_TOUR_ID, { enabled: !loading });
   const isDemo = futebolTour.run; // durante o tour, preenche a tela com exemplo
   const locked = isDemo ? false : !access?.unlocked;
@@ -332,10 +355,6 @@ export default function FutebolHoje() {
   // O que mudou foi tirar o corte de "só jogo que ainda não começou", que era
   // exclusivo desta tela: ele zerava a home toda noite, num dia que teve
   // oportunidades. Quem quer só o que dá para acompanhar tem o filtro no painel.
-  // A vitrine (#324). O board já vem filtrado do service, mas a fusão reabre o
-  // dia corrente pela linha do histórico, que não é filtrado de propósito.
-  const { data: mercadosOcultos } = useFutebolMercadosOcultos();
-  const ocultos = useMemo(() => mercadosOcultos ?? [], [mercadosOcultos]);
   const valueRows = useMemo(
     () => mergeBoardAndHistory(boardRows ?? [], histRows ?? [], agora, ocultos),
     [boardRows, histRows, agora, ocultos],
@@ -417,7 +436,11 @@ export default function FutebolHoje() {
   // A favor e Contra do destaque, do MESMO contrato que a tela de detalhe usa.
   // O backend decide o grupo de cada motivo; aqui só se traduz o slug pelo
   // catálogo e se corta a lista no que cabe no card.
-  const { data: contratoMotivos } = useFutebolFixtureReasonContract(heroOpp?.fixture_id);
+  // O isLoading importa: sem ele o card não distingue "ainda carregando" de
+  // "carregou e não tem motivo", e mostra o texto do "Por quê" antes de trocar
+  // por A favor / Contra na cara do usuário.
+  const { data: contratoMotivos, isLoading: carregandoMotivos } =
+    useFutebolFixtureReasonContract(heroOpp?.fixture_id);
   const { favor: heroFavor, contra: heroContra } = useMemo(() => {
     const vazio = { favor: [] as Motivo[], contra: [] as Motivo[] };
     if (!heroOpp || !contratoMotivos?.length) return vazio;
@@ -506,13 +529,13 @@ export default function FutebolHoje() {
           </div>
         </div>
 
-        <FutebolAccessBanner access={access} />
+        {!loading && <FutebolAccessBanner access={access} />}
 
         {/* Hero / sem valor */}
         {loading ? (
           <Skeleton className="h-64 w-full bg-canvas-2 rounded-2xl" />
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} textoScore={textoScore} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} locked={locked} />
+          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} locked={locked} />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />

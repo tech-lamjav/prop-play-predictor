@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import {
-  useFutebolMercadosOcultos,
+  useVitrine,
   useFutebolFixturePremissas,
   useFutebolFixtureNumeros,
   useFutebolFixtureHistorico,
@@ -264,10 +264,7 @@ export function BancadaMercados({
   const placar = fim ? { home: jogo.goalsHome, away: jogo.goalsAway } : null;
   // A vitrine (#324). Sem ela a prateleira sairia do catálogo inteiro, e o
   // mercado escondido voltaria como chip — com barra de Score e sem odd.
-  const { data: mercadosOcultos } = useFutebolMercadosOcultos();
-  // Memoizado porque `?? []` cria array novo a cada render e envenenaria as
-  // dependências dos useMemo abaixo.
-  const ocultos = useMemo(() => mercadosOcultos ?? [], [mercadosOcultos]);
+  const { ocultos } = useVitrine();
   const mercadosVisiveis = useMemo(
     () => filtrarCatalogoDeMercados(MERCADOS, ocultos),
     [ocultos],
