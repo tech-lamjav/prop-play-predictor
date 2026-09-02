@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { usePostHog } from '@posthog/react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -197,6 +198,7 @@ function ResultBadge({ r }: { r: BetResult }) {
 
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const { data: rows, isLoading: lBoard } = useFutebolValueBoard();
   // A vitrine entra no gate de carregamento (#324): sem ela a lista renderiza
   // sem filtro e o mercado escondido aparece por um instante antes de sumir. O
@@ -470,11 +472,29 @@ export default function FutebolOportunidades() {
   // num dia de seis, com as três sem fixture saindo da conta em silêncio (#323).
   const resumo = useMemo(
     () => (isPastDay
-      ? resumoDoDia(comValor.map((o) => ({ kickoff_utc: o.kickoff_utc, resultado: resultOf(o) })))
+      ? resumoDoDia(comValor.map((o) => ({
+        // Quem sabe se o fixture veio é o mapa, não o `kickoff_utc`: a linha do
+        // board traz horário mesmo quando o calendário não trouxe o jogo.
+        temFixture: fixtureMap.has(o.fixture_id),
+        resultado: resultOf(o),
+      })))
       : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isPastDay, comValor, goalsMap],
+    [isPastDay, comValor, goalsMap, fixtureMap],
   );
+
+  // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
+  // e some do histórico sem barulho — foi assim que a #323 passou despercebida
+  // até alguém conferir a mão. A tela mostra a pendência para quem está olhando
+  // aquele dia; este evento é para quem não está.
+  useEffect(() => {
+    if (!resumo || resumo.semFixture === 0) return;
+    posthog?.capture('futebol_pick_sem_fixture', {
+      dia: selectedDay,
+      sem_fixture: resumo.semFixture,
+      publicadas: resumo.total,
+    });
+  }, [resumo, selectedDay, posthog]);
 
   // Esta tela lista uma linha por SAÍDA, não por mercado, e há jogos com duas
   // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
@@ -514,7 +534,7 @@ export default function FutebolOportunidades() {
             {/* Entra também quando NADA liquidou mas houve pendência: senão o
                 dia em que todas ficam sem fixture não mostra nada, que é o pior
                 caso do defeito e não o caso benigno. */}
-            {isPastDay && resumo && (resumo.settled > 0 || resumo.semFixture > 0) ? (
+            {isPastDay && resumo && (resumo.settled > 0 || resumo.pendentes > 0) ? (
               <>
                 {resumo.settled > 0 ? (
                   <>
@@ -526,10 +546,15 @@ export default function FutebolOportunidades() {
                 )}
                 {/* A pendência aparece em vez de encolher o denominador. Dizer
                     "2 de 3" num dia de seis não é arredondamento: é a tela
-                    escondendo justamente a linha que não fechou (#323). */}
-                {resumo.semFixture > 0 ? (
+                    escondendo justamente a linha que não fechou (#323).
+                    Vale para as DUAS causas: contar só a falta de fixture
+                    deixava o jogo adiado invisível, com o mesmo efeito. */}
+                {resumo.pendentes > 0 ? (
                   <p className="text-[12px] mt-1 text-amber-2">
-                    {resumo.semFixture} de {resumo.total} sem resultado — o jogo não foi encontrado no calendário
+                    {resumo.pendentes} de {resumo.total} sem resultado
+                    {resumo.semFixture > 0
+                      ? ` · ${resumo.semFixture} sem jogo no calendário`
+                      : ' · jogo adiado ou ainda sem placar'}
                   </p>
                 ) : null}
               </>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { oportunidadesDoDia, oppFromAlerted, oppKey, type OppLike } from './futebol-registradas';
+import { settleFutebol } from './futebol-settlement';
 import type { FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
 
 function registrada(over: Partial<FutebolAlertedPick> = {}): FutebolAlertedPick {
@@ -215,5 +216,30 @@ describe('oportunidade registrada em liga fora da lista fixa', () => {
     expect(doDia).toHaveLength(1);
     expect(doDia[0].competition).toBe('ligue_1');
     expect(doDia[0].status_short).toBe('FT');
+  });
+
+  it('com o calendário carregado, a linha LIQUIDA de verdade', () => {
+    // O aceite da issue pede horário, placar E liquidação. As asserções acima
+    // param no horário; esta fecha o ciclo, porque é a liquidação que o
+    // histórico de 29/08 não conseguiu fazer nas três linhas órfãs.
+    const linha = oppFromAlerted(strasbourg, fixtureDoStrasbourg);
+    const resultado = settleFutebol(
+      linha,
+      fixtureDoStrasbourg.goals_home!,
+      fixtureDoStrasbourg.goals_away!,
+    );
+
+    // Strasbourg 2 × 1 Lens, pick no mandante: green.
+    expect(resultado).toBe('won');
+  });
+
+  it('sem o calendário, não há placar para liquidar', () => {
+    const linha = oppFromAlerted(strasbourg, undefined);
+
+    // Este é o defeito inteiro em uma linha: o placar vem do fixture, e sem
+    // fixture não existe par de gols para passar ao liquidador. A linha fica
+    // na tela sem nunca fechar, e o resumo do dia a omitia da conta.
+    expect(linha.status_short).toBeNull();
+    expect(fixtureDoStrasbourg.goals_home).toBe(2); // o placar EXISTIA no banco
   });
 });
