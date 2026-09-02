@@ -9,6 +9,11 @@ import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 // ============================================================
 import type { FutebolFixtureValueRow, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import type { FutebolScoreVersion } from '@/services/futebol-score-contract';
+// Reexportado porque quem lida com escala já importa `fronteirasDoScore` e
+// `versaoDaJanela` daqui, e obrigar um segundo import do contrato só para o tipo
+// espalha o conhecimento de onde ele mora. Faltava, e ninguém viu: o typecheck
+// da raiz compila zero arquivo (`files: []`) e o CI não roda tsc.
+export type { FutebolScoreVersion };
 
 export type Faixa = 'alta' | 'media' | 'baixa';
 

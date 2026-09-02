@@ -50,7 +50,6 @@ const base = (versao: FutebolScoreVersion, over: Partial<FutebolValueBoardRow>):
   pts_corroboracao: 0,
   penalidades: 0,
   score: 50,
-  faixa: 'Média',
   evidencias: [],
   ...over,
   score_versao: versao,

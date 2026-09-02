@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Crest } from './Crest';
@@ -24,13 +25,14 @@ function nomeDoGrupo(g: string): string {
 export function GruposFase({
   rows,
   loading,
-  onTeam,
+  hrefDoTime,
   /** Quantos passam de fase. Só pinta a barra verde, não inventa critério. */
   classificados = 2,
 }: {
   rows?: FutebolStandingRow[];
   loading: boolean;
-  onTeam: (id: number) => void;
+  /** O endereço da página do time. Destino de link, não ação (#341). */
+  hrefDoTime: (id: number) => string;
   classificados?: number;
 }) {
   const grupos = useMemo(() => {
@@ -103,9 +105,9 @@ export function GruposFase({
               const passa = r.rank <= classificados;
               const sg = r.goals_diff > 0 ? `+${r.goals_diff}` : r.goals_diff < 0 ? `−${Math.abs(r.goals_diff)}` : '0';
               return (
-                <button
+                <Link
                   key={r.team_id}
-                  onClick={() => onTeam(r.team_id)}
+                  to={hrefDoTime(r.team_id)}
                   className="w-full text-left px-4 py-1.5 grid grid-cols-[22px_1fr_22px_30px_30px] gap-2 items-center hover:bg-canvas-2 transition"
                   style={{ borderTop: '1px solid #f1e9d6' }}
                 >
@@ -134,7 +136,7 @@ export function GruposFase({
                     {sg}
                   </span>
                   <span className="text-center text-[12.5px] font-bold tabular-nums text-ink">{r.points}</span>
-                </button>
+                </Link>
               );
             })}
           </div>

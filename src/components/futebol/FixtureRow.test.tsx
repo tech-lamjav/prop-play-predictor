@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { FixtureRow } from './FixtureRow';
 import type { FutebolFixture } from '@/services/futebol-data.service';
 
@@ -26,9 +27,22 @@ const jogo = {
   goals_away: null,
 } as unknown as FutebolFixture;
 
+// A linha virou `<Link>` (#341), para o clique do meio abrir a tela do jogo em
+// outra aba. Isso exige um Router em volta — não é acoplamento novo do
+// componente ao roteador, é o preço de a linha ser um link de verdade em vez de
+// um botão que finge navegar.
 function renderLinha(props: Partial<Parameters<typeof FixtureRow>[0]> = {}) {
   return render(
-    <FixtureRow fixture={jogo} best={null} leituraCarregando={false} onClick={vi.fn()} {...props} />,
+    <MemoryRouter>
+      <FixtureRow
+        fixture={jogo}
+        best={null}
+        leituraCarregando={false}
+        to={`/futebol/jogo/${jogo.fixture_id}`}
+        onClick={vi.fn()}
+        {...props}
+      />
+    </MemoryRouter>,
   );
 }
 
