@@ -74,3 +74,16 @@ describe('as duas cópias da vitrine concordam', () => {
     }
   });
 });
+
+describe('o fallback da vitrine é o mesmo dos dois lados', () => {
+  // Se as duas listas se afastarem, o painel e a DM discordam exatamente na
+  // janela em que ninguém está olhando: a de antes da migration. É a mesma
+  // classe de defeito das 27 divergências de copy da issue #272.
+  it('VITRINE_FALLBACK bate', () => {
+    expect([...notificacao.VITRINE_FALLBACK]).toEqual([...painel.VITRINE_FALLBACK]);
+  });
+
+  it('o fallback esconde alguma coisa — lista vazia derrotaria o propósito', () => {
+    expect(painel.VITRINE_FALLBACK.length).toBeGreaterThan(0);
+  });
+});

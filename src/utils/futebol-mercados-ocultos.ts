@@ -15,6 +15,25 @@
 // só a regra, pura, para poder ser testada sem rede.
 // ============================================================
 
+/**
+ * O que vale quando a lista do banco não pode ser lida.
+ *
+ * NÃO é a fonte da verdade — o banco é. Isto é só o que fazer no escuro, e a
+ * única janela realista de escuro é entre o deploy deste código e a aplicação
+ * da migration 116: depois dela, é uma RPC minúscula no mesmo banco que acabou
+ * de servir o board.
+ *
+ * Nessa janela, esconder o Handicap já é o comportamento decidido — o SQL é que
+ * não subiu ainda. Cair para lista vazia mostraria na tela e mandaria na DM
+ * exatamente o que o produto tirou da prateleira.
+ *
+ * ⚠️ Quando um mercado voltar à vitrine pelo UPDATE, TIRE-O DAQUI TAMBÉM. Se
+ * ficar, uma falha de leitura o esconde de novo — o banco vence sempre que
+ * responde, mas o escuro passaria a mentir. A guarda de paridade obriga as duas
+ * cópias (esta e a de `supabase/functions/shared/`) a andarem juntas.
+ */
+export const VITRINE_FALLBACK: readonly string[] = ['asian_handicap'];
+
 /** O mercado está fora da vitrine? */
 export function mercadoEstaOculto(
   market: string,

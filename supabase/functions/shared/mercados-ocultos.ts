@@ -49,19 +49,34 @@ export function filtrarMercadosOcultos<T extends { market: string }>(
 type ClienteRpc = { rpc: (nome: string, ...args: any[]) => PromiseLike<any> };
 
 /**
+ * O que vale quando a lista do banco não pode ser lida. Cópia do
+ * `VITRINE_FALLBACK` do painel — a guarda de paridade obriga as duas a andarem
+ * juntas, e é lá que está o comentário inteiro, inclusive o aviso de tirar o
+ * mercado daqui quando ele voltar à vitrine.
+ */
+export const VITRINE_FALLBACK: readonly string[] = ["asian_handicap"];
+
+/**
  * Lê a vitrine, e NUNCA lança.
  *
- * Configuração indisponível não pode derrubar o envio do dia — nem quando a RPC
- * ainda não existe, que é o estado entre o deploy do código e a aplicação da
- * migration. Sem a lista o comportamento é o de antes, nada escondido: é
- * degradação, não regressão.
+ * Configuração indisponível não pode derrubar o envio do dia. Mas cair para
+ * lista vazia mandaria na DM exatamente o que o produto tirou da prateleira —
+ * então o escuro cai para o `VITRINE_FALLBACK`, e a mensagem sai SEM o mercado
+ * escondido em vez de sair errada ou não sair.
+ *
+ * Devolve a origem para o chamador poder registrar o estado degradado: silêncio
+ * aqui é como uma vitrine desatualizada sobreviveria sem ninguém notar.
  */
-export async function carregarMercadosOcultos(supabase: ClienteRpc): Promise<string[]> {
+export async function carregarMercadosOcultos(
+  supabase: ClienteRpc,
+): Promise<{ mercados: string[]; origem: "banco" | "fallback" }> {
   try {
     const { data, error } = await supabase.rpc("get_futebol_mercados_ocultos");
-    if (error) return [];
-    return Array.isArray(data) ? (data as string[]) : [];
+    if (error || !Array.isArray(data)) {
+      return { mercados: [...VITRINE_FALLBACK], origem: "fallback" };
+    }
+    return { mercados: data as string[], origem: "banco" };
   } catch (_) {
-    return [];
+    return { mercados: [...VITRINE_FALLBACK], origem: "fallback" };
   }
 }

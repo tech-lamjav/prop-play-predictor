@@ -5,6 +5,7 @@ import { assertEquals } from "./_assert.ts";
 import {
   carregarMercadosOcultos,
   filtrarMercadosOcultos,
+  VITRINE_FALLBACK,
 } from "../shared/mercados-ocultos.ts";
 
 const linha = (market: string, id: number) => ({ market, fixture_id: id });
@@ -40,24 +41,36 @@ Deno.test("carrega a lista da RPC", async () => {
       return Promise.resolve({ data: ["asian_handicap"], error: null });
     },
   };
-  assertEquals(await carregarMercadosOcultos(supabase), ["asian_handicap"]);
+  assertEquals(await carregarMercadosOcultos(supabase), {
+    mercados: ["asian_handicap"],
+    origem: "banco",
+  });
 });
 
-Deno.test("RPC com erro não derruba o envio: devolve lista vazia", async () => {
+Deno.test("RPC com erro cai para o fallback, e a mensagem sai SEM o mercado escondido", async () => {
   const supabase = {
     rpc: () => Promise.resolve({ data: null, error: { message: "boom" } }),
   };
-  assertEquals(await carregarMercadosOcultos(supabase), []);
+  assertEquals(await carregarMercadosOcultos(supabase), {
+    mercados: [...VITRINE_FALLBACK],
+    origem: "fallback",
+  });
 });
 
-Deno.test("RPC inexistente (front antes da migration) devolve lista vazia", async () => {
+Deno.test("RPC inexistente (código antes da migration) cai para o fallback", async () => {
   const supabase = {
     rpc: () => Promise.reject(new Error("function does not exist")),
   };
-  assertEquals(await carregarMercadosOcultos(supabase), []);
+  assertEquals(await carregarMercadosOcultos(supabase), {
+    mercados: [...VITRINE_FALLBACK],
+    origem: "fallback",
+  });
 });
 
-Deno.test("resposta nula vira lista vazia", async () => {
+Deno.test("resposta sem array cai para o fallback", async () => {
   const supabase = { rpc: () => Promise.resolve({ data: null, error: null }) };
-  assertEquals(await carregarMercadosOcultos(supabase), []);
+  assertEquals(await carregarMercadosOcultos(supabase), {
+    mercados: [...VITRINE_FALLBACK],
+    origem: "fallback",
+  });
 });

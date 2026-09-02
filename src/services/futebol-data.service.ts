@@ -4,7 +4,7 @@ import {
   normalizeFutebolValueBoardRows,
   type FutebolScoreVersion,
 } from './futebol-score-contract';
-import { filtrarMercadosOcultos } from '@/utils/futebol-mercados-ocultos';
+import { filtrarMercadosOcultos, VITRINE_FALLBACK } from '@/utils/futebol-mercados-ocultos';
 
 // A vitrine muda por UPDATE no banco, não por release, então a lista não pode
 // ser lida uma vez e congelada pela vida da aba. Cinco minutos é curto o
@@ -927,8 +927,11 @@ export const futebolDataService = {
       mercadosOcultosCache = { valor, expiraEm: agora + MERCADOS_OCULTOS_TTL_MS };
       return valor;
     } catch {
-      // Sem cache válido e sem resposta: nada escondido, board vivo.
-      return mercadosOcultosCache?.valor ?? [];
+      // No escuro vale o último valor bom; sem ele, o fallback. Cair para lista
+      // vazia mostraria na tela o que o produto tirou da prateleira, e a janela
+      // realista de escuro é justamente a de antes da migration — quando
+      // esconder já é o comportamento decidido.
+      return mercadosOcultosCache?.valor ?? [...VITRINE_FALLBACK];
     }
   },
 

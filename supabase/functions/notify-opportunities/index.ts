@@ -210,7 +210,8 @@ serve(async (req) => {
 
     // 1b) a vitrine — MESMA fonte que o painel lê (migration 116). Sem isto o
     // alerta vaza: o painel esconde o mercado e a DM continua mandando.
-    const mercadosOcultos = await carregarMercadosOcultos(supabase);
+    const vitrine = await carregarMercadosOcultos(supabase);
+    const mercadosOcultos = vitrine.mercados;
 
     const now = new Date();
     const today = brtDay(now);
@@ -240,6 +241,11 @@ serve(async (req) => {
     if (mode === "report") {
       return json({
         ok: true, mode,
+        // `origem: "fallback"` significa que a lista do banco não respondeu e a
+        // mensagem saiu pela lista embutida. Não é erro — a DM sai correta —,
+        // mas é o sinal de que a vitrine pode estar desatualizada, e sem ele
+        // isso sobreviveria em silêncio.
+        vitrine: { origem: vitrine.origem, ocultos: mercadosOcultos },
         picks: picks.map((p) => ({
           jogo: `${p.home_team_name} × ${p.away_team_name}`,
           pick: pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name),

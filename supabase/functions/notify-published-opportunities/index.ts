@@ -360,7 +360,8 @@ serve(async (req) => {
     // A vitrine, da MESMA fonte que o painel lê (migration 116). Este é o
     // segundo canal de alerta: esconder o mercado só no `notify-opportunities`
     // deixaria o alerta de publicação continuar mandando. Ver #324.
-    const mercadosOcultos = await carregarMercadosOcultos(supabase);
+    const vitrine = await carregarMercadosOcultos(supabase);
+    const mercadosOcultos = vitrine.mercados;
     const now = new Date();
     const { data: existing, error: existingError } = await supabase
       .from("futebol_publication_alerts")
