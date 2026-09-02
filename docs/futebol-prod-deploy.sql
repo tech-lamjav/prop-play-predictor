@@ -524,13 +524,11 @@ create table futebol.int_futebol_premissas_ou (
   "ritmo_alto" boolean,
   "ambos_vazam" boolean,
   "historico_over" boolean,
-  "linha_subindo" boolean,
   "defesas_firmes" boolean,
   "clean_sheets_altos" boolean,
   "xg_baixo_combinado" boolean,
   "ataques_fracos" boolean,
   "historico_under" boolean,
-  "linha_descendo" boolean,
   "linha_extrema" boolean,
   "pts_premissas" bigint,
   "penalidades_ou_pts" bigint,
@@ -633,7 +631,11 @@ create table futebol.fact_value_opportunities (
   "pen_odd_outlier" boolean,
   "pen_poucas_casas" boolean,
   "pen_odd_longshot" boolean,
-  "pen_odd_juice" boolean
+  "pen_odd_juice" boolean,
+  -- Escala do Score (spec #301): legacy ou contexto_v1. Nunca nulo.
+  -- No fim de proposito: a migration 112 entra por alter table add column, que
+  -- acrescenta no fim, e as duas provisoes precisam ter a mesma ordem de coluna.
+  "score_versao" text not null default 'legacy'
 );
 
 -- ── 2a. Infra do sync: estado incremental (o Cloud Run sync lê/escreve aqui) ──
@@ -686,7 +688,11 @@ create table futebol.fact_value_opportunities_hist (
   "pen_odd_outlier" boolean,
   "pen_poucas_casas" boolean,
   "pen_odd_longshot" boolean,
-  "pen_odd_juice" boolean
+  "pen_odd_juice" boolean,
+  -- Escala do Score (spec #301): legacy ou contexto_v1. Nunca nulo.
+  -- No fim de proposito: a migration 112 entra por alter table add column, que
+  -- acrescenta no fim, e as duas provisoes precisam ter a mesma ordem de coluna.
+  "score_versao" text not null default 'legacy'
 );
 
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
@@ -1044,25 +1050,223 @@ end $function$
 
 ;
 
+-- ── Copy das premissas (migration 106) ──────────────────────────────────────
+-- ── A copy das premissas, uma vez só ────────────────────────────────────────
+-- Antes desta tabela, o texto de cada premissa existia em DUAS fontes
+-- independentes: o catálogo do app (`src/utils/futebol-premissas.ts`), que serve a
+-- tela, e a cascata de `case when` dentro destas três RPCs, que serve a DM do
+-- Telegram. Medido em 20/08: de 36 premissas presentes nas duas, 27 tinham TEXTO
+-- DIFERENTE. Ninguém viu porque nada comparava as duas.
+--
+-- E a cascata era a TERCEIRA cópia verbatim de si mesma, como o comentário da
+-- migration 102 já registrava: "mercado novo agora mexe em três RPCs".
+--
+-- Agora o catálogo do app é a fonte, esta tabela é a projeção dele no banco, e a
+-- guarda `futebol-copy-paridade.test.ts` quebra o PR quando os dois se afastam.
+create table if not exists public.futebol_premissa_copy (
+  tipo   text    not null check (tipo in ('evidencia', 'contra', 'aviso')),
+  market text    not null,
+  slug   text    not null,
+  -- 'any' é o texto neutro; 'home'/'away' só existem onde a frase muda de verdade.
+  mando  text    not null check (mando in ('any', 'home', 'away')),
+  -- Posição na fila. É o que conserta o defeito de origem: a DM mostra o PRIMEIRO
+  -- item do array, e a ordem da cascata era a ordem em que ela foi escrita. No
+  -- azarão do handicap, 12.736 linhas mostravam a premissa de 3 pontos tendo a de
+  -- 10 pontos disponível.
+  ordem  integer not null,
+  texto  text    not null,
+  primary key (tipo, market, slug, mando)
+);
+
+-- RLS ligada e SEM policy, de propósito: nada acessa esta tabela direto. As três
+-- RPCs são SECURITY DEFINER e leem como dono, então a ausência de policy é o que
+-- garante que ninguém leia por fora.
+alter table public.futebol_premissa_copy enable row level security;
+
+-- Travessão é proibido em copy visível (régua do produto), e cinco dos oito avisos
+-- nasceram com um. A regra vira constraint porque regra que depende de alguém ler
+-- não é regra.
+alter table public.futebol_premissa_copy drop constraint if exists futebol_premissa_copy_sem_travessao;
+alter table public.futebol_premissa_copy add  constraint futebol_premissa_copy_sem_travessao
+  check (texto not like '%' || chr(8212) || '%' and texto not like '%' || chr(8211) || '%');
+
+-- Semente idempotente: a tabela é uma projeção do catálogo, então ela é reescrita
+-- inteira em vez de sofrer upsert linha por linha. Assim premissa REMOVIDA do
+-- catálogo também desaparece daqui.
+delete from public.futebol_premissa_copy;
+insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, texto) values
+  ('evidencia', 'goals_over_under', 'defesas_firmes', 'any', 1, 'Defesas firmes dos dois lados'),
+  ('evidencia', 'goals_over_under', 'defesas_vazaveis', 'any', 2, 'Defesas frágeis dos dois lados'),
+  ('evidencia', 'goals_over_under', 'ataque_combinado', 'any', 3, 'Os dois somam muitos gols'),
+  ('evidencia', 'goals_over_under', 'xg_baixo_combinado', 'any', 4, 'Os dois criam pouca chance de gol'),
+  ('evidencia', 'goals_over_under', 'xg_combinado_alto', 'any', 5, 'Os dois criam muita chance de gol'),
+  ('evidencia', 'goals_over_under', 'clean_sheets_altos', 'any', 6, 'Os dois passam muitos jogos sem sofrer gol'),
+  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 7, 'Ataques fracos dos dois lados'),
+  ('evidencia', 'goals_over_under', 'historico_under', 'any', 8, 'Histórico de jogo com poucos gols'),
+  ('evidencia', 'goals_over_under', 'ambos_vazam', 'any', 9, 'Os dois sofrem gol quase todo jogo'),
+  ('evidencia', 'goals_over_under', 'ritmo_alto', 'any', 10, 'Jogo de ritmo alto'),
+  ('evidencia', 'goals_over_under', 'historico_over', 'any', 11, 'Histórico de jogo com muitos gols'),
+  ('contra', 'goals_over_under', 'defesas_firmes', 'any', 1, 'A solidez das defesas não entrou como sinal a favor'),
+  ('contra', 'goals_over_under', 'ataque_combinado', 'any', 2, 'O ataque dos dois times não entrou como sinal a favor'),
+  ('contra', 'goals_over_under', 'xg_baixo_combinado', 'any', 3, 'O baixo volume de chances não entrou como sinal a favor'),
+  ('contra', 'goals_over_under', 'xg_combinado_alto', 'any', 4, 'O alto volume de chances não entrou como sinal a favor'),
+  ('contra', 'goals_over_under', 'clean_sheets_altos', 'any', 5, 'Os jogos sem sofrer gol não entraram como sinal a favor'),
+  ('contra', 'goals_over_under', 'ritmo_alto', 'any', 6, 'O ritmo do jogo não entrou como sinal a favor'),
+  ('aviso', 'goals_over_under', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'goals_over_under', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'goals_over_under', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'goals_over_under', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
+  ('aviso', 'goals_over_under', 'linha_extrema', 'any', 5, 'Linha muito longe do normal'),
+  ('evidencia', 'match_winner', 'forma', 'any', 1, 'Em boa fase, vem ganhando'),
+  ('evidencia', 'match_winner', 'mando', 'any', 2, 'Mando relevante'),
+  ('evidencia', 'match_winner', 'mando', 'home', 2, 'Manda bem em casa'),
+  ('evidencia', 'match_winner', 'mando', 'away', 2, 'Vai bem fora de casa'),
+  ('evidencia', 'match_winner', 'superioridade_tabela', 'any', 3, 'Bem à frente na tabela'),
+  ('evidencia', 'match_winner', 'forca_mismatch', 'any', 4, 'Ataque forte contra defesa frágil do adversário'),
+  ('evidencia', 'match_winner', 'superioridade_xg', 'any', 5, 'Cria mais chances de gol que o adversário'),
+  ('evidencia', 'match_winner', 'h2h_favoravel', 'any', 6, 'Leva vantagem no histórico do confronto'),
+  ('evidencia', 'match_winner', 'desfalque_adversario', 'any', 7, 'Adversário com desfalque de titular importante'),
+  ('contra', 'match_winner', 'mando', 'home', 1, 'Em casa, o mando não entrou como sinal a favor'),
+  ('contra', 'match_winner', 'mando', 'away', 1, 'Fora de casa, o mando não entrou como sinal a favor'),
+  ('contra', 'match_winner', 'superioridade_tabela', 'any', 2, 'A posição na tabela não entrou como sinal a favor'),
+  ('contra', 'match_winner', 'forca_mismatch', 'any', 3, 'O duelo entre ataque e defesa não entrou como sinal a favor'),
+  ('aviso', 'match_winner', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'match_winner', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'match_winner', 'desfalque_proprio', 'any', 3, 'Time apostado com desfalque de titular importante'),
+  ('aviso', 'match_winner', 'pen_poucas_casas', 'any', 4, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'match_winner', 'pen_odd_juice', 'any', 5, 'Odd baixa, retorno pequeno pro risco'),
+  ('aviso', 'match_winner', 'pick_empate', 'any', 6, 'Empate é o resultado mais difícil de prever'),
+  ('evidencia', 'asian_handicap', 'tende_golear', 'any', 1, 'Costuma ganhar por muitos gols'),
+  ('evidencia', 'asian_handicap', 'supremacia', 'any', 2, 'Muito superior ao adversário'),
+  ('evidencia', 'asian_handicap', 'defesa_fora_solida', 'any', 3, 'Defesa sólida jogando fora'),
+  ('evidencia', 'asian_handicap', 'defesa_fora_solida', 'home', 3, 'Defesa sólida em casa'),
+  ('evidencia', 'asian_handicap', 'sem_rodizio', 'any', 4, 'Deve entrar com força máxima'),
+  ('evidencia', 'asian_handicap', 'raramente_perde_por_2', 'any', 5, 'Quando perde, perde apertado'),
+  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'any', 6, 'Adversário fraco fora de casa'),
+  ('evidencia', 'asian_handicap', 'adversario_fragil_fora', 'away', 6, 'Adversário fraco em casa'),
+  ('evidencia', 'asian_handicap', 'mando_forte', 'any', 7, 'Manda muito bem em casa'),
+  ('evidencia', 'asian_handicap', 'mando_forte', 'away', 7, 'Vai muito bem fora de casa'),
+  ('contra', 'asian_handicap', 'tende_golear', 'any', 1, 'A margem das vitórias não entrou como sinal a favor'),
+  ('contra', 'asian_handicap', 'supremacia', 'any', 2, 'A superioridade sobre o adversário não entrou como sinal a favor'),
+  ('contra', 'asian_handicap', 'defesa_fora_solida', 'any', 3, 'A solidez defensiva não entrou como sinal a favor'),
+  ('contra', 'asian_handicap', 'defesa_fora_solida', 'home', 3, 'Em casa, a solidez defensiva não entrou como sinal a favor'),
+  ('contra', 'asian_handicap', 'raramente_perde_por_2', 'any', 4, 'A margem das derrotas não entrou como sinal a favor'),
+  ('aviso', 'asian_handicap', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'asian_handicap', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'asian_handicap', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'asian_handicap', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
+  ('aviso', 'asian_handicap', 'handicap_alto', 'any', 5, 'Handicap muito alto'),
+  ('evidencia', 'btts', 'ambos_marcam', 'any', 1, 'Os dois costumam marcar'),
+  ('evidencia', 'btts', 'ataque_dos_dois', 'any', 2, 'Os dois atacam bem'),
+  ('evidencia', 'btts', 'defesas_vazaveis', 'any', 3, 'Defesas frágeis dos dois lados'),
+  ('evidencia', 'btts', 'defesa_forte', 'any', 4, 'Defesa forte de um dos lados'),
+  ('evidencia', 'btts', 'ataque_trava', 'any', 5, 'Um dos ataques costuma passar em branco'),
+  ('evidencia', 'btts', 'historico_btts', 'any', 6, 'Nos últimos jogos, os dois marcaram'),
+  ('evidencia', 'btts', 'historico_seco', 'any', 7, 'Jogos recentes sem os dois marcarem'),
+  ('contra', 'btts', 'ambos_marcam', 'any', 1, 'Os gols dos dois times não entraram como sinal a favor'),
+  ('contra', 'btts', 'defesas_vazaveis', 'any', 2, 'A fragilidade das defesas não entrou como sinal a favor'),
+  ('contra', 'btts', 'defesa_forte', 'any', 3, 'A força defensiva não entrou como sinal a favor'),
+  ('contra', 'btts', 'ataque_trava', 'any', 4, 'A limitação ofensiva não entrou como sinal a favor'),
+  ('aviso', 'btts', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'btts', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'btts', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'btts', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
+  ('evidencia', 'double_chance', 'lado_coberto_forte', 'any', 1, 'O lado coberto é forte'),
+  ('evidencia', 'double_chance', 'equilibrio_defensivo', 'any', 2, 'Equilíbrio defensivo'),
+  ('evidencia', 'double_chance', 'adversario_limitado', 'any', 3, 'Adversário com campanha fraca'),
+  ('evidencia', 'double_chance', 'invicto_recente', 'any', 4, 'Invicto nos últimos jogos'),
+  ('contra', 'double_chance', 'lado_coberto_forte', 'any', 1, 'A força do lado coberto não entrou como sinal a favor'),
+  ('contra', 'double_chance', 'adversario_limitado', 'any', 2, 'A campanha do adversário não entrou como sinal a favor'),
+  ('aviso', 'double_chance', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
+  ('aviso', 'double_chance', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
+  ('aviso', 'double_chance', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),
+  ('aviso', 'double_chance', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco');
+
+-- ── Os dois helpers ─────────────────────────────────────────────────────────
+-- Junta num objeto só tudo que pode acender numa linha, e resolve a precedência da
+-- corroboração.
+--
+-- O nome da coluna booleana nas tabelas de premissa É o slug, então não existe
+-- cascata de `case when` para escrever: as chaves do jsonb já são os slugs. É por
+-- isso que a premissa nova passa a custar uma linha de semente e nada mais.
+--
+-- A corroboração é o único caso que não é "slug aceso vira texto": são dois sinais
+-- e três frases (as duas individuais e uma combinada). As três chaves saem daqui
+-- já resolvidas, e por vir DEPOIS no `||` elas vencem as do `v`.
+create or replace function public.futebol_flags(
+  p_v jsonb, p_p jsonb, p_o jsonb, p_ah jsonb, p_bt jsonb, p_dc jsonb
+) returns jsonb
+ language sql
+ immutable
+ set search_path to ''
+as $function$
+  select coalesce(p_v, '{}'::jsonb)
+      || coalesce(p_p, '{}'::jsonb)
+      || coalesce(p_o, '{}'::jsonb)
+      || coalesce(p_ah, '{}'::jsonb)
+      || coalesce(p_bt, '{}'::jsonb)
+      || coalesce(p_dc, '{}'::jsonb)
+      || jsonb_build_object(
+           'corroboracao_ambos',
+             coalesce((p_v->>'modelo_api_concorda')::boolean, false)
+             and coalesce((p_v->>'linha_sharp_confirma')::boolean, false),
+           'modelo_api_concorda',
+             coalesce((p_v->>'modelo_api_concorda')::boolean, false)
+             and not coalesce((p_v->>'linha_sharp_confirma')::boolean, false),
+           'linha_sharp_confirma',
+             coalesce((p_v->>'linha_sharp_confirma')::boolean, false)
+             and not coalesce((p_v->>'modelo_api_concorda')::boolean, false)
+         )
+$function$;
+
+-- Traduz as flags acesas para a copy, na ordem certa.
+--
+-- `contra` procura 'false' em vez de 'true', e é por isso que NULL não gera contra:
+-- em jsonb um booleano nulo vira null, que não casa com 'false'. É o mesmo
+-- comportamento do `not coalesce(x, true)` que a cascata usava, e continua honrando
+-- a ADR 0003 (dado faltante diagnostica, não elimina).
+--
+-- O `distinct on` com o desempate pelo mando escolhe a variante específica quando
+-- ela existe e cai no texto neutro quando não existe.
+create or replace function public.futebol_copy(
+  p_tipo text, p_market text, p_mando text, p_flags jsonb
+) returns text[]
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  select coalesce(array_agg(t.texto order by t.ordem), array[]::text[])
+  from (
+    select distinct on (c.slug) c.ordem, c.texto
+    from public.futebol_premissa_copy c
+    join jsonb_each_text(p_flags) f on f.key = c.slug
+    where c.tipo = p_tipo
+      and c.market = p_market
+      and c.mando in ('any', coalesce(p_mando, 'any'))
+      and f.value = case when p_tipo = 'contra' then 'false' else 'true' end
+    order by c.slug, (c.mando <> 'any') desc
+  ) t
+$function$;
+
+grant execute on function public.futebol_flags(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb) to anon, authenticated, service_role;
+grant execute on function public.futebol_copy(text, text, text, jsonb) to anon, authenticated, service_role;
+
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_fixture_value(bigint);
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_value(p_fixture_id bigint)
- RETURNS TABLE(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, penalidades_globais_pts integer, penalidades_especificas_pts integer, score integer, faixa text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
- LANGUAGE sql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-  -- migration 101: a fonte deixa de ser fixa. Kickoff no futuro lê o board;
-  -- kickoff já passado lê a FOTO DO APITO no snapshot. É *kickoff passado* e
-  -- não *jogo terminado*, senão as ~2h de bola rolando ficariam sem linha
-  -- depois que o mart passar a expurgar os status ao vivo (ADR 0009).
-  -- migration 105: os avisos de penalidade leem as colunas pen_* do proprio mart
-  -- (AE#87). O CTE sobre int_futebol_odds_devig foi removido: ele rederivava as
-  -- flags e, no prd, 76 de 126 linhas exibiam aviso de janela errada (issue #267).
-  -- No hist, pen_* pode ser NULL em versao aberta antes do AE#87: NULL nao gera aviso.
+ returns table(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, penalidades_especificas_pts integer, score integer, faixa text, score_versao text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
+ language sql
+ security definer
+ set search_path to ''
+as $function$
+  -- migration 101: kickoff no futuro lê o board; kickoff já passado lê a FOTO DO
+  -- APITO no snapshot. migration 105: os avisos leem as colunas pen_* do mart.
   with v_src as (
-    select fixture_id, market, outcome, line_value, competition, season, edge, pts_valor,
-           pts_premissas, pts_corroboracao, penalidades, score, faixa, best_odd, best_book,
+    select fixture_id, market, outcome, line_value, competition, season, edge,
+           pts_premissas, penalidades, score, faixa, score_versao, best_odd, best_book,
            avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
-           penalidades_globais_pts, penalidades_especificas_pts, modelo_api_concorda,
+           penalidades_especificas_pts, modelo_api_concorda,
            linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado,
            pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
     from futebol.fact_value_opportunities
@@ -1070,10 +1274,10 @@ AS $function$
       and exists (select 1 from futebol.fact_fixtures fx
                    where fx.fixture_id = p_fixture_id and fx.kickoff_utc > (now() at time zone 'UTC'))
     union all
-    select fixture_id, market, outcome, line_value, competition, season, edge, pts_valor,
-           pts_premissas, pts_corroboracao, penalidades, score, faixa, best_odd, best_book,
+    select fixture_id, market, outcome, line_value, competition, season, edge,
+           pts_premissas, penalidades, score, faixa, score_versao, best_odd, best_book,
            avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
-           penalidades_globais_pts, penalidades_especificas_pts, modelo_api_concorda,
+           penalidades_especificas_pts, modelo_api_concorda,
            linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado,
            pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
     from futebol.fact_value_opportunities_hist h
@@ -1097,94 +1301,12 @@ AS $function$
           then (3000 + case v.outcome when '1X' then 1 else 2 end)
           else 0 end),
     v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
-    v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int,
-    v.penalidades_globais_pts::int, v.penalidades_especificas_pts::int, v.score::int, v.faixa,
+    v.pts_premissas::int, v.penalidades::int,
+    v.penalidades_especificas_pts::int, v.score::int, v.faixa, v.score_versao,
     v.modelo_api_concorda, v.linha_sharp_confirma,
-    array_remove(array[
-      case when p.forca_mismatch then 'Ataque forte contra defesa frágil do adversário' end,
-      case when p.superioridade_xg then 'Cria mais chances de gol do que o adversário' end,
-      case when p.mando then (case v.outcome when 'Home' then 'Manda bem em casa' when 'Away' then 'Vai bem fora de casa' else 'Mando relevante' end) end,
-      case when p.desfalque_adversario then 'Adversário com desfalque de titular importante' end,
-      case when p.superioridade_tabela then 'Bem à frente na tabela' end,
-      case when p.forma then 'Em boa fase (vitórias recentes)' end,
-      case when p.h2h_favoravel then 'Histórico favorável no confronto direto' end
-    ], null)
-    || array_remove(array[
-      case when o.ataque_combinado then 'Os dois somam muitos gols (casa + fora)' end,
-      case when o.defesas_vazaveis then 'Defesas frágeis dos dois lados' end,
-      case when o.xg_combinado_alto then 'Os dois criam muitas chances de gol' end,
-      case when o.ritmo_alto then 'Jogo de ritmo alto (muitas finalizações)' end,
-      case when o.ambos_vazam then 'Os dois sofrem gol quase todo jogo' end,
-      case when o.historico_over then 'Últimos jogos goleadores' end,
-      case when o.linha_subindo then 'Mercado puxando a linha pra cima' end,
-      case when o.defesas_firmes then 'Defesas firmes dos dois lados' end,
-      case when o.clean_sheets_altos then 'Os dois passam muitos jogos sem sofrer gol' end,
-      case when o.xg_baixo_combinado then 'Os dois criam pouca coisa na frente' end,
-      case when o.ataques_fracos then 'Ataque fraco (passam em branco com frequência)' end,
-      case when o.historico_under then 'Últimos jogos truncados' end,
-      case when o.linha_descendo then 'Mercado puxando a linha pra baixo' end
-    ], null)
-    || array_remove(array[
-      case when ah.supremacia then 'Muito superior ao adversário' end,
-      case when ah.tende_golear then 'Costuma vencer com boa diferença de gols' end,
-      case when ah.adversario_fragil_fora then 'Adversário tem defesa frágil' end,
-      case when ah.mando_forte then 'Manda muito bem em casa' end,
-      case when ah.sem_rodizio then 'Deve entrar com força máxima' end,
-      case when ah.raramente_perde_por_2 then 'Raramente perde por 2 gols ou mais' end,
-      case when ah.defesa_fora_solida then 'Defesa sólida jogando fora' end,
-      case when ah.favorito_irregular then 'O favorito não costuma golear' end
-    ], null)
-    || array_remove(array[
-      case when bt.ambos_marcam then 'Os dois quase sempre marcam' end,
-      case when bt.ataque_dos_dois then 'Os dois ataques vêm produzindo' end,
-      case when bt.defesas_vazaveis then 'As duas defesas sofrem gol com frequência' end,
-      case when bt.historico_btts then 'Nos últimos jogos, os dois marcaram' end,
-      case when bt.defesa_forte then 'Uma das defesas segura bem o placar' end,
-      case when bt.ataque_trava then 'Um dos ataques costuma passar em branco' end,
-      case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
-    ], null)
-    || array_remove(array[
-      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
-      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
-      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
-      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
-    ], null)
-    || array_remove(array[
-      case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
-           when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
-           when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
-    ], null),
-    array_remove(array[
-      case when v.pen_odd_outlier then 'Só uma casa paga essa odd — pode ser linha furada' end,
-      case when v.pen_poucas_casas then 'Poucas casas cotando esse mercado' end,
-      case when v.pen_odd_longshot then 'Odd alta (zebra) — entra com cautela' end,
-      case when v.pen_odd_juice then 'Odd baixa — retorno pequeno pro risco' end,
-      case when p.pick_empate then 'Empate é o resultado mais difícil de prever' end,
-      case when p.desfalque_proprio then 'Time apostado com desfalque de titular importante' end,
-      case when o.linha_extrema then 'Linha extrema — pouco confiável' end,
-      case when ah.handicap_alto then 'Handicap alto (2,5+ gols) — raramente confiável' end
-    ], null),
-    (array_remove(array[
-      case when not coalesce(p.forca_mismatch, true) then 'Sem vantagem clara de ataque × defesa' end,
-      case when not coalesce(p.mando, true) and v.outcome <> 'Draw' then 'Mando não pesa a favor' end,
-      case when not coalesce(p.superioridade_tabela, true) then 'Times equilibrados na tabela' end,
-      case when v.outcome='Over' and not coalesce(o.ataque_combinado, true) then 'Os dois não somam tantos gols' end,
-      case when v.outcome='Over' and not coalesce(o.ritmo_alto, true) then 'Jogo não costuma ser de ritmo alto' end,
-      case when v.outcome='Over' and not coalesce(o.xg_combinado_alto, true) then 'O volume de chances não é tão alto' end,
-      case when v.outcome='Under' and not coalesce(o.defesas_firmes, true) then 'As defesas não são tão firmes' end,
-      case when v.outcome='Under' and not coalesce(o.clean_sheets_altos, true) then 'Não costumam segurar o placar zerado' end,
-      case when v.outcome='Under' and not coalesce(o.xg_baixo_combinado, true) then 'Criam chances demais pra um jogo truncado' end,
-      case when ah.is_favorito and not coalesce(ah.supremacia, true) then 'Não é tão superior assim ao adversário' end,
-      case when ah.is_favorito and not coalesce(ah.tende_golear, true) then 'Nem sempre vence com boa diferença' end,
-      case when ah.is_azarao and not coalesce(ah.raramente_perde_por_2, true) then 'Já levou goleada algumas vezes' end,
-      case when ah.is_azarao and not coalesce(ah.defesa_fora_solida, true) then 'Defesa fora não é das mais sólidas' end,
-      case when v.outcome='Yes' and not coalesce(bt.ambos_marcam, true) then 'Nem sempre os dois marcam' end,
-      case when v.outcome='Yes' and not coalesce(bt.defesas_vazaveis, true) then 'As defesas não são tão vazadas' end,
-      case when v.outcome='No' and not coalesce(bt.defesa_forte, true) then 'Nenhuma defesa é tão sólida' end,
-      case when v.outcome='No' and not coalesce(bt.ataque_trava, true) then 'Os dois ataques costumam marcar' end,
-      case when not coalesce(dc.lado_coberto_forte, true) then 'O lado coberto não é claramente o mais forte' end,
-      case when not coalesce(dc.adversario_limitado, true) then 'Adversário não é tão limitado' end
-    ], null))[1:3],
+    public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
+    public.futebol_copy('aviso', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
+    (public.futebol_copy('contra', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))))[1:3],
     v.premissas_sem_dado::int
   from v_src v
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
@@ -1194,9 +1316,7 @@ AS $function$
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   where v.fixture_id = p_fixture_id
   order by (case v.market when 'match_winner' then 1 when 'goals_over_under' then 2 when 'asian_handicap' then 3 when 'btts' then 4 when 'double_chance' then 5 else 9 end), 3;
-$function$
-
-;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixtures(p_competition text, p_season bigint, p_round text DEFAULT NULL::text)
  RETURNS TABLE(fixture_id bigint, round text, kickoff_utc timestamp without time zone, date_utc date, status_short text, status_long text, home_team_id bigint, home_team_name text, home_team_logo text, away_team_id bigint, away_team_name text, away_team_logo text, goals_home bigint, goals_away bigint)
@@ -1582,70 +1702,20 @@ end; $function$
 
 ;
 
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_value_board();
 CREATE OR REPLACE FUNCTION public.get_futebol_value_board()
- RETURNS TABLE(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, score integer, faixa text, evidencias text[], premissas_sem_dado integer)
- LANGUAGE sql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ language sql
+ security definer
+ set search_path to ''
+as $function$
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
-    v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int, v.score::int, v.faixa,
-    array_remove(array[
-      case when p.forca_mismatch then 'Ataque forte contra defesa frágil do adversário' end,
-      case when p.superioridade_xg then 'Cria mais chances de gol do que o adversário' end,
-      case when p.mando then (case v.outcome when 'Home' then 'Manda bem em casa' when 'Away' then 'Vai bem fora de casa' else 'Mando relevante' end) end,
-      case when p.desfalque_adversario then 'Adversário com desfalque de titular importante' end,
-      case when p.superioridade_tabela then 'Bem à frente na tabela' end,
-      case when p.forma then 'Em boa fase (vitórias recentes)' end,
-      case when p.h2h_favoravel then 'Histórico favorável no confronto direto' end
-    ], null)
-    || array_remove(array[
-      case when o.ataque_combinado then 'Os dois somam muitos gols (casa + fora)' end,
-      case when o.defesas_vazaveis then 'Defesas frágeis dos dois lados' end,
-      case when o.xg_combinado_alto then 'Os dois criam muitas chances de gol' end,
-      case when o.ritmo_alto then 'Jogo de ritmo alto (muitas finalizações)' end,
-      case when o.ambos_vazam then 'Os dois sofrem gol quase todo jogo' end,
-      case when o.historico_over then 'Últimos jogos goleadores' end,
-      case when o.linha_subindo then 'Mercado puxando a linha pra cima' end,
-      case when o.defesas_firmes then 'Defesas firmes dos dois lados' end,
-      case when o.clean_sheets_altos then 'Os dois passam muitos jogos sem sofrer gol' end,
-      case when o.xg_baixo_combinado then 'Os dois criam pouca coisa na frente' end,
-      case when o.ataques_fracos then 'Ataque fraco (passam em branco com frequência)' end,
-      case when o.historico_under then 'Últimos jogos truncados' end,
-      case when o.linha_descendo then 'Mercado puxando a linha pra baixo' end
-    ], null)
-    || array_remove(array[
-      case when ah.supremacia then 'Muito superior ao adversário' end,
-      case when ah.tende_golear then 'Costuma vencer com boa diferença de gols' end,
-      case when ah.adversario_fragil_fora then 'Adversário tem defesa frágil' end,
-      case when ah.mando_forte then 'Manda muito bem em casa' end,
-      case when ah.sem_rodizio then 'Deve entrar com força máxima' end,
-      case when ah.raramente_perde_por_2 then 'Raramente perde por 2 gols ou mais' end,
-      case when ah.defesa_fora_solida then 'Defesa sólida jogando fora' end,
-      case when ah.favorito_irregular then 'O favorito não costuma golear' end
-    ], null)
-    || array_remove(array[
-      case when bt.ambos_marcam then 'Os dois quase sempre marcam' end,
-      case when bt.ataque_dos_dois then 'Os dois ataques vêm produzindo' end,
-      case when bt.defesas_vazaveis then 'As duas defesas sofrem gol com frequência' end,
-      case when bt.historico_btts then 'Nos últimos jogos, os dois marcaram' end,
-      case when bt.defesa_forte then 'Uma das defesas segura bem o placar' end,
-      case when bt.ataque_trava then 'Um dos ataques costuma passar em branco' end,
-      case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
-    ], null)
-    || array_remove(array[
-      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
-      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
-      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
-      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
-    ], null)
-    || array_remove(array[
-      case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
-           when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
-           when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
-    ], null),
+    v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
+    public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     v.premissas_sem_dado::int
   from futebol.fact_value_opportunities v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
@@ -1655,9 +1725,7 @@ AS $function$
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   order by v.score desc, v.edge desc;
-$function$
-
-;
+$function$;
 
 -- ── 5b. Histórico point-in-time do board (ADR 0009, migrations 101 e 102) ────
 -- O board é reconstruído inteiro a cada execução e não filtra data, então ler o
@@ -1688,18 +1756,21 @@ $function$
 -- outras em `get_futebol_value_board` e `get_futebol_fixture_value`). Mercado
 -- novo mexe em três RPCs. Extrair exige tocar nas três de uma vez.
 
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_value_history(date, date);
 CREATE OR REPLACE FUNCTION public.get_futebol_value_history(p_from date, p_to date)
- RETURNS TABLE(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_valor integer, pts_premissas integer, pts_corroboracao integer, penalidades integer, score integer, faixa text, evidencias text[], premissas_sem_dado integer)
- LANGUAGE sql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ language sql
+ security definer
+ set search_path to ''
+as $function$
   with pit as (
     select distinct on (h.opportunity_key)
       h.fixture_id, h.market, h.outcome, h.line_value, h.edge,
       h.best_odd, h.best_book, h.avg_odd, h.n_casas, h.janela_usada,
-      h.prob_justa_fechamento, h.pts_valor, h.pts_premissas, h.pts_corroboracao,
-      h.penalidades, h.score, h.faixa,
+      h.prob_justa_fechamento, h.pts_premissas,
+      h.penalidades, h.score, h.faixa, h.score_versao,
       h.modelo_api_concorda, h.linha_sharp_confirma, h.premissas_sem_dado
     from futebol.fact_value_opportunities_hist h
     join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
@@ -1713,61 +1784,8 @@ AS $function$
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
-    v.pts_valor::int, v.pts_premissas::int, v.pts_corroboracao::int, v.penalidades::int, v.score::int, v.faixa,
-    array_remove(array[
-      case when p.forca_mismatch then 'Ataque forte contra defesa frágil do adversário' end,
-      case when p.superioridade_xg then 'Cria mais chances de gol do que o adversário' end,
-      case when p.mando then (case v.outcome when 'Home' then 'Manda bem em casa' when 'Away' then 'Vai bem fora de casa' else 'Mando relevante' end) end,
-      case when p.desfalque_adversario then 'Adversário com desfalque de titular importante' end,
-      case when p.superioridade_tabela then 'Bem à frente na tabela' end,
-      case when p.forma then 'Em boa fase (vitórias recentes)' end,
-      case when p.h2h_favoravel then 'Histórico favorável no confronto direto' end
-    ], null)
-    || array_remove(array[
-      case when o.ataque_combinado then 'Os dois somam muitos gols (casa + fora)' end,
-      case when o.defesas_vazaveis then 'Defesas frágeis dos dois lados' end,
-      case when o.xg_combinado_alto then 'Os dois criam muitas chances de gol' end,
-      case when o.ritmo_alto then 'Jogo de ritmo alto (muitas finalizações)' end,
-      case when o.ambos_vazam then 'Os dois sofrem gol quase todo jogo' end,
-      case when o.historico_over then 'Últimos jogos goleadores' end,
-      case when o.linha_subindo then 'Mercado puxando a linha pra cima' end,
-      case when o.defesas_firmes then 'Defesas firmes dos dois lados' end,
-      case when o.clean_sheets_altos then 'Os dois passam muitos jogos sem sofrer gol' end,
-      case when o.xg_baixo_combinado then 'Os dois criam pouca coisa na frente' end,
-      case when o.ataques_fracos then 'Ataque fraco (passam em branco com frequência)' end,
-      case when o.historico_under then 'Últimos jogos truncados' end,
-      case when o.linha_descendo then 'Mercado puxando a linha pra baixo' end
-    ], null)
-    || array_remove(array[
-      case when ah.supremacia then 'Muito superior ao adversário' end,
-      case when ah.tende_golear then 'Costuma vencer com boa diferença de gols' end,
-      case when ah.adversario_fragil_fora then 'Adversário tem defesa frágil' end,
-      case when ah.mando_forte then 'Manda muito bem em casa' end,
-      case when ah.sem_rodizio then 'Deve entrar com força máxima' end,
-      case when ah.raramente_perde_por_2 then 'Raramente perde por 2 gols ou mais' end,
-      case when ah.defesa_fora_solida then 'Defesa sólida jogando fora' end,
-      case when ah.favorito_irregular then 'O favorito não costuma golear' end
-    ], null)
-    || array_remove(array[
-      case when bt.ambos_marcam then 'Os dois quase sempre marcam' end,
-      case when bt.ataque_dos_dois then 'Os dois ataques vêm produzindo' end,
-      case when bt.defesas_vazaveis then 'As duas defesas sofrem gol com frequência' end,
-      case when bt.historico_btts then 'Nos últimos jogos, os dois marcaram' end,
-      case when bt.defesa_forte then 'Uma das defesas segura bem o placar' end,
-      case when bt.ataque_trava then 'Um dos ataques costuma passar em branco' end,
-      case when bt.historico_seco then 'Jogos recentes sem os dois marcarem' end
-    ], null)
-    || array_remove(array[
-      case when dc.lado_coberto_forte then 'O lado coberto é claramente o mais forte' end,
-      case when dc.equilibrio_defensivo then 'Defesas parelhas — empate é desfecho plausível' end,
-      case when dc.adversario_limitado then 'Adversário com campanha fraca' end,
-      case when dc.invicto_recente then 'Vem sem perder nos últimos jogos' end
-    ], null)
-    || array_remove(array[
-      case when v.modelo_api_concorda and v.linha_sharp_confirma then 'As principais casas e o modelo da API apontam o mesmo lado'
-           when v.modelo_api_concorda then 'Modelo da API concorda com esse lado'
-           when v.linha_sharp_confirma then 'As principais casas vêm baixando a odd desse lado' end
-    ], null),
+    v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
+    public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     v.premissas_sem_dado::int
   from pit v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
@@ -1777,9 +1795,7 @@ AS $function$
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   order by f.kickoff_utc desc, v.score desc, v.edge desc;
-$function$
-
-;
+$function$;
 
 -- ── 5c. Agenda por dia, catálogo e detalhe do jogo (migrations 091 a 096) ────
 -- ⚠️ Estas oito estavam FALTANDO neste arquivo, e é a dívida da #250 no seu
@@ -1938,9 +1954,7 @@ AS $function$
            case when p.historico_under     then 'historico_under' end,
            case when p.historico_over      then 'historico_over' end,
            case when p.ambos_vazam         then 'ambos_vazam' end,
-           case when p.ritmo_alto          then 'ritmo_alto' end,
-           case when p.linha_subindo       then 'linha_subindo' end,
-           case when p.linha_descendo      then 'linha_descendo' end
+           case when p.ritmo_alto          then 'ritmo_alto' end
          ], null),
          array_remove(array[
            case when not p.defesas_firmes     then 'defesas_firmes' end,
@@ -1953,9 +1967,7 @@ AS $function$
            case when not p.historico_under    then 'historico_under' end,
            case when not p.historico_over     then 'historico_over' end,
            case when not p.ambos_vazam        then 'ambos_vazam' end,
-           case when not p.ritmo_alto         then 'ritmo_alto' end,
-           case when not p.linha_subindo      then 'linha_subindo' end,
-           case when not p.linha_descendo     then 'linha_descendo' end
+           case when not p.ritmo_alto         then 'ritmo_alto' end
          ], null),
          array_remove(array[
            case when p.linha_extrema then 'linha_extrema' end
@@ -2215,6 +2227,399 @@ $function$
 
 ;
 
+-- ── Cotações de referência (migration 20260826010945) ───────────────────────
+-- Distingue linha sem cotação de candidata cotada que não passou pelo funil.
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_quotes(p_fixture_id bigint)
+RETURNS TABLE(
+  market_key text, market_label text, outcome_label text, outcome_order integer,
+  line double precision, pinnacle_odd double precision, avg_odd double precision,
+  reference_odd double precision, best_odd double precision, best_book text,
+  n_books integer, pin_open double precision, pin_close double precision
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+  with base as (
+    select o.market_name, o.outcome_label, o.bookmaker_name, o.collection_window,
+           o.odd_decimal, o.line_value, f.kickoff_utc
+    from futebol.fact_odds_snapshot o
+    join futebol.fact_fixtures f on f.fixture_id = o.fixture_id
+    where o.fixture_id = p_fixture_id
+      and ( o.market_name = 'Match Winner'
+         or o.market_name = 'Both Teams Score'
+         or o.market_name = 'Double Chance'
+         or (o.market_name = 'Goals Over/Under' and o.outcome_label in
+             ('Over 0.5','Under 0.5','Over 1.5','Under 1.5','Over 2.5','Under 2.5',
+              'Over 3.5','Under 3.5','Over 4.5','Under 4.5'))
+         or (o.market_name = 'Asian Handicap'
+             and abs(o.line_value - trunc(o.line_value)) = 0.5
+             and abs(o.line_value) <= 2.5))
+  ),
+  ranked as (
+    select b.*,
+      case b.collection_window
+        when 't15m' then 4 when 't1h' then 3 when 't24h' then 2
+        when 'daily' then 1 else 0
+      end as window_rank
+    from base b
+  ),
+  chosen_window as (
+    select market_name, outcome_label,
+      case
+        when max(kickoff_utc) <= (now() at time zone 'UTC') then coalesce(
+          max(window_rank) filter (where collection_window = 't15m'),
+          max(window_rank) filter (where collection_window = 't1h'),
+          max(window_rank) filter (where collection_window = 't24h'),
+          max(window_rank) filter (where collection_window = 'daily')
+        )
+        else max(window_rank)
+      end as window_rank
+    from ranked
+    group by market_name, outcome_label
+  ),
+  current_quotes as (
+    select distinct on (r.market_name, r.outcome_label, r.bookmaker_name)
+      r.market_name, r.outcome_label, r.bookmaker_name, r.odd_decimal, r.line_value
+    from ranked r
+    join chosen_window w using (market_name, outcome_label, window_rank)
+    order by r.market_name, r.outcome_label, r.bookmaker_name
+  ),
+  agg as (
+    select c.market_name, c.outcome_label, max(c.line_value) as line_value,
+      count(distinct c.bookmaker_name)::int as n_books,
+      avg(c.odd_decimal) as avg_odd,
+      percentile_disc(0.5) within group (order by c.odd_decimal) as reference_odd
+    from current_quotes c
+    group by c.market_name, c.outcome_label
+  ),
+  best_book as (
+    select distinct on (c.market_name, c.outcome_label)
+      c.market_name, c.outcome_label, c.bookmaker_name, c.odd_decimal
+    from current_quotes c
+    order by c.market_name, c.outcome_label, c.odd_decimal desc
+  ),
+  pinnacle as (
+    select b.market_name, b.outcome_label,
+      max(b.odd_decimal) filter (where b.collection_window='t24h') as t24,
+      max(b.odd_decimal) filter (where b.collection_window='t1h') as t1,
+      max(b.odd_decimal) filter (where b.collection_window='t15m') as t15
+    from base b
+    where b.bookmaker_name = 'Pinnacle'
+    group by b.market_name, b.outcome_label
+  )
+  select
+    case a.market_name
+      when 'Match Winner' then 'match_winner'
+      when 'Goals Over/Under' then 'over_under'
+      when 'Both Teams Score' then 'btts'
+      when 'Double Chance' then 'double_chance'
+      when 'Asian Handicap' then 'asian_handicap'
+    end,
+    a.market_name,
+    a.outcome_label,
+    case
+      when a.outcome_label in ('Home','Yes','Home/Draw')
+        or a.outcome_label like 'Over %' or a.outcome_label like 'Home %' then 1
+      when a.outcome_label in ('Draw','No','Home/Away')
+        or a.outcome_label like 'Under %' or a.outcome_label like 'Away %' then 2
+      else 3
+    end,
+    case when a.market_name in ('Goals Over/Under','Asian Handicap') then a.line_value end,
+    coalesce(p.t15, p.t1, p.t24), a.avg_odd, a.reference_odd,
+    bb.odd_decimal, bb.bookmaker_name, a.n_books, p.t24, coalesce(p.t15, p.t1)
+  from agg a
+  join best_book bb using (market_name, outcome_label)
+  left join pinnacle p using (market_name, outcome_label)
+  where a.market_name <> 'Asian Handicap' or a.n_books >= 3
+  order by 1, 5 nulls first, 4;
+$function$;
+
+-- ── 5d. Contrato de motivos da leitura dos cinco mercados (migration 109) ────
+-- O banco escolhe o grupo de cada motivo. A tela apenas renderiza o contrato,
+-- sem converter uma premissa do lado oposto em uma frase "contra".
+-- O retorno tabular mudou na virada do Score de contexto, e o Postgres recusa
+-- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
+drop function if exists public.get_futebol_fixture_reason_contract(bigint);
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_reason_contract(p_fixture_id bigint)
+returns table(
+  market text,
+  outcome text,
+  line_value double precision,
+  score integer,
+  favor jsonb,
+  contra jsonb
+)
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  with base as (
+    select
+      v.market, v.outcome, v.line_value, v.score,
+      p.acesas, p.apagadas, p.penalidades as penalidades_ativas,
+      case v.market
+        when 'goals_over_under' then case v.outcome
+          when 'Over' then array[
+            'defesas_vazaveis', 'ataque_combinado', 'xg_combinado_alto',
+            'ambos_vazam', 'ritmo_alto', 'historico_over'
+          ]::text[]
+          when 'Under' then array[
+            'defesas_firmes', 'xg_baixo_combinado', 'clean_sheets_altos',
+            'ataques_fracos', 'historico_under'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'match_winner' then case v.outcome
+          when 'Home' then array[
+            'forma', 'mando', 'superioridade_tabela', 'forca_mismatch',
+            'superioridade_xg', 'h2h_favoravel', 'desfalque_adversario'
+          ]::text[]
+          when 'Away' then array[
+            'forma', 'mando', 'superioridade_tabela', 'forca_mismatch',
+            'superioridade_xg', 'h2h_favoravel', 'desfalque_adversario'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'asian_handicap' then case
+          -- A linha é guardada na ótica do mandante. Para o visitante, o
+          -- sinal representa a saída espelhada e precisa ser lido ao contrário.
+          when (v.outcome = 'Home' and v.line_value < 0)
+            or (v.outcome = 'Away' and v.line_value > 0) then array[
+            'tende_golear', 'supremacia', 'sem_rodizio',
+            'adversario_fragil_fora', 'mando_forte'
+          ]::text[]
+          when v.line_value <> 0 then array[
+            'defesa_fora_solida', 'raramente_perde_por_2'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'btts' then case v.outcome
+          when 'Yes' then array[
+            'ambos_marcam', 'ataque_dos_dois', 'defesas_vazaveis', 'historico_btts'
+          ]::text[]
+          when 'No' then array[
+            'defesa_forte', 'ataque_trava', 'historico_seco'
+          ]::text[]
+          else array[]::text[]
+        end
+        when 'double_chance' then array[
+          'lado_coberto_forte', 'equilibrio_defensivo',
+          'adversario_limitado', 'invicto_recente'
+        ]::text[]
+        else array[]::text[]
+      end as aplicaveis
+    from public.get_futebol_fixture_value(p_fixture_id) v
+    join public.get_futebol_fixture_premissas(p_fixture_id) p
+      on p.market = v.market
+     and p.outcome = v.outcome
+     and p.line_value is not distinct from v.line_value
+  )
+  select
+    b.market,
+    b.outcome,
+    b.line_value,
+    b.score,
+    -- Sem o gate `pts_premissas > 0` que existia aqui. Ele era herança da nota
+    -- antiga, em que a linha podia ser publicada só pelo preço e as premissas
+    -- não contribuíam. No Score de contexto, premissa aplicável e acesa É
+    -- contribuição por definição — e manter o gate deixaria A favor vazio numa
+    -- linha legacy publicada pelo preço, entre esta migration e a troca do mart.
+    coalesce((
+      select jsonb_agg(jsonb_build_object('id', slug, 'tipo', 'premissa') order by slug)
+      from unnest(b.acesas) slug
+      where slug = any(b.aplicaveis)
+    ), '[]'::jsonb),
+    coalesce((
+      select jsonb_agg(jsonb_build_object('id', slug, 'tipo', 'premissa') order by slug)
+      from unnest(b.apagadas) slug
+      where slug = any(b.aplicaveis)
+    ), '[]'::jsonb)
+    || coalesce((
+      select jsonb_agg(jsonb_build_object('id', slug, 'tipo', 'penalidade') order by slug)
+      from unnest(b.penalidades_ativas) slug
+      where slug <> 'favorito_irregular'
+    ), '[]'::jsonb)
+  from base b;
+$function$;
+
+-- ── 5e. Alertas de publicação no Telegram (migration 111) ───────────────────
+-- São RPCs internas da Edge Function; não expor a anon/autenticated.
+CREATE OR REPLACE FUNCTION public.claim_futebol_publication_alert_batch(
+  p_sync_at timestamptz,
+  p_opportunities jsonb
+)
+RETURNS TABLE(batch_id uuid, alert_id uuid, opportunity_key text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_batch_id uuid;
+BEGIN
+  -- O advisory lock torna o polling idempotente mesmo se dois crons
+  -- coincidirem: sem ele, duas execuções sobrepostas não enxergam as linhas
+  -- ainda não commitadas uma da outra, criam dois lotes e mandam duas mensagens
+  -- para o mesmo destinatário no mesmo minuto.
+  PERFORM pg_advisory_xact_lock(hashtext('futebol-publication-alerts'));
+
+  WITH incoming AS (
+    SELECT *
+    FROM jsonb_to_recordset(p_opportunities) AS x(
+      opportunity_key text,
+      fixture_id bigint,
+      home_team_name text,
+      away_team_name text,
+      competition text,
+      kickoff_utc timestamptz,
+      market text,
+      outcome text,
+      line_value double precision,
+      best_odd numeric,
+      score integer,
+      faixa text,
+      score_versao text,
+      janela_usada text,
+      edge double precision,
+      prob_justa_fechamento double precision,
+      evidencias text[]
+    )
+  )
+  INSERT INTO public.futebol_publication_alert_batches (sync_at)
+  SELECT p_sync_at
+  WHERE EXISTS (
+    SELECT 1 FROM incoming i
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.futebol_publication_alerts a
+      WHERE a.opportunity_key = i.opportunity_key
+    )
+  )
+  RETURNING id INTO v_batch_id;
+
+  IF v_batch_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  RETURN QUERY
+  WITH incoming AS (
+    SELECT *
+    FROM jsonb_to_recordset(p_opportunities) AS x(
+      opportunity_key text,
+      fixture_id bigint,
+      home_team_name text,
+      away_team_name text,
+      competition text,
+      kickoff_utc timestamptz,
+      market text,
+      outcome text,
+      line_value double precision,
+      best_odd numeric,
+      score integer,
+      faixa text,
+      score_versao text,
+      janela_usada text,
+      edge double precision,
+      prob_justa_fechamento double precision,
+      evidencias text[]
+    )
+  ), inserted AS (
+    INSERT INTO public.futebol_publication_alerts (
+      batch_id, opportunity_key, fixture_id, home_team_name, away_team_name,
+      competition, kickoff_utc, market, outcome, line_value, best_odd, score,
+      faixa, score_versao, janela_usada, edge, prob_justa_fechamento, evidencias
+    )
+    SELECT v_batch_id, i.opportunity_key, i.fixture_id, i.home_team_name,
+           i.away_team_name, i.competition, i.kickoff_utc, i.market,
+           i.outcome, i.line_value, i.best_odd, i.score, i.faixa,
+           -- Alerta antigo permanece legacy; o detector novo manda a escala.
+           coalesce(i.score_versao, 'legacy'),
+           i.janela_usada, i.edge, i.prob_justa_fechamento, i.evidencias
+    FROM incoming i
+    ON CONFLICT (opportunity_key) DO NOTHING
+    RETURNING id, opportunity_key
+  )
+  SELECT v_batch_id, i.id, i.opportunity_key FROM inserted i;
+END;
+$function$;
+
+alter table public.users add column if not exists futebol_trial_started_at timestamptz;
+alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
+-- ⚠️ DÍVIDA: as tabelas da migration 111 (futebol_publication_alerts,
+-- _batches, _deliveries e _pick_refs) nunca entraram neste arquivo, embora as
+-- funções que as usam tenham entrado. Um ALTER TABLE aqui abortaria a provisão
+-- inteira, porque check_function_bodies=off cobre corpo de função e não DDL de
+-- tabela. A coluna score_versao é da migration 113; trazer as tabelas para cá é
+-- a correção de verdade, e é o mesmo modo de falha da issue #250.
+
+alter table public.users add column if not exists futebol_publication_alerts_enabled boolean not null default true;
+alter table public.users add column if not exists futebol_publication_alerts_ack_at timestamptz;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_publication_alert_recipients()
+RETURNS TABLE(user_id uuid, chat_id text, user_name text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+  SELECT u.id, u.telegram_chat_id::text, u.name::text
+  FROM public.users u
+  WHERE u.telegram_chat_id IS NOT NULL
+    AND coalesce(u.futebol_publication_alerts_enabled, true) = true
+    AND (
+      coalesce(u.futebol_subscription_status, 'free') = 'premium'
+      OR (
+        u.futebol_trial_started_at IS NOT NULL
+        AND u.futebol_trial_started_at + interval '7 days' > now()
+      )
+    );
+$function$;
+
+CREATE OR REPLACE FUNCTION public.claim_futebol_publication_alert_deliveries()
+RETURNS TABLE(batch_id uuid, user_id uuid, chat_id text, attempt_id uuid, opportunities jsonb)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+BEGIN
+  UPDATE public.futebol_publication_alert_deliveries d
+  SET status = 'expired', attempt_id = NULL, claimed_at = NULL
+  WHERE d.status IN ('pending', 'failed', 'processing')
+    AND NOT EXISTS (
+      SELECT 1 FROM public.futebol_publication_alerts a
+      WHERE a.batch_id = d.batch_id AND a.kickoff_utc > now()
+    );
+
+  RETURN QUERY
+  WITH claimed AS (
+    UPDATE public.futebol_publication_alert_deliveries d
+    SET status = 'processing', attempts = d.attempts + 1,
+        attempt_id = gen_random_uuid(), claimed_at = now(), last_attempt_at = now()
+    FROM public.users u
+    WHERE d.user_id = u.id
+      AND d.status IN ('pending', 'failed')
+      AND u.telegram_chat_id IS NOT NULL
+      AND coalesce(u.futebol_publication_alerts_enabled, true) = true
+      AND EXISTS (
+        SELECT 1 FROM public.futebol_publication_alerts a
+        WHERE a.batch_id = d.batch_id AND a.kickoff_utc > now()
+      )
+      AND (
+        coalesce(u.futebol_subscription_status, 'free') = 'premium'
+        OR (u.futebol_trial_started_at IS NOT NULL
+          AND u.futebol_trial_started_at + interval '7 days' > now())
+      )
+    RETURNING d.batch_id, d.user_id, u.telegram_chat_id::text, d.attempt_id
+  )
+  SELECT c.batch_id, c.user_id, c.telegram_chat_id, c.attempt_id,
+    jsonb_agg(jsonb_build_object(
+      'alert_id', a.id, 'fixture_id', a.fixture_id,
+      'home_team_name', a.home_team_name, 'away_team_name', a.away_team_name,
+      'competition', a.competition, 'kickoff_utc', a.kickoff_utc,
+      'market', a.market, 'outcome', a.outcome, 'line_value', a.line_value,
+      'best_odd', a.best_odd, 'score', a.score, 'faixa', a.faixa,
+      'evidencias', a.evidencias
+    ) ORDER BY a.score DESC)
+  FROM claimed c
+  JOIN public.futebol_publication_alerts a ON a.batch_id = c.batch_id
+  WHERE a.kickoff_utc > now()
+  GROUP BY c.batch_id, c.user_id, c.telegram_chat_id, c.attempt_id;
+END;
+$function$;
+
 -- ── 6. Grants de execução (anon / authenticated / service_role) ──────────────
 grant execute on function public._futebol_team_form(p_team_id bigint, p_competition text, p_season bigint, p_before date) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_access() to anon, authenticated, service_role;
@@ -2222,6 +2627,7 @@ grant execute on function public.get_futebol_fixture_detail(p_fixture_id bigint)
 grant execute on function public.get_futebol_fixture_extras(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_injuries(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_odds(p_fixture_id bigint) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_quotes(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_prediction(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_value(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixtures(p_competition text, p_season bigint, p_round text) to anon, authenticated, service_role;
@@ -2245,6 +2651,158 @@ grant execute on function public.get_futebol_fixtures_by_day(p_day date, p_compe
 grant execute on function public.get_futebol_fixture_premissas(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_numeros(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_reason_contract(p_fixture_id bigint) to anon, authenticated, service_role;
+
+-- ── "Disponível desde" no detalhe do jogo (migration 114, issue #300) ──────
+-- ⚠️ A função devolve a corrida da ÚLTIMA versão que o snapshot tem, inclusive
+-- de chave que já saiu do board. É de propósito: é o que faz o campo continuar
+-- respondendo no jogo encerrado, cujo detalhe lê a foto do apito (migration
+-- 101) — e o caso de aceite da issue é justamente um jogo de 25/08. Quem decide
+-- se aquilo está publicado AGORA é get_futebol_fixture_value, e a tela só
+-- escreve a frase quando as duas concordam.
+--
+-- Medido no dev em 29/08/2026: das 284 chaves do snapshot, 276 têm a última
+-- versão fechada e 8 têm versão aberta; nenhuma das 8 está fora do board. Ou
+-- seja, o snapshot fecha a linha quando a oportunidade sai, e por isso os
+-- buracos existem — são 74 chaves com reativação. Sem esse fechamento não
+-- haveria ilha nenhuma e o campo viraria o MIN da chave, que é a forma 1 de
+-- mentir.
+
+DROP FUNCTION IF EXISTS public.get_futebol_fixture_disponivel_desde(bigint);
+
+CREATE FUNCTION public.get_futebol_fixture_disponivel_desde(p_fixture_id bigint)
+RETURNS TABLE(
+  market text,
+  outcome text,
+  line_value double precision,
+  disponivel_desde timestamp without time zone
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+  -- Ilhas e buracos sobre as versões do snapshot. Versões contíguas
+  -- (dbt_valid_to de uma = dbt_valid_from da seguinte) são ATUALIZAÇÃO da mesma
+  -- disponibilidade; um buraco entre elas é REATIVAÇÃO, e reinicia o relógio.
+  with versoes as (
+    select
+      h.opportunity_key,
+      h.market,
+      h.outcome,
+      h.line_value,
+      h.dbt_valid_from,
+      lag(h.dbt_valid_to) over (
+        partition by h.opportunity_key order by h.dbt_valid_from
+      ) as fim_da_anterior
+    from futebol.fact_value_opportunities_hist h
+    join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
+    -- Só versões anteriores ao apito. O mart é full-refresh e continua
+    -- reescrevendo o jogo depois de encerrado — medido: 97% das versões nascem
+    -- DEPOIS do apito, em média 668h depois. Sem este corte, uma chave fechada
+    -- e reaberta no dia seguinte faria a tela dizer "disponível desde" um
+    -- horário posterior ao fim da partida.
+    where h.fixture_id = p_fixture_id
+      and h.dbt_valid_from < fx.kickoff_utc
+  ), ilhas as (
+    select
+      v.*,
+      -- Cada vez que o fim da versão anterior não encosta no início desta,
+      -- começa uma ilha nova. A primeira versão sempre abre uma.
+      count(*) filter (where v.fim_da_anterior is distinct from v.dbt_valid_from) over (
+        partition by v.opportunity_key
+        order by v.dbt_valid_from
+        rows between unbounded preceding and current row
+      ) as ilha
+    from versoes v
+  ), por_chave as (
+    select distinct on (i.opportunity_key)
+      i.opportunity_key,
+      i.market,
+      i.outcome,
+      i.line_value,
+      -- Início da ilha da versão MAIS RECENTE: a disponibilidade atual.
+      min(i.dbt_valid_from) over (partition by i.opportunity_key, i.ilha) as inicio_da_ilha,
+      -- Primeira versão que o snapshot tem desta chave, para detectar o caso 3.
+      min(i.dbt_valid_from) over (partition by i.opportunity_key) as primeira_versao
+    from ilhas i
+    order by i.opportunity_key, i.dbt_valid_from desc
+  )
+  select
+    c.market,
+    c.outcome,
+    c.line_value,
+    -- Vazio quando a corrida atual começa na primeira versão que o snapshot tem
+    -- E essa versão está na estreia dele: aí o horário é a data em que o
+    -- snapshot passou a existir, não a hora em que a oportunidade foi publicada.
+    -- Uma reativação POSTERIOR à estreia continua confiável, e por isso a
+    -- comparação é com o início da ilha, não com a chave inteira.
+    case
+      when c.inicio_da_ilha = c.primeira_versao
+       and c.primeira_versao < timestamp '2026-07-28 00:00:00'
+      then null
+      else c.inicio_da_ilha
+    end
+  from por_chave c
+  order by c.market, c.outcome, c.line_value;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.get_futebol_fixture_disponivel_desde(bigint) TO anon, authenticated, service_role;
+
+revoke all on function public.claim_futebol_publication_alert_batch(timestamptz, jsonb) from public, anon, authenticated;
+grant execute on function public.claim_futebol_publication_alert_batch(timestamptz, jsonb) to service_role;
+revoke all on function public.get_futebol_publication_alert_recipients() from public, anon, authenticated;
+grant execute on function public.get_futebol_publication_alert_recipients() to service_role;
+revoke all on function public.claim_futebol_publication_alert_deliveries() from public, anon, authenticated;
+grant execute on function public.claim_futebol_publication_alert_deliveries() to service_role;
+
+-- ── Vitrine do produto: mercado fora da tela (migration 116, issue #324) ────
+-- Um mercado pode sair da VITRINE sem sair do BOARD: o backend continua
+-- publicando e gravando no histórico, e só o que o assinante vê muda. Parar de
+-- publicar pararia de medir, e é a medição que decide quando o mercado volta.
+--
+-- A lista mora aqui e não em constante porque são dois consumidores em runtimes
+-- diferentes — o painel (browser) e as DMs do Telegram (edge functions, Deno) —
+-- e devolver o mercado à tela tem de ser um UPDATE, não um release.
+create table if not exists public.futebol_mercados_ocultos (
+  market text primary key,
+  -- A linha sobrevive a "oculto = false": ela é o registro de que o mercado JÁ
+  -- esteve fora, e "oculto_desde" diz desde quando. É o que torna o antes/depois
+  -- comparável quando ele voltar.
+  oculto boolean not null default true,
+  oculto_desde timestamptz not null default now(),
+  motivo text not null
+);
+
+-- RLS ligada e SEM policy, no mesmo padrão da futebol_premissa_copy: nada lê a
+-- tabela direto, só a RPC security definer abaixo.
+alter table public.futebol_mercados_ocultos enable row level security;
+
+comment on table public.futebol_mercados_ocultos is
+  'Mercados retirados da vitrine do produto. Não é gate: o board continua publicando.';
+
+create or replace function public.get_futebol_mercados_ocultos()
+returns text[]
+ language sql
+ stable
+ security definer
+ set search_path to ''
+as $function$
+  select coalesce(array_agg(market order by market), array[]::text[])
+    from public.futebol_mercados_ocultos
+   where oculto;
+$function$;
+
+grant execute on function public.get_futebol_mercados_ocultos() to anon, authenticated, service_role;
+
+insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)
+values (
+  'asian_handicap',
+  true,
+  timestamptz '2026-09-01 00:00:00+00',
+  'ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols. Investigacao na B3 (ClickUp wdx6zev656). Decisao do PM em 31/08/2026, prop-play-predictor#324.'
+)
+on conflict (market) do nothing;
 
 -- ── 7. Reverse trial (7 dias, sem cartão) — colunas no public.users ──────────
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;

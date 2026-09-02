@@ -1,4 +1,6 @@
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
+import { ehDestaque } from '@/utils/futebol-score';
 import type { Saida } from '@/utils/futebol-saida';
 import {
   MERCADOS,
@@ -113,21 +115,27 @@ export interface MercadoResumo {
   /** Linha de valor real (odds), quando coletada. */
   value: FutebolFixtureValueRow | null;
   /**
-   * Passa a régua? Com odds, régua de Score (40). Sem odds, a porta de contexto
-   * (2+ premissas) — que é o que existe para afirmar.
+   * Destaque na leitura. Com odds, quem decide é a FAIXA publicada pelo
+   * backend: a régua local de 40 saiu na virada do Score de contexto (spec
+   * #301), porque era calibrada para a fórmula antiga e classificaria errado a
+   * escala nova. Sem odds, continua a porta de contexto (2+ premissas).
    */
   passa: boolean;
 }
 
-export const REGUA_SCORE = 40;
-
 export function resumoDosMercados(
   rows: FutebolFixturePremissas[] | null | undefined,
   valueRows: FutebolFixtureValueRow[] | null | undefined,
-  preferida?: SaidaPreferida | null,
+  // Explicitamente sem `?`: parâmetro obrigatório não pode seguir opcional, e
+  // os quatro chamadores já passam algum valor.
+  preferida: SaidaPreferida | null,
+  // Os mercados fora da vitrine (#324). A prateleira do detalhe sai do CATÁLOGO
+  // e não do board, então filtrar as linhas do board não bastava: o mercado
+  // escondido continuava como chip, com barra de Score e sem odd.
+  ocultos: readonly string[],
 ): MercadoResumo[] {
   if (!rows?.length) return [];
-  return MERCADOS.flatMap((m) => {
+  return filtrarCatalogoDeMercados(MERCADOS, ocultos).flatMap((m) => {
     // Com preço coletado quem representa o mercado é a saída do melhor Score; sem
     // preço, a saída com mais premissas. Rótulo e números na MESMA saída, sempre.
     //
@@ -147,7 +155,7 @@ export function resumoDosMercados(
       (p) => p.peso == null || p.peso > 0,
     ).length;
     const value = comPreco?.value ?? null;
-    const passa = value ? value.score >= REGUA_SCORE : nValem >= PORTA_PREMISSAS;
+    const passa = value ? ehDestaque(value.faixa) : nValem >= PORTA_PREMISSAS;
     return [{ mercado: m, candidato: c, nValem, totalQueValem, value, passa }];
   });
 }
@@ -158,4 +166,17 @@ export function melhorLeitura(resumos: MercadoResumo[]): MercadoResumo | null {
   const comValor = resumos.filter((r) => r.value != null);
   if (comValor.length) return [...comValor].sort((a, b) => (b.value!.score) - (a.value!.score))[0];
   return [...resumos].sort((a, b) => b.nValem - a.nValem)[0];
+}
+
+/**
+ * O sufixo "· N com leitura" dos contadores da agenda e do campeonato.
+ *
+ * Vazio enquanto o board não respondeu. Contar leituras a partir de um mapa
+ * ainda vazio faz a tela afirmar "0 com leitura" antes de existir resposta — a
+ * mesma conclusão prematura que o esqueleto da linha evita, só que em número.
+ * Some em vez de mostrar zero: um contador que aparece atrasado é menos errado
+ * do que um que mente e depois se corrige.
+ */
+export function sufixoDeLeitura(carregando: boolean, comLeitura: number): string {
+  return carregando ? '' : ` · ${comLeitura} com leitura`;
 }

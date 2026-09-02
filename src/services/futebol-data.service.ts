@@ -1,4 +1,17 @@
 import { supabase } from '@/integrations/supabase/client';
+import {
+  normalizeFutebolFixtureValueRows,
+  normalizeFutebolValueBoardRows,
+  type FutebolScoreVersion,
+} from './futebol-score-contract';
+import { filtrarMercadosOcultos, VITRINE_FALLBACK } from '@/utils/futebol-mercados-ocultos';
+
+// A vitrine muda por UPDATE no banco, não por release, então a lista não pode
+// ser lida uma vez e congelada pela vida da aba. Cinco minutos é curto o
+// bastante para devolver um mercado sem pedir refresh, e longo o bastante para
+// não somar uma chamada a cada carga do board.
+const MERCADOS_OCULTOS_TTL_MS = 5 * 60 * 1000;
+let mercadosOcultosCache: { valor: string[]; expiraEm: number } | null = null;
 
 // As RPCs de futebol ainda não estão nos tipos gerados do Supabase (existem
 // só no dev, lendo BigQuery via FDW no schema bq_futebol). Cast pra any, mesmo
@@ -80,6 +93,48 @@ export interface FutebolFixturePremissas {
   acesas: string[];
   apagadas: string[];
   penalidades: string[];
+}
+
+/** Um motivo do contrato de leitura: o banco define o grupo e o front apenas o exibe. */
+export interface FutebolFixtureReasonItem {
+  id: string;
+  tipo: 'premissa' | 'componente_score' | 'penalidade';
+  texto?: string;
+  pontos?: number;
+}
+
+/**
+ * Desde quando cada saída está publicada, por oportunidade
+ * (RPC get_futebol_fixture_disponivel_desde, issue #300).
+ *
+ * É o início da disponibilidade CONTÍNUA ATUAL: uma rejeição seguida de
+ * reativação reinicia o relógio. Vem `null` quando a chave já existia antes de
+ * o snapshot estrear, porque ali o horário dataria a estreia e não a
+ * publicação — melhor vazio que inventado.
+ */
+export interface FutebolFixtureDisponibilidade {
+  market: string;
+  outcome: string;
+  line_value: number | null;
+  disponivel_desde: string | null;
+}
+
+/**
+ * Motivos de qualquer saída cotada da Bancada (RPC get_futebol_fixture_reason_contract).
+ * A separação favor/contra é autoridade do backend; não derive o lado pelo slug.
+ *
+ * `componentes_score` saiu no contrato de contexto (spec #301): o Score deixou
+ * de ser uma soma de partes exibível, então a RPC não devolve mais a
+ * decomposição. Campo extra numa resposta antiga é inofensivo em runtime, então
+ * o tipo pode andar na frente da virada.
+ */
+export interface FutebolFixtureReasonContractRow {
+  market: string;
+  outcome: string;
+  line_value: number | null;
+  score: number;
+  favor: FutebolFixtureReasonItem[];
+  contra: FutebolFixtureReasonItem[];
 }
 
 /**
@@ -426,6 +481,8 @@ export interface FutebolOddsRow {
   line: number | null;
   pinnacle_odd: number | null;
   avg_odd: number | null;
+  /** Mediana discreta das odds observadas na janela usada pela consulta. */
+  reference_odd: number | null;
   best_odd: number;
   best_book: string;
   n_books: number;
@@ -481,6 +538,7 @@ export interface FutebolValueBoardRow {
   n_casas: number;
   janela_usada: string;    // t15m | t1h | t24h
   prob_justa_fechamento: number; // "Chance" (prob justa devigada) 0..1
+  score_versao: FutebolScoreVersion;
   pts_valor: number;
   pts_premissas: number;
   pts_corroboracao: number;
@@ -534,6 +592,7 @@ export interface FutebolFixtureValueRow {
   n_casas: number;
   janela_usada: string;
   prob_justa_fechamento: number;
+  score_versao: FutebolScoreVersion;
   pts_valor: number;
   pts_premissas: number;
   pts_corroboracao: number;
@@ -649,6 +708,28 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolFixturePremissas[];
+    });
+  },
+
+  /** Contrato de motivos da saída cotada nos cinco mercados (migration 109). */
+  async getFixtureReasonContract(fixtureId: number): Promise<FutebolFixtureReasonContractRow[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_reason_contract', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureReasonContractRow[];
+    });
+  },
+
+  /** Desde quando cada saída está publicada (issue #300). */
+  async getFixtureDisponibilidade(fixtureId: number): Promise<FutebolFixtureDisponibilidade[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_disponivel_desde', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureDisponibilidade[];
     });
   },
 
@@ -805,7 +886,7 @@ export const futebolDataService = {
 
   async getFixtureOdds(fixtureId: number): Promise<FutebolOddsRow[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_odds', {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_quotes', {
         p_fixture_id: fixtureId,
       });
       if (error) throw error;
@@ -821,11 +902,47 @@ export const futebolDataService = {
     });
   },
 
+  /**
+   * Os mercados que estão fora da VITRINE — não fora do board.
+   *
+   * A lista vem do banco (migration 116) e não de constante, porque devolver um
+   * mercado à tela tem de ser um UPDATE e não um release, e porque o Telegram
+   * roda em outro runtime e precisa ler a MESMA fonte.
+   *
+   * ⚠️ Falha em silêncio, de propósito. O `withRetry` trata "função não existe"
+   * como erro definitivo, então um front publicado antes da migration mataria o
+   * board inteiro por causa de uma leitura de configuração. Sem a lista o
+   * comportamento é o de hoje — nada escondido —, que é degradação e não
+   * regressão. Ver prop-play-predictor#324.
+   */
+  async getMercadosOcultos(): Promise<string[]> {
+    const agora = Date.now();
+    if (mercadosOcultosCache && agora < mercadosOcultosCache.expiraEm) {
+      return mercadosOcultosCache.valor;
+    }
+    try {
+      const { data, error } = await supabaseClient.rpc('get_futebol_mercados_ocultos');
+      if (error) throw error;
+      const valor = (data || []) as string[];
+      mercadosOcultosCache = { valor, expiraEm: agora + MERCADOS_OCULTOS_TTL_MS };
+      return valor;
+    } catch {
+      // No escuro vale o último valor bom; sem ele, o fallback. Cair para lista
+      // vazia mostraria na tela o que o produto tirou da prateleira, e a janela
+      // realista de escuro é justamente a de antes da migration — quando
+      // esconder já é o comportamento decidido.
+      return mercadosOcultosCache?.valor ?? [...VITRINE_FALLBACK];
+    }
+  },
+
   async getValueBoard(): Promise<FutebolValueBoardRow[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_value_board');
+      const [{ data, error }, ocultos] = await Promise.all([
+        supabaseClient.rpc('get_futebol_value_board'),
+        this.getMercadosOcultos(),
+      ]);
       if (error) throw error;
-      return (data || []) as FutebolValueBoardRow[];
+      return filtrarMercadosOcultos(normalizeFutebolValueBoardRows(data || []), ocultos);
     });
   },
 
@@ -846,6 +963,12 @@ export const futebolDataService = {
    * colunas na mesma ordem, então a tela não precisa saber de onde veio a linha.
    *
    * Datas em `YYYY-MM-DD`, dia BRT, inclusivas nas duas pontas.
+   *
+   * ⚠️ NÃO aplica `filtrarMercadosOcultos`, e isso é decisão, não esquecimento.
+   * O histórico é o registro do que foi PUBLICADO e visto: até o Handicap sair
+   * da vitrine ele apareceu na tela, e o assinante pode ter apostado nele.
+   * Escondê-lo aqui reescreveria o passado dele e mudaria a performance exibida.
+   * Ver prop-play-predictor#324.
    */
   async getValueHistory(from: string, to: string): Promise<FutebolValueBoardRow[]> {
     return withRetry(async () => {
@@ -854,7 +977,7 @@ export const futebolDataService = {
         p_to: to,
       });
       if (error) throw error;
-      return (data || []) as FutebolValueBoardRow[];
+      return normalizeFutebolValueBoardRows(data || []);
     });
   },
 
@@ -876,11 +999,12 @@ export const futebolDataService = {
 
   async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValueRow[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_value', {
-        p_fixture_id: fixtureId,
-      });
+      const [{ data, error }, ocultos] = await Promise.all([
+        supabaseClient.rpc('get_futebol_fixture_value', { p_fixture_id: fixtureId }),
+        this.getMercadosOcultos(),
+      ]);
       if (error) throw error;
-      return (data || []) as FutebolFixtureValueRow[];
+      return filtrarMercadosOcultos(normalizeFutebolFixtureValueRows(data || []), ocultos);
     });
   },
 

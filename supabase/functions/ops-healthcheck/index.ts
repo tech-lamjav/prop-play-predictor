@@ -19,11 +19,12 @@
 // ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { failingStreaks, type RunRow } from "./health.ts";
+import { failingStreaks, flakyFns, type RunRow } from "./health.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const FAIL_THRESHOLD = 3; // de 5 execuções recentes
+const RUNS_WINDOW_H = 48;  // janela de message_runs lida a cada check
 
 interface JobHealth {
   jobname: string;
@@ -77,14 +78,20 @@ serve(async (req) => {
     // Onda 4: carteiros com streak de falha (message_runs, migration 089).
     // O cron pode dizer "succeeded" (o http_post saiu) e a FUNÇÃO ter falhado —
     // esta é a visão de dentro.
+    // Janela por TEMPO, não por contagem: com "limit(60)" fixo, uma função
+    // tagarela (o notify-published-opportunities grava todo run, de 10 em 10
+    // min) empurrava as demais para fora da amostra e escondia falha alheia.
     const { data: runData } = await supabase
       .from("message_runs")
-      .select("fn, ok")
+      .select("fn, ok, ran_at")
+      .gte("ran_at", new Date(Date.now() - RUNS_WINDOW_H * 3_600_000).toISOString())
       .order("ran_at", { ascending: false })
-      .limit(60);
-    const failingFns = failingStreaks((runData ?? []) as RunRow[], FAIL_THRESHOLD);
+      .limit(1000);
+    const runs = (runData ?? []) as RunRow[];
+    const failingFns = failingStreaks(runs, FAIL_THRESHOLD);
+    const flaky = flakyFns(runs).filter((f) => !failingFns.includes(f.fn));
 
-    if (mode !== "report" && (problems.length > 0 || failingFns.length > 0)) {
+    if (mode !== "report" && (problems.length > 0 || failingFns.length > 0 || flaky.length > 0)) {
       const lines = ["🚨 ops-healthcheck — problemas encontrados:", ""];
       for (const p of problems) {
         if (p.missing_secrets.length > 0) {
@@ -95,9 +102,18 @@ serve(async (req) => {
         }
       }
       for (const fn of failingFns) {
-        lines.push(`• ${fn}: últimos ${FAIL_THRESHOLD} runs da FUNÇÃO falharam (message_runs)`);
+        lines.push(`• ${fn}: últimos ${FAIL_THRESHOLD} runs da FUNÇÃO falharam EM SEQUÊNCIA (message_runs) — quebrada`);
       }
-      lines.push("", "Runbook: criar os secrets (vault.create_secret), investigar cron.job_run_details ou message_runs.errors.");
+      for (const f of flaky) {
+        lines.push(`• ${f.fn}: ${f.failures} de ${f.total} runs falharam nas últimas 24h (message_runs) — intermitente, não quebrada`);
+      }
+      // Runbook sob medida: a linha fixa de antes mandava caçar secret em
+      // incidente que não tinha secret nenhum envolvido.
+      const dicas: string[] = [];
+      if (problems.some((p) => p.missing_secrets.length > 0)) dicas.push("secret faltando → vault.create_secret");
+      if (problems.some((p) => p.failed_recent >= FAIL_THRESHOLD)) dicas.push("falha de cron → cron.job_run_details");
+      if (failingFns.length > 0 || flaky.length > 0) dicas.push("falha de função → message_runs.errors");
+      if (dicas.length > 0) lines.push("", `Runbook: ${dicas.join(" · ")}.`);
       if (adminChat) {
         await sendAdminDm(adminChat, lines.join("\n"));
       } else {
@@ -116,6 +132,7 @@ serve(async (req) => {
         total_recent: p.total_recent,
       })),
       failing_message_fns: failingFns,
+      flaky_message_fns: flaky,
       admin_configured: adminChat != null,
     });
   } catch (e) {

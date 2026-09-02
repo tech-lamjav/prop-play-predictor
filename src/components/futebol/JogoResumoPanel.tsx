@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, X, Minus } from 'lucide-react';
@@ -8,13 +9,16 @@ import {
   useFutebolFixtureNumeros,
   useFutebolFixtureInjuries,
   useFutebolFixtureHistorico,
+  useFutebolFixtureReasonContract,
+  useVitrine,
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { chancePct, pickLabel } from '@/utils/futebol-score';
-import { marketShort } from '@/utils/futebol-score';
-import { contaQueValem, premissaDe, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
-import { melhorLeitura, resumoDosMercados, REGUA_SCORE } from '@/utils/futebol-leitura';
-import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
+import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
+import { contaQueValem, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
+import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
+import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
+import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type {
@@ -34,6 +38,10 @@ import type {
  * Sem leitura o painel NÃO esvazia: explica o motivo e mostra o contexto assim
  * mesmo. A maioria dos jogos legitimamente não tem oportunidade, e um painel em
  * branco lê como defeito.
+ *
+ * Mas "sem leitura" só é dito depois que as fontes responderam. Enquanto elas
+ * carregam entra o esqueleto: afirmar a ausência cedo demais é o mesmo erro,
+ * com a agravante de aparecer em tamanho grande ao lado da lista.
  *
  * Três queries por jogo aberto (premissas, números e desfalques), todas leves e
  * compartilhadas com a tela de jogo: abrir o painel aquece a análise completa. A
@@ -67,11 +75,19 @@ function Forma({ forma }: { forma: string | null | undefined }) {
 export function JogoResumoPanel({
   fixture,
   best,
+  leituraCarregando,
   onClose,
   demo,
 }: {
   fixture: FutebolFixtureByDay;
   best: FutebolValueBoardRow | null;
+  /**
+   * O board da página ainda está em voo. Somado ao carregando das premissas
+   * daqui, decide se o painel pode concluir "Sem leitura para este jogo" — ela
+   * é uma conclusão, e no desktop aparece em tamanho grande ao lado da linha
+   * que ainda está em esqueleto.
+   */
+  leituraCarregando: boolean;
   onClose: () => void;
   /**
    * Premissas e números de exemplo, usados só enquanto o tour roda. O jogo do
@@ -80,12 +96,19 @@ export function JogoResumoPanel({
    */
   demo?: { premissas: FutebolFixturePremissas[]; numeros: FutebolFixtureNumeros[] };
 }) {
-  const { data: premissasReais } = useFutebolFixturePremissas(demo ? undefined : fixture.fixture_id);
+  const { data: premissasReais, isLoading: premissasCarregando } = useFutebolFixturePremissas(
+    demo ? undefined : fixture.fixture_id,
+  );
   const { data: numerosReais } = useFutebolFixtureNumeros(demo ? undefined : fixture.fixture_id);
   const premissas = demo?.premissas ?? premissasReais;
   const numeros = demo?.numeros ?? numerosReais;
   const { data: injuries } = useFutebolFixtureInjuries(fixture.fixture_id);
   const { data: historico } = useFutebolFixtureHistorico(fixture.fixture_id);
+  // O contrato de motivos (#334). No tour os dados são de mentira, então não há
+  // o que buscar.
+  const { data: contrato, isLoading: contratoCarregando } = useFutebolFixtureReasonContract(
+    demo ? undefined : fixture.fixture_id,
+  );
 
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
@@ -93,7 +116,9 @@ export function JogoResumoPanel({
 
   // A leitura: com preço, a melhor do value board; sem preço, o mercado com mais
   // premissas. É a mesma conta da tela de jogo, então os dois nunca divergem.
-  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null), [premissas, best]);
+  // A vitrine (#324): mesma razão do JogoResumo — a prateleira sai do catálogo.
+  const { ocultos } = useVitrine();
+  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null, null, ocultos), [premissas, best, ocultos]);
   const topo = useMemo(() => melhorLeitura(resumos), [resumos]);
 
   const mercadoLeitura = best ? best.market : topo?.mercado.slug ?? null;
@@ -117,33 +142,59 @@ export function JogoResumoPanel({
       ? pickLabel(topo.candidato, fixture.home_team_name, fixture.away_team_name)
       : null;
 
+  // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
+  const carregandoLeitura = demo ? false : leituraCarregando || premissasCarregando;
   const temLeitura = !!best || (topo != null && topo.nValem > 0);
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
 
-  // Os porquês: premissas acesas que valem, com o número que as embasa.
-  const porques = (cand?.acesas ?? [])
-    .map((s) => premissaDe(mercadoLeitura!, s))
-    .filter((p): p is NonNullable<typeof p> => p != null && (p.peso == null || p.peso > 0))
-    .sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0))
-    .slice(0, 4)
-    .map((p) => ({
-      p,
-      ev:
-        evidenciaDe(p.slug, numeros, lado, true, cand?.line_value ?? null) ??
-        evidenciaDoHistorico(p.slug, historico, lado, cand?.line_value ?? null),
-    }));
+  // A resposta a "por que essa aposta", da mesma fonte que a home, o resumo do
+  // jogo e a bancada usam (#334). Com preço quem agrupa é o backend; sem preço
+  // seguem as premissas acesas, e o rótulo muda.
+  const explicacao = explicacaoDaLeitura(
+    {
+      mercado: mercadoLeitura ?? '',
+      candidato: cand,
+      temPreco: !!best,
+      contrato,
+      numeros,
+      historico,
+      lado,
+    },
+    { max: 4, incluirPesoZero: false, maxContra: 2 },
+  );
+  const porques = explicacao.itens;
 
-  // O que pesou contra: as premissas do lado que NÃO aconteceram.
-  const contra = topo && cand && mercadoLeitura
-    ? (() => {
-        const acesas = new Set(cand.acesas);
-        const faltou = topo.mercado.premissas
-          .filter((p) => !acesas.has(p.slug) && p.peso != null && p.peso > 0)
-          .slice(0, 2)
-          .map((p) => rotuloPremissa(p, lado, true).toLowerCase());
-        return faltou.length ? `${faltou.length} ${faltou.length === 1 ? 'pesou' : 'pesaram'} contra: ${faltou.join(' e ')}.` : null;
-      })()
+  // O contrato entra no que a tela espera antes de concluir. Sem isto o painel
+  // afirmava "0 premissas a favor" enquanto a consulta voava — o mesmo defeito
+  // que o card da home levou um ticket inteiro para consertar.
+  const estadoDaExplicacao = estadoDosMotivos(
+    explicacao.itens,
+    explicacao.contra,
+    !demo && !!best && contratoCarregando,
+  );
+
+  // Com preço são motivos, e motivo tem lado. Sem preço são premissas acesas, e
+  // não há lado — o sufixo não pode prometer o que o rótulo acabou de tirar.
+  const sufixoDaExplicacao =
+    explicacao.rotulo === 'Por quê'
+      ? explicacao.total === 1
+        ? 'premissa a favor'
+        : 'premissas a favor'
+      : explicacao.total === 1
+        ? 'premissa acesa'
+        : 'premissas acesas';
+
+  // O que pesou contra, AGORA DO CONTRATO.
+  //
+  // Antes era fabricado por negação: pegava as premissas do mercado que não
+  // acenderam e negava cada uma, sem filtrar se ela se aplica à saída escolhida.
+  // Num Over isso listava como contra uma premissa que só existe para o Under —
+  // o defeito que o aceite da virada proíbe com esse exemplo literal.
+  const contra = explicacao.contra.length
+    ? `${explicacao.contra.length} ${explicacao.contra.length === 1 ? 'pesou' : 'pesaram'} contra: ${explicacao.contra
+        .map(({ premissa }) => rotuloPremissa(premissa, lado, true).toLowerCase())
+        .join(' e ')}.`
     : null;
 
   const casa = numeros?.find((n) => n.side === 'home');
@@ -251,7 +302,7 @@ export function JogoResumoPanel({
                 {best ? best.score : nValem}
               </div>
               <div className="mt-1 text-[9px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                {best ? `Score · ${best.score >= 60 ? 'faixa alta' : best.score >= REGUA_SCORE ? 'faixa média' : 'abaixo da régua'}` : 'premissas a favor'}
+                {best ? `Score · ${rotuloDaFaixa(best.faixa)}` : 'premissas a favor'}
               </div>
             </div>
           </div>
@@ -262,10 +313,21 @@ export function JogoResumoPanel({
         {temLeitura ? (
           <div>
             <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
-              Por que · {nValem} {nValem === 1 ? 'premissa a favor' : 'premissas a favor'}
+              {/* O sufixo acompanha o rótulo. Dizer "a favor" sob "O que o jogo
+                  mostra" seria a mesma promessa que o rótulo acabou de tirar:
+                  sem preço não há aposta a favor de quê. */}
+              {explicacao.rotulo} · {explicacao.total} {sufixoDaExplicacao}
             </div>
+            {/* Enquanto o contrato voa, esqueleto — e não a lista vazia, que
+                afirmaria "não há motivo" antes de saber. */}
+            {estadoDaExplicacao === 'carregando' && (
+              <div className="mt-2.5 flex flex-col gap-2.5" aria-hidden>
+                <Skeleton className="h-[16px] w-full" />
+                <Skeleton className="h-[16px] w-4/5" />
+              </div>
+            )}
             <div className="mt-2.5 flex flex-col gap-2.5">
-              {porques.map(({ p, ev }) => (
+              {porques.map(({ premissa: p, evidencia: ev }) => (
                 <div key={p.slug} className="flex gap-2.5 items-start">
                   <span
                     className="shrink-0 mt-0.5 h-[18px] px-1.5 rounded inline-flex items-center text-[9px] font-bold uppercase tracking-[0.08em]"
@@ -289,6 +351,19 @@ export function JogoResumoPanel({
                 <span className="text-[12px] leading-relaxed" style={{ color: '#6b6350' }}>{contra}</span>
               </div>
             )}
+          </div>
+        ) : carregandoLeitura ? (
+          // Nem "tem leitura" nem "não tem": ainda não dá para dizer. O bloco
+          // ocupa a mesma caixa da negação, que é a maior das duas.
+          <div
+            data-testid="painel-leitura-carregando"
+            aria-busy="true"
+            className="px-4 py-3.5 rounded-[14px] flex flex-col gap-2"
+            style={{ background: 'var(--canvas-2)', border: '1px solid #e5d9bd' }}
+          >
+            <Skeleton className="h-[13px] w-[60%] bg-line/60" />
+            <Skeleton className="h-[12px] w-[85%] bg-line/60" />
+            <Skeleton className="h-[12px] w-[70%] bg-line/60" />
           </div>
         ) : (
           <div className="px-4 py-3.5 rounded-[14px]" style={{ background: 'var(--canvas-2)', border: '1px solid #e5d9bd' }}>
@@ -379,6 +454,7 @@ export function JogoResumoPanel({
                 outcome: best.outcome,
                 lineValue: best.line_value,
                 bestOdd: best.best_odd,
+                oddKind: 'melhor',
               }}
               variant="ambar"
               rotulo="Registrar"

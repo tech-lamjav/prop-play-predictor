@@ -1,7 +1,7 @@
 import { Crest } from './Crest';
+import { Skeleton } from '@/components/ui/skeleton';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
-import { chancePct, marketShort, pickLabel } from '@/utils/futebol-score';
-import { REGUA_SCORE } from '@/utils/futebol-leitura';
+import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -19,15 +19,31 @@ import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-da
  *
  * Em jogo encerrado o vencedor fica em destaque e o perdedor recua, pra varredura
  * ficar mais rápida do que ler dois placares.
+ *
+ * O confronto nunca espera pela leitura: ele vem da agenda do dia e não depende
+ * do board. Quem espera é só a coluna da direita e o selo — ver
+ * `leituraCarregando`.
  */
 export function FixtureRow({
   fixture,
   best,
+  leituraCarregando,
   selected = false,
   onClick,
 }: {
   fixture: FutebolFixture;
   best: FutebolValueBoardRow | null;
+  /**
+   * O board ainda está em voo.
+   *
+   * "Sem leitura ainda" é uma conclusão, e só cabe depois que ele respondeu.
+   * Sem isto a linha nasce negando: `best` chega nulo enquanto a consulta corre,
+   * e a agenda inteira afirma um vazio que ela ainda não sabe se é verdade.
+   *
+   * Obrigatória de propósito: com valor padrão, um consumidor novo herda o bug
+   * por esquecimento, e o compilador não avisa.
+   */
+  leituraCarregando: boolean;
   selected?: boolean;
   onClick: () => void;
 }) {
@@ -48,7 +64,7 @@ export function FixtureRow({
       venceu ? 'font-bold text-ink' : perdeu ? 'font-medium text-ink-3' : 'font-semibold text-ink'
     }`;
 
-  const alto = !!best && best.score >= 60;
+  const alto = ehFaixaAlta(best?.faixa);
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;
 
   // Jogo encerrado não precisa mais do Score, que é uma previsão: o que importa
@@ -91,10 +107,23 @@ export function FixtureRow({
         </div>
       </div>
 
-      {/* A leitura da linha. No celular cabe o pick e a odd; o rótulo do mercado e a
-          chance ficam para o desktop. Sem odds coletadas não existe pick, e a linha
-          diz isso em cinza em vez de inventar um. */}
+      {/* A leitura da linha, em três estados. Enquanto o board não respondeu, o
+          esqueleto; com odds coletadas, o pick; sem elas, a frase em cinza em vez
+          de um pick inventado. No celular cabem o pick e a odd, e o rótulo do
+          mercado e a chance ficam para o desktop. */}
       <div className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0">
+        {leituraCarregando ? (
+          // No desktop a leitura pronta ocupa três linhas (mercado, pick, odd) e
+          // aqui vão três barras. No celular o rótulo do mercado não existe e a
+          // negação ocupa uma linha só, então a primeira barra some junto: é o
+          // que mantém a altura igual nos dois tamanhos.
+          <div data-testid="linha-leitura-carregando" aria-busy="true" className="flex flex-col items-end gap-1">
+            <Skeleton className="hidden sm:block h-[9px] w-[52px] bg-canvas-2" />
+            <Skeleton className="hidden sm:block h-[12px] w-[74px] bg-canvas-2" />
+            <Skeleton className="h-[11px] w-[56px] bg-canvas-2" />
+          </div>
+        ) : (
+        <>
         <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: '#8d8672' }}>
           {best ? marketShort(best.market) : fim ? 'sem leitura' : 'sem leitura ainda'}
         </span>
@@ -115,8 +144,20 @@ export function FixtureRow({
             <span className="hidden sm:inline">{fim ? 'não teve odds coletadas' : 'odds entram perto do jogo'}</span>
           </span>
         )}
+        </>
+        )}
       </div>
 
+      {leituraCarregando ? (
+        // Mesmo tamanho do selo pronto: o travessão é a conclusão "não tem
+        // Score" em forma de símbolo, e ela ainda não pode ser afirmada.
+        <Skeleton
+          data-testid="linha-selo-carregando"
+          aria-busy="true"
+          className="shrink-0 w-8 h-8 sm:w-[38px] sm:h-[38px] bg-canvas-2"
+          style={{ borderRadius: 11 }}
+        />
+      ) : (
       <div
         className="shrink-0 grid place-items-center tabular-nums font-bold w-8 h-8 sm:w-[38px] sm:h-[38px] text-[13px] sm:text-[14px]"
         style={
@@ -128,7 +169,7 @@ export function FixtureRow({
                 : { borderRadius: 11, background: '#fbe3e8', border: '1px solid #f0c2cc', color: '#be123c' }
               : alto
                 ? { borderRadius: 11, background: '#0a3d2e', color: '#fff' }
-                : best.score >= REGUA_SCORE
+                : ehDestaque(best.faixa)
                   ? { borderRadius: 11, background: '#fdf3d9', border: '1px solid #eccf85', color: '#b8870f' }
                   : { borderRadius: 11, background: '#f4eddc', color: '#8d8672' }
         }
@@ -136,6 +177,7 @@ export function FixtureRow({
       >
         {!best ? '—' : bateu != null ? (bateu ? '✓' : '✕') : best.score}
       </div>
+      )}
     </button>
   );
 }

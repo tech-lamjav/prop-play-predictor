@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
-import { useFutebolFixturePremissas, useFutebolFixtureNumeros } from '@/hooks/use-futebol-data';
+import { useFutebolFixturePremissas, useFutebolFixtureNumeros, useFutebolFixtureReasonContract, useVitrine } from '@/hooks/use-futebol-data';
 import type {
   FutebolFixtureValueRow,
   FutebolInjury,
@@ -13,11 +13,12 @@ import {
   pesoForte,
   premissaDe,
 } from '@/utils/futebol-premissas';
-import { evidenciaDe, ladoDaSaida, manchete } from '@/utils/futebol-evidencias';
-import { melhorLeitura, resumoDosMercados, REGUA_SCORE, type MercadoResumo } from '@/utils/futebol-leitura';
+import { ladoDaSaida, manchete } from '@/utils/futebol-evidencias';
+import { melhorLeitura, resumoDosMercados, type MercadoResumo } from '@/utils/futebol-leitura';
+import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { fmtDayShort, isFinished } from '@/utils/futebol-datas';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
-import { faixaWord } from '@/utils/futebol-score';
+import { ehDestaque, ehFaixaAlta, faixaWord } from '@/utils/futebol-score';
 
 /**
  * Aba RESUMO da tela de jogo (Protótipo 1b do Claude Design):
@@ -47,8 +48,9 @@ export interface JogoInfo {
 function scoreBadge(r: MercadoResumo): { texto: string; cls: string; style?: React.CSSProperties } {
   if (r.value) {
     const s = r.value.score;
-    if (s >= 60) return { texto: String(s), cls: 'bg-forest text-canvas border-forest' };
-    if (s >= REGUA_SCORE)
+    // Cor pela FAIXA que o backend publicou, não por número comparado aqui.
+    if (ehFaixaAlta(r.value.faixa)) return { texto: String(s), cls: 'bg-forest text-canvas border-forest' };
+    if (ehDestaque(r.value.faixa))
       return { texto: String(s), cls: '', style: { background: 'rgba(212,160,23,.15)', color: '#b8870f', border: '1px solid rgba(212,160,23,.4)' } };
     return { texto: String(s), cls: 'bg-canvas-2 text-ink-3 border-line' };
   }
@@ -72,20 +74,47 @@ export function HeroLeitura({
   retro?: string | null;
 }) {
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
+  // O contrato de motivos, a mesma fonte da home e da bancada (#334). O
+  // isLoading importa: sem ele a tela não distingue 'ainda carregando' de
+  // 'carregou e não tem motivo', e conclui cedo demais.
+  const { data: contrato, isLoading: contratoCarregando } = useFutebolFixtureReasonContract(jogo.fixtureId);
   if (!top) return null;
   const lado = ladoDaSaida(top.mercado.slug, top.candidato.outcome);
   const pick = outcomeLabel(top.candidato, jogo.home, jogo.away);
 
-  // Os porquês: a evidência das acesas de maior peso, no máximo 3.
-  const porques = top.candidato.acesas
-    .map((s) => premissaDe(top.mercado.slug, s))
-    .filter((p): p is NonNullable<typeof p> => p != null)
-    .sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0))
-    .slice(0, 3)
-    .map((p) => {
-      const ev = evidenciaDe(p.slug, numeros, lado);
-      return ev ? `${p.label}: ${ev.texto.charAt(0).toLowerCase()}${ev.texto.slice(1)}.` : `${p.label}.`;
-    });
+  // A resposta a "por que essa aposta", da mesma fonte que a home e a bancada
+  // usam (#334): com preço, quem agrupa é o backend; sem preço, seguem as
+  // premissas acesas, e o rótulo muda para não prometer aposta onde não há.
+  const explicacao = explicacaoDaLeitura(
+    {
+      mercado: top.mercado.slug,
+      candidato: top.candidato,
+      temPreco: top.value != null,
+      contrato,
+      numeros,
+      historico: undefined,
+      lado,
+    },
+    // Sem `maxContra`: esta tela é a leitura rápida e mostra só o lado
+    // positivo. Os dois lados vivem na bancada de mercados.
+    { max: 3, incluirPesoZero: true },
+  );
+
+  // Esta tela mostra só o lado positivo: ela é a leitura rápida, e os dois lados
+  // vivem na bancada de mercados.
+  const porques = explicacao.itens.map(({ premissa, evidencia }) =>
+    evidencia
+      ? `${premissa.label}: ${evidencia.texto.charAt(0).toLowerCase()}${evidencia.texto.slice(1)}.`
+      : `${premissa.label}.`,
+  );
+
+  // Só o caminho do contrato espera rede. Sem preço, os itens vêm das premissas
+  // que já estão em mão, e não há o que carregar.
+  const estadoDoBloco = estadoDosMotivos(
+    explicacao.itens,
+    explicacao.contra,
+    top.value != null && contratoCarregando,
+  );
 
   const fim = isFinished(jogo.statusShort);
   const res = fim ? settleFutebol(top.candidato, jogo.goalsHome, jogo.goalsAway) : null;
@@ -156,14 +185,31 @@ export function HeroLeitura({
           </div>
         )}
 
-        {!compacto && porques.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-white/15 flex flex-col gap-2">
-            {porques.map((t) => (
-              <div key={t} className="flex gap-2 items-start text-[12.5px] leading-relaxed text-white/80">
-                <span className="w-[5px] h-[5px] rounded-full mt-[7px] shrink-0" style={{ background: '#fbbf24' }} />
-                <span>{t}</span>
+        {/* O rótulo carrega a diferença que a fonte faz: com preço é "Por quê",
+            e é o backend quem agrupou; sem preço é "O que o jogo mostra", e ali
+            não há aposta a favor de quê. Um bloco só, e o rótulo muda (#334). */}
+        {!compacto && estadoDoBloco !== 'sem_motivos' && (
+          <div className="mt-4 pt-4 border-t border-white/15">
+            <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-white/50">
+              {explicacao.rotulo}
+            </div>
+            {estadoDoBloco === 'carregando' ? (
+              // Esqueleto, e não o bloco vazio: enquanto o contrato não chega, a
+              // tela não conclui que não há motivo.
+              <div className="mt-2.5 flex flex-col gap-2" aria-hidden>
+                <Skeleton className="h-[18px] w-full bg-white/15" />
+                <Skeleton className="h-[18px] w-4/5 bg-white/15" />
               </div>
-            ))}
+            ) : (
+              <div className="mt-2.5 flex flex-col gap-2">
+                {porques.map((t) => (
+                  <div key={t} className="flex gap-2 items-start text-[12.5px] leading-relaxed text-white/80">
+                    <span className="w-[5px] h-[5px] rounded-full mt-[7px] shrink-0" style={{ background: '#fbbf24' }} />
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -187,7 +233,11 @@ export function JogoResumo({
   const { data: rows, isLoading } = useFutebolFixturePremissas(jogo.fixtureId);
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
 
-  const resumos = useMemo(() => resumoDosMercados(rows, valueRows), [rows, valueRows]);
+  // A vitrine (#324): a prateleira sai do CATÁLOGO, não do board, então filtrar
+  // as linhas não basta — sem isto o mercado escondido volta como chip, com
+  // barra de Score e sem odd.
+  const { ocultos } = useVitrine();
+  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, null, ocultos), [rows, valueRows, ocultos]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
   const placar = useMemo(
@@ -261,15 +311,19 @@ export function JogoResumo({
   const ate = numeros?.[0]?.ate ?? null;
   const temValor = (valueRows?.length ?? 0) > 0;
 
-  const foraDaRegua = resumos.filter((r) => !r.passa).map((r) => r.mercado.label.toLowerCase());
+  // Só os mercados COTADOS têm faixa. `passa` também é verdadeiro por premissas
+  // num mercado sem odds, e juntar os dois faria a frase atribuir faixa a quem
+  // não tem preço coletado.
+  const cotados = resumos.filter((r) => r.value);
+  const emFaixaBaixa = cotados.filter((r) => !r.passa).map((r) => r.mercado.label.toLowerCase());
   const juntar = (arr: string[]) => (arr.length <= 1 ? arr[0] ?? '' : `${arr.slice(0, -1).join(', ')} e ${arr[arr.length - 1]}`);
   const nota = fim && retro
     ? retro
     : !temValor
       ? 'Sem preço coletado ainda: as odds entram perto do jogo, e com elas o Score fecha.'
-      : foraDaRegua.length
-        ? `${juntar(foraDaRegua)} ${foraDaRegua.length === 1 ? 'fica' : 'ficam'} abaixo da régua de ${REGUA_SCORE}, ${foraDaRegua.length === 1 ? 'entra' : 'entram'} como consulta.`
-        : `Os cinco mercados passam a régua de ${REGUA_SCORE} neste jogo.`;
+      : emFaixaBaixa.length
+        ? `${juntar(emFaixaBaixa)} ${emFaixaBaixa.length === 1 ? 'fica' : 'ficam'} em faixa baixa, ${emFaixaBaixa.length === 1 ? 'entra' : 'entram'} como consulta.`
+        : `${cotados.length === 1 ? 'O mercado cotado aparece' : `Os ${cotados.length} mercados cotados aparecem`} em faixa Alta ou Média neste jogo.`;
 
   if (isLoading) {
     return (
@@ -415,6 +469,7 @@ export function JogoResumo({
                 outcome: top.value.outcome,
                 lineValue: top.value.line_value,
                 bestOdd: top.value.best_odd,
+                oddKind: 'melhor',
               }}
             />
           </div>

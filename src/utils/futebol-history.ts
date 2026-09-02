@@ -22,6 +22,7 @@
 // ============================================================================
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { parseUtc, brtDateStr, brtDayOf, addDays } from '@/utils/futebol-datas';
+import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 
 /** Quantos dias o Histórico navega para trás. */
 export const HISTORY_WINDOW_DAYS = 30;
@@ -72,6 +73,13 @@ export function mergeBoardAndHistory(
   board: FutebolValueBoardRow[],
   history: FutebolValueBoardRow[],
   nowMs: number,
+  // Os mercados fora da vitrine (#324). Valem para o DIA CORRENTE e não para o
+  // passado, e a distinção é a decisão de produto inteira: a linha de dia
+  // passado é registro do que foi publicado e visto, e escondê-la reescreveria
+  // o que o assinante viu; a linha de hoje é a lista de hoje, mesmo quando quem
+  // ganha o desempate é o histórico. Sem esta divisão o mercado escondido
+  // voltava pela porta dos fundos assim que o jogo começava.
+  ocultos: readonly string[] = [],
 ): FutebolValueBoardRow[] {
   const today = brtDateStr(new Date(nowMs));
   const out: FutebolValueBoardRow[] = [];
@@ -82,7 +90,9 @@ export function mergeBoardAndHistory(
     const d = brtDayOf(r.kickoff_utc);
     if (!d) continue;
     if (d < today) out.push(r);
-    else if (d === today) hojeHist.set(opportunityKey(r), r);
+    else if (d === today && !mercadoEstaOculto(r.market, ocultos)) {
+      hojeHist.set(opportunityKey(r), r);
+    }
     // d > today: a RPC não devolve; se um dia devolver, o board manda.
   }
 

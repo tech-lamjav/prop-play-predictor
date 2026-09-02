@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
 import { ReferralProvider } from "@/components/ReferralProvider";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useLocation } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
@@ -62,7 +62,6 @@ const FutebolJogo = lazyWithRetry(() => import("./pages/FutebolJogo"));
 const FutebolCampeonatos = lazyWithRetry(() => import("./pages/FutebolCampeonatos"));
 const FutebolCampeonato = lazyWithRetry(() => import("./pages/FutebolCampeonato"));
 const FutebolTime = lazyWithRetry(() => import("./pages/FutebolTime"));
-const FutebolAssinar = lazyWithRetry(() => import("./pages/FutebolAssinar"));
 const FutebolLP = lazyWithRetry(() => import("./pages/FutebolLP"));
 const BolaoEntry = lazyWithRetry(() => import("./pages/BolaoEntry"));
 const BolaoHome = lazyWithRetry(() => import("./pages/BolaoHome"));
@@ -81,6 +80,12 @@ const LazyFallback = () => (
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest"></div>
   </div>
 );
+
+/** Redireciona preservando a query string (utm, ref). */
+const RedirecionaParaPlanos = () => {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: "/planos", search }} replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -167,7 +172,12 @@ const App = () => (
             <Route path="/futebol/campeonatos" element={<FutebolCampeonatos />} />
             <Route path="/futebol/campeonato/:slug" element={<FutebolCampeonato />} />
             <Route path="/futebol/time/:teamId" element={<FutebolTime />} />
-            <Route path="/futebol/assinar" element={<FutebolAssinar />} />
+            {/* A paywall do futebol foi absorvida pela do site (issue #297).
+                Em produção quem responde é o 301 do vercel.json; esta rota é a
+                rede para o dev local, que não lê aquele arquivo. Nos dois casos
+                a query string sobrevive: o endereço circulou em links com utm e
+                ref, e perdê-los apagaria a atribuição. */}
+            <Route path="/futebol/assinar" element={<RedirecionaParaPlanos />} />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/paywall" element={<Paywall />} />

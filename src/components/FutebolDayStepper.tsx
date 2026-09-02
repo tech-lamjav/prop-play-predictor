@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TZ = 'America/Sao_Paulo';
@@ -37,11 +37,20 @@ export default function FutebolDayStepper({
   days, value, onChange, counts, className = '',
 }: { days: string[]; value: string; onChange: (d: string) => void; counts?: Record<string, number>; className?: string }) {
   const activeRef = useRef<HTMLButtonElement>(null);
-  // Mantém o dia selecionado sempre visível (centralizado) — navegação fluida.
-  useEffect(() => {
+  const jaPosicionou = useRef(false);
+  // Na primeira abertura a régua pode ter dezenas de dias e começar lá no
+  // histórico. Posiciona antes da pintura para não mostrar essa janela antiga;
+  // depois disso, as trocas feitas pelo usuário continuam com animação suave.
+  useLayoutEffect(() => {
+    if (!activeRef.current) return;
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
-  }, [value]);
+    activeRef.current.scrollIntoView({
+      inline: 'center',
+      block: 'nearest',
+      behavior: reduce || !jaPosicionou.current ? 'auto' : 'smooth',
+    });
+    jaPosicionou.current = true;
+  }, [value, days.length]);
 
   if (!days.length) return null;
   const today = todayStr();
@@ -53,11 +62,11 @@ export default function FutebolDayStepper({
   const arrow = 'w-9 h-9 grid place-items-center rounded-md shrink-0 border border-line bg-white text-ink-2 enabled:hover:bg-canvas-2 disabled:opacity-30 disabled:cursor-default transition';
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex min-w-0 items-center gap-2 ${className}`}>
       <button type="button" className={arrow} disabled={!hasPrev} onClick={() => hasPrev && onChange(days[i - 1])} aria-label="Dia anterior">
         <ChevronLeft className="w-4 h-4" />
       </button>
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto scrollbar-hide">
         {days.map((s) => {
           const { wd, d, mon } = dayParts(s);
           const isToday = s === today;

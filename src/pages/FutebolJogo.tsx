@@ -8,7 +8,7 @@ import { type JogoInfo } from '@/components/futebol/JogoResumo';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies,
@@ -16,7 +16,7 @@ import {
 import { type SaidaPreferida } from '@/utils/futebol-leitura';
 import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
-  faixaWord, faixaBadgeCls, chancePct, SCORE_MEDIA,
+  faixaWord, faixaBadgeCls, chancePct,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
@@ -28,7 +28,8 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFixtureDetail, demoFixtureValueRows, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
+import { demoFixtureDetail, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
+import { useDemoFixtureValueRows } from '@/components/onboarding/demo/use-demo-futebol';
 
 /**
  * A bancada fica lado a lado a partir de 1280px (o breakpoint `xl` do grid). O
@@ -301,8 +302,16 @@ export default function FutebolJogo() {
     return computeMatchupTendencies(tend.home, tend.away, fixture.home_team_name, fixture.away_team_name);
   }, [tend, fixture]);
   // Score vem PRONTO do backend (fact_value_opportunities). 1X2 por enquanto.
-  const { data: realValueRows } = useFutebolFixtureValue(fid);
-  const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
+  // A vitrine (#324) desce por prop para a FaixaPartida, que é de apresentação
+  // e não tem consulta própria.
+  const { ocultos } = useVitrine();
+  const { data: realValueRows, isLoading: valorCarregando } = useFutebolFixtureValue(fid);
+  // A demonstração herda a escala do produto (#333), derivada da MESMA janela
+  // que a tela exibe. Memoizado porque a lista desce para filhos e para
+  // dependências de outros useMemo: recriar o array a cada render invalidaria
+  // todos eles sem que nada tivesse mudado.
+  const demoValueRows = useDemoFixtureValueRows(realValueRows);
+  const valueRows = isDemo ? demoValueRows : realValueRows;
   const { data: access } = useFutebolAccess();
   const locked = isDemo ? false : !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"
@@ -377,7 +386,12 @@ export default function FutebolJogo() {
   // O tour fala do que está montado: a régua só existe nos mercados de linha, e
   // as premissas só quando a coleta trouxe alguma para este jogo. A query é a
   // mesma da bancada, então sai do cache do react-query, sem ida extra à rede.
-  const { data: premissasDoJogo } = useFutebolFixturePremissas(fid);
+  const { data: premissasDoJogo, isLoading: premissasCarregando } = useFutebolFixturePremissas(fid);
+  // A leitura da faixa se apoia em DUAS fontes: as premissas e as linhas de
+  // valor. Enquanto qualquer uma está em voo a faixa não tem como concluir
+  // "Sem leitura ainda", então ela mostra o esqueleto. No tour não há espera:
+  // os dados são de mentira e chegam prontos.
+  const leituraCarregando = isDemo ? false : premissasCarregando || valorCarregando;
   const jogoSteps = useMemo(
     () =>
       makeFutebolJogoSteps({
@@ -529,7 +543,10 @@ export default function FutebolJogo() {
                 {isDemo && <div className="mb-2"><DemoBadge /></div>}
                 <FaixaPartida
                   jogo={jogoInfo}
+                  premissas={premissasDoJogo}
                   valueRows={valueRows}
+                  ocultos={ocultos}
+                  leituraCarregando={leituraCarregando}
                   locked={locked}
                   rodada={prettyRound(fixture.round)}
                   estadio={fixture.venue_name ? `${fixture.venue_name}${fixture.venue_city ? `, ${fixture.venue_city}` : ''}` : null}

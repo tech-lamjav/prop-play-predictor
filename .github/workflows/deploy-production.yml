@@ -55,6 +55,7 @@ jobs:
           supabase functions deploy winback-backfill --no-verify-jwt
           supabase functions deploy notify-handoff --no-verify-jwt
           supabase functions deploy notify-opportunities --no-verify-jwt
+          supabase functions deploy notify-published-opportunities --no-verify-jwt
           supabase functions deploy go --no-verify-jwt
           supabase functions deploy mirror-futebol-team-logos --no-verify-jwt
           supabase functions deploy mirror-futebol-player-photos --no-verify-jwt

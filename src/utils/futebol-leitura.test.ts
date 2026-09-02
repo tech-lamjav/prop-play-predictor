@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resumoDosMercados, melhorLeitura } from './futebol-leitura';
+import { resumoDosMercados, melhorLeitura, sufixoDeLeitura } from './futebol-leitura';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 
 // O caso é o Independ. Rivadavia x Fluminense (fixture 1547770, staging): o mart
@@ -35,6 +35,7 @@ const VALUE_BASE: FutebolFixtureValueRow = {
   n_casas: 5,
   janela_usada: 'fechamento',
   prob_justa_fechamento: 0.6114,
+  score_versao: 'legacy',
   pts_valor: 20,
   pts_premissas: 34,
   pts_corroboracao: 0,
@@ -51,11 +52,17 @@ const VALUE_BASE: FutebolFixtureValueRow = {
   premissas_sem_dado: 0,
 };
 
-const value = (outcome: string, line: number | null, score: number): FutebolFixtureValueRow => ({
+const value = (
+  outcome: string,
+  line: number | null,
+  score: number,
+  faixa = 'Média',
+): FutebolFixtureValueRow => ({
   ...VALUE_BASE,
   outcome,
   line_value: line,
   score,
+  faixa,
 });
 
 const OVER_15 = ['defesas_vazaveis', 'ataque_combinado', 'xg_combinado_alto'];
@@ -65,46 +72,68 @@ const rows = [prem('Over', 1.5, OVER_15), prem('Under', 4.5, UNDER_45)];
 
 const gols = (r: ReturnType<typeof resumoDosMercados>) => r.find((x) => x.mercado.slug === 'goals_over_under')!;
 
+// Esta suíte não testa a vitrine — ela vive em futebol-vitrine-aceite.test.ts.
+// O wrapper declara a vitrine vazia num lugar só e mantém as chamadas curtas.
+// O 4º parâmetro de resumoDosMercados é OBRIGATÓRIO de propósito: era opcional
+// com default [], e foi assim que três telas esqueceram de passá-lo e voltaram a
+// mostrar o mercado escondido. Agora o compilador cobra.
+const resumo = (
+  rows: Parameters<typeof resumoDosMercados>[0],
+  valueRows: Parameters<typeof resumoDosMercados>[1],
+  preferida: Parameters<typeof resumoDosMercados>[2] = null,
+) => resumoDosMercados(rows, valueRows, preferida, []);
+
 describe('resumoDosMercados', () => {
+  // Esta suíte não testa a vitrine — ela vive em futebol-vitrine-aceite.test.ts.
+  // O wrapper declara a vitrine vazia num lugar só e mantém as chamadas curtas.
+  // O 4º parâmetro é OBRIGATÓRIO de propósito: era opcional com default [], e foi
+  // assim que três telas esqueceram de passá-lo e voltaram a mostrar o mercado
+  // escondido. Agora o compilador cobra.
+  const resumo = (
+    rows: Parameters<typeof resumoDosMercados>[0],
+    valueRows: Parameters<typeof resumoDosMercados>[1],
+    preferida: Parameters<typeof resumoDosMercados>[2] = null,
+  ) => resumoDosMercados(rows, valueRows, preferida, []);
+
   it('com preço, quem representa o mercado é a saída que tem preço', () => {
-    const g = gols(resumoDosMercados(rows, [value('Over', 1.5, 54)]));
+    const g = gols(resumo(rows, [value('Over', 1.5, 54)]));
     expect(g.candidato.outcome).toBe('Over');
     expect(g.candidato.line_value).toBe(1.5);
     expect(g.value?.score).toBe(54);
   });
 
   it('as premissas contadas são as da saída que tem preço', () => {
-    const g = gols(resumoDosMercados(rows, [value('Over', 1.5, 54)]));
+    const g = gols(resumo(rows, [value('Over', 1.5, 54)]));
     expect(g.nValem).toBe(OVER_15.length);
   });
 
   it('entre duas saídas com preço, vale a de maior Score', () => {
-    const g = gols(resumoDosMercados(rows, [value('Over', 1.5, 54), value('Under', 4.5, 61)]));
+    const g = gols(resumo(rows, [value('Over', 1.5, 54), value('Under', 4.5, 61)]));
     expect(g.candidato.outcome).toBe('Under');
     expect(g.value?.score).toBe(61);
   });
 
   it('empate de Score não troca a saída no meio do caminho', () => {
-    const a = gols(resumoDosMercados(rows, [value('Over', 1.5, 50), value('Under', 4.5, 50)]));
-    const b = gols(resumoDosMercados(rows, [value('Under', 4.5, 50), value('Over', 1.5, 50)]));
+    const a = gols(resumo(rows, [value('Over', 1.5, 50), value('Under', 4.5, 50)]));
+    const b = gols(resumo(rows, [value('Under', 4.5, 50), value('Over', 1.5, 50)]));
     expect(a.candidato.outcome).toBe(b.candidato.outcome);
   });
 
   it('sem preço nenhum, volta a mandar a saída com mais premissas', () => {
-    const g = gols(resumoDosMercados(rows, []));
+    const g = gols(resumo(rows, []));
     expect(g.candidato.outcome).toBe('Under');
     expect(g.candidato.line_value).toBe(4.5);
     expect(g.value).toBeNull();
   });
 
   it('preço de uma saída sem premissa não empresta o número para outra saída', () => {
-    const g = gols(resumoDosMercados(rows, [value('Over', 2.5, 71)]));
+    const g = gols(resumo(rows, [value('Over', 2.5, 71)]));
     expect(g.candidato.outcome).toBe('Under');
     expect(g.value).toBeNull();
   });
 
   it('casa a linha mesmo com a folga de float entre as duas RPCs', () => {
-    const g = gols(resumoDosMercados(rows, [value('Over', 1.5000001, 54)]));
+    const g = gols(resumo(rows, [value('Over', 1.5000001, 54)]));
     expect(g.value?.score).toBe(54);
     expect(g.candidato.outcome).toBe('Over');
   });
@@ -115,14 +144,18 @@ describe('resumoDosMercados', () => {
       { ...prem('Away', null, ['superioridade_xg']), market: 'match_winner' },
     ];
     const v: FutebolFixtureValueRow = { ...VALUE_BASE, market: 'match_winner', outcome: 'Away', line_value: null, score: 58 };
-    const r = resumoDosMercados(semLinha, [v]).find((x) => x.mercado.slug === 'match_winner')!;
+    const r = resumo(semLinha, [v]).find((x) => x.mercado.slug === 'match_winner')!;
     expect(r.candidato.outcome).toBe('Away');
     expect(r.value?.score).toBe(58);
   });
 
-  it('passa a régua pelo Score da própria saída', () => {
-    expect(gols(resumoDosMercados(rows, [value('Over', 1.5, 54)])).passa).toBe(true);
-    expect(gols(resumoDosMercados(rows, [value('Over', 1.5, 31)])).passa).toBe(false);
+  it('destaca pela faixa que o backend publicou, não por régua local', () => {
+    // A régua de 40 saiu na virada do Score de contexto (spec #301). Um Score
+    // baixo em faixa Média continua sendo destaque, e um Score alto em faixa
+    // Baixa não é: quem classifica é o backend.
+    expect(gols(resumo(rows, [value('Over', 1.5, 54, 'Alta')])).passa).toBe(true);
+    expect(gols(resumo(rows, [value('Over', 1.5, 31, 'Média')])).passa).toBe(true);
+    expect(gols(resumo(rows, [value('Over', 1.5, 54, 'Baixa')])).passa).toBe(false);
   });
 });
 
@@ -133,24 +166,24 @@ describe('resumoDosMercados com a saída clicada', () => {
   const doisPrecos = [value('Over', 1.5, 54), value('Under', 4.5, 61)];
 
   it('a saída clicada ganha do maior Score do mercado', () => {
-    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line_value: 1.5 }));
+    const g = gols(resumo(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line_value: 1.5 }));
     expect(g.candidato.outcome).toBe('Over');
     expect(g.value?.score).toBe(54);
   });
 
   it('sem a saída clicada, segue mandando o maior Score', () => {
-    const g = gols(resumoDosMercados(rows, doisPrecos, null));
+    const g = gols(resumo(rows, doisPrecos));
     expect(g.candidato.outcome).toBe('Under');
     expect(g.value?.score).toBe(61);
   });
 
   it('saída clicada de OUTRO mercado não mexe neste', () => {
-    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'match_winner', outcome: 'Home', line_value: null }));
+    const g = gols(resumo(rows, doisPrecos, { market: 'match_winner', outcome: 'Home', line_value: null }));
     expect(g.candidato.outcome).toBe('Under');
   });
 
   it('link apontando para saída que não existe mais cai no maior Score, não em nada', () => {
-    const g = gols(resumoDosMercados(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line_value: 9.5 }));
+    const g = gols(resumo(rows, doisPrecos, { market: 'goals_over_under', outcome: 'Over', line_value: 9.5 }));
     expect(g.candidato.outcome).toBe('Under');
     expect(g.value?.score).toBe(61);
   });
@@ -174,7 +207,7 @@ describe('handicap zero', () => {
 
   it('linha zero não representa o mercado, mesmo tendo o maior Score', () => {
     const linhas = [ah('Home', 0, []), ah('Home', -0.5, ['supremacia', 'tende_golear'])];
-    const r = resumoDosMercados(linhas, [ahValue('Home', 0, 70), ahValue('Home', -0.5, 44)])
+    const r = resumo(linhas, [ahValue('Home', 0, 70), ahValue('Home', -0.5, 44)])
       .find((x) => x.mercado.slug === 'asian_handicap')!;
     expect(r.candidato.line_value).toBe(-0.5);
     expect(r.value?.score).toBe(44);
@@ -183,9 +216,23 @@ describe('handicap zero', () => {
 
 describe('melhorLeitura', () => {
   it('o rótulo do hero e o Score do hero saem da MESMA saída', () => {
-    const top = melhorLeitura(resumoDosMercados(rows, [value('Over', 1.5, 54)]))!;
+    const top = melhorLeitura(resumo(rows, [value('Over', 1.5, 54)]))!;
     expect(top.candidato.outcome).toBe('Over');
     expect(top.candidato.line_value).toBe(top.value!.line_value);
     expect(top.candidato.outcome).toBe(top.value!.outcome);
+  });
+});
+
+describe('sufixoDeLeitura', () => {
+  it('não afirma um total enquanto o board não respondeu', () => {
+    // Zero aqui seria a mesma mentira que "sem leitura ainda" na linha: a tela
+    // ainda não tem do que contar.
+    expect(sufixoDeLeitura(true, 0)).toBe('');
+    expect(sufixoDeLeitura(true, 3)).toBe('');
+  });
+
+  it('conta depois que o board respondeu, inclusive quando o total é zero', () => {
+    expect(sufixoDeLeitura(false, 0)).toBe(' · 0 com leitura');
+    expect(sufixoDeLeitura(false, 2)).toBe(' · 2 com leitura');
   });
 });

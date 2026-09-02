@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
+import type { FixtureScope } from '@/utils/futebol-competitions';
 import {
   futebolDataService,
   type FutebolAccess,
@@ -11,6 +12,8 @@ import {
   type FutebolFixtureByDay,
   type FutebolFixtureDay,
   type FutebolFixturePremissas,
+  type FutebolFixtureReasonContractRow,
+  type FutebolFixtureDisponibilidade,
   type FutebolFixtureNumeros,
   type FutebolFixtureHistorico,
   type FutebolCompetitionInfo,
@@ -102,6 +105,30 @@ export function useFutebolFixturePremissas(fixtureId: number | undefined) {
   });
 }
 
+/** Desde quando cada saída está publicada, por oportunidade (issue #300). */
+export function useFutebolFixtureDisponibilidade(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureDisponibilidade[]>({
+    queryKey: ['futebol', 'fixture-disponivel-desde', fixtureId],
+    queryFn: () => futebolDataService.getFixtureDisponibilidade(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** Motivos já agrupados pelo backend para qualquer saída cotada da Bancada. */
+export function useFutebolFixtureReasonContract(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureReasonContractRow[]>({
+    queryKey: ['futebol', 'fixture-reason-contract', fixtureId],
+    queryFn: () => futebolDataService.getFixtureReasonContract(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 /** Números de temporada dos dois times, para embasar cada premissa com o dado real. */
 export function useFutebolFixtureNumeros(fixtureId: number | undefined) {
   return useQuery<FutebolFixtureNumeros[]>({
@@ -145,29 +172,28 @@ export function useFutebolCompetitions() {
  * Achata tudo taggeando cada jogo com sua `competition`. Usado no /futebol
  * (Hoje) pra listar jogos de todas as ligas, não só de um allowlist fixo.
  */
-export function useFutebolFixturesMulti(competitions: string[], season: number) {
-  const results = useQueries({
-    queries: competitions.map((competition) => ({
+export function useFutebolFixturesMulti(scopes: FixtureScope[]) {
+  return useQueries({
+    queries: scopes.map(({ competition, season }) => ({
       queryKey: ['futebol', 'fixtures', competition, season, 'all'],
       queryFn: () => futebolDataService.getFixtures(competition, season),
       staleTime: 5 * 60 * 1000,
       gcTime: 15 * 60 * 1000,
       refetchOnWindowFocus: false,
     })),
-  });
-  const isLoading = results.some((r) => r.isLoading);
-  // react-query faz structural sharing → o ref de r.data só muda quando o dado
-  // muda; memoizar por esses refs evita reflatten a cada render.
-  const dataRefs = results.map((r) => r.data);
-  const data = useMemo(
-    () =>
-      results.flatMap((r, i) =>
-        (r.data ?? []).map((f) => ({ ...f, competition: competitions[i] }))
+    // O achatamento mora no `combine` porque um useMemo aqui fora não tem como
+    // ficar correto: a lista de competições cresce quando o catálogo chega, e um
+    // array de dependências de tamanho variável é o que o React proíbe —
+    // depender de `results` cru seria pior ainda, já que é um array novo a cada
+    // render e o memo nunca casaria. O react-query faz structural sharing dos
+    // resultados e só reexecuta o `combine` quando algum deles muda de fato.
+    combine: (results) => ({
+      isLoading: results.some((r) => r.isLoading),
+      data: results.flatMap((r, i) =>
+        (r.data ?? []).map((f) => ({ ...f, competition: scopes[i].competition }))
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [...dataRefs, competitions]
-  );
-  return { data, isLoading };
+    }),
+  });
 }
 
 export function useFutebolFixtureDetail(fixtureId: number | undefined) {
@@ -389,4 +415,39 @@ export function useFutebolMatchupMarkets(
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+}
+
+/**
+ * Os mercados fora da VITRINE — não fora do board.
+ *
+ * A lista vem do banco para que devolver um mercado à tela seja um UPDATE e não
+ * um release. Fica aqui, e não em constante, porque o detalhe do jogo monta a
+ * prateleira a partir do CATÁLOGO de mercados e não do board: sem esta lista o
+ * mercado escondido continuaria como chip, com barra de Score e sem odd, que é
+ * pior do que não ter escondido. Ver prop-play-predictor#324.
+ */
+export function useFutebolMercadosOcultos() {
+  return useQuery<string[]>({
+    queryKey: ['futebol', 'mercados-ocultos'],
+    queryFn: () => futebolDataService.getMercadosOcultos(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * A vitrine, do jeito que a tela precisa dela: a lista E se ela já chegou.
+ *
+ * Existe porque as três telas que a consomem repetiam o mesmo par — o hook, o
+ * `?? []` memoizado e o comentário — e porque o `isLoading` importa tanto
+ * quanto a lista: renderizar antes de a vitrine chegar mostra o mercado
+ * escondido por um instante, e ele some depois. Ver prop-play-predictor#324.
+ */
+export function useVitrine(): { ocultos: string[]; isLoading: boolean } {
+  const { data, isLoading } = useFutebolMercadosOcultos();
+  // Memoizado: `?? []` cria array novo a cada render e envenenaria as
+  // dependências de todo useMemo que recebe `ocultos`.
+  const ocultos = useMemo(() => data ?? [], [data]);
+  return { ocultos, isLoading };
 }

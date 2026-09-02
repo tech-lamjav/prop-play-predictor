@@ -2,7 +2,7 @@
 // pra manter o Fast Refresh feliz: o .tsx exporta só componentes).
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
-export interface FutebolBetDraft {
+interface FutebolBetDraftBase {
   homeName: string;
   awayName: string;
   competition: string;
@@ -10,7 +10,26 @@ export interface FutebolBetDraft {
   market: string;
   outcome: string;
   lineValue: number | null;
-  bestOdd: number;
+}
+
+/** A origem da odd determina se o formulário começa preenchido. */
+export type FutebolBetDraft = FutebolBetDraftBase & (
+  | { bestOdd: number; oddKind: 'melhor' | 'referencia' }
+  | { bestOdd: null; oddKind: 'sem_cotacao' }
+);
+
+export interface AtalhoDeUnidade {
+  unidades: 0.5 | 1;
+  valor: number;
+}
+
+/** Atalhos só existem quando a unidade efetiva do Betinho é válida. */
+export function atalhosDaUnidade(unitValue: number | null | undefined): AtalhoDeUnidade[] {
+  if (unitValue == null || !Number.isFinite(unitValue) || unitValue <= 0) return [];
+  return [
+    { unidades: 1, valor: unitValue },
+    { unidades: 0.5, valor: unitValue / 2 },
+  ];
 }
 
 /**
@@ -33,5 +52,6 @@ export function draftFromBoardRow(o: DraftSource): FutebolBetDraft {
     outcome: o.outcome,
     lineValue: o.line_value,
     bestOdd: o.best_odd,
+    oddKind: 'melhor',
   };
 }

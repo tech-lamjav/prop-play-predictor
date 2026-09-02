@@ -39,3 +39,12 @@ CLAUDE.md
 /*.jpeg
 /*.webp
 .playwright-mcp/
+
+# Cache do tsc --noEmit; muda a cada checagem local.
+*.tsbuildinfo
+
+# Artefatos de trabalho entre sessoes (handoff, rascunho de spec)
+.scratch/
+
+# Worktrees do Claude Code — repositórios à parte, não conteúdo deste
+.claude/worktrees/

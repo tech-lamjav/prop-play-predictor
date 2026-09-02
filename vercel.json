@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/futebol/assinar",
+      "destination": "/planos",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

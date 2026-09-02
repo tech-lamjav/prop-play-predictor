@@ -10,6 +10,8 @@ import {
   Check,
   Loader2,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   RefreshCw,
   Image as ImageIcon,
   Flame,
@@ -18,6 +20,10 @@ import {
 import AnalyticsNav from '../components/AnalyticsNav';
 import { telegramBotUsername } from '../config/environment';
 import { createClient } from '../integrations/supabase/client';
+import {
+  ONBOARDING_SRC_ALERTAS_FUTEBOL,
+  resolveOnboardingReturn,
+} from '../utils/onboarding-return';
 
 // Onboarding do Betinho — redesign benefit-led (docs/onboarding-betinho-redesign.md).
 // Momento 1: valor (gancho + carrossel do que a conexão entrega). Momento 2: conexão por
@@ -186,6 +192,16 @@ function BetinhoCarousel() {
     emblaApi?.scrollTo(i);
     play();
   };
+  // As setas reiniciam pelo mesmo motivo: quem navegou na mão não quer o
+  // carrossel pulando sozinho meio segundo depois.
+  const anterior = () => {
+    emblaApi?.scrollPrev();
+    play();
+  };
+  const proximo = () => {
+    emblaApi?.scrollNext();
+    play();
+  };
 
   return (
     <div className="w-full max-w-[380px]">
@@ -203,16 +219,39 @@ function BetinhoCarousel() {
         {SLIDES[selected]?.label}
       </p>
 
-      <div className="mt-2 flex justify-center gap-2">
-        {SLIDES.map((s, i) => (
-          <button
-            key={s.key}
-            type="button"
-            aria-label={`Ir para o slide ${i + 1}`}
-            onClick={() => goTo(i)}
-            className={`h-2 rounded-full transition-all ${i === selected ? 'w-6 bg-amber' : 'w-2 bg-white/30'}`}
-          />
-        ))}
+      {/* As setas ficam na mesma linha dos pontos, e não sobrepostas ao card:
+          ali elas não cobrem o conteúdo do slide nem competem com o CTA, e no
+          celular continuam alcançáveis pelo polegar. */}
+      <div className="mt-2 flex items-center justify-center gap-4">
+        <button
+          type="button"
+          aria-label="Slide anterior"
+          onClick={anterior}
+          className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          {SLIDES.map((s, i) => (
+            <button
+              key={s.key}
+              type="button"
+              aria-label={`Ir para o slide ${i + 1}`}
+              onClick={() => goTo(i)}
+              className={`h-2 rounded-full transition-all ${i === selected ? 'w-6 bg-amber' : 'w-2 bg-white/30'}`}
+            />
+          ))}
+        </div>
+
+        <button
+          type="button"
+          aria-label="Próximo slide"
+          onClick={proximo}
+          className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -222,6 +261,11 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const posthog = usePostHog();
   const [searchParams] = useSearchParams();
+
+  // Origem e destino chegam pela URL. O destino passa pela lista de rotas
+  // permitidas: um valor inválido vira a rota segura, nunca um redirect aberto.
+  const returnTo = resolveOnboardingReturn(searchParams.get('return'));
+  const fromOportunidades = searchParams.get('src') === ONBOARDING_SRC_ALERTAS_FUTEBOL;
   const supabase = createClient();
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -258,7 +302,7 @@ export default function Onboarding() {
       const alreadySynced = !!row?.telegram_chat_id;
       if (alreadySynced) {
         // Já conectou antes de chegar aqui → não mostra o onboarding, manda pro hub.
-        navigate('/inicio', { replace: true });
+        navigate(returnTo, { replace: true });
         return;
       }
 
@@ -332,7 +376,7 @@ export default function Onboarding() {
 
   const handleSkip = () => {
     posthog?.capture('betinho_onboarding_skipped', { product: 'betinho' });
-    navigate('/inicio');
+    navigate(returnTo);
   };
 
   if (!userId) {
@@ -352,17 +396,27 @@ export default function Onboarding() {
         <AnalyticsNav variant="rebrand" />
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 max-w-screen-2xl mx-auto w-full">
           {/* Gancho */}
-          <div className="order-1 px-6 pt-10 sm:px-10 lg:col-start-1 lg:row-start-1 lg:self-end lg:px-16 lg:pt-0">
+          {/* pt no desktop também: sem ele, quando o conteúdo da coluna
+              esquerda passa da altura da tela, o gancho encosta no cabeçalho. */}
+          <div className="order-1 px-6 pt-10 sm:px-10 lg:col-start-1 lg:row-start-1 lg:self-end lg:px-16 lg:pt-12">
             <div className="mx-auto max-w-md lg:mx-0">
+              {/* Quem chega de Oportunidades já sabe o que quer: a introdução
+                  fala do alerta que o trouxe. Os benefícios abaixo e a mecânica
+                  de conexão continuam iguais para todo mundo. */}
               <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-forest">
-                Conheça o Betinho
+                {fromOportunidades ? 'Alertas de oportunidades' : 'Conheça o Betinho'}
               </div>
               <h1 className="mb-4 font-display text-[32px] font-extrabold leading-[1.08] tracking-tight text-ink lg:text-[42px]">
-                Seu assistente de apostas, direto no <span className="text-amber">Telegram.</span>
+                {fromOportunidades ? (
+                  <>Receba as novas oportunidades no <span className="text-amber">Telegram.</span></>
+                ) : (
+                  <>Seu assistente de apostas, direto no <span className="text-amber">Telegram.</span></>
+                )}
               </h1>
               <p className="text-[15px] leading-relaxed text-ink-2">
-                Você manda a aposta por print ou texto e o Betinho registra sozinho. Ele calcula
-                seu ROI de verdade e ainda te avisa das oportunidades do dia, no chat onde você já conversa.
+                {fromOportunidades
+                  ? 'Conecte o Telegram e o Betinho te avisa quando uma oportunidade nova entrar no painel, antes do jogo começar. Você pode pausar os alertas quando quiser.'
+                  : 'Você manda a aposta por print ou texto e o Betinho registra sozinho. Ele calcula seu ROI de verdade e ainda te avisa das oportunidades do dia, no chat onde você já conversa.'}
               </p>
             </div>
           </div>
@@ -453,12 +507,13 @@ export default function Onboarding() {
             </div>
             <h1 className="text-xl font-bold text-ink mb-2">Conectado!</h1>
             <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
-              O Betinho já te mandou uma mensagem no Telegram. Manda sua primeira aposta pra ele
-              por lá (print ou texto) quando quiser.
+              {fromOportunidades
+                ? 'Os alertas de novas oportunidades já estão ligados. Você pode pausá-los quando quiser, no site ou pelo Telegram.'
+                : 'O Betinho já te mandou uma mensagem no Telegram. Manda sua primeira aposta pra ele por lá (print ou texto) quando quiser.'}
             </p>
             <button
               type="button"
-              onClick={() => navigate('/inicio')}
+              onClick={() => navigate(returnTo)}
               className="w-full h-12 rounded-lg bg-forest hover:bg-forest-soft text-white text-[15px] font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               Continuar
