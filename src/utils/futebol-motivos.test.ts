@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { separarMotivosDoContrato } from './futebol-motivos';
+import { estadoDosMotivos, separarMotivosDoContrato } from './futebol-motivos';
 
 // O contrato SQL em si (quais premissas são aplicáveis a cada saída, e o que
 // não pode virar razão) é guardado por futebol-contrato-score.test.ts. Aqui só
@@ -121,5 +121,37 @@ describe('separarMotivosDoContrato', () => {
     expect(motivosContra.slugsDePremissas).toContain(contra[0].id);
     expect(motivosContra.slugsDePremissas.length + motivosContra.motivosSemDrilldown.length)
       .toBe(contra.length);
+  });
+});
+
+describe('estadoDosMotivos', () => {
+  const m = (slug: string) => ({ slug, texto: slug });
+
+  // O defeito que este seam existe para impedir: o hero colapsava três estados
+  // em dois. "Ainda carregando" e "carregou e não tem motivo" eram os dois
+  // `favor.length === 0`, então a tela mostrava o texto do "Por quê" e trocava
+  // por "A favor / Contra" alguns instantes depois, na cara do usuário.
+  it('carregando e sem motivo ainda: nem motivos, nem o texto de fallback', () => {
+    expect(estadoDosMotivos([], [], true)).toBe('carregando');
+  });
+
+  it('carregou e não veio motivo nenhum: aí sim o fallback', () => {
+    expect(estadoDosMotivos([], [], false)).toBe('sem_motivos');
+  });
+
+  it('com motivo a favor, mostra os motivos', () => {
+    expect(estadoDosMotivos([m('a')], [], false)).toBe('motivos');
+  });
+
+  it('só com motivo contra, mostra os motivos', () => {
+    expect(estadoDosMotivos([], [m('b')], false)).toBe('motivos');
+  });
+
+  // A invariante é do estado, não do hook: quem já tem motivo na tela não pode
+  // perdê-lo porque alguém marcou `carregando`. Com o `isLoading` que o card
+  // passa hoje este caso não acontece, e o teste existe para o dia em que
+  // alguém trocar por `isFetching` ou passar carregamento de outra origem.
+  it('carregando com motivo já em tela: continua mostrando os motivos', () => {
+    expect(estadoDosMotivos([m('a')], [], true)).toBe('motivos');
   });
 });

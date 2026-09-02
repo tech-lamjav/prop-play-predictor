@@ -435,3 +435,19 @@ export function useFutebolMercadosOcultos() {
     refetchOnWindowFocus: false,
   });
 }
+
+/**
+ * A vitrine, do jeito que a tela precisa dela: a lista E se ela já chegou.
+ *
+ * Existe porque as três telas que a consomem repetiam o mesmo par — o hook, o
+ * `?? []` memoizado e o comentário — e porque o `isLoading` importa tanto
+ * quanto a lista: renderizar antes de a vitrine chegar mostra o mercado
+ * escondido por um instante, e ele some depois. Ver prop-play-predictor#324.
+ */
+export function useVitrine(): { ocultos: string[]; isLoading: boolean } {
+  const { data, isLoading } = useFutebolMercadosOcultos();
+  // Memoizado: `?? []` cria array novo a cada render e envenenaria as
+  // dependências de todo useMemo que recebe `ocultos`.
+  const ocultos = useMemo(() => data ?? [], [data]);
+  return { ocultos, isLoading };
+}
