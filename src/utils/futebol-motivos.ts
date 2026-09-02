@@ -2,11 +2,13 @@ import type {
   FutebolFixtureHistorico,
   FutebolFixtureNumeros,
   FutebolFixturePremissas,
+  FutebolFixtureReasonContractRow,
   FutebolFixtureReasonItem,
 } from '@/services/futebol-data.service';
 import { PREMISSAS_OCULTAS, premissaDe, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
+import { mesmaLinha } from '@/utils/futebol-leitura';
 
 /**
  * Um item do contrato que não é razão de contexto e por isso não vai para a
@@ -77,9 +79,9 @@ export type EstadoDosMotivos = 'motivos' | 'carregando' | 'sem_motivos';
 /** Um motivo já traduzido para exibição, com o slug preservado como chave. */
 export type MotivoExibivel = { slug: string; texto: string };
 
-export function estadoDosMotivos(
-  favor: readonly MotivoExibivel[],
-  contra: readonly MotivoExibivel[],
+export function estadoDosMotivos<T>(
+  favor: readonly T[],
+  contra: readonly T[],
   carregando: boolean,
 ): EstadoDosMotivos {
   if (favor.length > 0 || contra.length > 0) return 'motivos';
@@ -91,8 +93,13 @@ export type PremissaComEvidencia = { premissa: Premissa; evidencia: Evidencia | 
 
 /** O que cada tela pede de diferente. */
 export type OpcoesDasPremissasAcesas = {
-  /** Quantas exibir. Resumo do jogo pede 3; painel da lista pede 4. */
-  max: number;
+  /**
+   * Quantas exibir. Ausente = sem corte, e quem chama fatia.
+   *
+   * `explicacaoDaLeitura` pede sem corte porque precisa contar quantas existem
+   * antes de fatiar — o rótulo do painel anuncia o total, não o que coube.
+   */
+  max?: number;
   /**
    * Premissa de peso zero entra na lista?
    *
@@ -159,4 +166,105 @@ export function premissasAcesasDaLeitura(
         evidenciaDe(premissa.slug, numeros, lado, true, linha) ??
         evidenciaDoHistorico(premissa.slug, historico, lado, linha),
     }));
+}
+
+
+/**
+ * O que a tela mostra para explicar uma leitura, e sob que rótulo.
+ *
+ * **Com preço**, os itens são **motivos**: quem agrupa em A favor e Contra é o
+ * backend, e a tela só traduz o slug. É o mesmo contrato que a home e a bancada
+ * leem, então as telas passam a dizer a mesma coisa.
+ *
+ * **Sem preço** não existe contrato — ele só é emitido para linha cotada. Os
+ * itens são as premissas acesas e o rótulo muda para **"O que o jogo mostra"**,
+ * porque sem preço não há aposta a favor de quê. Por isso o retorno chama-se
+ * `itens`, e não `aFavor`: metade das vezes eles não são motivo, e o glossário é
+ * explícito que motivo é o que o backend agrupou.
+ *
+ * ⚠️ **Degradação deliberada:** com preço, se o contrato chegou e não tem linha
+ * para aquela saída, cai nas premissas acesas com o rótulo do sem-preço. Some do
+ * bloco seria pior — antes desta mudança a tela sempre tinha o que dizer, e
+ * sumir com a explicação inteira por falha de uma consulta é regressão. O rótulo
+ * mais fraco é o que mantém a tela honesta.
+ *
+ * `contrato: undefined` (ainda em voo) devolve listas vazias e **não** cai na
+ * degradação: cabe ao chamador não concluir nada enquanto isso, com
+ * `estadoDosMotivos`.
+ */
+export function explicacaoDaLeitura(
+  entrada: {
+    mercado: string;
+    candidato: FutebolFixturePremissas | null | undefined;
+    /** A leitura tem preço coletado? É o que decide a fonte e o rótulo. */
+    temPreco: boolean;
+    contrato: FutebolFixtureReasonContractRow[] | undefined;
+    numeros: FutebolFixtureNumeros[] | undefined;
+    historico: FutebolFixtureHistorico[] | undefined;
+    lado: 'home' | 'away' | null;
+  },
+  opcoes: OpcoesDasPremissasAcesas & {
+    /** Quantos itens de Contra exibir. Ausente = a tela não mostra contra. */
+    maxContra?: number;
+  },
+): {
+  rotulo: 'Por quê' | 'O que o jogo mostra';
+  itens: PremissaComEvidencia[];
+  contra: PremissaComEvidencia[];
+  /**
+   * Quantos itens existem ANTES do corte da tela.
+   *
+   * O rótulo do painel anuncia um número, e ele é quantos existem e não quantos
+   * couberam — senão a tela diria sempre o mesmo número assim que houvesse itens
+   * demais.
+   */
+  total: number;
+} {
+  const { mercado, candidato, temPreco, contrato, numeros, historico, lado } = entrada;
+  const linha = candidato?.line_value ?? null;
+
+  // Sem corte: quem corta é quem chama, e o total precisa ser contado antes.
+  const monta = (slugs: readonly string[]) =>
+    premissasAcesasDaLeitura(
+      { mercado, acesas: slugs, numeros, historico, lado, linha },
+      { incluirPesoZero: opcoes.incluirPesoZero },
+    );
+
+  const semPreco = () => {
+    const todos = monta(candidato?.acesas ?? []);
+    return {
+      rotulo: 'O que o jogo mostra' as const,
+      itens: todos.slice(0, opcoes.max),
+      // Sem preço não há aposta, e sem aposta não há o que pesar contra.
+      contra: [],
+      total: todos.length,
+    };
+  };
+
+  if (!temPreco) return semPreco();
+
+  const doContrato = (contrato ?? []).find(
+    (r) =>
+      r.market === candidato?.market &&
+      r.outcome === candidato?.outcome &&
+      mesmaLinha(r.line_value, linha),
+  );
+
+  // Chegou e não tem linha para esta saída: melhor o rótulo mais fraco que o
+  // bloco vazio. Ainda em voo (`contrato` indefinido) NÃO cai aqui.
+  if (contrato != null && doContrato == null) return semPreco();
+
+  const todos = monta(separarMotivosDoContrato(doContrato?.favor ?? []).slugsDePremissas);
+  return {
+    rotulo: 'Por quê',
+    itens: todos.slice(0, opcoes.max),
+    contra:
+      opcoes.maxContra == null
+        ? []
+        : monta(separarMotivosDoContrato(doContrato?.contra ?? []).slugsDePremissas).slice(
+            0,
+            opcoes.maxContra,
+          ),
+    total: todos.length,
+  };
 }
