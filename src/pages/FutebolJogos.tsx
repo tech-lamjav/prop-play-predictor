@@ -9,15 +9,15 @@ import { JogoResumoPanel } from '@/components/futebol/JogoResumoPanel';
 import { useFutebolFixturesByDay, useFutebolFixtureDays, useFutebolValueBoard } from '@/hooks/use-futebol-data';
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
-import { groupBoardByFixture, versaoDaJanela } from '@/utils/futebol-score';
+import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
+import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 import {
-  demoFutebolBoard,
   demoFutebolNumeros,
   demoFutebolPremissas,
   makeDemoAgenda,
@@ -100,8 +100,10 @@ export default function FutebolJogos() {
     [isDemo, dia, fixtures],
   );
 
-  // A demonstração herda a escala do produto (#333), derivada do board REAL.
-  const demoBoard = useMemo(() => demoFutebolBoard(versaoDaJanela(board ?? [])), [board]);
+  // A demonstração herda a escala do produto (#333). Aqui a janela É o board:
+  // a agenda não recorta por dia o que já veio do dia, e é dele que a leitura
+  // de cada confronto sai.
+  const demoBoard = useDemoFutebolBoard(board);
 
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();

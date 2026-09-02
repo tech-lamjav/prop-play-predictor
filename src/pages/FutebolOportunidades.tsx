@@ -32,7 +32,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFutebolBoard } from '@/components/onboarding/demo/futebol';
+import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
@@ -392,6 +392,11 @@ export default function FutebolOportunidades() {
     [allRows, selectedDay, registradasAll, fixtureMap],
   );
 
+  // A demonstração herda a escala do produto (#333). A janela passada aqui é a
+  // MESMA que a tela exibe: herdar de outra faz o tour anunciar uma régua e a
+  // legenda ao lado dele anunciar outra, que é o defeito inteiro de volta.
+  const demoBoard = useDemoFutebolBoard(dayRows);
+
   const filtered = useMemo(
     () => dayRows.filter((r) => {
       if (mercado !== 'all' && r.market !== mercado) return false;
@@ -420,8 +425,6 @@ export default function FutebolOportunidades() {
     () => [...filtered].sort(compararOportunidades),
     [filtered]
   );
-  // A demonstração herda a escala do produto (#333), derivada do board REAL.
-  const demoBoard = useMemo(() => demoFutebolBoard(versaoDaJanela(rows ?? [])), [rows]);
   const bestRows: OppLike[] = isDemo ? demoBoard : realBestRows;
   // A lista mostra o que o backend publicou. O corte local por número de Score
   // saiu na virada do Score de contexto (spec #301): a régua era calibrada para

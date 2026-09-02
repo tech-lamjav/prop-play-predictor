@@ -1,11 +1,29 @@
-import type { VersaoDaJanela } from '@/utils/futebol-score';
+import { fronteirasDoScore, type FutebolScoreVersion } from '@/utils/futebol-score';
 import type { FutebolFixturePremissas, FutebolFixtureNumeros, FutebolValueBoardRow, FutebolFixture, FutebolFixtureByDay, FutebolStandingRow, FutebolLeaders, FutebolTeamProfile, FutebolTeamSeason, FutebolFixtureDetail, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import { fmtTime, addDays } from '@/utils/futebol-datas';
 
 // Dados de EXEMPLO (fictícios) pro onboarding guiado — usados só enquanto o tour
 // roda, pra a tela nunca ficar vazia. Nada aqui é real. Times/valores ilustrativos.
 
-const base = (versao: VersaoDaJanela, over: Partial<FutebolValueBoardRow>): FutebolValueBoardRow => ({
+/**
+ * A faixa DERIVA da nota e da escala, e não é cravada por linha.
+ *
+ * Cravar era insustentável: uma nota 35 é Média na escala nova (corte 30) e
+ * Baixa na antiga (corte 40), então nenhum rótulo fixo é verdadeiro nos dois
+ * lados. A demonstração só "passava" porque nenhuma nota dela caía entre 30 e
+ * 39 — por acaso, não por desenho. E o teste que afirmava cobrir as duas
+ * escalas passaria com a fábrica ignorando o argumento.
+ *
+ * As fronteiras vêm de `fronteirasDoScore`, que é o único lugar que sabe onde
+ * elas estão. Recopiar aqui seria criar a quarta cópia de um número que já se
+ * moveu uma vez.
+ */
+function faixaDaEscala(score: number, versao: FutebolScoreVersion): string {
+  const { media, alta } = fronteirasDoScore(versao);
+  return score >= alta ? 'Alta' : score >= media ? 'Média' : 'Baixa';
+}
+
+const base = (versao: FutebolScoreVersion, over: Partial<FutebolValueBoardRow>): FutebolValueBoardRow => ({
   fixture_id: 0,
   home_team_id: 0,
   away_team_id: 0,
@@ -35,7 +53,8 @@ const base = (versao: VersaoDaJanela, over: Partial<FutebolValueBoardRow>): Fute
   faixa: 'Média',
   evidencias: [],
   ...over,
-  score_versao: versao === 'indefinida' ? undefined : versao,
+  score_versao: versao,
+  faixa: faixaDaEscala(over.score ?? 50, versao),
   premissas_sem_dado: over.premissas_sem_dado ?? 0,
 });
 
@@ -43,12 +62,12 @@ const base = (versao: VersaoDaJanela, over: Partial<FutebolValueBoardRow>): Fute
 // pra mostrar a classificação do backend. As notas seguem as fronteiras do
 // Score de contexto — 55 para Alta, 25 para Média (spec #301) —, senão a
 // demonstração ensinaria a régua aposentada.
-export const demoFutebolBoard = (versao: VersaoDaJanela): FutebolValueBoardRow[] => [
+export const demoFutebolBoard = (versao: FutebolScoreVersion): FutebolValueBoardRow[] => [
   base(versao, {
     fixture_id: 9001, home_team_id: 121, away_team_id: 127,
     home_team_name: 'Palmeiras', away_team_name: 'Flamengo',
     market: 'match_winner', outcome: 'Home', best_odd: 2.1, avg_odd: 1.98,
-    edge: 0.123, prob_justa_fechamento: 0.52, score: 74, faixa: 'Alta',
+    edge: 0.123, prob_justa_fechamento: 0.52, score: 74,
     kickoff_utc: '2025-08-10T21:30:00Z',
     evidencias: ['Mandante forte em casa e adversário desfalcado no meio-campo.'],
   }),
@@ -56,7 +75,7 @@ export const demoFutebolBoard = (versao: VersaoDaJanela): FutebolValueBoardRow[]
     fixture_id: 9002, home_team_id: 130, away_team_id: 119,
     home_team_name: 'Grêmio', away_team_name: 'Internacional',
     market: 'goals_over_under', outcome: 'Over', line_value: 2.5, best_odd: 1.95, avg_odd: 1.88,
-    edge: 0.081, prob_justa_fechamento: 0.55, score: 63, faixa: 'Alta',
+    edge: 0.081, prob_justa_fechamento: 0.55, score: 63,
     kickoff_utc: '2025-08-10T23:00:00Z',
     evidencias: ['Clássico historicamente aberto, com médias altas de gols dos dois lados.'],
   }),
@@ -64,7 +83,7 @@ export const demoFutebolBoard = (versao: VersaoDaJanela): FutebolValueBoardRow[]
     fixture_id: 9003, home_team_id: 126, away_team_id: 131,
     home_team_name: 'São Paulo', away_team_name: 'Corinthians',
     market: 'match_winner', outcome: 'Draw', best_odd: 3.25, avg_odd: 3.1,
-    edge: 0.056, prob_justa_fechamento: 0.32, score: 51, faixa: 'Média',
+    edge: 0.056, prob_justa_fechamento: 0.32, score: 51,
     kickoff_utc: '2025-08-10T18:30:00Z',
     evidencias: ['Equilíbrio no retrospecto recente e defesas sólidas.'],
   }),
@@ -72,15 +91,26 @@ export const demoFutebolBoard = (versao: VersaoDaJanela): FutebolValueBoardRow[]
     fixture_id: 9004, home_team_id: 120, away_team_id: 124,
     home_team_name: 'Botafogo', away_team_name: 'Fluminense',
     market: 'goals_over_under', outcome: 'Under', line_value: 2.5, best_odd: 1.88, avg_odd: 1.8,
-    edge: 0.031, prob_justa_fechamento: 0.54, score: 43, faixa: 'Média',
+    edge: 0.031, prob_justa_fechamento: 0.54, score: 43,
     kickoff_utc: '2025-08-11T00:00:00Z',
     evidencias: ['Dois times de posse e poucos gols nos últimos confrontos.'],
+  }),
+  // Nota 35 de propósito: é o ÚNICO intervalo onde as duas escalas discordam
+  // (Média na nova, corte 30; Baixa na antiga, corte 40). Sem uma linha aqui, o
+  // teste que promete cobrir as duas passaria com a fábrica ignorando a escala.
+  base(versao, {
+    fixture_id: 9006, home_team_id: 131, away_team_id: 126,
+    home_team_name: 'Atlético-MG', away_team_name: 'Grêmio',
+    market: 'goals_over_under', outcome: 'Over', line_value: 2.5, best_odd: 2.05, avg_odd: 2.0,
+    edge: 0.012, prob_justa_fechamento: 0.49, score: 35,
+    kickoff_utc: '2025-08-11T21:00:00Z',
+    evidencias: ['Ataques irregulares, mas ritmo alto nos últimos jogos.'],
   }),
   base(versao, {
     fixture_id: 9005, home_team_id: 135, away_team_id: 118,
     home_team_name: 'Cruzeiro', away_team_name: 'Bahia',
     market: 'match_winner', outcome: 'Home', best_odd: 1.72, avg_odd: 1.7,
-    edge: -0.008, prob_justa_fechamento: 0.6, score: 18, faixa: 'Baixa',
+    edge: -0.008, prob_justa_fechamento: 0.6, score: 18,
     kickoff_utc: '2025-08-10T19:00:00Z',
     evidencias: [],
   }),
@@ -223,21 +253,22 @@ export const demoFixtureDetail: FutebolFixtureDetail = {
 };
 
 // Oportunidades do jogo (WhatToWatch + Explorar mercados).
-const vr = (versao: VersaoDaJanela, over: Partial<FutebolFixtureValueRow>): FutebolFixtureValueRow => ({
+const vr = (versao: FutebolScoreVersion, over: Partial<FutebolFixtureValueRow>): FutebolFixtureValueRow => ({
   market: 'match_winner', outcome: 'Home', outcome_order: 1, line_value: null,
   edge: 0.05, best_odd: 2, best_book: 'Bet365', avg_odd: 1.95, n_casas: 6, janela_usada: 't1h',
   prob_justa_fechamento: 0.5, pts_valor: 0, pts_premissas: 20, pts_corroboracao: 0,
   penalidades: 0, penalidades_globais_pts: 0, penalidades_especificas_pts: 0,
-  score: 50, faixa: 'Média', modelo_api_concorda: true, linha_sharp_confirma: true,
+  score: 50, modelo_api_concorda: true, linha_sharp_confirma: true,
   evidencias: [], avisos: [], contras: [], ...over,
-  score_versao: versao === 'indefinida' ? undefined : versao,
+  score_versao: versao,
+  faixa: faixaDaEscala(over.score ?? 50, versao),
   premissas_sem_dado: over.premissas_sem_dado ?? 0,
 });
 
-export const demoFixtureValueRows = (versao: VersaoDaJanela): FutebolFixtureValueRow[] => [
+export const demoFixtureValueRows = (versao: FutebolScoreVersion): FutebolFixtureValueRow[] => [
   vr(versao, {
     market: 'match_winner', outcome: 'Home', outcome_order: 1, best_odd: 2.10, avg_odd: 1.98,
-    edge: 0.123, prob_justa_fechamento: 0.52, score: 74, faixa: 'Alta',
+    edge: 0.123, prob_justa_fechamento: 0.52, score: 74,
     evidencias: [
       'Mandante forte em casa (8V em 10 jogos) e melhor ataque do returno.',
       'Adversário sem o titular do meio-campo, criando menos.',
@@ -246,10 +277,10 @@ export const demoFixtureValueRows = (versao: VersaoDaJanela): FutebolFixtureValu
     contras: ['Visitante vem de vitória fora e não sofre gols há 3 jogos.'],
     avisos: [],
   }),
-  vr(versao, { market: 'match_winner', outcome: 'Draw', outcome_order: 2, best_odd: 3.30, avg_odd: 3.2, edge: 0.02, prob_justa_fechamento: 0.28, score: 46, faixa: 'Média' }),
-  vr(versao, { market: 'match_winner', outcome: 'Away', outcome_order: 3, best_odd: 3.60, avg_odd: 3.5, edge: -0.03, prob_justa_fechamento: 0.24, score: 19, faixa: 'Baixa' }),
-  vr(versao, { market: 'goals_over_under', outcome: 'Over', outcome_order: 1, line_value: 2.5, best_odd: 1.95, avg_odd: 1.9, edge: 0.06, prob_justa_fechamento: 0.55, score: 48, faixa: 'Média' }),
-  vr(versao, { market: 'goals_over_under', outcome: 'Under', outcome_order: 2, line_value: 2.5, best_odd: 1.90, avg_odd: 1.85, edge: -0.01, prob_justa_fechamento: 0.45, score: 21, faixa: 'Baixa' }),
+  vr(versao, { market: 'match_winner', outcome: 'Draw', outcome_order: 2, best_odd: 3.30, avg_odd: 3.2, edge: 0.02, prob_justa_fechamento: 0.28, score: 46 }),
+  vr(versao, { market: 'match_winner', outcome: 'Away', outcome_order: 3, best_odd: 3.60, avg_odd: 3.5, edge: -0.03, prob_justa_fechamento: 0.24, score: 19 }),
+  vr(versao, { market: 'goals_over_under', outcome: 'Over', outcome_order: 1, line_value: 2.5, best_odd: 1.95, avg_odd: 1.9, edge: 0.06, prob_justa_fechamento: 0.55, score: 48 }),
+  vr(versao, { market: 'goals_over_under', outcome: 'Under', outcome_order: 2, line_value: 2.5, best_odd: 1.90, avg_odd: 1.85, edge: -0.01, prob_justa_fechamento: 0.45, score: 21 }),
 ];
 
 // Artilheiros de exemplo.

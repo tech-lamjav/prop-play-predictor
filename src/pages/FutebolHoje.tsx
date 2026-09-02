@@ -20,7 +20,8 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUTEBOL_TOUR_ID, makeFutebolSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFutebolBoard, demoFutebolFixtures } from '@/components/onboarding/demo/futebol';
+import { demoFutebolFixtures } from '@/components/onboarding/demo/futebol';
+import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 // Aritmética de fuso vem de um lugar só. As cópias locais que existiam aqui
 // eram idênticas às de futebol-datas.ts, e duas cópias da mesma conta de fuso é
 // como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
@@ -315,8 +316,6 @@ export default function FutebolHoje() {
   // A demonstração HERDA a escala do produto (#333). Ela é derivada do board
   // REAL, e não das linhas da própria demo — senão o tour anuncia a régua que
   // ele mesmo inventou, que era o defeito.
-  const escalaDoProduto = versaoDaJanela(boardRows ?? []);
-  const demoBoard = useMemo(() => demoFutebolBoard(escalaDoProduto), [escalaDoProduto]);
   const locked = isDemo ? false : !access?.unlocked;
 
   const todayStr = brtDateStr(new Date(agora));
@@ -392,6 +391,11 @@ export default function FutebolHoje() {
     }),
     [valueRows, selectedDay, registradasAll, fixturePorId],
   );
+
+  // A demonstração herda a escala do produto (#333). A janela passada aqui é a
+  // MESMA que a tela exibe: herdar de outra faz o tour anunciar uma régua e a
+  // legenda ao lado dele anunciar outra, que é o defeito inteiro de volta.
+  const demoBoard = useDemoFutebolBoard(dayRows);
 
   // Os blocos visuais precisam de Score e faixa para existir. A oportunidade
   // registrada ANTES da migration 091 não guardou esses números, então ela conta

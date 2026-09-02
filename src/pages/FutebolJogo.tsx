@@ -16,7 +16,7 @@ import {
 import { type SaidaPreferida } from '@/utils/futebol-leitura';
 import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
-  faixaWord, faixaBadgeCls, chancePct, versaoDaJanela,
+  faixaWord, faixaBadgeCls, chancePct,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
@@ -28,7 +28,8 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFixtureDetail, demoFixtureValueRows, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
+import { demoFixtureDetail, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
+import { useDemoFixtureValueRows } from '@/components/onboarding/demo/use-demo-futebol';
 
 /**
  * A bancada fica lado a lado a partir de 1280px (o breakpoint `xl` do grid). O
@@ -305,10 +306,12 @@ export default function FutebolJogo() {
   // e não tem consulta própria.
   const { ocultos } = useVitrine();
   const { data: realValueRows, isLoading: valorCarregando } = useFutebolFixtureValue(fid);
-  // A demonstração herda a escala do produto (#333), derivada das linhas REAIS.
-  const valueRows = isDemo
-    ? demoFixtureValueRows(versaoDaJanela(realValueRows ?? []))
-    : realValueRows;
+  // A demonstração herda a escala do produto (#333), derivada da MESMA janela
+  // que a tela exibe. Memoizado porque a lista desce para filhos e para
+  // dependências de outros useMemo: recriar o array a cada render invalidaria
+  // todos eles sem que nada tivesse mudado.
+  const demoValueRows = useDemoFixtureValueRows(realValueRows);
+  const valueRows = isDemo ? demoValueRows : realValueRows;
   const { data: access } = useFutebolAccess();
   const locked = isDemo ? false : !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"

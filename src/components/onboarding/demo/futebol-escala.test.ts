@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
-import { versaoDaJanela, opcoesDeFaixa } from '@/utils/futebol-score';
+import { versaoDaJanela, opcoesDeFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 
 // ============================================================================
 // A demonstração herda a escala do produto (#333)
@@ -23,13 +23,6 @@ describe('a escala da demonstração', () => {
     expect(versaoDaJanela(demoFutebolBoard('contexto_v1'))).toBe('contexto_v1');
   });
 
-  // Quando o produto não declara escala — board vazio, por exemplo —, a
-  // demonstração não inventa uma. A legenda já sabe não cravar número nesse
-  // caso, e é a mesma regra.
-  it('não crava escala quando o produto não declarou', () => {
-    expect(versaoDaJanela(demoFutebolBoard('indefinida'))).toBe('indefinida');
-  });
-
   it('vale também para as linhas do detalhe do jogo', () => {
     expect(versaoDaJanela(demoFixtureValueRows('legacy'))).toBe('legacy');
     expect(versaoDaJanela(demoFixtureValueRows('contexto_v1'))).toBe('contexto_v1');
@@ -49,21 +42,45 @@ describe('a legenda do tour concorda com a do produto', () => {
 });
 
 // O tour ensina a classificação, então os pares nota/faixa precisam ser
-// verdadeiros NAS DUAS escalas — senão a demonstração rotula errado assim que a
-// escala vira, e ninguém percebe porque é dado de mentira.
+// verdadeiros NAS DUAS escalas. A demonstração deriva a faixa da nota e da
+// escala justamente por isso: rótulo cravado é insustentável, porque uma nota
+// 35 é Média numa e Baixa na outra.
 describe('os pares nota e faixa são coerentes nas duas escalas', () => {
-  const fronteiras = {
-    legacy: { media: 40, alta: 60 },
-    contexto_v1: { media: 30, alta: 60 },
-  } as const;
+  const esperada = (score: number, escala: 'legacy' | 'contexto_v1') => {
+    const { media, alta } = fronteirasDoScore(escala);
+    return score >= alta ? 'Alta' : score >= media ? 'Média' : 'Baixa';
+  };
 
   for (const escala of ['legacy', 'contexto_v1'] as const) {
-    it(`em ${escala}`, () => {
-      const { media, alta } = fronteiras[escala];
-      for (const linha of demoFutebolBoard(escala)) {
-        const esperada = linha.score >= alta ? 'Alta' : linha.score >= media ? 'Média' : 'Baixa';
-        expect(`${linha.score} → ${linha.faixa}`).toBe(`${linha.score} → ${esperada}`);
+    it(`board, em ${escala}`, () => {
+      for (const l of demoFutebolBoard(escala)) {
+        expect(`${l.score} → ${l.faixa}`).toBe(`${l.score} → ${esperada(l.score, escala)}`);
+      }
+    });
+
+    it(`saídas do jogo, em ${escala}`, () => {
+      for (const l of demoFixtureValueRows(escala)) {
+        expect(`${l.score} → ${l.faixa}`).toBe(`${l.score} → ${esperada(l.score, escala)}`);
       }
     });
   }
+
+  // Sem uma nota no intervalo onde as escalas DISCORDAM, os testes acima
+  // passariam com a fábrica ignorando o argumento. Esta guarda existe para o dia
+  // em que alguém ajustar as notas de exemplo sem perceber que apagou a prova.
+  it('existe nota no intervalo em que as duas escalas discordam', () => {
+    const { media: mediaNova } = fronteirasDoScore('contexto_v1');
+    const { media: mediaVelha } = fronteirasDoScore('legacy');
+    const naFaixaDeDiscordancia = demoFutebolBoard('legacy').filter(
+      (l) => l.score >= mediaNova && l.score < mediaVelha,
+    );
+    expect(naFaixaDeDiscordancia.length).toBeGreaterThan(0);
+  });
+
+  it('e ela é rotulada diferente em cada escala', () => {
+    const nova = demoFutebolBoard('contexto_v1').find((l) => l.score === 35);
+    const velha = demoFutebolBoard('legacy').find((l) => l.score === 35);
+    expect(nova?.faixa).toBe('Média');
+    expect(velha?.faixa).toBe('Baixa');
+  });
 });
