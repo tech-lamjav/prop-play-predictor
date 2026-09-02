@@ -126,11 +126,13 @@ export interface MercadoResumo {
 export function resumoDosMercados(
   rows: FutebolFixturePremissas[] | null | undefined,
   valueRows: FutebolFixtureValueRow[] | null | undefined,
-  preferida?: SaidaPreferida | null,
+  // Explicitamente sem `?`: parâmetro obrigatório não pode seguir opcional, e
+  // os quatro chamadores já passam algum valor.
+  preferida: SaidaPreferida | null,
   // Os mercados fora da vitrine (#324). A prateleira do detalhe sai do CATÁLOGO
   // e não do board, então filtrar as linhas do board não bastava: o mercado
   // escondido continuava como chip, com barra de Score e sem odd.
-  ocultos: readonly string[] = [],
+  ocultos: readonly string[],
 ): MercadoResumo[] {
   if (!rows?.length) return [];
   return filtrarCatalogoDeMercados(MERCADOS, ocultos).flatMap((m) => {

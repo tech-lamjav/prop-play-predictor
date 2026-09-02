@@ -707,7 +707,11 @@ export function BancadaMercados({
                   {!candidataCotada && (
                     <span
                       className="tabular-nums text-[18px] font-bold shrink-0"
-                      style={{ color: on ? '#fbbf24' : r.passa ? (temScore && s >= 60 ? '#0a3d2e' : '#b8870f') : '#8d8672' }}
+                      // O corte da Alta vem do `fronteirasDoScore`, na escala em
+                      // que a nota foi calculada. Era 60 cravado: acertava por
+                      // coincidência, porque 60 é a fronteira nas duas escalas,
+                      // e quebraria em silêncio na próxima mudança de número.
+                      style={{ color: on ? '#fbbf24' : r.passa ? (temScore && s >= fronteirasDoScore(r.value!.score_versao).alta ? '#0a3d2e' : '#b8870f') : '#8d8672' }}
                     >
                       <Blur active={locked && temScore}>{String(s)}</Blur>
                     </span>
