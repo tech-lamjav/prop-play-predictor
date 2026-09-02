@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resumoDosMercados, melhorLeitura } from './futebol-leitura';
+import { resumoDosMercados, melhorLeitura, sufixoDeLeitura } from './futebol-leitura';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 
 // O caso é o Independ. Rivadavia x Fluminense (fixture 1547770, staging): o mart
@@ -198,5 +198,19 @@ describe('melhorLeitura', () => {
     expect(top.candidato.outcome).toBe('Over');
     expect(top.candidato.line_value).toBe(top.value!.line_value);
     expect(top.candidato.outcome).toBe(top.value!.outcome);
+  });
+});
+
+describe('sufixoDeLeitura', () => {
+  it('não afirma um total enquanto o board não respondeu', () => {
+    // Zero aqui seria a mesma mentira que "sem leitura ainda" na linha: a tela
+    // ainda não tem do que contar.
+    expect(sufixoDeLeitura(true, 0)).toBe('');
+    expect(sufixoDeLeitura(true, 3)).toBe('');
+  });
+
+  it('conta depois que o board respondeu, inclusive quando o total é zero', () => {
+    expect(sufixoDeLeitura(false, 0)).toBe(' · 0 com leitura');
+    expect(sufixoDeLeitura(false, 2)).toBe(' · 2 com leitura');
   });
 });

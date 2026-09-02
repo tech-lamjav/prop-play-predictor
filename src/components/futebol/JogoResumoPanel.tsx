@@ -1,3 +1,4 @@
+import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, X, Minus } from 'lucide-react';
@@ -35,6 +36,10 @@ import type {
  * mesmo. A maioria dos jogos legitimamente não tem oportunidade, e um painel em
  * branco lê como defeito.
  *
+ * Mas "sem leitura" só é dito depois que as fontes responderam. Enquanto elas
+ * carregam entra o esqueleto: afirmar a ausência cedo demais é o mesmo erro,
+ * com a agravante de aparecer em tamanho grande ao lado da lista.
+ *
  * Três queries por jogo aberto (premissas, números e desfalques), todas leves e
  * compartilhadas com a tela de jogo: abrir o painel aquece a análise completa. A
  * `fixture_detail` saiu junto com o bloco de stats, que este desenho não tem mais.
@@ -67,11 +72,19 @@ function Forma({ forma }: { forma: string | null | undefined }) {
 export function JogoResumoPanel({
   fixture,
   best,
+  leituraCarregando,
   onClose,
   demo,
 }: {
   fixture: FutebolFixtureByDay;
   best: FutebolValueBoardRow | null;
+  /**
+   * O board da página ainda está em voo. Somado ao carregando das premissas
+   * daqui, decide se o painel pode concluir "Sem leitura para este jogo" — ela
+   * é uma conclusão, e no desktop aparece em tamanho grande ao lado da linha
+   * que ainda está em esqueleto.
+   */
+  leituraCarregando: boolean;
   onClose: () => void;
   /**
    * Premissas e números de exemplo, usados só enquanto o tour roda. O jogo do
@@ -80,7 +93,9 @@ export function JogoResumoPanel({
    */
   demo?: { premissas: FutebolFixturePremissas[]; numeros: FutebolFixtureNumeros[] };
 }) {
-  const { data: premissasReais } = useFutebolFixturePremissas(demo ? undefined : fixture.fixture_id);
+  const { data: premissasReais, isLoading: premissasCarregando } = useFutebolFixturePremissas(
+    demo ? undefined : fixture.fixture_id,
+  );
   const { data: numerosReais } = useFutebolFixtureNumeros(demo ? undefined : fixture.fixture_id);
   const premissas = demo?.premissas ?? premissasReais;
   const numeros = demo?.numeros ?? numerosReais;
@@ -117,6 +132,8 @@ export function JogoResumoPanel({
       ? pickLabel(topo.candidato, fixture.home_team_name, fixture.away_team_name)
       : null;
 
+  // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
+  const carregandoLeitura = demo ? false : leituraCarregando || premissasCarregando;
   const temLeitura = !!best || (topo != null && topo.nValem > 0);
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
@@ -289,6 +306,19 @@ export function JogoResumoPanel({
                 <span className="text-[12px] leading-relaxed" style={{ color: '#6b6350' }}>{contra}</span>
               </div>
             )}
+          </div>
+        ) : carregandoLeitura ? (
+          // Nem "tem leitura" nem "não tem": ainda não dá para dizer. O bloco
+          // ocupa a mesma caixa da negação, que é a maior das duas.
+          <div
+            data-testid="painel-leitura-carregando"
+            aria-busy="true"
+            className="px-4 py-3.5 rounded-[14px] flex flex-col gap-2"
+            style={{ background: 'var(--canvas-2)', border: '1px solid #e5d9bd' }}
+          >
+            <Skeleton className="h-[13px] w-[60%] bg-line/60" />
+            <Skeleton className="h-[12px] w-[85%] bg-line/60" />
+            <Skeleton className="h-[12px] w-[70%] bg-line/60" />
           </div>
         ) : (
           <div className="px-4 py-3.5 rounded-[14px]" style={{ background: 'var(--canvas-2)', border: '1px solid #e5d9bd' }}>
