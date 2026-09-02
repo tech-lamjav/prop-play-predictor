@@ -21,6 +21,7 @@ import {
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
 import { isFinished, isLive } from '@/utils/futebol-datas';
+import { PARAMS_DA_SAIDA } from '@/utils/futebol-links';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
 } from '@/services/futebol-data.service';
@@ -277,10 +278,10 @@ export default function FutebolJogo() {
   // A saída que o usuário clicou em Oportunidades. Sem ela, a tela escolhia sozinha
   // a de maior Score do mercado, que nem sempre é a do card clicado.
   const preferida = useMemo((): SaidaPreferida | null => {
-    const market = params.get('mercado');
-    const outcome = params.get('saida');
+    const market = params.get(PARAMS_DA_SAIDA.mercado);
+    const outcome = params.get(PARAMS_DA_SAIDA.saida);
     if (!market || !outcome) return null;
-    const linha = params.get('linha');
+    const linha = params.get(PARAMS_DA_SAIDA.linha);
     const n = linha != null ? Number(linha) : NaN;
     return { market, outcome, line_value: Number.isFinite(n) ? n : null };
   }, [params]);

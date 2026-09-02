@@ -339,7 +339,7 @@ export default function FutebolJogos() {
                               selected={f.fixture_id === jogoParam}
                               // A linha mostra o pick; o link leva a ELE, e não
                               // ao desempate padrão da tela do jogo (#344).
-                              to={hrefDaSaida(bestByFixture.get(f.fixture_id), f.fixture_id)}
+                              to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
                               onClick={hasPanel ? () => abrirPainel(f) : undefined}
                             />
                           ))}

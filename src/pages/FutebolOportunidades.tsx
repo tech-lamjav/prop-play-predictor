@@ -656,7 +656,7 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppRow o={o} to={hrefDaSaida(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!isPastDay && !locked && !res && (
                       <div className="px-5 pb-2 -mt-0.5">
                         <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
@@ -676,7 +676,7 @@ export default function FutebolOportunidades() {
                   <OppMobileCard
                     key={key(o)}
                     o={o}
-                    to={hrefDaSaida(o)}
+                    to={hrefDaSaida(o.fixture_id, o)}
                     locked={locked}
                     result={res}
                     homeGoals={g?.gh}

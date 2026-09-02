@@ -150,7 +150,7 @@ export function JogoResumoPanel({
   // Sem isso a tela do jogo abria no desempate padrão — normalmente gols — e o
   // pick que a pessoa acabou de ler não estava mais na tela. Sem preço não há
   // saída para filtrar, e aí abre a tela inteira, que é o honesto.
-  const paraOJogo = hrefDaSaida(best, fixture.fixture_id);
+  const paraOJogo = hrefDaSaida(fixture.fixture_id, best);
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
 
