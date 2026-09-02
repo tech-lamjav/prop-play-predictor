@@ -9,7 +9,7 @@ import { JogoResumoPanel } from '@/components/futebol/JogoResumoPanel';
 import { useFutebolFixturesByDay, useFutebolFixtureDays, useFutebolValueBoard } from '@/hooks/use-futebol-data';
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
-import { groupBoardByFixture } from '@/utils/futebol-score';
+import { groupBoardByFixture, versaoDaJanela } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -100,15 +100,18 @@ export default function FutebolJogos() {
     [isDemo, dia, fixtures],
   );
 
+  // A demonstração herda a escala do produto (#333), derivada do board REAL.
+  const demoBoard = useMemo(() => demoFutebolBoard(versaoDaJanela(board ?? [])), [board]);
+
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
     if (isDemo) {
-      demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r));
+      demoBoard.forEach((r) => m.set(r.fixture_id, r));
       return m;
     }
     groupBoardByFixture(board || []).forEach((bf) => m.set(bf.fixtureId, bf.best));
     return m;
-  }, [board, isDemo]);
+  }, [board, isDemo, demoBoard]);
 
   const jogosPorDia = useMemo(() => {
     const m = new Map<string, number>();

@@ -16,7 +16,7 @@ import {
 import { type SaidaPreferida } from '@/utils/futebol-leitura';
 import {
   pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
-  faixaWord, faixaBadgeCls, chancePct,
+  faixaWord, faixaBadgeCls, chancePct, versaoDaJanela,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
@@ -305,7 +305,10 @@ export default function FutebolJogo() {
   // e não tem consulta própria.
   const { ocultos } = useVitrine();
   const { data: realValueRows, isLoading: valorCarregando } = useFutebolFixtureValue(fid);
-  const valueRows = isDemo ? demoFixtureValueRows : realValueRows;
+  // A demonstração herda a escala do produto (#333), derivada das linhas REAIS.
+  const valueRows = isDemo
+    ? demoFixtureValueRows(versaoDaJanela(realValueRows ?? []))
+    : realValueRows;
   const { data: access } = useFutebolAccess();
   const locked = isDemo ? false : !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"

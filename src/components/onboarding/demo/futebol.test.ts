@@ -18,8 +18,8 @@ const faixaEsperada = (score: number) =>
 
 describe('dados de demonstração do futebol', () => {
   it.each([
-    ['board do painel', demoFutebolBoard],
-    ['saídas do jogo', demoFixtureValueRows],
+    ['board do painel', demoFutebolBoard('contexto_v1')],
+    ['saídas do jogo', demoFixtureValueRows('contexto_v1')],
   ])('%s: toda linha declara a escala nova', (_nome, linhas) => {
     for (const linha of linhas) {
       expect(linha.score_versao, `${linha.market} ${linha.outcome}`).toBe('contexto_v1');
@@ -27,9 +27,9 @@ describe('dados de demonstração do futebol', () => {
   });
 
   it.each([
-    ['board do painel', demoFutebolBoard],
-    ['saídas do jogo', demoFixtureValueRows],
-  ])('%s: a faixa bate com as fronteiras 25 e 55', (_nome, linhas) => {
+    ['board do painel', demoFutebolBoard('contexto_v1')],
+    ['saídas do jogo', demoFixtureValueRows('contexto_v1')],
+  ])('%s: a faixa bate com as fronteiras do Score de contexto', (_nome, linhas) => {
     for (const linha of linhas) {
       expect(faixaTone(linha.faixa), `${linha.market} ${linha.outcome} · Score ${linha.score}`)
         .toBe(faixaEsperada(linha.score));
@@ -39,14 +39,14 @@ describe('dados de demonstração do futebol', () => {
   it('o board de exemplo continua mostrando as três faixas', () => {
     // A mistura é o ponto da demonstração: sem ela, o filtro de faixa e a
     // legenda não têm o que ensinar.
-    const faixas = new Set(demoFutebolBoard.map((l) => faixaTone(l.faixa)));
+    const faixas = new Set(demoFutebolBoard('contexto_v1').map((l) => faixaTone(l.faixa)));
     expect([...faixas].sort()).toEqual(['alta', 'baixa', 'media']);
   });
 
   it('nenhuma linha de exemplo carrega componente de preço no Score', () => {
     // Os campos continuam no tipo durante a janela de compatibilidade, mas a
     // demonstração não pode sugerir que preço soma na nota.
-    for (const linha of demoFutebolBoard) {
+    for (const linha of demoFutebolBoard('contexto_v1')) {
       expect(linha.pts_valor, `${linha.market} ${linha.outcome}`).toBe(0);
       expect(linha.pts_corroboracao, `${linha.market} ${linha.outcome}`).toBe(0);
     }

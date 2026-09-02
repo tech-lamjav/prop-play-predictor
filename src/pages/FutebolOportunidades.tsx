@@ -420,7 +420,9 @@ export default function FutebolOportunidades() {
     () => [...filtered].sort(compararOportunidades),
     [filtered]
   );
-  const bestRows: OppLike[] = isDemo ? demoFutebolBoard : realBestRows;
+  // A demonstração herda a escala do produto (#333), derivada do board REAL.
+  const demoBoard = useMemo(() => demoFutebolBoard(versaoDaJanela(rows ?? [])), [rows]);
+  const bestRows: OppLike[] = isDemo ? demoBoard : realBestRows;
   // A lista mostra o que o backend publicou. O corte local por número de Score
   // saiu na virada do Score de contexto (spec #301): a régua era calibrada para
   // a fórmula antiga e aplicá-la à escala nova classificaria errado.
@@ -430,8 +432,8 @@ export default function FutebolOportunidades() {
   // filtro escondesse a faixa Baixa, que é justamente o padrão.
   // Quantas o dia tem e o filtro escondeu. Serve ao estado vazio: sem isto ele
   // diz "não há oportunidade nesse dia" quando o que houve foi um filtro.
-  const escondidasPeloFiltro = (isDemo ? demoFutebolBoard.length : dayRows.length) - bestRows.length;
-  const distribuicao = isDemo ? demoFutebolBoard : dayRows;
+  const escondidasPeloFiltro = (isDemo ? demoBoard.length : dayRows.length) - bestRows.length;
+  const distribuicao = isDemo ? demoBoard : dayRows;
   const nAlta = distribuicao.filter((o) => faixaTone(o.faixa ?? '') === 'alta' && o.faixa != null).length;
   const nMedia = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
   const nBaixa = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;

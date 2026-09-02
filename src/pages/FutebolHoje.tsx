@@ -312,6 +312,11 @@ export default function FutebolHoje() {
   const loading = lFix || l3 || lHist || lReg || lVitrine || lAccess;
   const futebolTour = useOnboardingTour(FUTEBOL_TOUR_ID, { enabled: !loading });
   const isDemo = futebolTour.run; // durante o tour, preenche a tela com exemplo
+  // A demonstração HERDA a escala do produto (#333). Ela é derivada do board
+  // REAL, e não das linhas da própria demo — senão o tour anuncia a régua que
+  // ele mesmo inventou, que era o defeito.
+  const escalaDoProduto = versaoDaJanela(boardRows ?? []);
+  const demoBoard = useMemo(() => demoFutebolBoard(escalaDoProduto), [escalaDoProduto]);
   const locked = isDemo ? false : !access?.unlocked;
 
   const todayStr = brtDateStr(new Date(agora));
@@ -404,10 +409,10 @@ export default function FutebolHoje() {
   const board = useMemo(() => groupBoardByFixture(comNumeros), [comNumeros]);
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
-    if (isDemo) { demoFutebolBoard.forEach((r) => m.set(r.fixture_id, r)); return m; }
+    if (isDemo) { demoBoard.forEach((r) => m.set(r.fixture_id, r)); return m; }
     board.forEach((bf) => m.set(bf.fixtureId, bf.best));
     return m;
-  }, [board, isDemo]);
+  }, [board, isDemo, demoBoard]);
 
   // agenda do dia selecionado (inclui já iniciados, pra contexto da grade)
   const dayGames = useMemo(() => {
@@ -427,7 +432,7 @@ export default function FutebolHoje() {
     () => [...comNumeros].sort((a, b) => compararOportunidades(a, b)),
     [comNumeros],
   );
-  const oppsByFixture = isDemo ? demoFutebolBoard : realOpps;
+  const oppsByFixture = isDemo ? demoBoard : realOpps;
   // O destaque é a primeira em faixa Alta ou Média, e não necessariamente a de
   // maior Score: faixa não é função pura do Score, porque as portas de odd por
   // mercado podem deixar a linha mais bem pontuada fora do destaque. Testar só a
@@ -483,7 +488,7 @@ export default function FutebolHoje() {
     versaoDaJanela(dayRows) === 'contexto_v1' ? 'contexto_v1' : 'legacy',
   );
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
-  const nOpps = isDemo ? demoFutebolBoard.length : dayRows.length;
+  const nOpps = isDemo ? demoBoard.length : dayRows.length;
   const gameList = isDemo ? demoFutebolFixtures : dayGames;
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
   // melhor valor entre as oportunidades realmente exibidas, não o edge bruto de longshots
