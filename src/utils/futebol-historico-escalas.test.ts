@@ -62,7 +62,7 @@ describe('a legenda não afirma número quando as escalas convivem', () => {
   });
 
   it('nas janelas de uma escala só, o número aparece', () => {
-    expect(opcoesDeFaixa('contexto_v1').map((o) => o.selo)).toEqual(['55+', '25+', '<25']);
+    expect(opcoesDeFaixa('contexto_v1').map((o) => o.selo)).toEqual(['60+', '30+', '<30']);
     expect(opcoesDeFaixa('legacy').map((o) => o.selo)).toEqual(['60+', '40+', '<40']);
   });
 });

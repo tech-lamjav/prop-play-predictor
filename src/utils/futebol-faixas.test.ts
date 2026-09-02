@@ -23,23 +23,23 @@ import {
 
 describe('fronteiras da faixa', () => {
   it('pertencem à faixa de cima', () => {
-    // Uma nota exatamente 25 é Média; exatamente 55 é Alta.
-    expect(FAIXA_MEDIA_MIN).toBe(25);
-    expect(FAIXA_ALTA_MIN).toBe(55);
+    // Uma nota exatamente 30 é Média; exatamente 60 é Alta.
+    expect(FAIXA_MEDIA_MIN).toBe(30);
+    expect(FAIXA_ALTA_MIN).toBe(60);
   });
 
   it('a legenda descreve as três faixas sem furo nem sobreposição', () => {
     const [alta, media, baixa] = opcoesDeFaixa('contexto_v1');
-    expect(alta).toEqual({ tone: 'alta', rotulo: 'Alta', selo: '55+' });
-    expect(media).toEqual({ tone: 'media', rotulo: 'Média', selo: '25+' });
-    expect(baixa).toEqual({ tone: 'baixa', rotulo: 'Baixa', selo: '<25' });
+    expect(alta).toEqual({ tone: 'alta', rotulo: 'Alta', selo: '60+' });
+    expect(media).toEqual({ tone: 'media', rotulo: 'Média', selo: '30+' });
+    expect(baixa).toEqual({ tone: 'baixa', rotulo: 'Baixa', selo: '<30' });
   });
 
   it('na escala antiga a legenda mostra os números antigos', () => {
     // Entre esta entrega e a troca do mart o board ainda vem em legacy. Anunciar
-    // 55+ ali classificaria errado: uma nota legacy de 57 é Média.
+    // 60+ ali classificaria errado: uma nota legacy de 57 é Média.
     expect(fronteirasDoScore('legacy')).toEqual({ media: 40, alta: 60 });
-    expect(fronteirasDoScore('contexto_v1')).toEqual({ media: 25, alta: 55 });
+    expect(fronteirasDoScore('contexto_v1')).toEqual({ media: 30, alta: 60 });
     expect(opcoesDeFaixa('legacy').map((o) => o.selo)).toEqual(['60+', '40+', '<40']);
   });
 });
