@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
-import { useFutebolFixturePremissas, useFutebolFixtureNumeros, useVitrine } from '@/hooks/use-futebol-data';
+import { useFutebolFixturePremissas, useFutebolFixtureNumeros, useFutebolFixtureReasonContract, useVitrine } from '@/hooks/use-futebol-data';
 import type {
   FutebolFixtureValueRow,
   FutebolInjury,
@@ -15,7 +15,7 @@ import {
 } from '@/utils/futebol-premissas';
 import { ladoDaSaida, manchete } from '@/utils/futebol-evidencias';
 import { melhorLeitura, resumoDosMercados, type MercadoResumo } from '@/utils/futebol-leitura';
-import { premissasAcesasDaLeitura } from '@/utils/futebol-motivos';
+import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { fmtDayShort, isFinished } from '@/utils/futebol-datas';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
 import { ehDestaque, ehFaixaAlta, faixaWord } from '@/utils/futebol-score';
@@ -74,27 +74,46 @@ export function HeroLeitura({
   retro?: string | null;
 }) {
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
+  // O contrato de motivos, a mesma fonte da home e da bancada (#334). O
+  // isLoading importa: sem ele a tela não distingue 'ainda carregando' de
+  // 'carregou e não tem motivo', e conclui cedo demais.
+  const { data: contrato, isLoading: contratoCarregando } = useFutebolFixtureReasonContract(jogo.fixtureId);
   if (!top) return null;
   const lado = ladoDaSaida(top.mercado.slug, top.candidato.outcome);
   const pick = outcomeLabel(top.candidato, jogo.home, jogo.away);
 
-  // Os porquês, montados pela mesma função que o painel da lista usa (#332).
-  // Os parâmetros preservam exatamente o que esta tela fazia: corte em três,
-  // premissa de peso zero incluída, e sem cair no histórico do time.
-  const porques = premissasAcesasDaLeitura(
+  // A resposta a "por que essa aposta", da mesma fonte que a home e a bancada
+  // usam (#334): com preço, quem agrupa é o backend; sem preço, seguem as
+  // premissas acesas, e o rótulo muda para não prometer aposta onde não há.
+  const explicacao = explicacaoDaLeitura(
     {
       mercado: top.mercado.slug,
-      acesas: top.candidato.acesas,
+      candidato: top.candidato,
+      temPreco: top.value != null,
+      contrato,
       numeros,
       historico: undefined,
       lado,
-      linha: null,
     },
+    // Sem `maxContra`: esta tela é a leitura rápida e mostra só o lado
+    // positivo. Os dois lados vivem na bancada de mercados.
     { max: 3, incluirPesoZero: true },
-  ).map(({ premissa, evidencia }) =>
+  );
+
+  // Esta tela mostra só o lado positivo: ela é a leitura rápida, e os dois lados
+  // vivem na bancada de mercados.
+  const porques = explicacao.itens.map(({ premissa, evidencia }) =>
     evidencia
       ? `${premissa.label}: ${evidencia.texto.charAt(0).toLowerCase()}${evidencia.texto.slice(1)}.`
       : `${premissa.label}.`,
+  );
+
+  // Só o caminho do contrato espera rede. Sem preço, os itens vêm das premissas
+  // que já estão em mão, e não há o que carregar.
+  const estadoDoBloco = estadoDosMotivos(
+    explicacao.itens,
+    explicacao.contra,
+    top.value != null && contratoCarregando,
   );
 
   const fim = isFinished(jogo.statusShort);
@@ -166,14 +185,31 @@ export function HeroLeitura({
           </div>
         )}
 
-        {!compacto && porques.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-white/15 flex flex-col gap-2">
-            {porques.map((t) => (
-              <div key={t} className="flex gap-2 items-start text-[12.5px] leading-relaxed text-white/80">
-                <span className="w-[5px] h-[5px] rounded-full mt-[7px] shrink-0" style={{ background: '#fbbf24' }} />
-                <span>{t}</span>
+        {/* O rótulo carrega a diferença que a fonte faz: com preço é "Por quê",
+            e é o backend quem agrupou; sem preço é "O que o jogo mostra", e ali
+            não há aposta a favor de quê. Um bloco só, e o rótulo muda (#334). */}
+        {!compacto && estadoDoBloco !== 'sem_motivos' && (
+          <div className="mt-4 pt-4 border-t border-white/15">
+            <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-white/50">
+              {explicacao.rotulo}
+            </div>
+            {estadoDoBloco === 'carregando' ? (
+              // Esqueleto, e não o bloco vazio: enquanto o contrato não chega, a
+              // tela não conclui que não há motivo.
+              <div className="mt-2.5 flex flex-col gap-2" aria-hidden>
+                <Skeleton className="h-[18px] w-full bg-white/15" />
+                <Skeleton className="h-[18px] w-4/5 bg-white/15" />
               </div>
-            ))}
+            ) : (
+              <div className="mt-2.5 flex flex-col gap-2">
+                {porques.map((t) => (
+                  <div key={t} className="flex gap-2 items-start text-[12.5px] leading-relaxed text-white/80">
+                    <span className="w-[5px] h-[5px] rounded-full mt-[7px] shrink-0" style={{ background: '#fbbf24' }} />
+                    <span>{t}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

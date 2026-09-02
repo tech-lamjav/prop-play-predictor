@@ -9,14 +9,15 @@ import {
   useFutebolFixtureNumeros,
   useFutebolFixtureInjuries,
   useFutebolFixtureHistorico,
+  useFutebolFixtureReasonContract,
   useVitrine,
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { chancePct, pickLabel } from '@/utils/futebol-score';
 import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
-import { contaQueValem, premissaDe, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
+import { contaQueValem, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
 import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
-import { premissasAcesasDaLeitura } from '@/utils/futebol-motivos';
+import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
@@ -103,6 +104,11 @@ export function JogoResumoPanel({
   const numeros = demo?.numeros ?? numerosReais;
   const { data: injuries } = useFutebolFixtureInjuries(fixture.fixture_id);
   const { data: historico } = useFutebolFixtureHistorico(fixture.fixture_id);
+  // O contrato de motivos (#334). No tour os dados são de mentira, então não há
+  // o que buscar.
+  const { data: contrato, isLoading: contratoCarregando } = useFutebolFixtureReasonContract(
+    demo ? undefined : fixture.fixture_id,
+  );
 
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
@@ -142,31 +148,53 @@ export function JogoResumoPanel({
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
 
-  // Os porquês, montados pela mesma função que o resumo do jogo usa (#332).
-  // Os parâmetros preservam exatamente o que esta tela fazia: corte em quatro,
-  // premissa de peso zero excluída, e com fallback para o histórico do time.
-  const porques = premissasAcesasDaLeitura(
+  // A resposta a "por que essa aposta", da mesma fonte que a home, o resumo do
+  // jogo e a bancada usam (#334). Com preço quem agrupa é o backend; sem preço
+  // seguem as premissas acesas, e o rótulo muda.
+  const explicacao = explicacaoDaLeitura(
     {
       mercado: mercadoLeitura ?? '',
-      acesas: cand?.acesas,
+      candidato: cand,
+      temPreco: !!best,
+      contrato,
       numeros,
       historico,
       lado,
-      linha: cand?.line_value ?? null,
     },
-    { max: 4, incluirPesoZero: false },
+    { max: 4, incluirPesoZero: false, maxContra: 2 },
+  );
+  const porques = explicacao.itens;
+
+  // O contrato entra no que a tela espera antes de concluir. Sem isto o painel
+  // afirmava "0 premissas a favor" enquanto a consulta voava — o mesmo defeito
+  // que o card da home levou um ticket inteiro para consertar.
+  const estadoDaExplicacao = estadoDosMotivos(
+    explicacao.itens,
+    explicacao.contra,
+    !demo && !!best && contratoCarregando,
   );
 
-  // O que pesou contra: as premissas do lado que NÃO aconteceram.
-  const contra = topo && cand && mercadoLeitura
-    ? (() => {
-        const acesas = new Set(cand.acesas);
-        const faltou = topo.mercado.premissas
-          .filter((p) => !acesas.has(p.slug) && p.peso != null && p.peso > 0)
-          .slice(0, 2)
-          .map((p) => rotuloPremissa(p, lado, true).toLowerCase());
-        return faltou.length ? `${faltou.length} ${faltou.length === 1 ? 'pesou' : 'pesaram'} contra: ${faltou.join(' e ')}.` : null;
-      })()
+  // Com preço são motivos, e motivo tem lado. Sem preço são premissas acesas, e
+  // não há lado — o sufixo não pode prometer o que o rótulo acabou de tirar.
+  const sufixoDaExplicacao =
+    explicacao.rotulo === 'Por quê'
+      ? explicacao.total === 1
+        ? 'premissa a favor'
+        : 'premissas a favor'
+      : explicacao.total === 1
+        ? 'premissa acesa'
+        : 'premissas acesas';
+
+  // O que pesou contra, AGORA DO CONTRATO.
+  //
+  // Antes era fabricado por negação: pegava as premissas do mercado que não
+  // acenderam e negava cada uma, sem filtrar se ela se aplica à saída escolhida.
+  // Num Over isso listava como contra uma premissa que só existe para o Under —
+  // o defeito que o aceite da virada proíbe com esse exemplo literal.
+  const contra = explicacao.contra.length
+    ? `${explicacao.contra.length} ${explicacao.contra.length === 1 ? 'pesou' : 'pesaram'} contra: ${explicacao.contra
+        .map(({ premissa }) => rotuloPremissa(premissa, lado, true).toLowerCase())
+        .join(' e ')}.`
     : null;
 
   const casa = numeros?.find((n) => n.side === 'home');
@@ -285,8 +313,19 @@ export function JogoResumoPanel({
         {temLeitura ? (
           <div>
             <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
-              Por que · {nValem} {nValem === 1 ? 'premissa a favor' : 'premissas a favor'}
+              {/* O sufixo acompanha o rótulo. Dizer "a favor" sob "O que o jogo
+                  mostra" seria a mesma promessa que o rótulo acabou de tirar:
+                  sem preço não há aposta a favor de quê. */}
+              {explicacao.rotulo} · {explicacao.total} {sufixoDaExplicacao}
             </div>
+            {/* Enquanto o contrato voa, esqueleto — e não a lista vazia, que
+                afirmaria "não há motivo" antes de saber. */}
+            {estadoDaExplicacao === 'carregando' && (
+              <div className="mt-2.5 flex flex-col gap-2.5" aria-hidden>
+                <Skeleton className="h-[16px] w-full" />
+                <Skeleton className="h-[16px] w-4/5" />
+              </div>
+            )}
             <div className="mt-2.5 flex flex-col gap-2.5">
               {porques.map(({ premissa: p, evidencia: ev }) => (
                 <div key={p.slug} className="flex gap-2.5 items-start">

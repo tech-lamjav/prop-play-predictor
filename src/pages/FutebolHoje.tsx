@@ -28,9 +28,9 @@ import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished } fro
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
-import { estadoDosMotivos, separarMotivosDoContrato, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
+import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
-import { premissaDe, rotuloPremissa } from '@/utils/futebol-premissas';
+import { rotuloPremissa } from '@/utils/futebol-premissas';
 import { useNow } from '@/hooks/use-now';
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
 const DAY_WINDOW = 8;
@@ -443,22 +443,39 @@ export default function FutebolHoje() {
     useFutebolFixtureReasonContract(heroOpp?.fixture_id);
   const { favor: heroFavor, contra: heroContra } = useMemo(() => {
     const vazio = { favor: [] as Motivo[], contra: [] as Motivo[] };
-    if (!heroOpp || !contratoMotivos?.length) return vazio;
-    const linha = contratoMotivos.find(
-      (r) => r.market === heroOpp.market && r.outcome === heroOpp.outcome
-        && (r.line_value ?? null) === (heroOpp.line_value ?? null),
-    );
-    if (!linha) return vazio;
+    if (!heroOpp) return vazio;
     const lado = ladoDaSaida(heroOpp.market, heroOpp.outcome);
-    const traduzir = (itens: typeof linha.favor, negativo: boolean) =>
-      separarMotivosDoContrato(itens)
-        .slugsDePremissas.map((slug) => ({ slug, prem: premissaDe(heroOpp.market, slug) }))
-        .filter((x): x is { slug: string; prem: NonNullable<typeof x.prem> } => x.prem != null)
-        .map(({ slug, prem }) => ({ slug, texto: rotuloPremissa(prem, lado, negativo) }));
-    return {
+
+    // A MESMA função que o resumo do jogo e o painel da lista usam (#334). Antes
+    // esta tela casava a linha do contrato por conta própria, com `===` estrito
+    // — e a linha vem em float, então ela podia não casar e cair no texto de
+    // fallback em vez dos motivos. Também não ordenava por peso nem excluía
+    // premissa de peso zero, então as três telas diziam coisas diferentes sobre
+    // a mesma oportunidade.
+    const explicacao = explicacaoDaLeitura(
+      {
+        mercado: heroOpp.market,
+        candidato: heroOpp,
+        // O destaque da home é sempre uma oportunidade publicada, logo tem preço.
+        temPreco: true,
+        contrato: contratoMotivos,
+        numeros: undefined,
+        historico: undefined,
+        lado,
+      },
       // Três e duas: o card tem altura fixa e a leitura tem que caber de relance.
-      favor: traduzir(linha.favor, false).slice(0, 3),
-      contra: traduzir(linha.contra, true).slice(0, 2),
+      { max: 3, incluirPesoZero: false, maxContra: 2 },
+    );
+
+    const traduzir = (itens: typeof explicacao.itens, negativo: boolean) =>
+      itens.map(({ premissa }) => ({
+        slug: premissa.slug,
+        texto: rotuloPremissa(premissa, lado, negativo),
+      }));
+
+    return {
+      favor: traduzir(explicacao.itens, false),
+      contra: traduzir(explicacao.contra, true),
     };
   }, [heroOpp, contratoMotivos]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
