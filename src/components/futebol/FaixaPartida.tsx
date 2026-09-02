@@ -3,8 +3,8 @@ import { MapPin } from 'lucide-react';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { Crest } from '@/components/futebol/Crest';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
-import { useFutebolFixturePremissas } from '@/hooks/use-futebol-data';
-import type { FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
+
+import type { FutebolFixturePremissas, FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
 import { melhorLeitura, resumoDosMercados, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { rotuloDaFaixa } from '@/utils/futebol-score';
 import { outcomeLabel, contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
@@ -47,7 +47,9 @@ function Forma({ form, alinhar }: { form: FutebolFormResult[]; alinhar?: 'fim' }
 
 export function FaixaPartida({
   jogo,
+  premissas,
   valueRows,
+  leituraCarregando,
   locked,
   rodada,
   estadio,
@@ -60,7 +62,17 @@ export function FaixaPartida({
   preferida,
 }: {
   jogo: JogoInfo;
+  /** As premissas do jogo. Vêm da página: ela já faz essa query e é a dona do estado. */
+  premissas: FutebolFixturePremissas[] | null | undefined;
   valueRows: FutebolFixtureValueRow[] | null | undefined;
+  /**
+   * Alguma das duas fontes da leitura ainda está em voo.
+   *
+   * "Sem leitura ainda" é uma conclusão: só cabe quando as duas chegaram e
+   * nenhuma sustenta uma linha. Enquanto carregam, a faixa mostra o esqueleto,
+   * senão a tela afirma um vazio que ela ainda não sabe se é verdade.
+   */
+  leituraCarregando: boolean;
   locked: boolean;
   rodada: string;
   estadio: string | null;
@@ -74,8 +86,7 @@ export function FaixaPartida({
   /** A saída que o usuário clicou em Oportunidades, quando ele veio de lá. */
   preferida?: SaidaPreferida | null;
 }) {
-  const { data: rows } = useFutebolFixturePremissas(jogo.fixtureId);
-  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, preferida), [rows, valueRows, preferida]);
+  const resumos = useMemo(() => resumoDosMercados(premissas, valueRows, preferida), [premissas, valueRows, preferida]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
   // A faixa conhecia dois estados, encerrado e "não começou", então o jogo EM
@@ -175,6 +186,22 @@ export function FaixaPartida({
             Funcionava por acaso, porque o CTA chama stopPropagation. O Score ficou
             fora da área clicável de propósito: ele é leitura, não controle, e é o
             vizinho do botão de registrar. */}
+        {leituraCarregando ? (
+          // O esqueleto ocupa a mesma caixa da leitura pronta, para a faixa não
+          // saltar de altura quando o dado chega. Tons de branco, não o Skeleton
+          // padrão: aqui o fundo é o forest, e o cinza dele sumiria.
+          <div data-testid="faixa-leitura-carregando" className="flex items-center gap-5 min-w-0" aria-busy="true">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-white/45">Melhor leitura do jogo</div>
+              <div className="mt-2 h-[26px] w-[68%] rounded bg-white/15 animate-pulse" />
+              <div className="mt-3 h-[16px] w-[45%] rounded bg-white/10 animate-pulse" />
+            </div>
+            <div className="text-center shrink-0">
+              <div className="h-[44px] w-[62px] rounded bg-white/15 animate-pulse" />
+              <div className="mt-2 h-[10px] w-[62px] rounded bg-white/10 animate-pulse" />
+            </div>
+          </div>
+        ) : (
         <div className="flex items-center gap-5 min-w-0">
           <button
             type="button"
@@ -249,6 +276,7 @@ export function FaixaPartida({
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );
