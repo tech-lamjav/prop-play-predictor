@@ -122,6 +122,39 @@ const CRITERIOS: Record<string, Criterio> = {
     unidade: 'gols sofridos por jogo, somados',
     parcelas: 2,
   },
+  // ⚠️ MARGEM ZERO, e não é esquecimento: `ga_comb >= line_value`, sem margem
+  // nenhuma. É a única das cinco assim, e por isso é a única em que "fica acima
+  // da linha" é uma frase verdadeira. A tela não desenha a marca da linha nela,
+  // porque corte e linha são o mesmo traço.
+  'goals_over_under:defesas_vazaveis': {
+    forma: 'media_combinada',
+    margem: 0,
+    sentido: 'acima',
+    unidade: 'gols sofridos por jogo, somados',
+    parcelas: 2,
+  },
+  // A margem mais larga das cinco: meio gol acima da linha.
+  'goals_over_under:ataque_combinado': {
+    forma: 'media_combinada',
+    margem: 0.5,
+    sentido: 'acima',
+    unidade: 'gols marcados por jogo, somados',
+    parcelas: 2,
+  },
+  'goals_over_under:xg_combinado_alto': {
+    forma: 'media_combinada',
+    margem: 0.3,
+    sentido: 'acima',
+    unidade: 'gols esperados por jogo, somados',
+    parcelas: 2,
+  },
+  'goals_over_under:xg_baixo_combinado': {
+    forma: 'media_combinada',
+    margem: -0.3,
+    sentido: 'abaixo',
+    unidade: 'gols esperados por jogo, somados',
+    parcelas: 2,
+  },
 };
 
 /** Arredonda para duas casas: soma de médias em ponto flutuante rende 2,9500000000000004. */

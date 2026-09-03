@@ -6,7 +6,7 @@ import {
   temCriterio,
 } from './futebol-criterio';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
-import CASOS_DE_PRODUCAO from './__fixtures__/futebol-defesas-firmes-producao.json';
+import CASOS_CAPTURADOS from './__fixtures__/futebol-familia-de-media-casos.json';
 
 // ============================================================================
 // A premissa presta contas do modelo (issue #353, spec #349)
@@ -226,54 +226,146 @@ describe('a guarda de divergência acusa quando a nossa conta discorda do mart',
   });
 });
 
+
 // ============================================================================
-// Casos capturados de produção
+// Casos capturados, replayados contra a derivação
 // ============================================================================
-// Dez linhas reais do mart de dev (int_futebol_premissas_ou) com o histórico que
-// a RPC 117 devolve para elas, capturados em 03/09/2026. Duas delas estão na
-// FAIXA entre o corte e a linha — Lecce x Juventus com 2,50 numa linha 2,5, e
-// Parma x AS Roma com 3,25 numa linha 3,5 —, que é exatamente o caso em que a
-// tela antiga afirmava o contrário do modelo.
+// 17 linhas reais com o histórico da janela da premissa e o booleano que o mart
+// publicou, capturados em 03/09/2026:
+//
+//   · `producao` — 7 linhas do mart de produção, com os CINCO vereditos de cada
+//     uma. O histórico veio de uma consulta com o corpo da migration 117, que
+//     ainda não estava aplicada lá.
+//   · `staging` — 10 linhas do mart de staging, só `defesas_firmes`, capturadas
+//     pela RPC 117. Duas delas estão na FAIXA entre o corte e a linha — Lecce x
+//     Juventus com 2,50 numa linha 2,5, e Parma x AS Roma com 3,25 numa linha
+//     3,5 —, que é o caso em que a tela antiga afirmava o contrário do modelo.
+//
+// ⚠️ Um caso de staging divergiu na captura e ficou de FORA, e o motivo importa:
+// o mart de staging pode ser mais velho que o `fact_fixtures` dele, e aí a janela
+// que a tela mede inclui partidas que o mart não viu. Não é defeito da derivação
+// — contra produção, os 35 pares (7 linhas × 5 premissas) reproduzem. É por isso
+// que a guarda em execução existe: um evento por divergência, para separar "a
+// derivação envelheceu" de "o mart está atrás".
 //
 // Se este bloco reprovar, a derivação parou de reproduzir o modelo. O conserto é
-// na derivação — ou, se o modelo mudou, é recapturar os casos e dizer o que
-// mudou. Nunca afrouxar a asserção.
+// na derivação — ou, se o modelo mudou, é recapturar e dizer o que mudou. Nunca
+// afrouxar a asserção.
 // ============================================================================
 
-interface CasoDeProducao {
+interface CasoCapturado {
+  origem: 'producao' | 'staging';
   fixture_id: number;
   confronto: string;
   linha: number;
-  defesas_firmes: boolean;
+  /** Os vereditos que o mart publicou, por slug. Só os que a captura trouxe. */
+  veredito: Partial<Record<string, boolean>>;
   jogos: FutebolFixtureHistorico[];
 }
 
-const CASOS = CASOS_DE_PRODUCAO as unknown as CasoDeProducao[];
+const CASOS = CASOS_CAPTURADOS as unknown as CasoCapturado[];
+
+/** Cada par (caso, premissa) que o mart declarou, achatado para o `it.each`. */
+const PARES = CASOS.flatMap((caso) =>
+  Object.entries(caso.veredito).map(([slug, doMart]) => ({ caso, slug, doMart: doMart! })),
+);
 
 describe('a derivação reproduz o veredito do mart', () => {
-  it('há casos dos dois lados, para o teste não passar por um só', () => {
-    expect(CASOS.filter((c) => c.defesas_firmes).length).toBeGreaterThan(0);
-    expect(CASOS.filter((c) => !c.defesas_firmes).length).toBeGreaterThan(0);
+  it('as cinco premissas da família têm caso dos DOIS lados', () => {
+    // Um bloco que só visse `false` nas cinco passaria com a derivação invertida.
+    for (const slug of [
+      'defesas_firmes',
+      'defesas_vazaveis',
+      'ataque_combinado',
+      'xg_combinado_alto',
+      'xg_baixo_combinado',
+    ]) {
+      const meus = PARES.filter((x) => x.slug === slug);
+      expect(meus.filter((x) => x.doMart).length, `${slug} aceso`).toBeGreaterThan(0);
+      expect(meus.filter((x) => !x.doMart).length, `${slug} apagado`).toBeGreaterThan(0);
+    }
   });
 
-  it.each(CASOS.map((c) => [`${c.confronto} · linha ${c.linha}`, c] as const))(
-    '%s',
-    (_nome, caso) => {
-      const p = prestacaoDaPremissa('goals_over_under', 'defesas_firmes', caso.jogos, 'home', caso.linha);
+  it.each(
+    PARES.map((x) => [`${x.slug} · ${x.caso.confronto} · linha ${x.caso.linha} (${x.caso.origem})`, x] as const),
+  )('%s', (_nome, { caso, slug, doMart }) => {
+    const p = prestacaoDaPremissa('goals_over_under', slug, caso.jogos, 'home', caso.linha);
 
-      expect(p).not.toBeNull();
-      expect(p!.cruzou).toBe(caso.defesas_firmes);
-      expect(divergenciaDaPrestacao(p!, caso.defesas_firmes)).toBeNull();
-    },
-  );
+    expect(p).not.toBeNull();
+    expect(p!.cruzou).toBe(doMart);
+    expect(divergenciaDaPrestacao(p!, doMart)).toBeNull();
+  });
 
-  it('os dois casos da faixa não acendem, apesar de ficarem abaixo da linha', () => {
-    const naFaixa = CASOS.filter((c) => {
-      const p = prestacaoDaPremissa('goals_over_under', 'defesas_firmes', c.jogos, 'home', c.linha);
-      return p != null && p.insumo > p.corte && p.insumo <= p.linha;
+  it('os casos na faixa entre o corte e a linha não acendem', () => {
+    const naFaixa = PARES.filter(({ caso, slug }) => {
+      const p = prestacaoDaPremissa('goals_over_under', slug, caso.jogos, 'home', caso.linha);
+      return p != null && p.sentido === 'abaixo' && p.insumo > p.corte && p.insumo <= p.linha;
     });
 
     expect(naFaixa.length).toBeGreaterThanOrEqual(2);
-    for (const c of naFaixa) expect(c.defesas_firmes).toBe(false);
+    for (const x of naFaixa) expect(x.doMart).toBe(false);
+  });
+});
+
+describe('as margens das cinco são as do modelo', () => {
+  // Uma tabela em vez de cinco testes: a margem é a única coisa que muda entre
+  // elas, e vê-las lado a lado é o que faz a de margem ZERO saltar aos olhos.
+  const hist = (valor: number, campo: 'gols_contra' | 'gols_pro' | 'xg'): FutebolFixtureHistorico[] => [
+    ...[1, 2].map((i) =>
+      jogo({ side: 'home', team_id: 1, team_name: 'Casa', ordem: i, past_fixture_id: i, em_casa: true, [campo]: valor }),
+    ),
+    ...[1, 2].map((i) =>
+      jogo({ side: 'away', team_id: 2, team_name: 'Fora', ordem: i, past_fixture_id: 10 + i, em_casa: false, [campo]: valor }),
+    ),
+  ];
+
+  it.each([
+    ['defesas_firmes', 'gols_contra' as const, -0.3, 'abaixo' as const],
+    ['defesas_vazaveis', 'gols_contra' as const, 0, 'acima' as const],
+    ['ataque_combinado', 'gols_pro' as const, 0.5, 'acima' as const],
+    ['xg_combinado_alto', 'xg' as const, 0.3, 'acima' as const],
+    ['xg_baixo_combinado', 'xg' as const, -0.3, 'abaixo' as const],
+  ])('%s: margem %s, acende %s do corte', (slug, campo, margem, sentido) => {
+    const p = prestacaoDaPremissa('goals_over_under', slug, hist(1, campo), 'home', 2.5)!;
+
+    expect(p.margem).toBe(margem);
+    expect(p.sentido).toBe(sentido);
+    expect(p.corte).toBe(2.5 + margem);
+  });
+
+  it('a que não tem margem compara contra a linha crua', () => {
+    // `ga_comb >= line_value`. É a única das cinco em que "fica acima da linha" é
+    // uma frase verdadeira, e a tela precisa poder dizer isso sem ressalva.
+    const p = prestacaoDaPremissa('goals_over_under', 'defesas_vazaveis', hist(1.25, 'gols_contra'), 'home', 2.5)!;
+
+    expect(p.corte).toBe(p.linha);
+    expect(p.insumo).toBe(2.5);
+    expect(p.cruzou).toBe(true);
+  });
+
+  it('o sentido de cada uma é o seu: as mesmas médias dão vereditos opostos', () => {
+    // 1 + 1 = 2,0 numa linha 2,5. Para o Under isso é defesa firme (2,0 <= 2,2);
+    // para o Over, não é defesa vazável (2,0 < 2,5). Uma derivação que ignorasse
+    // o sentido acenderia ou apagaria as duas juntas.
+    const h = hist(1, 'gols_contra');
+
+    expect(prestacaoDaPremissa('goals_over_under', 'defesas_firmes', h, 'home', 2.5)!.cruzou).toBe(true);
+    expect(prestacaoDaPremissa('goals_over_under', 'defesas_vazaveis', h, 'home', 2.5)!.cruzou).toBe(false);
+  });
+
+  it('o xG não recorta por mando, e as médias de gol recortam', () => {
+    // `xg_comb` sai do spine, sem recorte; `ga_comb` soma o mandante em casa com
+    // o visitante fora. Um histórico com mandos misturados separa os dois casos.
+    const misto: FutebolFixtureHistorico[] = [
+      jogo({ side: 'home', team_id: 1, team_name: 'Casa', ordem: 1, past_fixture_id: 1, em_casa: true, gols_contra: 2, xg: 2 }),
+      jogo({ side: 'home', team_id: 1, team_name: 'Casa', ordem: 2, past_fixture_id: 2, em_casa: false, gols_contra: 0, xg: 0 }),
+      jogo({ side: 'away', team_id: 2, team_name: 'Fora', ordem: 1, past_fixture_id: 11, em_casa: false, gols_contra: 1, xg: 1 }),
+      jogo({ side: 'away', team_id: 2, team_name: 'Fora', ordem: 2, past_fixture_id: 12, em_casa: true, gols_contra: 1, xg: 1 }),
+    ];
+
+    // Gols sofridos: só o jogo em casa do mandante (2) e o de fora do visitante (1).
+    expect(prestacaoDaPremissa('goals_over_under', 'defesas_firmes', misto, 'home', 3.25)!.insumo).toBe(3);
+    // xG: os dois jogos de cada, ou seja 1,0 + 1,0.
+    expect(prestacaoDaPremissa('goals_over_under', 'xg_baixo_combinado', misto, 'home', 3.25)!.insumo).toBe(2);
   });
 });
