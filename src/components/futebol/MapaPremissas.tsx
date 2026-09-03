@@ -25,6 +25,7 @@ import {
   type Evidencia,
   type Tile as TileT,
 } from '@/utils/futebol-evidencias';
+import { estadoDaPremissa } from '@/utils/futebol-estado-da-premissa';
 import { fmtDayShort } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
@@ -265,8 +266,21 @@ function PainelMercado({
   const passa = nValem >= PORTA_PREMISSAS;
 
   const ordena = (a: Premissa, b: Premissa) => (b.peso ?? 0) - (a.peso ?? 0);
-  const acesas = visiveis.filter((p) => acesasSet.has(p.slug)).sort(ordena);
-  const apagadas = visiveis.filter((p) => !acesasSet.has(p.slug)).sort(ordena);
+  // O agrupamento sai do vocabulário dos cinco estados (#357), e não de um
+  // `acesasSet.has` solto: era assim que "não aconteceu neste jogo" e "não se
+  // aplica a esta saída" viravam a mesma pilha de premissas apagadas.
+  //
+  // `nao_se_aplica` não pode aparecer aqui, porque `visiveis` já é do lado da
+  // saída — e é isso que o `else` embaixo afirma, em vez de silenciar.
+  const estadoDe = (p: Premissa) =>
+    estadoDaPremissa({
+      premissa: p,
+      saida: atual,
+      acesas: atual.acesas,
+      temNumero: evidenciaDe(p.slug, numeros, lado) != null,
+    });
+  const acesas = visiveis.filter((p) => estadoDe(p) !== 'nao_atingiu_o_corte').sort(ordena);
+  const apagadas = visiveis.filter((p) => estadoDe(p) === 'nao_atingiu_o_corte').sort(ordena);
 
   const penAtivas = (atual.penalidades ?? [])
     .filter((s) => !PREMISSAS_OCULTAS.has(s))
@@ -428,8 +442,12 @@ function PainelMercado({
             onClick={() => setVerApagadas((v) => !v)}
             className="w-full px-5 py-3 flex items-center justify-between gap-2 text-left hover:bg-canvas-2 transition"
           >
+            {/* "não atingiu o corte", e não "não bateu" nem "não aconteceu"
+                (#357): o fato pode ter acontecido e ainda assim ficar aquém — no
+                clean sheets com 38%, os jogos sem sofrer gol existiram. */}
             <span className="text-[12px] font-semibold text-ink-2">
-              {apagadas.length} {apagadas.length === 1 ? 'premissa não bateu' : 'premissas não bateram'}
+              {apagadas.length} {apagadas.length === 1 ? 'premissa não atingiu' : 'premissas não atingiram'} o
+              corte
             </span>
             <ChevronDown className={`w-4 h-4 text-ink-3 transition-transform ${verApagadas ? 'rotate-180' : ''}`} />
           </button>

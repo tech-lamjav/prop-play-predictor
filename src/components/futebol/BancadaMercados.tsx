@@ -37,6 +37,7 @@ import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
+import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import { useGuardaDeDivergencia } from '@/hooks/use-guarda-de-divergencia';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
@@ -49,11 +50,20 @@ import type { JogoInfo } from './JogoResumo';
  * linhas (gols e handicap) ou as saídas (1X2, ambos marcam, dupla chance), os dois
  * lados comparados, o veredito em uma frase, e as premissas com peso em PALAVRA.
  *
- * As apagadas vêm em três grupos que nunca se misturam (a distinção é do
- * protótipo, e é a mais honesta que já tivemos aqui):
- *   · não aconteceu neste jogo        (peso > 0, só não bateu)
- *   · não conta neste mercado         (peso 0 — o preço já cobra)
- *   · não avaliada                    (mercado sem calibragem: BTTS e dupla chance)
+ * Os ESTADOS de uma premissa são cinco e nunca se misturam (#357, e o vocabulário
+ * mora em futebol-estado-da-premissa.ts):
+ *   · acesa                    o insumo cruzou o corte
+ *   · não atingiu o corte      tem insumo, foi avaliada, ficou aquém
+ *   · não se aplica            é do outro lado da saída, ou de outro mercado
+ *   · sem dado                 faltou insumo, o Motor não avaliou (vem do contador)
+ *   · sem número para conferir acendeu, e o front não tem o insumo para mostrar
+ *
+ * ⚠️ "Não aconteceu neste jogo" era o rótulo do segundo, e era falso: no clean
+ * sheets com 38%, os jogos sem sofrer gol ACONTECERAM — só ficaram abaixo do
+ * corte de 40%. Mesma família de erro do rótulo "Contra".
+ *
+ * Corta o peso por cima disso: peso 0 não é estado, é quanto ela vale. A premissa
+ * de peso zero aparece, com o selo "já na odd" dizendo por que não soma.
  *
  * Score/odd/chance/edge são REAIS (get_futebol_fixture_value) e só existem com
  * odds coletadas. Sem odds, a bancada vive das premissas e diz "sem preço ainda".
@@ -461,6 +471,7 @@ export function BancadaMercados({
     evidenciaDe(slug, numeros, ladoPrincipal, acesa, linha) ??
     evidenciaDoHistorico(slug, historico, ladoPrincipal, linha);
 
+
   // A premissa aparece se ela CONTA para o Score, ou se, mesmo sem contar, existe
   // número para o assinante conferir.
   //
@@ -472,16 +483,23 @@ export function BancadaMercados({
   // tirou da conta e que continua descrevendo o jogo — o selo "já na odd" é quem
   // conta essa parte.
   //
-  // O que segue de fora é o que não tem o que mostrar: a premissa de ritmo, cujo
-  // insumo não existe em nada que o front alcance (#348). Ali a linha seria "jogo
-  // de ritmo alto · não conta · sem número para conferir", que levanta a pergunta
-  // "de onde veio isso?" sem ter resposta na tela.
+  // O que segue de fora é a premissa que não conta E não tem número: hoje só a de
+  // ritmo, cujo insumo não existe em nada que o front alcance (#348). Acesa, ela
+  // está no estado SEM NÚMERO PARA CONFERIR; apagada, a linha seria "jogo de ritmo
+  // alto · não conta" sem nada embaixo. Nos dois casos ela levanta a pergunta "de
+  // onde veio isso?" sem ter resposta na tela, e por decisão de produto fica fora
+  // enquanto a #348 não servir o insumo.
+  //
+  // ⚠️ A regra olha o NÚMERO, e não o estado: `sem número para conferir` é
+  // definido só para premissa ACESA, e usá-lo aqui deixaria a de ritmo apagada
+  // aparecer. São perguntas diferentes — o estado é sobre o modelo, esta regra é
+  // sobre o que a tela consegue mostrar.
   const temOQueMostrar = (p: Premissa, acesa: boolean) =>
     p.peso == null || p.peso > 0 || evDe(p.slug, acesa) != null;
 
   // `acesa: false` nas apagadas de propósito: numa premissa que não bateu o número
   // nunca é suprimido, porque é ele que explica o porquê de não ter batido.
-  const naoAconteceu = apagadas.filter((p) => temOQueMostrar(p, false));
+  const naoAtingiuOCorte = apagadas.filter((p) => temOQueMostrar(p, false));
   const favorVisivel = favor.filter((p) => temOQueMostrar(p, true));
 
   const motivosDoContrato = (itens: FutebolFixtureReasonContractRow['favor']) => {
@@ -538,7 +556,7 @@ export function BancadaMercados({
     ? motivosDoContrato(contratoMotivos.contra)
     : requerContratoMotivos
       ? { premissas: [], extras: [] }
-      : { premissas: naoAconteceu, extras: contras };
+      : { premissas: naoAtingiuOCorte, extras: contras };
 
   // Zero motivo listado a favor. Alimenta o veredito, para ele não afirmar um
   // cenário que a aba ao lado não consegue mostrar.
@@ -998,7 +1016,7 @@ export function BancadaMercados({
           {(
             [
               ['favor', 'A favor', contratoMotivosIndisponivel ? null : motivosFavor.premissas.length + motivosFavor.extras.length],
-              ['contra', 'Não atingiu o corte', contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
+              ['contra', rotuloEmTitulo('nao_atingiu_o_corte'), contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
             ] as const
           ).map(([k, rot, n]) => {
             const on = abaMotivo === k;
