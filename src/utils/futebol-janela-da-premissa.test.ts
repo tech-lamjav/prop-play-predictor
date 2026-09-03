@@ -6,13 +6,18 @@ import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 // O gráfico mede a janela da premissa (issue #350, spec #349)
 // ============================================================================
 // O gráfico anunciava "Flamengo em casa, 11 jogos" embaixo de um critério que
-// não olha mando nenhum. O modelo mede os últimos jogos do time em QUALQUER
-// competição, e a tela media a temporada de uma competição só, com recorte de
-// mando — então o gráfico desmentia o número que ele deveria explicar.
+// mede outra coisa. O modelo olha os últimos 10 jogos do time em QUALQUER
+// competição, point-in-time, e a tela media a temporada de uma competição só —
+// então o gráfico desmentia o número que ele deveria explicar.
 //
-// A consulta parou de filtrar por competição e temporada (migration 117), e as
-// premissas de gols pararam de recortar por mando. Estes testes fixam a segunda
-// metade: o recorte que sobrou no front.
+// A consulta parou de filtrar por competição e temporada (migration 117). Estes
+// testes fixam a metade que mora no front: o recorte que sobrou.
+//
+// ⚠️ O primeiro conserto passou do ponto e tirou o MANDO das dez premissas de
+// gols. O modelo o mantém em três: `gf_comb` e `ga_comb` somam o mandante em
+// casa com o visitante fora. As outras sete saem de totais (percentual,
+// contagem) ou do spine de xG, e essas não olham mando nenhum. Cada premissa
+// declara o seu, e é isso que os dois primeiros blocos guardam.
 // ============================================================================
 
 const jogo = (over: Partial<FutebolFixtureHistorico> = {}): FutebolFixtureHistorico => ({
@@ -38,43 +43,73 @@ const jogo = (over: Partial<FutebolFixtureHistorico> = {}): FutebolFixtureHistor
   ...over,
 });
 
-/** Três em casa e três fora, com gols sofridos distintos por mando. */
+/** Três em casa e três fora, com gols sofridos e marcados distintos por mando. */
 const SEIS_JOGOS: FutebolFixtureHistorico[] = [
-  jogo({ past_fixture_id: 1, ordem: 1, em_casa: true, gols_contra: 0 }),
-  jogo({ past_fixture_id: 2, ordem: 2, em_casa: false, gols_contra: 3 }),
-  jogo({ past_fixture_id: 3, ordem: 3, em_casa: true, gols_contra: 0 }),
-  jogo({ past_fixture_id: 4, ordem: 4, em_casa: false, gols_contra: 3 }),
-  jogo({ past_fixture_id: 5, ordem: 5, em_casa: true, gols_contra: 0 }),
-  jogo({ past_fixture_id: 6, ordem: 6, em_casa: false, gols_contra: 3 }),
+  jogo({ past_fixture_id: 1, ordem: 1, em_casa: true, gols_contra: 0, gols_pro: 2 }),
+  jogo({ past_fixture_id: 2, ordem: 2, em_casa: false, gols_contra: 3, gols_pro: 0 }),
+  jogo({ past_fixture_id: 3, ordem: 3, em_casa: true, gols_contra: 0, gols_pro: 2 }),
+  jogo({ past_fixture_id: 4, ordem: 4, em_casa: false, gols_contra: 3, gols_pro: 0 }),
+  jogo({ past_fixture_id: 5, ordem: 5, em_casa: true, gols_contra: 0, gols_pro: 2 }),
+  jogo({ past_fixture_id: 6, ordem: 6, em_casa: false, gols_contra: 3, gols_pro: 0 }),
 ];
 
-describe('as premissas de gols medem todos os jogos, sem recorte de mando', () => {
-  // Se o recorte de mando voltasse, a média de "defesas firmes" seria 0 (só os
-  // três em casa) em vez de 1,5 (os seis). O número escolhido separa os dois
-  // casos sem ambiguidade.
+describe('as três premissas de média combinada recortam por mando', () => {
+  // `ga_comb` é `goals_against_avg_home` do mandante mais `goals_against_avg_away`
+  // do visitante. Com os seis jogos acima, a média em casa é 0 e a dos seis é 1,5:
+  // o número separa os dois casos sem ambiguidade.
   it.each([
-    ['defesas_firmes', 1.5],
-    ['defesas_vazaveis', 1.5],
-  ])('%s usa os seis jogos, e não só os de casa', (slug, esperada) => {
+    ['defesas_firmes', 0],
+    ['defesas_vazaveis', 0],
+  ])('%s usa só os jogos em casa do mandante', (slug, esperada) => {
     const story = storyDaPremissa(slug, SEIS_JOGOS, 'home', 3.25);
     expect(story?.series[0].media).toBe(esperada);
   });
 
-  it('o rótulo nomeia a janela, e não o mando', () => {
-    const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS, 'home', 3.25);
-    // O rótulo traz a contagem junto: com a janela explícita, ele deixa de ser
-    // genérico e passa a declarar quantos jogos entraram.
-    expect(story?.series[0].titulo).toBe('Flamengo, últimos 6 jogos');
-    expect(story?.series[0].titulo).not.toContain('em casa');
+  it('ataque_combinado idem, do outro lado da métrica', () => {
+    const story = storyDaPremissa('ataque_combinado', SEIS_JOGOS, 'home', 3.25);
+    expect(story?.series[0].media).toBe(2);
   });
 
-  it.each(['ataque_combinado', 'ataques_fracos', 'xg_combinado_alto', 'xg_baixo_combinado'])(
-    '%s também deixou de recortar por mando',
+  it('o rótulo nomeia o mando e o sub declara a base', () => {
+    const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS, 'home', 3.25);
+    // As duas metades juntas são a frase inteira do critério: qual recorte, e
+    // sobre quantos jogos da janela ele foi medido.
+    expect(story?.series[0].titulo).toBe('Flamengo em casa');
+    expect(story?.series[0].sub).toBe('3 dos últimos 6 jogos');
+  });
+});
+
+describe('as outras sete premissas de gols não olham mando', () => {
+  // Percentual e contagem saem de `clean_sheet_total / played_total` e de
+  // `last5_totals`; o xG sai do spine. Nenhum deles recorta casa/fora.
+  it.each(['ataques_fracos', 'clean_sheets_altos', 'ambos_vazam', 'xg_combinado_alto', 'xg_baixo_combinado'])(
+    '%s vê os seis jogos',
     (slug) => {
       const story = storyDaPremissa(slug, SEIS_JOGOS, 'home', 3.25);
       expect(story?.series[0].titulo).toBe('Flamengo, últimos 6 jogos');
+      expect(story?.series[0].jogos).toHaveLength(6);
     },
   );
+});
+
+describe('a janela é de jogos, e o mando recorta dentro dela', () => {
+  // A ordem é a do modelo: o `pit` pega as dez partidas mais recentes e só então
+  // conta as de casa. Invertida, "os últimos N" viraria "os últimos N em casa".
+  //
+  // Doze jogos alternando mando: os últimos 10 são as ordens 3 a 12, das quais 5
+  // em casa. Filtrando mando primeiro, entrariam os 6 jogos em casa.
+  const DOZE: FutebolFixtureHistorico[] = Array.from({ length: 12 }, (_, i) =>
+    jogo({ past_fixture_id: i + 1, ordem: i + 1, em_casa: i % 2 === 0, gols_contra: 1 }),
+  );
+
+  it('recorta os 10 mais recentes antes de aplicar o mando', () => {
+    const story = storyDaPremissa('defesas_firmes', DOZE, 'home', 3.25);
+
+    expect(story?.series[0].jogos).toHaveLength(5);
+    expect(story?.series[0].sub).toBe('5 dos últimos 10 jogos');
+    // E são os DE DENTRO da janela: a ordem 1 ficou de fora.
+    expect(story?.series[0].jogos.map((j) => j.ordem)).toEqual([3, 5, 7, 9, 11]);
+  });
 });
 
 describe('o mando sobrevive onde o critério de fato olha o mando', () => {
@@ -94,8 +129,18 @@ describe('o mando sobrevive onde o critério de fato olha o mando', () => {
 
 describe('base de jogos', () => {
   it('histórico mais curto que o teto ainda rende gráfico', () => {
+    // Dois jogos, um em casa e um fora: `defesas_firmes` deriva do único de casa
+    // e declara a base, em vez de sumir.
     const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS.slice(0, 2), 'home', 3.25);
-    expect(story?.series[0].jogos).toHaveLength(2);
+    expect(story?.series[0].jogos).toHaveLength(1);
+    expect(story?.series[0].sub).toBe('1 dos últimos 2 jogos');
+  });
+
+  it('janela sem nenhum jogo do mando não vira gráfico daquele lado', () => {
+    // Um time que só jogou fora não tem média em casa. Melhor não desenhar do que
+    // desenhar zero, que seria "não sofre gol nenhum".
+    const soFora = SEIS_JOGOS.filter((r) => !r.em_casa);
+    expect(storyDaPremissa('defesas_firmes', soFora, 'home', 3.25)).toBeNull();
   });
 
   it('histórico vazio não vira gráfico', () => {
@@ -124,7 +169,7 @@ describe('o número da evidência usa a mesma janela do gráfico', () => {
     const ev = evidenciaDoHistorico('xg_baixo_combinado', XG_POR_MANDO, 'home', 3.25);
 
     // Os dois times somam 1,0 + 1,0 = 2,0 na janela inteira. Com o recorte de
-    // mando antigo o card diria 2,0 + 1,0 = 3,0, e o gráfico continuaria em 2,0.
+    // mando o card diria 2,0 + 1,0 = 3,0, e o gráfico continuaria em 2,0.
     expect(somaDoGrafico).toBe(2);
     expect(ev?.texto).toContain('2,0');
   });
