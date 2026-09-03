@@ -60,6 +60,21 @@ interface SerieSpec {
    * número. Sem isto, entram todos os jogos do recorte.
    */
   ultimos?: number;
+  /**
+   * De onde vêm os jogos.
+   *
+   * `qualquer` é a **janela da premissa**: todas as competições, que é o que o
+   * modelo mede nas premissas de gols. `mesma_competicao` mantém o recorte antigo
+   * — uma competição só — para as premissas cujo critério ninguém conferiu ainda.
+   *
+   * Existe porque a consulta parou de filtrar por competição (#350) e isso valia
+   * para TODOS os consumidores: as premissas de resultado e handicap passaram a
+   * desenhar jogos de outros campeonatos enquanto a frase acima delas continuava
+   * saindo do perfil de uma competição só. O gráfico e o texto discordavam em
+   * mercados que esta issue nem tocava. A janela agora é declarada por premissa,
+   * e o padrão é o conservador; a #352 diz quais podem mudar.
+   */
+  competicoes?: 'qualquer' | 'mesma_competicao';
 }
 
 /**
@@ -81,20 +96,20 @@ const SPECS: Record<string, SerieSpec[]> = {
   //
   // As premissas de OUTROS mercados que recortam por mando seguem recortando: ali
   // o mando é parte do critério. Quais janelas eles usam é o que a #352 levanta.
-  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS }],
-  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS }],
-  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS }],
-  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS }],
-  clean_sheets_altos: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS }],
-  ambos_vazam: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS }],
-  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS }],
-  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS }],
+  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  clean_sheets_altos: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ambos_vazam: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   // Estas duas ficam DENTRO da janela de gols, mas ainda desenham a média do
   // total — e o critério delas é CONTAGEM ("3 ou mais jogos over em cada"), sobre
   // uma janela mais curta. Trocar a métrica e a janela exata é a #356; o que esta
   // issue garante é que elas parem de somar 40 jogos.
-  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS }],
-  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS }],
+  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
 
   // ── Resultado ──
   forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
@@ -241,7 +256,13 @@ export function storyDaPremissa(
       const doLado = hist.filter((r) => r.side === side);
       if (!doLado.length) continue;
       const emCasa = side === 'home';
-      const noMando = spec.mando === 'todos' ? doLado : doLado.filter((r) => r.em_casa === emCasa);
+      // A consulta devolve jogos de qualquer competição (#350). Quem declarou a
+      // janela larga fica com todos; o resto volta a ver só a competição do
+      // confronto, que é onde o critério deles ainda mora.
+      const naCompeticao =
+        spec.competicoes === 'qualquer' ? doLado : doLado.filter((r) => r.mesma_competicao !== false);
+      if (!naCompeticao.length) continue;
+      const noMando = spec.mando === 'todos' ? naCompeticao : naCompeticao.filter((r) => r.em_casa === emCasa);
       const filtrados = spec.ultimos ? noMando.slice(-spec.ultimos) : noMando;
       if (!filtrados.length) continue;
       const brutos = filtrados.map((r) => ({

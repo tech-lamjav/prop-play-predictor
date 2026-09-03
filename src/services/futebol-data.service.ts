@@ -186,6 +186,16 @@ export interface FutebolFixtureHistorico {
   past_fixture_id: number;
   data: string;
   ordem: number;
+  /**
+   * O jogo é da mesma competição e temporada do confronto analisado?
+   *
+   * A consulta devolve jogos de QUALQUER competição (#350); este booleano é o que
+   * permite a cada premissa recortar de novo, para as que ainda medem uma
+   * competição só. Vem como booleano, e não como o nome da competição, porque
+   * quem compara é a própria consulta — a tela teria de carregar o dado do
+   * confronto por três componentes só para refazer a mesma comparação.
+   */
+  mesma_competicao: boolean | null;
   em_casa: boolean;
   adversario: string;
   /** Para o escudo do adversário embaixo da barra. */

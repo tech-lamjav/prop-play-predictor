@@ -44,6 +44,14 @@ RETURNS TABLE(
   past_fixture_id bigint,
   data            date,
   ordem           bigint,
+  -- O jogo passado é da MESMA competição do confronto analisado?
+  --
+  -- A consulta devolve jogos de qualquer competição, e o front recorta de novo
+  -- nas premissas cujo critério ainda mede uma competição só. Vem como booleano,
+  -- e não como o nome da competição, porque quem compara é aqui: a consulta já
+  -- conhece o confronto, e a tela teria de carregar esse dado por três
+  -- componentes só para refazer a mesma comparação (#352).
+  mesma_competicao boolean,
   em_casa         boolean,
   adversario      text,
   adversario_id   bigint,
@@ -79,6 +87,7 @@ AS $$
            -- Dia em BRT, igual ao resto do produto: date_utc joga o jogo noturno
            -- para o dia seguinte.
            (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date as data,
+           (f.competition = l.competition and f.season = l.season) as mesma_competicao,
            (f.home_team_id = l.team_id) as em_casa,
            case when f.home_team_id = l.team_id then f.away_team_name else f.home_team_name end as adversario,
            -- O id do adversário existe para a tela poder desenhar o escudo dele
@@ -109,6 +118,7 @@ AS $$
          w.past_fixture_id,
          w.data,
          w.ordem,
+         w.mesma_competicao,
          w.em_casa,
          w.adversario,
          w.adversario_id,

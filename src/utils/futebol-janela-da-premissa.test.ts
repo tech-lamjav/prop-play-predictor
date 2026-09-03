@@ -22,6 +22,7 @@ const jogo = (over: Partial<FutebolFixtureHistorico> = {}): FutebolFixtureHistor
   past_fixture_id: 1,
   data: '2026-08-01',
   ordem: 1,
+  mesma_competicao: true,
   em_casa: true,
   adversario: 'Adversário',
   adversario_id: 2,
@@ -126,5 +127,29 @@ describe('o número da evidência usa a mesma janela do gráfico', () => {
     // mando antigo o card diria 2,0 + 1,0 = 3,0, e o gráfico continuaria em 2,0.
     expect(somaDoGrafico).toBe(2);
     expect(ev?.texto).toContain('2,0');
+  });
+});
+
+describe('a janela larga vale só para quem a declarou', () => {
+  // A #350 ampliou a janela na CONSULTA, e isso valia para todos os consumidores:
+  // as premissas de resultado e handicap passaram a desenhar jogos de outros
+  // campeonatos enquanto a frase acima delas continuava saindo do perfil de uma
+  // competição só. O gráfico e o texto discordavam em mercados que a issue nem
+  // tocava. A janela passou a ser declarada por premissa, com o padrão
+  // conservador.
+  const MISTURADO: FutebolFixtureHistorico[] = [
+    jogo({ past_fixture_id: 1, ordem: 1, mesma_competicao: true, em_casa: true, gols_contra: 1 }),
+    jogo({ past_fixture_id: 2, ordem: 2, mesma_competicao: false, em_casa: true, gols_contra: 1 }),
+    jogo({ past_fixture_id: 3, ordem: 3, mesma_competicao: false, em_casa: true, gols_contra: 1 }),
+  ];
+
+  it('premissa de gols vê os três jogos', () => {
+    const story = storyDaPremissa('defesas_firmes', MISTURADO, 'home', 2.5);
+    expect(story?.series[0].jogos).toHaveLength(3);
+  });
+
+  it('premissa que não declarou vê só a competição do confronto', () => {
+    const story = storyDaPremissa('defesa_fora_solida', MISTURADO, 'home', null);
+    expect(story?.series[0].jogos).toHaveLength(1);
   });
 });
