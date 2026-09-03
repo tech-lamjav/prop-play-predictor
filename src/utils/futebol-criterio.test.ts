@@ -660,14 +660,23 @@ describe('a contagem é por time, contra a linha escolhida', () => {
     expect(contagem('historico_under', totais, totais, 3)!.parcelas.map((x) => x.valor)).toEqual([1, 1]);
   });
 
-  it('os dois times precisam do mínimo', () => {
-    const acesa = contagem('historico_over', [3, 3, 3, 1, 1], [3, 3, 3, 1, 1], 2.5)!;
-    const soUm = contagem('historico_over', [3, 3, 3, 1, 1], [3, 3, 1, 1, 1], 2.5)!;
+  it.each([
+    // casa, fora, quantos cruzam o mínimo de 3, e o veredito do `E`
+    [[3, 3, 3, 1, 1], [3, 3, 3, 1, 1], 2, true],
+    [[3, 3, 3, 1, 1], [3, 3, 1, 1, 1], 1, false],
+    [[3, 1, 1, 1, 1], [3, 3, 1, 1, 1], 0, false],
+  ])('casa %s e fora %s: %s times acima do mínimo, acende=%s', (casa, fora, quantos, acende) => {
+    const p = contagem('historico_over', casa, fora, 2.5)!;
 
-    expect(acesa.combinacao).toBe('e');
-    expect(acesa.cruzou).toBe(true);
-    expect(soUm.cruzou).toBe(false);
-    expect(soUm.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName)).toEqual(['Fora']);
+    expect(p.combinacao).toBe('e');
+    expect(p.parcelas.filter((x) => x.cruzou)).toHaveLength(quantos);
+    expect(p.cruzou).toBe(acende);
+  });
+
+  it('quando um só falha, o card sabe qual foi', () => {
+    const p = contagem('historico_over', [3, 3, 3, 1, 1], [3, 3, 1, 1, 1], 2.5)!;
+
+    expect(p.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName)).toEqual(['Fora']);
   });
 });
 
