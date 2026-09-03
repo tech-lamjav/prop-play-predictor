@@ -147,10 +147,13 @@ export function JogoResumoPanel({
   const carregandoLeitura = demo ? false : leituraCarregando || premissasCarregando;
   const temLeitura = !!best || (topo != null && topo.nValem > 0);
   // Os dois links do painel levam à MESMA leitura que ele está exibindo (#344).
-  // Sem isso a tela do jogo abria no desempate padrão — normalmente gols — e o
-  // pick que a pessoa acabou de ler não estava mais na tela. Sem preço não há
-  // saída para filtrar, e aí abre a tela inteira, que é o honesto.
-  const paraOJogo = hrefDaSaida(fixture.fixture_id, best);
+  //
+  // `best ?? cand`, e não só `best`: a #344 mandava apenas a leitura COM preço,
+  // com o argumento de que sem preço não havia saída para filtrar. Falso — há
+  // saída anunciada, ela só não tem preço, e o painel a exibe em letra grande.
+  // Sem isto, num jogo sem oportunidade o link ia pelado e a tela do jogo abria
+  // noutra linha (#346).
+  const paraOJogo = hrefDaSaida(fixture.fixture_id, best ?? cand);
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
 

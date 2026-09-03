@@ -1,7 +1,7 @@
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { ehDestaque } from '@/utils/futebol-score';
-import type { Saida } from '@/utils/futebol-saida';
+import { mesmaLinha, type Saida } from '@/utils/futebol-saida';
 import {
   MERCADOS,
   PORTA_PREMISSAS,
@@ -20,12 +20,10 @@ import {
 // (get_futebol_fixture_value). Sem odds, a leitura vive das premissas — o próprio
 // protótipo tem esse padrão no "sem preço" do BTTS.
 
-/** Mesma parada da régua? Compara com folga porque a linha vem em float. */
-export function mesmaLinha(a: number | null, b: number | null): boolean {
-  if (a == null && b == null) return true;
-  if (a == null || b == null) return false;
-  return Math.abs(a - b) < 0.011;
-}
+// `mesmaLinha` mudou para futebol-saida.ts (módulo folha), porque as premissas
+// também precisam dela e a leitura já importa delas — importar de volta fecharia
+// um ciclo. Reexportada aqui para os consumidores que a conhecem por este nome.
+export { mesmaLinha };
 
 /** Casa uma linha de valor (odds reais) com um candidato de premissas. */
 export function valueDoCandidato(
@@ -145,7 +143,10 @@ export function resumoDosMercados(
     // Oportunidades mostrava o segundo. Pior: o botão de registrar gravava a aposta
     // do preço, não a do rótulo que o usuário leu.
     const comPreco = saidaComPreco(rows, valueRows, m.slug, preferida);
-    const c = comPreco?.candidato ?? melhorCandidato(rows, m.slug);
+    // A preferência do link agora vale também sem preço (#346): antes ela era
+    // consultada só entre as linhas cotadas, e sumia justamente no jogo sem
+    // oportunidade — que é a maioria dos jogos.
+    const c = comPreco?.candidato ?? melhorCandidato(rows, m.slug, preferida);
     if (!c) return [];
     const nValem = contaQueValem(m.slug, c.acesas);
     // Denominador só do lado da saída: para um Over, "defesas firmes" e as outras do
@@ -179,4 +180,28 @@ export function melhorLeitura(resumos: MercadoResumo[]): MercadoResumo | null {
  */
 export function sufixoDeLeitura(carregando: boolean, comLeitura: number): string {
   return carregando ? '' : ` · ${comLeitura} com leitura`;
+}
+
+/**
+ * A saída que abre a folha de detalhe de um mercado.
+ *
+ * É a MESMA que o card do mercado nomeia — e é só isso que ela faz. Existe como
+ * função, e não como uma linha solta no componente, porque durante um tempo ela
+ * NÃO era a mesma, e ninguém tinha onde escrever um teste que provasse a
+ * igualdade.
+ *
+ * O que havia antes: sem oportunidade, a folha preferia qualquer candidata que
+ * já tivesse cotação, desempatando pela MENOR linha. Em gols a menor linha é
+ * sempre "Mais de 0,5" — a mais verdadeira e mais inútil do mercado, odd 1.03.
+ * Então o card dizia "Menos de 3,25 gols · sem cotação" e a folha ao lado abria
+ * em "Mais de 0,5 gols" (#346, Flamengo × Mirassol de 02/09/2026).
+ *
+ * A preferência por linha cotada não voltou em outro lugar: ela era a causa. O
+ * aviso "sem cotação" já explica por que ainda não dá para apostar, e isso é
+ * mais honesto que desviar a pessoa para uma linha que ela não quer.
+ */
+export function saidaQueAbreAFolha(
+  resumo: MercadoResumo | null | undefined,
+): FutebolFixturePremissas | null {
+  return resumo?.candidato ?? null;
 }
