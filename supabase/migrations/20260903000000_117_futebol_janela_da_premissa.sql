@@ -32,10 +32,10 @@ DROP FUNCTION IF EXISTS public.get_futebol_fixture_historico(bigint, integer);
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(
   p_fixture_id bigint,
-  -- Quantos jogos por lado. O default cobre a janela mais larga que o modelo usa
-  -- (as médias de gols e xG olham 10); os critérios de contagem olham menos e
-  -- recortam do começo desta lista.
-  p_max integer DEFAULT 10
+  -- Quantos jogos por lado a consulta BUSCA. Não confundir com a janela da
+  -- premissa: quem recorta a janela é o critério, no front, porque ela varia por
+  -- premissa (as médias olham 10, as contagens olham menos).
+  p_max integer DEFAULT 40
 )
 RETURNS TABLE(
   side            text,
@@ -132,3 +132,5 @@ AS $$
 $$;
 COMMENT ON FUNCTION public.get_futebol_fixture_historico(bigint, integer) IS
   'Jogo a jogo dos dois times na JANELA DA PREMISSA — últimos jogos em qualquer competição, antes do apito —, para auditar o insumo que acende cada premissa. Inclui expected_goals quando existe. Não filtra por competição nem temporada de propósito: ver 117.';
+
+grant execute on function public.get_futebol_fixture_historico(bigint, integer) to anon, authenticated, service_role;

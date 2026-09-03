@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { storyDaPremissa } from './futebol-historico';
+import { storyDaPremissa, evidenciaDoHistorico } from './futebol-historico';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
 // ============================================================================
@@ -61,7 +61,9 @@ describe('as premissas de gols medem todos os jogos, sem recorte de mando', () =
 
   it('o rótulo nomeia a janela, e não o mando', () => {
     const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS, 'home', 3.25);
-    expect(story?.series[0].titulo).toContain('últimos jogos');
+    // O rótulo traz a contagem junto: com a janela explícita, ele deixa de ser
+    // genérico e passa a declarar quantos jogos entraram.
+    expect(story?.series[0].titulo).toBe('Flamengo, últimos 6 jogos');
     expect(story?.series[0].titulo).not.toContain('em casa');
   });
 
@@ -69,7 +71,7 @@ describe('as premissas de gols medem todos os jogos, sem recorte de mando', () =
     '%s também deixou de recortar por mando',
     (slug) => {
       const story = storyDaPremissa(slug, SEIS_JOGOS, 'home', 3.25);
-      expect(story?.series[0].titulo).toContain('últimos jogos');
+      expect(story?.series[0].titulo).toBe('Flamengo, últimos 6 jogos');
     },
   );
 });
@@ -78,8 +80,14 @@ describe('o mando sobrevive onde o critério de fato olha o mando', () => {
   it('defesa jogando fora continua recortando', () => {
     // Handicap e resultado têm premissas em que o mando é parte do critério —
     // "defesa sólida jogando fora" é sobre jogar fora. Ali o recorte fica.
+    //
+    // Afirma o título esperado, e não só a ausência do outro: `not.toContain`
+    // passaria com título vazio, que é o modo mais comum de um teste destes
+    // deixar de provar o que promete.
     const story = storyDaPremissa('defesa_fora_solida', SEIS_JOGOS, 'home', null);
-    expect(story?.series[0].titulo).not.toContain('últimos jogos');
+    expect(story?.series[0].titulo).toBe('Flamengo em casa');
+    // E o recorte é real: só os três jogos em casa entram, não os seis.
+    expect(story?.series[0].jogos).toHaveLength(3);
   });
 });
 
@@ -92,5 +100,31 @@ describe('base de jogos', () => {
   it('histórico vazio não vira gráfico', () => {
     expect(storyDaPremissa('defesas_firmes', [], 'home', 3.25)).toBeNull();
     expect(storyDaPremissa('defesas_firmes', undefined, 'home', 3.25)).toBeNull();
+  });
+});
+
+describe('o número da evidência usa a mesma janela do gráfico', () => {
+  // A #350 consertou o gráfico e deixou o NÚMERO do xG recortando por mando. Card
+  // e barras mostravam médias diferentes da mesma coisa, lado a lado — o defeito
+  // da spec reaparecendo dentro da mesma caixa. Este teste é a guarda contra as
+  // duas metades voltarem a divergir.
+  const XG_POR_MANDO: FutebolFixtureHistorico[] = [
+    jogo({ side: 'home', past_fixture_id: 1, ordem: 1, em_casa: true, xg: 2.0 }),
+    jogo({ side: 'home', past_fixture_id: 2, ordem: 2, em_casa: false, xg: 0.0 }),
+    jogo({ side: 'away', team_id: 2, team_name: 'Mirassol', past_fixture_id: 3, ordem: 1, em_casa: false, xg: 1.0 }),
+    jogo({ side: 'away', team_id: 2, team_name: 'Mirassol', past_fixture_id: 4, ordem: 2, em_casa: true, xg: 1.0 }),
+  ];
+
+  it('a média do card bate com a do gráfico', () => {
+    const story = storyDaPremissa('xg_baixo_combinado', XG_POR_MANDO, 'home', 3.25);
+    const daSerie = (story?.series ?? []).map((s) => s.media ?? 0);
+    const somaDoGrafico = daSerie.reduce((a, b) => a + b, 0);
+
+    const ev = evidenciaDoHistorico('xg_baixo_combinado', XG_POR_MANDO, 'home', 3.25);
+
+    // Os dois times somam 1,0 + 1,0 = 2,0 na janela inteira. Com o recorte de
+    // mando antigo o card diria 2,0 + 1,0 = 3,0, e o gráfico continuaria em 2,0.
+    expect(somaDoGrafico).toBe(2);
+    expect(ev?.texto).toContain('2,0');
   });
 });
