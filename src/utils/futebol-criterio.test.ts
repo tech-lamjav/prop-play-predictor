@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   divergenciaDaPrestacao,
   divergenciasDaSaida,
+  fraseDaPrestacao,
   prestacaoDaPremissa,
   temCriterio,
 } from './futebol-criterio';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
-import CASOS_CAPTURADOS from './__fixtures__/futebol-familia-de-media-casos.json';
+import CASOS_CAPTURADOS from './__fixtures__/futebol-criterios-casos.json';
 
 // ============================================================================
 // A premissa presta contas do modelo (issue #353, spec #349)
@@ -98,9 +99,9 @@ describe('o insumo é a soma das duas parcelas, cada uma no seu mando', () => {
   it('mandante em casa mais visitante fora', () => {
     const p = prestacao(historicoCom(1.0, 2.0), 3.25)!;
 
-    expect(p.parcelas).toEqual([
-      { teamName: 'Casa', valor: 1 },
-      { teamName: 'Fora', valor: 2 },
+    expect(p.parcelas.map((x) => [x.teamName, x.valor])).toEqual([
+      ['Casa', 1],
+      ['Fora', 2],
     ]);
     expect(p.insumo).toBe(3);
   });
@@ -119,10 +120,13 @@ describe('a base de jogos é declarada, sempre', () => {
   it('diz quantos jogos entraram e quantos a janela tinha', () => {
     const p = prestacao(historicoCom(1, 1), 3.25)!;
 
-    expect(p.base).toEqual([
-      { teamId: 1, teamName: 'Casa', jogos: 3, daJanela: 3 },
-      { teamId: 2, teamName: 'Fora', jogos: 3, daJanela: 3 },
+    expect(p.parcelas).toEqual([
+      { teamId: 1, teamName: 'Casa', valor: 1, cruzou: null, jogos: 3, daJanela: 3 },
+      { teamId: 2, teamName: 'Fora', valor: 1, cruzou: null, jogos: 3, daJanela: 3 },
     ]);
+    // `cruzou: null` na família de soma, e não `false`: ali o corte é do TOTAL, e
+    // afirmar que um time sozinho "não cruzou" seria compará-lo contra um limiar
+    // que não é dele.
   });
 
   it('histórico mais curto que o teto deriva mesmo assim', () => {
@@ -133,7 +137,7 @@ describe('a base de jogos é declarada, sempre', () => {
     const p = prestacao(curto, 3.25)!;
 
     expect(p.insumo).toBe(2);
-    expect(p.base.map((b) => b.jogos)).toEqual([1, 1]);
+    expect(p.parcelas.map((b) => b.jogos)).toEqual([1, 1]);
   });
 
   it('o recorte de mando aparece na base', () => {
@@ -146,7 +150,7 @@ describe('a base de jogos é declarada, sempre', () => {
     ];
     const p = prestacao(misto, 3.25)!;
 
-    expect(p.base[0]).toEqual({ teamId: 1, teamName: 'Casa', jogos: 2, daJanela: 5 });
+    expect(p.parcelas[0]).toMatchObject({ teamName: 'Casa', jogos: 2, daJanela: 5 });
   });
 });
 
@@ -230,10 +234,10 @@ describe('a guarda de divergência acusa quando a nossa conta discorda do mart',
 // ============================================================================
 // Casos capturados, replayados contra a derivação
 // ============================================================================
-// 17 linhas reais com o histórico da janela da premissa e o booleano que o mart
+// 21 linhas reais com o histórico da janela da premissa e o booleano que o mart
 // publicou, capturados em 03/09/2026:
 //
-//   · `producao` — 7 linhas do mart de produção, com os CINCO vereditos de cada
+//   · `producao` — 11 linhas do mart de produção, com os OITO vereditos de cada
 //     uma. O histórico veio de uma consulta com o corpo da migration 117, que
 //     ainda não estava aplicada lá.
 //   · `staging` — 10 linhas do mart de staging, só `defesas_firmes`, capturadas
@@ -244,7 +248,7 @@ describe('a guarda de divergência acusa quando a nossa conta discorda do mart',
 // ⚠️ Um caso de staging divergiu na captura e ficou de FORA, e o motivo importa:
 // o mart de staging pode ser mais velho que o `fact_fixtures` dele, e aí a janela
 // que a tela mede inclui partidas que o mart não viu. Não é defeito da derivação
-// — contra produção, os 35 pares (7 linhas × 5 premissas) reproduzem. É por isso
+// — contra produção, os 88 pares (11 linhas × 8 premissas) reproduzem. É por isso
 // que a guarda em execução existe: um evento por divergência, para separar "a
 // derivação envelheceu" de "o mart está atrás".
 //
@@ -271,7 +275,7 @@ const PARES = CASOS.flatMap((caso) =>
 );
 
 describe('a derivação reproduz o veredito do mart', () => {
-  it('as cinco premissas da família têm caso dos DOIS lados', () => {
+  it('as oito premissas de gols têm caso dos DOIS lados', () => {
     // Um bloco que só visse `false` nas cinco passaria com a derivação invertida.
     for (const slug of [
       'defesas_firmes',
@@ -279,6 +283,9 @@ describe('a derivação reproduz o veredito do mart', () => {
       'ataque_combinado',
       'xg_combinado_alto',
       'xg_baixo_combinado',
+      'clean_sheets_altos',
+      'ambos_vazam',
+      'ataques_fracos',
     ]) {
       const meus = PARES.filter((x) => x.slug === slug);
       expect(meus.filter((x) => x.doMart).length, `${slug} aceso`).toBeGreaterThan(0);
@@ -367,5 +374,219 @@ describe('as margens das cinco são as do modelo', () => {
     expect(prestacaoDaPremissa('goals_over_under', 'defesas_firmes', misto, 'home', 3.25)!.insumo).toBe(3);
     // xG: os dois jogos de cada, ou seja 1,0 + 1,0.
     expect(prestacaoDaPremissa('goals_over_under', 'xg_baixo_combinado', misto, 'home', 3.25)!.insumo).toBe(2);
+  });
+});
+
+// ============================================================================
+// A família de percentual por time (issue #355, spec #349)
+// ============================================================================
+// É a família que produziu o defeito mais visível da spec: "os dois passam
+// muitos jogos sem sofrer gol" ilustrado com "2,4 gols sofridos por jogo,
+// somando os dois". O critério não soma nada — ele olha o percentual de cada
+// time separadamente contra um corte fixo.
+// ============================================================================
+
+/**
+ * Um histórico em que cada time tem exatamente `k` de `n` jogos com a condição.
+ *
+ * Os jogos com a condição ficam no FIM, porque a janela é dos últimos 10: pô-los
+ * no começo faria um histórico de 20 jogos entregar 0%, e o teste mediria a
+ * janela em vez do critério.
+ */
+const comFrequencia = (
+  campo: 'sem_sofrer' | 'sem_marcar',
+  casa: [number, number],
+  fora: [number, number],
+): FutebolFixtureHistorico[] => [
+  ...Array.from({ length: casa[1] }, (_, i) =>
+    jogo({ side: 'home', team_id: 1, team_name: 'Casa', ordem: i + 1, past_fixture_id: i + 1, [campo]: i >= casa[1] - casa[0] }),
+  ),
+  ...Array.from({ length: fora[1] }, (_, i) =>
+    jogo({ side: 'away', team_id: 2, team_name: 'Fora', ordem: i + 1, past_fixture_id: 100 + i, [campo]: i >= fora[1] - fora[0] }),
+  ),
+];
+
+describe('o percentual é por time, e não uma soma', () => {
+  it('cada time tem o seu número e o seu veredito', () => {
+    // 5 de 10 (50%) e 3 de 10 (30%), contra o corte de 40%.
+    const p = prestacaoDaPremissa(
+      'goals_over_under',
+      'clean_sheets_altos',
+      comFrequencia('sem_sofrer', [5, 10], [3, 10]),
+      'home',
+      2.5,
+    )!;
+
+    expect(p.forma).toBe('percentual_por_time');
+    expect(p.escala).toBe('percentual');
+    expect(p.parcelas.map((x) => [x.teamName, x.valor, x.cruzou])).toEqual([
+      ['Casa', 50, true],
+      ['Fora', 30, false],
+    ]);
+  });
+
+  it('não existe insumo único: somar percentuais de times diferentes não significa nada', () => {
+    const p = prestacaoDaPremissa(
+      'goals_over_under',
+      'clean_sheets_altos',
+      comFrequencia('sem_sofrer', [5, 10], [5, 10]),
+      'home',
+      2.5,
+    )!;
+
+    // Nulo, e não a soma nem a média: qualquer número aqui seria a tela
+    // publicando uma conta que o modelo não faz.
+    expect(p.insumo).toBeNull();
+  });
+
+  it('o corte é fixo, e não muda com a linha', () => {
+    const hist = comFrequencia('sem_sofrer', [5, 10], [5, 10]);
+
+    for (const linha of [1.5, 2.5, 3.5, 4.5]) {
+      const p = prestacaoDaPremissa('goals_over_under', 'clean_sheets_altos', hist, 'home', linha)!;
+      expect(p.corte).toBe(40);
+      expect(p.linha).toBeNull();
+      expect(p.margem).toBeNull();
+    }
+  });
+});
+
+describe('o E e o OU decidem coisas diferentes com os mesmos números', () => {
+  it.each([
+    // casa, fora, clean_sheets (E, >=40), ataques_fracos (OU, >=35)
+    [[5, 10] as [number, number], [5, 10] as [number, number], true, true],
+    [[5, 10] as [number, number], [2, 10] as [number, number], false, true],
+    [[2, 10] as [number, number], [2, 10] as [number, number], false, false],
+  ])('casa %s e fora %s: E=%s, OU=%s', (casa, fora, comE, comOu) => {
+    const e = prestacaoDaPremissa(
+      'goals_over_under',
+      'clean_sheets_altos',
+      comFrequencia('sem_sofrer', casa, fora),
+      'home',
+      2.5,
+    )!;
+    const ou = prestacaoDaPremissa(
+      'goals_over_under',
+      'ataques_fracos',
+      comFrequencia('sem_marcar', casa, fora),
+      'home',
+      2.5,
+    )!;
+
+    expect(e.combinacao).toBe('e');
+    expect(e.cruzou).toBe(comE);
+    expect(ou.combinacao).toBe('ou');
+    expect(ou.cruzou).toBe(comOu);
+  });
+
+  it('no OU, um time sozinho acima do corte acende — e o card sabe qual', () => {
+    const p = prestacaoDaPremissa(
+      'goals_over_under',
+      'ataques_fracos',
+      comFrequencia('sem_marcar', [4, 10], [1, 10]),
+      'home',
+      2.5,
+    )!;
+
+    expect(p.cruzou).toBe(true);
+    expect(p.parcelas.filter((x) => x.cruzou).map((x) => x.teamName)).toEqual(['Casa']);
+  });
+
+  it('no E, um time abaixo derruba — e o card sabe qual', () => {
+    const p = prestacaoDaPremissa(
+      'goals_over_under',
+      'clean_sheets_altos',
+      comFrequencia('sem_sofrer', [6, 10], [1, 10]),
+      'home',
+      2.5,
+    )!;
+
+    expect(p.cruzou).toBe(false);
+    expect(p.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName)).toEqual(['Fora']);
+  });
+});
+
+describe('a comparação estrita de ambos_vazam', () => {
+  // `home_cs_pct < 35`, e não `<=`. É a única do mercado de gols com comparação
+  // estrita, e errar por um passo erra a premissa numa faixa estreita.
+  //
+  // ⚠️ Exatamente 35% é INALCANÇÁVEL na janela de 10 jogos: o percentual é k/n com
+  // n <= 10, e 0,35 exige n = 20. Por isso o teste cerca o corte pelos dois
+  // valores vizinhos que existem de verdade, em vez de forjar um 35% que a
+  // produção nunca produz.
+  it('37,5% não acende, e 33,3% acende', () => {
+    const acima = prestacaoDaPremissa(
+      'goals_over_under',
+      'ambos_vazam',
+      comFrequencia('sem_sofrer', [3, 8], [3, 8]),
+      'home',
+      2.5,
+    )!;
+    const abaixo = prestacaoDaPremissa(
+      'goals_over_under',
+      'ambos_vazam',
+      comFrequencia('sem_sofrer', [1, 3], [1, 3]),
+      'home',
+      2.5,
+    )!;
+
+    expect(acima.parcelas.map((x) => x.valor)).toEqual([37.5, 37.5]);
+    expect(acima.cruzou).toBe(false);
+    expect(abaixo.parcelas.map((x) => x.valor)).toEqual([33.33, 33.33]);
+    expect(abaixo.cruzou).toBe(true);
+  });
+
+  it('a inclusiva do clean sheets acende NO corte', () => {
+    // O contraste é o ponto. Aqui 40% exato acende, porque a comparação é `>=`.
+    const p = prestacaoDaPremissa(
+      'goals_over_under',
+      'clean_sheets_altos',
+      comFrequencia('sem_sofrer', [4, 10], [4, 10]),
+      'home',
+      2.5,
+    )!;
+
+    expect(p.parcelas.map((x) => x.valor)).toEqual([40, 40]);
+    expect(p.cruzou).toBe(true);
+  });
+
+  it('e o sentido de ambos_vazam é o oposto do de clean sheets', () => {
+    // Os mesmos 40% em cada time: clean sheets acende (>= 40), ambos vazam não
+    // (< 35). Uma derivação que ignorasse o sentido acenderia as duas juntas.
+    const hist = comFrequencia('sem_sofrer', [4, 10], [4, 10]);
+
+    expect(prestacaoDaPremissa('goals_over_under', 'clean_sheets_altos', hist, 'home', 2.5)!.cruzou).toBe(true);
+    expect(prestacaoDaPremissa('goals_over_under', 'ambos_vazam', hist, 'home', 2.5)!.cruzou).toBe(false);
+  });
+});
+
+describe('as premissas de percentual param de mostrar média de gols', () => {
+  it('a frase da lista traz percentual por time, e não uma média somada', () => {
+    const p = prestacaoDaPremissa(
+      'goals_over_under',
+      'clean_sheets_altos',
+      comFrequencia('sem_sofrer', [5, 10], [3, 10]),
+      'home',
+      2.5,
+    )!;
+    const frase = fraseDaPrestacao(p);
+
+    expect(frase).toContain('Casa 50%');
+    expect(frase).toContain('Fora 30%');
+    expect(frase).toContain('os dois precisam de');
+    // O defeito da spec era exatamente isto aparecer aqui.
+    expect(frase).not.toMatch(/gols? sofrid/);
+  });
+
+  it('e o OU se anuncia como OU', () => {
+    const p = prestacaoDaPremissa(
+      'goals_over_under',
+      'ataques_fracos',
+      comFrequencia('sem_marcar', [5, 10], [1, 10]),
+      'home',
+      2.5,
+    )!;
+
+    expect(fraseDaPrestacao(p)).toContain('basta um com');
   });
 });

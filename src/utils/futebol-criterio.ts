@@ -1,7 +1,7 @@
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import { storyDaPremissa, type Story } from '@/utils/futebol-historico';
 
-// A premissa prestando contas do modelo (spec #349, issue #353).
+// A premissa prestando contas do modelo (spec #349, issues #353, #354, #355).
 //
 // O que este módulo responde, para uma premissa: qual **insumo** o modelo
 // comparou, contra que **corte**, se cruzou, e sobre que base de jogos. É o
@@ -16,6 +16,10 @@ import { storyDaPremissa, type Story } from '@/utils/futebol-historico';
 // E explicava com "fica abaixo da linha de 3,25", quando o corte real é 2,95: a
 // premissa NÃO acende com 3,10, que fica abaixo da linha. Havia uma faixa inteira
 // em que a tela afirmava uma coisa e o modelo fazia outra.
+//
+// E "os dois passam muitos jogos sem sofrer gol" vinha ilustrado com "2,4 gols
+// sofridos por jogo, somando os dois" — um número verdadeiro que não é o insumo
+// daquela premissa, e que dizia o contrário do que a frase acima dele afirmava.
 //
 // ── A decisão de desenho ────────────────────────────────────────────────────
 //
@@ -35,19 +39,44 @@ import { storyDaPremissa, type Story } from '@/utils/futebol-historico';
  * O jeito de desenhar o card, que é consequência da FAMÍLIA do critério.
  *
  * `media_combinada`: os dois times somam uma média e o total vai contra o corte.
- * As outras famílias entram com as suas fatias (#355, #356), e cada uma nomeia o
- * que o card precisa desenhar — não o que a premissa quer dizer.
+ * `percentual_por_time`: cada time tem o seu percentual e o seu veredito, sem
+ * soma — somar percentuais de times diferentes não significa nada.
+ *
+ * A família de contagem entra na #356.
  */
-export type FormaDeCard = 'media_combinada';
+export type FormaDeCard = 'media_combinada' | 'percentual_por_time';
 
-/** De que lado do corte o insumo tem de estar para a premissa acender. */
+/**
+ * Como as parcelas viram um veredito só.
+ *
+ * `soma`: as parcelas somam e o total vai contra o corte.
+ * `e`: cada parcela vai contra o corte, e as duas precisam cruzar.
+ * `ou`: cada parcela vai contra o corte, e basta uma cruzar.
+ *
+ * A distinção entre `e` e `ou` PRECISA chegar à tela: sem ela o assinante vê um
+ * time abaixo do corte e não entende por que a premissa acendeu.
+ */
+export type Combinacao = 'soma' | 'e' | 'ou';
+
+/** De que lado do corte o valor tem de estar para contar a favor. */
 export type Sentido = 'acima' | 'abaixo';
 
-/** O que entrou na conta, por time. É a base de jogos que o card declara. */
-export interface BaseDeJogos {
+/** Como o número se escreve: 2,4 gols ou 40%. */
+export type Escala = 'gols' | 'percentual';
+
+/** A conta de um time. É ela que o card desenha e que a base de jogos declara. */
+export interface Parcela {
   teamId: number;
   teamName: string;
-  /** Jogos que alimentaram a média. */
+  valor: number;
+  /**
+   * Esta parcela sozinha cruzou o corte?
+   *
+   * `null` quando a combinação é `soma`: ali o corte é do total, e afirmar que um
+   * time "cruzou" seria comparar contra um limiar que não é dele.
+   */
+  cruzou: boolean | null;
+  /** Jogos que alimentaram o número. */
   jogos: number;
   /** Jogos que a janela tinha antes do recorte de mando. Igual a `jogos` sem recorte. */
   daJanela: number;
@@ -57,20 +86,26 @@ export interface Prestacao {
   mercado: string;
   slug: string;
   forma: FormaDeCard;
-  /** O número que o modelo comparou. */
-  insumo: number;
-  /** O limiar contra o qual ele foi comparado. Não é a linha quando há margem. */
-  corte: number;
-  /** A linha da saída, para a tela poder dizer de onde o corte saiu. */
-  linha: number;
-  /** A margem entre a linha e o corte. Zero onde a premissa compara contra a linha crua. */
-  margem: number;
+  combinacao: Combinacao;
   sentido: Sentido;
-  /** O insumo cruzou o corte? É a nossa conta, não a do mart. */
+  escala: Escala;
+  /**
+   * A soma das parcelas, quando a combinação é `soma`. `null` nas outras.
+   *
+   * Nulo e não zero: numa premissa de percentual por time não existe um número
+   * único, e inventar um (a soma, a média) seria a tela publicando uma conta que
+   * o modelo não faz.
+   */
+  insumo: number | null;
+  /** O limiar contra o qual o insumo é comparado. */
+  corte: number;
+  /** A linha da saída, quando o corte sai dela. `null` quando o corte é fixo. */
+  linha: number | null;
+  /** A margem entre a linha e o corte. `null` quando o corte é fixo, zero onde a premissa compara contra a linha crua. */
+  margem: number | null;
+  /** O veredito, já combinado. É a nossa conta, não a do mart. */
   cruzou: boolean;
-  /** As parcelas do insumo, na ordem casa/fora. Uma soma sem as parcelas não se confere. */
-  parcelas: { teamName: string; valor: number }[];
-  base: BaseDeJogos[];
+  parcelas: Parcela[];
   /** "gols sofridos por jogo, somados" — o que o número É, em palavras. */
   unidade: string;
 }
@@ -78,24 +113,25 @@ export interface Prestacao {
 /**
  * Um critério do modelo, transcrito.
  *
- * O `corte` é função da linha porque na família de média ele é a linha mais uma
- * margem — e a margem varia por premissa, incluindo uma que é zero. Guardar o
- * número pronto obrigaria a recalcular a cada régua arrastada.
+ * O corte é `da_linha` na família de média, porque ali ele é a linha mais uma
+ * margem que varia por premissa (incluindo uma que é zero). É `fixo` na família
+ * de percentual: 40% é 40% em qualquer linha.
  */
 interface Criterio {
   forma: FormaDeCard;
-  /** Somado à linha para chegar ao corte. Negativo aperta, positivo afrouxa. */
-  margem: number;
+  combinacao: Combinacao;
   sentido: Sentido;
+  escala: Escala;
   unidade: string;
+  corte: { de: 'linha'; margem: number } | { de: 'fixo'; valor: number };
   /**
-   * Quantas parcelas o insumo tem. Na família de média combinada são duas — o
-   * mandante e o visitante.
+   * Quantas parcelas o insumo tem.
    *
    * Declarado, e não inferido do que veio: com um lado só, a soma seria um número
    * que o modelo nunca comparou, e ele seria BAIXO — ou seja, a ausência de dado
    * acenderia a premissa. Contar é o que separa "faltou um lado" de "os dois
-   * vieram".
+   * vieram". Vale para `e` e `ou` também: um `ou` com um lado faltando pode
+   * acender por sorte de quem sobrou.
    */
   parcelas: number;
 }
@@ -110,16 +146,20 @@ interface Criterio {
  * gráfico errado ao BTTS; ver a #361. Aqui a chave já nasce certa.
  *
  * Transcritos de `int_futebol_premissas_ou`, CTE `flags`, no estado atual do
- * modelo — a metodologia nova, já sem as premissas de preço (#103, ADR 0012):
- *
- *     (outcome = 'Under') AND ga_comb <= line_value - 0.3   AS defesas_firmes
+ * modelo — a metodologia nova, já sem as premissas de preço (#103, ADR 0012).
  */
 const CRITERIOS: Record<string, Criterio> = {
+  // ── Família de média combinada (#353, #354) ──
+  // Os dois times somam uma média e o total vai contra a linha com uma margem.
+  //
+  //     (Under) ga_comb <= line_value - 0.3   AS defesas_firmes
   'goals_over_under:defesas_firmes': {
     forma: 'media_combinada',
-    margem: -0.3,
+    combinacao: 'soma',
     sentido: 'abaixo',
+    escala: 'gols',
     unidade: 'gols sofridos por jogo, somados',
+    corte: { de: 'linha', margem: -0.3 },
     parcelas: 2,
   },
   // ⚠️ MARGEM ZERO, e não é esquecimento: `ga_comb >= line_value`, sem margem
@@ -128,45 +168,110 @@ const CRITERIOS: Record<string, Criterio> = {
   // porque corte e linha são o mesmo traço.
   'goals_over_under:defesas_vazaveis': {
     forma: 'media_combinada',
-    margem: 0,
+    combinacao: 'soma',
     sentido: 'acima',
+    escala: 'gols',
     unidade: 'gols sofridos por jogo, somados',
+    corte: { de: 'linha', margem: 0 },
     parcelas: 2,
   },
   // A margem mais larga das cinco: meio gol acima da linha.
   'goals_over_under:ataque_combinado': {
     forma: 'media_combinada',
-    margem: 0.5,
+    combinacao: 'soma',
     sentido: 'acima',
+    escala: 'gols',
     unidade: 'gols marcados por jogo, somados',
+    corte: { de: 'linha', margem: 0.5 },
     parcelas: 2,
   },
   'goals_over_under:xg_combinado_alto': {
     forma: 'media_combinada',
-    margem: 0.3,
+    combinacao: 'soma',
     sentido: 'acima',
+    escala: 'gols',
     unidade: 'gols esperados por jogo, somados',
+    corte: { de: 'linha', margem: 0.3 },
     parcelas: 2,
   },
   'goals_over_under:xg_baixo_combinado': {
     forma: 'media_combinada',
-    margem: -0.3,
+    combinacao: 'soma',
     sentido: 'abaixo',
+    escala: 'gols',
     unidade: 'gols esperados por jogo, somados',
+    corte: { de: 'linha', margem: -0.3 },
+    parcelas: 2,
+  },
+
+  // ── Família de percentual por time (#355) ──
+  // O critério olha o percentual de CADA time separadamente contra um corte fixo.
+  // Não soma nada, e o corte não tem relação com a linha.
+  //
+  //     (Under) home_cs_pct  >= 40 AND away_cs_pct  >= 40  AS clean_sheets_altos
+  //     (Over)  home_cs_pct  <  35 AND away_cs_pct  <  35  AS ambos_vazam
+  //     (Under) home_fts_pct >= 35 OR  away_fts_pct >= 35  AS ataques_fracos
+  'goals_over_under:clean_sheets_altos': {
+    forma: 'percentual_por_time',
+    combinacao: 'e',
+    sentido: 'acima',
+    escala: 'percentual',
+    unidade: 'dos jogos sem sofrer gol',
+    corte: { de: 'fixo', valor: 40 },
+    parcelas: 2,
+  },
+  // ⚠️ O sentido é ABAIXO e o corte é `<`, não `<=`: `home_cs_pct < 35`. Exatamente
+  // 35% NÃO acende. É o único da família com comparação estrita, e por isso ele
+  // tem `estrito` embaixo — ver `cruzouParcela`.
+  'goals_over_under:ambos_vazam': {
+    forma: 'percentual_por_time',
+    combinacao: 'e',
+    sentido: 'abaixo',
+    escala: 'percentual',
+    unidade: 'dos jogos sem sofrer gol',
+    corte: { de: 'fixo', valor: 35 },
+    parcelas: 2,
+  },
+  // O único `OU` do mercado de gols: basta UM time passar do corte. A tela precisa
+  // dizer isso, senão o assinante vê um time abaixo e não entende o veredito.
+  'goals_over_under:ataques_fracos': {
+    forma: 'percentual_por_time',
+    combinacao: 'ou',
+    sentido: 'acima',
+    escala: 'percentual',
+    unidade: 'dos jogos sem marcar',
+    corte: { de: 'fixo', valor: 35 },
     parcelas: 2,
   },
 };
 
+/**
+ * A comparação de `ambos_vazam` é ESTRITA (`< 35`), e a das outras é inclusiva
+ * (`>= 40`, `<= linha - 0.3`).
+ *
+ * Mora numa lista, e não num campo do critério, porque é uma exceção de UMA
+ * premissa: um campo `estrito: false` em oito entradas seria ruído em oito lugares
+ * para marcar um caso. Errar isto por um passo erra a premissa numa faixa
+ * estreita, que é o tipo de defeito que ninguém vê na tela.
+ */
+const COMPARACAO_ESTRITA = new Set(['goals_over_under:ambos_vazam']);
+
 /** Arredonda para duas casas: soma de médias em ponto flutuante rende 2,9500000000000004. */
 const duasCasas = (v: number) => Math.round(v * 100) / 100;
+
+const cruzouCorte = (valor: number, corte: number, sentido: Sentido, estrito: boolean): boolean => {
+  if (sentido === 'acima') return estrito ? valor > corte : valor >= corte;
+  return estrito ? valor < corte : valor <= corte;
+};
 
 /**
  * A premissa prestando contas: insumo, corte, veredito e base de jogos.
  *
  * `null` quando não há o que prestar — premissa sem critério transcrito, saída sem
- * linha, ou histórico que não produz média. **Sem dado é `null`, nunca zero**: uma
- * defesa sem jogos não "sofre 0 gols por jogo", e mostrar o zero seria a tela
- * inventando a premissa mais forte possível a partir da ausência.
+ * linha onde o corte vem dela, ou histórico que não produz o número. **Sem dado é
+ * `null`, nunca zero**: uma defesa sem jogos não "sofre 0 gols por jogo", e
+ * mostrar o zero seria a tela inventando a premissa mais forte possível a partir
+ * da ausência.
  */
 export function prestacaoDaPremissa(
   mercado: string,
@@ -176,7 +281,8 @@ export function prestacaoDaPremissa(
   linha: number | null,
 ): Prestacao | null {
   const criterio = CRITERIOS[`${mercado}:${slug}`];
-  if (!criterio || linha == null) return null;
+  if (!criterio) return null;
+  if (criterio.corte.de === 'linha' && linha == null) return null;
 
   const story = storyDaPremissa(slug, hist, lado, linha);
   if (!story) return null;
@@ -189,43 +295,61 @@ function prestacaoDoStory(
   slug: string,
   criterio: Criterio,
   story: Story,
-  linha: number,
+  linha: number | null,
 ): Prestacao | null {
-  const parcelas: { teamName: string; valor: number }[] = [];
-  const base: BaseDeJogos[] = [];
+  const corte =
+    criterio.corte.de === 'fixo' ? criterio.corte.valor : duasCasas(linha! + criterio.corte.margem);
+  const estrito = COMPARACAO_ESTRITA.has(`${mercado}:${slug}`);
+  // O percentual sai da fração que a série mede: a métrica é binária, então a
+  // média das barras já é "quantos dos jogos", e o ×100 é só a escala.
+  const emEscala = (v: number) => (criterio.escala === 'percentual' ? v * 100 : v);
+
+  const parcelas: Parcela[] = [];
   // Soma em precisão cheia, como o modelo faz. Arredondar cada parcela ANTES de
   // somar move o total em até meio centésimo por parcela, e no corte isso vira
   // veredito trocado: 1,475 + 1,475 é 2,95, mas 1,48 + 1,48 é 2,96.
   let cru = 0;
   for (const s of story.series) {
-    // Uma série sem média derruba a prestação inteira: o insumo é a SOMA dos dois
-    // times, e somar um lado só daria um número que o modelo nunca comparou.
+    // Uma série sem média derruba a prestação inteira.
     if (s.media == null) return null;
-    cru += s.media;
-    parcelas.push({ teamName: s.teamName, valor: duasCasas(s.media) });
-    base.push({ teamId: s.teamId, teamName: s.teamName, jogos: s.jogos.length, daJanela: s.daJanela });
+    const valor = emEscala(s.media);
+    cru += valor;
+    parcelas.push({
+      teamId: s.teamId,
+      teamName: s.teamName,
+      valor: duasCasas(valor),
+      cruzou:
+        criterio.combinacao === 'soma'
+          ? null
+          : cruzouCorte(duasCasas(valor), corte, criterio.sentido, estrito),
+      jogos: s.jogos.length,
+      daJanela: s.daJanela,
+    });
   }
-  // Faltou um lado: `storyDaPremissa` pula a série do time sem jogos no recorte, e
-  // aí a soma seria de um só — um número baixo, que ACENDERIA a premissa a partir
-  // da ausência de dado.
+  // Faltou um lado: `storyDaPremissa` pula a série do time sem jogos no recorte.
   if (parcelas.length !== criterio.parcelas) return null;
 
-  const insumo = duasCasas(cru);
-  const corte = duasCasas(linha + criterio.margem);
+  const insumo = criterio.combinacao === 'soma' ? duasCasas(cru) : null;
+  const cruzou =
+    criterio.combinacao === 'soma'
+      ? cruzouCorte(insumo!, corte, criterio.sentido, estrito)
+      : criterio.combinacao === 'e'
+        ? parcelas.every((p) => p.cruzou)
+        : parcelas.some((p) => p.cruzou);
+
   return {
     mercado,
     slug,
     forma: criterio.forma,
+    combinacao: criterio.combinacao,
+    sentido: criterio.sentido,
+    escala: criterio.escala,
     insumo,
     corte,
-    linha,
-    margem: criterio.margem,
-    sentido: criterio.sentido,
-    // `<=` e `>=`, como no modelo. O valor exatamente no corte ACENDE, e o erro de
-    // um passo aqui é justamente a faixa que o defeito da spec produzia.
-    cruzou: criterio.sentido === 'acima' ? insumo >= corte : insumo <= corte,
+    linha: criterio.corte.de === 'linha' ? linha : null,
+    margem: criterio.corte.de === 'linha' ? criterio.corte.margem : null,
+    cruzou,
     parcelas,
-    base,
     unidade: criterio.unidade,
   };
 }
@@ -235,9 +359,17 @@ export function temCriterio(mercado: string, slug: string): boolean {
   return CRITERIOS[`${mercado}:${slug}`] != null;
 }
 
-const umaCasa = (v: number) => v.toFixed(1).replace('.', ',');
+/** O número como a escala dele pede: 2,4 gols ou 40%. */
+export function numeroDaPrestacao(p: Prestacao, valor: number): string {
+  return p.escala === 'percentual'
+    ? `${Math.round(valor)}%`
+    : valor.toFixed(1).replace('.', ',');
+}
+
 /** O corte sai como é: 2,95 é 2,95, e arredondar para 3,0 desfaria o ponto dele. */
-const exato = (v: number) => String(v).replace('.', ',');
+export function corteDaPrestacao(p: Prestacao): string {
+  return p.escala === 'percentual' ? `${p.corte}%` : String(p.corte).replace('.', ',');
+}
 
 /**
  * A frase de uma linha que acompanha a premissa na lista.
@@ -249,14 +381,18 @@ const exato = (v: number) => String(v).replace('.', ',');
  */
 export function fraseDaPrestacao(p: Prestacao): string {
   const lado = p.sentido === 'abaixo' ? 'no máximo' : 'pelo menos';
-  return `${umaCasa(p.insumo)} ${p.unidade} · o corte é ${lado} ${exato(p.corte)}`;
+  if (p.insumo != null) {
+    return `${numeroDaPrestacao(p, p.insumo)} ${p.unidade} · o corte é ${lado} ${corteDaPrestacao(p)}`;
+  }
+  const quem = p.combinacao === 'e' ? 'os dois precisam de' : 'basta um com';
+  return `${p.parcelas.map((x) => `${x.teamName} ${numeroDaPrestacao(p, x.valor)}`).join(' · ')} ${p.unidade} · ${quem} ${lado} ${corteDaPrestacao(p)}`;
 }
 
 export interface Divergencia {
   mercado: string;
   slug: string;
-  linha: number;
-  insumo: number;
+  linha: number | null;
+  insumo: number | null;
   corte: number;
   /** O que a nossa derivação concluiu. */
   nossa: boolean;

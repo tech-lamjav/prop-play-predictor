@@ -51,7 +51,18 @@ import { n1 } from '@/utils/futebol-evidencias';
 const JANELA_DE_GOLS = 10;
 const ULTIMOS_DE_GOLS = <T>(rows: T[]): T[] => rows.slice(-JANELA_DE_GOLS);
 
-export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado';
+/**
+ * O que cada barra do gráfico mede.
+ *
+ * `sem_sofrer` e `sem_marcar` são BINÁRIAS: 1 quando o jogo teve a coisa, 0
+ * quando não. A média delas é a FRAÇÃO de jogos, e é ela que vira o percentual
+ * que o modelo compara — `clean_sheet_total / played_total` e
+ * `failed_to_score_total / played_total` (#355).
+ */
+export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado' | 'sem_sofrer' | 'sem_marcar';
+
+/** Métrica binária: a média dela é uma fração de jogos, não uma média de gols. */
+export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar';
 
 /** `proprio` = o mando que o time tem NESTE jogo (mandante em casa, visitante fora). */
 export type FiltroMando = 'proprio' | 'todos';
@@ -118,9 +129,17 @@ const SPECS: Record<string, SerieSpec[]> = {
   defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  clean_sheets_altos: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  ambos_vazam: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  // A família de PERCENTUAL (#355). O critério destas três não é média de gol
+  // nenhuma: é o percentual de jogos de CADA time em que a coisa aconteceu,
+  // contra um corte fixo. Enquanto elas desenhavam `ga`/`gf`, "os dois passam
+  // muitos jogos sem sofrer gol" vinha ilustrado com "2,4 gols sofridos por
+  // jogo" — um número verdadeiro que não é o insumo, e que dizia o contrário.
+  //
+  // A métrica binária resolve os dois lados de uma vez: a barra passa a ser o
+  // jogo (teve ou não teve) e a média das barras É a fração que vira percentual.
+  ataques_fracos: [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  clean_sheets_altos: [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ambos_vazam: [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   // Estas duas ficam DENTRO da janela de gols, mas ainda desenham a média do
@@ -236,6 +255,8 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
   if (m === 'gf') return r.gols_pro;
   if (m === 'total') return r.total_gols;
   if (m === 'xg') return r.xg;
+  if (m === 'sem_sofrer') return r.sem_sofrer ? 1 : 0;
+  if (m === 'sem_marcar') return r.sem_marcar ? 1 : 0;
   return r.gols_pro - r.gols_contra;
 }
 
@@ -259,6 +280,8 @@ const COMO_LER: Record<Metrica, string> = {
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.',
   total: 'Cada barra é o total de gols do jogo, somando os dois times. A linha tracejada é a linha que você escolheu.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
+  sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu. O que a premissa usa é o percentual de jogos cheios.',
+  sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou. O que a premissa usa é o percentual de jogos cheios.',
 };
 
 /**

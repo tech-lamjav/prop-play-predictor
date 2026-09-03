@@ -3,8 +3,14 @@ import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
-import { fraseDaPrestacao, prestacaoDaPremissa, type Prestacao } from '@/utils/futebol-criterio';
+import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
+import {
+  corteDaPrestacao,
+  fraseDaPrestacao,
+  numeroDaPrestacao,
+  prestacaoDaPremissa,
+  type Prestacao,
+} from '@/utils/futebol-criterio';
 import { Crest } from './Crest';
 
 /**
@@ -32,11 +38,22 @@ const dia = (iso: string) => {
   return `${d}/${m}`;
 };
 
-/** Gol é inteiro, gol esperado é decimal. */
+/** Gol é inteiro, gol esperado é decimal, e métrica binária é sim ou não. */
 const rotuloValor = (v: number | null, metrica: SerieHistorico['metrica']) => {
   if (v == null) return '';
+  if (EH_BINARIA(metrica)) return v ? 'sim' : 'não';
   return metrica === 'xg' ? d1(v) : String(Math.round(v));
 };
+
+/**
+ * A média das barras, no rótulo do gráfico.
+ *
+ * Numa métrica binária a média é a FRAÇÃO de jogos, e escrevê-la como "média 0,4"
+ * embaixo de uma premissa que compara 40% contra 40% seria o gráfico falando outra
+ * língua que o card (#355).
+ */
+const rotuloMedia = (v: number, metrica: SerieHistorico['metrica']) =>
+  EH_BINARIA(metrica) ? `${Math.round(v * 100)}% dos jogos` : `média ${d1(v)}`;
 
 /**
  * A cor da barra diz o que o jogo significa PARA A SAÍDA ESCOLHIDA, não só "acima ou
@@ -89,6 +106,8 @@ function SerieResultados({ s }: { s: SerieHistorico }) {
 function SerieMiuda({ s }: { s: SerieHistorico }) {
   const rotulo = (v: number | null) => {
     if (v == null) return '—';
+    if (s.metrica === 'sem_sofrer') return v ? 'não sofreu gol' : 'sofreu gol';
+    if (s.metrica === 'sem_marcar') return v ? 'não marcou' : 'marcou';
     if (s.metrica === 'xg') return `${d1(v)} de gol esperado`;
     const n = Math.round(v);
     if (s.metrica === 'ga') return `${n} ${n === 1 ? 'gol sofrido' : 'gols sofridos'}`;
@@ -178,7 +197,7 @@ function BlocoSerie({
               className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
               style={{ color: '#b8870f', bottom: y(s.media) + 2 }}
             >
-              média {d1(s.media)}
+              {rotuloMedia(s.media, s.metrica)}
             </span>
           </>
         )}
@@ -315,8 +334,90 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
  * A linha continua desenhada, em segundo plano, porque é ela que decide a aposta
  * e some-la deixaria o corte sem referência.
  */
+/**
+ * A família de PERCENTUAL POR TIME: cada time com o seu número e o seu veredito,
+ * lado a lado, sem soma (#355).
+ *
+ * O card de soma não serve aqui, e a diferença não é estética: somar percentuais
+ * de times diferentes não significa nada. Era esse card que produzia o defeito
+ * mais visível da spec — "os dois passam muitos jogos sem sofrer gol" ilustrado
+ * com "2,4 gols sofridos por jogo, somando os dois".
+ *
+ * O `E`/`OU` é dito em palavras porque sem ele o assinante vê um time abaixo do
+ * corte e não entende por que a premissa acendeu.
+ */
+function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
+  const teto = Math.max(...p.parcelas.map((x) => x.valor), p.corte) * 1.2 || 1;
+  const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
+  const exigencia =
+    p.combinacao === 'e'
+      ? `Os DOIS times precisam de ${p.sentido === 'abaixo' ? 'menos de' : 'pelo menos'} ${corteDaPrestacao(p)}.`
+      : `Basta UM dos times ter ${p.sentido === 'abaixo' ? 'menos de' : 'pelo menos'} ${corteDaPrestacao(p)}.`;
+  return (
+    <div className="rounded-xl bg-canvas-2 p-4">
+      <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
+        {p.unidade}, por time
+      </div>
+
+      <div className="flex flex-col gap-3 mt-3">
+        {p.parcelas.map((x) => (
+          <div key={x.teamId}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="flex items-center gap-1.5 min-w-0">
+                <Crest name={x.teamName} id={x.teamId} size={15} />
+                <span className="text-[12px] font-semibold text-ink truncate">{x.teamName}</span>
+              </span>
+              <span
+                className="tabular-nums text-[19px] font-semibold leading-none shrink-0"
+                style={{ color: x.cruzou ? 'var(--forest)' : 'var(--ink-3)' }}
+              >
+                {numeroDaPrestacao(p, x.valor)}
+              </span>
+            </div>
+            <div className="relative mt-1.5 h-2.5 rounded-full bg-white">
+              <div
+                className="absolute left-0 top-0 bottom-0 rounded-full"
+                style={{ width: pct(x.valor), background: x.cruzou ? 'var(--forest)' : 'var(--ink-3)' }}
+              />
+              <div
+                className="absolute -top-1 -bottom-1 w-[3px] rounded-full"
+                style={{ left: pct(p.corte), background: '#b8870f', boxShadow: '0 0 0 1.5px #fff' }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="text-[11.5px] leading-relaxed text-ink-2 mt-3">
+        {exigencia}{' '}
+        {p.cruzou
+          ? p.combinacao === 'ou' && p.parcelas.some((x) => !x.cruzou)
+            ? `${p.parcelas.filter((x) => x.cruzou).map((x) => x.teamName).join(' e ')} passou do corte sozinho, e é por isso que esta premissa sustenta ${saidaLabel}.`
+            : `Os dois passaram do corte, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          : p.parcelas.every((x) => !x.cruzou)
+            ? 'Nenhum dos dois atingiu o corte.'
+            : `${p.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName).join(' e ')} não atingiu o corte, e por isso a premissa não acendeu.`}
+      </div>
+
+      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">
+        Base:{' '}
+        {p.parcelas
+          .map((b) =>
+            b.jogos === b.daJanela
+              ? `${b.teamName}, ${b.jogos} ${b.jogos === 1 ? 'jogo' : 'jogos'}`
+              : `${b.teamName}, ${b.jogos} dos últimos ${b.daJanela}`,
+          )
+          .join(' · ')}
+      </div>
+    </div>
+  );
+}
+
 function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
-  const teto = Math.max(p.insumo, p.corte, p.linha) * 1.2;
+  if (p.insumo == null) return <PrestacaoPorTime p={p} saidaLabel={saidaLabel} />;
+  const insumo = p.insumo;
+  const linha = p.linha;
+  const teto = Math.max(insumo, p.corte, linha ?? 0) * 1.2;
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
   const cor = p.cruzou ? 'var(--forest)' : 'var(--ink-3)';
   const semMargem = p.margem === 0;
@@ -329,7 +430,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
           </div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="tabular-nums text-[30px] font-semibold leading-none" style={{ color: cor }}>
-              {d1(p.insumo)}
+              {d1(insumo)}
             </span>
             <span className="text-[12px] text-ink-2">{p.unidade}</span>
           </div>
@@ -356,12 +457,12 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
           corte {fmtLinhaExata(p.corte)}
         </span>
         <div className="relative h-3.5 rounded-full bg-white">
-          <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: pct(p.insumo), background: cor }} />
+          <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: pct(insumo), background: cor }} />
           {/* A linha, em cinza e fina: referência, não régua da premissa. */}
           {!semMargem && (
             <div
               className="absolute -top-0.5 -bottom-0.5 w-[2px] rounded-full"
-              style={{ left: pct(p.linha), background: '#c0b79f' }}
+              style={{ left: pct(linha ?? 0), background: '#c0b79f' }}
             />
           )}
           <div
@@ -373,20 +474,20 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {p.cruzou
-          ? `${d1(p.insumo)} fica ${p.sentido} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
-          : `${d1(p.insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}.`}
+          ? `${d1(insumo)} fica ${p.sentido} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}.`}
         {!semMargem && (
           <>
             {' '}
-            O corte é a linha de {fmtLinhaExata(p.linha)} com uma margem de{' '}
-            {fmtLinhaExata(Math.abs(p.margem))} — o modelo é mais exigente do que a linha.
+            O corte é a linha de {fmtLinhaExata(linha ?? 0)} com uma margem de{' '}
+            {fmtLinhaExata(Math.abs(p.margem ?? 0))} — o modelo é mais exigente do que a linha.
           </>
         )}
       </div>
 
       <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">
         Base:{' '}
-        {p.base
+        {p.parcelas
           .map((b) =>
             b.jogos === b.daJanela
               ? `${b.teamName}, ${b.jogos} ${b.jogos === 1 ? 'jogo' : 'jogos'}`
