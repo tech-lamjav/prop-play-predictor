@@ -38,7 +38,7 @@ import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
-import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
+import { acendeuNaSaida, rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import { useGuardaDeDivergencia } from '@/hooks/use-guarda-de-divergencia';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
@@ -412,9 +412,17 @@ export function BancadaMercados({
   const visiveis = principal
     ? premissasDaSaida(mercado, principal)
     : mercado.premissas.filter((p) => !PREMISSAS_OCULTAS.has(p.slug));
-  const acesasSet = new Set(principal?.acesas ?? []);
-  const favor = visiveis.filter((p) => acesasSet.has(p.slug)).sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0));
-  const apagadas = visiveis.filter((p) => !acesasSet.has(p.slug)).sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0));
+  // O agrupamento sai do vocabulário dos cinco estados (#357), e não de um
+  // `acesasSet.has` solto: era assim que "não atingiu o corte" e "não se aplica a
+  // esta saída" viravam a mesma pilha de apagadas.
+  //
+  // `acendeuNaSaida` junta `acesa` e `sem número para conferir` de propósito: as
+  // duas acenderam, e o que difere é a tela ter o número — o que não muda de lista
+  // quem é. Quem separa esses dois é a regra de exibição logo abaixo.
+  const porPeso = (a: Premissa, b: Premissa) => (b.peso ?? 0) - (a.peso ?? 0);
+  const acendeu = (p: Premissa) => principal != null && acendeuNaSaida(p, principal, principal.acesas);
+  const favor = visiveis.filter(acendeu).sort(porPeso);
+  const apagadas = visiveis.filter((p) => !acendeu(p)).sort(porPeso);
   const penAtivas = (principal?.penalidades ?? [])
     .filter((s) => !PREMISSAS_OCULTAS.has(s))
     .map((s) => premissaDe(mercado.slug, s))
@@ -426,6 +434,8 @@ export function BancadaMercados({
   const ladoPrincipal = principal ? ladoDaSaida(mercado.slug, principal.outcome) : null;
   const nPrincipal = principal ? contaQueValem(principal) : 0;
   const ate = numeros?.[0]?.ate ?? null;
+
+  const chaveDosVisiveis = visiveis.map((p) => p.slug).join('|');
 
   // A guarda de divergência (#353). Ela não desenha nada: emite evento quando a
   // nossa derivação do critério discorda do booleano do mart. Fica aqui porque é
@@ -440,7 +450,11 @@ export function BancadaMercados({
     historico,
     lado: ladoPrincipal,
     linha,
-    slugs: useMemo(() => visiveis.map((p) => p.slug), [visiveis]),
+    // ⚠️ A chave do memo é a string dos slugs, e não o array `visiveis`: ele é
+    // reconstruído a cada render, e memoizar sobre ele nunca segura — o memo de
+    // dentro do hook estouraria junto, e a varredura de divergência rodaria a
+    // cada render de uma tela que rerenderiza ao arrastar a régua.
+    slugs: useMemo(() => visiveis.map((p) => p.slug), [chaveDosVisiveis]), // eslint-disable-line react-hooks/exhaustive-deps
   });
 
   // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos

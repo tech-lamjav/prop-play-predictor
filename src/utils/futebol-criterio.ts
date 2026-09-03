@@ -110,6 +110,14 @@ export interface Prestacao {
   linha: number | null;
   /** A margem entre a linha e o corte. `null` quando o corte é fixo, zero onde a premissa compara contra a linha crua. */
   margem: number | null;
+  /**
+   * A comparação com o corte é ESTRITA?
+   *
+   * Só a `ambos_vazam` é (`cs_pct < 35`, e não `<=`). Precisa sair no tipo porque
+   * a copy muda com ela: "no máximo 35%" seria falso ali — o valor exatamente em
+   * 35% não acende.
+   */
+  estrito: boolean;
   /** O veredito, já combinado. É a nossa conta, não a do mart. */
   cruzou: boolean;
   parcelas: Parcela[];
@@ -417,6 +425,7 @@ function prestacaoDoStory(
     // régua de cada jogo na de contagem.
     linha: criterio.corte.de === 'linha' || criterio.contagem ? linha : null,
     margem: criterio.corte.de === 'linha' ? criterio.corte.margem : null,
+    estrito,
     cruzou,
     parcelas,
     unidade: criterio.unidade,
@@ -435,6 +444,30 @@ export function numeroDaPrestacao(p: Prestacao, valor: number): string {
   return valor.toFixed(1).replace('.', ',');
 }
 
+/**
+ * "no máximo 2,95", "pelo menos 40%", "menos de 35%": o corte em palavras, do lado
+ * que a premissa quer e com a exigência que ela tem.
+ *
+ * Vive aqui, e não no componente, porque é o CRITÉRIO falando: o mesmo sentido
+ * saía com três redações em três lugares — "no máximo", "menos de" e "≤" — e o
+ * card e a frase da lista descreviam o mesmo corte com palavras que não pareciam
+ * a mesma coisa.
+ *
+ * A estrita tem palavra própria: numa `ambos_vazam`, "no máximo 35%" seria falso,
+ * porque 35% exato não acende.
+ */
+export function corteEmPalavras(p: Prestacao): string {
+  const lado =
+    p.sentido === 'abaixo'
+      ? p.estrito
+        ? 'menos de'
+        : 'no máximo'
+      : p.estrito
+        ? 'mais de'
+        : 'pelo menos';
+  return `${lado} ${corteDaPrestacao(p)}`;
+}
+
 /** O corte sai como é: 2,95 é 2,95, e arredondar para 3,0 desfaria o ponto dele. */
 export function corteDaPrestacao(p: Prestacao): string {
   if (p.escala === 'percentual') return `${p.corte}%`;
@@ -451,12 +484,11 @@ export function corteDaPrestacao(p: Prestacao): string {
  * histórico jogo a jogo (095). Agora é um número só, com uma origem só.
  */
 export function fraseDaPrestacao(p: Prestacao): string {
-  const lado = p.sentido === 'abaixo' ? 'no máximo' : 'pelo menos';
   if (p.insumo != null) {
-    return `${numeroDaPrestacao(p, p.insumo)} ${p.unidade} · o corte é ${lado} ${corteDaPrestacao(p)}`;
+    return `${numeroDaPrestacao(p, p.insumo)} ${p.unidade} · o corte é ${corteEmPalavras(p)}`;
   }
   const quem = p.combinacao === 'e' ? 'os dois precisam de' : 'basta um com';
-  return `${p.parcelas.map((x) => `${x.teamName} ${numeroDaPrestacao(p, x.valor)}`).join(' · ')} ${p.unidade} · ${quem} ${lado} ${corteDaPrestacao(p)}`;
+  return `${p.parcelas.map((x) => `${x.teamName} ${numeroDaPrestacao(p, x.valor)}`).join(' · ')} ${p.unidade} · ${quem} ${corteEmPalavras(p)}`;
 }
 
 export interface Divergencia {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ROTULO_DO_ESTADO, estadoDaPremissa, type EstadoDaPremissa } from './futebol-estado-da-premissa';
+import {
+  ROTULO_DO_ESTADO,
+  acendeuNaSaida,
+  estadoDaPremissa,
+  type EstadoDaPremissa,
+} from './futebol-estado-da-premissa';
 import { premissaDe } from './futebol-premissas';
 import type { Saida } from './futebol-saida';
 
@@ -106,5 +111,36 @@ describe('mercado sem lado declarado não descarta premissa nenhuma', () => {
     expect(estadoDaPremissa({ premissa: forma, saida: home, acesas: [], temNumero: true })).toBe(
       'nao_atingiu_o_corte',
     );
+  });
+});
+
+describe('o agrupamento das telas', () => {
+  // `acendeuNaSaida` é o que as duas telas usam para separar as listas. Ele junta
+  // `acesa` e `sem número para conferir` de propósito: as duas acenderam.
+  it('junta a acesa e a acesa sem número', () => {
+    expect(acendeuNaSaida(p('defesas_vazaveis'), over(), ['defesas_vazaveis'])).toBe(true);
+    expect(acendeuNaSaida(p('ritmo_alto'), over(), ['ritmo_alto'])).toBe(true);
+  });
+
+  it('e deixa de fora a que não atingiu o corte e a do outro lado', () => {
+    expect(acendeuNaSaida(p('defesas_vazaveis'), over(), [])).toBe(false);
+    // Se o mart acender do lado errado, ela continua fora: isso é dado a
+    // investigar, não coisa a exibir embaixo de um Over.
+    expect(acendeuNaSaida(p('defesas_firmes'), over(), ['defesas_firmes'])).toBe(false);
+  });
+
+  it('concorda com `estadoDaPremissa`, para as duas não divergirem', () => {
+    for (const saida of [over(), under()]) {
+      for (const slug of ['defesas_vazaveis', 'defesas_firmes', 'ritmo_alto']) {
+        for (const acesas of [[], [slug]]) {
+          for (const temNumero of [true, false]) {
+            const e = estadoDaPremissa({ premissa: p(slug), saida, acesas, temNumero });
+            expect(acendeuNaSaida(p(slug), saida, acesas)).toBe(
+              e === 'acesa' || e === 'sem_numero_para_conferir',
+            );
+          }
+        }
+      }
+    }
   });
 });

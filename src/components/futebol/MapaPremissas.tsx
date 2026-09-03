@@ -91,6 +91,12 @@ function SeloResultado({ saida, placar }: { saida: Saida; placar: PlacarFinal })
 /**
  * O mapa de premissas do jogo.
  *
+ * ⚠️ NADA IMPORTA ESTE ARQUIVO HOJE. A tela viva das premissas é a
+ * `BancadaMercados`, e este componente ficou para trás quando ela nasceu — é o
+ * `MapaPremissas` exportado e nunca montado. A spec #349 passou por aqui porque o
+ * arquivo ainda existe e divergiria em silêncio; aposentá-lo é decisão de produto
+ * e fica fora dela.
+ *
  * Substitui "a aposta e o preço" como conteúdo principal: a revisão da metodologia
  * (docs/premissas-recalibragem.md) trocou a porta de publicação de preço para
  * contexto, então o pick é consequência e o contexto é o conteúdo.
@@ -284,8 +290,12 @@ function PainelMercado({
   // `acesasSet.has` solto: era assim que "não aconteceu neste jogo" e "não se
   // aplica a esta saída" viravam a mesma pilha de premissas apagadas.
   //
-  // `nao_se_aplica` não pode aparecer aqui, porque `visiveis` já é do lado da
-  // saída — e é isso que o `else` embaixo afirma, em vez de silenciar.
+  // A premissa acesa SEM número entra junto das acesas, e não numa terceira
+  // pilha: ela acendeu de verdade, e o que falta é a tela ter o insumo. Escondê-la
+  // aqui faria o mapa contradizer o contador logo acima.
+  //
+  // `nao_se_aplica` não chega a aparecer, porque `visiveis` já é do lado da saída
+  // — os dois estados restantes são os que os `filter` separam.
   const estadoDe = (p: Premissa) =>
     estadoDaPremissa({
       premissa: p,
@@ -293,7 +303,9 @@ function PainelMercado({
       acesas: atual.acesas,
       temNumero: evDe(p.slug) != null,
     });
-  const acesas = visiveis.filter((p) => estadoDe(p) !== 'nao_atingiu_o_corte').sort(ordena);
+  const acesas = visiveis
+    .filter((p) => ['acesa', 'sem_numero_para_conferir'].includes(estadoDe(p)))
+    .sort(ordena);
   const apagadas = visiveis.filter((p) => estadoDe(p) === 'nao_atingiu_o_corte').sort(ordena);
 
   const penAtivas = (atual.penalidades ?? [])

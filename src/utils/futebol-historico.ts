@@ -290,17 +290,13 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
 }
 
 /**
- * O que vem depois do nome do time no cabeçalho da série.
+ * O mando no cabeçalho da série, para quem recorta por mando.
  *
- * "todos os jogos" agora quer dizer **a janela da premissa** — os últimos jogos em
- * qualquer competição, que é o que o modelo mede (#350). Antes era "todos os jogos
- * desta competição nesta temporada", e a diferença passou a importar: o gráfico
- * mistura campeonatos de propósito, e sem dizer isso ele parece defeito.
- *
- * O recorte de mando sobrevive nas premissas em que o critério DE FATO olha o
- * mando — handicap e resultado.
+ * Quem não recorta não passa por aqui: o título dele anuncia a JANELA ("últimos 10
+ * jogos"), porque é ela que define o recorte. Antes o sufixo tinha um terceiro
+ * caso, "todos os jogos", e ele mentia duas vezes — sugeria a temporada de uma
+ * competição só, quando o gráfico mistura campeonatos de propósito (#350).
  */
-/** O mando no título. Só quem recorta por mando o usa; os outros anunciam a janela. */
 const SUFIXO_MANDO = (emCasa: boolean) => (emCasa ? ' em casa' : ' fora');
 
 const COMO_LER: Record<Metrica, string> = {

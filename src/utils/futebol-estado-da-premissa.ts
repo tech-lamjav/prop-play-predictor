@@ -64,6 +64,36 @@ export function rotuloEmTitulo(estado: EstadoDaPremissa): string {
 }
 
 /**
+ * A premissa se aplica a esta saída?
+ *
+ * Falsa para a premissa do outro lado. Ela não "deixou de acontecer": conta para
+ * a aposta contrária, e listá-la como apagada é a tela se contradizendo (#351).
+ */
+export function seAplicaNaSaida(premissa: Premissa, saida: Saida): boolean {
+  const lado = ladoDaSaidaNoMercado(saida);
+  return lado == null || premissa.lado == null || premissa.lado === lado;
+}
+
+/**
+ * A premissa ACENDEU para esta saída?
+ *
+ * Junta `acesa` e `sem_numero_para_conferir`, e é essa a pergunta que as telas
+ * fazem para separar as duas listas: as duas acenderam, e o que difere entre elas
+ * é a tela ter ou não o número — o que não muda de lista quem é.
+ *
+ * Existe separada de `estadoDaPremissa` porque quem só quer o agrupamento não tem
+ * de responder se tem número, e responder "sim" por conveniência ali seria mentir
+ * para uma função que existe justamente para separar os dois silêncios.
+ */
+export function acendeuNaSaida(
+  premissa: Premissa,
+  saida: Saida,
+  acesas: readonly string[],
+): boolean {
+  return seAplicaNaSaida(premissa, saida) && acesas.includes(premissa.slug);
+}
+
+/**
  * Em que estado uma premissa está, para uma saída.
  *
  * `temNumero` é o que separa `acesa` de `sem_numero_para_conferir`, e quem
@@ -84,11 +114,7 @@ export function estadoDaPremissa({
   /** O front tem número para mostrar embaixo desta premissa? */
   temNumero: boolean;
 }): EstadoDaPremissa {
-  const lado = ladoDaSaidaNoMercado(saida);
-  // Premissa de outro lado não "deixou de acontecer": ela conta para a aposta
-  // contrária, e listá-la como apagada é a tela se contradizendo (#351).
-  if (lado != null && premissa.lado != null && premissa.lado !== lado) return 'nao_se_aplica';
-
+  if (!seAplicaNaSaida(premissa, saida)) return 'nao_se_aplica';
   if (!acesas.includes(premissa.slug)) return 'nao_atingiu_o_corte';
   return temNumero ? 'acesa' : 'sem_numero_para_conferir';
 }

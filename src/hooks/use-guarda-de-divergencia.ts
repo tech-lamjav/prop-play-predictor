@@ -24,6 +24,10 @@ const TETO_POR_SAIDA = 6;
  * A deduplicação é por (mercado, slug, linha, os dois vereditos): arrastar a
  * régua e voltar não reemite, e um jogo com a mesma divergência em duas linhas
  * emite as duas — são casos diferentes.
+ *
+ * Não devolve nada de propósito. A divergência é um defeito NOSSO, não informação
+ * para o assinante: mostrá-la na tela seria pedir a ele que arbitrasse entre a
+ * conta da tela e a do modelo. Quem precisa dela é quem lê o evento.
  */
 export function useGuardaDeDivergencia({
   mercado,
@@ -40,7 +44,7 @@ export function useGuardaDeDivergencia({
   linha: number | null;
   /** As premissas a conferir: as do lado da saída. */
   slugs: readonly string[];
-}) {
+}): void {
   const posthog = usePostHog();
   const jaEmitidas = useRef(new Set<string>());
 
@@ -68,6 +72,4 @@ export function useGuardaDeDivergencia({
       });
     }
   }, [divergencias, posthog]);
-
-  return divergencias;
 }

@@ -5,7 +5,7 @@ import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/f
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
-  corteDaPrestacao,
+  corteEmPalavras,
   fraseDaPrestacao,
   numeroDaPrestacao,
   prestacaoDaPremissa,
@@ -322,19 +322,22 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
   );
 }
 /**
- * A premissa prestando contas do modelo: o insumo medido, o CORTE real, e a base
- * de jogos (#353).
+ * A base de jogos que produziu o número, por time.
  *
- * Substitui o `Consolidado` onde o critério já foi transcrito. A diferença que
- * justifica o card novo é o corte: o antigo comparava o número contra a LINHA, e
- * o corte quase nunca é a linha. Numa linha de 3,25 o corte de "defesas firmes" é
- * 2,95, e havia uma faixa inteira — 2,95 a 3,25 — em que o card dizia "fica
- * abaixo da linha, e é por isso que a premissa joga a favor" enquanto o modelo
- * não acendia a premissa.
- *
- * A linha continua desenhada, em segundo plano, porque é ela que decide a aposta
- * e some-la deixaria o corte sem referência.
+ * Sai da prestação e não do gráfico, e existe uma vez só porque as duas formas de
+ * card a desenham igual. Duas cópias da mesma frase é como o "2,4 no card com 2,3
+ * no subtítulo" nasceu.
  */
+function baseDeJogos(p: Prestacao): string {
+  return p.parcelas
+    .map((b) =>
+      b.jogos === b.daJanela
+        ? `${b.teamName}, ${b.jogos} ${b.jogos === 1 ? 'jogo' : 'jogos'}`
+        : `${b.teamName}, ${b.jogos} dos últimos ${b.daJanela}`,
+    )
+    .join(' · ');
+}
+
 /**
  * A família de PERCENTUAL POR TIME: cada time com o seu número e o seu veredito,
  * lado a lado, sem soma (#355).
@@ -350,11 +353,10 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
 function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
   const teto = Math.max(...p.parcelas.map((x) => x.valor), p.corte) * 1.2 || 1;
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
-  const quanto = `${p.sentido === 'abaixo' ? 'menos de' : 'pelo menos'} ${corteDaPrestacao(p)}`;
   const exigencia =
     p.combinacao === 'e'
-      ? `Os DOIS times precisam de ${quanto}.`
-      : `Basta UM dos times ter ${quanto}.`;
+      ? `Os DOIS times precisam de ${corteEmPalavras(p)}.`
+      : `Basta UM dos times ter ${corteEmPalavras(p)}.`;
   // A contagem é medida contra a LINHA escolhida, e muda quando o assinante
   // arrasta a régua. Sem dizer isso, ver o número mudar parece defeito.
   const contraALinha =
@@ -407,16 +409,7 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
             : `${p.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName).join(' e ')} não atingiu o corte, e por isso a premissa não acendeu.`}
       </div>
 
-      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">
-        Base:{' '}
-        {p.parcelas
-          .map((b) =>
-            b.jogos === b.daJanela
-              ? `${b.teamName}, ${b.jogos} ${b.jogos === 1 ? 'jogo' : 'jogos'}`
-              : `${b.teamName}, ${b.jogos} dos últimos ${b.daJanela}`,
-          )
-          .join(' · ')}
-      </div>
+      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">Base: {baseDeJogos(p)}</div>
     </div>
   );
 }
@@ -451,8 +444,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
             Corte da premissa
           </div>
           <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">
-            {p.sentido === 'abaixo' ? '≤ ' : '≥ '}
-            {fmtLinhaExata(p.corte)}
+            {corteEmPalavras(p)}
           </div>
         </div>
       </div>
@@ -482,27 +474,18 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {p.cruzou
-          ? `${d1(insumo)} fica ${p.sentido} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          ? `${d1(insumo)} fica ${p.sentido === 'abaixo' ? 'abaixo' : 'acima'} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
           : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}.`}
         {!semMargem && (
           <>
             {' '}
             O corte é a linha de {fmtLinhaExata(linha ?? 0)} com uma margem de{' '}
-            {fmtLinhaExata(Math.abs(p.margem ?? 0))} — o modelo é mais exigente do que a linha.
+            {fmtLinhaExata(Math.abs(p.margem ?? 0))}: o modelo é mais exigente do que a linha.
           </>
         )}
       </div>
 
-      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">
-        Base:{' '}
-        {p.parcelas
-          .map((b) =>
-            b.jogos === b.daJanela
-              ? `${b.teamName}, ${b.jogos} ${b.jogos === 1 ? 'jogo' : 'jogos'}`
-              : `${b.teamName}, ${b.jogos} dos últimos ${b.daJanela}`,
-          )
-          .join(' · ')}
-      </div>
+      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">Base: {baseDeJogos(p)}</div>
     </div>
   );
 }
