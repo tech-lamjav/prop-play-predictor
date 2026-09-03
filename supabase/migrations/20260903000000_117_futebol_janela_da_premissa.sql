@@ -13,8 +13,16 @@
 --
 -- Resultado: nenhum número da tela era o número que acendeu a premissa. Daí saem
 -- os defeitos da spec #349 — "defesas firmes" mostrando 2,3 no subtítulo e 2,4 no
--- card, e o gráfico anunciando "Flamengo em casa, 11 jogos" embaixo de um critério
--- que não olha mando nenhum.
+-- card, e o gráfico anunciando "Flamengo em casa, 11 jogos" quando o critério soma
+-- dez jogos.
+--
+-- ⚠️ ERRATA (posterior a esta migration, sem efeito no SQL dela). O texto acima
+-- seguia dizendo que o critério "não olha mando nenhum", e isso é falso para três
+-- das dez premissas de gols: `gf_comb` e `ga_comb` somam o mandante EM CASA com o
+-- visitante FORA. O que estava errado na tela era a temporada de uma competição só
+-- embaixo do "em casa", não o "em casa". O recorte de mando é do FRONT e vive em
+-- src/utils/futebol-historico.ts, premissa a premissa; esta consulta continua
+-- devolvendo os jogos sem recorte nenhum, que é o certo para os dois casos.
 --
 -- Esta migration troca a âncora: o histórico passa a medir a JANELA DA PREMISSA.
 -- O gráfico volta a explicar o número — só que agora o número certo.

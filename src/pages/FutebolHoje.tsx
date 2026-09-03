@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
+import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -155,11 +156,24 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
 
           {estado === 'motivos' && contra.length > 0 && (
             <div>
-              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Contra</div>
+              {/* "Não atingiu o corte", e não "Contra" (#351): o que o backend agrupa
+                  ali são premissas DO PRÓPRIO LADO da saída que ficaram aquém —
+                  num Under 3,5 vieram quatro em favor e uma em contra, e o Under
+                  tem exatamente cinco. O rótulo antigo afirmava um sinal
+                  apontando para o outro lado, e ele não existe. */}
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>
+                {rotuloEmTitulo('nao_atingiu_o_corte')}
+              </div>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {contra.map((m) => (
                   <li key={m.slug} className={`flex items-start gap-2 text-[14px] leading-snug ${d ? 'text-white/70' : 'text-ink-2'}`}>
-                    <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${d ? '' : 'text-amber-2'}`} style={d ? { color: '#fde68a' } : undefined} />
+                    {/* Círculo vazio, e não o triângulo de alerta: a premissa foi
+                        avaliada e ficou aquém, o que é ausência de sinal — não é
+                        risco. O triângulo lia como "cuidado com esta aposta". */}
+                    <span
+                      className="block w-3 h-3 mt-1 shrink-0 rounded-full border-[1.5px]"
+                      style={{ borderColor: d ? 'rgba(255,255,255,.35)' : '#c0b79f' }}
+                    />
                     <span><Blur active={!!locked}>{m.texto}</Blur></span>
                   </li>
                 ))}

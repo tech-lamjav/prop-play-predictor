@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, X } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
+import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
+import {
+  corteEmPalavras,
+  exato,
+  faltouParaOCorte,
+  fraseDaPrestacao,
+  numeroDaPrestacao,
+  prestacaoDaPremissa,
+  type Prestacao,
+} from '@/utils/futebol-criterio';
+import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import { Crest } from './Crest';
 
 /**
@@ -24,18 +34,32 @@ const d1 = (v: number) => v.toFixed(1).replace('.', ',');
 /**
  * A linha sai como está cotada: 1,75 é 1,75, não 1,8. Arredondar para uma casa
  * dizia "linha 1,8" numa aposta que é de 1,75.
+ *
+ * É o `exato` do módulo do critério, com o nome que esta tela usa: eram a mesma
+ * função escrita duas vezes.
  */
-const fmtLinhaExata = (v: number) => String(v).replace('.', ',');
+const fmtLinhaExata = exato;
 const dia = (iso: string) => {
   const [, m, d] = iso.split('-');
   return `${d}/${m}`;
 };
 
-/** Gol é inteiro, gol esperado é decimal. */
+/** Gol é inteiro, gol esperado é decimal, e métrica binária é sim ou não. */
 const rotuloValor = (v: number | null, metrica: SerieHistorico['metrica']) => {
   if (v == null) return '';
+  if (EH_BINARIA(metrica)) return v ? 'sim' : 'não';
   return metrica === 'xg' ? d1(v) : String(Math.round(v));
 };
+
+/**
+ * A média das barras, no rótulo do gráfico.
+ *
+ * Numa métrica binária a média é a FRAÇÃO de jogos, e escrevê-la como "média 0,4"
+ * embaixo de uma premissa que compara 40% contra 40% seria o gráfico falando outra
+ * língua que o card (#355).
+ */
+const rotuloMedia = (v: number, metrica: SerieHistorico['metrica']) =>
+  EH_BINARIA(metrica) ? `${Math.round(v * 100)}% dos jogos` : `média ${d1(v)}`;
 
 /**
  * A cor da barra diz o que o jogo significa PARA A SAÍDA ESCOLHIDA, não só "acima ou
@@ -43,6 +67,13 @@ const rotuloValor = (v: number | null, metrica: SerieHistorico['metrica']) => {
  * 2,5" o mesmo jogo joga contra. Quem separa os times é a posição (bloco da esquerda
  * e da direita, com o nome em cima), então a cor fica livre para o significado.
  */
+/**
+ * O sentido em palavra. Os valores do enum são as próprias palavras hoje, e o
+ * ternário que os repetia era um no-op — mas renomear o enum mudaria a copy em
+ * silêncio, e um mapa é o que separa o tipo do texto.
+ */
+const LADO_DO_CORTE: Record<Prestacao['sentido'], string> = { acima: 'acima', abaixo: 'abaixo' };
+
 const COR_FAVOR = '#0a3d2e';
 const COR_CONTRA = '#c9cec6';
 
@@ -88,6 +119,8 @@ function SerieResultados({ s }: { s: SerieHistorico }) {
 function SerieMiuda({ s }: { s: SerieHistorico }) {
   const rotulo = (v: number | null) => {
     if (v == null) return '—';
+    if (s.metrica === 'sem_sofrer') return v ? 'não sofreu gol' : 'sofreu gol';
+    if (s.metrica === 'sem_marcar') return v ? 'não marcou' : 'marcou';
     if (s.metrica === 'xg') return `${d1(v)} de gol esperado`;
     const n = Math.round(v);
     if (s.metrica === 'ga') return `${n} ${n === 1 ? 'gol sofrido' : 'gols sofridos'}`;
@@ -167,7 +200,7 @@ function BlocoSerie({
             style={{ borderColor: 'var(--ink-3)', bottom: y(referencia.valor) }}
           />
         )}
-        {s.media != null && (
+        {s.media != null && s.mostraMedia && (
           <>
             <div
               className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
@@ -177,7 +210,7 @@ function BlocoSerie({
               className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
               style={{ color: '#b8870f', bottom: y(s.media) + 2 }}
             >
-              média {d1(s.media)}
+              {rotuloMedia(s.media, s.metrica)}
             </span>
           </>
         )}
@@ -295,20 +328,240 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
             : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}: por este número, a premissa não sustenta ${saidaLabel}.`
           : c.favorece
             ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaExata(c.linha)}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa não aconteceu.`}
+            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa não atingiu o corte.`}
       </div>
     </div>
   );
 }
+/**
+ * A base de jogos que produziu o número, por time.
+ *
+ * Sai da prestação e não do gráfico, e existe uma vez só porque as duas formas de
+ * card a desenham igual. Duas cópias da mesma frase é como o "2,4 no card com 2,3
+ * no subtítulo" nasceu.
+ */
+function baseDeJogos(p: Prestacao): string {
+  return p.parcelas
+    .map((b) =>
+      b.jogos === b.daJanela
+        ? `${b.teamName}, ${b.jogos} ${b.jogos === 1 ? 'jogo' : 'jogos'}`
+        : `${b.teamName}, ${b.jogos} dos últimos ${b.daJanela}`,
+    )
+    .join(' · ');
+}
+
+/**
+ * A família de PERCENTUAL POR TIME: cada time com o seu número e o seu veredito,
+ * lado a lado, sem soma (#355).
+ *
+ * O card de soma não serve aqui, e a diferença não é estética: somar percentuais
+ * de times diferentes não significa nada. Era esse card que produzia o defeito
+ * mais visível da spec — "os dois passam muitos jogos sem sofrer gol" ilustrado
+ * com "2,4 gols sofridos por jogo, somando os dois".
+ *
+ * O `E`/`OU` é dito em palavras porque sem ele o assinante vê um time abaixo do
+ * corte e não entende por que a premissa acendeu.
+ */
+function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
+  const teto = Math.max(...p.parcelas.map((x) => x.valor), p.corte) * 1.2 || 1;
+  const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
+  const exigencia =
+    p.combinacao === 'e'
+      ? `Os DOIS times precisam de ${corteEmPalavras(p)}.`
+      : `Basta UM dos times ter ${corteEmPalavras(p)}.`;
+  // A contagem é medida contra a LINHA escolhida, e muda quando o assinante
+  // arrasta a régua. Sem dizer isso, ver o número mudar parece defeito.
+  const contraALinha =
+    p.escala === 'contagem' && p.linha != null
+      ? ` A conta é contra a linha de ${fmtLinhaExata(p.linha)}, e muda com ela.`
+      : '';
+  return (
+    <div className="rounded-xl bg-canvas-2 p-4">
+      <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
+        {p.escala === 'contagem' ? `Jogos ${p.unidade}` : `${p.unidade}, por time`}
+      </div>
+
+      <div className="flex flex-col gap-3 mt-3">
+        {p.parcelas.map((x) => (
+          <div key={x.teamId}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="flex items-center gap-1.5 min-w-0">
+                <Crest name={x.teamName} id={x.teamId} size={15} />
+                <span className="text-[12px] font-semibold text-ink truncate">{x.teamName}</span>
+              </span>
+              <span
+                className="tabular-nums text-[19px] font-semibold leading-none shrink-0"
+                style={{ color: x.cruzou ? 'var(--forest)' : 'var(--ink-3)' }}
+              >
+                {numeroDaPrestacao(p, x.valor)}
+              </span>
+            </div>
+            <div className="relative mt-1.5 h-2.5 rounded-full bg-white">
+              <div
+                className="absolute left-0 top-0 bottom-0 rounded-full"
+                style={{ width: pct(x.valor), background: x.cruzou ? 'var(--forest)' : 'var(--ink-3)' }}
+              />
+              <div
+                className="absolute -top-1 -bottom-1 w-[3px] rounded-full"
+                style={{ left: pct(p.corte), background: '#b8870f', boxShadow: '0 0 0 1.5px #fff' }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="text-[11.5px] leading-relaxed text-ink-2 mt-3">
+        {exigencia}{contraALinha}{' '}
+        {p.cruzou
+          ? p.combinacao === 'ou' && p.parcelas.some((x) => !x.cruzou)
+            ? `${p.parcelas.filter((x) => x.cruzou).map((x) => x.teamName).join(' e ')} passou do corte sozinho, e é por isso que esta premissa sustenta ${saidaLabel}.`
+            : `Os dois passaram do corte, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          : p.parcelas.every((x) => !x.cruzou)
+            ? 'Nenhum dos dois atingiu o corte.'
+            : `${p.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName).join(' e ')} não atingiu o corte, e por isso a premissa não acendeu.`}
+      </div>
+
+      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">Base: {baseDeJogos(p)}</div>
+    </div>
+  );
+}
+
+/**
+ * A família de MÉDIA COMBINADA: os dois times somam uma média e o total vai
+ * contra o corte (#353, #354).
+ *
+ * O que justifica este card, e não o consolidado antigo, é o CORTE. O antigo
+ * comparava o número contra a LINHA, e o corte quase nunca é a linha: numa linha
+ * de 3,25 o corte de "defesas firmes" é 2,95, e havia uma faixa inteira — 2,95 a
+ * 3,25 — em que o card dizia "fica abaixo da linha, e é por isso que a premissa
+ * joga a favor" enquanto o modelo não a acendia.
+ *
+ * A linha continua desenhada, em segundo plano, porque é ela que decide a aposta
+ * e sumir com ela deixaria o corte sem referência.
+ */
+function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
+  if (p.insumo == null) return <PrestacaoPorTime p={p} saidaLabel={saidaLabel} />;
+  const insumo = p.insumo;
+  const linha = p.linha;
+  const teto = Math.max(insumo, p.corte, linha ?? 0) * 1.2;
+  const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
+  const cor = p.cruzou ? 'var(--forest)' : 'var(--ink-3)';
+  const semMargem = p.margem === 0;
+  // A frase da distância mora na tela, e o número vem do critério: uma função que
+  // devolvesse ", por 0,05" só serviria colada nesta frase.
+  const falta = faltouParaOCorte(p);
+  const porQuanto = falta == null ? '' : `, por ${exato(falta)}`;
+  return (
+    <div className="rounded-xl bg-canvas-2 p-4">
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
+            {p.parcelas.map((x) => x.teamName).join(' + ')}
+          </div>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="tabular-nums text-[30px] font-semibold leading-none" style={{ color: cor }}>
+              {d1(insumo)}
+            </span>
+            <span className="text-[12px] text-ink-2">{p.unidade}</span>
+          </div>
+          <div className="text-[11px] text-ink-3 mt-1 tabular-nums">
+            {p.parcelas.map((x) => `${x.teamName} ${d1(x.valor)}`).join(' · ')}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
+            Corte da premissa
+          </div>
+          <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">
+            {corteEmPalavras(p)}
+          </div>
+        </div>
+      </div>
+
+      {/* Os dois marcos, sem rótulo flutuante em cima deles.
+          Antes o "corte 2,95" era um `span` posicionado sobre a barra, e a linha
+          não tinha rótulo nenhum — o assinante via um tracinho cinza sem saber o
+          que era. Pior: com margem de 0,3 os dois marcos ficam a 3% de distância
+          na escala, e dois rótulos flutuantes ali se sobrepõem.
+          A legenda saiu para baixo, em fluxo: não colide nunca, e nomeia os dois. */}
+      <div className="relative mt-4">
+        <div className="relative h-3.5 rounded-full bg-white">
+          <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: pct(insumo), background: cor }} />
+          {!semMargem && (
+            <div
+              className="absolute -top-0.5 -bottom-0.5 w-[2px] rounded-full"
+              style={{ left: pct(linha ?? 0), background: '#c0b79f' }}
+            />
+          )}
+          <div
+            className="absolute -top-1 -bottom-1 w-[3px] rounded-full"
+            style={{ left: pct(p.corte), background: '#b8870f', boxShadow: '0 0 0 1.5px #fff' }}
+          />
+        </div>
+        <div className="flex items-center gap-4 mt-2 flex-wrap text-[10px]">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-[3px] h-3 rounded-full" style={{ background: '#b8870f' }} />
+            <span className="tabular-nums" style={{ color: '#8d8672' }}>
+              corte {fmtLinhaExata(p.corte)}
+            </span>
+          </span>
+          {!semMargem && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-[2px] h-3 rounded-full" style={{ background: '#c0b79f' }} />
+              <span className="tabular-nums" style={{ color: '#8d8672' }}>
+                linha {fmtLinhaExata(linha ?? 0)}
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
+        {p.cruzou
+          ? `${d1(insumo)} fica ${LADO_DO_CORTE[p.sentido]} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}${porQuanto}.`}
+        {!semMargem && (
+          <>
+            {' '}
+            O corte é a linha de {fmtLinhaExata(linha ?? 0)} com uma margem de{' '}
+            {fmtLinhaExata(Math.abs(p.margem ?? 0))}: o modelo é mais exigente do que a linha.
+          </>
+        )}
+      </div>
+
+      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">Base: {baseDeJogos(p)}</div>
+    </div>
+  );
+}
+
 /** O painel que abre dentro da linha: consolidado, gráficos e como ler. */
-function PainelPremissa({ story, saidaLabel, modo }: { story: Story; saidaLabel: string; modo: 'favor' | 'contra' }) {
+function PainelPremissa({
+  story,
+  prestacao,
+  saidaLabel,
+  modo,
+}: {
+  story: Story;
+  prestacao: Prestacao | null;
+  saidaLabel: string;
+  modo: 'favor' | 'contra';
+}) {
   const soMiudas = story.series.every((s) => s.metrica !== 'resultado' && s.jogos.length <= 2);
   return (
     <div className="px-4 pb-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
-      {story.consolidado && (
+      {/* A prestação tem precedência: onde o critério foi transcrito, o número que
+          fecha a premissa é o dela, contra o corte. O consolidado antigo compara
+          contra a linha, e os dois juntos seriam duas réguas para a mesma frase. */}
+      {prestacao ? (
         <div className="mb-4">
-          <Consolidado c={story.consolidado} saidaLabel={saidaLabel} modo={modo} />
+          <PrestacaoDeContas p={prestacao} saidaLabel={saidaLabel} />
         </div>
+      ) : (
+        story.consolidado && (
+          <div className="mb-4">
+            <Consolidado c={story.consolidado} saidaLabel={saidaLabel} modo={modo} />
+          </div>
+        )
       )}
 
       {story.series[0].metrica === 'resultado' ? (
@@ -358,6 +611,7 @@ function LinhaPremissa({
   lado,
   ev,
   story,
+  prestacao,
   aberta,
   onAlternar,
   saidaLabel,
@@ -367,6 +621,7 @@ function LinhaPremissa({
   lado: 'home' | 'away' | null;
   ev: Evidencia | null;
   story: Story | null;
+  prestacao: Prestacao | null;
   aberta: boolean;
   onAlternar: () => void;
   saidaLabel: string;
@@ -388,9 +643,19 @@ function LinhaPremissa({
           cursor: podeAbrir ? 'pointer' : 'default',
         }}
       >
+        {/* Círculo vazio, e não o X que estava aqui (#351). O X lia como "errado"
+            ou "contra"; o que a premissa é neste bloco é NÃO ACESA — avaliada, e
+            aquém do corte. A ausência de marca é o que comunica ausência de sinal,
+            e é a mesma marca que o mapa de premissas já usa para as apagadas. */}
         {modo === 'contra' && (
-          <X className="w-3.5 h-3.5 shrink-0" style={{ color: aberta ? '#fbbf24' : '#c58b96' }} strokeWidth={3} />
+          <span
+            className="block w-3 h-3 shrink-0 rounded-full border-[1.5px]"
+            style={{ borderColor: aberta ? '#fbbf24' : '#c0b79f' }}
+          />
         )}
+        {/* O selo do peso. O MOTIVO dele aparece logo abaixo, fora do botão: sem
+            ele, "não ajuda" numa premissa que está na lista a favor levanta a
+            pergunta "então por que está aqui?" — e a resposta existe. */}
         <span
           className="shrink-0 inline-flex items-center h-5 px-1.5 rounded-[5px] text-[9.5px] font-bold uppercase tracking-[0.08em]"
           style={
@@ -418,18 +683,29 @@ function LinhaPremissa({
         )}
       </button>
 
-      {ev && (
+      {(ev || (p.peso === 0 && p.motivo)) && (
         <div className="px-4 py-3 text-[12.5px] leading-relaxed" style={{ color: '#5a625a' }}>
-          {ev.texto}
+          {ev?.texto}
+          {/* O motivo do peso zero fica VISÍVEL, e não num `title`: no celular
+              ninguém passa o mouse, e é ele que responde "por que uma premissa
+              que não ajuda está na lista a favor". */}
+          {p.peso === 0 && p.motivo && (
+            <span className="block mt-1 text-[11.5px]" style={{ color: '#8d8672' }}>
+              Não ajuda na previsão: {p.motivo}.
+            </span>
+          )}
         </div>
       )}
 
-      {aberta && story && <PainelPremissa story={story} saidaLabel={saidaLabel} modo={modo} />}
+      {aberta && story && (
+        <PainelPremissa story={story} prestacao={prestacao} saidaLabel={saidaLabel} modo={modo} />
+      )}
     </div>
   );
 }
 
 export function MotivosJogoPorJogo({
+  mercado,
   premissas,
   modo,
   extras,
@@ -439,6 +715,12 @@ export function MotivosJogoPorJogo({
   linha,
   saidaLabel,
 }: {
+  /**
+   * O mercado da saída. Necessário porque o critério é de mercado+slug, não do
+   * slug: `defesas_vazaveis` existe em gols (média contra a linha) e em ambos
+   * marcam (percentual de clean sheet), com critérios de famílias diferentes.
+   */
+  mercado: string;
   premissas: Premissa[];
   modo: 'favor' | 'contra';
   /** Componentes que o backend já descreveu e não têm drilldown jogo a jogo. */
@@ -453,12 +735,22 @@ export function MotivosJogoPorJogo({
   const acesa = modo === 'favor';
   const itens = useMemo(
     () =>
-      premissas.map((p) => ({
-        p,
-        ev: evidenciaDe(p.slug, numeros, lado, acesa, linha) ?? evidenciaDoHistorico(p.slug, historico, lado, linha),
-        story: storyDaPremissa(p.slug, historico, lado, linha),
-      })),
-    [premissas, numeros, historico, lado, linha, acesa],
+      premissas.map((p) => {
+        // A prestação de contas do critério, quando ele já foi transcrito (#353).
+        // Onde ela existe, é ela que fecha a premissa — o consolidado antigo
+        // compara contra a LINHA, e o corte quase nunca é a linha.
+        const prestacao = prestacaoDaPremissa(mercado, p.slug, historico, lado, linha);
+        return {
+          p,
+          prestacao,
+          // A frase e o card saem da MESMA prestação. Enquanto a frase lia o
+          // histórico jogo a jogo e o card lia o perfil de temporada, a tela
+          // mostrava 2,3 e 2,4 para a mesma afirmação, um embaixo do outro.
+          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, lado, linha, acesa }),
+          story: storyDaPremissa(p.slug, historico, lado, linha),
+        };
+      }),
+    [mercado, premissas, numeros, historico, lado, linha, acesa],
   );
 
   // Abre a primeira que tem gráfico: chegar numa lista toda fechada esconde o que a
@@ -490,8 +782,18 @@ export function MotivosJogoPorJogo({
               ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
               : 'Nenhum motivo a favor desta saída.'
             : total > 0
-              ? 'O que o jogo deixa de sustentar nesta saída.'
-              : 'Nada pesando contra esta saída: todas as premissas que valem aconteceram.'}
+              ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e ficaram aquém do corte. Não são sinal para o outro lado: são a ausência deste.`
+              : 'Nenhuma premissa desta saída ficou aquém do corte: todas as que valem acenderam.'}
+          {/* A definição do corte, UMA vez na lista e não em cada card. Ela só
+              aparece quando existe premissa prestando contas, senão a tela
+              explicaria um conceito que não está em lugar nenhum dela. */}
+          {itens.some((x) => x.prestacao != null) && (
+            <span className="block mt-1">
+              O <strong className="font-semibold">corte</strong> é o número que a premissa precisa
+              bater para acender. Ele sai da linha em umas e é fixo em outras, e quase nunca é a
+              própria linha.
+            </span>
+          )}
         </div>
         {itens.some((x) => x.story != null) && (
           <div className="flex items-center gap-4">
@@ -533,7 +835,7 @@ export function MotivosJogoPorJogo({
             );
           }
 
-          const { p, ev, story } = bloco.item;
+          const { p, ev, story, prestacao } = bloco.item;
           return (
             <LinhaPremissa
               key={p.slug}
@@ -542,6 +844,7 @@ export function MotivosJogoPorJogo({
               lado={lado}
               ev={ev}
               story={story}
+              prestacao={prestacao}
               aberta={aberta === p.slug}
               onAlternar={() => setAberta(aberta === p.slug ? null : p.slug)}
               saidaLabel={saidaLabel}

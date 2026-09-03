@@ -6,9 +6,9 @@ import {
   MERCADOS,
   PORTA_PREMISSAS,
   contaQueValem,
+  contagemDaPorta,
   linhaNegociavel,
   melhorCandidato,
-  premissasDaSaida,
   type MercadoInfo,
 } from '@/utils/futebol-premissas';
 
@@ -96,7 +96,7 @@ function saidaComPreco(
   return [...pares].sort(
     (a, b) =>
       b.value.score - a.value.score ||
-      contaQueValem(market, b.candidato.acesas) - contaQueValem(market, a.candidato.acesas) ||
+      contaQueValem(b.candidato) - contaQueValem(a.candidato) ||
       a.value.outcome_order - b.value.outcome_order,
   )[0];
 }
@@ -148,13 +148,10 @@ export function resumoDosMercados(
     // oportunidade — que é a maioria dos jogos.
     const c = comPreco?.candidato ?? melhorCandidato(rows, m.slug, preferida);
     if (!c) return [];
-    const nValem = contaQueValem(m.slug, c.acesas);
-    // Denominador só do lado da saída: para um Over, "defesas firmes" e as outras do
-    // Under nunca poderiam acender, então contá-las fazia "2 de 8" onde o certo é
-    // "2 de 3".
-    const totalQueValem = premissasDaSaida(m, c, c.acesas).filter(
-      (p) => p.peso == null || p.peso > 0,
-    ).length;
+    // As duas metades do "n de N" vêm juntas, do lado da saída (#351). Para um
+    // Over, "defesas firmes" e as outras do Under nunca poderiam acender, então
+    // contá-las fazia "2 de 8" onde o certo é "2 de 3".
+    const { acesas: nValem, total: totalQueValem } = contagemDaPorta(c);
     const value = comPreco?.value ?? null;
     const passa = value ? ehDestaque(value.faixa) : nValem >= PORTA_PREMISSAS;
     return [{ mercado: m, candidato: c, nValem, totalQueValem, value, passa }];

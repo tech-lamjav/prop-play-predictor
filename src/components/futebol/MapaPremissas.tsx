@@ -9,9 +9,11 @@ import {
   PREMISSAS_OCULTAS,
   PORTA_PREMISSAS,
   contaQueValem,
+  contagemDaPorta,
   melhorCandidato,
   outcomeLabel,
   premissaDe,
+  premissasDaSaida,
   type MercadoInfo,
   type Premissa,
 } from '@/utils/futebol-premissas';
@@ -23,6 +25,8 @@ import {
   type Evidencia,
   type Tile as TileT,
 } from '@/utils/futebol-evidencias';
+import { acendeuNaSaida } from '@/utils/futebol-estado-da-premissa';
+import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import { fmtDayShort } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
@@ -86,6 +90,12 @@ function SeloResultado({ saida, placar }: { saida: Saida; placar: PlacarFinal })
 
 /**
  * O mapa de premissas do jogo.
+ *
+ * ⚠️ NADA IMPORTA ESTE ARQUIVO HOJE. A tela viva das premissas é a
+ * `BancadaMercados`, e este componente ficou para trás quando ela nasceu — é o
+ * `MapaPremissas` exportado e nunca montado. A spec #349 passou por aqui porque o
+ * arquivo ainda existe e divergiria em silêncio; aposentá-lo é decisão de produto
+ * e fica fora dela.
  *
  * Substitui "a aposta e o preço" como conteúdo principal: a revisão da metodologia
  * (docs/premissas-recalibragem.md) trocou a porta de publicação de preço para
@@ -253,15 +263,46 @@ function PainelMercado({
   }
 
   const lado = ladoDaSaida(mercado.slug, atual.outcome);
+  // A evidência sai da prestação de contas quando o critério já foi transcrito, e
+  // só cai no perfil de temporada quando não foi (#358). Enquanto cada tela
+  // encadeava as fontes por conta própria, o card mostrava 2,4 e o subtítulo 2,3.
+  const evDe = (slug: string, acesa = true) =>
+    evidenciaDaPremissa({
+      mercado: mercado.slug,
+      slug,
+      numeros,
+      historico: undefined,
+      lado,
+      linha: atual.line_value,
+      acesa,
+    });
   const acesasSet = new Set(atual.acesas);
-  const visiveis = mercado.premissas.filter((p) => !PREMISSAS_OCULTAS.has(p.slug));
-  const totalQueValem = visiveis.filter((p) => p.peso == null || p.peso > 0).length;
-  const nValem = contaQueValem(mercado.slug, atual.acesas);
+  // Só as premissas do LADO da saída (#351). Esta tela listava as dos dois lados:
+  // embaixo de um Under aparecia "defesas frágeis" como premissa que não bateu,
+  // com o mesmo número da que bateu logo acima. E o denominador contava os dois
+  // lados, o que fazia "2 de 8" onde o certo é "2 de 3".
+  const visiveis = premissasDaSaida(mercado, atual);
+  const { acesas: nValem, total: totalQueValem } = contagemDaPorta(atual);
   const passa = nValem >= PORTA_PREMISSAS;
 
   const ordena = (a: Premissa, b: Premissa) => (b.peso ?? 0) - (a.peso ?? 0);
-  const acesas = visiveis.filter((p) => acesasSet.has(p.slug)).sort(ordena);
-  const apagadas = visiveis.filter((p) => !acesasSet.has(p.slug)).sort(ordena);
+  // O agrupamento sai do vocabulário dos cinco estados (#357), e não de um
+  // `acesasSet.has` solto: era assim que "não aconteceu neste jogo" e "não se
+  // aplica a esta saída" viravam a mesma pilha de premissas apagadas.
+  //
+  // A premissa acesa SEM número entra junto das acesas, e não numa terceira
+  // pilha: ela acendeu de verdade, e o que falta é a tela ter o insumo. Escondê-la
+  // aqui faria o mapa contradizer o contador logo acima.
+  //
+  // Quem responde isso é `acendeuNaSaida`, e não uma lista de estados escrita aqui:
+  // essa lista seria a TERCEIRA cópia da mesma regra, e ela e a bancada
+  // divergiriam calado.
+  //
+  // `nao_se_aplica` não chega a aparecer, porque `visiveis` já é do lado da saída.
+  // Dos três estados que sobram, dois vão para as acesas e um para as apagadas.
+  const acendeu = (p: Premissa) => acendeuNaSaida(p, atual);
+  const acesas = visiveis.filter(acendeu).sort(ordena);
+  const apagadas = visiveis.filter((p) => !acendeu(p)).sort(ordena);
 
   const penAtivas = (atual.penalidades ?? [])
     .filter((s) => !PREMISSAS_OCULTAS.has(s))
@@ -335,7 +376,7 @@ function PainelMercado({
           {candidatos.map((r) => {
             const k = chave(r);
             const ativo = chave(atual) === k;
-            const n = contaQueValem(mercado.slug, r.acesas);
+            const n = contaQueValem(r);
             // Jogo encerrado: cada saída ganha o ponto do que aconteceu.
             const res = placar ? settleFutebol(r, placar.home, placar.away) : null;
             return (
@@ -384,7 +425,7 @@ function PainelMercado({
               p={p}
               acesa
               // A premissa que virou manchete não repete a frase logo abaixo dela.
-              evidencia={p.slug === frase?.slug ? null : evidenciaDe(p.slug, numeros, lado)}
+              evidencia={p.slug === frase?.slug ? null : evDe(p.slug)}
             />
           ))
         )}
@@ -423,8 +464,12 @@ function PainelMercado({
             onClick={() => setVerApagadas((v) => !v)}
             className="w-full px-5 py-3 flex items-center justify-between gap-2 text-left hover:bg-canvas-2 transition"
           >
+            {/* "não atingiu o corte", e não "não bateu" nem "não aconteceu"
+                (#357): o fato pode ter acontecido e ainda assim ficar aquém — no
+                clean sheets com 38%, os jogos sem sofrer gol existiram. */}
             <span className="text-[12px] font-semibold text-ink-2">
-              {apagadas.length} {apagadas.length === 1 ? 'premissa não bateu' : 'premissas não bateram'}
+              {apagadas.length} {apagadas.length === 1 ? 'premissa não atingiu' : 'premissas não atingiram'} o
+              corte
             </span>
             <ChevronDown className={`w-4 h-4 text-ink-3 transition-transform ${verApagadas ? 'rotate-180' : ''}`} />
           </button>
@@ -437,7 +482,7 @@ function PainelMercado({
                   acesa={false}
                   // acesa=false: numa premissa apagada o número nunca é suprimido,
                   // porque é ele que explica o porquê de não ter batido.
-                  evidencia={evidenciaDe(p.slug, numeros, lado, false)}
+                  evidencia={evDe(p.slug, false)}
                 />
               ))}
             </div>
@@ -471,7 +516,7 @@ export function MapaPremissas({
     const m = new Map<string, number>();
     MERCADOS.forEach((mk) => {
       const melhor = rows ? melhorCandidato(rows, mk.slug) : null;
-      m.set(mk.slug, melhor ? contaQueValem(mk.slug, melhor.acesas) : 0);
+      m.set(mk.slug, melhor ? contaQueValem(melhor) : 0);
     });
     return m;
   }, [rows]);
@@ -492,7 +537,7 @@ export function MapaPremissas({
     const apontados = MERCADOS
       .map((m) => ({ slug: m.slug, c: melhorCandidato(rows, m.slug) }))
       .filter((x): x is { slug: string; c: FutebolFixturePremissas } =>
-        x.c != null && contaQueValem(x.slug, x.c.acesas) >= PORTA_PREMISSAS,
+        x.c != null && contaQueValem(x.c) >= PORTA_PREMISSAS,
       );
     const liquidados = apontados
       .map((x) => settleFutebol(x.c, placar.home, placar.away))

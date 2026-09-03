@@ -7,7 +7,7 @@ import type {
 } from '@/services/futebol-data.service';
 import { PREMISSAS_OCULTAS, premissaDe, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico } from '@/utils/futebol-historico';
+import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import { mesmaLinha } from '@/utils/futebol-leitura';
 
 /**
@@ -162,9 +162,14 @@ export function premissasAcesasDaLeitura(
     .slice(0, opcoes.max)
     .map((premissa) => ({
       premissa,
-      evidencia:
-        evidenciaDe(premissa.slug, numeros, lado, true, linha) ??
-        evidenciaDoHistorico(premissa.slug, historico, lado, linha),
+      evidencia: evidenciaDaPremissa({
+        mercado,
+        slug: premissa.slug,
+        numeros,
+        historico,
+        lado,
+        linha,
+      }),
     }));
 }
 
