@@ -189,6 +189,15 @@ export interface SerieHistorico {
   /** A média das barras, que é o número que a premissa usa. */
   media: number | null;
   jogos: JogoBarra[];
+  /**
+   * Quantos jogos a JANELA tinha antes do recorte de mando. Igual a `jogos.length`
+   * onde não há recorte.
+   *
+   * Estrutural, e não só dentro do `sub`: quem presta contas do critério (#353)
+   * precisa declarar a base de jogos, e ler isso de volta de uma frase seria a
+   * segunda fonte do mesmo número.
+   */
+  daJanela: number;
 }
 
 /**
@@ -344,6 +353,7 @@ export function storyDaPremissa(
         direcao: spec.direcao,
         media,
         jogos,
+        daJanela: naJanela.length,
       });
     }
   }

@@ -37,6 +37,7 @@ import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
+import { useGuardaDeDivergencia } from '@/hooks/use-guarda-de-divergencia';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import { linhaDaSaida } from '@/utils/futebol-saida';
@@ -414,6 +415,22 @@ export function BancadaMercados({
   const ladoPrincipal = principal ? ladoDaSaida(mercado.slug, principal.outcome) : null;
   const nPrincipal = principal ? contaQueValem(principal) : 0;
   const ate = numeros?.[0]?.ate ?? null;
+
+  // A guarda de divergência (#353). Ela não desenha nada: emite evento quando a
+  // nossa derivação do critério discorda do booleano do mart. Fica aqui porque é
+  // aqui que existem, juntos, o lado da saída, a linha e o histórico.
+  //
+  // ⚠️ NÃO tratar a divergência escondendo o número na tela. Foi o que as guardas
+  // `desmenteAlta`/`desmenteBaixa` faziam, e um silenciador ao lado de um detector
+  // anula o detector.
+  useGuardaDeDivergencia({
+    mercado: mercado.slug,
+    acesas: principal?.acesas,
+    historico,
+    lado: ladoPrincipal,
+    linha,
+    slugs: useMemo(() => visiveis.map((p) => p.slug), [visiveis]),
+  });
 
   // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos
   // mercados. A barra da posição usa o valor do OUTRO lado, porque na tabela menor
@@ -1026,6 +1043,7 @@ export function BancadaMercados({
           </div>
         ) : abaMotivo === 'favor' ? (
           <MotivosJogoPorJogo
+            mercado={mercado.slug}
             premissas={motivosFavor.premissas}
             modo="favor"
             extras={motivosFavor.extras}
@@ -1037,6 +1055,7 @@ export function BancadaMercados({
           />
         ) : (
           <MotivosJogoPorJogo
+            mercado={mercado.slug}
             premissas={motivosContra.premissas}
             modo="contra"
             extras={motivosContra.extras}
