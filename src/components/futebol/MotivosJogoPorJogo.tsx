@@ -295,7 +295,7 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
             : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}: por este número, a premissa não sustenta ${saidaLabel}.`
           : c.favorece
             ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaExata(c.linha)}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa não aconteceu.`}
+            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa não atingiu o corte.`}
       </div>
     </div>
   );
@@ -388,8 +388,15 @@ function LinhaPremissa({
           cursor: podeAbrir ? 'pointer' : 'default',
         }}
       >
+        {/* Círculo vazio, e não o X que estava aqui (#351). O X lia como "errado"
+            ou "contra"; o que a premissa é neste bloco é NÃO ACESA — avaliada, e
+            aquém do corte. A ausência de marca é o que comunica ausência de sinal,
+            e é a mesma marca que o mapa de premissas já usa para as apagadas. */}
         {modo === 'contra' && (
-          <X className="w-3.5 h-3.5 shrink-0" style={{ color: aberta ? '#fbbf24' : '#c58b96' }} strokeWidth={3} />
+          <span
+            className="block w-3 h-3 shrink-0 rounded-full border-[1.5px]"
+            style={{ borderColor: aberta ? '#fbbf24' : '#c0b79f' }}
+          />
         )}
         <span
           className="shrink-0 inline-flex items-center h-5 px-1.5 rounded-[5px] text-[9.5px] font-bold uppercase tracking-[0.08em]"
@@ -490,8 +497,8 @@ export function MotivosJogoPorJogo({
               ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
               : 'Nenhum motivo a favor desta saída.'
             : total > 0
-              ? 'O que o jogo deixa de sustentar nesta saída.'
-              : 'Nada pesando contra esta saída: todas as premissas que valem aconteceram.'}
+              ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e ficaram aquém do corte. Não são sinal para o outro lado: são a ausência deste.`
+              : 'Nenhuma premissa desta saída ficou aquém do corte: todas as que valem acenderam.'}
         </div>
         {itens.some((x) => x.story != null) && (
           <div className="flex items-center gap-4">

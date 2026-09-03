@@ -9,9 +9,11 @@ import {
   PREMISSAS_OCULTAS,
   PORTA_PREMISSAS,
   contaQueValem,
+  contagemDaPorta,
   melhorCandidato,
   outcomeLabel,
   premissaDe,
+  premissasDaSaida,
   type MercadoInfo,
   type Premissa,
 } from '@/utils/futebol-premissas';
@@ -254,9 +256,12 @@ function PainelMercado({
 
   const lado = ladoDaSaida(mercado.slug, atual.outcome);
   const acesasSet = new Set(atual.acesas);
-  const visiveis = mercado.premissas.filter((p) => !PREMISSAS_OCULTAS.has(p.slug));
-  const totalQueValem = visiveis.filter((p) => p.peso == null || p.peso > 0).length;
-  const nValem = contaQueValem(mercado.slug, atual.acesas);
+  // Só as premissas do LADO da saída (#351). Esta tela listava as dos dois lados:
+  // embaixo de um Under aparecia "defesas frágeis" como premissa que não bateu,
+  // com o mesmo número da que bateu logo acima. E o denominador contava os dois
+  // lados, o que fazia "2 de 8" onde o certo é "2 de 3".
+  const visiveis = premissasDaSaida(mercado, atual);
+  const { acesas: nValem, total: totalQueValem } = contagemDaPorta(atual);
   const passa = nValem >= PORTA_PREMISSAS;
 
   const ordena = (a: Premissa, b: Premissa) => (b.peso ?? 0) - (a.peso ?? 0);
@@ -335,7 +340,7 @@ function PainelMercado({
           {candidatos.map((r) => {
             const k = chave(r);
             const ativo = chave(atual) === k;
-            const n = contaQueValem(mercado.slug, r.acesas);
+            const n = contaQueValem(r);
             // Jogo encerrado: cada saída ganha o ponto do que aconteceu.
             const res = placar ? settleFutebol(r, placar.home, placar.away) : null;
             return (
@@ -471,7 +476,7 @@ export function MapaPremissas({
     const m = new Map<string, number>();
     MERCADOS.forEach((mk) => {
       const melhor = rows ? melhorCandidato(rows, mk.slug) : null;
-      m.set(mk.slug, melhor ? contaQueValem(mk.slug, melhor.acesas) : 0);
+      m.set(mk.slug, melhor ? contaQueValem(melhor) : 0);
     });
     return m;
   }, [rows]);
@@ -492,7 +497,7 @@ export function MapaPremissas({
     const apontados = MERCADOS
       .map((m) => ({ slug: m.slug, c: melhorCandidato(rows, m.slug) }))
       .filter((x): x is { slug: string; c: FutebolFixturePremissas } =>
-        x.c != null && contaQueValem(x.slug, x.c.acesas) >= PORTA_PREMISSAS,
+        x.c != null && contaQueValem(x.c) >= PORTA_PREMISSAS,
       );
     const liquidados = apontados
       .map((x) => settleFutebol(x.c, placar.home, placar.away))

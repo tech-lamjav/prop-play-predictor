@@ -155,7 +155,7 @@ export function JogoResumoPanel({
   // noutra linha (#346).
   const paraOJogo = hrefDaSaida(fixture.fixture_id, best ?? cand);
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
-  const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
+  const nValem = cand ? contaQueValem(cand) : 0;
 
   // A resposta a "por que essa aposta", da mesma fonte que a home, o resumo do
   // jogo e a bancada usam (#334). Com preço quem agrupa é o backend; sem preço

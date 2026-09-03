@@ -57,7 +57,7 @@ O limiar contra o qual o **insumo** é comparado. Pode ser um número fixo, ou d
 _Avoid_: Linha, limite, threshold
 
 **Janela da premissa**:
-O conjunto de partidas sobre o qual o **insumo** é medido: os últimos jogos do time em qualquer competição, contados antes do apito da partida analisada. Não é a temporada, não é uma competição só, e não separa casa de fora.
+O conjunto de partidas sobre o qual o **insumo** é medido: os últimos jogos do time em qualquer competição, contados antes do apito da partida analisada. Não é a temporada e não é uma competição só. O tamanho é da premissa — dez na maioria, cinco nas de contagem —, e algumas recortam por mando porque o mando é parte do **critério** delas. Recorte de mando embaixo de um critério que não olha mando é o gráfico desmentindo o número que ele deveria explicar.
 _Avoid_: Temporada, forma recente, últimos jogos no campeonato
 
 **Premissa acesa**:

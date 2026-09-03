@@ -48,21 +48,35 @@ describe('aba A favor', () => {
   });
 });
 
-describe('aba Contra', () => {
-  it('descreve o que o jogo não sustenta, sem citar preço', () => {
+describe('a aba do que não atingiu o corte', () => {
+  // O rótulo "Contra" AFIRMAVA oposição, e o dado de produção diz o contrário:
+  // `favor` e `contra` somados são exatamente as premissas do próprio lado (#351).
+  // Estes testes guardam a afirmação, não a frase: o cabeçalho não pode voltar a
+  // dizer que existe evidência empurrando para o outro lado.
+  it('descreve a ausência de sinal deste lado, sem citar preço', () => {
     renderAba('contra', ['defesas_vazaveis']);
 
-    const cabecalho = screen.getByText(/colocam contra|deixa de sustentar/i);
-    expect(cabecalho).toHaveTextContent('O que o jogo deixa de sustentar nesta saída.');
+    const cabecalho = screen.getByText(/aquém do corte/i);
+    expect(cabecalho).toHaveTextContent(/premissas de mais de 1,5 gols/i);
+    expect(cabecalho).toHaveTextContent(/não são sinal para o outro lado/i);
     expect(cabecalho).not.toHaveTextContent(/preço/i);
   });
 
-  it('sem nada contra, afirma que as premissas que valem aconteceram', () => {
+  it('sem nenhuma aquém do corte, afirma que todas as que valem acenderam', () => {
     renderAba('contra', []);
 
-    expect(
-      screen.getByText('Nada pesando contra esta saída: todas as premissas que valem aconteceram.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/todas as que valem acenderam/i)).toBeInTheDocument();
+  });
+
+  it('o cabeçalho nunca afirma oposição', () => {
+    // "pesando contra", "contra esta saída", "joga contra": qualquer uma delas
+    // devolve o defeito. A busca é pela AFIRMAÇÃO, e por isso exclui o "aquém do
+    // corte" que é a frase certa.
+    for (const slugs of [['defesas_vazaveis'], []]) {
+      const { unmount } = renderAba('contra', slugs);
+      expect(screen.queryByText(/contra esta saída|pesando contra|joga contra/i)).toBeNull();
+      unmount();
+    }
   });
 });
 

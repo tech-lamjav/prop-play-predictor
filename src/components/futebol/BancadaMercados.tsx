@@ -354,8 +354,8 @@ export function BancadaMercados({
   // clicando no outro card: é assim que ele vê as premissas do outro lado, em vez de
   // uma lista de espelhos ("defesas frágeis" contra "defesas firmes") que se
   // contradiziam na mesma tela.
-  const nA = ladoA ? contaQueValem(mercado.slug, ladoA.acesas) : 0;
-  const nB = ladoB ? contaQueValem(mercado.slug, ladoB.acesas) : 0;
+  const nA = ladoA ? contaQueValem(ladoA) : 0;
+  const nB = ladoB ? contaQueValem(ladoB) : 0;
   const valA = ladoA ? valueDoCandidato(valueRows, ladoA) : null;
   const valB = ladoB ? valueDoCandidato(valueRows, ladoB) : null;
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
@@ -398,7 +398,7 @@ export function BancadaMercados({
   // medem o mesmo número ao contrário ("defesas frágeis" × "defesas firmes"), então
   // listá-las aqui como "não aconteceu" fazia a tela se contradizer.
   const visiveis = principal
-    ? premissasDaSaida(mercado, principal, principal.acesas)
+    ? premissasDaSaida(mercado, principal)
     : mercado.premissas.filter((p) => !PREMISSAS_OCULTAS.has(p.slug));
   const acesasSet = new Set(principal?.acesas ?? []);
   const favor = visiveis.filter((p) => acesasSet.has(p.slug)).sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0));
@@ -412,7 +412,7 @@ export function BancadaMercados({
   const ctx = contextoDoMercado(favor.filter(pesoForte).length, semCalibragem);
 
   const ladoPrincipal = principal ? ladoDaSaida(mercado.slug, principal.outcome) : null;
-  const nPrincipal = principal ? contaQueValem(mercado.slug, principal.acesas) : 0;
+  const nPrincipal = principal ? contaQueValem(principal) : 0;
   const ate = numeros?.[0]?.ate ?? null;
 
   // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos
@@ -444,16 +444,28 @@ export function BancadaMercados({
     evidenciaDe(slug, numeros, ladoPrincipal, acesa, linha) ??
     evidenciaDoHistorico(slug, historico, ladoPrincipal, linha);
 
-  // Só o que não aconteceu E conta para o Score. Premissa apagada de peso 0 sai da
-  // tela: ela não aconteceu e nem contaria, então nomeá-la só criava dúvida sobre
-  // ser verdade ou não.
-  const naoAconteceu = apagadas.filter((p) => p.peso == null || p.peso > 0);
+  // A premissa aparece se ela CONTA para o Score, ou se, mesmo sem contar, existe
+  // número para o assinante conferir.
+  //
+  // A regra é UMA para os dois lados da tela (#351). Antes eram duas: a acesa de
+  // peso zero aparecia quando tinha número, e a apagada de peso zero sumia sempre.
+  // O efeito era o assinante ver três premissas embaixo de um Over que tem seis, e
+  // não ter como saber se as outras não existiam, não foram avaliadas ou não
+  // bateram. Peso zero não é premissa quebrada: é premissa que a recalibragem
+  // tirou da conta e que continua descrevendo o jogo — o selo "já na odd" é quem
+  // conta essa parte.
+  //
+  // O que segue de fora é o que não tem o que mostrar: a premissa de ritmo, cujo
+  // insumo não existe em nada que o front alcance (#348). Ali a linha seria "jogo
+  // de ritmo alto · não conta · sem número para conferir", que levanta a pergunta
+  // "de onde veio isso?" sem ter resposta na tela.
+  const temOQueMostrar = (p: Premissa, acesa: boolean) =>
+    p.peso == null || p.peso > 0 || evDe(p.slug, acesa) != null;
 
-  // Premissa acesa que não soma no Score E não tem número também sai: era a linha
-  // "jogo de ritmo alto · não conta · sem número para conferir", que só levantava a
-  // pergunta "de onde veio isso?" sem ter resposta na tela. O critério mora nos
-  // modelos dbt, não aqui.
-  const favorVisivel = favor.filter((p) => p.peso !== 0 || evDe(p.slug) != null);
+  // `acesa: false` nas apagadas de propósito: numa premissa que não bateu o número
+  // nunca é suprimido, porque é ele que explica o porquê de não ter batido.
+  const naoAconteceu = apagadas.filter((p) => temOQueMostrar(p, false));
+  const favorVisivel = favor.filter((p) => temOQueMostrar(p, true));
 
   const motivosDoContrato = (itens: FutebolFixtureReasonContractRow['favor']) => {
     const separados = separarMotivosDoContrato(itens);
@@ -536,7 +548,7 @@ export function BancadaMercados({
     if (cotacaoPrincipal.estado === 'cotada') {
       return `${lbl} tem cotação, mas ficou fora dos filtros de oportunidade.`;
     }
-    const n = principal ? contaQueValem(mercado.slug, principal.acesas) : 0;
+    const n = principal ? contaQueValem(principal) : 0;
     if (n >= PORTA_PREMISSAS) return `O jogo aponta para ${lbl}, mas falta o preço: as odds entram perto do jogo.`;
     return `O jogo não sustenta esta saída.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -607,7 +619,7 @@ export function BancadaMercados({
       const r = doMercado.find(
         (x) => x.outcome === principal.outcome && x.line_value != null && Math.abs(x.line_value - p) < 0.001,
       );
-      forcaPorLinha.set(p, r ? contaQueValem(mercado.slug, r.acesas) : 0);
+      forcaPorLinha.set(p, r ? contaQueValem(r) : 0);
     });
   }
 
@@ -616,7 +628,7 @@ export function BancadaMercados({
     ? []
     : doMercado.map((o) => {
         const val = valueDoCandidato(valueRows, o);
-        const n = contaQueValem(mercado.slug, o.acesas);
+        const n = contaQueValem(o);
         return {
           chave: o.outcome,
           rotulo: outcomeLabel(o, jogo.home, jogo.away),
@@ -958,12 +970,18 @@ export function BancadaMercados({
           </div>
         )}
 
-        {/* Sub-abas em forma de pasta: A favor · Contra. */}
-        <div data-tour="fut-jogo-premissas" className="px-6 md:px-8 pt-4 flex items-center gap-2" style={{ borderBottom: '1px solid #f1e9d6' }}>
+        {/* Sub-abas em forma de pasta.
+            A segunda se chamava "Contra", e o rótulo AFIRMAVA oposição: quem lia
+            "1 contra" entendia que existia evidência empurrando para o outro lado.
+            Não existe. O que o backend agrupa ali são premissas DO PRÓPRIO LADO
+            que não atingiram o corte — num Under 3,5 vieram quatro em favor e uma
+            em contra, e o Under tem exatamente cinco premissas (#351). O nome
+            passa a ser o do glossário; o contrato do backend não muda. */}
+        <div data-tour="fut-jogo-premissas" className="px-6 md:px-8 pt-4 flex items-center gap-2 flex-wrap" style={{ borderBottom: '1px solid #f1e9d6' }}>
           {(
             [
               ['favor', 'A favor', contratoMotivosIndisponivel ? null : motivosFavor.premissas.length + motivosFavor.extras.length],
-              ['contra', 'Contra', contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
+              ['contra', 'Não atingiu o corte', contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
             ] as const
           ).map(([k, rot, n]) => {
             const on = abaMotivo === k;
