@@ -37,6 +37,7 @@ import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
+import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import { useGuardaDeDivergencia } from '@/hooks/use-guarda-de-divergencia';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
@@ -468,8 +469,15 @@ export function BancadaMercados({
   // O número da premissa: temporada (094) e, para o que ela não cobre, calculado dos
   // jogos do histórico (095) — é o que dá número às premissas de chance de gol.
   const evDe = (slug: string, acesa = true) =>
-    evidenciaDe(slug, numeros, ladoPrincipal, acesa, linha) ??
-    evidenciaDoHistorico(slug, historico, ladoPrincipal, linha);
+    evidenciaDaPremissa({
+      mercado: mercado.slug,
+      slug,
+      numeros,
+      historico,
+      lado: ladoPrincipal,
+      linha,
+      acesa,
+    });
 
 
   // A premissa aparece se ela CONTA para o Score, ou se, mesmo sem contar, existe

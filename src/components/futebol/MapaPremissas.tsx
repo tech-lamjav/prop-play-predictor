@@ -26,6 +26,7 @@ import {
   type Tile as TileT,
 } from '@/utils/futebol-evidencias';
 import { estadoDaPremissa } from '@/utils/futebol-estado-da-premissa';
+import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import { fmtDayShort } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
@@ -256,6 +257,19 @@ function PainelMercado({
   }
 
   const lado = ladoDaSaida(mercado.slug, atual.outcome);
+  // A evidência sai da prestação de contas quando o critério já foi transcrito, e
+  // só cai no perfil de temporada quando não foi (#358). Enquanto cada tela
+  // encadeava as fontes por conta própria, o card mostrava 2,4 e o subtítulo 2,3.
+  const evDe = (slug: string, acesa = true) =>
+    evidenciaDaPremissa({
+      mercado: mercado.slug,
+      slug,
+      numeros,
+      historico: undefined,
+      lado,
+      linha: atual.line_value,
+      acesa,
+    });
   const acesasSet = new Set(atual.acesas);
   // Só as premissas do LADO da saída (#351). Esta tela listava as dos dois lados:
   // embaixo de um Under aparecia "defesas frágeis" como premissa que não bateu,
@@ -277,7 +291,7 @@ function PainelMercado({
       premissa: p,
       saida: atual,
       acesas: atual.acesas,
-      temNumero: evidenciaDe(p.slug, numeros, lado) != null,
+      temNumero: evDe(p.slug) != null,
     });
   const acesas = visiveis.filter((p) => estadoDe(p) !== 'nao_atingiu_o_corte').sort(ordena);
   const apagadas = visiveis.filter((p) => estadoDe(p) === 'nao_atingiu_o_corte').sort(ordena);
@@ -403,7 +417,7 @@ function PainelMercado({
               p={p}
               acesa
               // A premissa que virou manchete não repete a frase logo abaixo dela.
-              evidencia={p.slug === frase?.slug ? null : evidenciaDe(p.slug, numeros, lado)}
+              evidencia={p.slug === frase?.slug ? null : evDe(p.slug)}
             />
           ))
         )}
@@ -460,7 +474,7 @@ function PainelMercado({
                   acesa={false}
                   // acesa=false: numa premissa apagada o número nunca é suprimido,
                   // porque é ele que explica o porquê de não ter batido.
-                  evidencia={evidenciaDe(p.slug, numeros, lado, false)}
+                  evidencia={evDe(p.slug, false)}
                 />
               ))}
             </div>

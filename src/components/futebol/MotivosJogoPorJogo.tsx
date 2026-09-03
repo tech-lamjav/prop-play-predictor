@@ -11,6 +11,7 @@ import {
   prestacaoDaPremissa,
   type Prestacao,
 } from '@/utils/futebol-criterio';
+import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import { Crest } from './Crest';
 
 /**
@@ -707,10 +708,7 @@ export function MotivosJogoPorJogo({
           // A frase e o card saem da MESMA prestação. Enquanto a frase lia o
           // histórico jogo a jogo e o card lia o perfil de temporada, a tela
           // mostrava 2,3 e 2,4 para a mesma afirmação, um embaixo do outro.
-          ev: prestacao
-            ? { texto: fraseDaPrestacao(prestacao) }
-            : (evidenciaDe(p.slug, numeros, lado, acesa, linha) ??
-              evidenciaDoHistorico(p.slug, historico, lado, linha)),
+          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, lado, linha, acesa }),
           story: storyDaPremissa(p.slug, historico, lado, linha),
         };
       }),
