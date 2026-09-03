@@ -41,10 +41,11 @@ import { storyDaPremissa, type Story } from '@/utils/futebol-historico';
  * `media_combinada`: os dois times somam uma média e o total vai contra o corte.
  * `percentual_por_time`: cada time tem o seu percentual e o seu veredito, sem
  * soma — somar percentuais de times diferentes não significa nada.
- *
- * A família de contagem entra na #356.
+ * `contagem_por_time`: cada time tem quantos dos últimos jogos ficaram de um lado
+ * da linha, contra um mínimo. Também sem soma, e também sem média: uma média pode
+ * estar de um lado da linha enquanto a contagem diz o contrário.
  */
-export type FormaDeCard = 'media_combinada' | 'percentual_por_time';
+export type FormaDeCard = 'media_combinada' | 'percentual_por_time' | 'contagem_por_time';
 
 /**
  * Como as parcelas viram um veredito só.
@@ -61,8 +62,8 @@ export type Combinacao = 'soma' | 'e' | 'ou';
 /** De que lado do corte o valor tem de estar para contar a favor. */
 export type Sentido = 'acima' | 'abaixo';
 
-/** Como o número se escreve: 2,4 gols ou 40%. */
-export type Escala = 'gols' | 'percentual';
+/** Como o número se escreve: 2,4 gols, 40%, ou "3 de 5". */
+export type Escala = 'gols' | 'percentual' | 'contagem';
 
 /** A conta de um time. É ela que o card desenha e que a base de jogos declara. */
 export interface Parcela {
@@ -99,7 +100,13 @@ export interface Prestacao {
   insumo: number | null;
   /** O limiar contra o qual o insumo é comparado. */
   corte: number;
-  /** A linha da saída, quando o corte sai dela. `null` quando o corte é fixo. */
+  /**
+   * A linha da saída, quando o CRITÉRIO a usa. `null` quando não usa.
+   *
+   * Usam-na duas famílias, por motivos diferentes: na de média ela é a origem do
+   * corte, e na de contagem é o que cada jogo é comparado contra. Quem separa as
+   * duas é `margem`, que só existe na primeira.
+   */
   linha: number | null;
   /** A margem entre a linha e o corte. `null` quando o corte é fixo, zero onde a premissa compara contra a linha crua. */
   margem: number | null;
@@ -134,6 +141,19 @@ interface Criterio {
    * acender por sorte de quem sobrou.
    */
   parcelas: number;
+  /**
+   * O valor de cada parcela é uma CONTAGEM de jogos de um lado da linha.
+   *
+   * Presente só na família de contagem. A conta não sai da média da série — sai
+   * dos jogos, um a um, contra a linha escolhida: uma média pode estar de um lado
+   * da linha enquanto a contagem diz o contrário, e é essa diferença que a #356
+   * existe para consertar.
+   *
+   * O modelo compara `> line_value` e `< line_value`, os dois estritos: a linha é
+   * de meio gol na maioria dos casos, mas em 3,0 ou 4,0 o jogo que empata a linha
+   * não conta para lado nenhum.
+   */
+  contagem?: { compara: 'acima_da_linha' | 'abaixo_da_linha' };
 }
 
 /**
@@ -243,6 +263,34 @@ const CRITERIOS: Record<string, Criterio> = {
     corte: { de: 'fixo', valor: 35 },
     parcelas: 2,
   },
+
+  // ── Família de contagem de jogos (#356) ──
+  // Quantos dos ÚLTIMOS CINCO jogos de cada time ficaram de um lado da linha, com
+  // um mínimo em cada. O corte é fixo (3 jogos), mas a CONTAGEM depende da linha
+  // escolhida e muda quando o assinante arrasta a régua.
+  //
+  //     (Over)  home_over_cnt  >= 3 AND away_over_cnt  >= 3   historico_over
+  //     (Under) home_under_cnt >= 3 AND away_under_cnt >= 3   historico_under
+  'goals_over_under:historico_over': {
+    forma: 'contagem_por_time',
+    combinacao: 'e',
+    sentido: 'acima',
+    escala: 'contagem',
+    unidade: 'acima da linha, nos últimos 5 de cada',
+    corte: { de: 'fixo', valor: 3 },
+    parcelas: 2,
+    contagem: { compara: 'acima_da_linha' },
+  },
+  'goals_over_under:historico_under': {
+    forma: 'contagem_por_time',
+    combinacao: 'e',
+    sentido: 'acima',
+    escala: 'contagem',
+    unidade: 'abaixo da linha, nos últimos 5 de cada',
+    corte: { de: 'fixo', valor: 3 },
+    parcelas: 2,
+    contagem: { compara: 'abaixo_da_linha' },
+  },
 };
 
 /**
@@ -304,15 +352,34 @@ function prestacaoDoStory(
   // média das barras já é "quantos dos jogos", e o ×100 é só a escala.
   const emEscala = (v: number) => (criterio.escala === 'percentual' ? v * 100 : v);
 
+  /**
+   * A contagem de jogos de um lado da linha, para a família de contagem.
+   *
+   * Sai dos jogos, e não da média da série: uma média pode estar de um lado da
+   * linha enquanto a contagem diz o contrário, e é exatamente essa diferença que
+   * esta família existe para mostrar. Os dois lados são ESTRITOS, como no modelo
+   * (`> line_value` / `< line_value`) — numa linha inteira, o jogo que a empata
+   * não conta para lado nenhum.
+   */
+  const contaDaSerie = (s: Story['series'][number]): number | null => {
+    if (linha == null) return null;
+    const comValor = s.jogos.filter((j) => j.valor != null);
+    if (!comValor.length) return null;
+    return comValor.filter((j) =>
+      criterio.contagem!.compara === 'acima_da_linha' ? j.valor! > linha : j.valor! < linha,
+    ).length;
+  };
+
   const parcelas: Parcela[] = [];
   // Soma em precisão cheia, como o modelo faz. Arredondar cada parcela ANTES de
   // somar move o total em até meio centésimo por parcela, e no corte isso vira
   // veredito trocado: 1,475 + 1,475 é 2,95, mas 1,48 + 1,48 é 2,96.
   let cru = 0;
   for (const s of story.series) {
-    // Uma série sem média derruba a prestação inteira.
-    if (s.media == null) return null;
-    const valor = emEscala(s.media);
+    const bruto = criterio.contagem ? contaDaSerie(s) : s.media;
+    // Sem número não há prestação: nem a média nem a contagem podem ser forjadas.
+    if (bruto == null) return null;
+    const valor = emEscala(bruto);
     cru += valor;
     parcelas.push({
       teamId: s.teamId,
@@ -346,7 +413,9 @@ function prestacaoDoStory(
     escala: criterio.escala,
     insumo,
     corte,
-    linha: criterio.corte.de === 'linha' ? linha : null,
+    // A linha entra quando o critério a usa: origem do corte na família de média,
+    // régua de cada jogo na de contagem.
+    linha: criterio.corte.de === 'linha' || criterio.contagem ? linha : null,
     margem: criterio.corte.de === 'linha' ? criterio.corte.margem : null,
     cruzou,
     parcelas,
@@ -359,16 +428,18 @@ export function temCriterio(mercado: string, slug: string): boolean {
   return CRITERIOS[`${mercado}:${slug}`] != null;
 }
 
-/** O número como a escala dele pede: 2,4 gols ou 40%. */
+/** O número como a escala dele pede: 2,4 gols, 40% ou 3 jogos. */
 export function numeroDaPrestacao(p: Prestacao, valor: number): string {
-  return p.escala === 'percentual'
-    ? `${Math.round(valor)}%`
-    : valor.toFixed(1).replace('.', ',');
+  if (p.escala === 'percentual') return `${Math.round(valor)}%`;
+  if (p.escala === 'contagem') return String(valor);
+  return valor.toFixed(1).replace('.', ',');
 }
 
 /** O corte sai como é: 2,95 é 2,95, e arredondar para 3,0 desfaria o ponto dele. */
 export function corteDaPrestacao(p: Prestacao): string {
-  return p.escala === 'percentual' ? `${p.corte}%` : String(p.corte).replace('.', ',');
+  if (p.escala === 'percentual') return `${p.corte}%`;
+  if (p.escala === 'contagem') return `${p.corte} jogos`;
+  return String(p.corte).replace('.', ',');
 }
 
 /**

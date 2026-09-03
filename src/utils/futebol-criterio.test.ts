@@ -6,6 +6,7 @@ import {
   prestacaoDaPremissa,
   temCriterio,
 } from './futebol-criterio';
+import { storyDaPremissa } from './futebol-historico';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import CASOS_CAPTURADOS from './__fixtures__/futebol-criterios-casos.json';
 
@@ -234,10 +235,10 @@ describe('a guarda de divergência acusa quando a nossa conta discorda do mart',
 // ============================================================================
 // Casos capturados, replayados contra a derivação
 // ============================================================================
-// 21 linhas reais com o histórico da janela da premissa e o booleano que o mart
+// 22 linhas reais com o histórico da janela da premissa e o booleano que o mart
 // publicou, capturados em 03/09/2026:
 //
-//   · `producao` — 11 linhas do mart de produção, com os OITO vereditos de cada
+//   · `producao` — 12 linhas do mart de produção, com os DEZ vereditos de cada
 //     uma. O histórico veio de uma consulta com o corpo da migration 117, que
 //     ainda não estava aplicada lá.
 //   · `staging` — 10 linhas do mart de staging, só `defesas_firmes`, capturadas
@@ -248,7 +249,7 @@ describe('a guarda de divergência acusa quando a nossa conta discorda do mart',
 // ⚠️ Um caso de staging divergiu na captura e ficou de FORA, e o motivo importa:
 // o mart de staging pode ser mais velho que o `fact_fixtures` dele, e aí a janela
 // que a tela mede inclui partidas que o mart não viu. Não é defeito da derivação
-// — contra produção, os 88 pares (11 linhas × 8 premissas) reproduzem. É por isso
+// — contra produção, os 120 pares (12 linhas × 10 premissas) reproduzem. É por isso
 // que a guarda em execução existe: um evento por divergência, para separar "a
 // derivação envelheceu" de "o mart está atrás".
 //
@@ -275,7 +276,7 @@ const PARES = CASOS.flatMap((caso) =>
 );
 
 describe('a derivação reproduz o veredito do mart', () => {
-  it('as oito premissas de gols têm caso dos DOIS lados', () => {
+  it('as dez premissas de gols têm caso dos DOIS lados', () => {
     // Um bloco que só visse `false` nas cinco passaria com a derivação invertida.
     for (const slug of [
       'defesas_firmes',
@@ -286,6 +287,8 @@ describe('a derivação reproduz o veredito do mart', () => {
       'clean_sheets_altos',
       'ambos_vazam',
       'ataques_fracos',
+      'historico_over',
+      'historico_under',
     ]) {
       const meus = PARES.filter((x) => x.slug === slug);
       expect(meus.filter((x) => x.doMart).length, `${slug} aceso`).toBeGreaterThan(0);
@@ -588,5 +591,108 @@ describe('as premissas de percentual param de mostrar média de gols', () => {
     )!;
 
     expect(fraseDaPrestacao(p)).toContain('basta um com');
+  });
+});
+
+// ============================================================================
+// A família de contagem de jogos (issue #356, spec #349)
+// ============================================================================
+// O critério conta quantos dos ÚLTIMOS CINCO jogos de cada time ficaram de um
+// lado da linha, e exige um mínimo em cada. A tela mostrava a média de gols por
+// jogo — que é outra pergunta, e uma média pode estar de um lado da linha
+// enquanto a contagem diz o contrário.
+// ============================================================================
+
+/** Um histórico com os totais de gols dados, na ordem em que aconteceram. */
+const comTotais = (casa: number[], fora: number[]): FutebolFixtureHistorico[] => [
+  ...casa.map((t, i) =>
+    jogo({ side: 'home', team_id: 1, team_name: 'Casa', ordem: i + 1, past_fixture_id: i + 1, total_gols: t }),
+  ),
+  ...fora.map((t, i) =>
+    jogo({ side: 'away', team_id: 2, team_name: 'Fora', ordem: i + 1, past_fixture_id: 100 + i, total_gols: t }),
+  ),
+];
+
+const contagem = (slug: string, casa: number[], fora: number[], linha: number) =>
+  prestacaoDaPremissa('goals_over_under', slug, comTotais(casa, fora), 'home', linha);
+
+describe('a contagem é por time, contra a linha escolhida', () => {
+  it('conta os jogos de cada lado, sem soma e sem média', () => {
+    // Casa: 4 dos 5 passaram de 2,5. Fora: 2 dos 5.
+    const p = contagem('historico_over', [3, 3, 3, 3, 1], [3, 3, 1, 1, 1], 2.5)!;
+
+    expect(p.forma).toBe('contagem_por_time');
+    expect(p.escala).toBe('contagem');
+    expect(p.insumo).toBeNull();
+    expect(p.parcelas.map((x) => [x.teamName, x.valor, x.cruzou])).toEqual([
+      ['Casa', 4, true],
+      ['Fora', 2, false],
+    ]);
+    expect(p.cruzou).toBe(false);
+  });
+
+  it('a janela é de CINCO jogos, e não os dez do resto do mercado', () => {
+    // Dez jogos, os cinco mais antigos com muitos gols e os cinco recentes sem.
+    // Contando dez, seriam 5 acima; contando cinco, zero.
+    const p = contagem('historico_over', [5, 5, 5, 5, 5, 0, 0, 0, 0, 0], [5, 5, 5, 5, 5, 0, 0, 0, 0, 0], 2.5)!;
+
+    expect(p.parcelas.map((x) => x.valor)).toEqual([0, 0]);
+    expect(p.parcelas.map((x) => x.jogos)).toEqual([5, 5]);
+  });
+
+  it('a contagem muda quando o assinante troca de linha', () => {
+    const casa = [2, 2, 3, 3, 4];
+    const fora = [2, 2, 3, 3, 4];
+
+    expect(contagem('historico_over', casa, fora, 1.5)!.parcelas.map((x) => x.valor)).toEqual([5, 5]);
+    expect(contagem('historico_over', casa, fora, 2.5)!.parcelas.map((x) => x.valor)).toEqual([3, 3]);
+    expect(contagem('historico_over', casa, fora, 3.5)!.parcelas.map((x) => x.valor)).toEqual([1, 1]);
+    // O corte, em compensação, é fixo: são sempre 3 jogos.
+    expect(contagem('historico_over', casa, fora, 3.5)!.corte).toBe(3);
+  });
+
+  it('a linha inteira não conta o jogo que a empata para lado nenhum', () => {
+    // O modelo compara `> line_value` e `< line_value`, os dois estritos. Numa
+    // linha de 3,0 o jogo de 3 gols não é over nem under.
+    const totais = [3, 3, 3, 4, 2];
+
+    expect(contagem('historico_over', totais, totais, 3)!.parcelas.map((x) => x.valor)).toEqual([1, 1]);
+    expect(contagem('historico_under', totais, totais, 3)!.parcelas.map((x) => x.valor)).toEqual([1, 1]);
+  });
+
+  it('os dois times precisam do mínimo', () => {
+    const acesa = contagem('historico_over', [3, 3, 3, 1, 1], [3, 3, 3, 1, 1], 2.5)!;
+    const soUm = contagem('historico_over', [3, 3, 3, 1, 1], [3, 3, 1, 1, 1], 2.5)!;
+
+    expect(acesa.combinacao).toBe('e');
+    expect(acesa.cruzou).toBe(true);
+    expect(soUm.cruzou).toBe(false);
+    expect(soUm.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName)).toEqual(['Fora']);
+  });
+});
+
+describe('a média e a contagem podem apontar para lados diferentes', () => {
+  it('média acima da linha com a contagem abaixo', () => {
+    // Cinco jogos: 0, 0, 0, 0, 15. A média é 3,0 — acima de 2,5. A contagem de
+    // jogos acima de 2,5 é UM. Quem lesse a média concluiria o contrário.
+    const totais = [0, 0, 0, 0, 15];
+    const p = contagem('historico_over', totais, totais, 2.5)!;
+    const media = totais.reduce((a, b) => a + b, 0) / totais.length;
+
+    expect(media).toBeGreaterThan(2.5);
+    expect(p.parcelas.map((x) => x.valor)).toEqual([1, 1]);
+    expect(p.cruzou).toBe(false);
+  });
+
+  it('e a média some do gráfico destas duas', () => {
+    // O gráfico continua sendo o do total de gols com a linha tracejada, que é o
+    // que deixa contar as barras. O que sai é a linha da MÉDIA: ela não é o
+    // insumo, e desenhá-la ali oferece o número errado com destaque.
+    const story = storyDaPremissa('historico_over', comTotais([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]), 'home', 2.5)!;
+
+    expect(story.series.every((s) => s.mostraMedia)).toBe(false);
+    // Já nas de média ela fica.
+    const daMedia = storyDaPremissa('defesas_firmes', historicoCom(1, 1), 'home', 2.5)!;
+    expect(daMedia.series.every((s) => s.mostraMedia)).toBe(true);
   });
 });

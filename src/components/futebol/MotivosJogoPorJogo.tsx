@@ -187,7 +187,7 @@ function BlocoSerie({
             style={{ borderColor: 'var(--ink-3)', bottom: y(referencia.valor) }}
           />
         )}
-        {s.media != null && (
+        {s.media != null && s.mostraMedia && (
           <>
             <div
               className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
@@ -349,14 +349,21 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
 function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
   const teto = Math.max(...p.parcelas.map((x) => x.valor), p.corte) * 1.2 || 1;
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
+  const quanto = `${p.sentido === 'abaixo' ? 'menos de' : 'pelo menos'} ${corteDaPrestacao(p)}`;
   const exigencia =
     p.combinacao === 'e'
-      ? `Os DOIS times precisam de ${p.sentido === 'abaixo' ? 'menos de' : 'pelo menos'} ${corteDaPrestacao(p)}.`
-      : `Basta UM dos times ter ${p.sentido === 'abaixo' ? 'menos de' : 'pelo menos'} ${corteDaPrestacao(p)}.`;
+      ? `Os DOIS times precisam de ${quanto}.`
+      : `Basta UM dos times ter ${quanto}.`;
+  // A contagem é medida contra a LINHA escolhida, e muda quando o assinante
+  // arrasta a régua. Sem dizer isso, ver o número mudar parece defeito.
+  const contraALinha =
+    p.escala === 'contagem' && p.linha != null
+      ? ` A conta é contra a linha de ${fmtLinhaExata(p.linha)}, e muda com ela.`
+      : '';
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
-        {p.unidade}, por time
+        {p.escala === 'contagem' ? `Jogos ${p.unidade}` : `${p.unidade}, por time`}
       </div>
 
       <div className="flex flex-col gap-3 mt-3">
@@ -389,7 +396,7 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
       </div>
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-3">
-        {exigencia}{' '}
+        {exigencia}{contraALinha}{' '}
         {p.cruzou
           ? p.combinacao === 'ou' && p.parcelas.some((x) => !x.cruzou)
             ? `${p.parcelas.filter((x) => x.cruzou).map((x) => x.teamName).join(' e ')} passou do corte sozinho, e é por isso que esta premissa sustenta ${saidaLabel}.`

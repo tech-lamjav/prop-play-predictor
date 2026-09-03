@@ -52,6 +52,15 @@ const JANELA_DE_GOLS = 10;
 const ULTIMOS_DE_GOLS = <T>(rows: T[]): T[] => rows.slice(-JANELA_DE_GOLS);
 
 /**
+ * A janela das premissas de CONTAGEM: os últimos 5, e não os 10 das outras.
+ *
+ * `last5_totals` no modelo. Duas janelas no mesmo mercado é o tipo de coisa que
+ * some num literal repetido, e o gráfico passa a contar dez jogos embaixo de uma
+ * frase que fala de cinco.
+ */
+const JANELA_DE_CONTAGEM = 5;
+
+/**
  * O que cada barra do gráfico mede.
  *
  * `sem_sofrer` e `sem_marcar` são BINÁRIAS: 1 quando o jogo teve a coisa, 0
@@ -105,6 +114,14 @@ interface SerieSpec {
    * e o padrão é o conservador; a #352 diz quais podem mudar.
    */
   competicoes?: 'qualquer' | 'mesma_competicao';
+  /**
+   * A linha da média entra no gráfico?
+   *
+   * Padrão sim. Sai nas premissas de CONTAGEM (#356), onde a média não é o insumo
+   * e pode estar de um lado da linha enquanto a contagem diz o contrário —
+   * desenhá-la ali é oferecer ao assinante o número errado, com destaque.
+   */
+  mostraMedia?: boolean;
 }
 
 /**
@@ -142,12 +159,19 @@ const SPECS: Record<string, SerieSpec[]> = {
   ambos_vazam: [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  // Estas duas ficam DENTRO da janela de gols, mas ainda desenham a média do
-  // total — e o critério delas é CONTAGEM ("3 ou mais jogos over em cada"), sobre
-  // uma janela mais curta. Trocar a métrica e a janela exata é a #356; o que esta
-  // issue garante é que elas parem de somar 40 jogos.
-  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  // A família de CONTAGEM (#356). O critério conta quantos dos ÚLTIMOS CINCO
+  // jogos de cada time ficaram de um lado da linha, e exige um mínimo em cada —
+  // `home_over_cnt >= 3 AND away_over_cnt >= 3`, sobre `last5_totals`.
+  //
+  // A janela é 5, e não os 10 do resto do mercado: escrever `JANELA_DE_GOLS` aqui
+  // seria o gráfico contando dez jogos embaixo de uma frase que fala de cinco.
+  //
+  // `mostraMedia: false` porque a média não é o insumo delas, e uma média pode
+  // estar de um lado da linha enquanto a contagem diz o contrário. O gráfico
+  // continua sendo o do total de gols com a linha tracejada, que é justamente o
+  // que deixa contar as barras que passaram.
+  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Resultado ──
   forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
@@ -205,8 +229,13 @@ export interface SerieHistorico {
   sub: string;
   metrica: Metrica;
   direcao: Direcao;
-  /** A média das barras, que é o número que a premissa usa. */
+  /** A média das barras, que é o número que a premissa usa — onde ela É o insumo. */
   media: number | null;
+  /**
+   * A média entra no gráfico? Falsa nas premissas de contagem, onde ela não é o
+   * insumo e desenhá-la oferece o número errado com destaque (#356).
+   */
+  mostraMedia: boolean;
   jogos: JogoBarra[];
   /**
    * Quantos jogos a JANELA tinha antes do recorte de mando. Igual a `jogos.length`
@@ -375,6 +404,7 @@ export function storyDaPremissa(
         metrica: spec.metrica,
         direcao: spec.direcao,
         media,
+        mostraMedia: spec.mostraMedia !== false,
         jogos,
         daJanela: naJanela.length,
       });
