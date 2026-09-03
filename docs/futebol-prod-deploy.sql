@@ -2152,7 +2152,7 @@ $function$
 
 ;
 
-CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 40)
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 10)
  RETURNS TABLE(side text, team_id bigint, team_name text, past_fixture_id bigint, data date, ordem bigint, em_casa boolean, adversario text, adversario_id bigint, gols_pro integer, gols_contra integer, total_gols integer, ambos_marcaram boolean, sem_sofrer boolean, sem_marcar boolean, xg double precision, xg_contra double precision, resultado text)
  LANGUAGE sql
  STABLE SECURITY DEFINER
@@ -2179,10 +2179,10 @@ AS $function$
            (case when f.home_team_id = l.team_id then f.goals_home else f.goals_away end)::integer as gols_pro,
            (case when f.home_team_id = l.team_id then f.goals_away else f.goals_home end)::integer as gols_contra
     from lados l
+    -- Sem filtro de competição nem temporada: esta é a JANELA DA PREMISSA, e o
+    -- modelo mede os últimos jogos do time em qualquer competição (#350).
     join futebol.fact_fixtures f
-      on f.competition = l.competition
-     and f.season = l.season
-     and f.status_short in ('FT', 'AET', 'PEN')
+      on f.status_short in ('FT', 'AET', 'PEN')
      and f.kickoff_utc < l.kickoff_utc
      and (f.home_team_id = l.team_id or f.away_team_id = l.team_id)
      and f.goals_home is not null

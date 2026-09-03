@@ -745,7 +745,15 @@ export const futebolDataService = {
   },
 
   /** Jogo a jogo dos dois times, para auditar a média de cada premissa. */
-  async getFixtureHistorico(fixtureId: number, max = 40): Promise<FutebolFixtureHistorico[]> {
+  /**
+   * O jogo a jogo dos dois times na **janela da premissa** (#350).
+   *
+   * O padrão são 10 por lado porque é a janela mais larga que o modelo usa: as
+   * médias de gols e xG olham 10, e os critérios de contagem olham menos e
+   * recortam do começo desta lista. Pedir 40, como antes, encheria o gráfico com
+   * jogos que não entram em critério nenhum.
+   */
+  async getFixtureHistorico(fixtureId: number, max = 10): Promise<FutebolFixtureHistorico[]> {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_fixture_historico', {
         p_fixture_id: fixtureId,

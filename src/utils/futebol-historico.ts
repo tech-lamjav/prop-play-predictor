@@ -9,10 +9,19 @@ import { n1 } from '@/utils/futebol-evidencias';
 // goleada isolada puxando tudo. O gráfico jogo a jogo, com a linha da média e o
 // filtro de mando declarado, deixa o usuário conferir em vez de acreditar.
 //
-// Regra que sustenta a auditoria: o recorte aqui é o MESMO da média (competição,
-// temporada e mando). Medido no dev: Palmeiras em casa, 10 jogos, 0,80 gol sofrido,
-// idêntico ao ga_casa da 094. Se o recorte fosse outro, o gráfico desmentiria o
-// número que ele deveria explicar.
+// Regra que sustenta a auditoria: o recorte aqui é o MESMO que o modelo usa para
+// acender a premissa — a JANELA DA PREMISSA, os últimos jogos do time em qualquer
+// competição. Se o recorte fosse outro, o gráfico desmentiria o número que ele
+// deveria explicar.
+//
+// ⚠️ Essa regra já esteve ancorada no lugar errado (#350). Ela dizia "o recorte é o
+// mesmo da média (competição, temporada e mando)", casando o gráfico com o perfil
+// de temporada — que nunca foi insumo de premissa nenhuma. O gráfico ficava
+// coerente com um número que não era o que decidia, e daí saía o "Flamengo em
+// casa, 11 jogos" embaixo de um critério que não olha mando.
+//
+// Quem quiser reintroduzir o filtro de competição ou de mando nas premissas de
+// gols: o modelo não os usa. Se um dia usar, este é o lugar de acompanhar.
 
 export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado';
 
@@ -47,14 +56,19 @@ interface SerieSpec {
  */
 const SPECS: Record<string, SerieSpec[]> = {
   // ── Gols ──
-  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior' }],
-  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor' }],
-  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior' }],
-  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'menor' }],
+  // ⚠️ `mando: 'todos'` em TODAS as de gols, e isso não é descuido (#350). O modelo
+  // não olha mando nenhum nestas premissas: ele mede os últimos jogos do time em
+  // qualquer competição. Recortar casa/fora aqui fazia o gráfico desmentir o
+  // número que ele deveria explicar — era o defeito do "Flamengo em casa, 11
+  // jogos" embaixo de um critério que soma os dois times sem olhar onde jogaram.
+  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior' }],
+  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor' }],
+  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior' }],
+  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'menor' }],
   clean_sheets_altos: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor' }],
   ambos_vazam: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior' }],
-  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'proprio', direcao: 'maior' }],
-  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'proprio', direcao: 'menor' }],
+  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior' }],
+  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor' }],
   historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior' }],
   historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor' }],
 
@@ -108,7 +122,7 @@ export interface SerieHistorico {
   /** Para o escudo em cima do próprio gráfico, e não só na legenda longe dele. */
   teamId: number;
   teamName: string;
-  /** "Fortaleza em casa" ou "Fortaleza, todos os jogos". */
+  /** "Fortaleza, últimos jogos" ou, onde o mando é parte do critério, "Fortaleza em casa". */
   titulo: string;
   /** "4 jogos" ou "4 jogos, 1 sem dado de gol esperado". */
   sub: string;
@@ -158,8 +172,19 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
   return r.gols_pro - r.gols_contra;
 }
 
+/**
+ * O que vem depois do nome do time no cabeçalho da série.
+ *
+ * "todos os jogos" agora quer dizer **a janela da premissa** — os últimos jogos em
+ * qualquer competição, que é o que o modelo mede (#350). Antes era "todos os jogos
+ * desta competição nesta temporada", e a diferença passou a importar: o gráfico
+ * mistura campeonatos de propósito, e sem dizer isso ele parece defeito.
+ *
+ * O recorte de mando sobrevive nas premissas em que o critério DE FATO olha o
+ * mando — handicap e resultado.
+ */
 const SUFIXO_MANDO = (mando: FiltroMando, emCasa: boolean) =>
-  mando === 'todos' ? ', todos os jogos' : emCasa ? ' em casa' : ' fora';
+  mando === 'todos' ? ', últimos jogos' : emCasa ? ' em casa' : ' fora';
 
 const COMO_LER: Record<Metrica, string> = {
   ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu naquele jogo. A linha é a média, que é o número que a premissa usa.',
