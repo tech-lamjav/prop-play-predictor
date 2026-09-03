@@ -9,10 +9,31 @@ import { n1 } from '@/utils/futebol-evidencias';
 // goleada isolada puxando tudo. O gráfico jogo a jogo, com a linha da média e o
 // filtro de mando declarado, deixa o usuário conferir em vez de acreditar.
 //
-// Regra que sustenta a auditoria: o recorte aqui é o MESMO da média (competição,
-// temporada e mando). Medido no dev: Palmeiras em casa, 10 jogos, 0,80 gol sofrido,
-// idêntico ao ga_casa da 094. Se o recorte fosse outro, o gráfico desmentiria o
-// número que ele deveria explicar.
+// Regra que sustenta a auditoria: o recorte aqui é o MESMO que o modelo usa para
+// acender a premissa — a JANELA DA PREMISSA, os últimos jogos do time em qualquer
+// competição. Se o recorte fosse outro, o gráfico desmentiria o número que ele
+// deveria explicar.
+//
+// ⚠️ Essa regra já esteve ancorada no lugar errado (#350). Ela dizia "o recorte é o
+// mesmo da média (competição, temporada e mando)", casando o gráfico com o perfil
+// de temporada — que nunca foi insumo de premissa nenhuma. O gráfico ficava
+// coerente com um número que não era o que decidia, e daí saía o "Flamengo em
+// casa, 11 jogos" embaixo de um critério que não olha mando.
+//
+// Quem quiser reintroduzir o filtro de competição ou de mando nas premissas de
+// gols: o modelo não os usa. Se um dia usar, este é o lugar de acompanhar.
+
+/**
+ * A janela das premissas do mercado de gols: os últimos 10 jogos do time, em
+ * qualquer competição.
+ *
+ * Mora numa constante porque o gráfico e o número precisam usar a MESMA. Foi
+ * exatamente divergirem que produziu a #350 — e, dentro dela, o segundo defeito:
+ * o gráfico mudou de janela e o número do xG ficou para trás, então card e barras
+ * mostravam médias diferentes da mesma coisa, lado a lado.
+ */
+const JANELA_DE_GOLS = 10;
+const ULTIMOS_DE_GOLS = <T>(rows: T[]): T[] => rows.slice(-JANELA_DE_GOLS);
 
 export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado';
 
@@ -39,6 +60,21 @@ interface SerieSpec {
    * número. Sem isto, entram todos os jogos do recorte.
    */
   ultimos?: number;
+  /**
+   * De onde vêm os jogos.
+   *
+   * `qualquer` é a **janela da premissa**: todas as competições, que é o que o
+   * modelo mede nas premissas de gols. `mesma_competicao` mantém o recorte antigo
+   * — uma competição só — para as premissas cujo critério ninguém conferiu ainda.
+   *
+   * Existe porque a consulta parou de filtrar por competição (#350) e isso valia
+   * para TODOS os consumidores: as premissas de resultado e handicap passaram a
+   * desenhar jogos de outros campeonatos enquanto a frase acima delas continuava
+   * saindo do perfil de uma competição só. O gráfico e o texto discordavam em
+   * mercados que esta issue nem tocava. A janela agora é declarada por premissa,
+   * e o padrão é o conservador; a #352 diz quais podem mudar.
+   */
+  competicoes?: 'qualquer' | 'mesma_competicao';
 }
 
 /**
@@ -47,16 +83,33 @@ interface SerieSpec {
  */
 const SPECS: Record<string, SerieSpec[]> = {
   // ── Gols ──
-  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior' }],
-  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor' }],
-  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior' }],
-  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'menor' }],
-  clean_sheets_altos: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor' }],
-  ambos_vazam: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior' }],
-  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'proprio', direcao: 'maior' }],
-  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'proprio', direcao: 'menor' }],
-  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior' }],
-  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor' }],
+  // ⚠️ `mando: 'todos'` e `ultimos: 10` nas dez premissas DO MERCADO DE GOLS, e
+  // isso não é descuido (#350). O modelo não olha mando nenhum nelas: mede os
+  // últimos 10 jogos do time em qualquer competição. Recortar casa/fora fazia o
+  // gráfico desmentir o número que ele deveria explicar — era o "Flamengo em
+  // casa, 11 jogos" embaixo de um critério que soma os dois times sem olhar onde
+  // jogaram.
+  //
+  // O `ultimos` é EXPLÍCITO de propósito. Deixar a janela nascer do tamanho da
+  // busca amarra o significado ao `p_max` da consulta, e aí mudar quantos jogos
+  // se busca mudaria calado o que a premissa afirma.
+  //
+  // As premissas de OUTROS mercados que recortam por mando seguem recortando: ali
+  // o mando é parte do critério. Quais janelas eles usam é o que a #352 levanta.
+  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  clean_sheets_altos: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ambos_vazam: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  // Estas duas ficam DENTRO da janela de gols, mas ainda desenham a média do
+  // total — e o critério delas é CONTAGEM ("3 ou mais jogos over em cada"), sobre
+  // uma janela mais curta. Trocar a métrica e a janela exata é a #356; o que esta
+  // issue garante é que elas parem de somar 40 jogos.
+  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
 
   // ── Resultado ──
   forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
@@ -108,7 +161,7 @@ export interface SerieHistorico {
   /** Para o escudo em cima do próprio gráfico, e não só na legenda longe dele. */
   teamId: number;
   teamName: string;
-  /** "Fortaleza em casa" ou "Fortaleza, todos os jogos". */
+  /** "Fortaleza, últimos jogos" ou, onde o mando é parte do critério, "Fortaleza em casa". */
   titulo: string;
   /** "4 jogos" ou "4 jogos, 1 sem dado de gol esperado". */
   sub: string;
@@ -158,8 +211,19 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
   return r.gols_pro - r.gols_contra;
 }
 
+/**
+ * O que vem depois do nome do time no cabeçalho da série.
+ *
+ * "todos os jogos" agora quer dizer **a janela da premissa** — os últimos jogos em
+ * qualquer competição, que é o que o modelo mede (#350). Antes era "todos os jogos
+ * desta competição nesta temporada", e a diferença passou a importar: o gráfico
+ * mistura campeonatos de propósito, e sem dizer isso ele parece defeito.
+ *
+ * O recorte de mando sobrevive nas premissas em que o critério DE FATO olha o
+ * mando — handicap e resultado.
+ */
 const SUFIXO_MANDO = (mando: FiltroMando, emCasa: boolean) =>
-  mando === 'todos' ? ', todos os jogos' : emCasa ? ' em casa' : ' fora';
+  mando === 'todos' ? ', últimos jogos' : emCasa ? ' em casa' : ' fora';
 
 const COMO_LER: Record<Metrica, string> = {
   ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu naquele jogo. A linha é a média, que é o número que a premissa usa.',
@@ -192,7 +256,13 @@ export function storyDaPremissa(
       const doLado = hist.filter((r) => r.side === side);
       if (!doLado.length) continue;
       const emCasa = side === 'home';
-      const noMando = spec.mando === 'todos' ? doLado : doLado.filter((r) => r.em_casa === emCasa);
+      // A consulta devolve jogos de qualquer competição (#350). Quem declarou a
+      // janela larga fica com todos; o resto volta a ver só a competição do
+      // confronto, que é onde o critério deles ainda mora.
+      const naCompeticao =
+        spec.competicoes === 'qualquer' ? doLado : doLado.filter((r) => r.mesma_competicao !== false);
+      if (!naCompeticao.length) continue;
+      const noMando = spec.mando === 'todos' ? naCompeticao : naCompeticao.filter((r) => r.em_casa === emCasa);
       const filtrados = spec.ultimos ? noMando.slice(-spec.ultimos) : noMando;
       if (!filtrados.length) continue;
       const brutos = filtrados.map((r) => ({
@@ -231,8 +301,10 @@ export function storyDaPremissa(
         sub:
           semDado > 0
             ? `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}, ${semDado} sem o dado`
+            // "de 27 disponíveis", e não "na competição": a consulta parou de
+            // filtrar por competição (#350), e a frase antiga virou falsa.
             : spec.ultimos && noMando.length > filtrados.length
-              ? `de ${noMando.length} na competição`
+              ? `${jogos.length} de ${noMando.length} disponíveis`
               : `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}`,
         metrica: spec.metrica,
         direcao: spec.direcao,
@@ -308,8 +380,12 @@ export function evidenciaDoHistorico(
   const nome = (s: 'home' | 'away') => hist.find((r) => r.side === s)?.team_name ?? '';
 
   if (slug === 'xg_combinado_alto' || slug === 'xg_baixo_combinado') {
-    const casa = doLado('home', true);
-    const fora = doLado('away', true);
+    // Sem recorte de mando e nos últimos 10, a MESMA janela que o gráfico destas
+    // premissas usa (#350). Enquanto o gráfico mudou e este número não, o card e
+    // as barras embaixo dele mostravam médias diferentes da mesma coisa — o
+    // defeito da spec, agora dentro da mesma caixa.
+    const casa = ULTIMOS_DE_GOLS(doLado('home', false));
+    const fora = ULTIMOS_DE_GOLS(doLado('away', false));
     const a = media(casa, (r) => r.xg);
     const b = media(fora, (r) => r.xg);
     if (a == null || b == null) return null;

@@ -186,6 +186,16 @@ export interface FutebolFixtureHistorico {
   past_fixture_id: number;
   data: string;
   ordem: number;
+  /**
+   * O jogo é da mesma competição e temporada do confronto analisado?
+   *
+   * A consulta devolve jogos de QUALQUER competição (#350); este booleano é o que
+   * permite a cada premissa recortar de novo, para as que ainda medem uma
+   * competição só. Vem como booleano, e não como o nome da competição, porque
+   * quem compara é a própria consulta — a tela teria de carregar o dado do
+   * confronto por três componentes só para refazer a mesma comparação.
+   */
+  mesma_competicao: boolean | null;
   em_casa: boolean;
   adversario: string;
   /** Para o escudo do adversário embaixo da barra. */
@@ -745,7 +755,15 @@ export const futebolDataService = {
   },
 
   /** Jogo a jogo dos dois times, para auditar a média de cada premissa. */
-  async getFixtureHistorico(fixtureId: number, max = 40): Promise<FutebolFixtureHistorico[]> {
+  /**
+   * O jogo a jogo dos dois times na **janela da premissa** (#350).
+   *
+   * O padrão são 10 por lado porque é a janela mais larga que o modelo usa: as
+   * médias de gols e xG olham 10, e os critérios de contagem olham menos e
+   * recortam do começo desta lista. Pedir 40, como antes, encheria o gráfico com
+   * jogos que não entram em critério nenhum.
+   */
+  async getFixtureHistorico(fixtureId: number, max = 10): Promise<FutebolFixtureHistorico[]> {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_fixture_historico', {
         p_fixture_id: fixtureId,

@@ -2152,8 +2152,8 @@ $function$
 
 ;
 
-CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 40)
- RETURNS TABLE(side text, team_id bigint, team_name text, past_fixture_id bigint, data date, ordem bigint, em_casa boolean, adversario text, adversario_id bigint, gols_pro integer, gols_contra integer, total_gols integer, ambos_marcaram boolean, sem_sofrer boolean, sem_marcar boolean, xg double precision, xg_contra double precision, resultado text)
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 10)
+ RETURNS TABLE(side text, team_id bigint, team_name text, past_fixture_id bigint, data date, ordem bigint, mesma_competicao boolean, em_casa boolean, adversario text, adversario_id bigint, gols_pro integer, gols_contra integer, total_gols integer, ambos_marcaram boolean, sem_sofrer boolean, sem_marcar boolean, xg double precision, xg_contra double precision, resultado text)
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO ''
@@ -2173,16 +2173,17 @@ AS $function$
     select l.side, l.team_id, l.team_name,
            f.fixture_id as past_fixture_id,
            (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date as data,
+           (f.competition = l.competition and f.season = l.season) as mesma_competicao,
            (f.home_team_id = l.team_id) as em_casa,
            case when f.home_team_id = l.team_id then f.away_team_name else f.home_team_name end as adversario,
            case when f.home_team_id = l.team_id then f.away_team_id else f.home_team_id end as adversario_id,
            (case when f.home_team_id = l.team_id then f.goals_home else f.goals_away end)::integer as gols_pro,
            (case when f.home_team_id = l.team_id then f.goals_away else f.goals_home end)::integer as gols_contra
     from lados l
+    -- Sem filtro de competição nem temporada: esta é a JANELA DA PREMISSA, e o
+    -- modelo mede os últimos jogos do time em qualquer competição (#350).
     join futebol.fact_fixtures f
-      on f.competition = l.competition
-     and f.season = l.season
-     and f.status_short in ('FT', 'AET', 'PEN')
+      on f.status_short in ('FT', 'AET', 'PEN')
      and f.kickoff_utc < l.kickoff_utc
      and (f.home_team_id = l.team_id or f.away_team_id = l.team_id)
      and f.goals_home is not null
@@ -2203,6 +2204,7 @@ AS $function$
          w.past_fixture_id,
          w.data,
          w.ordem,
+         w.mesma_competicao,
          w.em_casa,
          w.adversario,
          w.adversario_id,
