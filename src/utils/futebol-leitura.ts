@@ -200,7 +200,7 @@ export function sufixoDeLeitura(carregando: boolean, comLeitura: number): string
  * aviso "sem cotação" já explica por que ainda não dá para apostar, e isso é
  * mais honesto que desviar a pessoa para uma linha que ela não quer.
  */
-export function candidatoQueAbreAFolha(
+export function saidaQueAbreAFolha(
   resumo: MercadoResumo | null | undefined,
 ): FutebolFixturePremissas | null {
   return resumo?.candidato ?? null;

@@ -31,7 +31,7 @@ import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
-import { valueDoCandidato, resumoDosMercados, mesmaLinha, candidatoQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
@@ -306,12 +306,17 @@ export function BancadaMercados({
   // melhorCandidato dele já é nulo, então um "?? melhorCandidato(...)" aqui nunca
   // teria o que devolver, e ainda reabriria a porta das duas verdades.
   const candidatoInicialDoMercado = useMemo(
-    () => candidatoQueAbreAFolha(resumos.find((r) => r.mercado.slug === mercado.slug)),
+    () => saidaQueAbreAFolha(resumos.find((r) => r.mercado.slug === mercado.slug)),
     [resumos, mercado.slug],
   );
 
-  // TODAS as linhas cotadas do mercado, em ordem. Com pills a tela mostrava as 5
-  // mais centrais e as outras 16 não existiam; na régua arrastável cabem todas.
+  // TODAS as linhas ANALISADAS do mercado, em ordem — não só as cotadas, que é o
+  // que este comentário dizia e o código nunca fez: a fonte é `doMercado`, que
+  // são as premissas. A distinção passou a importar na #346, onde a régua abre
+  // numa linha sem cotação de propósito.
+  //
+  // Com pills a tela mostrava as 5 mais centrais e as outras 16 não existiam; na
+  // régua arrastável cabem todas.
   const paradas = useMemo(() => {
     if (!ehLinha) return [] as number[];
     return [...new Set(doMercado.map((r) => r.line_value).filter((v): v is number => v != null))].sort((a, b) => a - b);
@@ -323,7 +328,14 @@ export function BancadaMercados({
   // separadas, e quando o preço chegava depois a régua ficava parada na linha que as
   // premissas tinham escolhido sozinhas.
   useEffect(() => {
-    setLinha(candidatoInicialDoMercado?.line_value != null && paradas.includes(candidatoInicialDoMercado.line_value) ? candidatoInicialDoMercado.line_value : paradas[Math.floor(paradas.length / 2)] ?? null);
+    const anunciada = candidatoInicialDoMercado?.line_value;
+    // `mesmaLinha`, e não `includes`: a linha é float e a comparação estrita
+    // falha por ruído de representação. Hoje a linha anunciada vem do mesmo
+    // array das paradas, então o `includes` acertava por sorte — no dia em que
+    // ela vier de outra fonte (a URL, por exemplo), a régua centralizaria em
+    // silêncio, que é o desvio que a #346 existe para tirar da frente.
+    const naRegua = anunciada != null && paradas.some((p) => mesmaLinha(p, anunciada));
+    setLinha(naRegua ? anunciada : paradas[Math.floor(paradas.length / 2)] ?? null);
     setSaida(candidatoInicialDoMercado?.outcome ?? null);
   }, [candidatoInicialDoMercado, paradas]);
 
