@@ -6,6 +6,7 @@ import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
+  distanciaAteOCorte,
   fraseDaPrestacao,
   numeroDaPrestacao,
   prestacaoDaPremissa,
@@ -449,16 +450,15 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
         </div>
       </div>
 
-      <div className="relative mt-5 pt-4">
-        <span
-          className="absolute top-0 -translate-x-1/2 text-[9.5px] font-bold tabular-nums whitespace-nowrap"
-          style={{ left: pct(p.corte), color: '#b8870f' }}
-        >
-          corte {fmtLinhaExata(p.corte)}
-        </span>
+      {/* Os dois marcos, sem rótulo flutuante em cima deles.
+          Antes o "corte 2,95" era um `span` posicionado sobre a barra, e a linha
+          não tinha rótulo nenhum — o assinante via um tracinho cinza sem saber o
+          que era. Pior: com margem de 0,3 os dois marcos ficam a 3% de distância
+          na escala, e dois rótulos flutuantes ali se sobrepõem.
+          A legenda saiu para baixo, em fluxo: não colide nunca, e nomeia os dois. */}
+      <div className="relative mt-4">
         <div className="relative h-3.5 rounded-full bg-white">
           <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: pct(insumo), background: cor }} />
-          {/* A linha, em cinza e fina: referência, não régua da premissa. */}
           {!semMargem && (
             <div
               className="absolute -top-0.5 -bottom-0.5 w-[2px] rounded-full"
@@ -470,12 +470,28 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
             style={{ left: pct(p.corte), background: '#b8870f', boxShadow: '0 0 0 1.5px #fff' }}
           />
         </div>
+        <div className="flex items-center gap-4 mt-2 flex-wrap text-[10px]">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-[3px] h-3 rounded-full" style={{ background: '#b8870f' }} />
+            <span className="tabular-nums" style={{ color: '#8d8672' }}>
+              corte {fmtLinhaExata(p.corte)}
+            </span>
+          </span>
+          {!semMargem && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-[2px] h-3 rounded-full" style={{ background: '#c0b79f' }} />
+              <span className="tabular-nums" style={{ color: '#8d8672' }}>
+                linha {fmtLinhaExata(linha ?? 0)}
+              </span>
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {p.cruzou
           ? `${d1(insumo)} fica ${p.sentido === 'abaixo' ? 'abaixo' : 'acima'} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
-          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}.`}
+          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}${distanciaAteOCorte(p)}.`}
         {!semMargem && (
           <>
             {' '}
@@ -609,6 +625,10 @@ function LinhaPremissa({
             style={{ borderColor: aberta ? '#fbbf24' : '#c0b79f' }}
           />
         )}
+        {/* O selo do peso, com o MOTIVO junto quando ela não ajuda. Sem o motivo,
+            "não ajuda" numa premissa que está na lista a favor levanta a pergunta
+            "então por que está aqui?" — e a resposta existe: ela é verdadeira
+            sobre o jogo, e a recalibragem mediu que não melhora a previsão. */}
         <span
           className="shrink-0 inline-flex items-center h-5 px-1.5 rounded-[5px] text-[9.5px] font-bold uppercase tracking-[0.08em]"
           style={
@@ -636,9 +656,17 @@ function LinhaPremissa({
         )}
       </button>
 
-      {ev && (
+      {(ev || (p.peso === 0 && p.motivo)) && (
         <div className="px-4 py-3 text-[12.5px] leading-relaxed" style={{ color: '#5a625a' }}>
-          {ev.texto}
+          {ev?.texto}
+          {/* O motivo do peso zero fica VISÍVEL, e não num `title`: no celular
+              ninguém passa o mouse, e é ele que responde "por que uma premissa
+              que não ajuda está na lista a favor". */}
+          {p.peso === 0 && p.motivo && (
+            <span className="block mt-1 text-[11.5px]" style={{ color: '#8d8672' }}>
+              Não ajuda na previsão: {p.motivo}.
+            </span>
+          )}
         </div>
       )}
 
@@ -729,6 +757,16 @@ export function MotivosJogoPorJogo({
             : total > 0
               ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e ficaram aquém do corte. Não são sinal para o outro lado: são a ausência deste.`
               : 'Nenhuma premissa desta saída ficou aquém do corte: todas as que valem acenderam.'}
+          {/* A definição do corte, UMA vez na lista e não em cada card. Ela só
+              aparece quando existe premissa prestando contas, senão a tela
+              explicaria um conceito que não está em lugar nenhum dela. */}
+          {itens.some((x) => x.prestacao != null) && (
+            <span className="block mt-1">
+              O <strong className="font-semibold">corte</strong> é o número que a premissa precisa
+              bater para acender. Ele sai da linha em umas e é fixo em outras, e quase nunca é a
+              própria linha.
+            </span>
+          )}
         </div>
         {itens.some((x) => x.story != null) && (
           <div className="flex items-center gap-4">

@@ -468,6 +468,27 @@ export function corteEmPalavras(p: Prestacao): string {
   return `${lado} ${corteDaPrestacao(p)}`;
 }
 
+/**
+ * Quanto faltou para o insumo atingir o corte, quando ele não atingiu.
+ *
+ * String vazia quando cruzou, ou quando não há um número único para comparar
+ * (percentual e contagem comparam parcela a parcela, e ali "faltou" seria de
+ * qual dos dois times).
+ *
+ * Existe porque a premissa some da lista ao arrastar a régua e o assinante não
+ * tem como saber se ela passou longe ou por cinco centésimos. Neste jogo o insumo
+ * é 2,0: numa linha 2,25 o corte é 1,95 e ela não acende, numa 2,5 o corte é 2,2 e
+ * ela acende. Sem esta frase, as duas paradas são só "sumiu" e "voltou".
+ */
+export function distanciaAteOCorte(p: Prestacao): string {
+  if (p.cruzou || p.insumo == null) return '';
+  const falta = Math.abs(duasCasas(p.insumo - p.corte));
+  // Exato, e não com uma casa: `toFixed(1)` transformaria os 0,05 que separam
+  // este jogo de acender em "0,1" — o dobro, e justamente no caso em que o
+  // número existe para mostrar que faltou pouco.
+  return `, por ${String(falta).replace('.', ',')}`;
+}
+
 /** O corte sai como é: 2,95 é 2,95, e arredondar para 3,0 desfaria o ponto dele. */
 export function corteDaPrestacao(p: Prestacao): string {
   if (p.escala === 'percentual') return `${p.corte}%`;

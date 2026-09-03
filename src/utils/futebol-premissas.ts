@@ -458,14 +458,28 @@ export function contaQueValem(s: SaidaComAcesas): number {
 // jogo, não conta neste mercado (o preço já cobra), e não avaliada (mercado sem
 // calibragem, caso do BTTS e da dupla chance).
 
-/** Peso da premissa em palavra, no lugar da cifra interna da fórmula. */
+/**
+ * Peso da premissa em palavra, no lugar da cifra interna da fórmula.
+ *
+ * ⚠️ O selo do peso zero era "NÃO CONTA", e ele se contradizia com o lugar onde
+ * aparece: a premissa está na lista **A FAVOR**, porque o modelo a acendeu, e o
+ * selo ao lado dizia que ela não conta. O assinante lê as duas coisas juntas e
+ * conclui que a tela está errada.
+ *
+ * "Não ajuda" é o que a recalibragem de fato mediu, e não se choca com o lugar:
+ * a premissa é verdadeira sobre o jogo, e mesmo assim não melhora a previsão. Em
+ * `ambos_vazam` porque o preço já cobra; em `historico_over` e `ritmo_alto`
+ * porque elas atrapalharam nos dois testes. O `motivo` de cada uma, que a tela
+ * mostra ao lado, é quem diz qual dos dois casos é.
+ *
+ * "Não conta" também era ambíguo com o grupo das apagadas, onde ele queria dizer
+ * "não se aplica a este mercado" — outra coisa (#357).
+ */
 export function pesoPalavra(p: Premissa): string {
   if (p.peso == null) return 'Peso a calibrar';
   if (p.peso >= 10) return 'Pesa muito';
   if (p.peso >= 5) return 'Pesa';
-  // Peso zero é o corte da recalibragem: aconteceu, mas não soma. Chamar de "pesa
-  // pouco" contradizia o grupo das apagadas, que diz "não conta neste mercado".
-  if (p.peso === 0) return 'Não conta';
+  if (p.peso === 0) return 'Não ajuda';
   return 'Pesa pouco';
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   divergenciaDaPrestacao,
+  distanciaAteOCorte,
   divergenciasDaSaida,
   fraseDaPrestacao,
   prestacaoDaPremissa,
@@ -703,5 +704,45 @@ describe('a média e a contagem podem apontar para lados diferentes', () => {
     // Já nas de média ela fica.
     const daMedia = storyDaPremissa('defesas_firmes', historicoCom(1, 1), 'home', 2.5)!;
     expect(daMedia.series.every((s) => s.mostraMedia)).toBe(true);
+  });
+});
+
+describe('quanto faltou para o corte', () => {
+  // A premissa some da lista ao arrastar a régua, e o assinante não tinha como
+  // saber se ela passou longe ou por cinco centésimos. Foi exatamente o caso que
+  // o Victor viu: insumo 2,0, corte 1,95 numa linha 2,25 e 2,2 numa 2,5.
+  it('diz por quanto, e com a precisão que separa os dois casos', () => {
+    const p = prestacao(historicoCom(1, 1), 2.25)!;
+
+    expect(p.insumo).toBe(2);
+    expect(p.corte).toBe(1.95);
+    expect(p.cruzou).toBe(false);
+    // 0,05 e não "0,1": arredondar dobraria justamente o número que existe para
+    // mostrar que faltou pouco.
+    expect(distanciaAteOCorte(p)).toBe(', por 0,05');
+  });
+
+  it('a mesma média acende cinco centésimos adiante', () => {
+    const p = prestacao(historicoCom(1, 1), 2.5)!;
+
+    expect(p.corte).toBe(2.2);
+    expect(p.cruzou).toBe(true);
+    // Quem cruzou não tem distância a declarar.
+    expect(distanciaAteOCorte(p)).toBe('');
+  });
+
+  it('percentual e contagem não declaram distância', () => {
+    // Ali a comparação é parcela a parcela, e "faltou tanto" seria de qual dos
+    // dois times — a pergunta não tem resposta única.
+    const pct = prestacaoDaPremissa(
+      'goals_over_under',
+      'clean_sheets_altos',
+      comFrequencia('sem_sofrer', [2, 10], [2, 10]),
+      'home',
+      2.5,
+    )!;
+
+    expect(pct.cruzou).toBe(false);
+    expect(distanciaAteOCorte(pct)).toBe('');
   });
 });
