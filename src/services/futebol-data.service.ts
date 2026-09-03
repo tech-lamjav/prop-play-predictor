@@ -174,10 +174,16 @@ export interface FutebolFixtureNumeros {
 }
 
 /**
- * Um jogo passado de um dos times, na competição e temporada do confronto (RPC 095).
- * É o que permite auditar a média: filtrada pelo mando certo, a média destas linhas
- * reproduz o mesmo número que a premissa usa (medido: Palmeiras em casa, 10 jogos,
- * 0,80 gol sofrido, igual ao ga_casa da 094).
+ * Um jogo passado de um dos times, em QUALQUER competição, antes do apito (RPC 117).
+ *
+ * É o que permite auditar o insumo: recortado pela janela e pelo mando de cada
+ * premissa, o que sai destas linhas reproduz o número que acendeu a premissa —
+ * medido contra o mart de produção em 120 pares.
+ *
+ * ⚠️ O texto anterior dizia "na competição e temporada do confronto", e era o
+ * recorte que a 095 fazia. A 117 o removeu porque ele nunca foi o do modelo: ele
+ * casava o gráfico com o perfil de temporada, que não é insumo de premissa
+ * nenhuma (#350).
  */
 export interface FutebolFixtureHistorico {
   side: 'home' | 'away';
@@ -761,10 +767,10 @@ export const futebolDataService = {
    *
    * O corte de 10 aqui parecia economia e era regressão: quem recorta a janela é
    * o CRITÉRIO, no front, e as premissas dos outros mercados ainda recortam por
-   * COMPETIÇÃO (`competicoes: 'mesma_competicao'`, até a #361 render conserto).
-   * Elas filtram a competição do confronto DENTRO do que chega — então com 10
-   * jogos misturados um gráfico que mostrava a temporada passava a mostrar
-   * quatro ou cinco partidas, calado.
+   * COMPETIÇÃO — elas não declaram `competicoes`, e o padrão é o conservador, até
+   * a #361 render conserto. Elas filtram a competição do confronto DENTRO do que
+   * chega, então com 10 jogos misturados um gráfico que mostrava a temporada
+   * passava a mostrar quatro ou cinco partidas, calado.
    *
    * O teto vive na consulta e a janela vive na premissa. Baixar o teto ao tamanho
    * da maior janela amarra os dois, e aí mudar quantos jogos se busca muda calado

@@ -420,7 +420,7 @@ export function BancadaMercados({
   // duas acenderam, e o que difere é a tela ter o número — o que não muda de lista
   // quem é. Quem separa esses dois é a regra de exibição logo abaixo.
   const porPeso = (a: Premissa, b: Premissa) => (b.peso ?? 0) - (a.peso ?? 0);
-  const acendeu = (p: Premissa) => principal != null && acendeuNaSaida(p, principal, principal.acesas);
+  const acendeu = (p: Premissa) => principal != null && acendeuNaSaida(p, principal);
   const favor = visiveis.filter(acendeu).sort(porPeso);
   const apagadas = visiveis.filter((p) => !acendeu(p)).sort(porPeso);
   const penAtivas = (principal?.penalidades ?? [])
@@ -450,11 +450,13 @@ export function BancadaMercados({
     historico,
     lado: ladoPrincipal,
     linha,
-    // ⚠️ A chave do memo é a string dos slugs, e não o array `visiveis`: ele é
-    // reconstruído a cada render, e memoizar sobre ele nunca segura — o memo de
-    // dentro do hook estouraria junto, e a varredura de divergência rodaria a
-    // cada render de uma tela que rerenderiza ao arrastar a régua.
-    slugs: useMemo(() => visiveis.map((p) => p.slug), [chaveDosVisiveis]), // eslint-disable-line react-hooks/exhaustive-deps
+    // ⚠️ O memo sai da CHAVE, e não do array `visiveis`: ele é reconstruído a
+    // cada render, e memoizar sobre ele nunca segura — o memo de dentro do hook
+    // estouraria junto, e a varredura de divergência rodaria a cada render de uma
+    // tela que rerenderiza ao arrastar a régua. Derivar da string também é o que
+    // dispensa silenciar o `exhaustive-deps`: a dependência declarada é a única
+    // que o corpo lê.
+    slugs: useMemo(() => (chaveDosVisiveis ? chaveDosVisiveis.split('|') : []), [chaveDosVisiveis]),
   });
 
   // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos

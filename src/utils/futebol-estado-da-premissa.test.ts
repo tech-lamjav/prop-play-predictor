@@ -118,15 +118,15 @@ describe('o agrupamento das telas', () => {
   // `acendeuNaSaida` é o que as duas telas usam para separar as listas. Ele junta
   // `acesa` e `sem número para conferir` de propósito: as duas acenderam.
   it('junta a acesa e a acesa sem número', () => {
-    expect(acendeuNaSaida(p('defesas_vazaveis'), over(), ['defesas_vazaveis'])).toBe(true);
-    expect(acendeuNaSaida(p('ritmo_alto'), over(), ['ritmo_alto'])).toBe(true);
+    expect(acendeuNaSaida(p('defesas_vazaveis'), { ...over(), acesas: ['defesas_vazaveis'] })).toBe(true);
+    expect(acendeuNaSaida(p('ritmo_alto'), { ...over(), acesas: ['ritmo_alto'] })).toBe(true);
   });
 
   it('e deixa de fora a que não atingiu o corte e a do outro lado', () => {
-    expect(acendeuNaSaida(p('defesas_vazaveis'), over(), [])).toBe(false);
+    expect(acendeuNaSaida(p('defesas_vazaveis'), { ...over(), acesas: [] })).toBe(false);
     // Se o mart acender do lado errado, ela continua fora: isso é dado a
     // investigar, não coisa a exibir embaixo de um Over.
-    expect(acendeuNaSaida(p('defesas_firmes'), over(), ['defesas_firmes'])).toBe(false);
+    expect(acendeuNaSaida(p('defesas_firmes'), { ...over(), acesas: ['defesas_firmes'] })).toBe(false);
   });
 
   it('concorda com `estadoDaPremissa`, para as duas não divergirem', () => {
@@ -135,7 +135,7 @@ describe('o agrupamento das telas', () => {
         for (const acesas of [[], [slug]]) {
           for (const temNumero of [true, false]) {
             const e = estadoDaPremissa({ premissa: p(slug), saida, acesas, temNumero });
-            expect(acendeuNaSaida(p(slug), saida, acesas)).toBe(
+            expect(acendeuNaSaida(p(slug), { ...saida, acesas })).toBe(
               e === 'acesa' || e === 'sem_numero_para_conferir',
             );
           }

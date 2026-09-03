@@ -1,4 +1,4 @@
-import { ladoDaSaidaNoMercado, type Premissa } from '@/utils/futebol-premissas';
+import { ladoDaSaidaNoMercado, type Premissa, type SaidaComAcesas } from '@/utils/futebol-premissas';
 import type { Saida } from '@/utils/futebol-saida';
 
 // Os cinco estados de uma premissa (spec #349, issue #357).
@@ -84,13 +84,13 @@ export function seAplicaNaSaida(premissa: Premissa, saida: Saida): boolean {
  * Existe separada de `estadoDaPremissa` porque quem só quer o agrupamento não tem
  * de responder se tem número, e responder "sim" por conveniência ali seria mentir
  * para uma função que existe justamente para separar os dois silêncios.
+ *
+ * Recebe a saída COM as acesas, e não os dois separados: passar o objeto e um
+ * campo dele deixa o chamador entregar um par trocado — as acesas de uma linha
+ * com a saída de outra.
  */
-export function acendeuNaSaida(
-  premissa: Premissa,
-  saida: Saida,
-  acesas: readonly string[],
-): boolean {
-  return seAplicaNaSaida(premissa, saida) && acesas.includes(premissa.slug);
+export function acendeuNaSaida(premissa: Premissa, saida: SaidaComAcesas): boolean {
+  return seAplicaNaSaida(premissa, saida) && saida.acesas.includes(premissa.slug);
 }
 
 /**

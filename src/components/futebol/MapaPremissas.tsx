@@ -25,7 +25,7 @@ import {
   type Evidencia,
   type Tile as TileT,
 } from '@/utils/futebol-evidencias';
-import { estadoDaPremissa } from '@/utils/futebol-estado-da-premissa';
+import { acendeuNaSaida } from '@/utils/futebol-estado-da-premissa';
 import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import { fmtDayShort } from '@/utils/futebol-datas';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
@@ -294,19 +294,15 @@ function PainelMercado({
   // pilha: ela acendeu de verdade, e o que falta é a tela ter o insumo. Escondê-la
   // aqui faria o mapa contradizer o contador logo acima.
   //
-  // `nao_se_aplica` não chega a aparecer, porque `visiveis` já é do lado da saída
-  // — os dois estados restantes são os que os `filter` separam.
-  const estadoDe = (p: Premissa) =>
-    estadoDaPremissa({
-      premissa: p,
-      saida: atual,
-      acesas: atual.acesas,
-      temNumero: evDe(p.slug) != null,
-    });
-  const acesas = visiveis
-    .filter((p) => ['acesa', 'sem_numero_para_conferir'].includes(estadoDe(p)))
-    .sort(ordena);
-  const apagadas = visiveis.filter((p) => estadoDe(p) === 'nao_atingiu_o_corte').sort(ordena);
+  // Quem responde isso é `acendeuNaSaida`, e não uma lista de estados escrita aqui:
+  // essa lista seria a TERCEIRA cópia da mesma regra, e ela e a bancada
+  // divergiriam calado.
+  //
+  // `nao_se_aplica` não chega a aparecer, porque `visiveis` já é do lado da saída.
+  // Dos três estados que sobram, dois vão para as acesas e um para as apagadas.
+  const acendeu = (p: Premissa) => acendeuNaSaida(p, atual);
+  const acesas = visiveis.filter(acendeu).sort(ordena);
+  const apagadas = visiveis.filter((p) => !acendeu(p)).sort(ordena);
 
   const penAtivas = (atual.penalidades ?? [])
     .filter((s) => !PREMISSAS_OCULTAS.has(s))

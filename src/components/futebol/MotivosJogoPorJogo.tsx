@@ -6,7 +6,8 @@ import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
-  distanciaAteOCorte,
+  exato,
+  faltouParaOCorte,
   fraseDaPrestacao,
   numeroDaPrestacao,
   prestacaoDaPremissa,
@@ -33,8 +34,11 @@ const d1 = (v: number) => v.toFixed(1).replace('.', ',');
 /**
  * A linha sai como está cotada: 1,75 é 1,75, não 1,8. Arredondar para uma casa
  * dizia "linha 1,8" numa aposta que é de 1,75.
+ *
+ * É o `exato` do módulo do critério, com o nome que esta tela usa: eram a mesma
+ * função escrita duas vezes.
  */
-const fmtLinhaExata = (v: number) => String(v).replace('.', ',');
+const fmtLinhaExata = exato;
 const dia = (iso: string) => {
   const [, m, d] = iso.split('-');
   return `${d}/${m}`;
@@ -63,6 +67,13 @@ const rotuloMedia = (v: number, metrica: SerieHistorico['metrica']) =>
  * 2,5" o mesmo jogo joga contra. Quem separa os times é a posição (bloco da esquerda
  * e da direita, com o nome em cima), então a cor fica livre para o significado.
  */
+/**
+ * O sentido em palavra. Os valores do enum são as próprias palavras hoje, e o
+ * ternário que os repetia era um no-op — mas renomear o enum mudaria a copy em
+ * silêncio, e um mapa é o que separa o tipo do texto.
+ */
+const LADO_DO_CORTE: Record<Prestacao['sentido'], string> = { acima: 'acima', abaixo: 'abaixo' };
+
 const COR_FAVOR = '#0a3d2e';
 const COR_CONTRA = '#c9cec6';
 
@@ -415,6 +426,19 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
   );
 }
 
+/**
+ * A família de MÉDIA COMBINADA: os dois times somam uma média e o total vai
+ * contra o corte (#353, #354).
+ *
+ * O que justifica este card, e não o consolidado antigo, é o CORTE. O antigo
+ * comparava o número contra a LINHA, e o corte quase nunca é a linha: numa linha
+ * de 3,25 o corte de "defesas firmes" é 2,95, e havia uma faixa inteira — 2,95 a
+ * 3,25 — em que o card dizia "fica abaixo da linha, e é por isso que a premissa
+ * joga a favor" enquanto o modelo não a acendia.
+ *
+ * A linha continua desenhada, em segundo plano, porque é ela que decide a aposta
+ * e sumir com ela deixaria o corte sem referência.
+ */
 function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
   if (p.insumo == null) return <PrestacaoPorTime p={p} saidaLabel={saidaLabel} />;
   const insumo = p.insumo;
@@ -423,6 +447,10 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
   const cor = p.cruzou ? 'var(--forest)' : 'var(--ink-3)';
   const semMargem = p.margem === 0;
+  // A frase da distância mora na tela, e o número vem do critério: uma função que
+  // devolvesse ", por 0,05" só serviria colada nesta frase.
+  const falta = faltouParaOCorte(p);
+  const porQuanto = falta == null ? '' : `, por ${exato(falta)}`;
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -490,8 +518,8 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {p.cruzou
-          ? `${d1(insumo)} fica ${p.sentido === 'abaixo' ? 'abaixo' : 'acima'} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
-          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}${distanciaAteOCorte(p)}.`}
+          ? `${d1(insumo)} fica ${LADO_DO_CORTE[p.sentido]} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}${porQuanto}.`}
         {!semMargem && (
           <>
             {' '}
@@ -625,10 +653,9 @@ function LinhaPremissa({
             style={{ borderColor: aberta ? '#fbbf24' : '#c0b79f' }}
           />
         )}
-        {/* O selo do peso, com o MOTIVO junto quando ela não ajuda. Sem o motivo,
-            "não ajuda" numa premissa que está na lista a favor levanta a pergunta
-            "então por que está aqui?" — e a resposta existe: ela é verdadeira
-            sobre o jogo, e a recalibragem mediu que não melhora a previsão. */}
+        {/* O selo do peso. O MOTIVO dele aparece logo abaixo, fora do botão: sem
+            ele, "não ajuda" numa premissa que está na lista a favor levanta a
+            pergunta "então por que está aqui?" — e a resposta existe. */}
         <span
           className="shrink-0 inline-flex items-center h-5 px-1.5 rounded-[5px] text-[9.5px] font-bold uppercase tracking-[0.08em]"
           style={

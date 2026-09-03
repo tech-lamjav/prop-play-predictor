@@ -445,6 +445,18 @@ export function numeroDaPrestacao(p: Prestacao, valor: number): string {
 }
 
 /**
+ * O decimal como ele é, em pt-BR: 2,95 é 2,95 e 0,05 é 0,05.
+ *
+ * Existe uma vez porque `String(v).replace('.', ',')` estava copiado em três
+ * lugares, e a diferença entre ele e o `toFixed(1)` de `numeroDaPrestacao` é o
+ * que decide se a tela mostra "faltou 0,05" ou "faltou 0,1" — o dobro. Duas
+ * regras de arredondamento no mesmo módulo pedem um nome cada uma.
+ */
+export function exato(v: number): string {
+  return String(v).replace('.', ',');
+}
+
+/**
  * "no máximo 2,95", "pelo menos 40%", "menos de 35%": o corte em palavras, do lado
  * que a premissa quer e com a exigência que ela tem.
  *
@@ -471,29 +483,29 @@ export function corteEmPalavras(p: Prestacao): string {
 /**
  * Quanto faltou para o insumo atingir o corte, quando ele não atingiu.
  *
- * String vazia quando cruzou, ou quando não há um número único para comparar
+ * `null` quando cruzou, ou quando não há um número único para comparar
  * (percentual e contagem comparam parcela a parcela, e ali "faltou" seria de
  * qual dos dois times).
+ *
+ * Devolve o NÚMERO, e não a frase: uma função que devolvesse ", por 0,05" só
+ * serviria colada numa frase específica, e o teste dela acabaria afirmando a
+ * vírgula em vez da conta.
  *
  * Existe porque a premissa some da lista ao arrastar a régua e o assinante não
  * tem como saber se ela passou longe ou por cinco centésimos. Neste jogo o insumo
  * é 2,0: numa linha 2,25 o corte é 1,95 e ela não acende, numa 2,5 o corte é 2,2 e
  * ela acende. Sem esta frase, as duas paradas são só "sumiu" e "voltou".
  */
-export function distanciaAteOCorte(p: Prestacao): string {
-  if (p.cruzou || p.insumo == null) return '';
-  const falta = Math.abs(duasCasas(p.insumo - p.corte));
-  // Exato, e não com uma casa: `toFixed(1)` transformaria os 0,05 que separam
-  // este jogo de acender em "0,1" — o dobro, e justamente no caso em que o
-  // número existe para mostrar que faltou pouco.
-  return `, por ${String(falta).replace('.', ',')}`;
+export function faltouParaOCorte(p: Prestacao): number | null {
+  if (p.cruzou || p.insumo == null) return null;
+  return Math.abs(duasCasas(p.insumo - p.corte));
 }
 
 /** O corte sai como é: 2,95 é 2,95, e arredondar para 3,0 desfaria o ponto dele. */
 export function corteDaPrestacao(p: Prestacao): string {
   if (p.escala === 'percentual') return `${p.corte}%`;
   if (p.escala === 'contagem') return `${p.corte} jogos`;
-  return String(p.corte).replace('.', ',');
+  return exato(p.corte);
 }
 
 /**

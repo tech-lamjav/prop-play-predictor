@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   divergenciaDaPrestacao,
-  distanciaAteOCorte,
+  faltouParaOCorte,
   divergenciasDaSaida,
+  exato,
   fraseDaPrestacao,
   prestacaoDaPremissa,
   temCriterio,
@@ -711,15 +712,16 @@ describe('quanto faltou para o corte', () => {
   // A premissa some da lista ao arrastar a régua, e o assinante não tinha como
   // saber se ela passou longe ou por cinco centésimos. Foi exatamente o caso que
   // o Victor viu: insumo 2,0, corte 1,95 numa linha 2,25 e 2,2 numa 2,5.
-  it('diz por quanto, e com a precisão que separa os dois casos', () => {
+  it('diz por quanto, com a precisão que separa os dois casos', () => {
     const p = prestacao(historicoCom(1, 1), 2.25)!;
 
     expect(p.insumo).toBe(2);
     expect(p.corte).toBe(1.95);
     expect(p.cruzou).toBe(false);
-    // 0,05 e não "0,1": arredondar dobraria justamente o número que existe para
-    // mostrar que faltou pouco.
-    expect(distanciaAteOCorte(p)).toBe(', por 0,05');
+    expect(faltouParaOCorte(p)).toBe(0.05);
+    // O formatador exato é quem preserva os 0,05: `toFixed(1)` daria "0,1", o
+    // dobro, e justamente no número que existe para mostrar que faltou pouco.
+    expect(exato(faltouParaOCorte(p)!)).toBe('0,05');
   });
 
   it('a mesma média acende cinco centésimos adiante', () => {
@@ -728,7 +730,7 @@ describe('quanto faltou para o corte', () => {
     expect(p.corte).toBe(2.2);
     expect(p.cruzou).toBe(true);
     // Quem cruzou não tem distância a declarar.
-    expect(distanciaAteOCorte(p)).toBe('');
+    expect(faltouParaOCorte(p)).toBeNull();
   });
 
   it('percentual e contagem não declaram distância', () => {
@@ -743,6 +745,6 @@ describe('quanto faltou para o corte', () => {
     )!;
 
     expect(pct.cruzou).toBe(false);
-    expect(distanciaAteOCorte(pct)).toBe('');
+    expect(faltouParaOCorte(pct)).toBeNull();
   });
 });
