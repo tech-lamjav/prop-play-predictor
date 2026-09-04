@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
-import { rolarParaOTopo } from '@/utils/rolagem';
+import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
 import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
@@ -630,20 +630,29 @@ function LinhaPremissa({
   const forte = pesoForte(p);
   const podeAbrir = story != null;
 
-  // Abrir uma premissa leva o topo dela para o topo da tela.
+  // Abrir uma premissa leva o topo dela para logo abaixo do cabeçalho.
   //
   // No celular o gráfico nascia embaixo do dedo e a pessoa ficava no MEIO do que
   // tinha acabado de abrir, tendo de rolar para cima para ler do começo.
   //
-  // Só na ABERTURA: rolar ao fechar levaria a tela para um card que a pessoa
-  // acabou de dispensar. Por isso a comparação com o valor anterior, e não um
-  // efeito que dispara sempre que `aberta` existe — no primeiro render também
-  // não rola, senão a tela pularia sozinha ao carregar.
+  // ⚠️ Só quando o TOQUE abriu. A lista abre a primeira premissa sozinha sempre
+  // que o conjunto muda (ver o efeito de `aberta` na lista), e arrastar a régua
+  // muda o conjunto a cada parada: uma premissa que sobrevive à troca e vira a
+  // primeira faria a tela pular no meio do arrasto, sem ninguém ter clicado.
+  // Rolar sem clique é pior que o problema que isto veio consertar.
+  //
+  // A rolagem fica no EFEITO e não no handler porque a conta só fecha depois da
+  // pintura: fechar o card que estava aberto acima muda a altura da página, e
+  // medir antes disso mira no lugar errado.
   const caixaRef = useRef<HTMLDivElement>(null);
-  const estavaAberta = useRef(aberta);
+  const abriuNoToque = useRef(false);
+  const alternarPorToque = () => {
+    abriuNoToque.current = !aberta;
+    onAlternar();
+  };
   useEffect(() => {
-    if (aberta && !estavaAberta.current) rolarParaOTopo(caixaRef.current);
-    estavaAberta.current = aberta;
+    if (aberta && abriuNoToque.current) alinharAbaixoDoCabecalho(caixaRef.current);
+    abriuNoToque.current = false;
   }, [aberta]);
 
   return (
@@ -654,7 +663,7 @@ function LinhaPremissa({
     >
       <button
         type="button"
-        onClick={podeAbrir ? onAlternar : undefined}
+        onClick={podeAbrir ? alternarPorToque : undefined}
         className="w-full flex items-center gap-3 px-4 py-3 text-left border-0"
         style={{
           background: aberta ? '#0a3d2e' : '#f4eddc',

@@ -541,7 +541,7 @@ export default function FutebolOportunidades() {
                 {resumo.settled > 0 ? (
                   <>
                     <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
-                    <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades com valor deste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
+                    <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades publicadas neste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
                   </>
                 ) : (
                   <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">Nenhuma oportunidade deste dia liquidou</h1>
@@ -562,17 +562,33 @@ export default function FutebolOportunidades() {
               </>
             ) : (
               <>
-                {/* O título não afirma "com valor" quando a pessoa pediu para
-                    ver a faixa Baixa: ali ela está olhando o que o cenário NÃO
-                    sustenta, e chamar aquilo de aposta com valor contradiz a
-                    própria legenda. */}
+                {/* O título só afirma "com valor" quando isso é verdade na
+                    lista que está na tela.
+
+                    Ele dizia "N oportunidades com valor" sempre. Depois da
+                    virada de 03/09 a porta de preço saiu do gate: o board
+                    publica a linha independente de a odd pagar acima do justo,
+                    e em 04/09 as cinco primeiras do dia pagavam ABAIXO. A tela
+                    afirmava valor em cima de um número que dizia o contrário,
+                    três centímetros ao lado.
+
+                    "Oportunidade" continua certo, e é o termo do CONTEXT.md:
+                    candidata aprovada pelas regras de publicação VIGENTES. Quem
+                    mudou foram as regras, não o nome. O que sai é a promessa de
+                    valor — que volta quando o filtro pede só as que pagam acima
+                    do justo, porque aí a frase descreve a lista.
+
+                    A faixa Baixa continua calando a frase, e as duas condições
+                    valem juntas: preço acima do justo é uma afirmação, cenário
+                    sustentado é outra, e o título só promete valor quando as duas
+                    são verdade na lista que está na tela. */}
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
                   {comValor.length} {comValor.length === 1 ? 'oportunidade' : 'oportunidades'}
                   {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa'
                     ? ' em faixa baixa'
-                    : faixasSelecionadas.includes('baixa') ? '' : ' com valor'}
+                    : valor === 'positivo' && !faixasSelecionadas.includes('baixa') ? ' com valor' : ''}
                 </h1>
-                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades com valor deste dia' : 'Análises pré-jogo com Score, argumentos a favor e contra e preço de mercado para apoiar sua decisão.'}</p>
+                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades publicadas neste dia' : 'Análises pré-jogo com Score, o que sustenta cada leitura e o preço de mercado ao lado. O filtro de valor separa as que pagam acima do preço justo.'}</p>
               </>
             )}
           </div>
@@ -636,14 +652,14 @@ export default function FutebolOportunidades() {
                 uma tela que só precisava de um clique em Todas. */}
             <p className="text-sm text-ink-2">
               {escondidasPeloFiltro > 0 ? 'Nenhuma oportunidade nesse filtro.'
-                : isPastDay ? 'Nenhuma oportunidade com valor nesse dia.'
+                : isPastDay ? 'Nenhuma oportunidade publicada nesse dia.'
                 : isFutureDay ? 'Ainda sem oportunidades para este dia.'
                 : 'Nenhum jogo com odds nesse filtro.'}
             </p>
             <p className="text-xs text-ink-3 mt-1">
               {escondidasPeloFiltro > 0
                 ? `Este dia tem ${escondidasPeloFiltro} ${escondidasPeloFiltro === 1 ? 'oportunidade' : 'oportunidades'}${soEmAberto ? ' de jogos que já começaram ou em outro filtro. Desligue "Só jogos em aberto" para ver.' : ' em outra faixa ou mercado. Troque o filtro para ver.'}`
-                : isPastDay ? 'Só listamos aqui as apostas que sinalizamos com valor.'
+                : isPastDay ? 'Só listamos aqui o que foi publicado no dia.'
                 : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
                 : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
             </p>
@@ -698,7 +714,7 @@ export default function FutebolOportunidades() {
         <div className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
-            <span className="font-semibold">Não é recomendação.</span> Valor = a odd paga acima da chance estimada. A régua separa o que tem valor claro do resto. Abaixo dela, não enxergamos vantagem.
+            <span className="font-semibold">Não é recomendação.</span> Valor = quanto a odd paga acima ou abaixo do preço justo. Publicamos a leitura do cenário mesmo quando o preço não ajuda — o filtro de valor mostra só as que pagam acima.
           </div>
         </div>
 

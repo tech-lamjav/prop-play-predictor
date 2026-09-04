@@ -1,6 +1,8 @@
 /**
- * Leva o topo de um elemento para o topo da área visível, respeitando o
- * cabeçalho fixo.
+ * Alinha o topo de um elemento logo abaixo do cabeçalho fixo.
+ *
+ * O nome diz o alvo, e não "rolar ao topo": a página NÃO vai para o começo, o
+ * elemento é que sobe até encostar no cabeçalho.
  *
  * Existe por causa da leitura no celular: ao abrir uma premissa, o conteúdo
  * nascia embaixo do dedo e a pessoa ficava no MEIO do que acabou de abrir —
@@ -14,13 +16,16 @@
  * Sem animação para quem pediu menos movimento no sistema — a rolagem continua
  * acontecendo, só que instantânea.
  */
-export function rolarParaOTopo(el: HTMLElement | null | undefined): void {
+export function alinharAbaixoDoCabecalho(el: HTMLElement | null | undefined): void {
   if (!el || typeof window === 'undefined') return;
 
   // Depois da pintura: o conteúdo que acabou de abrir ainda não tem altura no
   // mesmo quadro do clique, e medir antes disso erra o destino.
   requestAnimationFrame(() => {
-    const nav = document.querySelector('nav');
+    // A barra do produto é o único `nav` colado no topo em todas as telas de
+    // futebol. Se um dia houver outro, o `data-cabecalho` é o lugar de marcar
+    // qual conta — a busca genérica pegaria o primeiro do documento.
+    const nav = document.querySelector('[data-cabecalho], nav');
     const caixa = nav?.getBoundingClientRect();
     // `top` entra na conta porque a barra pode não estar colada no zero (é o
     // caso com a faixa de DEV por cima dela).
