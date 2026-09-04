@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { configure, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { RegistrarApostaModal } from './RegistrarAposta';
@@ -38,6 +38,13 @@ const draft = (): FutebolBetDraft => ({
   oddKind: 'melhor',
 });
 
+/**
+ * A mesma aposta com outra odd. O tipo do rascunho é união discriminada pela
+ * origem da odd, então o campo que discrimina vai escrito por extenso: espalhar
+ * o objeto e trocar só a odd apaga a discriminação e o tipo deixa de casar.
+ */
+const draftComOdd = (bestOdd: number): FutebolBetDraft => ({ ...draft(), bestOdd, oddKind: 'melhor' });
+
 function renderModal(d: FutebolBetDraft) {
   return render(
     <MemoryRouter>
@@ -45,6 +52,12 @@ function renderModal(d: FutebolBetDraft) {
     </MemoryRouter>,
   );
 }
+
+// Folga no limite da testing-library, pelo mesmo motivo do Onboarding.test:
+// `userEvent` digita caractere a caractere e cada passo espera o React,
+// então com a suíte inteira em paralelo o padrão de 1s estoura por saturação
+// da máquina, não por regressão. Rodando sozinho, o arquivo leva 2 segundos.
+configure({ asyncUtilTimeout: 10_000 });
 
 describe('RegistrarApostaModal', () => {
   it('o valor digitado sobrevive a um rerender do pai', async () => {
@@ -90,7 +103,7 @@ describe('RegistrarApostaModal', () => {
 
     rerender(
       <MemoryRouter>
-        <RegistrarApostaModal open onOpenChange={vi.fn()} draft={{ ...draft(), bestOdd: 1.9 }} />
+        <RegistrarApostaModal open onOpenChange={vi.fn()} draft={draftComOdd(1.9)} />
       </MemoryRouter>,
     );
 
