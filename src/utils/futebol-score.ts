@@ -106,7 +106,15 @@ export function pickLabel(s: Saida, homeName: string, awayName: string): string 
     return sideLine != null ? `${team} ${fmtHandicapLine(sideLine)}` : team;
   }
   if (market === 'btts') {
-    return outcome === 'Yes' ? 'Sim' : 'Não';
+    // "Sim" e "Não" sozinhos não são aposta nenhuma. Na agenda e no resumo do
+    // dia o rótulo aparece SEM o nome do mercado ao lado, e a linha ficava
+    // "Náutico × Botafogo — Sim". O rótulo passa a se bastar, como o de todos os
+    // outros mercados: onde o nome do mercado também aparece, a repetição é
+    // preferível ao enigma.
+    //
+    // O "não" é dito por inteiro em vez de negado: BTTS No é "pelo menos um dos
+    // dois não marca", e "os dois não marcam" seria outra aposta — a de 0 a 0.
+    return outcome === 'Yes' ? 'Os dois marcam' : 'Um dos dois não marca';
   }
   if (market === 'double_chance') {
     // 1X = mandante ou empate · X2 = empate ou visitante (aposta de proteção)

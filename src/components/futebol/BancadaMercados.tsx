@@ -28,7 +28,7 @@ import {
   type Premissa,
 } from '@/utils/futebol-premissas';
 import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico, perfilDaJanela } from '@/utils/futebol-historico';
+import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
@@ -45,7 +45,6 @@ import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import { linhaDaSaida } from '@/utils/futebol-saida';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import type { JogoInfo } from './JogoResumo';
-import { ComoChegamLegenda } from '@/components/futebol/ComoChegamLegenda';
 
 /**
  * Aba MERCADOS — a "bancada" do Protótipo 1b: um mercado por vez, com a régua de
@@ -372,7 +371,18 @@ export function BancadaMercados({
   const valA = ladoA ? valueDoCandidato(valueRows, ladoA) : null;
   const valB = ladoB ? valueDoCandidato(valueRows, ladoB) : null;
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
-  useEffect(() => setLadoSel(null), [mercado.slug, linha, saida]);
+  // A escolha do lado sobrevive ao arrasto da régua, e some ao trocar de mercado.
+  //
+  // Antes `linha` estava nesta lista, então cada parada zerava a escolha e o
+  // toggle voltava ao lado padrão — que muda de parada para parada, porque
+  // depende de qual lado tem preço e de qual tem mais premissas. Na prática:
+  // você escolhia "Mais" em 3,5, arrastava para 3,75, e a tela trocava para
+  // "Menos" sozinha. Quem arrasta a régua está perguntando "e nesta linha?", não
+  // "e se fosse o outro lado?".
+  //
+  // Continua zerando ao trocar de mercado ou de saída, onde 'a' e 'b' passam a
+  // significar outra coisa.
+  useEffect(() => setLadoSel(null), [mercado.slug, saida]);
   // Sub-abas da folha: a favor e contra, as duas jogo a jogo (é onde mora a auditoria).
   const [abaMotivo, setAbaMotivo] = useState<'favor' | 'contra'>('favor');
   // O lado que abre por padrão. Onde a linha tem preço é o lado que TEM preço, que é
@@ -459,47 +469,6 @@ export function BancadaMercados({
     // que o corpo lê.
     slugs: useMemo(() => (chaveDosVisiveis ? chaveDosVisiveis.split('|') : []), [chaveDosVisiveis]),
   });
-
-  // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos
-  // mercados. A barra da posição usa o valor do OUTRO lado, porque na tabela menor
-  // é melhor.
-  //
-  // Gols e clean sheets saem da JANELA DA PREMISSA (`perfilDaJanela`), a mesma
-  // que os cards acima comparam. Enquanto vinham do perfil de temporada, este
-  // bloco desmentia a premissa logo ao lado: "2,4 somados" em cima, 1,0 e 0,9
-  // aqui, e quem soma conclui que um dos dois mente.
-  //
-  // A POSIÇÃO continua vindo da tabela, e continua certa aí: classificação é da
-  // competição e da temporada por definição (ADR 0008), não de uma janela de dez
-  // jogos que atravessa campeonatos.
-  const barras = useMemo(() => {
-    const casa = numeros?.find((x) => x.side === 'home');
-    const fora = numeros?.find((x) => x.side === 'away');
-    const perfil = perfilDaJanela(historico);
-    const d1 = (v: number) => v.toFixed(1).replace('.', ',');
-    const linhas: { l: string; a: string; b: string; va: number; vb: number }[] = [];
-    if (perfil) {
-      const { gf, ga, semSofrer } = perfil;
-      if (gf.home != null && gf.away != null)
-        linhas.push({ l: 'Gols marcados', a: d1(gf.home), b: d1(gf.away), va: gf.home, vb: gf.away });
-      if (ga.home != null && ga.away != null)
-        linhas.push({ l: 'Gols sofridos', a: d1(ga.home), b: d1(ga.away), va: ga.away, vb: ga.home });
-      if (semSofrer.home != null && semSofrer.away != null) {
-        const ph = Math.round(semSofrer.home * 100);
-        const pa = Math.round(semSofrer.away * 100);
-        linhas.push({ l: 'Sem sofrer gol', a: `${ph}%`, b: `${pa}%`, va: ph, vb: pa });
-      }
-    }
-    // A posição só aparece onde ela existe: em mata-mata não há tabela, e o
-    // "—º" que aparecia no lugar não é um dado ausente, é uma pergunta sem
-    // sentido naquela competição.
-    if (casa?.posicao != null && fora?.posicao != null)
-      linhas.push({ l: 'Posição', a: `${casa.posicao}º`, b: `${fora.posicao}º`, va: fora.posicao, vb: casa.posicao });
-    return linhas.map((x) => {
-      const tot = x.va + x.vb || 1;
-      return { ...x, wa: `${Math.round((x.va / tot) * 100)}%`, wb: `${Math.round((x.vb / tot) * 100)}%` };
-    });
-  }, [numeros, historico]);
 
   // O número da premissa: temporada (094) e, para o que ela não cobre, calculado dos
   // jogos do histórico (095) — é o que dá número às premissas de chance de gol.
@@ -926,7 +895,10 @@ export function BancadaMercados({
                   )}
                 </div>
               </div>
-              <div className="text-center pl-6 min-w-[128px]" style={{ borderLeft: '1px solid rgba(255,255,255,.15)' }}>
+              {/* A régua vertical só separa onde há duas colunas lado a lado. No
+                  celular o bloco desce para baixo do texto e a barra vira um risco
+                  solto na esquerda do número. */}
+              <div className="text-center sm:pl-6 min-w-[128px] sm:border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                 <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
                   {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
                 </div>
@@ -1037,14 +1009,19 @@ export function BancadaMercados({
                 do hero se mexem. É o mesmo lugar que o botão ocupa nos mercados sem
                 régua, então as duas telas passam a tê-lo no mesmo canto.
                 
-                No celular a fileira quebra (`flex-wrap`) e a coluna vai para baixo
-                sozinha; ali o bloco crescer não incomoda, porque a régua não divide
-                a fileira com nada. */}
-            {ehLinha && paradas.length > 1 ? (
-              <div className="shrink-0 ml-auto min-w-[168px] flex justify-end">{cta}</div>
-            ) : (
-              cta
-            )}
+                No CELULAR a regra é outra, e vale para os dois casos: o botão ocupa
+                uma fileira só dele (`w-full`), alinhado à esquerda. Dividindo a
+                fileira com as saídas, ele encavalava os chips — dupla chance, com
+                dois chips longos, sobrepunha o segundo — e a cada mercado nascia num
+                canto diferente. Numa fileira própria ele nasce sempre no mesmo
+                lugar, que é o que a régua já faz com a linha. */}
+            <div
+              className={`w-full sm:w-auto sm:shrink-0 sm:ml-auto flex justify-start sm:justify-end ${
+                ehLinha && paradas.length > 1 ? 'sm:min-w-[168px]' : ''
+              }`}
+            >
+              {cta}
+            </div>
           </div>
         </div>
 
@@ -1205,33 +1182,11 @@ export function BancadaMercados({
           dos mercados; no celular vem DEPOIS da folha, senão "como chegam"
           empurrava a análise duas telas para baixo. */}
       <div className="min-w-0 xl:col-start-1 xl:row-start-2 xl:border-r" style={{ borderColor: '#ded2b6', background: '#fdfbf6' }}>
-          {barras.length > 0 && (
-            <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>
-              <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
-                Como chegam
-              </div>
-              <ComoChegamLegenda className="mt-1 mb-3" />
-              <div className="flex flex-col gap-3.5">
-                {barras.map((x) => (
-                  <div key={x.l}>
-                    <div className="flex justify-between items-baseline mb-1.5 tabular-nums">
-                      <span className="text-[13px] font-semibold" style={{ color: '#0a3d2e' }}>{x.a}</span>
-                      <span className="text-[10.5px] font-medium" style={{ color: '#8d8672' }}>{x.l}</span>
-                      <span className="text-[13px] font-semibold" style={{ color: '#6b6350' }}>{x.b}</span>
-                    </div>
-                    <div className="flex gap-[3px] h-1.5">
-                      <div className="flex-1 flex justify-end overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '999px 0 0 999px' }}>
-                        <div style={{ width: x.wa, background: '#0a3d2e' }} />
-                      </div>
-                      <div className="flex-1 overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '0 999px 999px 0' }}>
-                        <div style={{ width: x.wb, height: '100%', background: '#c4bda8' }} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* "Como chegam" SAIU daqui (04/09). O mesmo confronto já é comparado na
+              aba Times, com mais espaço e mais linhas, e repetir três barras na
+              lateral da leitura só empurrava a análise para baixo. Onde ele
+              continua fazendo falta é no painel da agenda, que não tem a aba
+              Times ao lado — lá ele ficou. */}
 
           {dist && (
             <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>
