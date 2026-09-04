@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { configure, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OportunidadesFiltros, type MarketFilter } from './OportunidadesFiltros';
 import type { FiltroDeValor } from '@/utils/futebol-score';
@@ -15,12 +15,6 @@ const props = {
   valor: 'todos' as FiltroDeValor,
   onValorChange: vi.fn(),
 };
-
-// Folga no limite da testing-library, pelo mesmo motivo do Onboarding.test:
-// `userEvent` digita caractere a caractere e cada passo espera o React,
-// então com a suíte inteira em paralelo o padrão de 1s estoura por saturação
-// da máquina, não por regressão. Rodando sozinho, o arquivo leva 2 segundos.
-configure({ asyncUtilTimeout: 10_000 });
 
 describe('OportunidadesFiltros', () => {
   it('mantém mercado e filtros de visualização em duas faixas independentes no mobile', () => {
