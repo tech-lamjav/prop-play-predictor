@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
+import { rolarParaOTopo } from '@/utils/rolagem';
 import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
@@ -628,8 +629,26 @@ function LinhaPremissa({
 }) {
   const forte = pesoForte(p);
   const podeAbrir = story != null;
+
+  // Abrir uma premissa leva o topo dela para o topo da tela.
+  //
+  // No celular o gráfico nascia embaixo do dedo e a pessoa ficava no MEIO do que
+  // tinha acabado de abrir, tendo de rolar para cima para ler do começo.
+  //
+  // Só na ABERTURA: rolar ao fechar levaria a tela para um card que a pessoa
+  // acabou de dispensar. Por isso a comparação com o valor anterior, e não um
+  // efeito que dispara sempre que `aberta` existe — no primeiro render também
+  // não rola, senão a tela pularia sozinha ao carregar.
+  const caixaRef = useRef<HTMLDivElement>(null);
+  const estavaAberta = useRef(aberta);
+  useEffect(() => {
+    if (aberta && !estavaAberta.current) rolarParaOTopo(caixaRef.current);
+    estavaAberta.current = aberta;
+  }, [aberta]);
+
   return (
     <div
+      ref={caixaRef}
       className="rounded-[14px] overflow-hidden bg-white"
       style={{ border: `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}` }}
     >
