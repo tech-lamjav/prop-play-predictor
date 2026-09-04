@@ -11,7 +11,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Receipt, Check, Loader2, ArrowRight } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserUnit } from '@/hooks/use-user-unit';
@@ -40,13 +41,37 @@ export function RegistrarApostaModal({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * A aposta que o modal está editando, em forma de string.
+   *
+   * O efeito abaixo zera os campos ao ABRIR, e precisa saber quando a aposta
+   * mudou de verdade. Ele dependia do objeto `draft`, que nasce novo a cada
+   * render do pai (`draftFromBoardRow(o)` monta um literal dentro do JSX da
+   * lista) — então qualquer rerender zerava o que a pessoa tinha acabado de
+   * digitar. E a lista rerenderiza sozinha: o relógio da tela avança e o board
+   * revalida de tempos em tempos.
+   *
+   * Medido em produção em 04/09: escolher "½ unidade", esperar, e o campo
+   * voltava a 0,00 com o botão desabilitado. Registrar aposta pela lista era,
+   * na prática, uma corrida contra o próximo render.
+   *
+   * A odd fica FORA da chave de propósito. Se o board trouxer preço melhor
+   * enquanto o modal está aberto, quem está digitando não quer o campo trocando
+   * embaixo do dedo — a odd que vale é a que a pessoa viu quando abriu.
+   */
+  const chaveDoDraft = draft
+    ? [draft.market, draft.outcome, draft.lineValue, draft.homeName, draft.awayName, draft.kickoffUtc].join('|')
+    : '';
+
   useEffect(() => {
-    if (open && draft) {
-      setStake('');
-      setOdd(draft.bestOdd ? draft.bestOdd.toFixed(2) : '');
-      setDone(false); setError(null); setSaving(false);
-    }
-  }, [open, draft]);
+    if (!open || !draft) return;
+    setStake('');
+    setOdd(draft.bestOdd ? draft.bestOdd.toFixed(2) : '');
+    setDone(false); setError(null); setSaving(false);
+    // `draft` fica fora das dependências de propósito: quem identifica a aposta
+    // é a chave acima, e não a referência do objeto. Ver o comentário dela.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, chaveDoDraft]);
 
   // O draft veio do formulario com `lineValue` em camelCase, entao a saida se monta
   // aqui. E o unico lugar em que ela nao chega pronta da RPC.
@@ -97,6 +122,13 @@ export function RegistrarApostaModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="theme-bolao bg-white border-line p-0 gap-0 max-w-md overflow-hidden">
+        {/* O título existe para o leitor de tela: sem ele o Radix avisa no
+            console que o diálogo é inacessível, e quem navega por áudio ouve
+            "diálogo" sem saber do quê. Escondido à vista porque o cabeçalho
+            desenhado logo abaixo já cumpre esse papel para quem enxerga. */}
+        <VisuallyHidden.Root asChild>
+          <DialogTitle>Registrar aposta no Betinho</DialogTitle>
+        </VisuallyHidden.Root>
         {/* Cabeçalho */}
         <div className="px-5 py-4 border-b border-line">
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] font-bold text-forest">
