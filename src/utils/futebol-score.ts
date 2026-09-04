@@ -261,6 +261,36 @@ export function passaNoFiltroDeFaixas(
 }
 
 /**
+ * O filtro de VALOR do painel — a diferença para o preço justo, em faixas.
+ *
+ * Ele existe porque a porta de preço saiu do gate na virada de 03/09: o board
+ * publica a linha independente da vantagem, e hoje sete em cada dez pagam
+ * ABAIXO do justo. Sem este filtro, quem procura preço bom precisa varrer a
+ * lista inteira lendo a última coluna.
+ *
+ * As fronteiras são as da distribuição medida em produção (mediana −2,7%), e
+ * não números redondos escolhidos no olho: 'positivo' isola os ~8% que pagam
+ * acima do justo, 'perto' cobre a massa normal e 'abaixo' o resto.
+ *
+ * Sem vantagem guardada (oportunidade registrada antiga) a linha passa em
+ * qualquer faixa, pelo mesmo motivo do filtro de faixas: ela existiu de
+ * verdade, e escondê-la por um campo que nunca foi gravado apagaria o registro.
+ */
+export type FiltroDeValor = 'todos' | 'positivo' | 'perto' | 'abaixo';
+
+export const FILTRO_DE_VALOR_PADRAO: FiltroDeValor = 'todos';
+
+export function passaNoFiltroDeValor(filtro: FiltroDeValor, edge: number | null | undefined): boolean {
+  if (filtro === 'todos') return true;
+  if (typeof edge !== 'number') return true;
+  switch (filtro) {
+    case 'positivo': return edge > 0;
+    case 'perto': return edge > -0.02 && edge <= 0;
+    default: return edge <= -0.02;
+  }
+}
+
+/**
  * Cor da diferença para o preço justo. Positivo em verde; zero ou negativo em
  * cor neutra, nunca em vermelho: a diferença é informação, e um preço abaixo do
  * justo não é erro da leitura nem desvantagem a ser anunciada.

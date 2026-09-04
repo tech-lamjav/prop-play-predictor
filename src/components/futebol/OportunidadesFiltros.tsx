@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import type { Faixa } from '@/utils/futebol-score';
+import type { Faixa, FiltroDeValor } from '@/utils/futebol-score';
 
 export type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 
@@ -126,6 +126,49 @@ function FaixaMultiSelect({ selecionadas, onChange }: { selecionadas: readonly F
   );
 }
 
+const VALORES: { value: FiltroDeValor; label: string }[] = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'positivo', label: 'Acima do justo' },
+  { value: 'perto', label: 'Até 2% abaixo' },
+  { value: 'abaixo', label: 'Mais de 2% abaixo' },
+];
+
+/**
+ * Seleção ÚNICA, ao contrário de faixa e competição: as três opções são um
+ * intervalo contínuo, e marcar "acima do justo" junto com "mais de 2% abaixo"
+ * descreveria um recorte que ninguém procura. Quem quer os dois extremos quer,
+ * na prática, todos.
+ */
+function ValorSelect({ valor, onChange }: { valor: FiltroDeValor; onChange: (value: FiltroDeValor) => void }) {
+  const label = VALORES.find((item) => item.value === valor)?.label ?? 'Todos';
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button aria-label={`Valor ${label}`} className="inline-flex w-[196px] items-center gap-1.5 h-9 px-3 rounded-rebrand-sm border border-line bg-white text-[12px] font-semibold text-ink hover:bg-canvas-2 transition shrink-0">
+          <span className="text-ink-3 font-medium uppercase tracking-[0.1em] text-[10px]">Valor</span>
+          <span className="truncate">{label}</span>
+          <ChevronDown className="ml-auto w-3.5 h-3.5 shrink-0 text-ink-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="theme-bolao bg-white border-line min-w-[196px]">
+        {VALORES.map((item) => (
+          <DropdownMenuCheckboxItem
+            key={item.value}
+            checked={valor === item.value}
+            onSelect={(event) => {
+              event.preventDefault();
+              onChange(item.value);
+            }}
+            className="cursor-pointer text-[13px] text-ink focus:bg-forest-tint focus:text-forest data-[highlighted]:bg-forest-tint data-[highlighted]:text-forest data-[state=checked]:bg-forest-tint data-[state=checked]:text-forest data-[state=checked]:font-semibold"
+          >
+            {item.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function CompeticaoMultiSelect({
   options,
   selecionadas,
@@ -197,11 +240,13 @@ export function OportunidadesFiltros({
   mercado, onMercadoChange,
   soEmAberto, onSoEmAbertoChange,
   faixasSelecionadas, onFaixasChange,
+  valor, onValorChange,
   competicoesSelecionadas, onCompeticoesChange, competicaoOptions,
 }: {
   mercado: MarketFilter; onMercadoChange: (value: MarketFilter) => void;
   soEmAberto: boolean; onSoEmAbertoChange: (value: boolean) => void;
   faixasSelecionadas: readonly Faixa[]; onFaixasChange: (value: Faixa[]) => void;
+  valor: FiltroDeValor; onValorChange: (value: FiltroDeValor) => void;
   competicoesSelecionadas: readonly string[] | null; onCompeticoesChange: (value: string[] | null) => void; competicaoOptions: SelectOption[];
 }) {
   return (
@@ -224,6 +269,7 @@ export function OportunidadesFiltros({
           Só jogos em aberto
         </button>
         <FaixaMultiSelect selecionadas={faixasSelecionadas} onChange={onFaixasChange} />
+        <ValorSelect valor={valor} onChange={onValorChange} />
         <CompeticaoMultiSelect options={competicaoOptions} selecionadas={competicoesSelecionadas} onChange={onCompeticoesChange} />
       </div>
     </div>

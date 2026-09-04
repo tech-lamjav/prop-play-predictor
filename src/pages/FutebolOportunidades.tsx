@@ -20,6 +20,7 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, ehDestaque, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
+  FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
@@ -231,6 +232,7 @@ export default function FutebolOportunidades() {
   // em campo apagaria metade dele numa noite de sábado. Quem está caçando aposta
   // agora liga e vê só o que dá para acompanhar.
   const [soEmAberto, setSoEmAberto] = useState(false);
+  const [valor, setValor] = useState<FiltroDeValor>(FILTRO_DE_VALOR_PADRAO);
   // `null` significa todas: acompanha automaticamente as competições daquele dia.
   const [competicoesSelecionadas, setCompeticoesSelecionadas] = useState<string[] | null>(null);
   const [day, setDay] = useState<string | null>(null);
@@ -405,6 +407,7 @@ export default function FutebolOportunidades() {
       if (mercado !== 'all' && r.market !== mercado) return false;
       // Sem faixa não dá pra classificar, então o filtro de faixa a esconde.
       if (!passaNoFiltroDeFaixas(faixasSelecionadas, r.faixa)) return false;
+      if (!passaNoFiltroDeValor(valor, r.edge)) return false;
       if (competicoesSelecionadas && !competicoesSelecionadas.includes(r.competition)) return false;
       // Em aberto = o apito inicial ainda não soou. O status vem depois, e às
       // vezes atrasado, então quem manda é o relógio (ver futebol-datas.ts).
@@ -417,7 +420,7 @@ export default function FutebolOportunidades() {
         return false;
       return true;
     }),
-    [dayRows, mercado, faixasSelecionadas, competicoesSelecionadas, soEmAberto, agora]
+    [dayRows, mercado, faixasSelecionadas, valor, competicoesSelecionadas, soEmAberto, agora]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
@@ -617,6 +620,8 @@ export default function FutebolOportunidades() {
           onSoEmAbertoChange={setSoEmAberto}
           faixasSelecionadas={faixasSelecionadas}
           onFaixasChange={setFaixasSelecionadas}
+          valor={valor}
+          onValorChange={setValor}
           competicoesSelecionadas={competicoesSelecionadas}
           onCompeticoesChange={setCompeticoesSelecionadas}
           competicaoOptions={compOptions}
@@ -657,7 +662,7 @@ export default function FutebolOportunidades() {
                 return (
                   <div key={key(o)}>
                     <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
-                    {!isPastDay && !locked && !res && (
+                    {!locked && (
                       <div className="px-5 pb-2 -mt-0.5">
                         <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
                       </div>
@@ -681,7 +686,7 @@ export default function FutebolOportunidades() {
                     result={res}
                     homeGoals={g?.gh}
                     awayGoals={g?.ga}
-                    canRegister={!isPastDay && !locked && !res}
+                    canRegister={!locked}
                   />
                 );
               })}
