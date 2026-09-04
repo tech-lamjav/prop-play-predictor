@@ -28,6 +28,7 @@ import type {
   FutebolFixturePremissas,
   FutebolValueBoardRow,
 } from '@/services/futebol-data.service';
+import { ComoChegamLegenda } from '@/components/futebol/ComoChegamLegenda';
 
 /**
  * O painel do jogo na coluna da direita (protótipo "Futebol Jogos").
@@ -415,6 +416,7 @@ export function JogoResumoPanel({
                 {fixture.home_team_name} · {fixture.away_team_name}
               </span>
             </div>
+            <ComoChegamLegenda className="mt-1" />
             <div className="mt-2.5 flex flex-col gap-3">
               {chegam.map((c) => {
                 const tot = (c.a ?? 0) + (c.b ?? 0) || 1;

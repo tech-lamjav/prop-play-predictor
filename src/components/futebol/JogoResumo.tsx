@@ -19,6 +19,7 @@ import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { fmtDayShort, isFinished } from '@/utils/futebol-datas';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
 import { ehDestaque, ehFaixaAlta, faixaWord } from '@/utils/futebol-score';
+import { ComoChegamLegenda } from '@/components/futebol/ComoChegamLegenda';
 
 /**
  * Aba RESUMO da tela de jogo (Protótipo 1b do Claude Design):
@@ -430,7 +431,8 @@ export function JogoResumo({
             da posição usa o valor do outro lado, porque na tabela menor é melhor. */}
         {barras.length > 0 && (
           <div className="bg-white border border-line rounded-rebrand-xl p-6">
-            <div className="text-[10.5px] uppercase tracking-[0.18em] font-bold text-ink-2 mb-4">Como chegam</div>
+            <div className="text-[10.5px] uppercase tracking-[0.18em] font-bold text-ink-2">Como chegam</div>
+            <ComoChegamLegenda className="mt-1 mb-4" />
             <div className="grid md:grid-cols-2 gap-x-8 gap-y-5">
               {barras.map((x) => (
                 <div key={x.l}>

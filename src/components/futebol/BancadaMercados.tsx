@@ -45,6 +45,7 @@ import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import { linhaDaSaida } from '@/utils/futebol-saida';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import type { JogoInfo } from './JogoResumo';
+import { ComoChegamLegenda } from '@/components/futebol/ComoChegamLegenda';
 
 /**
  * Aba MERCADOS — a "bancada" do Protótipo 1b: um mercado por vez, com a régua de
@@ -1002,15 +1003,30 @@ export function BancadaMercados({
                 ))}
               </div>
             )}
-            {/* Na régua o botão desce para uma fileira só dele (`basis-full`). Ele só
-                existe na parada que tem preço, e dividindo a fileira com a trilha,
-                entrar nessa parada encolhia a trilha e sair dela esticava de volta:
-                no meio do arrasto a parada debaixo do cursor mudava sozinha. Embaixo
-                ele pode aparecer e sumir à vontade, porque a largura da trilha não
-                depende dele. Reservar a altura custaria uma faixa vazia nas outras
-                17 paradas, que é pior do que a fileira entrar e sair.
-                Sem régua (1X2, ambos marcam, dupla chance) não há o que proteger. */}
-            {ehLinha && paradas.length > 1 ? cta && <div className="basis-full mt-1">{cta}</div> : cta}
+            {/* O botão fica na FILEIRA DA RÉGUA, num espaço reservado, e não numa
+                fileira só dele.
+                
+                Ele só existe na parada que tem preço, e por isso já morou embaixo:
+                dividindo a fileira com a trilha, entrar nessa parada encolhia a
+                trilha e sair dela esticava de volta — no meio do arrasto a parada
+                debaixo do cursor mudava sozinha. Só que embaixo ele fazia o bloco
+                verde crescer e encolher a cada parada, que é a mesma instabilidade
+                no outro eixo, e essa o assinante vê a tela inteira mexer.
+                
+                O espaço reservado resolve os dois: a coluna existe SEMPRE, com ou
+                sem botão. A trilha perde alguns pixels de largura em todas as
+                paradas — de uma vez, não a cada arrasto — e nem a régua nem a altura
+                do hero se mexem. É o mesmo lugar que o botão ocupa nos mercados sem
+                régua, então as duas telas passam a tê-lo no mesmo canto.
+                
+                No celular a fileira quebra (`flex-wrap`) e a coluna vai para baixo
+                sozinha; ali o bloco crescer não incomoda, porque a régua não divide
+                a fileira com nada. */}
+            {ehLinha && paradas.length > 1 ? (
+              <div className="shrink-0 ml-auto min-w-[168px] flex justify-end">{cta}</div>
+            ) : (
+              cta
+            )}
           </div>
         </div>
 
@@ -1173,9 +1189,10 @@ export function BancadaMercados({
       <div className="min-w-0 xl:col-start-1 xl:row-start-2 xl:border-r" style={{ borderColor: '#ded2b6', background: '#fdfbf6' }}>
           {barras.length > 0 && (
             <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>
-              <div className="text-[10px] uppercase tracking-[0.16em] font-bold mb-3" style={{ color: '#8d8672' }}>
+              <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
                 Como chegam
               </div>
+              <ComoChegamLegenda className="mt-1 mb-3" />
               <div className="flex flex-col gap-3.5">
                 {barras.map((x) => (
                   <div key={x.l}>
