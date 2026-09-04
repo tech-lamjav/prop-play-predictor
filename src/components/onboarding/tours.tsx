@@ -26,7 +26,7 @@ export const hubSteps: Step[] = [
     placement: 'bottom',
     title: 'Futebol',
     content:
-      'As oportunidades de valor do dia: onde o dado aponta aposta com vantagem, com o Score pra você comparar. É por aqui que a maioria começa.',
+      'As oportunidades do dia: o que o modelo leu em cada jogo, com o Score pra você comparar e o preço de mercado ao lado. É por aqui que a maioria começa.',
   },
   {
     id: 'betinho',
@@ -102,9 +102,9 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       placement: 'top',
       // Bloco grande: mais respiro nas bordas do destaque que o padrão (6).
       spotlightPadding: 14,
-      title: 'As oportunidades de valor',
+      title: 'As oportunidades do dia',
       content:
-        'Aqui ficam as principais apostas com valor do dia, ordenadas pelo Score de Confiabilidade. Quanto maior o Score, mais o histórico apoia aquela linha. Toque numa pra abrir a análise completa do jogo.',
+        'Aqui ficam as principais leituras do dia, ordenadas pelo Score de Confiabilidade. Quanto maior o Score, mais o histórico apoia aquela linha. Toque numa pra abrir a análise completa do jogo.',
     },
     {
       id: 'futebol-jogos',
@@ -147,7 +147,7 @@ export function makeFutebolOportunidadesSteps({
       placement: 'center',
       title: 'Todas as oportunidades',
       content:
-        'Aqui está a lista completa do dia. Toda aposta com valor, ordenada do Score mais alto pro mais baixo.',
+        'Aqui está a lista completa do dia, ordenada do Score mais alto pro mais baixo. O filtro de valor separa as que pagam acima do preço justo.',
     },
   ];
 

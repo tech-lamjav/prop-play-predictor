@@ -95,8 +95,8 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
           <div className="text-[13px] font-bold text-ink">{expired ? 'Seu teste grátis acabou' : 'Veja as oportunidades — 7 dias grátis'}</div>
           <p className="text-[12px] text-ink-2 leading-snug">
             {expired
-              ? 'As oportunidades de valor estão bloqueadas. Assine o Futebol pra continuar vendo os picks.'
-              : 'Crie sua conta e libere os picks de valor por 7 dias, sem cartão.'}
+              ? 'As oportunidades do dia estão bloqueadas. Assine o Futebol pra continuar vendo os picks.'
+              : 'Crie sua conta e libere os picks do dia por 7 dias, sem cartão.'}
           </p>
         </div>
       </div>
