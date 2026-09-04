@@ -16,18 +16,16 @@
  * contradição tira; foi por isso que o bloco mudou de fonte em vez de ganhar
  * uma nota de rodapé.
  *
- * A POSIÇÃO na tabela é a exceção que continua vindo da temporada, e continua
- * certa aí: classificação é da competição e da temporada por definição (ADR
- * 0008), não de uma janela de dez jogos que atravessa campeonatos. Onde não há
- * tabela — mata-mata — ela simplesmente não aparece.
- *
- * Vive num componente só porque duas telas desenham o bloco (o painel da agenda
- * e a bancada do detalhe) e a explicação não pode divergir entre elas.
+ * Hoje só o painel da agenda desenha o bloco: a bancada do detalhe perdeu o dela
+ * em 04/09, porque a aba Times já compara o mesmo confronto com mais espaço.
+ * O componente continua existindo à parte porque é onde a decisão está escrita —
+ * e porque o bloco pode voltar a ter dois donos.
  */
 export function ComoChegamLegenda({ className = '', cor = '#8d8672' }: { className?: string; cor?: string }) {
   return (
     <p className={`text-[10.5px] leading-snug ${className}`} style={{ color: cor }}>
-      Últimos 10 jogos, a mesma janela das premissas. Nos gols, o mandante em casa e o visitante fora.
+      Últimos 10 jogos, a mesma janela das premissas. Nos gols, o mandante em casa e o visitante fora;
+      em "sem sofrer gol", a janela inteira.
     </p>
   );
 }

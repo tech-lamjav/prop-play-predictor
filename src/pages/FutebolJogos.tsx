@@ -97,7 +97,7 @@ export default function FutebolJogos() {
   // ela deve fazer. O que ela não pode é contar "0 com leitura" nem escrever
   // "sem leitura ainda" enquanto a resposta não chegou — isso é conclusão.
   const { data: boardCorrente, isLoading: boardCarregando } = useFutebolValueBoard();
-  const { data: histRows } = useFutebolValueHistory();
+  const { data: histRows, isLoading: histCarregando } = useFutebolValueHistory();
   const { ocultos } = useVitrine();
   const { data: access } = useFutebolAccess();
 
@@ -117,7 +117,11 @@ export default function FutebolJogos() {
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
   const isDemo = jogosTour.run;
   // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
-  const leituraCarregando = isDemo ? false : boardCarregando;
+  // As DUAS fontes contam: desde que a agenda passou a somar a foto do apito, o
+  // board sozinho responde antes e a tela concluía "sem leitura ainda" para o
+  // jogo encerrado — a conclusão prematura que o esqueleto existe para evitar —,
+  // trocando por pick meio segundo depois. Mesma regra da home (FutebolHoje).
+  const leituraCarregando = isDemo ? false : boardCarregando || histCarregando;
 
   const effFixtures = useMemo<FutebolFixtureByDay[]>(
     () => (isDemo ? makeDemoAgenda(dia) : (fixtures ?? [])),
