@@ -77,3 +77,52 @@ describe('FixtureRow · estado da leitura', () => {
     expect(screen.getAllByText(/sem leitura/i).length).toBeGreaterThan(0);
   });
 });
+
+// ============================================================================
+// A camada de valor é paga também aqui (03/09)
+// ============================================================================
+// A agenda entregava de graça exatamente os três números que a lista de
+// Oportunidades borra: o pick, a odd e a chance. Era a mesma informação, na
+// mesma sessão anônima, com preço diferente dependendo da tela.
+//
+// O Blur envolve o trecho num span aria-hidden com filtro de desfoque, então
+// "borrado" se testa pelo invólucro, e não pela ausência do texto: o conteúdo
+// continua no DOM (é o borrão que cria o desejo), só sai da árvore acessível.
+// ============================================================================
+
+const leitura = {
+  market: 'goals_over_under',
+  outcome: 'Over',
+  line_value: 2.5,
+  best_odd: 1.95,
+  prob_justa_fechamento: 0.55,
+  score: 63,
+  faixa: 'Alta',
+} as unknown as Parameters<typeof FixtureRow>[0]['best'];
+
+describe('FixtureRow · acesso à camada de valor', () => {
+  it('sem acesso, o pick e a odd saem borrados', () => {
+    renderLinha({ best: leitura, locked: true });
+
+    expect(screen.getByText(/odd 1/).closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.getByText(/Mais de 2,5/i).closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('com acesso, os números aparecem sem desfoque', () => {
+    renderLinha({ best: leitura });
+
+    expect(screen.getByText(/odd 1/).closest('[aria-hidden="true"]')).toBeNull();
+  });
+
+  it('jogo encerrado não borra, nem sem acesso', () => {
+    // O passado é registro do que foi publicado, não pick para apostar — mesma
+    // exceção da lista de Oportunidades.
+    renderLinha({
+      best: leitura,
+      locked: true,
+      fixture: { ...jogo, status_short: 'FT', goals_home: 2, goals_away: 1 } as typeof jogo,
+    });
+
+    expect(screen.getByText(/odd 1/).closest('[aria-hidden="true"]')).toBeNull();
+  });
+});

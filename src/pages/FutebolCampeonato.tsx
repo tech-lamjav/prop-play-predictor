@@ -15,6 +15,7 @@ import {
   useFutebolLeaders,
   useFutebolValueBoard,
   useFutebolCompetitions,
+  useFutebolAccess,
 } from '@/hooks/use-futebol-data';
 import type { Competition, FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { brtDayOf, fmtDayHeader, isFinished } from '@/utils/futebol-datas';
@@ -118,6 +119,10 @@ export default function FutebolCampeonato() {
   // Mesma regra da agenda: enquanto o board não respondeu, a linha não conclui
   // "sem leitura ainda" e o contador não afirma um total.
   const { data: board, isLoading: leituraCarregando } = useFutebolValueBoard();
+  // A camada de valor é paga aqui como em todo lugar: sem isto, a página do
+  // campeonato entregava pick, odd e chance limpos para quem não tem acesso —
+  // o mesmo furo que a agenda fechou, um clique ao lado.
+  const { data: access } = useFutebolAccess();
 
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
@@ -315,6 +320,7 @@ export default function FutebolCampeonato() {
                   fixture={f}
                   best={bestByFixture.get(f.fixture_id) ?? null}
                   leituraCarregando={leituraCarregando}
+                  locked={!access?.unlocked}
                   // Sem `onClick`: aqui não há painel, então o clique simples vai
                   // para o mesmo lugar que o do meio e o `<Link>` basta.
                   to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}

@@ -371,7 +371,18 @@ export function BancadaMercados({
   const valA = ladoA ? valueDoCandidato(valueRows, ladoA) : null;
   const valB = ladoB ? valueDoCandidato(valueRows, ladoB) : null;
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
-  useEffect(() => setLadoSel(null), [mercado.slug, linha, saida]);
+  // A escolha do lado sobrevive ao arrasto da régua, e some ao trocar de mercado.
+  //
+  // Antes `linha` estava nesta lista, então cada parada zerava a escolha e o
+  // toggle voltava ao lado padrão — que muda de parada para parada, porque
+  // depende de qual lado tem preço e de qual tem mais premissas. Na prática:
+  // você escolhia "Mais" em 3,5, arrastava para 3,75, e a tela trocava para
+  // "Menos" sozinha. Quem arrasta a régua está perguntando "e nesta linha?", não
+  // "e se fosse o outro lado?".
+  //
+  // Continua zerando ao trocar de mercado ou de saída, onde 'a' e 'b' passam a
+  // significar outra coisa.
+  useEffect(() => setLadoSel(null), [mercado.slug, saida]);
   // Sub-abas da folha: a favor e contra, as duas jogo a jogo (é onde mora a auditoria).
   const [abaMotivo, setAbaMotivo] = useState<'favor' | 'contra'>('favor');
   // O lado que abre por padrão. Onde a linha tem preço é o lado que TEM preço, que é
@@ -458,29 +469,6 @@ export function BancadaMercados({
     // que o corpo lê.
     slugs: useMemo(() => (chaveDosVisiveis ? chaveDosVisiveis.split('|') : []), [chaveDosVisiveis]),
   });
-
-  // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos
-  // mercados. A barra da posição usa o valor do OUTRO lado, porque na tabela menor
-  // é melhor.
-  const barras = useMemo(() => {
-    const casa = numeros?.find((x) => x.side === 'home');
-    const fora = numeros?.find((x) => x.side === 'away');
-    if (!casa || !fora) return [];
-    const d1 = (v: number) => v.toFixed(1).replace('.', ',');
-    const linhas: { l: string; a: string; b: string; va: number; vb: number }[] = [];
-    if (casa.gf_total != null && fora.gf_total != null)
-      linhas.push({ l: 'Gols marcados', a: d1(casa.gf_total), b: d1(fora.gf_total), va: casa.gf_total, vb: fora.gf_total });
-    if (casa.ga_total != null && fora.ga_total != null)
-      linhas.push({ l: 'Gols sofridos', a: d1(casa.ga_total), b: d1(fora.ga_total), va: fora.ga_total, vb: casa.ga_total });
-    if (casa.posicao != null && fora.posicao != null)
-      linhas.push({ l: 'Posição', a: `${casa.posicao}º`, b: `${fora.posicao}º`, va: fora.posicao, vb: casa.posicao });
-    if (casa.clean_sheets != null && fora.clean_sheets != null)
-      linhas.push({ l: 'Sem sofrer gol', a: String(casa.clean_sheets), b: String(fora.clean_sheets), va: casa.clean_sheets, vb: fora.clean_sheets });
-    return linhas.map((x) => {
-      const tot = x.va + x.vb || 1;
-      return { ...x, wa: `${Math.round((x.va / tot) * 100)}%`, wb: `${Math.round((x.vb / tot) * 100)}%` };
-    });
-  }, [numeros]);
 
   // O número da premissa: temporada (094) e, para o que ela não cobre, calculado dos
   // jogos do histórico (095) — é o que dá número às premissas de chance de gol.
@@ -907,7 +895,10 @@ export function BancadaMercados({
                   )}
                 </div>
               </div>
-              <div className="text-center pl-6 min-w-[128px]" style={{ borderLeft: '1px solid rgba(255,255,255,.15)' }}>
+              {/* A régua vertical só separa onde há duas colunas lado a lado. No
+                  celular o bloco desce para baixo do texto e a barra vira um risco
+                  solto na esquerda do número. */}
+              <div className="text-center sm:pl-6 min-w-[128px] sm:border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                 <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
                   {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
                 </div>
@@ -1002,15 +993,35 @@ export function BancadaMercados({
                 ))}
               </div>
             )}
-            {/* Na régua o botão desce para uma fileira só dele (`basis-full`). Ele só
-                existe na parada que tem preço, e dividindo a fileira com a trilha,
-                entrar nessa parada encolhia a trilha e sair dela esticava de volta:
-                no meio do arrasto a parada debaixo do cursor mudava sozinha. Embaixo
-                ele pode aparecer e sumir à vontade, porque a largura da trilha não
-                depende dele. Reservar a altura custaria uma faixa vazia nas outras
-                17 paradas, que é pior do que a fileira entrar e sair.
-                Sem régua (1X2, ambos marcam, dupla chance) não há o que proteger. */}
-            {ehLinha && paradas.length > 1 ? cta && <div className="basis-full mt-1">{cta}</div> : cta}
+            {/* O botão fica na FILEIRA DA RÉGUA, num espaço reservado, e não numa
+                fileira só dele.
+                
+                Ele só existe na parada que tem preço, e por isso já morou embaixo:
+                dividindo a fileira com a trilha, entrar nessa parada encolhia a
+                trilha e sair dela esticava de volta — no meio do arrasto a parada
+                debaixo do cursor mudava sozinha. Só que embaixo ele fazia o bloco
+                verde crescer e encolher a cada parada, que é a mesma instabilidade
+                no outro eixo, e essa o assinante vê a tela inteira mexer.
+                
+                O espaço reservado resolve os dois: a coluna existe SEMPRE, com ou
+                sem botão. A trilha perde alguns pixels de largura em todas as
+                paradas — de uma vez, não a cada arrasto — e nem a régua nem a altura
+                do hero se mexem. É o mesmo lugar que o botão ocupa nos mercados sem
+                régua, então as duas telas passam a tê-lo no mesmo canto.
+                
+                No CELULAR a regra é outra, e vale para os dois casos: o botão ocupa
+                uma fileira só dele (`w-full`), alinhado à esquerda. Dividindo a
+                fileira com as saídas, ele encavalava os chips — dupla chance, com
+                dois chips longos, sobrepunha o segundo — e a cada mercado nascia num
+                canto diferente. Numa fileira própria ele nasce sempre no mesmo
+                lugar, que é o que a régua já faz com a linha. */}
+            <div
+              className={`w-full sm:w-auto sm:shrink-0 sm:ml-auto flex justify-start sm:justify-end ${
+                ehLinha && paradas.length > 1 ? 'sm:min-w-[168px]' : ''
+              }`}
+            >
+              {cta}
+            </div>
           </div>
         </div>
 
@@ -1171,32 +1182,11 @@ export function BancadaMercados({
           dos mercados; no celular vem DEPOIS da folha, senão "como chegam"
           empurrava a análise duas telas para baixo. */}
       <div className="min-w-0 xl:col-start-1 xl:row-start-2 xl:border-r" style={{ borderColor: '#ded2b6', background: '#fdfbf6' }}>
-          {barras.length > 0 && (
-            <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>
-              <div className="text-[10px] uppercase tracking-[0.16em] font-bold mb-3" style={{ color: '#8d8672' }}>
-                Como chegam
-              </div>
-              <div className="flex flex-col gap-3.5">
-                {barras.map((x) => (
-                  <div key={x.l}>
-                    <div className="flex justify-between items-baseline mb-1.5 tabular-nums">
-                      <span className="text-[13px] font-semibold" style={{ color: '#0a3d2e' }}>{x.a}</span>
-                      <span className="text-[10.5px] font-medium" style={{ color: '#8d8672' }}>{x.l}</span>
-                      <span className="text-[13px] font-semibold" style={{ color: '#6b6350' }}>{x.b}</span>
-                    </div>
-                    <div className="flex gap-[3px] h-1.5">
-                      <div className="flex-1 flex justify-end overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '999px 0 0 999px' }}>
-                        <div style={{ width: x.wa, background: '#0a3d2e' }} />
-                      </div>
-                      <div className="flex-1 overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '0 999px 999px 0' }}>
-                        <div style={{ width: x.wb, height: '100%', background: '#c4bda8' }} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* "Como chegam" SAIU daqui (04/09). O mesmo confronto já é comparado na
+              aba Times, com mais espaço e mais linhas, e repetir três barras na
+              lateral da leitura só empurrava a análise para baixo. Onde ele
+              continua fazendo falta é no painel da agenda, que não tem a aba
+              Times ao lado — lá ele ficou. */}
 
           {dist && (
             <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>
