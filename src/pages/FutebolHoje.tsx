@@ -113,7 +113,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
   const porque = chance != null
     ? pagaAcima
       ? <>O mercado dá <b className={forte}>~{chance}% de chance</b>; na odd <b className={forte}>{o.best_odd.toFixed(2)}</b> isso paga acima do risco real — é aí que está o valor.</>
-      : <>O mercado dá <b className={forte}>~{chance}% de chance</b>, e na odd <b className={forte}>{o.best_odd.toFixed(2)}</b> o preço fica <b className={forte}>{Math.abs(Math.round(o.edge * 1000) / 10).toFixed(1).replace('.', ',')}% abaixo do justo</b>. O que sustenta esta leitura é o cenário, não o preço.</>
+      : <>O mercado dá <b className={forte}>~{chance}% de chance</b>, e na odd <b className={forte}>{o.best_odd.toFixed(2)}</b> o preço fica <b className={forte}>{Math.abs(o.edge * 100).toFixed(1).replace('.', ',')}% abaixo do justo</b>. O que sustenta esta leitura é o cenário, não o preço.</>
     : <>Na odd <b className={forte}>{o.best_odd.toFixed(2)}</b>, a aposta se paga a partir de <b className={forte}>{Math.round(100 / o.best_odd)}%</b> de acerto — e a leitura do jogo aponta nessa direção.</>;
 
   return (
@@ -126,7 +126,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
         <div className="md:col-span-4 flex flex-col">
           <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[10px] uppercase tracking-[0.18em] font-bold w-fit ${d ? '' : 'bg-amber/15 text-amber-2 border border-amber/30'}`}
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
-            <Zap className="w-3 h-3" /> {d ? 'Melhor valor do dia' : 'Melhor do dia · Média'}
+            <Zap className="w-3 h-3" /> {pagaAcima ? 'Melhor valor do dia' : 'Destaque do dia'}
           </span>
           <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
           <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}><Blur active={!!locked} strength={9}>{pick}</Blur></div>
@@ -591,7 +591,17 @@ export default function FutebolHoje() {
             <Kpi label="Jogos hoje" value={loading ? '—' : gameList.length} sub={isToday ? 'na agenda' : 'no dia'} />
             <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="publicadas" tone="green" />
             <Kpi label="Faixa Alta" value={loading ? '—' : alta} sub="maior confiança" anchor />
-            <Kpi label="Melhor valor" value={loading || melhorValor == null ? '—' : `${melhorValor >= 0 ? '+' : '−'}${Math.abs(melhorValor)}%`} sub="maior diferença do dia" tone="green" />
+            {/* Verde é promessa. Num dia em que a melhor diferença do dia é
+                NEGATIVA — e depois da virada de 03/09 isso é o normal, não a
+                exceção — o cartão verde dizia boa notícia com número de má
+                notícia. O tom segue o sinal, e o rótulo deixa de prometer valor
+                onde ele não existe. */}
+            <Kpi
+              label={melhorValor != null && melhorValor < 0 ? 'Preço mais perto do justo' : 'Melhor valor'}
+              value={loading || melhorValor == null ? '—' : `${melhorValor >= 0 ? '+' : '−'}${Math.abs(melhorValor)}%`}
+              sub="maior diferença do dia"
+              tone={melhorValor != null && melhorValor >= 0 ? 'green' : undefined}
+            />
           </div>
         </div>
 

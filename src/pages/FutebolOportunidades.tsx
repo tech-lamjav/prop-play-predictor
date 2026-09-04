@@ -578,13 +578,15 @@ export default function FutebolOportunidades() {
                     valor — que volta quando o filtro pede só as que pagam acima
                     do justo, porque aí a frase descreve a lista.
 
-                    A faixa Baixa segue com o rótulo próprio: ali a pessoa está
-                    olhando o que o cenário NÃO sustenta. */}
+                    A faixa Baixa continua calando a frase, e as duas condições
+                    valem juntas: preço acima do justo é uma afirmação, cenário
+                    sustentado é outra, e o título só promete valor quando as duas
+                    são verdade na lista que está na tela. */}
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
                   {comValor.length} {comValor.length === 1 ? 'oportunidade' : 'oportunidades'}
                   {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa'
                     ? ' em faixa baixa'
-                    : valor === 'positivo' ? ' com valor' : ''}
+                    : valor === 'positivo' && !faixasSelecionadas.includes('baixa') ? ' com valor' : ''}
                 </h1>
                 <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades publicadas neste dia' : 'Análises pré-jogo com Score, o que sustenta cada leitura e o preço de mercado ao lado. O filtro de valor separa as que pagam acima do preço justo.'}</p>
               </>

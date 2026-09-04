@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { premissaDe } from '@/utils/futebol-premissas';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
+import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
+
+vi.mock('@/utils/rolagem', () => ({ alinharAbaixoDoCabecalho: vi.fn() }));
 
 // ============================================================================
 // O que as abas A favor e Contra mostram (issue #306, spec #301)
@@ -190,5 +194,77 @@ describe('preço não chega à aba como premissa do jogo', () => {
     ]).slugsDePremissas);
 
     expect(screen.getByText('Nenhum motivo a favor desta saída.')).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// A rolagem obedece ao toque, e só a ele (04/09)
+// ============================================================================
+// Abrir uma premissa leva o topo dela para baixo do cabeçalho — no celular o
+// gráfico nascia embaixo do dedo e a pessoa ficava no meio do que abriu.
+//
+// O risco do conserto é maior que o defeito: a lista abre a primeira premissa
+// SOZINHA sempre que o conjunto muda, e arrastar a régua muda o conjunto a cada
+// parada. Se a rolagem seguisse a abertura em vez do toque, a tela pularia no
+// meio do arrasto sem ninguém ter clicado.
+//
+// Só premissa com jogo a jogo abre, então o histórico aqui não é decoração: sem
+// ele nenhuma linha é clicável e o teste passaria sem testar nada.
+// ============================================================================
+
+describe('rolagem ao abrir a premissa', () => {
+  const umJogo = (over: Partial<FutebolFixtureHistorico>): FutebolFixtureHistorico => ({
+    side: 'home', team_id: 1, team_name: 'Casa', past_fixture_id: 1, data: '2026-08-01', ordem: 1,
+    mesma_competicao: true, em_casa: true, adversario: 'Adversário', adversario_id: 9,
+    gols_pro: 1, gols_contra: 1, total_gols: 2, ambos_marcaram: true, sem_sofrer: false,
+    sem_marcar: false, xg: 1, xg_contra: 1, resultado: 'E', ...over,
+  });
+
+  const comHistorico = [
+    ...[1, 2, 3].map((i) => umJogo({ side: 'home', team_id: 1, ordem: i, past_fixture_id: i, em_casa: true })),
+    ...[1, 2, 3].map((i) => umJogo({ side: 'away', team_id: 2, team_name: 'Fora', ordem: i, past_fixture_id: 10 + i, em_casa: false })),
+  ];
+
+  const renderDuas = () =>
+    render(
+      <MotivosJogoPorJogo
+        mercado="goals_over_under"
+        premissas={premissas('goals_over_under', ['defesas_firmes', 'defesas_vazaveis'])}
+        modo="favor"
+        extras={[]}
+        historico={comHistorico}
+        numeros={[]}
+        lado="home"
+        linha={3.25}
+        saidaLabel="Menos de 3,25 gols"
+      />,
+    );
+
+  it('não rola quando a lista abre a primeira sozinha', () => {
+    // É o que acontece ao montar, e a cada parada da régua.
+    renderDuas();
+
+    expect(alinharAbaixoDoCabecalho).not.toHaveBeenCalled();
+  });
+
+  it('rola quando o toque abre uma premissa fechada', async () => {
+    renderDuas();
+    vi.mocked(alinharAbaixoDoCabecalho).mockClear();
+
+    // Pelo PAPEL, e não pelo texto: o texto casa também com a div do card, que
+    // fica FORA do botão — clicar nela não abre nada e o teste passaria a
+    // afirmar o contrário do que quer.
+    await userEvent.click(screen.getByRole('button', { name: /ver os jogos/i }));
+
+    expect(alinharAbaixoDoCabecalho).toHaveBeenCalledTimes(1);
+  });
+
+  it('fechar não mexe na rolagem', async () => {
+    renderDuas();
+    vi.mocked(alinharAbaixoDoCabecalho).mockClear();
+
+    await userEvent.click(screen.getByRole('button', { name: /fechar/i }));
+
+    expect(alinharAbaixoDoCabecalho).not.toHaveBeenCalled();
   });
 });
