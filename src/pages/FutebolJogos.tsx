@@ -6,11 +6,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { FixtureRow } from '@/components/futebol/FixtureRow';
 import { AgendaDateStrip } from '@/components/futebol/AgendaDateStrip';
 import { JogoResumoPanel } from '@/components/futebol/JogoResumoPanel';
-import { useFutebolFixturesByDay, useFutebolFixtureDays, useFutebolValueBoard } from '@/hooks/use-futebol-data';
+import {
+  useFutebolFixturesByDay,
+  useFutebolFixtureDays,
+  useFutebolValueBoard,
+  useFutebolValueHistory,
+  useVitrine,
+} from '@/hooks/use-futebol-data';
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
+import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -88,7 +95,22 @@ export default function FutebolJogos() {
   // consegue listar o confronto antes de saber se ele tem leitura, e é isso que
   // ela deve fazer. O que ela não pode é contar "0 com leitura" nem escrever
   // "sem leitura ainda" enquanto a resposta não chegou — isso é conclusão.
-  const { data: board, isLoading: boardCarregando } = useFutebolValueBoard();
+  const { data: boardCorrente, isLoading: boardCarregando } = useFutebolValueBoard();
+  const { data: histRows } = useFutebolValueHistory();
+  const { ocultos } = useVitrine();
+
+  // A agenda lia SÓ o board, e o board some no apito (migration 102). Resultado:
+  // o jogo que começou virava "sem leitura ainda, odds entram perto do jogo" —
+  // com o painel ao lado exibindo a leitura daquele mesmo jogo, e a tela de
+  // Oportunidades listando as oportunidades dele. Uma tela desmentia a outra.
+  //
+  // A correção é ler o que Oportunidades já lia: board para o que ainda não
+  // apitou, foto do apito para o que já passou. A mesma função, para as duas
+  // telas contarem a mesma história do mesmo dia.
+  const board = useMemo(
+    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], Date.now(), ocultos),
+    [boardCorrente, histRows, ocultos],
+  );
 
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
   const isDemo = jogosTour.run;

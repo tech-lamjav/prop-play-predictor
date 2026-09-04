@@ -35,23 +35,44 @@ type Stage = 'value' | 'connecting' | 'connected' | 'timeout';
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 40; // ~2 min
 
-const BENEFITS = [
-  {
-    icon: Camera,
-    title: 'Registra pelo print',
-    description: 'Manda um print ou escreve a aposta. O Betinho lê e registra sozinho.',
-  },
-  {
-    icon: LineChart,
-    title: 'Seu ROI de verdade',
-    description: 'Liquidação, banca e resultado real por esporte, sem planilha.',
-  },
-  {
-    icon: Megaphone,
-    title: 'O dia chega no seu chat',
-    description: 'Oportunidades do dia, avisos de resultado e novidades no Telegram.',
-  },
-] as const;
+const REGISTRO = {
+  icon: Camera,
+  title: 'Registra pelo print',
+  description: 'Manda um print ou escreve a aposta. O Betinho lê e registra sozinho.',
+} as const;
+
+const ROI = {
+  icon: LineChart,
+  title: 'Seu ROI de verdade',
+  description: 'Liquidação, banca e resultado real por esporte, sem planilha.',
+} as const;
+
+const ALERTAS = {
+  icon: Megaphone,
+  title: 'O dia chega no seu chat',
+  description: 'Oportunidades do dia, avisos de resultado e novidades no Telegram.',
+} as const;
+
+// A mesma promessa, dita para quem veio pelo alerta: aqui o assunto não é o
+// "resumo do dia", é o aviso de CADA oportunidade nova, que é o que a pessoa
+// clicou para ter.
+const ALERTAS_DE_OPORTUNIDADE = {
+  icon: Megaphone,
+  title: 'Cada oportunidade nova, na hora',
+  description: 'O aviso de cada oportunidade assim que ela entra no painel, antes do jogo — e o resumo do dia junto.',
+} as const;
+
+/**
+ * A ordem dos benefícios muda com a porta de entrada.
+ *
+ * Quem chega de Oportunidades clicou por causa do alerta: começar por "registra
+ * pelo print" faz a primeira linha da página responder outra pergunta, e o
+ * motivo dele aparecer só em terceiro lugar. Para todo o resto, a ordem antiga
+ * continua — lá a entrada é o registro mesmo.
+ */
+function beneficios(paraAlertas: boolean) {
+  return paraAlertas ? [ALERTAS_DE_OPORTUNIDADE, REGISTRO, ROI] : [REGISTRO, ROI, ALERTAS];
+}
 
 // ── Carrossel de mocks NATIVOS (não são screenshots) ──────────────────────
 // Mostra o que a conexão ENTREGA: registrar pelo print, oportunidade do dia, resultado.
@@ -159,13 +180,17 @@ function SlideResult() {
   );
 }
 
-const SLIDES = [
-  { key: 'print', label: 'Registre só mandando o print', node: <SlidePrint /> },
-  { key: 'opp', label: 'As oportunidades do dia chegam a você', node: <SlideOpportunity /> },
-  { key: 'result', label: 'E o resultado é liquidado sozinho', node: <SlideResult /> },
-] as const;
+const SLIDE_PRINT = { key: 'print', label: 'Registre só mandando o print', node: <SlidePrint /> } as const;
+const SLIDE_OPP = { key: 'opp', label: 'As oportunidades do dia chegam a você', node: <SlideOpportunity /> } as const;
+const SLIDE_RESULT = { key: 'result', label: 'E o resultado é liquidado sozinho', node: <SlideResult /> } as const;
 
-function BetinhoCarousel() {
+/** Mesma regra dos benefícios: quem veio pelo alerta vê a oportunidade primeiro. */
+function slides(paraAlertas: boolean) {
+  return paraAlertas ? [SLIDE_OPP, SLIDE_RESULT, SLIDE_PRINT] : [SLIDE_PRINT, SLIDE_OPP, SLIDE_RESULT];
+}
+
+function BetinhoCarousel({ paraAlertas = false }: { paraAlertas?: boolean }) {
+  const SLIDES = slides(paraAlertas);
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center' });
   const [selected, setSelected] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -427,7 +452,7 @@ export default function Onboarding() {
             <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber/10" aria-hidden />
             <div className="pointer-events-none absolute -left-16 bottom-10 h-64 w-64 rounded-full bg-white/5" aria-hidden />
             <div className="relative z-10 flex w-full justify-center">
-              <BetinhoCarousel />
+              <BetinhoCarousel paraAlertas={fromOportunidades} />
             </div>
           </div>
 
@@ -435,7 +460,7 @@ export default function Onboarding() {
           <div className="order-3 px-6 pb-12 sm:px-10 lg:col-start-1 lg:row-start-2 lg:self-start lg:px-16 lg:pt-6 lg:pb-20">
             <div className="mx-auto max-w-md lg:mx-0">
               <div className="mb-7 space-y-3.5">
-                {BENEFITS.map(({ icon: Icon, title, description }) => (
+                {beneficios(fromOportunidades).map(({ icon: Icon, title, description }) => (
                   <div key={title} className="flex items-start gap-3.5">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-forest-tint">
                       <Icon className="h-4 w-4 text-forest" />

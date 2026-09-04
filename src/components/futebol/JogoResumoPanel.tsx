@@ -194,14 +194,20 @@ export function JogoResumoPanel({
         ? 'premissa acesa'
         : 'premissas acesas';
 
-  // O que pesou contra, AGORA DO CONTRATO.
+  // O que NÃO ATINGIU O CORTE, do contrato.
   //
   // Antes era fabricado por negação: pegava as premissas do mercado que não
   // acenderam e negava cada uma, sem filtrar se ela se aplica à saída escolhida.
   // Num Over isso listava como contra uma premissa que só existe para o Under —
   // o defeito que o aceite da virada proíbe com esse exemplo literal.
+  //
+  // E o rótulo deixou de dizer "pesou contra" (#351/#358): confirmado no modelo
+  // em 03/09, nenhum dos cinco mercados tem premissa que seja evidência CONTRA o
+  // lado apostado — o que existe é premissa do próprio lado que não bateu o
+  // corte. Dizer "contra" afirmava oposição onde só há ausência, e essa é a
+  // mesma frase que a folha de detalhe já corrigiu.
   const contra = explicacao.contra.length
-    ? `${explicacao.contra.length} ${explicacao.contra.length === 1 ? 'pesou' : 'pesaram'} contra: ${explicacao.contra
+    ? `${explicacao.contra.length} não ${explicacao.contra.length === 1 ? 'atingiu' : 'atingiram'} o corte: ${explicacao.contra
         .map(({ premissa }) => rotuloPremissa(premissa, lado, true).toLowerCase())
         .join(' e ')}.`
     : null;
