@@ -1,36 +1,33 @@
 /**
  * A legenda do bloco "Como chegam".
  *
- * Ela existe porque a tela mostra, uma embaixo da outra, DUAS MEDIDAS
- * DIFERENTES do mesmo confronto — e sem dizer isso parece erro de aritmética.
+ * O bloco mede a MESMA JANELA das premissas — os últimos 10 jogos em qualquer
+ * competição —, e a legenda existe para dizer o recorte de mando, que muda de
+ * linha para linha porque muda no modelo: gols marcados e sofridos somam o
+ * mandante em casa com o visitante fora (`gf_comb`/`ga_comb`), e o percentual
+ * de jogos sem sofrer gol olha a janela inteira (`clean_sheets_altos`).
  *
- * Caso real, Criciúma × Cuiabá de 04/09: a premissa anuncia "2,4 gols marcados
- * por jogo, somados" e este bloco mostra 1,0 e 0,9. Quem soma chega a 1,9,
- * conclui que um dos dois mente, e perde a confiança nos dois.
+ * ⚠️ NÃO devolver este bloco ao perfil de temporada. Ele veio de lá até 04/09, e
+ * o efeito era a tela se desmentir em aritmética simples: em Criciúma × Cuiabá,
+ * a premissa anunciava "2,4 gols marcados por jogo, somados" e o bloco logo
+ * abaixo mostrava 1,0 e 0,9. Os dois números estavam certos — mediam coisas
+ * diferentes —, mas quem lê soma, chega a 1,9, e conclui que um dos dois mente.
+ * Explicar a diferença numa legenda não devolve a credibilidade que a
+ * contradição tira; foi por isso que o bloco mudou de fonte em vez de ganhar
+ * uma nota de rodapé.
  *
- * Nenhum dos dois mente:
+ * A POSIÇÃO na tabela é a exceção que continua vindo da temporada, e continua
+ * certa aí: classificação é da competição e da temporada por definição (ADR
+ * 0008), não de uma janela de dez jogos que atravessa campeonatos. Onde não há
+ * tabela — mata-mata — ela simplesmente não aparece.
  *
- * - a PREMISSA mede a janela dela — os últimos 10 jogos em qualquer competição,
- *   mandante em casa e visitante fora —, que é o que o modelo compara
- *   (`int_futebol_premissas_ou`, vars `todas` + `ultimos_10`; migration 117);
- * - este BLOCO é o perfil de temporada no campeonato, média total, sem recorte
- *   de mando, e é assim de propósito: classificação, forma e artilharia vivem
- *   nessa mesma escala (ADR 0008).
- *
- * ⚠️ NÃO "corrigir" o bloco para a janela da premissa. Já foi tentado o inverso
- * — alinhar o gráfico ao perfil de temporada — e o resultado foi a spec #349
- * inteira: nenhum número da tela era o número que acendia a premissa. As duas
- * medidas convivem; o que faltava era a tela dizer qual é qual.
- *
- * Vive num componente só porque três telas desenham o bloco (o painel da
- * agenda, a bancada do detalhe e o resumo do jogo) e a explicação não pode
- * divergir entre elas.
+ * Vive num componente só porque duas telas desenham o bloco (o painel da agenda
+ * e a bancada do detalhe) e a explicação não pode divergir entre elas.
  */
 export function ComoChegamLegenda({ className = '', cor = '#8d8672' }: { className?: string; cor?: string }) {
   return (
     <p className={`text-[10.5px] leading-snug ${className}`} style={{ color: cor }}>
-      Média da temporada no campeonato. As premissas medem outra janela: os últimos 10 jogos,
-      mandante em casa e visitante fora.
+      Últimos 10 jogos, a mesma janela das premissas. Nos gols, o mandante em casa e o visitante fora.
     </p>
   );
 }

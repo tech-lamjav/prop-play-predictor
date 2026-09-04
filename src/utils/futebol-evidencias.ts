@@ -347,7 +347,13 @@ const BUILDERS: Record<string, Builder> = {
   adversario_limitado: (ctx) => {
     const { adv } = porLado(ctx);
     if (!adv || adv.gf_total == null) return null;
-    return { texto: `${adv.team_name} marca ${n1(adv.gf_total)} gol por jogo e está em ${adv.posicao ?? '—'}º` };
+    // Sem posição a frase PARA no aproveitamento, em vez de escrever "está em
+    // —º". Em mata-mata — Copa do Brasil, Libertadores na fase eliminatória —
+    // não existe tabela, então a colocação não é um dado que faltou: é uma
+    // pergunta que não se faz naquela competição. O traço fazia a tela parecer
+    // quebrada num caso em que ela está certa.
+    const tabela = adv.posicao != null ? ` e está em ${adv.posicao}º` : '';
+    return { texto: `${adv.team_name} marca ${n1(adv.gf_total)} gol por jogo${tabela}` };
   },
 };
 

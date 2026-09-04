@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { interceptarCliqueSimples } from '@/utils/navegacao-por-link';
 import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
+import { Blur } from '@/components/futebol/FutebolGate';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -33,6 +34,7 @@ export function FixtureRow({
   selected = false,
   to,
   onClick,
+  locked = false,
 }: {
   fixture: FutebolFixture;
   best: FutebolValueBoardRow | null;
@@ -66,6 +68,15 @@ export function FixtureRow({
    * refazer à mão o que ele já faria.
    */
   onClick?: () => void;
+  /**
+   * Sem acesso à camada de valor (nem assinatura, nem teste grátis vivo).
+   *
+   * Opcional e falso por padrão porque nem toda tela que desenha a linha tem o
+   * acesso em mãos — mas onde ela mostra pick, odd e chance, tem de ter. Esta
+   * linha era o furo: a agenda entregava de graça exatamente os três números
+   * que a lista de Oportunidades borra.
+   */
+  locked?: boolean;
 }) {
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
@@ -86,6 +97,9 @@ export function FixtureRow({
 
   const alto = ehFaixaAlta(best?.faixa);
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;
+  // Jogo já encerrado não borra: o passado é registro do que foi publicado, não
+  // pick para apostar. Mesma exceção da lista de Oportunidades.
+  const borra = !!locked && !fim;
 
   // Jogo encerrado não precisa mais do Score, que é uma previsão: o que importa
   // ali é se a leitura bateu. O selo vira ✓ ou ✕ pelo placar.
@@ -151,11 +165,15 @@ export function FixtureRow({
         {best ? (
           <>
             <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink truncate">
-              {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
+              <Blur active={borra} strength={5}>
+                {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
+              </Blur>
             </span>
             <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
-              odd {best.best_odd.toFixed(2)}
-              {chance != null ? <span className="hidden sm:inline">{` · ${chance}% chance`}</span> : null}
+              <Blur active={borra} strength={5}>
+                odd {best.best_odd.toFixed(2)}
+                {chance != null ? <span className="hidden sm:inline">{` · ${chance}% chance`}</span> : null}
+              </Blur>
             </span>
           </>
         ) : (

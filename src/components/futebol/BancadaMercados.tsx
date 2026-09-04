@@ -28,7 +28,7 @@ import {
   type Premissa,
 } from '@/utils/futebol-premissas';
 import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico } from '@/utils/futebol-historico';
+import { evidenciaDoHistorico, perfilDaJanela } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
@@ -463,25 +463,43 @@ export function BancadaMercados({
   // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos
   // mercados. A barra da posição usa o valor do OUTRO lado, porque na tabela menor
   // é melhor.
+  //
+  // Gols e clean sheets saem da JANELA DA PREMISSA (`perfilDaJanela`), a mesma
+  // que os cards acima comparam. Enquanto vinham do perfil de temporada, este
+  // bloco desmentia a premissa logo ao lado: "2,4 somados" em cima, 1,0 e 0,9
+  // aqui, e quem soma conclui que um dos dois mente.
+  //
+  // A POSIÇÃO continua vindo da tabela, e continua certa aí: classificação é da
+  // competição e da temporada por definição (ADR 0008), não de uma janela de dez
+  // jogos que atravessa campeonatos.
   const barras = useMemo(() => {
     const casa = numeros?.find((x) => x.side === 'home');
     const fora = numeros?.find((x) => x.side === 'away');
-    if (!casa || !fora) return [];
+    const perfil = perfilDaJanela(historico);
     const d1 = (v: number) => v.toFixed(1).replace('.', ',');
     const linhas: { l: string; a: string; b: string; va: number; vb: number }[] = [];
-    if (casa.gf_total != null && fora.gf_total != null)
-      linhas.push({ l: 'Gols marcados', a: d1(casa.gf_total), b: d1(fora.gf_total), va: casa.gf_total, vb: fora.gf_total });
-    if (casa.ga_total != null && fora.ga_total != null)
-      linhas.push({ l: 'Gols sofridos', a: d1(casa.ga_total), b: d1(fora.ga_total), va: fora.ga_total, vb: casa.ga_total });
-    if (casa.posicao != null && fora.posicao != null)
+    if (perfil) {
+      const { gf, ga, semSofrer } = perfil;
+      if (gf.home != null && gf.away != null)
+        linhas.push({ l: 'Gols marcados', a: d1(gf.home), b: d1(gf.away), va: gf.home, vb: gf.away });
+      if (ga.home != null && ga.away != null)
+        linhas.push({ l: 'Gols sofridos', a: d1(ga.home), b: d1(ga.away), va: ga.away, vb: ga.home });
+      if (semSofrer.home != null && semSofrer.away != null) {
+        const ph = Math.round(semSofrer.home * 100);
+        const pa = Math.round(semSofrer.away * 100);
+        linhas.push({ l: 'Sem sofrer gol', a: `${ph}%`, b: `${pa}%`, va: ph, vb: pa });
+      }
+    }
+    // A posição só aparece onde ela existe: em mata-mata não há tabela, e o
+    // "—º" que aparecia no lugar não é um dado ausente, é uma pergunta sem
+    // sentido naquela competição.
+    if (casa?.posicao != null && fora?.posicao != null)
       linhas.push({ l: 'Posição', a: `${casa.posicao}º`, b: `${fora.posicao}º`, va: fora.posicao, vb: casa.posicao });
-    if (casa.clean_sheets != null && fora.clean_sheets != null)
-      linhas.push({ l: 'Sem sofrer gol', a: String(casa.clean_sheets), b: String(fora.clean_sheets), va: casa.clean_sheets, vb: fora.clean_sheets });
     return linhas.map((x) => {
       const tot = x.va + x.vb || 1;
       return { ...x, wa: `${Math.round((x.va / tot) * 100)}%`, wb: `${Math.round((x.vb / tot) * 100)}%` };
     });
-  }, [numeros]);
+  }, [numeros, historico]);
 
   // O número da premissa: temporada (094) e, para o que ela não cobre, calculado dos
   // jogos do histórico (095) — é o que dá número às premissas de chance de gol.

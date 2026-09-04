@@ -11,6 +11,7 @@ import {
   useFutebolFixtureDays,
   useFutebolValueBoard,
   useFutebolValueHistory,
+  useFutebolAccess,
   useVitrine,
 } from '@/hooks/use-futebol-data';
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
@@ -98,6 +99,7 @@ export default function FutebolJogos() {
   const { data: boardCorrente, isLoading: boardCarregando } = useFutebolValueBoard();
   const { data: histRows } = useFutebolValueHistory();
   const { ocultos } = useVitrine();
+  const { data: access } = useFutebolAccess();
 
   // A agenda lia SÓ o board, e o board some no apito (migration 102). Resultado:
   // o jogo que começou virava "sem leitura ainda, odds entram perto do jogo" —
@@ -363,6 +365,7 @@ export default function FutebolJogos() {
                               // ao desempate padrão da tela do jogo (#344).
                               to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
                               onClick={hasPanel ? () => abrirPainel(f) : undefined}
+                              locked={isDemo ? false : !access?.unlocked}
                             />
                           ))}
                       </div>

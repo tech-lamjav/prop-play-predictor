@@ -540,3 +540,63 @@ export function evidenciaDoHistorico(
 
   return null;
 }
+
+/**
+ * O "Como chegam" na JANELA DA PREMISSA.
+ *
+ * Antes este bloco vinha do perfil de temporada (`get_futebol_fixture_numeros`):
+ * média total no campeonato, sem recorte de mando. O resultado é que a tela
+ * exibia, uma embaixo da outra, duas medidas diferentes do mesmo confronto —
+ * Criciúma × Cuiabá de 04/09 anunciava "2,4 gols marcados, somados" na premissa
+ * e 1,0 e 0,9 aqui. Os dois números estavam certos e a soma não fechava; para
+ * quem lê, um dos dois mente, e a legenda explicando a diferença não devolve a
+ * credibilidade que a contradição tira.
+ *
+ * Agora sai da MESMA fonte das premissas, e por reuso e não por cópia: cada
+ * linha chama `storyDaPremissa` com o slug cujo critério já declara aquele
+ * recorte. Se a janela do modelo mudar, muda nos dois lugares de uma vez.
+ *
+ * - gols marcados e sofridos: últimos 10, mandante EM CASA e visitante FORA,
+ *   que é o que `gf_comb`/`ga_comb` somam;
+ * - sem sofrer gol: percentual dos últimos 10 SEM recorte de mando, que é o que
+ *   `clean_sheets_altos` compara.
+ *
+ * O mando difere entre as linhas porque difere no modelo. É por isso que a
+ * legenda do bloco diz qual recorte vale em qual linha, em vez de afirmar um só.
+ *
+ * `null` quando não há histórico — sem dado o bloco não aparece, em vez de cair
+ * de volta no perfil de temporada e recriar as duas verdades em silêncio.
+ */
+export interface PerfilDaJanela {
+  /** Média de gols marcados no recorte de mando, por time. */
+  gf: { home: number | null; away: number | null };
+  /** Média de gols sofridos no mesmo recorte. */
+  ga: { home: number | null; away: number | null };
+  /** Fração de jogos sem sofrer gol (0 a 1), na janela inteira. */
+  semSofrer: { home: number | null; away: number | null };
+  /** Quantos jogos entraram no recorte de mando, por time. */
+  jogosDoMando: { home: number; away: number };
+  /** O tamanho da janela antes do recorte de mando. */
+  janela: number;
+}
+
+export function perfilDaJanela(hist: FutebolFixtureHistorico[] | undefined): PerfilDaJanela | null {
+  const gf = storyDaPremissa('ataque_combinado', hist, null, null);
+  const ga = storyDaPremissa('defesas_firmes', hist, null, null);
+  const cs = storyDaPremissa('clean_sheets_altos', hist, null, null);
+  if (!gf || !ga || !cs) return null;
+
+  // A série carrega o lado na própria chave, então o lado sai dela e não da
+  // POSIÇÃO no array: uma série pode faltar (time sem jogo no recorte), e aí o
+  // índice 1 passaria a ser o mandante calado.
+  const doLado = (s: Story, side: 'home' | 'away') =>
+    s.series.find((x) => x.chave.split('-')[1] === side) ?? null;
+
+  return {
+    gf: { home: doLado(gf, 'home')?.media ?? null, away: doLado(gf, 'away')?.media ?? null },
+    ga: { home: doLado(ga, 'home')?.media ?? null, away: doLado(ga, 'away')?.media ?? null },
+    semSofrer: { home: doLado(cs, 'home')?.media ?? null, away: doLado(cs, 'away')?.media ?? null },
+    jogosDoMando: { home: doLado(gf, 'home')?.jogos.length ?? 0, away: doLado(gf, 'away')?.jogos.length ?? 0 },
+    janela: doLado(gf, 'home')?.daJanela ?? JANELA_DE_GOLS,
+  };
+}
