@@ -2455,6 +2455,10 @@ CREATE OR REPLACE FUNCTION public.claim_futebol_publication_alert_batch(
 RETURNS TABLE(batch_id uuid, alert_id uuid, opportunity_key text)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
 AS $function$
+-- Ver 118: a saída e a coluna têm o mesmo nome, e sem esta diretiva o alvo do
+-- ON CONFLICT e o RETURNING abaixo ficam ambíguos — a função falhava em TODA
+-- execução.
+#variable_conflict use_column
 DECLARE
   v_batch_id uuid;
 BEGIN

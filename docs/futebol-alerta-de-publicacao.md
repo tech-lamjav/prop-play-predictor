@@ -23,7 +23,25 @@ Diagnóstico de 03/09/2026, medido nos dois ambientes:
 A edge function em si está publicada e ativa nos dois ambientes, e o código está
 correto. Faltava só o endereço para o cron chamar.
 
-## A correção
+## O segundo defeito, que estava escondido atrás do primeiro
+
+Criado o segredo em staging, o cron passou a chamar a função — e ela passou a
+falhar sozinha, com `column reference "opportunity_key" is ambiguous`. Ou seja,
+a RPC `claim_futebol_publication_alert_batch` também nunca tinha executado com
+sucesso: o segredo ausente escondia isso.
+
+A causa é a colisão entre o parâmetro de SAÍDA `opportunity_key`, declarado no
+`RETURNS TABLE`, e a coluna de mesmo nome. Dentro do corpo plpgsql o nome sem
+qualificação fica ambíguo em dois lugares: o alvo do `ON CONFLICT`, que não
+aceita alias, e o `RETURNING`.
+
+Corrigido pela **migration 118**, com `#variable_conflict use_column`. Preferido
+a renomear as saídas porque o contrato da RPC não muda — a edge function segue
+lendo `batch_id`, `alert_id` e `opportunity_key` do JSON.
+
+Aplicada em staging em 04/09. **Falta aplicar em produção**, junto com o segredo.
+
+## A correção do segredo
 
 Um `INSERT` no vault, por ambiente. **Não há migration**: o vault não é
 versionado no repositório, e o segredo é diferente em cada projeto.
@@ -113,4 +131,16 @@ order by ran_at desc limit 10;
 
 Para um ensaio sem enviar nada, a função aceita `?mode=report`: devolve as
 oportunidades novas e a contagem de destinatários, sem gravar nem mandar
+mensagem.
+
+## Validação em staging (04/09/2026)
+
+Com o segredo mais a migration 118, a primeira execução, às 02h10 UTC:
+
+- cron `succeeded`, e `message_runs` com `ok = true`, **340 candidatos e 0 enviados**;
+- `futebol_publication_alert_runtime` ganhou a linha de marco inicial;
+- 340 linhas em `futebol_publication_alerts`, 1 lote, **0 entregas**.
+
+É exatamente o comportamento desenhado: o board inteiro entra como "já avisado"
+e ninguém recebe nada. Da execução seguinte em diante, só oportunidade nova vira
 mensagem.
