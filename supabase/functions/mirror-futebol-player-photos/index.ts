@@ -15,10 +15,28 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const BUCKET = "futebol-player-photos";
+// Todas as competições que o produto cobre hoje, e não só as brasileiras.
+//
+// A lista antiga tinha Brasileirão e Copa do Mundo, e ficou para trás quando as
+// ligas europeias entraram: 137 fotos no bucket contra 593 times em catálogo, e
+// nenhum artilheiro de Bundesliga, Premier League, La Liga, Ligue 1, Serie A,
+// Primeira Liga ou Champions. A tela de artilheiros mostrava silhueta.
+//
+// Sem temporada anterior de propósito: o artilheiro de 2024 não aparece em tela
+// nenhuma, e cada par é uma varredura a mais.
 const DEFAULT_PAIRS = [
   { c: "brasileirao", s: 2026 },
-  { c: "brasileirao", s: 2025 },
-  { c: "brasileirao", s: 2024 },
+  { c: "serie_b", s: 2026 },
+  { c: "copa_do_brasil", s: 2026 },
+  { c: "libertadores", s: 2026 },
+  { c: "sudamericana", s: 2026 },
+  { c: "premier_league", s: 2026 },
+  { c: "la_liga", s: 2026 },
+  { c: "bundesliga", s: 2026 },
+  { c: "serie_a_ita", s: 2026 },
+  { c: "ligue_1", s: 2026 },
+  { c: "primeira_liga", s: 2026 },
+  { c: "champions_league", s: 2026 },
   { c: "copa_mundo", s: 2026 },
 ];
 
@@ -33,11 +51,13 @@ serve(async (req) => {
   );
 
   let pairs = DEFAULT_PAIRS;
+  let force = false;
   try {
     const body = await req.json().catch(() => ({}));
     if (Array.isArray(body?.pairs) && body.pairs.length > 0) {
       pairs = body.pairs;
     }
+    force = body?.force === true;
   } catch {
     // sem body
   }
@@ -57,9 +77,23 @@ serve(async (req) => {
     }
   }
 
+  // O que já está no bucket não é baixado de novo.
+  //
+  // Sem isto, uma passada com as treze competições rebaixa CENTENAS de imagens
+  // que não mudaram — e a função estoura o tempo da edge antes de chegar nas que
+  // faltam. Com `force: true` no body ela volta a baixar tudo, que é o caminho
+  // para quando a fonte trocar a arte.
+  const jaTem = new Set<string>();
+  if (!force) {
+    const { data: existentes } = await supabase.storage.from(BUCKET).list("", { limit: 10000 });
+    for (const f of existentes ?? []) jaTem.add(f.name);
+  }
+
   let mirrored = 0;
+  let skipped = 0;
   let failed = 0;
   for (const id of ids) {
+    if (jaTem.has(`${id}.png`)) { skipped++; continue; }
     try {
       const url = `https://media.api-sports.io/football/players/${id}.png`;
       const res = await fetch(url, { redirect: "follow" });
@@ -75,7 +109,7 @@ serve(async (req) => {
       failed++;
     }
   }
-  return json({ ok: true, total: ids.size, mirrored, failed });
+  return json({ ok: true, total: ids.size, mirrored, skipped, failed });
 });
 
 function json(body: unknown, status = 200): Response {

@@ -30,9 +30,26 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
   );
 
+  // O `force` já estava documentado no cabeçalho e não existia no código: sem
+  // ele, cada passada rebaixava os 593 escudos, inclusive os 388 que já estavam
+  // lá, e estourava o tempo da edge antes de chegar nos que faltam.
+  let force = false;
+  try {
+    const body = await req.json().catch(() => ({}));
+    force = body?.force === true;
+  } catch {
+    // sem body
+  }
+
   try {
     const { data: teams, error } = await supabase.rpc("get_futebol_teams");
     if (error) throw error;
+
+    const jaTem = new Set<string>();
+    if (!force) {
+      const { data: existentes } = await supabase.storage.from(BUCKET).list("", { limit: 10000 });
+      for (const f of existentes ?? []) jaTem.add(f.name);
+    }
 
     let mirrored = 0;
     let skipped = 0;
@@ -42,6 +59,7 @@ serve(async (req) => {
       const id = Number(t.team_id);
       const src: string | null = t.team_logo_url;
       if (!id || !src) { skipped++; continue; }
+      if (jaTem.has(`${id}.png`)) { skipped++; continue; }
 
       try {
         const res = await fetch(src, { redirect: "follow" });
