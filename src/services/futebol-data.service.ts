@@ -174,10 +174,16 @@ export interface FutebolFixtureNumeros {
 }
 
 /**
- * Um jogo passado de um dos times, na competição e temporada do confronto (RPC 095).
- * É o que permite auditar a média: filtrada pelo mando certo, a média destas linhas
- * reproduz o mesmo número que a premissa usa (medido: Palmeiras em casa, 10 jogos,
- * 0,80 gol sofrido, igual ao ga_casa da 094).
+ * Um jogo passado de um dos times, em QUALQUER competição, antes do apito (RPC 117).
+ *
+ * É o que permite auditar o insumo: recortado pela janela e pelo mando de cada
+ * premissa, o que sai destas linhas reproduz o número que acendeu a premissa —
+ * medido contra o mart de produção em 120 pares.
+ *
+ * ⚠️ O texto anterior dizia "na competição e temporada do confronto", e era o
+ * recorte que a 095 fazia. A 117 o removeu porque ele nunca foi o do modelo: ele
+ * casava o gráfico com o perfil de temporada, que não é insumo de premissa
+ * nenhuma (#350).
  */
 export interface FutebolFixtureHistorico {
   side: 'home' | 'away';
@@ -186,6 +192,16 @@ export interface FutebolFixtureHistorico {
   past_fixture_id: number;
   data: string;
   ordem: number;
+  /**
+   * O jogo é da mesma competição e temporada do confronto analisado?
+   *
+   * A consulta devolve jogos de QUALQUER competição (#350); este booleano é o que
+   * permite a cada premissa recortar de novo, para as que ainda medem uma
+   * competição só. Vem como booleano, e não como o nome da competição, porque
+   * quem compara é a própria consulta — a tela teria de carregar o dado do
+   * confronto por três componentes só para refazer a mesma comparação.
+   */
+  mesma_competicao: boolean | null;
   em_casa: boolean;
   adversario: string;
   /** Para o escudo do adversário embaixo da barra. */
@@ -744,7 +760,22 @@ export const futebolDataService = {
     });
   },
 
-  /** Jogo a jogo dos dois times, para auditar a média de cada premissa. */
+  /**
+   * O jogo a jogo dos dois times, sem filtro de competição (#350).
+   *
+   * ⚠️ 40 por lado, e NÃO 10, embora a janela mais larga do modelo seja 10.
+   *
+   * O corte de 10 aqui parecia economia e era regressão: quem recorta a janela é
+   * o CRITÉRIO, no front, e as premissas dos outros mercados ainda recortam por
+   * COMPETIÇÃO — elas não declaram `competicoes`, e o padrão é o conservador, até
+   * a #361 render conserto. Elas filtram a competição do confronto DENTRO do que
+   * chega, então com 10 jogos misturados um gráfico que mostrava a temporada
+   * passava a mostrar quatro ou cinco partidas, calado.
+   *
+   * O teto vive na consulta e a janela vive na premissa. Baixar o teto ao tamanho
+   * da maior janela amarra os dois, e aí mudar quantos jogos se busca muda calado
+   * o que cada premissa afirma.
+   */
   async getFixtureHistorico(fixtureId: number, max = 40): Promise<FutebolFixtureHistorico[]> {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_fixture_historico', {

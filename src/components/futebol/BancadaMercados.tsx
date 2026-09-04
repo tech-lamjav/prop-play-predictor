@@ -31,12 +31,15 @@ import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
-import { valueDoCandidato, resumoDosMercados, mesmaLinha, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
 import { separarMotivosDoContrato } from '@/utils/futebol-motivos';
+import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
+import { acendeuNaSaida, rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
+import { useGuardaDeDivergencia } from '@/hooks/use-guarda-de-divergencia';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import { linhaDaSaida } from '@/utils/futebol-saida';
@@ -48,11 +51,20 @@ import type { JogoInfo } from './JogoResumo';
  * linhas (gols e handicap) ou as saídas (1X2, ambos marcam, dupla chance), os dois
  * lados comparados, o veredito em uma frase, e as premissas com peso em PALAVRA.
  *
- * As apagadas vêm em três grupos que nunca se misturam (a distinção é do
- * protótipo, e é a mais honesta que já tivemos aqui):
- *   · não aconteceu neste jogo        (peso > 0, só não bateu)
- *   · não conta neste mercado         (peso 0 — o preço já cobra)
- *   · não avaliada                    (mercado sem calibragem: BTTS e dupla chance)
+ * Os ESTADOS de uma premissa são cinco e nunca se misturam (#357, e o vocabulário
+ * mora em futebol-estado-da-premissa.ts):
+ *   · acesa                    o insumo cruzou o corte
+ *   · não atingiu o corte      tem insumo, foi avaliada, ficou aquém
+ *   · não se aplica            é do outro lado da saída, ou de outro mercado
+ *   · sem dado                 faltou insumo, o Motor não avaliou (vem do contador)
+ *   · sem número para conferir acendeu, e o front não tem o insumo para mostrar
+ *
+ * ⚠️ "Não aconteceu neste jogo" era o rótulo do segundo, e era falso: no clean
+ * sheets com 38%, os jogos sem sofrer gol ACONTECERAM — só ficaram abaixo do
+ * corte de 40%. Mesma família de erro do rótulo "Contra".
+ *
+ * Corta o peso por cima disso: peso 0 não é estado, é quanto ela vale. A premissa
+ * de peso zero aparece, com o selo "já na odd" dizendo por que não soma.
  *
  * Score/odd/chance/edge são REAIS (get_futebol_fixture_value) e só existem com
  * odds coletadas. Sem odds, a bancada vive das premissas e diz "sem preço ainda".
@@ -305,25 +317,18 @@ export function BancadaMercados({
   // Sem fallback de propósito: resumoDosMercados só deixa um mercado de fora quando
   // melhorCandidato dele já é nulo, então um "?? melhorCandidato(...)" aqui nunca
   // teria o que devolver, e ainda reabriria a porta das duas verdades.
-  const candidatoInicialDoMercado = useMemo(() => {
-    const resumo = resumos.find((r) => r.mercado.slug === mercado.slug) ?? null;
-    // Primeiro, a oportunidade de maior score (ou a que veio pelo link). Sem ela,
-    // uma candidata que já tem cotação é mais útil que uma linha só analisada.
-    if (resumo?.value) return resumo.candidato;
+  const candidatoInicialDoMercado = useMemo(
+    () => saidaQueAbreAFolha(resumos.find((r) => r.mercado.slug === mercado.slug)),
+    [resumos, mercado.slug],
+  );
 
-    const candidataCotada = [...doMercado]
-      .filter((c) => leituraDaCotacao(mercado.slug, c.outcome, c.line_value, valueRows, oddsRows).estado === 'cotada')
-      .sort(
-        (a, b) =>
-          contaQueValem(mercado.slug, b.acesas) - contaQueValem(mercado.slug, a.acesas) ||
-          (a.line_value ?? 0) - (b.line_value ?? 0) ||
-          a.outcome.localeCompare(b.outcome),
-      )[0];
-    return candidataCotada ?? resumo?.candidato ?? null;
-  }, [resumos, mercado.slug, doMercado, valueRows, oddsRows]);
-
-  // TODAS as linhas cotadas do mercado, em ordem. Com pills a tela mostrava as 5
-  // mais centrais e as outras 16 não existiam; na régua arrastável cabem todas.
+  // TODAS as linhas ANALISADAS do mercado, em ordem — não só as cotadas, que é o
+  // que este comentário dizia e o código nunca fez: a fonte é `doMercado`, que
+  // são as premissas. A distinção passou a importar na #346, onde a régua abre
+  // numa linha sem cotação de propósito.
+  //
+  // Com pills a tela mostrava as 5 mais centrais e as outras 16 não existiam; na
+  // régua arrastável cabem todas.
   const paradas = useMemo(() => {
     if (!ehLinha) return [] as number[];
     return [...new Set(doMercado.map((r) => r.line_value).filter((v): v is number => v != null))].sort((a, b) => a - b);
@@ -335,7 +340,14 @@ export function BancadaMercados({
   // separadas, e quando o preço chegava depois a régua ficava parada na linha que as
   // premissas tinham escolhido sozinhas.
   useEffect(() => {
-    setLinha(candidatoInicialDoMercado?.line_value != null && paradas.includes(candidatoInicialDoMercado.line_value) ? candidatoInicialDoMercado.line_value : paradas[Math.floor(paradas.length / 2)] ?? null);
+    const anunciada = candidatoInicialDoMercado?.line_value;
+    // `mesmaLinha`, e não `includes`: a linha é float e a comparação estrita
+    // falha por ruído de representação. Hoje a linha anunciada vem do mesmo
+    // array das paradas, então o `includes` acertava por sorte — no dia em que
+    // ela vier de outra fonte (a URL, por exemplo), a régua centralizaria em
+    // silêncio, que é o desvio que a #346 existe para tirar da frente.
+    const naRegua = anunciada != null && paradas.some((p) => mesmaLinha(p, anunciada));
+    setLinha(naRegua ? anunciada : paradas[Math.floor(paradas.length / 2)] ?? null);
     setSaida(candidatoInicialDoMercado?.outcome ?? null);
   }, [candidatoInicialDoMercado, paradas]);
 
@@ -354,12 +366,23 @@ export function BancadaMercados({
   // clicando no outro card: é assim que ele vê as premissas do outro lado, em vez de
   // uma lista de espelhos ("defesas frágeis" contra "defesas firmes") que se
   // contradiziam na mesma tela.
-  const nA = ladoA ? contaQueValem(mercado.slug, ladoA.acesas) : 0;
-  const nB = ladoB ? contaQueValem(mercado.slug, ladoB.acesas) : 0;
+  const nA = ladoA ? contaQueValem(ladoA) : 0;
+  const nB = ladoB ? contaQueValem(ladoB) : 0;
   const valA = ladoA ? valueDoCandidato(valueRows, ladoA) : null;
   const valB = ladoB ? valueDoCandidato(valueRows, ladoB) : null;
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
-  useEffect(() => setLadoSel(null), [mercado.slug, linha, saida]);
+  // A escolha do lado sobrevive ao arrasto da régua, e some ao trocar de mercado.
+  //
+  // Antes `linha` estava nesta lista, então cada parada zerava a escolha e o
+  // toggle voltava ao lado padrão — que muda de parada para parada, porque
+  // depende de qual lado tem preço e de qual tem mais premissas. Na prática:
+  // você escolhia "Mais" em 3,5, arrastava para 3,75, e a tela trocava para
+  // "Menos" sozinha. Quem arrasta a régua está perguntando "e nesta linha?", não
+  // "e se fosse o outro lado?".
+  //
+  // Continua zerando ao trocar de mercado ou de saída, onde 'a' e 'b' passam a
+  // significar outra coisa.
+  useEffect(() => setLadoSel(null), [mercado.slug, saida]);
   // Sub-abas da folha: a favor e contra, as duas jogo a jogo (é onde mora a auditoria).
   const [abaMotivo, setAbaMotivo] = useState<'favor' | 'contra'>('favor');
   // O lado que abre por padrão. Onde a linha tem preço é o lado que TEM preço, que é
@@ -398,11 +421,19 @@ export function BancadaMercados({
   // medem o mesmo número ao contrário ("defesas frágeis" × "defesas firmes"), então
   // listá-las aqui como "não aconteceu" fazia a tela se contradizer.
   const visiveis = principal
-    ? premissasDaSaida(mercado, principal, principal.acesas)
+    ? premissasDaSaida(mercado, principal)
     : mercado.premissas.filter((p) => !PREMISSAS_OCULTAS.has(p.slug));
-  const acesasSet = new Set(principal?.acesas ?? []);
-  const favor = visiveis.filter((p) => acesasSet.has(p.slug)).sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0));
-  const apagadas = visiveis.filter((p) => !acesasSet.has(p.slug)).sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0));
+  // O agrupamento sai do vocabulário dos cinco estados (#357), e não de um
+  // `acesasSet.has` solto: era assim que "não atingiu o corte" e "não se aplica a
+  // esta saída" viravam a mesma pilha de apagadas.
+  //
+  // `acendeuNaSaida` junta `acesa` e `sem número para conferir` de propósito: as
+  // duas acenderam, e o que difere é a tela ter o número — o que não muda de lista
+  // quem é. Quem separa esses dois é a regra de exibição logo abaixo.
+  const porPeso = (a: Premissa, b: Premissa) => (b.peso ?? 0) - (a.peso ?? 0);
+  const acendeu = (p: Premissa) => principal != null && acendeuNaSaida(p, principal);
+  const favor = visiveis.filter(acendeu).sort(porPeso);
+  const apagadas = visiveis.filter((p) => !acendeu(p)).sort(porPeso);
   const penAtivas = (principal?.penalidades ?? [])
     .filter((s) => !PREMISSAS_OCULTAS.has(s))
     .map((s) => premissaDe(mercado.slug, s))
@@ -412,48 +443,76 @@ export function BancadaMercados({
   const ctx = contextoDoMercado(favor.filter(pesoForte).length, semCalibragem);
 
   const ladoPrincipal = principal ? ladoDaSaida(mercado.slug, principal.outcome) : null;
-  const nPrincipal = principal ? contaQueValem(mercado.slug, principal.acesas) : 0;
+  const nPrincipal = principal ? contaQueValem(principal) : 0;
   const ate = numeros?.[0]?.ate ?? null;
 
-  // "Como chegam": as barras espelhadas casa × fora, agora dentro da coluna dos
-  // mercados. A barra da posição usa o valor do OUTRO lado, porque na tabela menor
-  // é melhor.
-  const barras = useMemo(() => {
-    const casa = numeros?.find((x) => x.side === 'home');
-    const fora = numeros?.find((x) => x.side === 'away');
-    if (!casa || !fora) return [];
-    const d1 = (v: number) => v.toFixed(1).replace('.', ',');
-    const linhas: { l: string; a: string; b: string; va: number; vb: number }[] = [];
-    if (casa.gf_total != null && fora.gf_total != null)
-      linhas.push({ l: 'Gols marcados', a: d1(casa.gf_total), b: d1(fora.gf_total), va: casa.gf_total, vb: fora.gf_total });
-    if (casa.ga_total != null && fora.ga_total != null)
-      linhas.push({ l: 'Gols sofridos', a: d1(casa.ga_total), b: d1(fora.ga_total), va: fora.ga_total, vb: casa.ga_total });
-    if (casa.posicao != null && fora.posicao != null)
-      linhas.push({ l: 'Posição', a: `${casa.posicao}º`, b: `${fora.posicao}º`, va: fora.posicao, vb: casa.posicao });
-    if (casa.clean_sheets != null && fora.clean_sheets != null)
-      linhas.push({ l: 'Sem sofrer gol', a: String(casa.clean_sheets), b: String(fora.clean_sheets), va: casa.clean_sheets, vb: fora.clean_sheets });
-    return linhas.map((x) => {
-      const tot = x.va + x.vb || 1;
-      return { ...x, wa: `${Math.round((x.va / tot) * 100)}%`, wb: `${Math.round((x.vb / tot) * 100)}%` };
-    });
-  }, [numeros]);
+  const chaveDosVisiveis = visiveis.map((p) => p.slug).join('|');
+
+  // A guarda de divergência (#353). Ela não desenha nada: emite evento quando a
+  // nossa derivação do critério discorda do booleano do mart. Fica aqui porque é
+  // aqui que existem, juntos, o lado da saída, a linha e o histórico.
+  //
+  // ⚠️ NÃO tratar a divergência escondendo o número na tela. Foi o que as guardas
+  // `desmenteAlta`/`desmenteBaixa` faziam, e um silenciador ao lado de um detector
+  // anula o detector.
+  useGuardaDeDivergencia({
+    mercado: mercado.slug,
+    acesas: principal?.acesas,
+    historico,
+    lado: ladoPrincipal,
+    linha,
+    // ⚠️ O memo sai da CHAVE, e não do array `visiveis`: ele é reconstruído a
+    // cada render, e memoizar sobre ele nunca segura — o memo de dentro do hook
+    // estouraria junto, e a varredura de divergência rodaria a cada render de uma
+    // tela que rerenderiza ao arrastar a régua. Derivar da string também é o que
+    // dispensa silenciar o `exhaustive-deps`: a dependência declarada é a única
+    // que o corpo lê.
+    slugs: useMemo(() => (chaveDosVisiveis ? chaveDosVisiveis.split('|') : []), [chaveDosVisiveis]),
+  });
 
   // O número da premissa: temporada (094) e, para o que ela não cobre, calculado dos
   // jogos do histórico (095) — é o que dá número às premissas de chance de gol.
   const evDe = (slug: string, acesa = true) =>
-    evidenciaDe(slug, numeros, ladoPrincipal, acesa, linha) ??
-    evidenciaDoHistorico(slug, historico, ladoPrincipal, linha);
+    evidenciaDaPremissa({
+      mercado: mercado.slug,
+      slug,
+      numeros,
+      historico,
+      lado: ladoPrincipal,
+      linha,
+      acesa,
+    });
 
-  // Só o que não aconteceu E conta para o Score. Premissa apagada de peso 0 sai da
-  // tela: ela não aconteceu e nem contaria, então nomeá-la só criava dúvida sobre
-  // ser verdade ou não.
-  const naoAconteceu = apagadas.filter((p) => p.peso == null || p.peso > 0);
 
-  // Premissa acesa que não soma no Score E não tem número também sai: era a linha
-  // "jogo de ritmo alto · não conta · sem número para conferir", que só levantava a
-  // pergunta "de onde veio isso?" sem ter resposta na tela. O critério mora nos
-  // modelos dbt, não aqui.
-  const favorVisivel = favor.filter((p) => p.peso !== 0 || evDe(p.slug) != null);
+  // A premissa aparece se ela CONTA para o Score, ou se, mesmo sem contar, existe
+  // número para o assinante conferir.
+  //
+  // A regra é UMA para os dois lados da tela (#351). Antes eram duas: a acesa de
+  // peso zero aparecia quando tinha número, e a apagada de peso zero sumia sempre.
+  // O efeito era o assinante ver três premissas embaixo de um Over que tem seis, e
+  // não ter como saber se as outras não existiam, não foram avaliadas ou não
+  // bateram. Peso zero não é premissa quebrada: é premissa que a recalibragem
+  // tirou da conta e que continua descrevendo o jogo — o selo "já na odd" é quem
+  // conta essa parte.
+  //
+  // O que segue de fora é a premissa que não conta E não tem número: hoje só a de
+  // ritmo, cujo insumo não existe em nada que o front alcance (#348). Acesa, ela
+  // está no estado SEM NÚMERO PARA CONFERIR; apagada, a linha seria "jogo de ritmo
+  // alto · não conta" sem nada embaixo. Nos dois casos ela levanta a pergunta "de
+  // onde veio isso?" sem ter resposta na tela, e por decisão de produto fica fora
+  // enquanto a #348 não servir o insumo.
+  //
+  // ⚠️ A regra olha o NÚMERO, e não o estado: `sem número para conferir` é
+  // definido só para premissa ACESA, e usá-lo aqui deixaria a de ritmo apagada
+  // aparecer. São perguntas diferentes — o estado é sobre o modelo, esta regra é
+  // sobre o que a tela consegue mostrar.
+  const temOQueMostrar = (p: Premissa, acesa: boolean) =>
+    p.peso == null || p.peso > 0 || evDe(p.slug, acesa) != null;
+
+  // `acesa: false` nas apagadas de propósito: numa premissa que não bateu o número
+  // nunca é suprimido, porque é ele que explica o porquê de não ter batido.
+  const naoAtingiuOCorte = apagadas.filter((p) => temOQueMostrar(p, false));
+  const favorVisivel = favor.filter((p) => temOQueMostrar(p, true));
 
   const motivosDoContrato = (itens: FutebolFixtureReasonContractRow['favor']) => {
     const separados = separarMotivosDoContrato(itens);
@@ -509,7 +568,7 @@ export function BancadaMercados({
     ? motivosDoContrato(contratoMotivos.contra)
     : requerContratoMotivos
       ? { premissas: [], extras: [] }
-      : { premissas: naoAconteceu, extras: contras };
+      : { premissas: naoAtingiuOCorte, extras: contras };
 
   // Zero motivo listado a favor. Alimenta o veredito, para ele não afirmar um
   // cenário que a aba ao lado não consegue mostrar.
@@ -536,7 +595,7 @@ export function BancadaMercados({
     if (cotacaoPrincipal.estado === 'cotada') {
       return `${lbl} tem cotação, mas ficou fora dos filtros de oportunidade.`;
     }
-    const n = principal ? contaQueValem(mercado.slug, principal.acesas) : 0;
+    const n = principal ? contaQueValem(principal) : 0;
     if (n >= PORTA_PREMISSAS) return `O jogo aponta para ${lbl}, mas falta o preço: as odds entram perto do jogo.`;
     return `O jogo não sustenta esta saída.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -607,7 +666,7 @@ export function BancadaMercados({
       const r = doMercado.find(
         (x) => x.outcome === principal.outcome && x.line_value != null && Math.abs(x.line_value - p) < 0.001,
       );
-      forcaPorLinha.set(p, r ? contaQueValem(mercado.slug, r.acesas) : 0);
+      forcaPorLinha.set(p, r ? contaQueValem(r) : 0);
     });
   }
 
@@ -616,7 +675,7 @@ export function BancadaMercados({
     ? []
     : doMercado.map((o) => {
         const val = valueDoCandidato(valueRows, o);
-        const n = contaQueValem(mercado.slug, o.acesas);
+        const n = contaQueValem(o);
         return {
           chave: o.outcome,
           rotulo: outcomeLabel(o, jogo.home, jogo.away),
@@ -836,7 +895,10 @@ export function BancadaMercados({
                   )}
                 </div>
               </div>
-              <div className="text-center pl-6 min-w-[128px]" style={{ borderLeft: '1px solid rgba(255,255,255,.15)' }}>
+              {/* A régua vertical só separa onde há duas colunas lado a lado. No
+                  celular o bloco desce para baixo do texto e a barra vira um risco
+                  solto na esquerda do número. */}
+              <div className="text-center sm:pl-6 min-w-[128px] sm:border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                 <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
                   {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
                 </div>
@@ -931,15 +993,35 @@ export function BancadaMercados({
                 ))}
               </div>
             )}
-            {/* Na régua o botão desce para uma fileira só dele (`basis-full`). Ele só
-                existe na parada que tem preço, e dividindo a fileira com a trilha,
-                entrar nessa parada encolhia a trilha e sair dela esticava de volta:
-                no meio do arrasto a parada debaixo do cursor mudava sozinha. Embaixo
-                ele pode aparecer e sumir à vontade, porque a largura da trilha não
-                depende dele. Reservar a altura custaria uma faixa vazia nas outras
-                17 paradas, que é pior do que a fileira entrar e sair.
-                Sem régua (1X2, ambos marcam, dupla chance) não há o que proteger. */}
-            {ehLinha && paradas.length > 1 ? cta && <div className="basis-full mt-1">{cta}</div> : cta}
+            {/* O botão fica na FILEIRA DA RÉGUA, num espaço reservado, e não numa
+                fileira só dele.
+                
+                Ele só existe na parada que tem preço, e por isso já morou embaixo:
+                dividindo a fileira com a trilha, entrar nessa parada encolhia a
+                trilha e sair dela esticava de volta — no meio do arrasto a parada
+                debaixo do cursor mudava sozinha. Só que embaixo ele fazia o bloco
+                verde crescer e encolher a cada parada, que é a mesma instabilidade
+                no outro eixo, e essa o assinante vê a tela inteira mexer.
+                
+                O espaço reservado resolve os dois: a coluna existe SEMPRE, com ou
+                sem botão. A trilha perde alguns pixels de largura em todas as
+                paradas — de uma vez, não a cada arrasto — e nem a régua nem a altura
+                do hero se mexem. É o mesmo lugar que o botão ocupa nos mercados sem
+                régua, então as duas telas passam a tê-lo no mesmo canto.
+                
+                No CELULAR a regra é outra, e vale para os dois casos: o botão ocupa
+                uma fileira só dele (`w-full`), alinhado à esquerda. Dividindo a
+                fileira com as saídas, ele encavalava os chips — dupla chance, com
+                dois chips longos, sobrepunha o segundo — e a cada mercado nascia num
+                canto diferente. Numa fileira própria ele nasce sempre no mesmo
+                lugar, que é o que a régua já faz com a linha. */}
+            <div
+              className={`w-full sm:w-auto sm:shrink-0 sm:ml-auto flex justify-start sm:justify-end ${
+                ehLinha && paradas.length > 1 ? 'sm:min-w-[168px]' : ''
+              }`}
+            >
+              {cta}
+            </div>
           </div>
         </div>
 
@@ -958,12 +1040,18 @@ export function BancadaMercados({
           </div>
         )}
 
-        {/* Sub-abas em forma de pasta: A favor · Contra. */}
-        <div data-tour="fut-jogo-premissas" className="px-6 md:px-8 pt-4 flex items-center gap-2" style={{ borderBottom: '1px solid #f1e9d6' }}>
+        {/* Sub-abas em forma de pasta.
+            A segunda se chamava "Contra", e o rótulo AFIRMAVA oposição: quem lia
+            "1 contra" entendia que existia evidência empurrando para o outro lado.
+            Não existe. O que o backend agrupa ali são premissas DO PRÓPRIO LADO
+            que não atingiram o corte — num Under 3,5 vieram quatro em favor e uma
+            em contra, e o Under tem exatamente cinco premissas (#351). O nome
+            passa a ser o do glossário; o contrato do backend não muda. */}
+        <div data-tour="fut-jogo-premissas" className="px-6 md:px-8 pt-4 flex items-center gap-2 flex-wrap" style={{ borderBottom: '1px solid #f1e9d6' }}>
           {(
             [
               ['favor', 'A favor', contratoMotivosIndisponivel ? null : motivosFavor.premissas.length + motivosFavor.extras.length],
-              ['contra', 'Contra', contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
+              ['contra', rotuloEmTitulo('nao_atingiu_o_corte'), contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
             ] as const
           ).map(([k, rot, n]) => {
             const on = abaMotivo === k;
@@ -1008,6 +1096,7 @@ export function BancadaMercados({
           </div>
         ) : abaMotivo === 'favor' ? (
           <MotivosJogoPorJogo
+            mercado={mercado.slug}
             premissas={motivosFavor.premissas}
             modo="favor"
             extras={motivosFavor.extras}
@@ -1019,6 +1108,7 @@ export function BancadaMercados({
           />
         ) : (
           <MotivosJogoPorJogo
+            mercado={mercado.slug}
             premissas={motivosContra.premissas}
             modo="contra"
             extras={motivosContra.extras}
@@ -1092,32 +1182,11 @@ export function BancadaMercados({
           dos mercados; no celular vem DEPOIS da folha, senão "como chegam"
           empurrava a análise duas telas para baixo. */}
       <div className="min-w-0 xl:col-start-1 xl:row-start-2 xl:border-r" style={{ borderColor: '#ded2b6', background: '#fdfbf6' }}>
-          {barras.length > 0 && (
-            <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>
-              <div className="text-[10px] uppercase tracking-[0.16em] font-bold mb-3" style={{ color: '#8d8672' }}>
-                Como chegam
-              </div>
-              <div className="flex flex-col gap-3.5">
-                {barras.map((x) => (
-                  <div key={x.l}>
-                    <div className="flex justify-between items-baseline mb-1.5 tabular-nums">
-                      <span className="text-[13px] font-semibold" style={{ color: '#0a3d2e' }}>{x.a}</span>
-                      <span className="text-[10.5px] font-medium" style={{ color: '#8d8672' }}>{x.l}</span>
-                      <span className="text-[13px] font-semibold" style={{ color: '#6b6350' }}>{x.b}</span>
-                    </div>
-                    <div className="flex gap-[3px] h-1.5">
-                      <div className="flex-1 flex justify-end overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '999px 0 0 999px' }}>
-                        <div style={{ width: x.wa, background: '#0a3d2e' }} />
-                      </div>
-                      <div className="flex-1 overflow-hidden" style={{ background: '#f1e9d6', borderRadius: '0 999px 999px 0' }}>
-                        <div style={{ width: x.wb, height: '100%', background: '#c4bda8' }} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* "Como chegam" SAIU daqui (04/09). O mesmo confronto já é comparado na
+              aba Times, com mais espaço e mais linhas, e repetir três barras na
+              lateral da leitura só empurrava a análise para baixo. Onde ele
+              continua fazendo falta é no painel da agenda, que não tem a aba
+              Times ao lado — lá ele ficou. */}
 
           {dist && (
             <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>

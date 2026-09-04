@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
+import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
 import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD, TEXTO_VALOR } from '@/utils/futebol-ajuda-copy';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel, ALL_COMPETITIONS } from '@/utils/futebol-competitions';
+import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, versaoDaJanela,
@@ -25,9 +26,10 @@ import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futeb
 // Aritmética de fuso vem de um lugar só. As cópias locais que existiam aqui
 // eram idênticas às de futebol-datas.ts, e duas cópias da mesma conta de fuso é
 // como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
-import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished } from '@/utils/futebol-datas';
+import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
@@ -90,7 +92,7 @@ function HeroStat({ label, value, dark, locked, ajuda }: { label: string; value:
 
 // ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
-function TopValueHero({ o, onClick, favor, contra, textoScore, locked, carregandoMotivos = false }: { o: FutebolValueBoardRow; onClick: () => void; favor: Motivo[]; contra: Motivo[]; textoScore: string; locked?: boolean; carregandoMotivos?: boolean }) {
+function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMotivos = false }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; locked?: boolean; carregandoMotivos?: boolean }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
@@ -125,10 +127,10 @@ function TopValueHero({ o, onClick, favor, contra, textoScore, locked, carregand
             </span>
             <span className="opacity-70"><span className="hidden sm:inline">· </span>{fmtDayTime(o.kickoff_utc)}</span>
           </div>
-          <button onClick={onClick} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
+          <Link to={to} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
             Abrir análise do jogo <ArrowRight className="w-4 h-4" />
-          </button>
+          </Link>
         </div>
 
         {/* Meio — o que sustenta e o que pesa contra.
@@ -154,11 +156,24 @@ function TopValueHero({ o, onClick, favor, contra, textoScore, locked, carregand
 
           {estado === 'motivos' && contra.length > 0 && (
             <div>
-              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Contra</div>
+              {/* "Não atingiu o corte", e não "Contra" (#351): o que o backend agrupa
+                  ali são premissas DO PRÓPRIO LADO da saída que ficaram aquém —
+                  num Under 3,5 vieram quatro em favor e uma em contra, e o Under
+                  tem exatamente cinco. O rótulo antigo afirmava um sinal
+                  apontando para o outro lado, e ele não existe. */}
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>
+                {rotuloEmTitulo('nao_atingiu_o_corte')}
+              </div>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {contra.map((m) => (
                   <li key={m.slug} className={`flex items-start gap-2 text-[14px] leading-snug ${d ? 'text-white/70' : 'text-ink-2'}`}>
-                    <AlertTriangle className={`w-4 h-4 mt-0.5 shrink-0 ${d ? '' : 'text-amber-2'}`} style={d ? { color: '#fde68a' } : undefined} />
+                    {/* Círculo vazio, e não o triângulo de alerta: a premissa foi
+                        avaliada e ficou aquém, o que é ausência de sinal — não é
+                        risco. O triângulo lia como "cuidado com esta aposta". */}
+                    <span
+                      className="block w-3 h-3 mt-1 shrink-0 rounded-full border-[1.5px]"
+                      style={{ borderColor: d ? 'rgba(255,255,255,.35)' : '#c0b79f' }}
+                    />
                     <span><Blur active={!!locked}>{m.texto}</Blur></span>
                   </li>
                 ))}
@@ -223,11 +238,11 @@ function TopValueHero({ o, onClick, favor, contra, textoScore, locked, carregand
 }
 
 // ── Card de oportunidade ───────────────────────────────────
-function OppCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () => void; locked?: boolean }) {
+function OppCard({ o, to, locked }: { o: FutebolValueBoardRow; to: string; locked?: boolean }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   return (
-    <button onClick={onClick} className={`${CARD} p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
+    <Link to={to} className={`${CARD} block p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-1.5">
           <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
@@ -259,15 +274,15 @@ function OppCard({ o, onClick, locked }: { o: FutebolValueBoardRow; onClick: () 
           <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5"><Blur active={!!locked}>{fmtEdgeScore(o.edge)}</Blur></div>
         </div>
       </div>
-    </button>
+    </Link>
   );
 }
 
 // ── Linha de jogo (rail) ───────────────────────────────────
-function GameRailRow({ f, best, onClick }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; onClick: () => void }) {
+function GameRailRow({ f, best, to }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string }) {
   const finished = isFinished(f.status_short);
   return (
-    <button onClick={onClick} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
+    <Link to={to} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
       <span className={`w-10 text-[11px] font-semibold tabular-nums shrink-0 ${finished ? 'text-ink-3 uppercase tracking-wide' : 'text-ink-2'}`}>{finished ? 'fim' : fmtTime(f.kickoff_utc)}</span>
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <Crest teamId={f.home_team_id} name={f.home_team_name} size={20} />
@@ -283,27 +298,39 @@ function GameRailRow({ f, best, onClick }: { f: FutebolFixture & { competition?:
       {best ? (
         <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums ${faixaBadgeCls(best.faixa)}`} title="Score de Confiabilidade">{best.score}</span>
       ) : null}
-    </button>
+    </Link>
   );
 }
 
 export default function FutebolHoje() {
-  const navigate = useNavigate();
-  // Todas as ligas do mart (data-driven), não mais um allowlist de 3. Aqui a
-  // temporada segue única de propósito: esta tela só olha o dia corrente, então
-  // não tem a virada de temporada que o histórico de Oportunidades enfrenta.
+  // UM instante para a tela inteira, e ele anda: o seletor de dias, o corte de
+  // "já começou" e a janela do calendário têm que concordar sobre que horas são.
+  const agora = useNow();
+  const todayStr = brtDateStr(new Date(agora));
+  const { data: catalog } = useFutebolCompetitions();
+  // As ligas saem do catálogo do mart, não de uma lista escrita à mão (#323).
+  // Pedir o calendário pela lista fixa deixava pick publicado em liga de fora
+  // sem fixture — e sem fixture não há horário, placar nem liquidação: a linha
+  // aparecia na tela e era incapaz de fechar. Medido em produção em 02/09/2026:
+  // 5 dos 23 picks dos últimos 90 dias estavam em ligas de fora.
+  //
+  // A temporada também sai da janela em vez de cravada. O comentário que estava
+  // aqui defendia cravar 2026 alegando que esta tela só olha o dia corrente —
+  // ela olha até DAY_WINDOW dias à frente, e manter a mesma regra dos dois lados
+  // custa menos que uma exceção que precisa ser defendida a cada leitura.
+  const janelaDeFixtures = useMemo(
+    () => ({ from: todayStr, to: addDays(todayStr, DAY_WINDOW) }),
+    [todayStr],
+  );
   const fixtureScopes = useMemo(
-    () => ALL_COMPETITIONS.map((competition) => ({ competition, season: 2026 })),
-    [],
+    () => fixtureScopesFor(catalog, janelaDeFixtures, Number(todayStr.slice(0, 4))),
+    [catalog, janelaDeFixtures, todayStr],
   );
   const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
   const { ocultos, isLoading: lVitrine } = useVitrine();
-  // UM instante para a tela inteira, e ele anda: o seletor de dias e o corte de
-  // "já começou" têm que concordar sobre que horas são.
-  const agora = useNow();
   // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
   // conteúdo renderiza borrado, desborrando quando a resposta volta. Para quem
   // paga, isso é o mesmo defeito do card de motivos, num lugar diferente.
@@ -318,7 +345,6 @@ export default function FutebolHoje() {
   // ele mesmo inventou, que era o defeito.
   const locked = isDemo ? false : !access?.unlocked;
 
-  const todayStr = brtDateStr(new Date(agora));
   const [day, setDay] = useState<string | null>(null);
 
   // dias (BRT) com jogos ainda não começados — base da navegação por dias.
@@ -561,7 +587,7 @@ export default function FutebolHoje() {
         {loading ? (
           <Skeleton className="h-64 w-full bg-canvas-2 rounded-2xl" />
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} onClick={() => navigate(`/futebol/jogo/${heroOpp.fixture_id}`)} locked={locked} />
+          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} to={hrefDaSaida(heroOpp.fixture_id, heroOpp)} locked={locked} />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
@@ -583,15 +609,15 @@ export default function FutebolHoje() {
                 <div className={LABEL}>Mais oportunidades</div>
                 <div className="text-lg font-bold tracking-tight text-ink mt-0.5">Por confiabilidade</div>
               </div>
-              <button onClick={() => navigate('/futebol/oportunidades')} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
+              <Link to="/futebol/oportunidades" className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
                 Ver todas <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </Link>
             </div>
             {loading ? (
               <div className="grid sm:grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
             ) : moreOpps.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
-                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} onClick={() => navigate(`/futebol/jogo/${o.fixture_id}`)} locked={locked} />)}
+                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} />)}
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>
@@ -604,16 +630,16 @@ export default function FutebolHoje() {
                 <div className={LABEL}>{isToday ? 'Jogos de hoje' : 'Jogos do dia'}</div>
                 <div className="text-lg font-bold tracking-tight text-ink mt-0.5">{gameList.length} partida{gameList.length === 1 ? '' : 's'}</div>
               </div>
-              <button onClick={() => navigate('/futebol/jogos')} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
+              <Link to="/futebol/jogos" className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
                 Ver todos <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </Link>
             </div>
             {loading ? (
               <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
             ) : gameList.length > 0 ? (
               <div className={`${CARD} overflow-hidden`}>
                 {gameList.map((f) => (
-                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} onClick={() => navigate(`/futebol/jogo/${f.fixture_id}`)} />
+                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))} />
                 ))}
               </div>
             ) : (

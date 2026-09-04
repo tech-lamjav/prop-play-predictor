@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, CalendarOff, ChevronDown } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FixtureRow } from '@/components/futebol/FixtureRow';
 import { AgendaDateStrip } from '@/components/futebol/AgendaDateStrip';
 import { JogoResumoPanel } from '@/components/futebol/JogoResumoPanel';
-import { useFutebolFixturesByDay, useFutebolFixtureDays, useFutebolValueBoard } from '@/hooks/use-futebol-data';
+import {
+  useFutebolFixturesByDay,
+  useFutebolFixtureDays,
+  useFutebolValueBoard,
+  useFutebolValueHistory,
+  useFutebolAccess,
+  useVitrine,
+} from '@/hooks/use-futebol-data';
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
+import { mergeBoardAndHistory } from '@/utils/futebol-history';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -73,7 +82,6 @@ function monthRange(dayKey: string): { from: string; to: string } {
 const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function FutebolJogos() {
-  const navigate = useNavigate();
   const hasPanel = useHasPanel();
   const [params, setParams] = useSearchParams();
 
@@ -88,12 +96,32 @@ export default function FutebolJogos() {
   // consegue listar o confronto antes de saber se ele tem leitura, e é isso que
   // ela deve fazer. O que ela não pode é contar "0 com leitura" nem escrever
   // "sem leitura ainda" enquanto a resposta não chegou — isso é conclusão.
-  const { data: board, isLoading: boardCarregando } = useFutebolValueBoard();
+  const { data: boardCorrente, isLoading: boardCarregando } = useFutebolValueBoard();
+  const { data: histRows, isLoading: histCarregando } = useFutebolValueHistory();
+  const { ocultos } = useVitrine();
+  const { data: access } = useFutebolAccess();
+
+  // A agenda lia SÓ o board, e o board some no apito (migration 102). Resultado:
+  // o jogo que começou virava "sem leitura ainda, odds entram perto do jogo" —
+  // com o painel ao lado exibindo a leitura daquele mesmo jogo, e a tela de
+  // Oportunidades listando as oportunidades dele. Uma tela desmentia a outra.
+  //
+  // A correção é ler o que Oportunidades já lia: board para o que ainda não
+  // apitou, foto do apito para o que já passou. A mesma função, para as duas
+  // telas contarem a mesma história do mesmo dia.
+  const board = useMemo(
+    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], Date.now(), ocultos),
+    [boardCorrente, histRows, ocultos],
+  );
 
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
   const isDemo = jogosTour.run;
   // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
-  const leituraCarregando = isDemo ? false : boardCarregando;
+  // As DUAS fontes contam: desde que a agenda passou a somar a foto do apito, o
+  // board sozinho responde antes e a tela concluía "sem leitura ainda" para o
+  // jogo encerrado — a conclusão prematura que o esqueleto existe para evitar —,
+  // trocando por pick meio segundo depois. Mesma regra da home (FutebolHoje).
+  const leituraCarregando = isDemo ? false : boardCarregando || histCarregando;
 
   const effFixtures = useMemo<FutebolFixtureByDay[]>(
     () => (isDemo ? makeDemoAgenda(dia) : (fixtures ?? [])),
@@ -175,11 +203,15 @@ export default function FutebolJogos() {
     setParams({ dia: d }, { replace: true });
   };
 
-  const openJogo = (f: FutebolFixtureByDay) => {
-    if (!hasPanel) {
-      navigate(`/futebol/jogo/${f.fixture_id}`);
-      return;
-    }
+  /**
+   * O que o clique SIMPLES faz na linha: abrir o painel.
+   *
+   * Só existe quando há painel. Em tela estreita não há, e aí não interceptamos
+   * nada — o `<Link>` da linha navega sozinho para a tela do jogo, que é o mesmo
+   * destino do clique do meio. A versão anterior cancelava o link para chamar
+   * `navigate` na mesma URL do `href`, o que funcionava e não servia para nada.
+   */
+  const abrirPainel = (f: FutebolFixtureByDay) => {
     // push: o voltar do navegador fecha o painel, que é o que o usuário espera.
     setParams({ dia, jogo: String(f.fixture_id) });
   };
@@ -333,7 +365,11 @@ export default function FutebolJogos() {
                               best={bestByFixture.get(f.fixture_id) ?? null}
                               leituraCarregando={leituraCarregando}
                               selected={f.fixture_id === jogoParam}
-                              onClick={() => openJogo(f)}
+                              // A linha mostra o pick; o link leva a ELE, e não
+                              // ao desempate padrão da tela do jogo (#344).
+                              to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
+                              onClick={hasPanel ? () => abrirPainel(f) : undefined}
+                              locked={isDemo ? false : !access?.unlocked}
                             />
                           ))}
                       </div>

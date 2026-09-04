@@ -1,7 +1,10 @@
 import { Crest } from './Crest';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
+import { interceptarCliqueSimples } from '@/utils/navegacao-por-link';
 import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
+import { Blur } from '@/components/futebol/FutebolGate';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -29,7 +32,9 @@ export function FixtureRow({
   best,
   leituraCarregando,
   selected = false,
+  to,
   onClick,
+  locked = false,
 }: {
   fixture: FutebolFixture;
   best: FutebolValueBoardRow | null;
@@ -45,7 +50,33 @@ export function FixtureRow({
    */
   leituraCarregando: boolean;
   selected?: boolean;
-  onClick: () => void;
+  /**
+   * Para onde o NAVEGADOR leva: a tela do jogo.
+   *
+   * O clique simples não chega lá — ele é interceptado e abre o painel lateral.
+   * Mas o clique do meio, o Ctrl+clique e o «abrir em nova aba» do botão direito
+   * escapam do intercepto e usam este destino. É o comportamento pedido na #341:
+   * na aba nova o usuário quer o jogo inteiro, não a lista com o painel aberto.
+   */
+  to: string;
+  /**
+   * O que o clique SIMPLES faz, quando não é ir para `to`.
+   *
+   * Opcional de propósito. Sem ele, o `<Link>` navega sozinho e o clique simples
+   * leva ao mesmo lugar que o clique do meio — que é o caso da maioria das
+   * telas. Passá-lo apontando para o próprio `to` seria cancelar o link para
+   * refazer à mão o que ele já faria.
+   */
+  onClick?: () => void;
+  /**
+   * Sem acesso à camada de valor (nem assinatura, nem teste grátis vivo).
+   *
+   * Opcional e falso por padrão porque nem toda tela que desenha a linha tem o
+   * acesso em mãos — mas onde ela mostra pick, odd e chance, tem de ter. Esta
+   * linha era o furo: a agenda entregava de graça exatamente os três números
+   * que a lista de Oportunidades borra.
+   */
+  locked?: boolean;
 }) {
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
@@ -66,6 +97,9 @@ export function FixtureRow({
 
   const alto = ehFaixaAlta(best?.faixa);
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;
+  // Jogo já encerrado não borra: o passado é registro do que foi publicado, não
+  // pick para apostar. Mesma exceção da lista de Oportunidades.
+  const borra = !!locked && !fim;
 
   // Jogo encerrado não precisa mais do Score, que é uma previsão: o que importa
   // ali é se a leitura bateu. O selo vira ✓ ou ✕ pelo placar.
@@ -74,8 +108,9 @@ export function FixtureRow({
   const bateu = liquidacao != null ? isHit(liquidacao) : null;
 
   return (
-    <button
-      onClick={onClick}
+    <Link
+      to={to}
+      onClick={onClick && interceptarCliqueSimples(onClick)}
       aria-current={selected ? 'true' : undefined}
       className="w-full text-left px-3 sm:px-4 py-2.5 flex items-center gap-2.5 sm:gap-3.5 transition"
       style={{
@@ -130,11 +165,15 @@ export function FixtureRow({
         {best ? (
           <>
             <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink truncate">
-              {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
+              <Blur active={borra} strength={5}>
+                {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
+              </Blur>
             </span>
             <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
-              odd {best.best_odd.toFixed(2)}
-              {chance != null ? <span className="hidden sm:inline">{` · ${chance}% chance`}</span> : null}
+              <Blur active={borra} strength={5}>
+                odd {best.best_odd.toFixed(2)}
+                {chance != null ? <span className="hidden sm:inline">{` · ${chance}% chance`}</span> : null}
+              </Blur>
             </span>
           </>
         ) : (
@@ -178,6 +217,6 @@ export function FixtureRow({
         {!best ? '—' : bateu != null ? (bateu ? '✓' : '✕') : best.score}
       </div>
       )}
-    </button>
+    </Link>
   );
 }

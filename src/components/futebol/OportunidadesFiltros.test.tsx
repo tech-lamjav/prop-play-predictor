@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OportunidadesFiltros, type MarketFilter } from './OportunidadesFiltros';
+import type { FiltroDeValor } from '@/utils/futebol-score';
 
 const props = {
   mercado: 'all' as MarketFilter,
@@ -11,6 +12,8 @@ const props = {
   competicoesSelecionadas: null,
   onCompeticoesChange: vi.fn(),
   competicaoOptions: [{ value: 'brasileirao', label: 'Brasileirão' }],
+  valor: 'todos' as FiltroDeValor,
+  onValorChange: vi.fn(),
 };
 
 describe('OportunidadesFiltros', () => {
@@ -22,6 +25,17 @@ describe('OportunidadesFiltros', () => {
     expect(screen.getByRole('button', { name: 'Só jogos em aberto' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /Faixa Alta e Média/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Competição Todas/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Valor Todos/i })).toBeInTheDocument();
+  });
+
+  // O filtro de valor é seleção ÚNICA: clicar numa opção troca, não acumula.
+  it('troca a faixa de valor por seleção única', async () => {
+    const onValorChange = vi.fn();
+    render(<OportunidadesFiltros {...props} soEmAberto onSoEmAbertoChange={vi.fn()} onValorChange={onValorChange} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Valor Todos/i }));
+    await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Acima do justo' }));
+    expect(onValorChange).toHaveBeenCalledWith('positivo');
   });
 
   it('permite desligar só os jogos em aberto sem alterar os demais filtros', async () => {

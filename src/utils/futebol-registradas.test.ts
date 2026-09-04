@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { oportunidadesDoDia, oppFromAlerted, oppKey, type OppLike } from './futebol-registradas';
+import { settleFutebol } from './futebol-settlement';
 import type { FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
 
 function registrada(over: Partial<FutebolAlertedPick> = {}): FutebolAlertedPick {
@@ -143,5 +144,102 @@ describe('oportunidadesDoDia', () => {
   it('a chave ignora campos que não identificam a aposta', () => {
     expect(oppKey(1, 'over_under', 'Over', 2.5)).toBe(oppKey(1, 'over_under', 'Over', 2.5));
     expect(oppKey(1, 'over_under', 'Over', 2.5)).not.toBe(oppKey(1, 'over_under', 'Over', 3.5));
+  });
+});
+
+// ============================================================================
+// Pick em liga fora da antiga lista fixa (issue #323)
+// ============================================================================
+// O caso relatado: 29/08/2026, seis oportunidades na tela e três sem horário,
+// sem placar e sem resultado — Strasbourg × Lens e Arouca × Marítimo, de Ligue 1
+// e Primeira Liga. Os fixtures existiam no banco; o que faltava era a tela
+// PEDIR o calendário dessas ligas, porque o escopo vinha de uma lista fixa de
+// oito slugs.
+//
+// Este teste fixa o efeito: com o fixture no mapa, a linha registrada nasce
+// liquidável; sem ele, nasce cega. É o que separa "2 de 3 deram green" de
+// "2 de 6", e por isso o escopo tem de vir do catálogo do mart.
+// ============================================================================
+
+describe('oportunidade registrada em liga fora da lista fixa', () => {
+  const strasbourg = registrada({
+    fixture_id: 1552745,
+    league: 'ligue_1',
+    match_description: 'Strasbourg × Lens',
+    outcome: 'Home',
+  });
+
+  const fixtureDoStrasbourg: FutebolFixture = {
+    fixture_id: 1552745,
+    home_team_id: 95,
+    away_team_id: 116,
+    home_team_name: 'Strasbourg',
+    away_team_name: 'Lens',
+    kickoff_utc: '2026-08-29T15:15:00Z',
+    status_short: 'FT',
+    goals_home: 2,
+    goals_away: 1,
+  } as FutebolFixture;
+
+  it('com o calendário da liga carregado, a linha tem horário e placar', () => {
+    const linha = oppFromAlerted(strasbourg, fixtureDoStrasbourg);
+
+    expect(linha.kickoff_utc).toBe('2026-08-29T15:15:00Z');
+    expect(linha.status_short).toBe('FT');
+    expect(linha.home_team_name).toBe('Strasbourg');
+    expect(linha.away_team_name).toBe('Lens');
+    expect(linha.home_team_id).toBe(95);
+  });
+
+  it('sem o calendário da liga, a linha aparece mas é incapaz de liquidar', () => {
+    // O defeito, fixado: ela NÃO some da lista — some do resultado. Sem
+    // `status_short` finalizado e sem placar, nada a liquida, e o resumo do dia
+    // encolhia o denominador em silêncio. Ver `resumoDoDia`.
+    const linha = oppFromAlerted(strasbourg, undefined);
+
+    expect(linha.kickoff_utc).toBeNull();
+    expect(linha.status_short).toBeNull();
+    // O nome sai da descrição do pick, então a linha ainda se identifica —
+    // é por isso que ela aparece na tela em vez de sumir.
+    expect(linha.home_team_name).toBe('Strasbourg');
+    expect(linha.home_team_id).toBe(0);
+  });
+
+  it('a linha registrada entra no dia mesmo em liga que o board não trouxe', () => {
+    const doDia = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [strasbourg],
+      dia: '2026-08-29',
+      fixturePorId: new Map([[1552745, fixtureDoStrasbourg]]),
+    });
+
+    expect(doDia).toHaveLength(1);
+    expect(doDia[0].competition).toBe('ligue_1');
+    expect(doDia[0].status_short).toBe('FT');
+  });
+
+  it('com o calendário carregado, a linha LIQUIDA de verdade', () => {
+    // O aceite da issue pede horário, placar E liquidação. As asserções acima
+    // param no horário; esta fecha o ciclo, porque é a liquidação que o
+    // histórico de 29/08 não conseguiu fazer nas três linhas órfãs.
+    const linha = oppFromAlerted(strasbourg, fixtureDoStrasbourg);
+    const resultado = settleFutebol(
+      linha,
+      fixtureDoStrasbourg.goals_home!,
+      fixtureDoStrasbourg.goals_away!,
+    );
+
+    // Strasbourg 2 × 1 Lens, pick no mandante: green.
+    expect(resultado).toBe('won');
+  });
+
+  it('sem o calendário, não há placar para liquidar', () => {
+    const linha = oppFromAlerted(strasbourg, undefined);
+
+    // Este é o defeito inteiro em uma linha: o placar vem do fixture, e sem
+    // fixture não existe par de gols para passar ao liquidador. A linha fica
+    // na tela sem nunca fechar, e o resumo do dia a omitia da conta.
+    expect(linha.status_short).toBeNull();
+    expect(fixtureDoStrasbourg.goals_home).toBe(2); // o placar EXISTIA no banco
   });
 });

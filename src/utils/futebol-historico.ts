@@ -9,12 +9,69 @@ import { n1 } from '@/utils/futebol-evidencias';
 // goleada isolada puxando tudo. O gráfico jogo a jogo, com a linha da média e o
 // filtro de mando declarado, deixa o usuário conferir em vez de acreditar.
 //
-// Regra que sustenta a auditoria: o recorte aqui é o MESMO da média (competição,
-// temporada e mando). Medido no dev: Palmeiras em casa, 10 jogos, 0,80 gol sofrido,
-// idêntico ao ga_casa da 094. Se o recorte fosse outro, o gráfico desmentiria o
-// número que ele deveria explicar.
+// Regra que sustenta a auditoria: o recorte aqui é o MESMO que o modelo usa para
+// acender a premissa — a JANELA DA PREMISSA, os últimos jogos do time em qualquer
+// competição. Se o recorte fosse outro, o gráfico desmentiria o número que ele
+// deveria explicar.
+//
+// ⚠️ Essa regra já esteve ancorada no lugar errado (#350). Ela dizia "o recorte é o
+// mesmo da média (competição, temporada e mando)", casando o gráfico com o perfil
+// de temporada — que nunca foi insumo de premissa nenhuma. O gráfico ficava
+// coerente com um número que não era o que decidia, e daí saía o "Flamengo em
+// casa, 11 jogos" embaixo de um critério que soma dez jogos.
+//
+// ⚠️ E o conserto passou do ponto: ele tirou o recorte de mando das DEZ premissas
+// de gols, quando o modelo o mantém em três delas. `int_futebol_premissas_ou`, na
+// CTE `metrics`:
+//
+//     -- ataque combinado (mandante em casa + visitante fora) e defesas vazáveis
+//     h.goals_for_avg_home     + a.goals_for_avg_away      AS gf_comb,
+//     h.goals_against_avg_home + a.goals_against_avg_away  AS ga_comb,
+//
+// `ataque_combinado`, `defesas_firmes` e `defesas_vazaveis` medem o mandante EM
+// CASA e o visitante FORA. As outras sete não: percentual e contagem saem dos
+// totais (`clean_sheet_total / played_total`, `last5_totals`), e o xG sai do spine
+// sem recorte nenhum. Cada premissa declara o seu, e o padrão não serve para
+// nenhuma delas — é por isso que os dez `mando` abaixo estão escritos um a um.
+//
+// A ORDEM das duas coisas também é do modelo: a janela é de JOGOS, e o mando
+// recorta DENTRO dela. O `pit` sob `ultimos_10` pega as dez partidas mais recentes
+// e só então conta as de casa. Filtrar mando primeiro daria "os dez últimos jogos
+// EM CASA", que pode atravessar meia temporada a mais.
 
-export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado';
+/**
+ * A janela das premissas do mercado de gols: os últimos 10 jogos do time, em
+ * qualquer competição.
+ *
+ * Mora numa constante porque o gráfico e o número precisam usar a MESMA. Foi
+ * exatamente divergirem que produziu a #350 — e, dentro dela, o segundo defeito:
+ * o gráfico mudou de janela e o número do xG ficou para trás, então card e barras
+ * mostravam médias diferentes da mesma coisa, lado a lado.
+ */
+const JANELA_DE_GOLS = 10;
+const ULTIMOS_DE_GOLS = <T>(rows: T[]): T[] => rows.slice(-JANELA_DE_GOLS);
+
+/**
+ * A janela das premissas de CONTAGEM: os últimos 5, e não os 10 das outras.
+ *
+ * `last5_totals` no modelo. Duas janelas no mesmo mercado é o tipo de coisa que
+ * some num literal repetido, e o gráfico passa a contar dez jogos embaixo de uma
+ * frase que fala de cinco.
+ */
+const JANELA_DE_CONTAGEM = 5;
+
+/**
+ * O que cada barra do gráfico mede.
+ *
+ * `sem_sofrer` e `sem_marcar` são BINÁRIAS: 1 quando o jogo teve a coisa, 0
+ * quando não. A média delas é a FRAÇÃO de jogos, e é ela que vira o percentual
+ * que o modelo compara — `clean_sheet_total / played_total` e
+ * `failed_to_score_total / played_total` (#355).
+ */
+export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado' | 'sem_sofrer' | 'sem_marcar';
+
+/** Métrica binária: a média dela é uma fração de jogos, não uma média de gols. */
+export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar';
 
 /** `proprio` = o mando que o time tem NESTE jogo (mandante em casa, visitante fora). */
 export type FiltroMando = 'proprio' | 'todos';
@@ -34,11 +91,37 @@ interface SerieSpec {
   mando: FiltroMando;
   direcao: Direcao;
   /**
-   * Recorta os últimos N jogos. Existe para o gráfico não desmentir a frase: a
-   * premissa de forma fala dos ÚLTIMOS 5, então mostrar 21 jogos ali seria outro
-   * número. Sem isto, entram todos os jogos do recorte.
+   * Recorta os últimos N JOGOS do time, antes do recorte de mando. Existe para o
+   * gráfico não desmentir a frase: a premissa de forma fala dos ÚLTIMOS 5, então
+   * mostrar 21 jogos ali seria outro número. Sem isto, entram todos os jogos.
+   *
+   * A ordem importa e é a do modelo: janela primeiro, mando depois. "Os últimos
+   * 10 jogos, dos quais 4 em casa" não é "os últimos 10 jogos em casa".
    */
   ultimos?: number;
+  /**
+   * De onde vêm os jogos.
+   *
+   * `qualquer` é a **janela da premissa**: todas as competições, que é o que o
+   * modelo mede nas premissas de gols. `mesma_competicao` mantém o recorte antigo
+   * — uma competição só — para as premissas cujo critério ninguém conferiu ainda.
+   *
+   * Existe porque a consulta parou de filtrar por competição (#350) e isso valia
+   * para TODOS os consumidores: as premissas de resultado e handicap passaram a
+   * desenhar jogos de outros campeonatos enquanto a frase acima delas continuava
+   * saindo do perfil de uma competição só. O gráfico e o texto discordavam em
+   * mercados que esta issue nem tocava. A janela agora é declarada por premissa,
+   * e o padrão é o conservador; a #352 diz quais podem mudar.
+   */
+  competicoes?: 'qualquer' | 'mesma_competicao';
+  /**
+   * A linha da média entra no gráfico?
+   *
+   * Padrão sim. Sai nas premissas de CONTAGEM (#356), onde a média não é o insumo
+   * e pode estar de um lado da linha enquanto a contagem diz o contrário —
+   * desenhá-la ali é oferecer ao assinante o número errado, com destaque.
+   */
+  mostraMedia?: boolean;
 }
 
 /**
@@ -47,16 +130,48 @@ interface SerieSpec {
  */
 const SPECS: Record<string, SerieSpec[]> = {
   // ── Gols ──
-  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior' }],
-  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor' }],
-  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior' }],
-  ataques_fracos: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'menor' }],
-  clean_sheets_altos: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'menor' }],
-  ambos_vazam: [{ quem: 'ambos', metrica: 'ga', mando: 'todos', direcao: 'maior' }],
-  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'proprio', direcao: 'maior' }],
-  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'proprio', direcao: 'menor' }],
-  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior' }],
-  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor' }],
+  // ⚠️ `ultimos: 10` e `competicoes: 'qualquer'` nas dez, e o `mando` UM A UM.
+  //
+  // A janela é a mesma para todas (#350): os últimos 10 jogos do time em qualquer
+  // competição. O `ultimos` é EXPLÍCITO de propósito — deixar a janela nascer do
+  // tamanho da busca amarra o significado ao `p_max` da consulta, e aí mudar
+  // quantos jogos se busca mudaria calado o que a premissa afirma.
+  //
+  // O mando NÃO é o mesmo, e escrever `todos` nas dez foi o excesso da #350. As
+  // três primeiras somam o mandante EM CASA com o visitante FORA (`gf_comb` e
+  // `ga_comb` no modelo); as sete seguintes saem de totais, sem recorte nenhum.
+  //
+  // As premissas de OUTROS mercados: a #352 levantou os critérios e o resultado
+  // está na #361. Elas seguem em `mesma_competicao` até serem consertadas.
+  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  // A família de PERCENTUAL (#355). O critério destas três não é média de gol
+  // nenhuma: é o percentual de jogos de CADA time em que a coisa aconteceu,
+  // contra um corte fixo. Enquanto elas desenhavam `ga`/`gf`, "os dois passam
+  // muitos jogos sem sofrer gol" vinha ilustrado com "2,4 gols sofridos por
+  // jogo" — um número verdadeiro que não é o insumo, e que dizia o contrário.
+  //
+  // A métrica binária resolve os dois lados de uma vez: a barra passa a ser o
+  // jogo (teve ou não teve) e a média das barras É a fração que vira percentual.
+  ataques_fracos: [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  clean_sheets_altos: [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  ambos_vazam: [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  // A família de CONTAGEM (#356). O critério conta quantos dos ÚLTIMOS CINCO
+  // jogos de cada time ficaram de um lado da linha, e exige um mínimo em cada —
+  // `home_over_cnt >= 3 AND away_over_cnt >= 3`, sobre `last5_totals`.
+  //
+  // A janela é 5, e não os 10 do resto do mercado: escrever `JANELA_DE_GOLS` aqui
+  // seria o gráfico contando dez jogos embaixo de uma frase que fala de cinco.
+  //
+  // `mostraMedia: false` porque a média não é o insumo delas, e uma média pode
+  // estar de um lado da linha enquanto a contagem diz o contrário. O gráfico
+  // continua sendo o do total de gols com a linha tracejada, que é justamente o
+  // que deixa contar as barras que passaram.
+  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Resultado ──
   forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
@@ -108,15 +223,29 @@ export interface SerieHistorico {
   /** Para o escudo em cima do próprio gráfico, e não só na legenda longe dele. */
   teamId: number;
   teamName: string;
-  /** "Fortaleza em casa" ou "Fortaleza, todos os jogos". */
+  /** "Fortaleza, últimos jogos" ou, onde o mando é parte do critério, "Fortaleza em casa". */
   titulo: string;
   /** "4 jogos" ou "4 jogos, 1 sem dado de gol esperado". */
   sub: string;
   metrica: Metrica;
   direcao: Direcao;
-  /** A média das barras, que é o número que a premissa usa. */
+  /** A média das barras, que é o número que a premissa usa — onde ela É o insumo. */
   media: number | null;
+  /**
+   * A média entra no gráfico? Falsa nas premissas de contagem, onde ela não é o
+   * insumo e desenhá-la oferece o número errado com destaque (#356).
+   */
+  mostraMedia: boolean;
   jogos: JogoBarra[];
+  /**
+   * Quantos jogos a JANELA tinha antes do recorte de mando. Igual a `jogos.length`
+   * onde não há recorte.
+   *
+   * Estrutural, e não só dentro do `sub`: quem presta contas do critério (#353)
+   * precisa declarar a base de jogos, e ler isso de volta de uma frase seria a
+   * segunda fonte do mesmo número.
+   */
+  daJanela: number;
 }
 
 /**
@@ -155,11 +284,20 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
   if (m === 'gf') return r.gols_pro;
   if (m === 'total') return r.total_gols;
   if (m === 'xg') return r.xg;
+  if (m === 'sem_sofrer') return r.sem_sofrer ? 1 : 0;
+  if (m === 'sem_marcar') return r.sem_marcar ? 1 : 0;
   return r.gols_pro - r.gols_contra;
 }
 
-const SUFIXO_MANDO = (mando: FiltroMando, emCasa: boolean) =>
-  mando === 'todos' ? ', todos os jogos' : emCasa ? ' em casa' : ' fora';
+/**
+ * O mando no cabeçalho da série, para quem recorta por mando.
+ *
+ * Quem não recorta não passa por aqui: o título dele anuncia a JANELA ("últimos 10
+ * jogos"), porque é ela que define o recorte. Antes o sufixo tinha um terceiro
+ * caso, "todos os jogos", e ele mentia duas vezes — sugeria a temporada de uma
+ * competição só, quando o gráfico mistura campeonatos de propósito (#350).
+ */
+const SUFIXO_MANDO = (emCasa: boolean) => (emCasa ? ' em casa' : ' fora');
 
 const COMO_LER: Record<Metrica, string> = {
   ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu naquele jogo. A linha é a média, que é o número que a premissa usa.',
@@ -167,6 +305,8 @@ const COMO_LER: Record<Metrica, string> = {
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.',
   total: 'Cada barra é o total de gols do jogo, somando os dois times. A linha tracejada é a linha que você escolheu.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
+  sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu. O que a premissa usa é o percentual de jogos cheios.',
+  sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou. O que a premissa usa é o percentual de jogos cheios.',
 };
 
 /**
@@ -192,8 +332,19 @@ export function storyDaPremissa(
       const doLado = hist.filter((r) => r.side === side);
       if (!doLado.length) continue;
       const emCasa = side === 'home';
-      const noMando = spec.mando === 'todos' ? doLado : doLado.filter((r) => r.em_casa === emCasa);
-      const filtrados = spec.ultimos ? noMando.slice(-spec.ultimos) : noMando;
+      // A consulta devolve jogos de qualquer competição (#350). Quem declarou a
+      // janela larga fica com todos; o resto volta a ver só a competição do
+      // confronto, que é onde o critério deles ainda mora.
+      const naCompeticao =
+        spec.competicoes === 'qualquer' ? doLado : doLado.filter((r) => r.mesma_competicao !== false);
+      if (!naCompeticao.length) continue;
+      // Janela primeiro, mando depois — a ordem é a do modelo. O `pit` sob
+      // `ultimos_10` pega as dez partidas mais recentes e SÓ ENTÃO conta as de
+      // casa. Invertido, "os últimos 10" viraria "os últimos 10 em casa", que
+      // pode atravessar meia temporada a mais e dar outra média.
+      const naJanela = spec.ultimos ? naCompeticao.slice(-spec.ultimos) : naCompeticao;
+      const filtrados =
+        spec.mando === 'todos' ? naJanela : naJanela.filter((r) => r.em_casa === emCasa);
       if (!filtrados.length) continue;
       const brutos = filtrados.map((r) => ({
         ordem: r.ordem,
@@ -225,19 +376,33 @@ export function storyDaPremissa(
         chave: `${slug}-${side}-${spec.metrica}-${spec.mando}`,
         teamId: filtrados[0].team_id,
         teamName: filtrados[0].team_name,
-        titulo: spec.ultimos
-          ? `${filtrados[0].team_name}, últimos ${filtrados.length} jogos`
-          : `${filtrados[0].team_name}${SUFIXO_MANDO(spec.mando, emCasa)}`,
+        // O título nomeia o RECORTE, e o sub declara a BASE. Juntos eles dizem o
+        // que o modelo mediu: "Flamengo em casa · 4 dos últimos 10 jogos" é a
+        // frase inteira do critério de `ga_comb`. O título sozinho mentia dos dois
+        // jeitos já: "em casa" sem a janela sugeria a temporada, e "últimos 10
+        // jogos" sem o mando sugeria que os dez entraram.
+        titulo:
+          spec.mando === 'proprio'
+            ? `${filtrados[0].team_name}${SUFIXO_MANDO(emCasa)}`
+            : spec.ultimos
+              ? `${filtrados[0].team_name}, últimos ${filtrados.length} jogos`
+              : filtrados[0].team_name,
         sub:
           semDado > 0
             ? `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}, ${semDado} sem o dado`
-            : spec.ultimos && noMando.length > filtrados.length
-              ? `de ${noMando.length} na competição`
-              : `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}`,
+            : spec.mando === 'proprio' && spec.ultimos
+              ? `${jogos.length} dos últimos ${naJanela.length} jogos`
+              // "de 27 disponíveis", e não "na competição": a consulta parou de
+              // filtrar por competição (#350), e a frase antiga virou falsa.
+              : spec.ultimos && naCompeticao.length > filtrados.length
+                ? `${jogos.length} de ${naCompeticao.length} disponíveis`
+                : `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}`,
         metrica: spec.metrica,
         direcao: spec.direcao,
         media,
+        mostraMedia: spec.mostraMedia !== false,
         jogos,
+        daJanela: naJanela.length,
       });
     }
   }
@@ -308,8 +473,12 @@ export function evidenciaDoHistorico(
   const nome = (s: 'home' | 'away') => hist.find((r) => r.side === s)?.team_name ?? '';
 
   if (slug === 'xg_combinado_alto' || slug === 'xg_baixo_combinado') {
-    const casa = doLado('home', true);
-    const fora = doLado('away', true);
+    // Sem recorte de mando e nos últimos 10, a MESMA janela que o gráfico destas
+    // premissas usa (#350). Enquanto o gráfico mudou e este número não, o card e
+    // as barras embaixo dele mostravam médias diferentes da mesma coisa — o
+    // defeito da spec, agora dentro da mesma caixa.
+    const casa = ULTIMOS_DE_GOLS(doLado('home', false));
+    const fora = ULTIMOS_DE_GOLS(doLado('away', false));
     const a = media(casa, (r) => r.xg);
     const b = media(fora, (r) => r.xg);
     if (a == null || b == null) return null;
@@ -370,4 +539,64 @@ export function evidenciaDoHistorico(
   }
 
   return null;
+}
+
+/**
+ * O "Como chegam" na JANELA DA PREMISSA.
+ *
+ * Antes este bloco vinha do perfil de temporada (`get_futebol_fixture_numeros`):
+ * média total no campeonato, sem recorte de mando. O resultado é que a tela
+ * exibia, uma embaixo da outra, duas medidas diferentes do mesmo confronto —
+ * Criciúma × Cuiabá de 04/09 anunciava "2,4 gols marcados, somados" na premissa
+ * e 1,0 e 0,9 aqui. Os dois números estavam certos e a soma não fechava; para
+ * quem lê, um dos dois mente, e a legenda explicando a diferença não devolve a
+ * credibilidade que a contradição tira.
+ *
+ * Agora sai da MESMA fonte das premissas, e por reuso e não por cópia: cada
+ * linha chama `storyDaPremissa` com o slug cujo critério já declara aquele
+ * recorte. Se a janela do modelo mudar, muda nos dois lugares de uma vez.
+ *
+ * - gols marcados e sofridos: últimos 10, mandante EM CASA e visitante FORA,
+ *   que é o que `gf_comb`/`ga_comb` somam;
+ * - sem sofrer gol: percentual dos últimos 10 SEM recorte de mando, que é o que
+ *   `clean_sheets_altos` compara.
+ *
+ * O mando difere entre as linhas porque difere no modelo. É por isso que a
+ * legenda do bloco diz qual recorte vale em qual linha, em vez de afirmar um só.
+ *
+ * `null` quando não há histórico — sem dado o bloco não aparece, em vez de cair
+ * de volta no perfil de temporada e recriar as duas verdades em silêncio.
+ */
+export interface PerfilDaJanela {
+  /** Média de gols marcados no recorte de mando, por time. */
+  gf: { home: number | null; away: number | null };
+  /** Média de gols sofridos no mesmo recorte. */
+  ga: { home: number | null; away: number | null };
+  /** Fração de jogos sem sofrer gol (0 a 1), na janela inteira. */
+  semSofrer: { home: number | null; away: number | null };
+  /** Quantos jogos entraram no recorte de mando, por time. */
+  jogosDoMando: { home: number; away: number };
+  /** O tamanho da janela antes do recorte de mando. */
+  janela: number;
+}
+
+export function perfilDaJanela(hist: FutebolFixtureHistorico[] | undefined): PerfilDaJanela | null {
+  const gf = storyDaPremissa('ataque_combinado', hist, null, null);
+  const ga = storyDaPremissa('defesas_firmes', hist, null, null);
+  const cs = storyDaPremissa('clean_sheets_altos', hist, null, null);
+  if (!gf || !ga || !cs) return null;
+
+  // A série carrega o lado na própria chave, então o lado sai dela e não da
+  // POSIÇÃO no array: uma série pode faltar (time sem jogo no recorte), e aí o
+  // índice 1 passaria a ser o mandante calado.
+  const doLado = (s: Story, side: 'home' | 'away') =>
+    s.series.find((x) => x.chave.split('-')[1] === side) ?? null;
+
+  return {
+    gf: { home: doLado(gf, 'home')?.media ?? null, away: doLado(gf, 'away')?.media ?? null },
+    ga: { home: doLado(ga, 'home')?.media ?? null, away: doLado(ga, 'away')?.media ?? null },
+    semSofrer: { home: doLado(cs, 'home')?.media ?? null, away: doLado(cs, 'away')?.media ?? null },
+    jogosDoMando: { home: doLado(gf, 'home')?.jogos.length ?? 0, away: doLado(gf, 'away')?.jogos.length ?? 0 },
+    janela: doLado(gf, 'home')?.daJanela ?? JANELA_DE_GOLS,
+  };
 }

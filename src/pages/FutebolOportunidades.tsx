@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,9 +20,11 @@ import {
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, ehDestaque, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
+  FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
 } from '@/utils/futebol-score';
-import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
+import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
@@ -64,8 +67,8 @@ const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
-function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
-  o: OppLike; onClick: () => void; muted?: boolean; locked?: boolean;
+function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
+  o: OppLike; to: string; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
@@ -76,7 +79,7 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
   // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
   const badgeCls = o.faixa != null ? faixaBadgeCls(o.faixa) : 'bg-canvas-2 text-ink-3 border border-line';
   return (
-    <button onClick={onClick} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
+    <Link to={to} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
       <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[16px] w-10 h-9 ${badgeCls}`}>{o.score ?? '—'}</span>
       <span className={`px-1.5 h-5 w-fit inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${badgeCls}`}>{o.faixa != null ? faixaWord(o.faixa) : '—'}</span>
       <div className="flex items-center gap-2.5 min-w-0">
@@ -104,13 +107,13 @@ function OppRow({ o, onClick, muted, locked, result, homeGoals, awayGoals }: {
       <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{o.best_odd.toFixed(2)}</Blur></div>
       <div className={`text-right tabular-nums text-[14px] font-bold ${edgeToneCls(o.edge)}`}><Blur active={showLock}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</Blur></div>
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
-    </button>
+    </Link>
   );
 }
 
 // Card (mobile)
-function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals, canRegister = false }: {
-  o: OppLike; onClick: () => void; locked?: boolean;
+function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegister = false }: {
+  o: OppLike; to: string; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null; canRegister?: boolean;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
@@ -119,7 +122,7 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals, canRe
   const hasScore = homeGoals != null && awayGoals != null;
   return (
     <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
-      <button onClick={onClick} className="w-full text-left p-3.5">
+      <Link to={to} className="block w-full text-left p-3.5">
         <div className="flex items-start gap-3">
           <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
@@ -160,7 +163,7 @@ function OppMobileCard({ o, onClick, locked, result, homeGoals, awayGoals, canRe
             </div>
           ))}
         </div>
-      </button>
+      </Link>
       {canRegister && (
         <div className="px-3.5 pb-3.5 -mt-0.5">
           <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
@@ -197,6 +200,7 @@ function ResultBadge({ r }: { r: BetResult }) {
 
 export default function FutebolOportunidades() {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   const { data: rows, isLoading: lBoard } = useFutebolValueBoard();
   // A vitrine entra no gate de carregamento (#324): sem ela a lista renderiza
   // sem filtro e o mercado escondido aparece por um instante antes de sumir. O
@@ -228,6 +232,7 @@ export default function FutebolOportunidades() {
   // em campo apagaria metade dele numa noite de sábado. Quem está caçando aposta
   // agora liga e vê só o que dá para acompanhar.
   const [soEmAberto, setSoEmAberto] = useState(false);
+  const [valor, setValor] = useState<FiltroDeValor>(FILTRO_DE_VALOR_PADRAO);
   // `null` significa todas: acompanha automaticamente as competições daquele dia.
   const [competicoesSelecionadas, setCompeticoesSelecionadas] = useState<string[] | null>(null);
   const [day, setDay] = useState<string | null>(null);
@@ -402,6 +407,7 @@ export default function FutebolOportunidades() {
       if (mercado !== 'all' && r.market !== mercado) return false;
       // Sem faixa não dá pra classificar, então o filtro de faixa a esconde.
       if (!passaNoFiltroDeFaixas(faixasSelecionadas, r.faixa)) return false;
+      if (!passaNoFiltroDeValor(valor, r.edge)) return false;
       if (competicoesSelecionadas && !competicoesSelecionadas.includes(r.competition)) return false;
       // Em aberto = o apito inicial ainda não soou. O status vem depois, e às
       // vezes atrasado, então quem manda é o relógio (ver futebol-datas.ts).
@@ -414,7 +420,7 @@ export default function FutebolOportunidades() {
         return false;
       return true;
     }),
-    [dayRows, mercado, faixasSelecionadas, competicoesSelecionadas, soEmAberto, agora]
+    [dayRows, mercado, faixasSelecionadas, valor, competicoesSelecionadas, soEmAberto, agora]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
@@ -465,31 +471,42 @@ export default function FutebolOportunidades() {
     return out;
   }, [allRows, registradasAll]);
 
-  // Resumo do dia passado: quantas das "com valor" bateram.
-  const resumo = useMemo(() => {
-    if (!isPastDay) return null;
-    let hit = 0, miss = 0, push = 0, settled = 0;
-    comValor.forEach((o) => {
-      const r = resultOf(o);
-      if (!r) return;
-      settled++;
-      if (r === 'push') push++;
-      else if (isHit(r)) hit++;
-      else miss++;
-    });
-    return { hit, miss, push, settled };
+  // Resumo do dia passado. O denominador é o que foi PUBLICADO, e não o que
+  // liquidou: contar só a linha com resultado fazia a manchete dizer "2 de 3"
+  // num dia de seis, com as três sem fixture saindo da conta em silêncio (#323).
+  const resumo = useMemo(
+    () => (isPastDay
+      ? resumoDoDia(comValor.map((o) => ({
+        // Quem sabe se o fixture veio é o mapa, não o `kickoff_utc`: a linha do
+        // board traz horário mesmo quando o calendário não trouxe o jogo.
+        temFixture: fixtureMap.has(o.fixture_id),
+        resultado: resultOf(o),
+      })))
+      : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPastDay, comValor, goalsMap]);
+    [isPastDay, comValor, goalsMap, fixtureMap],
+  );
+
+  // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
+  // e some do histórico sem barulho — foi assim que a #323 passou despercebida
+  // até alguém conferir a mão. A tela mostra a pendência para quem está olhando
+  // aquele dia; este evento é para quem não está.
+  useEffect(() => {
+    if (!resumo || resumo.semFixture === 0) return;
+    posthog?.capture('futebol_pick_sem_fixture', {
+      dia: selectedDay,
+      sem_fixture: resumo.semFixture,
+      publicadas: resumo.total,
+    });
+  }, [resumo, selectedDay, posthog]);
 
   // Esta tela lista uma linha por SAÍDA, não por mercado, e há jogos com duas
   // saídas cotadas no mesmo mercado. Navegando só com o id do jogo, clicar no card
   // da segunda abria a tela na primeira, e o pick que o usuário leu aqui virava
   // outro lá. O link carrega qual card foi clicado.
-  const go = (o: OppLike) => {
-    const q = new URLSearchParams({ mercado: o.market, saida: o.outcome });
-    if (o.line_value != null) q.set('linha', String(o.line_value));
-    navigate(`/futebol/jogo/${o.fixture_id}?${q}`);
-  };
+  // A montagem da URL saiu daqui para `futebol-links.ts` (#344): esta tela era a
+  // única que carregava a saída clicada, e a home e o painel abriam a tela do
+  // jogo no desempate padrão. Com um lugar só, a próxima origem não esquece.
   const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
@@ -516,10 +533,32 @@ export default function FutebolOportunidades() {
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col items-stretch gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="w-full min-w-0 sm:w-auto">
             <div className={`${LABEL} flex items-center gap-2`}>{isPastDay ? 'Histórico' : 'Oportunidades'}{isDemo && <DemoBadge />}</div>
-            {isPastDay && resumo && resumo.settled > 0 ? (
+            {/* Entra também quando NADA liquidou mas houve pendência: senão o
+                dia em que todas ficam sem fixture não mostra nada, que é o pior
+                caso do defeito e não o caso benigno. */}
+            {isPastDay && resumo && (resumo.settled > 0 || resumo.pendentes > 0) ? (
               <>
-                <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
-                <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades com valor deste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
+                {resumo.settled > 0 ? (
+                  <>
+                    <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
+                    <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades com valor deste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
+                  </>
+                ) : (
+                  <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">Nenhuma oportunidade deste dia liquidou</h1>
+                )}
+                {/* A pendência aparece em vez de encolher o denominador. Dizer
+                    "2 de 3" num dia de seis não é arredondamento: é a tela
+                    escondendo justamente a linha que não fechou (#323).
+                    Vale para as DUAS causas: contar só a falta de fixture
+                    deixava o jogo adiado invisível, com o mesmo efeito. */}
+                {resumo.pendentes > 0 ? (
+                  <p className="text-[12px] mt-1 text-amber-2">
+                    {resumo.pendentes} de {resumo.total} sem resultado
+                    {resumo.semFixture > 0
+                      ? ` · ${resumo.semFixture} sem jogo no calendário`
+                      : ' · jogo adiado ou ainda sem placar'}
+                  </p>
+                ) : null}
               </>
             ) : (
               <>
@@ -581,6 +620,8 @@ export default function FutebolOportunidades() {
           onSoEmAbertoChange={setSoEmAberto}
           faixasSelecionadas={faixasSelecionadas}
           onFaixasChange={setFaixasSelecionadas}
+          valor={valor}
+          onValorChange={setValor}
           competicoesSelecionadas={competicoesSelecionadas}
           onCompeticoesChange={setCompeticoesSelecionadas}
           competicaoOptions={compOptions}
@@ -620,8 +661,8 @@ export default function FutebolOportunidades() {
                 const g = goalsMap.get(o.fixture_id);
                 return (
                   <div key={key(o)}>
-                    <OppRow o={o} onClick={() => go(o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
-                    {!isPastDay && !locked && !res && (
+                    <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    {!locked && (
                       <div className="px-5 pb-2 -mt-0.5">
                         <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
                       </div>
@@ -640,12 +681,12 @@ export default function FutebolOportunidades() {
                   <OppMobileCard
                     key={key(o)}
                     o={o}
-                    onClick={() => go(o)}
+                    to={hrefDaSaida(o.fixture_id, o)}
                     locked={locked}
                     result={res}
                     homeGoals={g?.gh}
                     awayGoals={g?.ga}
-                    canRegister={!isPastDay && !locked && !res}
+                    canRegister={!locked}
                   />
                 );
               })}

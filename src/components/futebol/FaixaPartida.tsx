@@ -109,7 +109,7 @@ export function FaixaPartida({
     ? outcomeLabel(top.candidato, jogo.home, jogo.away)
     : null;
   const v = top?.value ?? null;
-  const nValem = top ? contaQueValem(top.mercado.slug, top.candidato.acesas) : 0;
+  const nValem = top ? contaQueValem(top.candidato) : 0;
 
   const dia = (
     <div className="text-center px-1 shrink-0">

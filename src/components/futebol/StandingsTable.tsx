@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -60,12 +61,13 @@ function blocos(rows: FutebolStandingRow[]): Bloco[] {
 
 function Linha({
   r,
-  onTeam,
+  hrefDoTime,
   cor,
   compacto,
 }: {
   r: FutebolStandingRow;
-  onTeam: (id: number) => void;
+  /** O endereço da página do time. Destino de link, não ação (#341). */
+  hrefDoTime: (id: number) => string;
   cor: string | null;
   compacto: boolean;
 }) {
@@ -74,8 +76,8 @@ function Linha({
   const num = 'text-center text-[11.5px] tabular-nums';
 
   return (
-    <button
-      onClick={() => onTeam(r.team_id)}
+    <Link
+      to={hrefDoTime(r.team_id)}
       className={`w-full text-left px-3 sm:px-4 py-2 hover:bg-canvas-2 transition ${compacto ? GRID_M : GRID}`}
       style={{ borderTop: '1px solid #f1e9d6' }}
     >
@@ -98,21 +100,22 @@ function Linha({
       {!compacto && <span className={num} style={{ color: '#6b6350' }}>{r.loses}</span>}
       <span className={num} style={{ color: sgCor }}>{sgTexto}</span>
       <span className="text-center text-[13.5px] font-bold tabular-nums text-ink">{r.points}</span>
-    </button>
+    </Link>
   );
 }
 
 export function StandingsTable({
   rows,
   loading,
-  onTeam,
+  hrefDoTime,
   compacto = false,
   legenda,
   vazio,
 }: {
   rows?: FutebolStandingRow[];
   loading: boolean;
-  onTeam: (id: number) => void;
+  /** O endereço da página do time. Destino de link, não ação (#341). */
+  hrefDoTime: (id: number) => string;
   /** Mobile: esconde V, E e D, que não cabem em 390px. */
   compacto?: boolean;
   /** Texto do canto direito do cabeçalho, ex.: "após 22 rodadas". */
@@ -216,7 +219,7 @@ export function StandingsTable({
 
             {!escondido &&
               g.linhas.map((r) => (
-                <Linha key={r.team_id} r={r} onTeam={onTeam} cor={g.zona?.cor ?? null} compacto={compacto} />
+                <Linha key={r.team_id} r={r} hrefDoTime={hrefDoTime} cor={g.zona?.cor ?? null} compacto={compacto} />
               ))}
           </div>
         );

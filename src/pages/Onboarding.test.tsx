@@ -59,6 +59,29 @@ describe('Onboarding', { timeout: 20_000 }, () => {
     expect(screen.getByRole('button', { name: /Conectar meu Telegram/i })).toBeInTheDocument();
   });
 
+  it('vindo dos alertas, o aviso de oportunidade nova é o PRIMEIRO benefício', async () => {
+    // Quem clicou no alerta veio por causa dele: abrir por "registra pelo print"
+    // faz a página responder outra pergunta antes da que ele fez.
+    renderOnboarding('?src=alertas-futebol&return=%2Ffutebol%2Foportunidades');
+
+    const titulos = (await screen.findAllByRole('heading', { level: 3 })).map((h) => h.textContent);
+    expect(titulos[0]).toBe('Cada oportunidade nova, na hora');
+    expect(titulos).toEqual(['Cada oportunidade nova, na hora', 'Registra pelo print', 'Seu ROI de verdade']);
+  });
+
+  it('a copy do alerta fala da oportunidade nova, não só do resumo do dia', async () => {
+    renderOnboarding('?src=alertas-futebol');
+
+    expect(await screen.findByText(/assim que ela entra no painel/i)).toBeInTheDocument();
+  });
+
+  it('sem origem, a ordem dos benefícios continua a de sempre', async () => {
+    renderOnboarding();
+
+    const titulos = (await screen.findAllByRole('heading', { level: 3 })).map((h) => h.textContent);
+    expect(titulos).toEqual(['Registra pelo print', 'Seu ROI de verdade', 'O dia chega no seu chat']);
+  });
+
   it('o carrossel tem seta para os dois lados, além dos pontos', async () => {
     // Sem elas, quem quer rever um slide precisa esperar o autoplay dar a volta.
     renderOnboarding();

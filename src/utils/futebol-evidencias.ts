@@ -87,18 +87,28 @@ interface Ctx {
   linha: number | null;
 }
 
-// Fallback de quando não há linha (1X2, dupla chance): guardas de contradição
-// frontal, não réguas. O limiar real é do mart (T5) e a gente não tem.
-const SOMA_ALTA_MIN = 2.2; // "muitos gols/frágeis" com soma abaixo disto desmente
-const SOMA_BAIXA_MAX = 2.6; // "poucos gols/firmes" com soma acima disto desmente
-
-/** A soma desmente uma premissa de "muito gol"? */
-const desmenteAlta = (ctx: Ctx, soma: number) =>
-  ctx.acesa && (ctx.linha != null ? soma < ctx.linha : soma < SOMA_ALTA_MIN);
-
-/** A soma desmente uma premissa de "pouco gol"? */
-const desmenteBaixa = (ctx: Ctx, soma: number) =>
-  ctx.acesa && (ctx.linha != null ? soma > ctx.linha : soma > SOMA_BAIXA_MAX);
+// ⚠️ AQUI VIVIAM `desmenteAlta` e `desmenteBaixa`, e elas saíram (#358).
+//
+// Elas escondiam o número quando ele contradizia a premissa acesa: "somam muitos
+// gols" com soma abaixo da linha devolvia `null`, e o card ficava mudo. É por
+// isso que o defeito da spec #349 só aparecia em alguns cards e não em todos —
+// alguém já sabia que os números podiam contradizer a premissa e resolveu
+// escondendo, não corrigindo a origem.
+//
+// A origem era esta: o número contradizia porque NÃO ERA O INSUMO. A soma vinha
+// do perfil de temporada (RPC 094), e o critério mede outra coisa, na janela da
+// premissa. Com as dez premissas de gols prestando contas (#353 a #356), o número
+// embaixo de cada uma passa a ser o que o modelo comparou, e não há o que
+// esconder.
+//
+// ⚠️ NÃO REINTRODUZIR ao ver um card estranho. Se o número contradiz o veredito,
+// isso agora é SINAL de que a derivação está errada, e é exatamente o que a
+// guarda de divergência da #353 existe para acusar. Um silenciador junto de um
+// detector anula o detector: a contradição sumiria da tela e o evento continuaria
+// sendo emitido para ninguém.
+//
+// Os limiares eram 2,2 e 2,6, escolhidos a olho — o próprio comentário deles
+// admitia que "o limiar real é do mart e a gente não tem".
 
 /** O time da aposta e o adversário, quando o mercado tem lado. */
 function porLado(ctx: Ctx): { time?: FutebolFixtureNumeros; adv?: FutebolFixtureNumeros; emCasa: boolean } {
@@ -204,7 +214,6 @@ const BUILDERS: Record<string, Builder> = {
     const a = ctx.casa.gf_casa ?? ctx.casa.gf_total;
     const b = ctx.fora.gf_fora ?? ctx.fora.gf_total;
     if (a == null || b == null) return null;
-    if (desmenteAlta(ctx, a + b)) return null; // número desmentiria "somam muitos"
     return {
       texto: `Somados, marcam ${n1(a + b)} gols por jogo`,
       comparacao: {
@@ -222,7 +231,6 @@ const BUILDERS: Record<string, Builder> = {
     const a = ctx.casa.gf_casa ?? ctx.casa.gf_total;
     const b = ctx.fora.gf_fora ?? ctx.fora.gf_total;
     if (a == null || b == null) return null;
-    if (desmenteBaixa(ctx, a + b)) return null; // desmentiria "ataques fracos"
     return BUILDERS.ataque_combinado({ ...ctx, acesa: false });
   },
 
@@ -231,7 +239,6 @@ const BUILDERS: Record<string, Builder> = {
     const a = ctx.casa.ga_casa ?? ctx.casa.ga_total;
     const b = ctx.fora.ga_fora ?? ctx.fora.ga_total;
     if (a == null || b == null) return null;
-    if (desmenteAlta(ctx, a + b)) return null; // desmentiria "defesas frágeis"
     return {
       texto: `Somados, sofrem ${n1(a + b)} gols por jogo`,
       comparacao: {
@@ -249,7 +256,6 @@ const BUILDERS: Record<string, Builder> = {
     const a = ctx.casa.ga_casa ?? ctx.casa.ga_total;
     const b = ctx.fora.ga_fora ?? ctx.fora.ga_total;
     if (a == null || b == null) return null;
-    if (desmenteBaixa(ctx, a + b)) return null; // desmentiria "defesas firmes"
     return BUILDERS.defesas_vazaveis({ ...ctx, acesa: false });
   },
 
@@ -341,7 +347,13 @@ const BUILDERS: Record<string, Builder> = {
   adversario_limitado: (ctx) => {
     const { adv } = porLado(ctx);
     if (!adv || adv.gf_total == null) return null;
-    return { texto: `${adv.team_name} marca ${n1(adv.gf_total)} gol por jogo e está em ${adv.posicao ?? '—'}º` };
+    // Sem posição a frase PARA no aproveitamento, em vez de escrever "está em
+    // —º". Em mata-mata — Copa do Brasil, Libertadores na fase eliminatória —
+    // não existe tabela, então a colocação não é um dado que faltou: é uma
+    // pergunta que não se faz naquela competição. O traço fazia a tela parecer
+    // quebrada num caso em que ela está certa.
+    const tabela = adv.posicao != null ? ` e está em ${adv.posicao}º` : '';
+    return { texto: `${adv.team_name} marca ${n1(adv.gf_total)} gol por jogo${tabela}` };
   },
 };
 

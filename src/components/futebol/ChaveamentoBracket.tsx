@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Maximize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { Crest } from './Crest';
@@ -125,11 +126,11 @@ function LadoDoConfronto({ lado, c }: { lado: Lado; c: Confronto }) {
   );
 }
 
-function CardConfronto({ c, onJogo }: { c: Confronto; onJogo: (id: number) => void }) {
+function CardConfronto({ c, hrefDoJogo }: { c: Confronto; hrefDoJogo: (id: number) => string }) {
   const ultimo = c.jogos[c.jogos.length - 1];
   return (
-    <button
-      onClick={() => ultimo && onJogo(ultimo.fixture_id)}
+    <Link
+      to={ultimo ? hrefDoJogo(ultimo.fixture_id) : '#'}
       className="w-full text-left rounded-rebrand-sm overflow-hidden bg-white hover:shadow-sm transition"
       style={{ border: '1px solid #ded2b6' }}
       title={c.jogos.length > 1 ? 'ida e volta somadas' : undefined}
@@ -137,7 +138,7 @@ function CardConfronto({ c, onJogo }: { c: Confronto; onJogo: (id: number) => vo
       <LadoDoConfronto lado={c.a} c={c} />
       <div style={{ height: 1, background: '#f1e9d6' }} />
       <LadoDoConfronto lado={c.b} c={c} />
-    </button>
+    </Link>
   );
 }
 
@@ -212,11 +213,12 @@ function useArrastarParaRolar() {
 /** A chave em si. Mesma marcação no card e na tela cheia; muda só a largura. */
 function Chave({
   colunas,
-  onJogo,
+  hrefDoJogo,
   largura,
 }: {
   colunas: Coluna[];
-  onJogo: (id: number) => void;
+  /** O endereço da tela do jogo. Destino de link, não ação (#341). */
+  hrefDoJogo: (id: number) => string;
   largura: number;
 }) {
   return (
@@ -233,7 +235,7 @@ function Chave({
             </div>
             <div className="flex-1 flex flex-col justify-around gap-1.5">
               {col.confrontos.map((c) => (
-                <CardConfronto key={c.chave} c={c} onJogo={onJogo} />
+                <CardConfronto key={c.chave} c={c} hrefDoJogo={hrefDoJogo} />
               ))}
               {Array.from({ length: vagos }).map((_, i) => (
                 <CardVago key={i} />
@@ -252,12 +254,13 @@ const MAX_ESCALA = 2.2;
 /** Pop-up com zoom e arrasto, pra chave grande caber no olho. */
 function ChaveExpandida({
   colunas,
-  onJogo,
+  hrefDoJogo,
   onFechar,
   titulo,
 }: {
   colunas: Coluna[];
-  onJogo: (id: number) => void;
+  /** O endereço da tela do jogo. Destino de link, não ação (#341). */
+  hrefDoJogo: (id: number) => string;
   onFechar: () => void;
   titulo: string;
 }) {
@@ -489,7 +492,7 @@ function ChaveExpandida({
           className="p-6 origin-top-left w-max"
           style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${escala})` }}
         >
-          <Chave colunas={colunas} onJogo={onJogo} largura={190} />
+          <Chave colunas={colunas} hrefDoJogo={hrefDoJogo} largura={190} />
         </div>
       </div>
       </div>
@@ -502,13 +505,14 @@ export function ChaveamentoBracket({
   rounds,
   idxSelecionado,
   competition,
-  onJogo,
+  hrefDoJogo,
 }: {
   fixtures: FutebolFixture[];
   rounds: string[];
   idxSelecionado: number;
   competition: string;
-  onJogo: (fixtureId: number) => void;
+  /** O endereço da tela do jogo. Destino de link, não ação (#341). */
+  hrefDoJogo: (fixtureId: number) => string;
 }) {
   const [expandido, setExpandido] = useState(false);
   const puxar = useArrastarParaRolar();
@@ -602,7 +606,7 @@ export function ChaveamentoBracket({
               {...puxar.handlers}
               className="p-3 overflow-auto minimal-scrollbar max-h-[460px] cursor-grab active:cursor-grabbing select-none"
             >
-              <Chave colunas={colunas} onJogo={onJogo} largura={158} />
+              <Chave colunas={colunas} hrefDoJogo={hrefDoJogo} largura={158} />
             </div>
             <div
               className="px-4 py-2 text-[10.5px] leading-relaxed"
@@ -616,7 +620,7 @@ export function ChaveamentoBracket({
       </div>
 
       {expandido && (
-        <ChaveExpandida colunas={colunas} onJogo={onJogo} onFechar={() => setExpandido(false)} titulo={titulo} />
+        <ChaveExpandida colunas={colunas} hrefDoJogo={hrefDoJogo} onFechar={() => setExpandido(false)} titulo={titulo} />
       )}
     </>
   );

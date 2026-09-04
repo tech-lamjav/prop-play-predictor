@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,11 +15,13 @@ import {
   useFutebolLeaders,
   useFutebolValueBoard,
   useFutebolCompetitions,
+  useFutebolAccess,
 } from '@/hooks/use-futebol-data';
 import type { Competition, FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { brtDayOf, fmtDayHeader, isFinished } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
+import { hrefDaSaida, hrefDoJogo } from '@/utils/futebol-links';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import { ChaveamentoBracket } from '@/components/futebol/ChaveamentoBracket';
@@ -89,7 +91,6 @@ function Estatistica({ rotulo, valor, unidade }: { rotulo: string; valor: string
 }
 
 export default function FutebolCampeonato() {
-  const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [params, setParams] = useSearchParams();
 
@@ -118,6 +119,10 @@ export default function FutebolCampeonato() {
   // Mesma regra da agenda: enquanto o board não respondeu, a linha não conclui
   // "sem leitura ainda" e o contador não afirma um total.
   const { data: board, isLoading: leituraCarregando } = useFutebolValueBoard();
+  // A camada de valor é paga aqui como em todo lugar: sem isto, a página do
+  // campeonato entregava pick, odd e chance limpos para quem não tem acesso —
+  // o mesmo furo que a agenda fechou, um clique ao lado.
+  const { data: access } = useFutebolAccess();
 
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();
@@ -266,7 +271,8 @@ export default function FutebolCampeonato() {
     [rounds.length, porPontos, duasColunas],
   );
 
-  const goTeam = (id: number) => navigate(`/futebol/time/${id}?c=${competition}&s=${season}`);
+  /** O endereço da página do time, com a liga e a temporada em que ele foi visto. */
+  const hrefDoTime = (id: number) => `/futebol/time/${id}?c=${competition}&s=${season}`;
   const setSeason = (s: number) => setParams({ s: String(s) }, { replace: true });
 
   const listaJogos = (
@@ -314,7 +320,10 @@ export default function FutebolCampeonato() {
                   fixture={f}
                   best={bestByFixture.get(f.fixture_id) ?? null}
                   leituraCarregando={leituraCarregando}
-                  onClick={() => navigate(`/futebol/jogo/${f.fixture_id}`)}
+                  locked={!access?.unlocked}
+                  // Sem `onClick`: aqui não há painel, então o clique simples vai
+                  // para o mesmo lugar que o do meio e o `<Link>` basta.
+                  to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
                 />
               ))}
             </div>
@@ -347,15 +356,17 @@ export default function FutebolCampeonato() {
         rounds={rounds}
         idxSelecionado={roundIdx}
         competition={competition}
-        onJogo={(id) => navigate(`/futebol/jogo/${id}`)}
+        // O chaveamento mostra confronto, não pick: sem filtro, mas pelo
+        // módulo — URL de jogo montada à mão foi como a #344 começou.
+        hrefDoJogo={hrefDoJogo}
       />
     ) : null;
-  const grupos = <GruposFase rows={standings} loading={loadingStandings} onTeam={goTeam} />;
+  const grupos = <GruposFase rows={standings} loading={loadingStandings} hrefDoTime={hrefDoTime} />;
   const tabela = (
     <StandingsTable
       rows={standings}
       loading={loadingStandings}
-      onTeam={goTeam}
+      hrefDoTime={hrefDoTime}
       legenda={legendaTabela}
       vazio={vazioTabela}
     />
@@ -415,12 +426,15 @@ export default function FutebolCampeonato() {
                   </div>
                   <div className="max-h-[320px] overflow-y-auto minimal-scrollbar">
                     {ligas.map((c, i) => (
-                      <button
+                      <Link
                         key={c}
-                        onClick={() => {
-                          setMenuLiga(false);
-                          navigate(`/futebol/campeonato/${c}`);
-                        }}
+                        to={`/futebol/campeonato/${c}`}
+                        // Fechar o menu é efeito colateral da escolha, não a
+                        // navegação em si — por isso não interceptamos: o
+                        // `<Link>` navega e o menu fecha junto. No clique do meio
+                        // o menu também fecha, o que é o certo: a aba nova levou
+                        // a escolha e esta aqui volta ao estado neutro (#341).
+                        onClick={() => setMenuLiga(false)}
                         className="w-full px-3.5 py-2.5 flex items-center gap-2.5 text-left"
                         style={{
                           background: c === competition ? '#f4eddc' : '#fff',
@@ -433,7 +447,7 @@ export default function FutebolCampeonato() {
                         >
                           {competitionLabel(c)}
                         </span>
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 </PopoverContent>
@@ -591,7 +605,7 @@ export default function FutebolCampeonato() {
                   <StandingsTable
                     rows={standings}
                     loading={loadingStandings}
-                    onTeam={goTeam}
+                    hrefDoTime={hrefDoTime}
                     compacto
                     legenda={legendaTabela}
                     vazio={vazioTabela}

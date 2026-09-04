@@ -1,5 +1,5 @@
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
-import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
+import { linhaDaSaida, mesmaLinha, type Saida } from '@/utils/futebol-saida';
 
 // Catálogo das premissas do Score: rótulo, peso e agrupamento.
 //
@@ -380,12 +380,27 @@ export function linhaNegociavel(market: string, line: number | null): boolean {
 export function melhorCandidato(
   rows: FutebolFixturePremissas[],
   market: string,
+  /**
+   * A saída que veio pelo link, quando houver.
+   *
+   * Ela já era respeitada entre as linhas COM preço, mas este caminho — o sem
+   * preço — a ignorava. Resultado: vindo do painel de um jogo sem oportunidade,
+   * o link carregava a leitura e a tela abria noutra (#346).
+   */
+  preferida?: Saida | null,
 ): FutebolFixturePremissas | null {
   const doMercado = rows
     .filter((r) => r.market === market)
     .filter((r) => linhaNegociavel(market, r.line_value));
   if (!doMercado.length) return null;
-  const nota = (r: FutebolFixturePremissas) => contaQueValem(market, r.acesas);
+
+  if (preferida?.market === market) {
+    const clicada = doMercado.find(
+      (r) => r.outcome === preferida.outcome && mesmaLinha(r.line_value, preferida.line_value),
+    );
+    if (clicada) return clicada;
+  }
+  const nota = (r: FutebolFixturePremissas) => contaQueValem(r);
   const nPen = (r: FutebolFixturePremissas) => (r.penalidades ?? []).length;
   // Distância da linha padrão do mercado de gols. Desempata linhas empatadas em
   // premissas ("Over 0,5 / 0,75 / 1") em favor da linha que o mercado de fato
@@ -402,12 +417,39 @@ export function melhorCandidato(
   )[0];
 }
 
-export function contaQueValem(market: string, acesas: string[]): number {
-  return acesas.filter((s) => {
-    const p = premissaDe(market, s);
-    // Mercado pendente (peso null) conta, porque ali ainda não houve corte.
-    return p != null && (p.peso == null || p.peso > 0);
-  }).length;
+/** Uma saída junto das premissas que acenderam nela. É o que a porta de contexto lê. */
+export type SaidaComAcesas = Saida & { acesas: readonly string[] };
+
+/** A premissa entra na porta de contexto? Mercado pendente (peso null) entra: ali ainda não houve corte. */
+const contaNaPorta = (p: Premissa) => p.peso == null || p.peso > 0;
+
+/**
+ * O par "n de N" da porta de contexto, das premissas do LADO da saída.
+ *
+ * As duas metades saem daqui juntas de propósito (#351). Enquanto o numerador
+ * vivia em `contaQueValem` e cada tela derivava o seu denominador, eles mediam
+ * universos diferentes: o numerador contava qualquer premissa acesa do mercado e
+ * o denominador, em algumas telas, contava os DOIS lados. Dava "2 de 8" onde o
+ * certo era "2 de 3", e um "3 de 6" que virava "3 de 7" ao arrastar a régua.
+ *
+ * O total é fixo por lado, porque o conjunto de premissas de um lado é fixo no
+ * modelo: 6 de Over e 5 de Under no mercado de gols. Trocar de linha dentro do
+ * mesmo lado não pode mexer nele.
+ */
+export function contagemDaPorta(s: SaidaComAcesas): { acesas: number; total: number } {
+  const m = mercadoDe(s.market);
+  if (m == null) return { acesas: 0, total: 0 };
+  const doLado = premissasDaSaida(m, s).filter(contaNaPorta);
+  const acesasSet = new Set(s.acesas);
+  return {
+    acesas: doLado.filter((p) => acesasSet.has(p.slug)).length,
+    total: doLado.length,
+  };
+}
+
+/** Quantas premissas do lado da saída acenderam e contam para a porta. */
+export function contaQueValem(s: SaidaComAcesas): number {
+  return contagemDaPorta(s).acesas;
 }
 
 // ── Vocabulário do Protótipo 1b (Claude Design) ─────────────────────────────
@@ -416,14 +458,28 @@ export function contaQueValem(market: string, acesas: string[]): number {
 // jogo, não conta neste mercado (o preço já cobra), e não avaliada (mercado sem
 // calibragem, caso do BTTS e da dupla chance).
 
-/** Peso da premissa em palavra, no lugar da cifra interna da fórmula. */
+/**
+ * Peso da premissa em palavra, no lugar da cifra interna da fórmula.
+ *
+ * ⚠️ O selo do peso zero era "NÃO CONTA", e ele se contradizia com o lugar onde
+ * aparece: a premissa está na lista **A FAVOR**, porque o modelo a acendeu, e o
+ * selo ao lado dizia que ela não conta. O assinante lê as duas coisas juntas e
+ * conclui que a tela está errada.
+ *
+ * "Não ajuda" é o que a recalibragem de fato mediu, e não se choca com o lugar:
+ * a premissa é verdadeira sobre o jogo, e mesmo assim não melhora a previsão. Em
+ * `ambos_vazam` porque o preço já cobra; em `historico_over` e `ritmo_alto`
+ * porque elas atrapalharam nos dois testes. O `motivo` de cada uma, que a tela
+ * mostra ao lado, é quem diz qual dos dois casos é.
+ *
+ * "Não conta" também era ambíguo com o grupo das apagadas, onde ele queria dizer
+ * "não se aplica a este mercado" — outra coisa (#357).
+ */
 export function pesoPalavra(p: Premissa): string {
   if (p.peso == null) return 'Peso a calibrar';
   if (p.peso >= 10) return 'Pesa muito';
   if (p.peso >= 5) return 'Pesa';
-  // Peso zero é o corte da recalibragem: aconteceu, mas não soma. Chamar de "pesa
-  // pouco" contradizia o grupo das apagadas, que diz "não conta neste mercado".
-  if (p.peso === 0) return 'Não conta';
+  if (p.peso === 0) return 'Não ajuda';
   return 'Pesa pouco';
 }
 
@@ -472,16 +528,26 @@ export function ladoDaSaidaNoMercado({ market, outcome, line_value: line }: Said
  * As premissas que aquela saída pode acender. As do outro lado ficam fora: elas não
  * "deixaram de acontecer", elas contam para a aposta contrária.
  *
- * `acesas` entra como rede de segurança: se o mart algum dia acender uma premissa do
- * outro lado, ela continua aparecendo em vez de sumir da tela em silêncio.
+ * ⚠️ NÃO reintroduzir uma exceção para a premissa ACESA do outro lado (#351). Ela
+ * existiu aqui como rede de segurança — "se o mart algum dia acender uma premissa
+ * do lado errado, ela continua aparecendo em vez de sumir em silêncio" —, e o preço
+ * foi alto em duas frentes:
+ *
+ *   · a lista se contradizia. Um Over aceso não sustenta um Under, e mostrá-lo
+ *     embaixo de uma leitura de Under é a tela afirmando as duas coisas.
+ *   · o DENOMINADOR se mexia. O total sai desta lista, então "3 de 6" virava
+ *     "3 de 7" quando o assinante arrastava a régua até uma linha em que o mart
+ *     acendeu do outro lado — um total que deveria ser fixo por lado passava a
+ *     depender da linha.
+ *
+ * O conjunto de premissas de um lado é fixo e vem do modelo: no mercado de gols,
+ * 6 de Over e 5 de Under. Acender do lado errado é dado a INVESTIGAR, não coisa a
+ * exibir; quem quer ver isso lê o mart, não a tela do assinante.
  */
-export function premissasDaSaida(m: MercadoInfo, s: Saida, acesas: string[] = []): Premissa[] {
+export function premissasDaSaida(m: MercadoInfo, s: Saida): Premissa[] {
   const lado = ladoDaSaidaNoMercado(s);
-  const acesasSet = new Set(acesas);
   return m.premissas.filter(
-    (p) =>
-      !PREMISSAS_OCULTAS.has(p.slug) &&
-      (lado == null || p.lado == null || p.lado === lado || acesasSet.has(p.slug)),
+    (p) => !PREMISSAS_OCULTAS.has(p.slug) && (lado == null || p.lado == null || p.lado === lado),
   );
 }
 

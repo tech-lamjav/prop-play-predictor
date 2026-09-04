@@ -87,3 +87,68 @@ export function resultBadge(r: BetResult): { label: string; tone: 'won' | 'lost'
 export function isHit(r: BetResult): boolean {
   return r === 'won' || r === 'half_won';
 }
+
+/**
+ * Uma linha do dia, do ponto de vista da liquidação.
+ *
+ * `temFixture` é dito pelo chamador, que tem o mapa de fixtures — e não
+ * inferido de `kickoff_utc` nulo. A inferência parecia equivalente e não é:
+ * linha vinda do board sempre traz `kickoff_utc`, mesmo quando o calendário não
+ * trouxe aquele jogo, então ela cairia em "aguardando" e a anomalia nunca
+ * acenderia. Só a registrada nasce com o campo nulo.
+ */
+export type LinhaLiquidavel = {
+  temFixture: boolean;
+  resultado: BetResult | null;
+};
+
+export type ResumoDoDia = {
+  hit: number;
+  miss: number;
+  push: number;
+  /** Linhas com resultado. `hit + miss + push`. */
+  settled: number;
+  /** Tem fixture, ainda sem resultado: jogo por acabar, adiado ou sem placar. */
+  aguardando: number;
+  /** Não tem fixture. Pick publicado num jogo que o calendário não trouxe. */
+  semFixture: number;
+  /** Tudo que não liquidou. É o que a tela precisa dizer em vez de omitir. */
+  pendentes: number;
+  /** O que foi PUBLICADO no dia. É o denominador honesto. */
+  total: number;
+};
+
+/**
+ * O resumo do dia, contando também o que não liquidou.
+ *
+ * A manchete dizia "2 de 3 deram green" num dia de seis oportunidades: o resumo
+ * só somava linha com resultado, então quem não tinha fixture saía da conta sem
+ * deixar rastro — e a taxa de acerto ficava sobre um denominador que encolheu
+ * sozinho. Ver #323.
+ *
+ * `aguardando` e `semFixture` são separados por CAUSA, não por visibilidade:
+ * o primeiro é jogo adiado ou sem placar, o segundo é anomalia de catálogo. Os
+ * dois contam em `pendentes`, e é `pendentes` que a tela mostra — num dia
+ * passado, jogo que não liquidou some do resultado do mesmo jeito, e mostrar só
+ * um dos dois recria o defeito com outra causa.
+ */
+export function resumoDoDia(linhas: readonly LinhaLiquidavel[]): ResumoDoDia {
+  let hit = 0, miss = 0, push = 0, aguardando = 0, semFixture = 0;
+  for (const l of linhas) {
+    if (l.resultado == null) {
+      if (l.temFixture) aguardando++;
+      else semFixture++;
+      continue;
+    }
+    if (l.resultado === 'push') push++;
+    else if (isHit(l.resultado)) hit++;
+    else miss++;
+  }
+  return {
+    hit, miss, push,
+    settled: hit + miss + push,
+    aguardando, semFixture,
+    pendentes: aguardando + semFixture,
+    total: linhas.length,
+  };
+}

@@ -13,13 +13,16 @@ import {
   useVitrine,
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
+import { hrefDaSaida } from '@/utils/futebol-links';
 import { chancePct, pickLabel } from '@/utils/futebol-score';
 import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
 import { contaQueValem, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
 import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
 import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico } from '@/utils/futebol-historico';
+import { evidenciaDoHistorico, perfilDaJanela } from '@/utils/futebol-historico';
+import { Blur } from '@/components/futebol/FutebolGate';
+import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type {
   FutebolFixtureByDay,
@@ -27,6 +30,7 @@ import type {
   FutebolFixturePremissas,
   FutebolValueBoardRow,
 } from '@/services/futebol-data.service';
+import { ComoChegamLegenda } from '@/components/futebol/ComoChegamLegenda';
 
 /**
  * O painel do jogo na coluna da direita (protótipo "Futebol Jogos").
@@ -104,6 +108,15 @@ export function JogoResumoPanel({
   const numeros = demo?.numeros ?? numerosReais;
   const { data: injuries } = useFutebolFixtureInjuries(fixture.fixture_id);
   const { data: historico } = useFutebolFixtureHistorico(fixture.fixture_id);
+  // A camada de VALOR é paga, e este painel era o furo: chance, odd e vantagem
+  // apareciam limpas para quem não tem acesso, enquanto as MESMAS três estão
+  // borradas na tela de Oportunidades e na folha do jogo. Uma tela dava de
+  // graça o que a outra cobrava.
+  //
+  // A regra é a das outras duas, incluindo a exceção: linha já liquidada não
+  // borra. O passado é registro do que foi publicado, não pick para apostar.
+  const { data: access } = useFutebolAccess();
+  const semAcesso = demo ? false : !access?.unlocked;
   // O contrato de motivos (#334). No tour os dados são de mentira, então não há
   // o que buscar.
   const { data: contrato, isLoading: contratoCarregando } = useFutebolFixtureReasonContract(
@@ -145,8 +158,16 @@ export function JogoResumoPanel({
   // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
   const carregandoLeitura = demo ? false : leituraCarregando || premissasCarregando;
   const temLeitura = !!best || (topo != null && topo.nValem > 0);
+  // Os dois links do painel levam à MESMA leitura que ele está exibindo (#344).
+  //
+  // `best ?? cand`, e não só `best`: a #344 mandava apenas a leitura COM preço,
+  // com o argumento de que sem preço não havia saída para filtrar. Falso — há
+  // saída anunciada, ela só não tem preço, e o painel a exibe em letra grande.
+  // Sem isto, num jogo sem oportunidade o link ia pelado e a tela do jogo abria
+  // noutra linha (#346).
+  const paraOJogo = hrefDaSaida(fixture.fixture_id, best ?? cand);
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
-  const nValem = cand && mercadoLeitura ? contaQueValem(mercadoLeitura, cand.acesas) : 0;
+  const nValem = cand ? contaQueValem(cand) : 0;
 
   // A resposta a "por que essa aposta", da mesma fonte que a home, o resumo do
   // jogo e a bancada usam (#334). Com preço quem agrupa é o backend; sem preço
@@ -185,14 +206,20 @@ export function JogoResumoPanel({
         ? 'premissa acesa'
         : 'premissas acesas';
 
-  // O que pesou contra, AGORA DO CONTRATO.
+  // O que NÃO ATINGIU O CORTE, do contrato.
   //
   // Antes era fabricado por negação: pegava as premissas do mercado que não
   // acenderam e negava cada uma, sem filtrar se ela se aplica à saída escolhida.
   // Num Over isso listava como contra uma premissa que só existe para o Under —
   // o defeito que o aceite da virada proíbe com esse exemplo literal.
+  //
+  // E o rótulo deixou de dizer "pesou contra" (#351/#358): confirmado no modelo
+  // em 03/09, nenhum dos cinco mercados tem premissa que seja evidência CONTRA o
+  // lado apostado — o que existe é premissa do próprio lado que não bateu o
+  // corte. Dizer "contra" afirmava oposição onde só há ausência, e essa é a
+  // mesma frase que a folha de detalhe já corrigiu.
   const contra = explicacao.contra.length
-    ? `${explicacao.contra.length} ${explicacao.contra.length === 1 ? 'pesou' : 'pesaram'} contra: ${explicacao.contra
+    ? `${explicacao.contra.length} não ${explicacao.contra.length === 1 ? 'atingiu' : 'atingiram'} o corte: ${explicacao.contra
         .map(({ premissa }) => rotuloPremissa(premissa, lado, true).toLowerCase())
         .join(' e ')}.`
     : null;
@@ -200,11 +227,16 @@ export function JogoResumoPanel({
   const casa = numeros?.find((n) => n.side === 'home');
   const fora = numeros?.find((n) => n.side === 'away');
   const d1 = (v: number | null | undefined) => (v == null ? '—' : v.toFixed(1).replace('.', ','));
-  const chegam = casa && fora
+  // "Como chegam" sai da JANELA DA PREMISSA, não do perfil de temporada: ver
+  // `perfilDaJanela`. Enquanto vinha do perfil, este bloco desmentia a premissa
+  // logo acima dele em aritmética simples.
+  const perfil = perfilDaJanela(historico);
+  const pct = (v: number | null) => (v == null ? null : Math.round(v * 100));
+  const chegam = perfil
     ? [
-        { label: 'Gols marcados', a: casa.gf_total, b: fora.gf_total, maiorEhCasa: true },
-        { label: 'Gols sofridos', a: casa.ga_total, b: fora.ga_total, maiorEhCasa: false },
-        { label: 'Sem sofrer gol', a: casa.clean_sheets, b: fora.clean_sheets, maiorEhCasa: true },
+        { label: 'Gols marcados', a: perfil.gf.home, b: perfil.gf.away, maiorEhCasa: true },
+        { label: 'Gols sofridos', a: perfil.ga.home, b: perfil.ga.away, maiorEhCasa: false },
+        { label: 'Sem sofrer gol', a: pct(perfil.semSofrer.home), b: pct(perfil.semSofrer.away), maiorEhCasa: true, ehPercentual: true },
       ].filter((x) => x.a != null && x.b != null)
     : [];
 
@@ -221,6 +253,9 @@ export function JogoResumoPanel({
       : null;
 
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;
+  // Borra o pick de quem não tem acesso — menos quando ele já liquidou, que é a
+  // mesma exceção da lista de Oportunidades (`showLock = locked && !result`).
+  const borraValor = semAcesso && !desfecho;
 
   return (
     <div className="bg-white rounded-[20px] overflow-hidden" style={{ border: '1px solid #ded2b6' }}>
@@ -229,9 +264,19 @@ export function JogoResumoPanel({
         style={{ background: 'var(--canvas-2)', borderBottom: '1px solid #ded2b6' }}
       >
         <Crest name={fixture.home_team_name} id={fixture.home_team_id} size={20} />
-        <span className="text-[13.5px] font-semibold tracking-tight text-ink truncate">
+        {/* O título leva à tela do jogo (#341). Era o único caminho para lá que
+            não existia: o painel só tinha o botão do rodapé, que fica abaixo da
+            dobra em painel comprido. */}
+        {/* `py-1.5 -my-1.5` dá 24px de altura de alvo sem empurrar o cabeçalho:
+            o texto tem 13,5px e sozinho ficava em ~18px, abaixo do mínimo de
+            alvo de clique. A margem negativa devolve o espaço ao layout. */}
+        <Link
+          to={paraOJogo}
+          className="text-[13.5px] font-semibold tracking-tight text-ink truncate hover:underline py-1.5 -my-1.5"
+          title="Abrir a tela do jogo"
+        >
           {fixture.home_team_name} × {fixture.away_team_name}
-        </span>
+        </Link>
         <Crest name={fixture.away_team_name} id={fixture.away_team_id} size={20} />
         <span className="text-[11px] truncate" style={{ color: '#8d8672' }}>
           {fim || live
@@ -278,16 +323,22 @@ export function JogoResumoPanel({
                 <div className="flex gap-4 mt-2.5">
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
-                    <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">{chance}%</div>
+                    <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">
+                      <Blur active={borraValor} strength={5}>{chance}%</Blur>
+                    </div>
                   </div>
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
-                    <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">{best.best_odd.toFixed(2)}</div>
+                    <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">
+                      <Blur active={borraValor} strength={5}>{best.best_odd.toFixed(2)}</Blur>
+                    </div>
                   </div>
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Vantagem</div>
                     <div className="tabular-nums text-[15px] font-semibold mt-0.5" style={{ color: best.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}>
-                      {`${best.edge >= 0 ? '+' : '−'}${Math.abs(best.edge * 100).toFixed(1).replace('.', ',')}%`}
+                      <Blur active={borraValor} strength={5}>
+                        {`${best.edge >= 0 ? '+' : '−'}${Math.abs(best.edge * 100).toFixed(1).replace('.', ',')}%`}
+                      </Blur>
                     </div>
                   </div>
                 </div>
@@ -390,21 +441,22 @@ export function JogoResumoPanel({
                 {fixture.home_team_name} · {fixture.away_team_name}
               </span>
             </div>
+            <ComoChegamLegenda className="mt-1" />
             <div className="mt-2.5 flex flex-col gap-3">
               {chegam.map((c) => {
                 const tot = (c.a ?? 0) + (c.b ?? 0) || 1;
                 const wa = `${Math.round(((c.a ?? 0) / tot) * 100)}%`;
                 const wb = `${Math.round(((c.b ?? 0) / tot) * 100)}%`;
-                const inteiro = c.label === 'Sem sofrer gol';
+                const inteiro = 'ehPercentual' in c && c.ehPercentual === true;
                 return (
                   <div key={c.label}>
                     <div className="flex justify-between items-baseline mb-1 tabular-nums">
                       <span className="text-[14px] font-semibold" style={{ color: '#0a3d2e' }}>
-                        {inteiro ? c.a : d1(c.a)}
+                        {inteiro ? `${c.a}%` : d1(c.a)}
                       </span>
                       <span className="text-[10.5px] font-medium" style={{ color: '#8d8672' }}>{c.label}</span>
                       <span className="text-[14px] font-semibold" style={{ color: '#6b6350' }}>
-                        {inteiro ? c.b : d1(c.b)}
+                        {inteiro ? `${c.b}%` : d1(c.b)}
                       </span>
                     </div>
                     <div className="flex gap-[3px] h-1.5">
@@ -438,7 +490,7 @@ export function JogoResumoPanel({
 
         <div className="mt-4 flex gap-2">
           <Link
-            to={`/futebol/jogo/${fixture.fixture_id}`}
+            to={paraOJogo}
             className="flex-1 h-10 rounded-[10px] bg-forest text-canvas text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-forest-2 transition"
           >
             {temLeitura ? 'Ver a análise dos 5 mercados' : 'Ver a análise completa'} <ArrowRight className="w-4 h-4" />
