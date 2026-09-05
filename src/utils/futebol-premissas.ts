@@ -146,7 +146,13 @@ const P_OU: Premissa[] = [
   P('xg_baixo_combinado', 'Os dois criam pouca chance de gol', 'O baixo volume de chances não entrou como sinal a favor', 'decide', 10, { lado: 'under' }),
   P('xg_combinado_alto', 'Os dois criam muita chance de gol', 'O alto volume de chances não entrou como sinal a favor', 'decide', 10, { lado: 'over' }),
   P('clean_sheets_altos', 'Os dois passam muitos jogos sem sofrer gol', 'Os jogos sem sofrer gol não entraram como sinal a favor', 'decide', 10, { lado: 'under' }),
-  P('ataques_fracos', 'Ataques fracos dos dois lados', 'A limitação dos ataques não entrou como sinal a favor', 'decide', 3, { lado: 'under', motivo: 'o preço já cobra' }),
+  // ⚠️ O nome diz "pelo menos um" porque o critério é o único OU do produto:
+  // `home_fts_pct >= 35 OR away_fts_pct >= 35`. Ele se chamava "Ataques fracos
+  // dos dois lados", e afirmava o que a regra não exige — o PM leu o card e
+  // concluiu que o time ABAIXO do corte é que sustentava o Under, que é o
+  // inverso. Todos os outros "dos dois" do catálogo são critérios E, e por isso
+  // continuam honestos.
+  P('ataques_fracos', 'Ataque fraco em pelo menos um lado', 'A limitação dos ataques não entrou como sinal a favor', 'decide', 3, { lado: 'under', motivo: 'o preço já cobra' }),
   P('historico_under', 'Histórico de jogo com poucos gols', 'O histórico de poucos gols não entrou como sinal a favor', 'preco', 3, { lado: 'under', motivo: 'sinal fraco' }),
   P('ambos_vazam', 'Os dois sofrem gol quase todo jogo', 'Os gols sofridos não entraram como sinal a favor', 'preco', 0, {
     lado: 'over',

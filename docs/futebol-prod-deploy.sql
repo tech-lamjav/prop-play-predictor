@@ -1101,7 +1101,7 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'goals_over_under', 'xg_baixo_combinado', 'any', 4, 'Os dois criam pouca chance de gol'),
   ('evidencia', 'goals_over_under', 'xg_combinado_alto', 'any', 5, 'Os dois criam muita chance de gol'),
   ('evidencia', 'goals_over_under', 'clean_sheets_altos', 'any', 6, 'Os dois passam muitos jogos sem sofrer gol'),
-  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 7, 'Ataques fracos dos dois lados'),
+  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 7, 'Ataque fraco em pelo menos um lado'),
   ('evidencia', 'goals_over_under', 'historico_under', 'any', 8, 'Histórico de jogo com poucos gols'),
   ('evidencia', 'goals_over_under', 'ambos_vazam', 'any', 9, 'Os dois sofrem gol quase todo jogo'),
   ('evidencia', 'goals_over_under', 'ritmo_alto', 'any', 10, 'Jogo de ritmo alto'),
