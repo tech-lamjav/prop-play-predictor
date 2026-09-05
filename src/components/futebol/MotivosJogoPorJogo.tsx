@@ -153,11 +153,14 @@ function BlocoSerie({
   s,
   teto,
   comRotulo,
+  mostraComoLer,
   referencia,
 }: {
   s: SerieHistorico;
   teto: number;
   comRotulo: boolean;
+  /** As séries do card medem coisas diferentes, então cada uma se explica. */
+  mostraComoLer: boolean;
   referencia?: Story['referencia'];
 }) {
   const y = (v: number) => (v / teto) * (PLOT - TOPO_ROTULO);
@@ -227,6 +230,14 @@ function BlocoSerie({
           </>
         )}
       </div>
+      {/* A explicação DESTE gráfico, quando as séries do card medem coisas
+          diferentes. Onde medem a mesma, a story traz uma só, embaixo dos dois
+          — repeti-la em cada um seria dizer duas vezes. */}
+      {mostraComoLer && (
+        <div className="text-[11px] leading-relaxed mt-2" style={{ color: '#8d8672' }}>
+          {s.comoLer}
+        </div>
+      )}
       {/* Contra quem foi cada jogo. */}
       <div className="flex items-start gap-[3px] mt-1.5">
         {s.jogos.map((j) => (
@@ -287,7 +298,7 @@ function GraficoUnificado({ story }: { story: Story }) {
             className={`flex min-w-0 ${i > 0 ? 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line' : ''}`}
             style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
           >
-            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} referencia={story.referencia} />
+            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} mostraComoLer={!story.comoLer} referencia={story.referencia} />
           </div>
         ))}
       </div>
@@ -617,9 +628,11 @@ function PainelPremissa({
         <GraficoUnificado story={story} />
       )}
 
-      <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>
-        {soMiudas ? 'Amostra curta na competição: em vez de gráfico, o valor de cada jogo.' : story.comoLer}
-      </div>
+      {(soMiudas || story.comoLer) && (
+        <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>
+          {soMiudas ? 'Amostra curta na competição: em vez de gráfico, o valor de cada jogo.' : story.comoLer}
+        </div>
+      )}
     </div>
   );
 }

@@ -286,3 +286,54 @@ describe('a frase nunca sai de um recorte diferente do gráfico', () => {
     });
   }
 });
+
+describe('a premissa que compara ataque com defesa se explica', () => {
+  // ==========================================================================
+  // `forca_mismatch` e `tende_golear` são as únicas do catálogo que comparam
+  // métricas DIFERENTES: gols marcados do time contra gols sofridos do
+  // adversário. Tudo que descrevia o card saía da PRIMEIRA série e valia para
+  // as duas, então o segundo gráfico vinha rotulado com a métrica do primeiro:
+  //
+  //   frase   "Fortaleza EC 0,8 · Goias 0,6 gols marcados por jogo"
+  //           — o 0,6 do Goiás é de gols SOFRIDOS
+  //   rodapé  "quanto mais alta, mais gols o time marcou", embaixo dos dois
+  //   título  "Fortaleza EC fora" e "Goias em casa", sem dizer quem é o quê
+  //
+  // Somados, faziam um card cujo título fala de duelo mostrar duas coisas de
+  // aparência idêntica.
+  // ==========================================================================
+
+  const duelo: FutebolFixtureHistorico[] = [
+    jogo({ past_fixture_id: 1, ordem: 1, em_casa: true, gols_pro: 1, gols_contra: 0 }),
+    jogo({ past_fixture_id: 2, ordem: 2, em_casa: true, gols_pro: 1, gols_contra: 0 }),
+    jogo({ side: 'away', past_fixture_id: 3, ordem: 1, em_casa: false, gols_pro: 0, gols_contra: 2 }),
+    jogo({ side: 'away', past_fixture_id: 4, ordem: 2, em_casa: false, gols_pro: 0, gols_contra: 2 }),
+  ];
+
+  it('cada gráfico diz qual métrica desenha', () => {
+    const story = storyDaPremissa('forca_mismatch', duelo, 'home', null);
+    expect(story?.series).toHaveLength(2);
+    expect(story!.series[0].titulo).toContain('gols marcados');
+    expect(story!.series[1].titulo).toContain('gols sofridos');
+  });
+
+  it('cada gráfico carrega a própria explicação, e não há uma só para os dois', () => {
+    const story = storyDaPremissa('forca_mismatch', duelo, 'home', null);
+    // Vazio na story: uma frase só embaixo dos dois estaria errada para um.
+    expect(story!.comoLer).toBe('');
+    expect(story!.series[0].comoLer).toContain('marcou');
+    expect(story!.series[1].comoLer).toContain('sofreu');
+  });
+
+  it('a frase usa o verbo de cada métrica', () => {
+    const ev = evidenciaDoHistorico('forca_mismatch', duelo, 'home', null);
+    expect(ev?.texto).toMatch(/marca/);
+    expect(ev?.texto).toMatch(/sofre/);
+  });
+
+  it('onde as séries medem a mesma coisa, a explicação continua sendo uma só', () => {
+    const story = storyDaPremissa('defesas_firmes', duelo, 'home', 2.5);
+    expect(story!.comoLer).not.toBe('');
+    expect(story!.series[0].titulo).not.toContain('gols sofridos');
+  });
+});

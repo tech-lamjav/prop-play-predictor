@@ -263,6 +263,16 @@ export interface SerieHistorico {
    * segunda fonte do mesmo número.
    */
   daJanela: number;
+  /**
+   * Como ler ESTE gráfico. Vive na série, e não na story, porque duas premissas
+   * do catálogo — `forca_mismatch` e `tende_golear` — comparam métricas
+   * DIFERENTES: gols marcados do time contra gols sofridos do adversário.
+   *
+   * A explicação saía da primeira série e valia para o card inteiro, então o
+   * segundo gráfico dizia "quanto mais alta, mais gols o time MARCOU" embaixo
+   * de barras de gols SOFRIDOS.
+   */
+  comoLer: string;
 }
 
 /**
@@ -281,7 +291,11 @@ export interface Consolidado {
 
 export interface Story {
   series: SerieHistorico[];
-  /** Como ler o gráfico. Uma frase, por métrica. */
+  /**
+   * Como ler os gráficos, quando TODAS as séries medem a mesma coisa. Vazio
+   * quando não medem: aí cada gráfico carrega a sua, e uma frase só embaixo dos
+   * dois estaria errada para um deles.
+   */
   comoLer: string;
   /** Referência tracejada, quando a métrica é o total de gols da partida. */
   referencia?: { valor: number; label: string };
@@ -341,6 +355,11 @@ export function storyDaPremissa(
   if (!specs?.length || !hist?.length) return null;
   const p = papeis(lado);
 
+  // Duas premissas comparam métricas diferentes, e só nelas o título precisa
+  // dizer qual é qual: sem isso a tela mostra dois gráficos de aparência igual
+  // sob um título que fala de "duelo", e quem lê não descobre quem é o ataque.
+  // Nas demais o nome da métrica seria repetição do rodapé.
+  const metricasDiferentes = new Set(specs.map((x) => x.metrica)).size > 1;
   const series: SerieHistorico[] = [];
   for (const spec of specs) {
     const lados: ('home' | 'away')[] =
@@ -403,11 +422,11 @@ export function storyDaPremissa(
         // últimos 10 jogos" ao lado — duas linhas para o que a outra resolve em
         // uma, e o "de 10" repetia a janela que já é a mesma em toda a tela.
         titulo:
-          spec.mando === 'proprio'
+          (spec.mando === 'proprio'
             ? `${filtrados[0].team_name}${SUFIXO_MANDO(emCasa)}, ${filtrados.length} ${filtrados.length === 1 ? 'jogo' : 'jogos'}`
             : spec.ultimos
               ? `${filtrados[0].team_name}, últimos ${filtrados.length} jogos`
-              : filtrados[0].team_name,
+              : filtrados[0].team_name) + (metricasDiferentes ? ` · ${NOME_DA_METRICA[spec.metrica]}` : ''),
         // O subtítulo sobrou para UMA coisa: dizer que faltou dado em alguns
         // jogos, porque aí a média não é sobre todos e quem lê divide errado.
         //
@@ -419,6 +438,7 @@ export function storyDaPremissa(
         // cinco?" — quando a contagem no título já responde.
         sub: semDado > 0 ? `${semDado} sem o dado` : '',
         metrica: spec.metrica,
+        comoLer: COMO_LER[spec.metrica],
         direcao: spec.direcao,
         media,
         mostraMedia: spec.mostraMedia !== false,
@@ -433,11 +453,22 @@ export function storyDaPremissa(
   const spec0 = specs[0];
   return {
     series,
-    comoLer: COMO_LER[metrica],
+    comoLer: series.every((x) => x.metrica === metrica) ? COMO_LER[metrica] : '',
     referencia: metrica === 'total' && linha != null ? { valor: linha, label: `linha ${String(linha).replace('.', ',')}` } : undefined,
     consolidado: consolidadoDe(series, spec0, linha),
   };
 }
+
+/** O nome da métrica no título do gráfico, onde as séries divergem. */
+const NOME_DA_METRICA: Record<Metrica, string> = {
+  ga: 'gols sofridos',
+  gf: 'gols marcados',
+  xg: 'gols esperados',
+  total: 'gols no jogo',
+  resultado: 'resultado',
+  sem_sofrer: 'jogos sem sofrer',
+  sem_marcar: 'jogos sem marcar',
+};
 
 const UNIDADE: Partial<Record<Metrica, string>> = {
   ga: 'gols sofridos por jogo, somando os dois',
@@ -637,22 +668,33 @@ function fraseDoGrafico(
   const comoEscrever = (v: number, m: Metrica) =>
     EH_BINARIA(m) ? `${Math.round(v * 100)}%` : n1(v);
 
-  const partes = series.map((x) => `${x.teamName} ${comoEscrever(x.media!, x.metrica)}`);
-  const unidade = UNIDADE_CURTA[series[0].metrica];
-  return { texto: unidade ? `${partes.join(' · ')} ${unidade}` : partes.join(' · ') };
+  // O VERBO sai da métrica de CADA série, não da primeira.
+  //
+  // A versão anterior pegava a unidade da série [0] e a colava no fim da frase
+  // inteira. Em `forca_mismatch` — Fortaleza marca, Goiás sofre — isso escrevia
+  // "Fortaleza EC 0,8 · Goias 0,6 gols marcados por jogo", atribuindo ao Goiás
+  // um número que é de gols SOFRIDOS. A frase que existia antes disso, vinda do
+  // perfil de temporada, já dizia certo: "Fortaleza EC marca 0,8 e Goias sofre
+  // 0,6". O texto estava certo e a amostra errada; trocar a amostra não era
+  // motivo para perder o texto.
+  const partes = series.map((x) => FRASE_DA_METRICA[x.metrica](x.teamName, comoEscrever(x.media!, x.metrica)));
+  const porJogo = series.every((x) => !EH_BINARIA(x.metrica) && x.metrica !== 'resultado');
+  return { texto: `${partes.join(' · ')}${porJogo ? ' por jogo' : ''}` };
 }
 
 /**
- * A unidade sem o "somando os dois" do `UNIDADE`: aqui cada time aparece com o
- * seu número, então somar seria dizer o contrário do que está escrito.
+ * Cada métrica com o seu verbo. Sem isso a frase precisa de uma unidade única
+ * para o card inteiro, e as duas premissas que comparam ataque com defesa não
+ * têm uma.
  */
-const UNIDADE_CURTA: Partial<Record<Metrica, string>> = {
-  ga: 'gols sofridos por jogo',
-  gf: 'gols marcados por jogo',
-  xg: 'gols esperados por jogo',
-  total: 'gols por jogo',
-  sem_sofrer: 'dos jogos sem sofrer gol',
-  sem_marcar: 'dos jogos sem marcar',
+const FRASE_DA_METRICA: Record<Metrica, (time: string, valor: string) => string> = {
+  gf: (t, v) => `${t} marca ${v}`,
+  ga: (t, v) => `${t} sofre ${v}`,
+  xg: (t, v) => `${t} cria ${v}`,
+  total: (t, v) => `${t}: ${v} gols`,
+  resultado: (t, v) => `${t}: ${v}`,
+  sem_sofrer: (t, v) => `${t} não sofreu gol em ${v} dos jogos`,
+  sem_marcar: (t, v) => `${t} não marcou em ${v} dos jogos`,
 };
 
 /**
