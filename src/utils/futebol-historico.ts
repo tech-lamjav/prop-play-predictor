@@ -398,31 +398,26 @@ export function storyDaPremissa(
         // frase inteira do critério de `ga_comb`. O título sozinho mentia dos dois
         // jeitos já: "em casa" sem a janela sugeria a temporada, e "últimos 10
         // jogos" sem o mando sugeria que os dez entraram.
+        // A contagem vive no TÍTULO nos dois casos, e não num subtítulo à parte.
+        // Antes a premissa de mando dizia "Fortaleza EC fora" em cima e "5 dos
+        // últimos 10 jogos" ao lado — duas linhas para o que a outra resolve em
+        // uma, e o "de 10" repetia a janela que já é a mesma em toda a tela.
         titulo:
           spec.mando === 'proprio'
-            ? `${filtrados[0].team_name}${SUFIXO_MANDO(emCasa)}`
+            ? `${filtrados[0].team_name}${SUFIXO_MANDO(emCasa)}, ${filtrados.length} ${filtrados.length === 1 ? 'jogo' : 'jogos'}`
             : spec.ultimos
               ? `${filtrados[0].team_name}, últimos ${filtrados.length} jogos`
               : filtrados[0].team_name,
-        // O subtítulo só existe quando ACRESCENTA. Três casos, nesta ordem:
+        // O subtítulo sobrou para UMA coisa: dizer que faltou dado em alguns
+        // jogos, porque aí a média não é sobre todos e quem lê divide errado.
         //
-        //   · faltou dado em alguns jogos -> a média não é sobre todos, e isso
-        //     precisa estar escrito;
-        //   · a premissa olha só um mando -> o título diz "Fortaleza EC fora" e
-        //     não carrega contagem nenhuma, então ela vem aqui;
-        //   · nos demais o título já diz "últimos N jogos", e repetir o N seria
-        //     dizer duas vezes.
-        //
-        // Saiu daqui o "5 de 40 disponíveis". O 40 era quantas linhas a consulta
-        // trouxe — parâmetro nosso, não conceito de produto — e desde que a
-        // janela passou a ser a do modelo ele só levantava a pergunta errada:
-        // "por que não 40?". Porque o modelo nunca olhou 40.
-        sub:
-          semDado > 0
-            ? `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}, ${semDado} sem o dado`
-            : spec.mando === 'proprio'
-              ? `${jogos.length} dos últimos ${naJanela.length} jogos`
-              : '',
+        // Saíram daqui, em duas rodadas, o "5 de 40 disponíveis" e o "5 dos
+        // últimos 10 jogos". O 40 era quantas linhas a consulta trouxe —
+        // parâmetro nosso, não conceito de produto. O 10 é a janela do modelo,
+        // que já é a mesma em toda a tela e não precisa ser repetida em cada
+        // gráfico. Os dois levantavam a mesma pergunta errada — "por que só
+        // cinco?" — quando a contagem no título já responde.
+        sub: semDado > 0 ? `${semDado} sem o dado` : '',
         metrica: spec.metrica,
         direcao: spec.direcao,
         media,

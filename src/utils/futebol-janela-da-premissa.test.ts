@@ -70,12 +70,12 @@ describe('as três premissas de média combinada recortam por mando', () => {
     expect(story?.series[0].media).toBe(2);
   });
 
-  it('o rótulo nomeia o mando e o sub declara a base', () => {
+  it('o rótulo nomeia o mando e conta os jogos', () => {
     const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS, 'home', 3.25);
-    // As duas metades juntas são a frase inteira do critério: qual recorte, e
-    // sobre quantos jogos da janela ele foi medido.
-    expect(story?.series[0].titulo).toBe('Flamengo em casa');
-    expect(story?.series[0].sub).toBe('3 dos últimos 6 jogos');
+    // Título só: qual recorte e sobre quantos jogos. O subtítulo saiu porque
+    // dizia a janela (10), que é a mesma em toda a tela e não muda nada aqui.
+    expect(story?.series[0].titulo).toBe('Flamengo em casa, 3 jogos');
+    expect(story?.series[0].sub).toBe('');
   });
 });
 
@@ -106,7 +106,7 @@ describe('a janela é de jogos, e o mando recorta dentro dela', () => {
     const story = storyDaPremissa('defesas_firmes', DOZE, 'home', 3.25);
 
     expect(story?.series[0].jogos).toHaveLength(5);
-    expect(story?.series[0].sub).toBe('5 dos últimos 10 jogos');
+    expect(story?.series[0].titulo).toBe('Flamengo em casa, 5 jogos');
     // E são os DE DENTRO da janela: a ordem 1 ficou de fora.
     expect(story?.series[0].jogos.map((j) => j.ordem)).toEqual([3, 5, 7, 9, 11]);
   });
@@ -121,7 +121,7 @@ describe('o mando sobrevive onde o critério de fato olha o mando', () => {
     // passaria com título vazio, que é o modo mais comum de um teste destes
     // deixar de provar o que promete.
     const story = storyDaPremissa('defesa_fora_solida', SEIS_JOGOS, 'home', null);
-    expect(story?.series[0].titulo).toBe('Flamengo em casa');
+    expect(story?.series[0].titulo).toBe('Flamengo em casa, 3 jogos');
     // E o recorte é real: só os três jogos em casa entram, não os seis.
     expect(story?.series[0].jogos).toHaveLength(3);
   });
@@ -133,7 +133,7 @@ describe('base de jogos', () => {
     // e declara a base, em vez de sumir.
     const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS.slice(0, 2), 'home', 3.25);
     expect(story?.series[0].jogos).toHaveLength(1);
-    expect(story?.series[0].sub).toBe('1 dos últimos 2 jogos');
+    expect(story?.series[0].titulo).toBe('Flamengo em casa, 1 jogo');
   });
 
   it('janela sem nenhum jogo do mando não vira gráfico daquele lado', () => {
