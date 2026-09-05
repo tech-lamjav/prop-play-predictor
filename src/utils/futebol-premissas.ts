@@ -343,7 +343,10 @@ export function outcomeLabel(s: Saida, home: string, away: string): string {
     const time = outcome === 'Home' ? home : away;
     return daSaida != null ? `${time} ${daSaida > 0 ? '+' : '−'}${fmtLinha(Math.abs(daSaida))}` : time;
   }
-  if (market === 'btts') return outcome === 'Yes' ? 'Os dois marcam' : 'Não marcam os dois';
+  // O nome da casa de apostas, igual ao `pickLabel` e à DM. O rótulo anterior
+  // para o "não" — "Não marcam os dois" — além de destoar, descrevia OUTRA
+  // aposta: aquilo é o 0 a 0, e BTTS No cobre também o 1 a 0.
+  if (market === 'btts') return outcome === 'Yes' ? 'Ambos marcam: Sim' : 'Ambos marcam: Não';
   if (market === 'double_chance') {
     if (outcome === '1X') return `${home} ou empate`;
     if (outcome === 'X2') return `${away} ou empate`;
