@@ -576,8 +576,80 @@ export function evidenciaDoHistorico(
     };
   }
 
-  return null;
+  return fraseDoGrafico(slug, hist, lado, linha);
 }
+
+/**
+ * A frase montada do PRÓPRIO gráfico, para qualquer premissa que tenha um.
+ *
+ * Existe para tapar o buraco medido em 05/09: das 48 premissas, só 10 têm o
+ * critério transcrito — e as dez são do mercado de Gols. Nas outras quatro
+ * famílias a frase saía do perfil de temporada, que mede outra coisa:
+ *
+ *   Goiás, gols sofridos por jogo
+ *     perfil de temporada (25 jogos, foto de 31/08)   1,20
+ *     últimos 10, que é o que o modelo usa            0,90
+ *
+ * Trinta e três por cento de diferença, e o perfil ainda por cima é um snapshot
+ * com data — para um jogo de hoje ele está cinco dias parado, enquanto o modelo
+ * é point-in-time por partida.
+ *
+ * ⚠️ Isto NÃO é o número do modelo: é a mesma AMOSTRA que ele usa, medida por
+ * nós. A diferença importa e some quando o critério da premissa for transcrito
+ * — aí a prestação de contas assume, com o corte junto, e esta função deixa de
+ * ser chamada para aquela premissa. Enquanto isso, o card ao menos para de se
+ * contradizer entre a frase e o gráfico logo abaixo dela.
+ */
+function fraseDoGrafico(
+  slug: string,
+  hist: FutebolFixtureHistorico[] | undefined,
+  lado: 'home' | 'away' | null,
+  linha: number | null,
+): Evidencia | null {
+  const story = storyDaPremissa(slug, hist, lado, linha);
+  if (!story) return null;
+
+  // Premissa de RESULTADO não tem média: a barra é vitória, empate ou derrota.
+  // A frase honesta ali é a contagem, na mesma janela — é a mesma forma que o
+  // perfil de temporada usava ("6 vitórias, 2 empates e 4 derrotas"), com o
+  // recorte trocado.
+  const deResultado = story.series.filter((x) => x.metrica === 'resultado');
+  if (deResultado.length) {
+    const partes = deResultado.map((x) => {
+      const conta = (r: 'V' | 'E' | 'D') => x.jogos.filter((j) => j.resultado === r).length;
+      const [v, e, d] = [conta('V'), conta('E'), conta('D')];
+      const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
+      return `${x.teamName}: ${plural(v, 'vitória', 'vitórias')}, ${plural(e, 'empate', 'empates')} e ${plural(d, 'derrota', 'derrotas')} em ${x.jogos.length}`;
+    });
+    return { texto: partes.join(' · ') };
+  }
+
+  const series = story.series.filter((x) => x.media != null);
+  if (!series.length) return null;
+
+  // Numa métrica binária a média é a FRAÇÃO de jogos, e escrevê-la como "0,4"
+  // embaixo de uma premissa que compara 40% seria o card falando outra língua
+  // que o gráfico. Mesma régua do rótulo da média.
+  const comoEscrever = (v: number, m: Metrica) =>
+    EH_BINARIA(m) ? `${Math.round(v * 100)}%` : n1(v);
+
+  const partes = series.map((x) => `${x.teamName} ${comoEscrever(x.media!, x.metrica)}`);
+  const unidade = UNIDADE_CURTA[series[0].metrica];
+  return { texto: unidade ? `${partes.join(' · ')} ${unidade}` : partes.join(' · ') };
+}
+
+/**
+ * A unidade sem o "somando os dois" do `UNIDADE`: aqui cada time aparece com o
+ * seu número, então somar seria dizer o contrário do que está escrito.
+ */
+const UNIDADE_CURTA: Partial<Record<Metrica, string>> = {
+  ga: 'gols sofridos por jogo',
+  gf: 'gols marcados por jogo',
+  xg: 'gols esperados por jogo',
+  total: 'gols por jogo',
+  sem_sofrer: 'dos jogos sem sofrer gol',
+  sem_marcar: 'dos jogos sem marcar',
+};
 
 /**
  * O "Como chegam" na JANELA DA PREMISSA.

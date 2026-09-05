@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { storyDaPremissa, evidenciaDoHistorico, SPECS } from './futebol-historico';
+import { storyDaPremissa, evidenciaDoHistorico, SPECS, EH_BINARIA } from './futebol-historico';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
 // ============================================================================
@@ -237,4 +237,52 @@ describe('toda premissa declara a janela do modelo', () => {
     const media = story!.series[0].media!;
     expect(ev!.texto).toContain(media.toFixed(1).replace('.', ','));
   });
+});
+
+describe('a frase nunca sai de um recorte diferente do gráfico', () => {
+  // ==========================================================================
+  // A auditoria de 05/09: 12 premissas mostravam temporada acima do gráfico
+  // ==========================================================================
+  // Das 48 premissas, só 10 têm o critério transcrito, e as dez são do mercado
+  // de Gols. Nas outras a frase saía do perfil de temporada — 25 jogos, foto de
+  // 31/08 — enquanto o gráfico logo abaixo desenhava os últimos dez. No Goiás ×
+  // Fortaleza isso dava 1,20 contra 0,90 de gols sofridos, no mesmo card.
+  //
+  // A ordem das fontes inverteu: histórico antes do perfil. Este teste guarda a
+  // consequência — toda premissa COM gráfico tem frase, e a frase repete um
+  // número do gráfico.
+  // ==========================================================================
+
+  const doisLados: FutebolFixtureHistorico[] = [
+    jogo({ past_fixture_id: 1, ordem: 1, gols_pro: 2, gols_contra: 1, xg: 2, total_gols: 3 }),
+    jogo({ past_fixture_id: 2, ordem: 2, gols_pro: 0, gols_contra: 1, xg: 0, total_gols: 1 }),
+    jogo({ side: 'away', past_fixture_id: 3, ordem: 1, em_casa: false, gols_pro: 1, gols_contra: 1, xg: 1, total_gols: 2 }),
+    jogo({ side: 'away', past_fixture_id: 4, ordem: 2, em_casa: false, gols_pro: 1, gols_contra: 1, xg: 1, total_gols: 2 }),
+  ];
+
+  const COM_GRAFICO_E_SEM_CRITERIO = [
+    'mando', 'mando_forte', 'defesa_forte', 'defesa_fora_solida',
+    'ambos_marcam', 'ataque_dos_dois', 'adversario_limitado', 'adversario_fragil_fora',
+  ];
+
+  for (const slug of COM_GRAFICO_E_SEM_CRITERIO) {
+    it(`${slug} tem frase vinda do gráfico`, () => {
+      const story = storyDaPremissa(slug, doisLados, 'home', 2.5);
+      const ev = evidenciaDoHistorico(slug, doisLados, 'home', 2.5);
+      // Se há gráfico, há frase — e é da mesma amostra.
+      if (!story) return;
+      expect(ev?.texto, `${slug} ficou sem frase e cairia no perfil de temporada`).toBeTruthy();
+      // Premissa de resultado não tem média — a barra é V/E/D. Nela a frase
+      // repete a CONTAGEM de jogos; nas demais, a média.
+      const alguma = story.series.some((s) => {
+        if (s.metrica === 'resultado') return ev!.texto.includes(String(s.jogos.length));
+        if (s.media == null) return false;
+        const n = EH_BINARIA(s.metrica)
+          ? `${Math.round(s.media * 100)}%`
+          : s.media.toFixed(1).replace('.', ',');
+        return ev!.texto.includes(n);
+      });
+      expect(alguma, `${slug}: "${ev?.texto}" não repete nenhum número do gráfico`).toBe(true);
+    });
+  }
 });
