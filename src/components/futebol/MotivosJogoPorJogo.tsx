@@ -230,6 +230,16 @@ function BlocoSerie({
           </>
         )}
       </div>
+      {/* Contra quem foi cada jogo. Encostado nas barras, sempre: o escudo é a
+          legenda do eixo, e qualquer coisa entre os dois quebra a leitura de
+          "esta barra foi contra este time". */}
+      <div className="flex items-start gap-[3px] mt-1.5">
+        {s.jogos.map((j) => (
+          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
+            <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
+          </div>
+        ))}
+      </div>
       {/* A explicação DESTE gráfico, quando as séries do card medem coisas
           diferentes. Onde medem a mesma, a story traz uma só, embaixo dos dois
           — repeti-la em cada um seria dizer duas vezes. */}
@@ -238,14 +248,6 @@ function BlocoSerie({
           {s.comoLer}
         </div>
       )}
-      {/* Contra quem foi cada jogo. */}
-      <div className="flex items-start gap-[3px] mt-1.5">
-        {s.jogos.map((j) => (
-          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
-            <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
