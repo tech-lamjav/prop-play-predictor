@@ -2801,6 +2801,32 @@ $function$;
 
 grant execute on function public.get_futebol_mercados_ocultos() to anon, authenticated, service_role;
 
+-- A MESMA vitrine, com a data em que cada mercado saiu (migration 119). A data
+-- é o que separa a linha que foi publicada e vista da que nunca esteve na
+-- tela: sem ela o painel só sabia esconder o presente, e o histórico devolvia
+-- o mercado escondido no dia seguinte.
+--
+-- Convive com a leitura acima em vez de substituí-la: as duas funções de
+-- notificação só olham o board — presente e futuro, sempre depois do corte —
+-- e para elas a lista de nomes basta.
+create or replace function public.get_futebol_vitrine()
+returns table (market text, oculto_desde timestamptz)
+ language sql
+ stable
+ security definer
+ set search_path to ''
+as $function$
+  select o.market, o.oculto_desde
+    from public.futebol_mercados_ocultos o
+   where o.oculto
+   order by o.market;
+$function$;
+
+comment on function public.get_futebol_vitrine() is
+  'Mercados fora da vitrine COM a data de corte. A data é o que separa a linha que foi publicada e vista da que nunca esteve na tela.';
+
+grant execute on function public.get_futebol_vitrine() to anon, authenticated, service_role;
+
 insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)
 values (
   'asian_handicap',

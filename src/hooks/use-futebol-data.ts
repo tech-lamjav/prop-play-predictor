@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
+import type { MercadoOculto } from '@/utils/futebol-mercados-ocultos';
 import type { FixtureScope } from '@/utils/futebol-competitions';
 import {
   futebolDataService,
@@ -427,9 +428,9 @@ export function useFutebolMatchupMarkets(
  * pior do que não ter escondido. Ver prop-play-predictor#324.
  */
 export function useFutebolMercadosOcultos() {
-  return useQuery<string[]>({
+  return useQuery<MercadoOculto[]>({
     queryKey: ['futebol', 'mercados-ocultos'],
-    queryFn: () => futebolDataService.getMercadosOcultos(),
+    queryFn: () => futebolDataService.getVitrine(),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -444,10 +445,17 @@ export function useFutebolMercadosOcultos() {
  * quanto a lista: renderizar antes de a vitrine chegar mostra o mercado
  * escondido por um instante, e ele some depois. Ver prop-play-predictor#324.
  */
-export function useVitrine(): { ocultos: string[]; isLoading: boolean } {
+export function useVitrine(): {
+  vitrine: MercadoOculto[];
+  ocultos: string[];
+  isLoading: boolean;
+} {
   const { data, isLoading } = useFutebolMercadosOcultos();
-  // Memoizado: `?? []` cria array novo a cada render e envenenaria as
-  // dependências de todo useMemo que recebe `ocultos`.
-  const ocultos = useMemo(() => data ?? [], [data]);
-  return { ocultos, isLoading };
+  // Memoizados: o fallback e o .map criam array novo a cada render e
+  // envenenariam as dependencias de todo useMemo que os recebe.
+  const vitrine = useMemo(() => data ?? [], [data]);
+  // Só os nomes, para quem decide sobre o presente e não precisa da data.
+  const ocultos = useMemo(() => vitrine.map((m) => m.market), [vitrine]);
+  return { vitrine, ocultos, isLoading };
 }
+

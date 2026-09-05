@@ -22,7 +22,7 @@
 // ============================================================================
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { parseUtc, brtDateStr, brtDayOf, addDays } from '@/utils/futebol-datas';
-import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
+import { type MercadoOculto, mercadoOcultoNaData } from '@/utils/futebol-mercados-ocultos';
 
 /** Quantos dias o Histórico navega para trás. */
 export const HISTORY_WINDOW_DAYS = 30;
@@ -73,13 +73,17 @@ export function mergeBoardAndHistory(
   board: FutebolValueBoardRow[],
   history: FutebolValueBoardRow[],
   nowMs: number,
-  // Os mercados fora da vitrine (#324). Valem para o DIA CORRENTE e não para o
-  // passado, e a distinção é a decisão de produto inteira: a linha de dia
-  // passado é registro do que foi publicado e visto, e escondê-la reescreveria
-  // o que o assinante viu; a linha de hoje é a lista de hoje, mesmo quando quem
-  // ganha o desempate é o histórico. Sem esta divisão o mercado escondido
-  // voltava pela porta dos fundos assim que o jogo começava.
-  ocultos: readonly string[] = [],
+  // Os mercados fora da vitrine (#324), cada um com a data em que saiu.
+  //
+  // O corte é a DATA, não "hoje". Antes dela a linha fica: foi publicada, vista
+  // e possivelmente apostada, e escondê-la reescreveria o passado do assinante.
+  // A partir dela some em qualquer tela, porque nunca esteve em nenhuma.
+  //
+  // Cortar por "hoje" — o que esta função fazia — deixava o mercado voltar pela
+  // porta dos fundos: sumia da lista de hoje e reaparecia amanhã, no mesmo
+  // jogo, quando a linha passava a vir do histórico. Em produção isso somava 31
+  // linhas de Handicap que ninguém nunca viu, contra 23 de verdade.
+  vitrine: readonly MercadoOculto[] = [],
 ): FutebolValueBoardRow[] {
   const today = brtDateStr(new Date(nowMs));
   const out: FutebolValueBoardRow[] = [];
@@ -89,10 +93,9 @@ export function mergeBoardAndHistory(
   for (const r of history) {
     const d = brtDayOf(r.kickoff_utc);
     if (!d) continue;
+    if (mercadoOcultoNaData(r.market, r.kickoff_utc, vitrine, nowMs)) continue;
     if (d < today) out.push(r);
-    else if (d === today && !mercadoEstaOculto(r.market, ocultos)) {
-      hojeHist.set(opportunityKey(r), r);
-    }
+    else if (d === today) hojeHist.set(opportunityKey(r), r);
     // d > today: a RPC não devolve; se um dia devolver, o board manda.
   }
 
