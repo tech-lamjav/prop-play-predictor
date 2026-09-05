@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
@@ -154,14 +153,11 @@ function BlocoSerie({
   s,
   teto,
   comRotulo,
-  rolando,
   referencia,
 }: {
   s: SerieHistorico;
   teto: number;
   comRotulo: boolean;
-  /** No celular a barra tem largura fixa e a fileira rola de lado. */
-  rolando: boolean;
   referencia?: Story['referencia'];
 }) {
   const y = (v: number) => (v / teto) * (PLOT - TOPO_ROTULO);
@@ -174,24 +170,23 @@ function BlocoSerie({
         <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
         <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>
       </div>
-      {/* No CELULAR a barra ganha largura fixa e a fileira rola de lado.
+      {/* A barra se ajusta à largura, sem rolagem — e isso passou a caber
+          porque o RECORTE mudou.
           
-          Espremendo 25 jogos em ~290px sobram menos de 12px por barra: nesse
-          tamanho não dá para comparar altura nenhuma, o escudo do adversário
-          fica ilegível e o rótulo de valor nem aparece. Com 28px cabem dez na
-          tela, o valor volta a caber em cima de cada uma, e o resto rola.
+          Enquanto a tela desenhava o histórico inteiro, 25 barras em ~290px
+          davam menos de 12px cada: nesse tamanho não se compara altura nenhuma,
+          o escudo fica ilegível e o rótulo de valor não aparece. A saída da vez
+          foi barra fixa de 28px com rolagem lateral.
           
-          O que se perde é o panorama — ver o conjunto de uma vez. A alternativa
-          era cortar a janela para 10 jogos no celular, mas isso mudaria a média
-          desenhada, e a média é o número da premissa. Preferimos rolar a mentir. */}
-      <div className="relative">
-      <div className={rolando ? 'overflow-x-auto -mx-1 px-1' : ''}>
-      <div className="relative" style={{ height: PLOT, width: rolando ? 'max-content' : undefined, minWidth: '100%' }}>
+          Com a janela alinhada ao modelo — dez jogos — são ~25px por barra numa
+          fileira só. Rolagem para dezessete pixels de sobra seria complexidade
+          sem troco, e o panorama de ver tudo de uma vez volta de graça. */}
+      <div className="relative" style={{ height: PLOT }}>
         <div className="absolute inset-0 flex items-end gap-[3px]">
           {s.jogos.map((j) => (
             <div
               key={`${j.ordem}-${j.data}`}
-              className={`flex flex-col items-center justify-end ${rolando ? 'w-7 shrink-0' : 'flex-1 min-w-[6px] max-w-[44px]'}`}
+              className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center justify-end"
               title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
                 j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
               }`}
@@ -218,52 +213,27 @@ function BlocoSerie({
           />
         )}
         {s.media != null && s.mostraMedia && (
-          <div
-            className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
-            style={{ borderColor: '#d4a017', bottom: y(s.media) }}
-          />
+          <>
+            <div
+              className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
+              style={{ borderColor: '#d4a017', bottom: y(s.media) }}
+            />
+            <span
+              className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
+              style={{ color: '#b8870f', bottom: y(s.media) + 2 }}
+            >
+              {rotuloMedia(s.media, s.metrica)}
+            </span>
+          </>
         )}
       </div>
-      {/* Contra quem foi cada jogo. Fica DENTRO do mesmo contêiner rolável,
-          senão os escudos deixam de acompanhar as barras ao rolar. */}
-      <div className="flex items-start gap-[3px] mt-1.5" style={{ width: rolando ? 'max-content' : undefined }}>
+      {/* Contra quem foi cada jogo. */}
+      <div className="flex items-start gap-[3px] mt-1.5">
         {s.jogos.map((j) => (
-          <div key={`c-${j.ordem}-${j.data}`} className={`flex justify-center ${rolando ? 'w-7 shrink-0' : 'flex-1 min-w-[6px] max-w-[44px]'}`}>
+          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
             <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
           </div>
         ))}
-      </div>
-      </div>
-      {/* A sombra na borda direita é o aviso de que há mais jogo para o lado.
-          
-          A barra de rolagem do celular só aparece DURANTE o gesto, então sem
-          ela nada dizia que o gráfico continuava — a pessoa via um corte seco e
-          concluía que aquilo era tudo. É o mesmo recurso que o mercado usa em
-          carrossel horizontal.
-          
-          O limiar de dez é o que cabe na tela: dez barras de 28px mais os vãos
-          dão 310px contra ~290 de espaço. Abaixo disso não há o que rolar, e a
-          sombra seria enfeite mentindo. */}
-      {rolando && s.jogos.length > 10 && (
-        <div
-          className="absolute top-0 right-0 w-8 pointer-events-none"
-          style={{ height: PLOT, background: 'linear-gradient(to left, #fff, rgba(255,255,255,0))' }}
-        />
-      )}
-      {/* O rótulo da média fica FORA do contêiner que rola, e por isso não sai
-          da tela quando a pessoa arrasta — antes ele viajava junto com as
-          barras e sumia no primeiro gesto.
-          
-          Posicionado pelo TOPO porque a caixa de fora inclui a fileira de
-          escudos: medido pela base, o rótulo desceria a altura dela. */}
-      {s.media != null && s.mostraMedia && (
-        <span
-          className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
-          style={{ color: '#b8870f', top: PLOT - y(s.media) - 14 }}
-        >
-          {rotuloMedia(s.media, s.metrica)}
-        </span>
-      )}
       </div>
     </div>
   );
@@ -277,11 +247,11 @@ function GraficoUnificado({ story }: { story: Story }) {
   const total = numericas.reduce((n, s) => n + s.jogos.length, 0);
   // Rótulo de dados em cima de cada barra. Gol é 1 caractere e cabe quase sempre; o
   // gol esperado tem decimal e só cabe até a temporada inteira dos dois times.
-  const rolando = useIsMobile();
-  // Rótulo de dados em cima de cada barra. Rolando, a barra tem 28px fixos e o
-  // rótulo cabe sempre; sem rolagem ele depende de quantas barras dividem a
-  // largura — gol é um caractere e cabe quase sempre, gol esperado tem decimal.
-  const comRotulo = rolando || total <= 24 || numericas.every((s) => s.metrica !== 'xg');
+  // Rótulo de dados em cima de cada barra. Cabe sempre desde que a janela
+  // encolheu para dez jogos: são ~25px por barra e o rótulo mede ~17. A conta
+  // fica porque a régua ainda vale — gol é um caractere, gol esperado tem
+  // decimal, e é o segundo que aperta.
+  const comRotulo = total <= 24 || numericas.every((s) => s.metrica !== 'xg');
 
   // A barra por jogo compara com a MÉDIA (é o que a barra tem para comparar), e o
   // consolidado compara com a LINHA. Dizer "joga a favor" nas duas fazia as duas se
@@ -317,7 +287,7 @@ function GraficoUnificado({ story }: { story: Story }) {
             className={`flex min-w-0 ${i > 0 ? 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line' : ''}`}
             style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
           >
-            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} rolando={rolando} referencia={story.referencia} />
+            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} referencia={story.referencia} />
           </div>
         ))}
       </div>
