@@ -31,13 +31,14 @@ import { copyDeServing, premissaDe, rotuloPremissa, type LinhaCopy } from './fut
 const RAIZ = resolve(__dirname, '../..');
 // A migration que SEMEIA a tabela hoje. A 106 criou a mecânica e semeou a
 // primeira vez; a 112 regerou no Score de contexto; a 120 renomeou
-// `ataques_fracos` e a 121 tirou "mando" dos rótulos. É sempre a ÚLTIMA que
-// precisa bater com o
+// `ataques_fracos`, a 121 tirou "mando" dos rótulos e a 122 deu peso ao BTTS e
+// à Dupla chance, o que reordenou a evidência. É sempre a ÚLTIMA que precisa
+// bater com o
 // catálogo — apontar para uma anterior cobraria dela uma decisão que não
 // existia quando foi escrita.
 const MIGRATION = resolve(
   RAIZ,
-  'supabase/migrations/20260905220000_121_futebol_rotulo_do_mando.sql',
+  'supabase/migrations/20260905230000_122_futebol_pesos_do_btts_e_dupla_chance.sql',
 );
 const SHAPE = resolve(RAIZ, 'docs/futebol-prod-deploy.sql');
 const RPCS = ['get_futebol_fixture_value', 'get_futebol_value_board', 'get_futebol_value_history'];

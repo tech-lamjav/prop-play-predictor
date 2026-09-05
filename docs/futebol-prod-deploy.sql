@@ -1094,6 +1094,7 @@ alter table public.futebol_premissa_copy add  constraint futebol_premissa_copy_s
 -- inteira em vez de sofrer upsert linha por linha. Assim premissa REMOVIDA do
 -- catálogo também desaparece daqui.
 delete from public.futebol_premissa_copy;
+
 insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, texto) values
   ('evidencia', 'goals_over_under', 'defesas_firmes', 'any', 1, 'Defesas firmes dos dois lados'),
   ('evidencia', 'goals_over_under', 'defesas_vazaveis', 'any', 2, 'Defesas frágeis dos dois lados'),
@@ -1157,16 +1158,16 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('aviso', 'asian_handicap', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
   ('aviso', 'asian_handicap', 'handicap_alto', 'any', 5, 'Handicap muito alto'),
   ('evidencia', 'btts', 'ambos_marcam', 'any', 1, 'Os dois costumam marcar'),
-  ('evidencia', 'btts', 'ataque_dos_dois', 'any', 2, 'Os dois atacam bem'),
-  ('evidencia', 'btts', 'defesas_vazaveis', 'any', 3, 'Defesas frágeis dos dois lados'),
-  ('evidencia', 'btts', 'defesa_forte', 'any', 4, 'Defesa forte de um dos lados'),
-  ('evidencia', 'btts', 'ataque_trava', 'any', 5, 'Um dos ataques costuma passar em branco'),
+  ('evidencia', 'btts', 'defesa_forte', 'any', 2, 'Defesa forte de um dos lados'),
+  ('evidencia', 'btts', 'ataque_trava', 'any', 3, 'Um dos ataques costuma passar em branco'),
+  ('evidencia', 'btts', 'ataque_dos_dois', 'any', 4, 'Os dois atacam bem'),
+  ('evidencia', 'btts', 'defesas_vazaveis', 'any', 5, 'Defesas frágeis dos dois lados'),
   ('evidencia', 'btts', 'historico_btts', 'any', 6, 'Nos últimos jogos, os dois marcaram'),
   ('evidencia', 'btts', 'historico_seco', 'any', 7, 'Jogos recentes sem os dois marcarem'),
   ('contra', 'btts', 'ambos_marcam', 'any', 1, 'Os gols dos dois times não entraram como sinal a favor'),
-  ('contra', 'btts', 'defesas_vazaveis', 'any', 2, 'A fragilidade das defesas não entrou como sinal a favor'),
-  ('contra', 'btts', 'defesa_forte', 'any', 3, 'A força defensiva não entrou como sinal a favor'),
-  ('contra', 'btts', 'ataque_trava', 'any', 4, 'A limitação ofensiva não entrou como sinal a favor'),
+  ('contra', 'btts', 'defesa_forte', 'any', 2, 'A força defensiva não entrou como sinal a favor'),
+  ('contra', 'btts', 'ataque_trava', 'any', 3, 'A limitação ofensiva não entrou como sinal a favor'),
+  ('contra', 'btts', 'defesas_vazaveis', 'any', 4, 'A fragilidade das defesas não entrou como sinal a favor'),
   ('aviso', 'btts', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
   ('aviso', 'btts', 'pen_odd_longshot', 'any', 2, 'Odd alta de zebra, entra com cautela'),
   ('aviso', 'btts', 'pen_poucas_casas', 'any', 3, 'Poucas casas cotando esse mercado'),

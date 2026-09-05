@@ -225,21 +225,21 @@ const P_AH: Premissa[] = [
 
 /** Ambos marcam. PENDENTE no doc: hoje nunca publica (a Pinnacle não cota o mercado). */
 const P_BTTS: Premissa[] = [
-  P('ambos_marcam', 'Os dois costumam marcar', 'Os gols dos dois times não entraram como sinal a favor', 'decide', null, { lado: 'sim' }),
-  P('ataque_dos_dois', 'Os dois atacam bem', 'O ataque dos dois times não entrou como sinal a favor', 'decide', null, { lado: 'sim' }),
-  P('defesas_vazaveis', 'Defesas frágeis dos dois lados', 'A fragilidade das defesas não entrou como sinal a favor', 'decide', null, { lado: 'sim' }),
-  P('defesa_forte', 'Defesa forte de um dos lados', 'A força defensiva não entrou como sinal a favor', 'decide', null, { lado: 'nao' }),
-  P('ataque_trava', 'Um dos ataques costuma passar em branco', 'A limitação ofensiva não entrou como sinal a favor', 'decide', null, { lado: 'nao' }),
-  P('historico_btts', 'Nos últimos jogos, os dois marcaram', 'O histórico de ambos marcam não entrou como sinal a favor', 'preco', null, { lado: 'sim', motivo: 'histórico já está na odd' }),
-  P('historico_seco', 'Jogos recentes sem os dois marcarem', 'O histórico de jogos secos não entrou como sinal a favor', 'preco', null, { lado: 'nao', motivo: 'histórico já está na odd' }),
+  P('ambos_marcam', 'Os dois costumam marcar', 'Os gols dos dois times não entraram como sinal a favor', 'decide', 12, { lado: 'sim' }),
+  P('ataque_dos_dois', 'Os dois atacam bem', 'O ataque dos dois times não entrou como sinal a favor', 'decide', 8, { lado: 'sim' }),
+  P('defesas_vazaveis', 'Defesas frágeis dos dois lados', 'A fragilidade das defesas não entrou como sinal a favor', 'decide', 8, { lado: 'sim' }),
+  P('defesa_forte', 'Defesa forte de um dos lados', 'A força defensiva não entrou como sinal a favor', 'decide', 12, { lado: 'nao' }),
+  P('ataque_trava', 'Um dos ataques costuma passar em branco', 'A limitação ofensiva não entrou como sinal a favor', 'decide', 10, { lado: 'nao' }),
+  P('historico_btts', 'Nos últimos jogos, os dois marcaram', 'O histórico de ambos marcam não entrou como sinal a favor', 'preco', 6, { lado: 'sim', motivo: 'histórico já está na odd' }),
+  P('historico_seco', 'Jogos recentes sem os dois marcarem', 'O histórico de jogos secos não entrou como sinal a favor', 'preco', 6, { lado: 'nao', motivo: 'histórico já está na odd' }),
 ];
 
 /** Dupla chance. PENDENTE no doc: Score máximo simulado 39 contra régua de 40. */
 const P_DC: Premissa[] = [
-  P('lado_coberto_forte', 'O lado coberto é forte', 'A força do lado coberto não entrou como sinal a favor', 'decide', null),
-  P('equilibrio_defensivo', 'Equilíbrio defensivo', 'O equilíbrio defensivo não entrou como sinal a favor', 'decide', null),
-  P('adversario_limitado', 'Adversário com campanha fraca', 'A campanha do adversário não entrou como sinal a favor', 'decide', null),
-  P('invicto_recente', 'Invicto nos últimos jogos', 'A sequência invicta não entrou como sinal a favor', 'preco', null, { motivo: 'histórico já está na odd' }),
+  P('lado_coberto_forte', 'O lado coberto é forte', 'A força do lado coberto não entrou como sinal a favor', 'decide', 12),
+  P('equilibrio_defensivo', 'Equilíbrio defensivo', 'O equilíbrio defensivo não entrou como sinal a favor', 'decide', 8),
+  P('adversario_limitado', 'Adversário com campanha fraca', 'A campanha do adversário não entrou como sinal a favor', 'decide', 8),
+  P('invicto_recente', 'Invicto nos últimos jogos', 'A sequência invicta não entrou como sinal a favor', 'preco', 6, { motivo: 'histórico já está na odd' }),
 ];
 
 /** Penalidades, por mercado. Peso negativo. */
@@ -308,21 +308,39 @@ export const MERCADOS: MercadoInfo[] = [
   { slug: 'goals_over_under', label: 'Gols (mais ou menos)', teto: 40, premissas: P_OU, penalidades: PEN.goals_over_under },
   { slug: 'match_winner', label: 'Resultado', teto: 30, premissas: P_1X2, penalidades: PEN.match_winner },
   { slug: 'asian_handicap', label: 'Handicap asiático', teto: 35, premissas: P_AH, penalidades: PEN.asian_handicap },
+  // ⚠️ Ambos marcam e Dupla chance saíram de `teto: null` em 05/09/2026, e com
+  // ele saíram três textos que já eram falsos:
+  //
+  //   · o aviso "Mercado em revisão: hoje não gera aposta porque falta
+  //     referência de preço" — o board tem 184 linhas de BTTS, TODAS com preço,
+  //     103 delas publicáveis, e o maior Score médio de todos os mercados (40,0)
+  //   · o aviso da Dupla chance, "não alcança a régua" — 121 linhas, 72
+  //     publicáveis, mesmo Score médio de 40,0
+  //   · o "Peso a calibrar" em cada premissa e o "Mercado em revisão" no resumo,
+  //     que `teto: null` e `peso: null` disparam juntos
+  //
+  // OS PESOS FORAM RECUPERADOS DO DADO, não estimados: no board de produção,
+  // linhas com UMA premissa acesa e nenhuma penalidade têm `pts_premissas`
+  // igual ao peso daquela premissa. As sete do BTTS e as quatro da Dupla chance
+  // apareceram assim, e a soma confere com os tetos que o Score já usava —
+  // 34 no "sim", 28 no "não", 34 na Dupla chance. Se algum peso estivesse
+  // errado, a soma não fecharia.
+  //
+  // O `teto` aqui é só o sinalizador de "mercado calibrado" (`teto == null` é o
+  // que `contextoDoMercado` lê), então recebe o lado de mais pontos.
   {
     slug: 'btts',
     label: 'Ambos marcam',
-    teto: null,
+    teto: 34,
     premissas: P_BTTS,
     penalidades: PEN.btts,
-    aviso: 'Mercado em revisão: hoje não gera aposta porque falta referência de preço.',
   },
   {
     slug: 'double_chance',
     label: 'Dupla chance',
-    teto: null,
+    teto: 34,
     premissas: P_DC,
     penalidades: PEN.double_chance,
-    aviso: 'Mercado em revisão: hoje não gera aposta porque não alcança a régua.',
   },
 ];
 
