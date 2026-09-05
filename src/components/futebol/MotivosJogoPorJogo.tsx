@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
@@ -153,11 +154,14 @@ function BlocoSerie({
   s,
   teto,
   comRotulo,
+  rolando,
   referencia,
 }: {
   s: SerieHistorico;
   teto: number;
   comRotulo: boolean;
+  /** No celular a barra tem largura fixa e a fileira rola de lado. */
+  rolando: boolean;
   referencia?: Story['referencia'];
 }) {
   const y = (v: number) => (v / teto) * (PLOT - TOPO_ROTULO);
@@ -170,12 +174,23 @@ function BlocoSerie({
         <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
         <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>
       </div>
-      <div className="relative" style={{ height: PLOT }}>
+      {/* No CELULAR a barra ganha largura fixa e a fileira rola de lado.
+          
+          Espremendo 25 jogos em ~290px sobram menos de 12px por barra: nesse
+          tamanho não dá para comparar altura nenhuma, o escudo do adversário
+          fica ilegível e o rótulo de valor nem aparece. Com 28px cabem dez na
+          tela, o valor volta a caber em cima de cada uma, e o resto rola.
+          
+          O que se perde é o panorama — ver o conjunto de uma vez. A alternativa
+          era cortar a janela para 10 jogos no celular, mas isso mudaria a média
+          desenhada, e a média é o número da premissa. Preferimos rolar a mentir. */}
+      <div className={rolando ? 'overflow-x-auto -mx-1 px-1' : ''}>
+      <div className="relative" style={{ height: PLOT, width: rolando ? 'max-content' : undefined, minWidth: '100%' }}>
         <div className="absolute inset-0 flex items-end gap-[3px]">
           {s.jogos.map((j) => (
             <div
               key={`${j.ordem}-${j.data}`}
-              className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center justify-end"
+              className={`flex flex-col items-center justify-end ${rolando ? 'w-7 shrink-0' : 'flex-1 min-w-[6px] max-w-[44px]'}`}
               title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
                 j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
               }`}
@@ -216,13 +231,15 @@ function BlocoSerie({
           </>
         )}
       </div>
-      {/* Contra quem foi cada jogo. */}
-      <div className="flex items-start gap-[3px] mt-1.5">
+      {/* Contra quem foi cada jogo. Fica DENTRO do mesmo contêiner rolável,
+          senão os escudos deixam de acompanhar as barras ao rolar. */}
+      <div className="flex items-start gap-[3px] mt-1.5" style={{ width: rolando ? 'max-content' : undefined }}>
         {s.jogos.map((j) => (
-          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
+          <div key={`c-${j.ordem}-${j.data}`} className={`flex justify-center ${rolando ? 'w-7 shrink-0' : 'flex-1 min-w-[6px] max-w-[44px]'}`}>
             <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
           </div>
         ))}
+      </div>
       </div>
     </div>
   );
@@ -236,7 +253,11 @@ function GraficoUnificado({ story }: { story: Story }) {
   const total = numericas.reduce((n, s) => n + s.jogos.length, 0);
   // Rótulo de dados em cima de cada barra. Gol é 1 caractere e cabe quase sempre; o
   // gol esperado tem decimal e só cabe até a temporada inteira dos dois times.
-  const comRotulo = total <= 24 || numericas.every((s) => s.metrica !== 'xg');
+  const rolando = useIsMobile();
+  // Rótulo de dados em cima de cada barra. Rolando, a barra tem 28px fixos e o
+  // rótulo cabe sempre; sem rolagem ele depende de quantas barras dividem a
+  // largura — gol é um caractere e cabe quase sempre, gol esperado tem decimal.
+  const comRotulo = rolando || total <= 24 || numericas.every((s) => s.metrica !== 'xg');
 
   // A barra por jogo compara com a MÉDIA (é o que a barra tem para comparar), e o
   // consolidado compara com a LINHA. Dizer "joga a favor" nas duas fazia as duas se
@@ -272,7 +293,7 @@ function GraficoUnificado({ story }: { story: Story }) {
             className={`flex min-w-0 ${i > 0 ? 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line' : ''}`}
             style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
           >
-            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} referencia={story.referencia} />
+            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} rolando={rolando} referencia={story.referencia} />
           </div>
         ))}
       </div>
