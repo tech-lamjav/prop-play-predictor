@@ -20,12 +20,54 @@ function kickoffDate(value: string): Date {
   return new Date(value.includes("T") ? value : value.replace(" ", "T") + "Z");
 }
 
+const SAO_PAULO = "America/Sao_Paulo";
+
 function brtHourMin(value: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Sao_Paulo",
+    timeZone: SAO_PAULO,
     hour: "2-digit",
     minute: "2-digit",
   }).format(kickoffDate(value));
+}
+
+/** YYYY-MM-DD no fuso de Brasília, só para comparar dias. */
+function brtDia(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: SAO_PAULO }).format(d);
+}
+
+/** "Sáb 06/09", o mesmo formato da régua de datas do painel. */
+function brtDiaDaSemana(d: Date): string {
+  const semana = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: SAO_PAULO,
+    weekday: "short",
+  }).format(d).replace(".", "");
+  const dia = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: SAO_PAULO,
+    day: "2-digit",
+    month: "2-digit",
+  }).format(d);
+  return `${semana.charAt(0).toUpperCase()}${semana.slice(1)} ${dia}`;
+}
+
+/**
+ * Quando o jogo começa, do jeito que se fala.
+ *
+ * Só a hora não respondia a pergunta que a pessoa faz ao receber o alerta:
+ * "isso é daqui a pouco ou é outro dia?". O lote é publicado sem hora fixa e
+ * mistura jogos de hoje com jogos de dois dias à frente, então "15:30" sozinho
+ * era ambíguo por construção.
+ *
+ * "Amanhã" sai de somar 24h ao relógio: o Brasil não tem mais horário de
+ * verão, então o dia civil de São Paulo anda junto com o UTC e a soma é exata.
+ */
+export function brtQuando(kickoffUtc: string, agora: Date): string {
+  const hora = brtHourMin(kickoffUtc);
+  const dia = brtDia(kickoffDate(kickoffUtc));
+  if (dia === brtDia(agora)) return `Hoje ${hora}`;
+  if (dia === brtDia(new Date(agora.getTime() + 86_400_000))) {
+    return `Amanhã ${hora}`;
+  }
+  return `${brtDiaDaSemana(kickoffDate(kickoffUtc))} ${hora}`;
 }
 
 function fmtHandicapLine(line: number): string {
@@ -86,6 +128,7 @@ export function publishedPickLabel(
 export function publishedMessageText(
   opportunities: PublishedMessageOpportunity[],
   opportunityUrls: ReadonlyMap<string, string>,
+  agora: Date = new Date(),
 ): string {
   const detailed = [...opportunities].sort((a, b) => b.score - a.score).slice(
     0,
@@ -105,7 +148,7 @@ export function publishedMessageText(
     lines.push(
       `<a href="${gameUrl}"><b>${esc(opportunity.home_team_name)} × ${
         esc(opportunity.away_team_name)
-      }</b></a> · ${brtHourMin(opportunity.kickoff_utc)}`,
+      }</b></a> · ${brtQuando(opportunity.kickoff_utc, agora)}`,
       `${
         esc(publishedPickLabel(opportunity))
       } · odd ${opportunity.best_odd} · Score <b>${opportunity.score} · ${
