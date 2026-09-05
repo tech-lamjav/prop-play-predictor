@@ -157,7 +157,11 @@ const BUILDERS: Record<string, Builder> = {
     if (!time?.posicao || !adv?.posicao) return null;
     const dif = Math.abs((time.pontos ?? 0) - (adv.pontos ?? 0));
     return {
-      texto: `${time.posicao}º com ${time.pontos} pontos contra ${adv.posicao}º com ${adv.pontos}. ${dif} pontos de diferença`,
+      // Com o NOME dos times. Sem eles a frase era "6º com 41 pontos contra 12º
+      // com 36", e quem lia tinha de deduzir quem era o 6º — a barra de
+      // comparação logo abaixo já trazia os nomes, então a frase era a única
+      // parte do card que falava de posição sem dizer de quem.
+      texto: `${time.team_name} em ${time.posicao}º com ${time.pontos} pontos contra ${adv.team_name} em ${adv.posicao}º com ${adv.pontos}. ${dif} pontos de diferença`,
       comparacao: {
         esqLabel: `${time.team_name}, ${time.posicao}º`,
         esqValor: time.pontos ?? 0,
