@@ -35,7 +35,7 @@ import { fraseDaPrestacao, prestacaoDaPremissa } from '@/utils/futebol-criterio'
 // afirmação. Aqui a ordem é uma, e quem muda de tela vê o mesmo número.
 //
 // ⚠️ Nem a 095 nem a 094 são o insumo do modelo, e as duas ficam só onde não há
-// prestação. Medido em 05/09: das 48 premissas, só 10 têm critério transcrito, e
+// prestação. Medido em 05/09: dos 49 pares mercado:slug, só 10 têm critério transcrito, e
 // as dez são do mercado de Gols — nos outros quatro mercados NENHUMA mostra o
 // número que decidiu. Cada critério transcrito remove um consumidor delas, e o
 // objetivo é que a lista acabe.

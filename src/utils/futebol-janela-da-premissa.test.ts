@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { storyDaPremissa, evidenciaDoHistorico, SPECS, EH_BINARIA } from './futebol-historico';
+import { CRITERIOS } from './futebol-criterio';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
 // ============================================================================
@@ -243,7 +244,7 @@ describe('a frase nunca sai de um recorte diferente do gráfico', () => {
   // ==========================================================================
   // A auditoria de 05/09: 12 premissas mostravam temporada acima do gráfico
   // ==========================================================================
-  // Das 48 premissas, só 10 têm o critério transcrito, e as dez são do mercado
+  // Dos 49 pares mercado:slug, só 10 têm o critério transcrito, e as dez são do
   // de Gols. Nas outras a frase saía do perfil de temporada — 25 jogos, foto de
   // 31/08 — enquanto o gráfico logo abaixo desenhava os últimos dez. No Goiás ×
   // Fortaleza isso dava 1,20 contra 0,90 de gols sofridos, no mesmo card.
@@ -260,10 +261,27 @@ describe('a frase nunca sai de um recorte diferente do gráfico', () => {
     jogo({ side: 'away', past_fixture_id: 4, ordem: 2, em_casa: false, gols_pro: 1, gols_contra: 1, xg: 1, total_gols: 2 }),
   ];
 
+  // AS CATORZE, e não uma amostra delas. A lista tinha oito, e as seis que
+  // faltavam incluíam a `superioridade_xg` — que foi justamente o caso que
+  // abriu esta investigação. Guarda que cobre metade dá a impressão errada de
+  // que o assunto está fechado.
+  //
+  // São as premissas de `SPECS` que não estão em `CRITERIOS`: têm gráfico, não
+  // têm prestação de contas, e por isso dependem da frase montada do histórico.
   const COM_GRAFICO_E_SEM_CRITERIO = [
-    'mando', 'mando_forte', 'defesa_forte', 'defesa_fora_solida',
-    'ambos_marcam', 'ataque_dos_dois', 'adversario_limitado', 'adversario_fragil_fora',
+    'adversario_fragil_fora', 'adversario_limitado', 'ambos_marcam', 'ataque_dos_dois',
+    'defesa_fora_solida', 'defesa_forte', 'forca_mismatch', 'forma',
+    'invicto_recente', 'mando', 'mando_forte', 'raramente_perde_por_2',
+    'superioridade_xg', 'tende_golear',
   ];
+
+  it('a lista cobre TODAS as que dependem da frase, e não uma amostra', () => {
+    // Sem isto, alguém acrescenta premissa sem critério e a guarda acima segue
+    // verde por não conhecê-la.
+    const comGrafico = Object.keys(SPECS);
+    const semCriterio = comGrafico.filter((slug) => !CRITERIOS[`goals_over_under:${slug}`]);
+    expect([...COM_GRAFICO_E_SEM_CRITERIO].sort()).toEqual([...semCriterio].sort());
+  });
 
   for (const slug of COM_GRAFICO_E_SEM_CRITERIO) {
     it(`${slug} tem frase vinda do gráfico`, () => {

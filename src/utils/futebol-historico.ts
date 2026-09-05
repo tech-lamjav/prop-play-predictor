@@ -593,7 +593,10 @@ export function evidenciaDoHistorico(
 
   if (slug === 'historico_over' || slug === 'historico_under') {
     if (linha == null) return null;
-    const todos = hist;
+    // Recortado por LADO, como o gráfico faz: `hist` traz os jogos dos dois
+    // times inteiros, e contar sobre ele daria uma base maior que a desenhada.
+    // Era a última divergência frase×gráfico que sobrou do alinhamento.
+    const todos = [...recortar(hist.filter((r) => r.side === 'home')), ...recortar(hist.filter((r) => r.side === 'away'))];
     const acima = todos.filter((r) => r.total_gols > linha).length;
     const alvo = slug === 'historico_over' ? acima : todos.length - acima;
     const comp = slug === 'historico_over' ? 'passaram de' : 'ficaram abaixo de';
@@ -617,8 +620,12 @@ export function evidenciaDoHistorico(
 /**
  * A frase montada do PRÓPRIO gráfico, para qualquer premissa que tenha um.
  *
- * Existe para tapar o buraco medido em 05/09: das 48 premissas, só 10 têm o
- * critério transcrito — e as dez são do mercado de Gols. Nas outras quatro
+ * Existe para tapar o buraco medido em 05/09: dos 49 pares mercado:slug, só 10 têm o
+ * critério transcrito — e as dez são do mercado de Gols. O denominador conta
+ * PARES mercado:slug, e não slugs: a mesma premissa em dois mercados tem dois
+ * critérios, e é o critério que falta. São 48 slugs distintos e 49 pares.
+ *
+ * Nas outras quatro
  * famílias a frase saía do perfil de temporada, que mede outra coisa:
  *
  *   Goiás, gols sofridos por jogo
