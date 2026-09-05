@@ -206,7 +206,7 @@ export default function FutebolOportunidades() {
   // sem filtro e o mercado escondido aparece por um instante antes de sumir. O
   // board já vem filtrado do service, mas a fusão com o histórico e os picks
   // registrados reabrem o dia corrente.
-  const { ocultos, isLoading: lVitrine } = useVitrine();
+  const { vitrine, ocultos, isLoading: lVitrine } = useVitrine();
   const isLoading = lBoard || lVitrine;
   const { data: catalog } = useFutebolCompetitions();
   const { data: access } = useFutebolAccess();
@@ -281,8 +281,8 @@ export default function FutebolOportunidades() {
   );
   const { data: fixtures } = useFutebolFixturesMulti(fixtureScopes);
   const allRows = useMemo<FutebolValueBoardRow[]>(
-    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora, ocultos),
-    [rows, histRows, agora, ocultos]
+    () => mergeBoardAndHistory(rows ?? [], histRows ?? [], agora, vitrine),
+    [rows, histRows, agora, vitrine]
   );
 
   // Placar por fixture (pra liquidar os jogos já encerrados = histórico "bateu/não").

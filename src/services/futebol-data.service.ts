@@ -4,14 +4,18 @@ import {
   normalizeFutebolValueBoardRows,
   type FutebolScoreVersion,
 } from './futebol-score-contract';
-import { filtrarMercadosOcultos, VITRINE_FALLBACK } from '@/utils/futebol-mercados-ocultos';
+import {
+  filtrarMercadosOcultos,
+  type MercadoOculto,
+  VITRINE_FALLBACK,
+} from '@/utils/futebol-mercados-ocultos';
 
 // A vitrine muda por UPDATE no banco, não por release, então a lista não pode
 // ser lida uma vez e congelada pela vida da aba. Cinco minutos é curto o
 // bastante para devolver um mercado sem pedir refresh, e longo o bastante para
 // não somar uma chamada a cada carga do board.
 const MERCADOS_OCULTOS_TTL_MS = 5 * 60 * 1000;
-let mercadosOcultosCache: { valor: string[]; expiraEm: number } | null = null;
+let mercadosOcultosCache: { valor: MercadoOculto[]; expiraEm: number } | null = null;
 
 // As RPCs de futebol ainda não estão nos tipos gerados do Supabase (existem
 // só no dev, lendo BigQuery via FDW no schema bq_futebol). Cast pra any, mesmo
@@ -936,9 +940,13 @@ export const futebolDataService = {
   /**
    * Os mercados que estão fora da VITRINE — não fora do board.
    *
-   * A lista vem do banco (migration 116) e não de constante, porque devolver um
-   * mercado à tela tem de ser um UPDATE e não um release, e porque o Telegram
-   * roda em outro runtime e precisa ler a MESMA fonte.
+   * A lista vem do banco (migrations 116 e 119) e não de constante, porque
+   * devolver um mercado à tela tem de ser um UPDATE e não um release, e porque
+   * o Telegram roda em outro runtime e precisa ler a MESMA fonte.
+   *
+   * Vem com a DATA em que cada mercado saiu, e é ela que separa a linha que foi
+   * publicada e vista da que nunca esteve na tela. Sem a data o histórico
+   * devolvia o mercado escondido no dia seguinte.
    *
    * ⚠️ Falha em silêncio, de propósito. O `withRetry` trata "função não existe"
    * como erro definitivo, então um front publicado antes da migration mataria o
@@ -946,24 +954,47 @@ export const futebolDataService = {
    * comportamento é o de hoje — nada escondido —, que é degradação e não
    * regressão. Ver prop-play-predictor#324.
    */
-  async getMercadosOcultos(): Promise<string[]> {
+  async getVitrine(): Promise<MercadoOculto[]> {
     const agora = Date.now();
     if (mercadosOcultosCache && agora < mercadosOcultosCache.expiraEm) {
       return mercadosOcultosCache.valor;
     }
     try {
-      const { data, error } = await supabaseClient.rpc('get_futebol_mercados_ocultos');
+      const { data, error } = await supabaseClient.rpc('get_futebol_vitrine');
       if (error) throw error;
-      const valor = (data || []) as string[];
+      const valor = ((data || []) as { market: string; oculto_desde: string }[]).map(
+        (linha) => ({ market: linha.market, ocultoDesde: linha.oculto_desde }),
+      );
       mercadosOcultosCache = { valor, expiraEm: agora + MERCADOS_OCULTOS_TTL_MS };
       return valor;
     } catch {
-      // No escuro vale o último valor bom; sem ele, o fallback. Cair para lista
-      // vazia mostraria na tela o que o produto tirou da prateleira, e a janela
-      // realista de escuro é justamente a de antes da migration — quando
-      // esconder já é o comportamento decidido.
-      return mercadosOcultosCache?.valor ?? [...VITRINE_FALLBACK];
+      // Degrada em DOIS degraus, e a ordem importa.
+      //
+      // 1) A RPC antiga, que existe desde a 116: dá os nomes, sem a data. É o
+      //    caso do front publicado antes da migration 119 — e sem este degrau
+      //    ele mostraria hoje o mercado que o produto retirou, que é pior do
+      //    que a régua velha.
+      // 2) Sem nem isso, o último valor bom; sem ele, o fallback compilado.
+      //
+      // Nos dois degraus a data sai vazia, e a regra do painel lê isso
+      // como "esconde de hoje em diante, não toca no passado" — exatamente o
+      // comportamento anterior a esta mudança. Degradação, não regressão.
+      try {
+        const { data, error } = await supabaseClient.rpc('get_futebol_mercados_ocultos');
+        if (error) throw error;
+        return ((data || []) as string[]).map((market) => ({ market, ocultoDesde: null }));
+      } catch {
+        return (
+          mercadosOcultosCache?.valor ??
+          VITRINE_FALLBACK.map((market) => ({ market, ocultoDesde: null }))
+        );
+      }
     }
+  },
+
+  /** Só os nomes, para quem não precisa saber desde quando. */
+  async getMercadosOcultos(): Promise<string[]> {
+    return (await this.getVitrine()).map((m) => m.market);
   },
 
   async getValueBoard(): Promise<FutebolValueBoardRow[]> {
