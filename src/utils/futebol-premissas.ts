@@ -141,8 +141,19 @@ const P_1X2: Premissa[] = [
   P('h2h_favoravel', 'Leva vantagem no histórico do confronto', 'O histórico do confronto não entrou como sinal a favor', 'preco', 0, {
     motivo: 'todo mundo olha, então já está na odd',
   }),
+  // O motivo NÃO é que o desfalque não importe — é que ele ainda não existe
+  // quando o Score é calculado. A lista de lesionados da API só aparece perto do
+  // jogo, e o board publica dias antes.
+  //
+  // Medido em 05/09 no staging, sobre 296 partidas: nas próximas 24h, 78% dos
+  // jogos já têm a lista; até 3 dias, 47%; a MAIS de 3 dias, zero. Não é dado
+  // que falta, é dado que chega tarde para o que a gente pergunta.
+  //
+  // O texto anterior dizia "sem dado em 99,5% dos jogos futuros", que além de
+  // não nomear a causa já não bate: hoje são 86,5% na janela de duas semanas, e
+  // o número muda toda vez que a proporção de jogos distantes muda.
   P('desfalque_adversario', 'Adversário com desfalque de titular importante', 'Os desfalques do adversário não entraram como sinal a favor', 'preco', 0, {
-    motivo: 'sem dado em 99,5% dos jogos futuros',
+    motivo: 'a lista de desfalques só sai perto do jogo',
   }),
 ];
 
