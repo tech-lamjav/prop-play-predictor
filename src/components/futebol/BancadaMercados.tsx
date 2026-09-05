@@ -1073,12 +1073,18 @@ export function BancadaMercados({
           {/* A régua de paradas mora no hero: trocar a parada troca o que precisa ser
               verdade, e o Score muda junto. */}
           <div data-tour="fut-jogo-regua" className="relative mt-5 pt-4 flex items-center gap-3.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,.15)' }}>
-            {/* `self-start` no celular: quando os chips empilham em duas linhas,
-                o `items-center` da fileira jogava este rótulo para o meio da
-                pilha, e ele passava a parecer legenda do segundo chip. O `mt`
-                é a metade da diferença entre a altura do chip (28px) e a da
-                linha do rótulo, para ele encostar no primeiro. */}
-            <span className="text-[9.5px] uppercase tracking-[0.14em] shrink-0 self-start mt-2 md:self-auto md:mt-0" style={{ color: 'rgba(255,255,255,.45)' }}>
+            {/* No celular o rótulo fica numa linha só dele, e as saídas usam a
+                largura inteira embaixo. Ao lado dos chips ele empurrava todos
+                49px para dentro, e a segunda linha herdava esse recuo sem ter
+                rótulo nenhum à esquerda — sobrava um buraco sem dono.
+                
+                No desktop ele continua ao lado: lá os chips cabem numa linha. */}
+            <span
+              className={`text-[9.5px] uppercase tracking-[0.14em] ${
+                noCelular && !ehLinha ? 'w-full' : 'shrink-0 self-start mt-2 md:self-auto md:mt-0'
+              }`}
+              style={{ color: 'rgba(255,255,255,.45)' }}
+            >
               {ehLinha ? 'Linha' : 'Saída'}
             </span>
 
@@ -1133,12 +1139,26 @@ export function BancadaMercados({
                 />
               </>
             ) : (
-              <div className="flex-1 min-w-0 flex gap-1.5 flex-wrap">
+              /* Empilhadas no celular, uma por linha e ocupando os 294px.
+                 
+                 Em `flex-wrap` as larguras vinham do conteúdo — 109, 65 e 166px
+                 no Bahia × Bragantino — e a fileira serrilhava dos dois lados,
+                 com o ponto de quebra mudando conforme quem é o mandante.
+                 
+                 Empilhado, nenhum nome trunca: medi os dez piores do catálogo e
+                 até "Vitória do Borussia Mönchengladbach" cabe. As casas de
+                 aposta resolvem isso com segmentos iguais, mas lá o chip mostra
+                 a ODD, que é curta; o nosso mostra o nome da aposta, o estado
+                 dela e o resultado — é lista para ler, não botão para tocar
+                 rápido, e lista se lê empilhada. */
+              <div className={`flex-1 min-w-0 flex gap-1.5 ${noCelular ? 'flex-col' : 'flex-wrap'}`}>
                 {paradasUI.map((p) => (
                   <button
                     key={p.chave}
                     onClick={p.escolher}
-                    className="h-7 px-3 rounded-full inline-flex items-center gap-1.5 cursor-pointer border-0 whitespace-nowrap tabular-nums"
+                    className={`h-7 px-3 rounded-full inline-flex items-center gap-1.5 cursor-pointer border-0 whitespace-nowrap tabular-nums ${
+                      noCelular ? 'w-full justify-between' : ''
+                    }`}
                     style={{
                       background: p.ativa ? '#fbbf24' : 'rgba(255,255,255,.08)',
                       color: p.ativa ? '#1a1d1a' : 'rgba(255,255,255,.72)',
