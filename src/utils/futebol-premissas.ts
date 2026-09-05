@@ -117,11 +117,19 @@ const P_1X2: Premissa[] = [
   // era "Manda bem em casa" e o mandante caía nele por omissão, o que funcionava na
   // tela mas deixava o empate sem frase própria: o SQL tinha inventado um "Mando
   // relevante" que não existia aqui. Agora os três casos moram no mesmo lugar.
-  P('mando', 'Mando relevante', 'O mando não entrou como sinal a favor', 'decide', 8, {
+  // "Mando" saiu dos rótulos NEGATIVOS: é vocabulário nosso, e quem lê espera
+  // ver do que se fala, não o nome técnico do conceito. O positivo mantém o
+  // verbo ("manda bem"), que é português corrente; o negativo passa a nomear a
+  // coisa medida — o desempenho.
+  //
+  // O que NÃO se faz aqui: escrever "não vai bem em casa". A aba do que não
+  // atingiu o corte não afirma oposição, por decisão da #351 — estas premissas
+  // são ausência de sinal, não sinal contrário.
+  P('mando', 'O mando pesa neste jogo', 'O desempenho não entrou como sinal a favor', 'decide', 8, {
     labelCasa: 'Manda bem em casa',
-    negativoCasa: 'Em casa, o mando não entrou como sinal a favor',
+    negativoCasa: 'Em casa, o desempenho não entrou como sinal a favor',
     labelFora: 'Vai bem fora de casa',
-    negativoFora: 'Fora de casa, o mando não entrou como sinal a favor',
+    negativoFora: 'Fora de casa, o desempenho não entrou como sinal a favor',
   }),
   P('superioridade_tabela', 'Bem à frente na tabela', 'A posição na tabela não entrou como sinal a favor', 'decide', 8),
   P('forca_mismatch', 'Ataque forte contra defesa frágil do adversário', 'O duelo entre ataque e defesa não entrou como sinal a favor', 'decide', 4, {
@@ -196,11 +204,11 @@ const P_AH: Premissa[] = [
     labelFora: 'Adversário fraco em casa',
     negativoFora: 'O desempenho do adversário não entrou como sinal a favor',
   }),
-  P('mando_forte', 'Manda muito bem em casa', 'O mando não entrou como sinal a favor', 'preco', 2, {
+  P('mando_forte', 'Manda muito bem em casa', 'O desempenho não entrou como sinal a favor', 'preco', 2, {
     lado: 'favorito',
     motivo: 'o preço já cobra tudo',
     labelFora: 'Vai muito bem fora de casa',
-    negativoFora: 'O mando não entrou como sinal a favor',
+    negativoFora: 'O desempenho não entrou como sinal a favor',
   }),
 ];
 
