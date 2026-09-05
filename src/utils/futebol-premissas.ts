@@ -117,11 +117,19 @@ const P_1X2: Premissa[] = [
   // era "Manda bem em casa" e o mandante caía nele por omissão, o que funcionava na
   // tela mas deixava o empate sem frase própria: o SQL tinha inventado um "Mando
   // relevante" que não existia aqui. Agora os três casos moram no mesmo lugar.
-  P('mando', 'Mando relevante', 'O mando não entrou como sinal a favor', 'decide', 8, {
+  // "Mando" saiu dos rótulos NEGATIVOS: é vocabulário nosso, e quem lê espera
+  // ver do que se fala, não o nome técnico do conceito. O positivo mantém o
+  // verbo ("manda bem"), que é português corrente; o negativo passa a nomear a
+  // coisa medida — o desempenho.
+  //
+  // O que NÃO se faz aqui: escrever "não vai bem em casa". A aba do que não
+  // atingiu o corte não afirma oposição, por decisão da #351 — estas premissas
+  // são ausência de sinal, não sinal contrário.
+  P('mando', 'O mando pesa neste jogo', 'O desempenho não entrou como sinal a favor', 'decide', 8, {
     labelCasa: 'Manda bem em casa',
-    negativoCasa: 'Em casa, o mando não entrou como sinal a favor',
+    negativoCasa: 'Em casa, o desempenho não entrou como sinal a favor',
     labelFora: 'Vai bem fora de casa',
-    negativoFora: 'Fora de casa, o mando não entrou como sinal a favor',
+    negativoFora: 'Fora de casa, o desempenho não entrou como sinal a favor',
   }),
   P('superioridade_tabela', 'Bem à frente na tabela', 'A posição na tabela não entrou como sinal a favor', 'decide', 8),
   P('forca_mismatch', 'Ataque forte contra defesa frágil do adversário', 'O duelo entre ataque e defesa não entrou como sinal a favor', 'decide', 4, {
@@ -133,8 +141,19 @@ const P_1X2: Premissa[] = [
   P('h2h_favoravel', 'Leva vantagem no histórico do confronto', 'O histórico do confronto não entrou como sinal a favor', 'preco', 0, {
     motivo: 'todo mundo olha, então já está na odd',
   }),
+  // O motivo NÃO é que o desfalque não importe — é que ele ainda não existe
+  // quando o Score é calculado. A lista de lesionados da API só aparece perto do
+  // jogo, e o board publica dias antes.
+  //
+  // Medido em 05/09 no staging, sobre 296 partidas: nas próximas 24h, 78% dos
+  // jogos já têm a lista; até 3 dias, 47%; a MAIS de 3 dias, zero. Não é dado
+  // que falta, é dado que chega tarde para o que a gente pergunta.
+  //
+  // O texto anterior dizia "sem dado em 99,5% dos jogos futuros", que além de
+  // não nomear a causa já não bate: hoje são 86,5% na janela de duas semanas, e
+  // o número muda toda vez que a proporção de jogos distantes muda.
   P('desfalque_adversario', 'Adversário com desfalque de titular importante', 'Os desfalques do adversário não entraram como sinal a favor', 'preco', 0, {
-    motivo: 'sem dado em 99,5% dos jogos futuros',
+    motivo: 'a lista de desfalques só sai perto do jogo',
   }),
 ];
 
@@ -146,7 +165,13 @@ const P_OU: Premissa[] = [
   P('xg_baixo_combinado', 'Os dois criam pouca chance de gol', 'O baixo volume de chances não entrou como sinal a favor', 'decide', 10, { lado: 'under' }),
   P('xg_combinado_alto', 'Os dois criam muita chance de gol', 'O alto volume de chances não entrou como sinal a favor', 'decide', 10, { lado: 'over' }),
   P('clean_sheets_altos', 'Os dois passam muitos jogos sem sofrer gol', 'Os jogos sem sofrer gol não entraram como sinal a favor', 'decide', 10, { lado: 'under' }),
-  P('ataques_fracos', 'Ataques fracos dos dois lados', 'A limitação dos ataques não entrou como sinal a favor', 'decide', 3, { lado: 'under', motivo: 'o preço já cobra' }),
+  // ⚠️ O nome diz "pelo menos um" porque o critério é o único OU do produto:
+  // `home_fts_pct >= 35 OR away_fts_pct >= 35`. Ele se chamava "Ataques fracos
+  // dos dois lados", e afirmava o que a regra não exige — o PM leu o card e
+  // concluiu que o time ABAIXO do corte é que sustentava o Under, que é o
+  // inverso. Todos os outros "dos dois" do catálogo são critérios E, e por isso
+  // continuam honestos.
+  P('ataques_fracos', 'Ataque fraco em pelo menos um lado', 'A limitação dos ataques não entrou como sinal a favor', 'decide', 3, { lado: 'under', motivo: 'o preço já cobra' }),
   P('historico_under', 'Histórico de jogo com poucos gols', 'O histórico de poucos gols não entrou como sinal a favor', 'preco', 3, { lado: 'under', motivo: 'sinal fraco' }),
   P('ambos_vazam', 'Os dois sofrem gol quase todo jogo', 'Os gols sofridos não entraram como sinal a favor', 'preco', 0, {
     lado: 'over',
@@ -190,11 +215,11 @@ const P_AH: Premissa[] = [
     labelFora: 'Adversário fraco em casa',
     negativoFora: 'O desempenho do adversário não entrou como sinal a favor',
   }),
-  P('mando_forte', 'Manda muito bem em casa', 'O mando não entrou como sinal a favor', 'preco', 2, {
+  P('mando_forte', 'Manda muito bem em casa', 'O desempenho não entrou como sinal a favor', 'preco', 2, {
     lado: 'favorito',
     motivo: 'o preço já cobra tudo',
     labelFora: 'Vai muito bem fora de casa',
-    negativoFora: 'O mando não entrou como sinal a favor',
+    negativoFora: 'O desempenho não entrou como sinal a favor',
   }),
 ];
 
@@ -343,7 +368,10 @@ export function outcomeLabel(s: Saida, home: string, away: string): string {
     const time = outcome === 'Home' ? home : away;
     return daSaida != null ? `${time} ${daSaida > 0 ? '+' : '−'}${fmtLinha(Math.abs(daSaida))}` : time;
   }
-  if (market === 'btts') return outcome === 'Yes' ? 'Os dois marcam' : 'Não marcam os dois';
+  // O nome da casa de apostas, igual ao `pickLabel` e à DM. O rótulo anterior
+  // para o "não" — "Não marcam os dois" — além de destoar, descrevia OUTRA
+  // aposta: aquilo é o 0 a 0, e BTTS No cobre também o 1 a 0.
+  if (market === 'btts') return outcome === 'Yes' ? 'Ambos marcam: Sim' : 'Ambos marcam: Não';
   if (market === 'double_chance') {
     if (outcome === '1X') return `${home} ou empate`;
     if (outcome === 'X2') return `${away} ou empate`;

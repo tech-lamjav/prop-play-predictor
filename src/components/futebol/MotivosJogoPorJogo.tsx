@@ -81,7 +81,7 @@ const COR_CONTRA = '#c9cec6';
 const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
   V: { bg: '#dcefe2', fg: '#0a3d2e' },
   E: { bg: '#eef0eb', fg: '#5a625a' },
-  D: { bg: '#fbe3e8', fg: '#be123c' },
+  D: { bg: '#fbeeec', fg: '#b8341c' },
 };
 
 /** Sequência de resultados: um quadro por jogo, com placar, escudo e adversário. */
@@ -153,11 +153,14 @@ function BlocoSerie({
   s,
   teto,
   comRotulo,
+  mostraComoLer,
   referencia,
 }: {
   s: SerieHistorico;
   teto: number;
   comRotulo: boolean;
+  /** As séries do card medem coisas diferentes, então cada uma se explica. */
+  mostraComoLer: boolean;
   referencia?: Story['referencia'];
 }) {
   const y = (v: number) => (v / teto) * (PLOT - TOPO_ROTULO);
@@ -168,8 +171,19 @@ function BlocoSerie({
       <div className="flex items-center gap-1.5 mb-2 min-w-0">
         <Crest name={s.teamName} id={s.teamId} size={16} />
         <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
-        <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>
+        {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>}
       </div>
+      {/* A barra se ajusta à largura, sem rolagem — e isso passou a caber
+          porque o RECORTE mudou.
+          
+          Enquanto a tela desenhava o histórico inteiro, 25 barras em ~290px
+          davam menos de 12px cada: nesse tamanho não se compara altura nenhuma,
+          o escudo fica ilegível e o rótulo de valor não aparece. A saída da vez
+          foi barra fixa de 28px com rolagem lateral.
+          
+          Com a janela alinhada ao modelo — dez jogos — são ~25px por barra numa
+          fileira só. Rolagem para dezessete pixels de sobra seria complexidade
+          sem troco, e o panorama de ver tudo de uma vez volta de graça. */}
       <div className="relative" style={{ height: PLOT }}>
         <div className="absolute inset-0 flex items-end gap-[3px]">
           {s.jogos.map((j) => (
@@ -216,7 +230,9 @@ function BlocoSerie({
           </>
         )}
       </div>
-      {/* Contra quem foi cada jogo. */}
+      {/* Contra quem foi cada jogo. Encostado nas barras, sempre: o escudo é a
+          legenda do eixo, e qualquer coisa entre os dois quebra a leitura de
+          "esta barra foi contra este time". */}
       <div className="flex items-start gap-[3px] mt-1.5">
         {s.jogos.map((j) => (
           <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
@@ -224,6 +240,14 @@ function BlocoSerie({
           </div>
         ))}
       </div>
+      {/* A explicação DESTE gráfico, quando as séries do card medem coisas
+          diferentes. Onde medem a mesma, a story traz uma só, embaixo dos dois
+          — repeti-la em cada um seria dizer duas vezes. */}
+      {mostraComoLer && (
+        <div className="text-[11px] leading-relaxed mt-2" style={{ color: '#8d8672' }}>
+          {s.comoLer}
+        </div>
+      )}
     </div>
   );
 }
@@ -236,6 +260,10 @@ function GraficoUnificado({ story }: { story: Story }) {
   const total = numericas.reduce((n, s) => n + s.jogos.length, 0);
   // Rótulo de dados em cima de cada barra. Gol é 1 caractere e cabe quase sempre; o
   // gol esperado tem decimal e só cabe até a temporada inteira dos dois times.
+  // Rótulo de dados em cima de cada barra. Cabe sempre desde que a janela
+  // encolheu para dez jogos: são ~25px por barra e o rótulo mede ~17. A conta
+  // fica porque a régua ainda vale — gol é um caractere, gol esperado tem
+  // decimal, e é o segundo que aperta.
   const comRotulo = total <= 24 || numericas.every((s) => s.metrica !== 'xg');
 
   // A barra por jogo compara com a MÉDIA (é o que a barra tem para comparar), e o
@@ -246,13 +274,20 @@ function GraficoUnificado({ story }: { story: Story }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-3 flex-wrap justify-end">
+      {/* À ESQUERDA, na mesma margem dos gráficos que ela explica — antes ela
+          ficava encostada à direita e lia como se pertencesse a outra coisa.
+          
+          No celular empilha, e os itens alinham pela esquerda: é isso que põe
+          as duas bolinhas na mesma coluna. Alinhar pela direita alinharia o fim
+          do texto, que tem comprimentos diferentes, e as bolinhas ficariam
+          tortas. */}
+      <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_FAVOR }} />
+          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
           <span className="text-[10.5px] text-ink-2">{quer ? 'acima da média' : 'abaixo da média'}, o lado que a premissa quer</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_CONTRA }} />
+          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
           <span className="text-[10.5px] text-ink-3">{quer ? 'abaixo' : 'acima'}</span>
         </span>
       </div>
@@ -265,7 +300,7 @@ function GraficoUnificado({ story }: { story: Story }) {
             className={`flex min-w-0 ${i > 0 ? 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line' : ''}`}
             style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
           >
-            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} referencia={story.referencia} />
+            <BlocoSerie s={s} teto={teto} comRotulo={comRotulo} mostraComoLer={!story.comoLer} referencia={story.referencia} />
           </div>
         ))}
       </div>
@@ -595,9 +630,11 @@ function PainelPremissa({
         <GraficoUnificado story={story} />
       )}
 
-      <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>
-        {soMiudas ? 'Amostra curta na competição: em vez de gráfico, o valor de cada jogo.' : story.comoLer}
-      </div>
+      {(soMiudas || story.comoLer) && (
+        <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>
+          {soMiudas ? 'Amostra curta na competição: em vez de gráfico, o valor de cada jogo.' : story.comoLer}
+        </div>
+      )}
     </div>
   );
 }
@@ -629,6 +666,7 @@ function LinhaPremissa({
 }) {
   const forte = pesoForte(p);
   const podeAbrir = story != null;
+  const Cabecalho = podeAbrir ? 'button' : 'div';
 
   // Abrir uma premissa leva o topo dela para logo abaixo do cabeçalho.
   //
@@ -661,13 +699,26 @@ function LinhaPremissa({
       className="rounded-[14px] overflow-hidden bg-white"
       style={{ border: `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}` }}
     >
-      <button
-        type="button"
-        onClick={podeAbrir ? alternarPorToque : undefined}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left border-0"
+      {/* A premissa SEM gráfico não é um acordeão, e agora não parece um.
+          
+          Ela usava o mesmo cabeçalho de faixa areia com divisória embaixo — a
+          forma que diz "toca aqui" — e a única pista de que não abria era um
+          "sem jogo a jogo" em cinza claro no canto. O PM tocou esperando abrir;
+          o assinante faria igual.
+          
+          Sem a faixa e sem a divisória ela vira um bloco contínuo, e a forma
+          para de prometer o que não existe. A moldura de fora fica: sem ela a
+          lista teria uns itens emoldurados e outros soltos, o que parece
+          quebrado em vez de intencional.
+          
+          E deixa de ser `<button>`: um botão sem ação se anuncia ao leitor de
+          tela como botão, e não faz nada quando acionado. */}
+      <Cabecalho
+        {...(podeAbrir ? { type: 'button' as const, onClick: alternarPorToque } : {})}
+        className={`w-full flex items-center gap-3 px-4 text-left border-0 ${podeAbrir ? 'py-3' : 'pt-3 pb-1'}`}
         style={{
-          background: aberta ? '#0a3d2e' : '#f4eddc',
-          borderBottom: `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}`,
+          background: aberta ? '#0a3d2e' : podeAbrir ? '#f4eddc' : 'transparent',
+          borderBottom: podeAbrir ? `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}` : 'none',
           cursor: podeAbrir ? 'pointer' : 'default',
         }}
       >
@@ -701,15 +752,15 @@ function LinhaPremissa({
         </span>
         {podeAbrir ? (
           <span className="shrink-0 inline-flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: aberta ? '#fbbf24' : '#0a3d2e' }}>
-            {aberta ? 'fechar' : 'ver os jogos'}
+            {/* `sr-only` e não `hidden`: no celular o texto some da TELA e
+                continua no leitor de tela. Escondido de vez, o botão passaria a
+                se anunciar só pelo nome da premissa, sem dizer que abre nada.
+                A seta sozinha basta para quem enxerga — ela já gira ao abrir. */}
+            <span className="sr-only md:not-sr-only">{aberta ? 'fechar' : 'ver os jogos'}</span>
             <ChevronRight className="w-3.5 h-3.5 transition-transform" style={{ transform: `rotate(${aberta ? 90 : 0}deg)` }} />
           </span>
-        ) : (
-          <span className="shrink-0 text-[11px]" style={{ color: aberta ? 'rgba(255,255,255,.5)' : '#8d8672' }}>
-            sem jogo a jogo
-          </span>
-        )}
-      </button>
+        ) : null}
+      </Cabecalho>
 
       {(ev || (p.peso === 0 && p.motivo)) && (
         <div className="px-4 py-3 text-[12.5px] leading-relaxed" style={{ color: '#5a625a' }}>
@@ -781,13 +832,6 @@ export function MotivosJogoPorJogo({
     [mercado, premissas, numeros, historico, lado, linha, acesa],
   );
 
-  // Abre a primeira que tem gráfico: chegar numa lista toda fechada esconde o que a
-  // aba veio mostrar.
-  const primeira = itens.find((x) => x.story != null)?.p.slug ?? null;
-  const [aberta, setAberta] = useState<string | null>(primeira);
-  const chave = itens.map((x) => x.p.slug).join('|');
-  useEffect(() => setAberta(primeira), [chave, primeira]);
-
   const total = itens.length + (extras?.length ?? 0);
   const blocosOrdenados = useMemo(
     () => [
@@ -796,6 +840,25 @@ export function MotivosJogoPorJogo({
     ].sort((a, b) => b.peso - a.peso),
     [itens, extras],
   );
+
+  /**
+   * A primeira com gráfico NA ORDEM EM QUE ELAS APARECEM — chegar numa lista
+   * toda fechada esconde o que a aba veio mostrar.
+   *
+   * "Primeira" era calculada sobre `itens`, que é a ordem de origem, enquanto a
+   * tela desenha `blocosOrdenados`, que ordena por peso. As duas quase nunca
+   * coincidem: abrir o jogo mostrava a terceira premissa aberta e as duas de
+   * cima fechadas, e a que abria era justamente a de menor peso.
+   */
+  const primeira = (() => {
+    for (const bloco of blocosOrdenados) {
+      if (bloco.tipo === 'premissa' && bloco.item.story != null) return bloco.item.p.slug;
+    }
+    return null;
+  })();
+  const [aberta, setAberta] = useState<string | null>(primeira);
+  const chave = itens.map((x) => x.p.slug).join('|');
+  useEffect(() => setAberta(primeira), [chave, primeira]);
 
   if (!historico) {
     return <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>Carregando os jogos anteriores.</div>;
@@ -810,8 +873,8 @@ export function MotivosJogoPorJogo({
               ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
               : 'Nenhum motivo a favor desta saída.'
             : total > 0
-              ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e ficaram aquém do corte. Não são sinal para o outro lado: são a ausência deste.`
-              : 'Nenhuma premissa desta saída ficou aquém do corte: todas as que valem acenderam.'}
+              ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e não atingiram o corte. Não são sinal para o outro lado: são a ausência deste.`
+              : 'Todas as premissas que valem nesta saída atingiram o corte.'}
           {/* A definição do corte, UMA vez na lista e não em cada card. Ela só
               aparece quando existe premissa prestando contas, senão a tela
               explicaria um conceito que não está em lugar nenhum dela. */}
@@ -823,14 +886,16 @@ export function MotivosJogoPorJogo({
             </span>
           )}
         </div>
+        {/* Mesma regra da legenda do jogo a jogo: empilha no celular com as
+            bolinhas numa coluna só. */}
         {itens.some((x) => x.story != null) && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-4">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_FAVOR }} />
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
               <span className="text-[10.5px]" style={{ color: '#5a625a' }}>o lado que a premissa quer</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_CONTRA }} />
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
               <span className="text-[10.5px]" style={{ color: '#8d8672' }}>o lado contrário</span>
             </span>
           </div>

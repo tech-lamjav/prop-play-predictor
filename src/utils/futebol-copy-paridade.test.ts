@@ -30,12 +30,14 @@ import { copyDeServing, premissaDe, rotuloPremissa, type LinhaCopy } from './fut
 
 const RAIZ = resolve(__dirname, '../..');
 // A migration que SEMEIA a tabela hoje. A 106 criou a mecânica e semeou a
-// primeira vez; a 112 regera a semente inteira no Score de contexto, então é
-// ela que precisa bater com o catálogo. Apontar para a 106 cobraria dela uma
-// decisão que não existia quando foi escrita.
+// primeira vez; a 112 regerou no Score de contexto; a 120 renomeou
+// `ataques_fracos` e a 121 tirou "mando" dos rótulos. É sempre a ÚLTIMA que
+// precisa bater com o
+// catálogo — apontar para uma anterior cobraria dela uma decisão que não
+// existia quando foi escrita.
 const MIGRATION = resolve(
   RAIZ,
-  'supabase/migrations/20260829120000_112_futebol_score_contexto_contrato.sql',
+  'supabase/migrations/20260905220000_121_futebol_rotulo_do_mando.sql',
 );
 const SHAPE = resolve(RAIZ, 'docs/futebol-prod-deploy.sql');
 const RPCS = ['get_futebol_fixture_value', 'get_futebol_value_board', 'get_futebol_value_history'];
@@ -75,7 +77,7 @@ describe('a copy da serving é a copy do catálogo', () => {
   const esperado = copyDeServing();
 
   for (const [nome, arquivo] of [
-    ['migration 112', MIGRATION],
+    ['migration da semente', MIGRATION],
     ['shape file', SHAPE],
   ] as const) {
     describe(nome, () => {
@@ -100,17 +102,30 @@ describe('a copy da serving é a copy do catálogo', () => {
         expect(comTravessao.map((l) => `${chave(l)} :: ${l.texto}`)).toEqual([]);
       });
 
-      it('não deixa cascata de rótulo voltar para dentro das RPCs', () => {
-        // A cascata é o defeito de origem: enquanto ela existir, alguém vai editar o
-        // texto lá e a tabela de apoio fica para trás.
-        for (const rpc of RPCS) {
-          const corpo = corpoDaFuncao(sql, rpc);
-          expect(corpo, `${rpc} voltou a montar array de rótulo à mão`).not.toContain('array_remove(array[');
-          expect(corpo, `${rpc} não traduz pela tabela de apoio`).toContain('public.futebol_copy(');
-        }
-      });
     });
   }
+
+  // ⚠️ Esta checagem NÃO roda sobre a migration da semente, e a distinção é o
+  // que permite as duas coisas evoluírem separadas.
+  //
+  // Semear a copy e definir as RPCs são movimentos independentes: a 112 fez os
+  // dois no mesmo arquivo, a 120 só ressemeia. Exigir as RPCs de toda migration
+  // que ressemeia obrigaria a recopiá-las sem motivo, e recopiar função é como a
+  // cascata voltaria.
+  //
+  // O shape file é o lugar certo para cobrar: ele carrega a definição VIVA de
+  // toda função, e a guarda do shape file (`shape-file-futebol.test.ts`) já
+  // garante que nenhuma fique de fora dele.
+  it('não deixa cascata de rótulo voltar para dentro das RPCs', () => {
+    // A cascata é o defeito de origem: enquanto ela existir, alguém vai editar o
+    // texto lá e a tabela de apoio fica para trás.
+    const sql = readFileSync(SHAPE, 'utf8');
+    for (const rpc of RPCS) {
+      const corpo = corpoDaFuncao(sql, rpc);
+      expect(corpo, `${rpc} voltou a montar array de rótulo à mão`).not.toContain('array_remove(array[');
+      expect(corpo, `${rpc} não traduz pela tabela de apoio`).toContain('public.futebol_copy(');
+    }
+  });
 
   it('a ordem da evidência é decrescente por peso, e o handicap prova o caso', () => {
     // O caso concreto que abriu a issue: no azarão, a premissa de 10 pontos tem que

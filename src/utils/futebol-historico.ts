@@ -48,7 +48,24 @@ import { n1 } from '@/utils/futebol-evidencias';
  * o gráfico mudou de janela e o número do xG ficou para trás, então card e barras
  * mostravam médias diferentes da mesma coisa, lado a lado.
  */
-const JANELA_DE_GOLS = 10;
+/**
+ * O recorte que o MODELO usa, e por isso o que a tela desenha.
+ *
+ * Desde a analytics-engineering#91 (ADR 0010), fechada em 25/08/2026, os
+ * defaults dos modelos de premissa são `todas` as competições e os `ultimos_10`
+ * jogos — e produção usa o default. Antes disso eram "só a competição do jogo"
+ * e "a temporada", que é o que estas especificações descreviam.
+ *
+ * O modelo mudou embaixo delas e nada quebrou, porque nada obriga as duas
+ * pontas a concordarem. O resultado media-se assim, no Goiás × Fortaleza de
+ * 05/09: o critério acendeu com 1,5 contra 1,0 (últimos 10, todas), a frase da
+ * tela dizia 1,2 contra 1,2 (o histórico inteiro) e o gráfico desenhava 1,3
+ * contra 1,1 (só a Série B). Três leituras do mesmo número, e a que decide não
+ * aparecia em lugar nenhum.
+ */
+const JANELA_DO_MODELO = 10;
+
+const JANELA_DE_GOLS = JANELA_DO_MODELO;
 const ULTIMOS_DE_GOLS = <T>(rows: T[]): T[] => rows.slice(-JANELA_DE_GOLS);
 
 /**
@@ -128,7 +145,7 @@ interface SerieSpec {
  * Que gráfico prova cada premissa. Slug fora do mapa não ganha gráfico: melhor a aba
  * dizer que não tem como conferir do que desenhar um número que não é o da premissa.
  */
-const SPECS: Record<string, SerieSpec[]> = {
+export const SPECS: Record<string, SerieSpec[]> = {
   // ── Gols ──
   // ⚠️ `ultimos: 10` e `competicoes: 'qualquer'` nas dez, e o `mando` UM A UM.
   //
@@ -174,30 +191,30 @@ const SPECS: Record<string, SerieSpec[]> = {
   historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Resultado ──
-  forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
-  invicto_recente: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
-  mando: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior' }],
-  mando_forte: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior' }],
-  superioridade_xg: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior' }],
+  forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
+  invicto_recente: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
+  mando: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  mando_forte: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  superioridade_xg: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
   forca_mismatch: [
-    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior' },
-    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior' },
+    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
+    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
   ],
 
   // ── Handicap ──
   tende_golear: [
-    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior' },
-    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior' },
+    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
+    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
   ],
-  adversario_fragil_fora: [{ quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior' }],
-  defesa_fora_solida: [{ quem: 'time', metrica: 'ga', mando: 'proprio', direcao: 'menor' }],
-  raramente_perde_por_2: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior' }],
+  adversario_fragil_fora: [{ quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  defesa_fora_solida: [{ quem: 'time', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  raramente_perde_por_2: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
 
   // ── Ambos marcam / dupla chance ──
-  ambos_marcam: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior' }],
-  ataque_dos_dois: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior' }],
-  defesa_forte: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor' }],
-  adversario_limitado: [{ quem: 'adversario', metrica: 'gf', mando: 'todos', direcao: 'menor' }],
+  ambos_marcam: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  ataque_dos_dois: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  defesa_forte: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  adversario_limitado: [{ quem: 'adversario', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
 };
 
 export interface JogoBarra {
@@ -246,6 +263,16 @@ export interface SerieHistorico {
    * segunda fonte do mesmo número.
    */
   daJanela: number;
+  /**
+   * Como ler ESTE gráfico. Vive na série, e não na story, porque duas premissas
+   * do catálogo — `forca_mismatch` e `tende_golear` — comparam métricas
+   * DIFERENTES: gols marcados do time contra gols sofridos do adversário.
+   *
+   * A explicação saía da primeira série e valia para o card inteiro, então o
+   * segundo gráfico dizia "quanto mais alta, mais gols o time MARCOU" embaixo
+   * de barras de gols SOFRIDOS.
+   */
+  comoLer: string;
 }
 
 /**
@@ -264,7 +291,11 @@ export interface Consolidado {
 
 export interface Story {
   series: SerieHistorico[];
-  /** Como ler o gráfico. Uma frase, por métrica. */
+  /**
+   * Como ler os gráficos, quando TODAS as séries medem a mesma coisa. Vazio
+   * quando não medem: aí cada gráfico carrega a sua, e uma frase só embaixo dos
+   * dois estaria errada para um deles.
+   */
   comoLer: string;
   /** Referência tracejada, quando a métrica é o total de gols da partida. */
   referencia?: { valor: number; label: string };
@@ -324,6 +355,11 @@ export function storyDaPremissa(
   if (!specs?.length || !hist?.length) return null;
   const p = papeis(lado);
 
+  // Duas premissas comparam métricas diferentes, e só nelas o título precisa
+  // dizer qual é qual: sem isso a tela mostra dois gráficos de aparência igual
+  // sob um título que fala de "duelo", e quem lê não descobre quem é o ataque.
+  // Nas demais o nome da métrica seria repetição do rodapé.
+  const metricasDiferentes = new Set(specs.map((x) => x.metrica)).size > 1;
   const series: SerieHistorico[] = [];
   for (const spec of specs) {
     const lados: ('home' | 'away')[] =
@@ -381,23 +417,28 @@ export function storyDaPremissa(
         // frase inteira do critério de `ga_comb`. O título sozinho mentia dos dois
         // jeitos já: "em casa" sem a janela sugeria a temporada, e "últimos 10
         // jogos" sem o mando sugeria que os dez entraram.
+        // A contagem vive no TÍTULO nos dois casos, e não num subtítulo à parte.
+        // Antes a premissa de mando dizia "Fortaleza EC fora" em cima e "5 dos
+        // últimos 10 jogos" ao lado — duas linhas para o que a outra resolve em
+        // uma, e o "de 10" repetia a janela que já é a mesma em toda a tela.
         titulo:
-          spec.mando === 'proprio'
-            ? `${filtrados[0].team_name}${SUFIXO_MANDO(emCasa)}`
+          (spec.mando === 'proprio'
+            ? `${filtrados[0].team_name}${SUFIXO_MANDO(emCasa)}, ${filtrados.length} ${filtrados.length === 1 ? 'jogo' : 'jogos'}`
             : spec.ultimos
               ? `${filtrados[0].team_name}, últimos ${filtrados.length} jogos`
-              : filtrados[0].team_name,
-        sub:
-          semDado > 0
-            ? `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}, ${semDado} sem o dado`
-            : spec.mando === 'proprio' && spec.ultimos
-              ? `${jogos.length} dos últimos ${naJanela.length} jogos`
-              // "de 27 disponíveis", e não "na competição": a consulta parou de
-              // filtrar por competição (#350), e a frase antiga virou falsa.
-              : spec.ultimos && naCompeticao.length > filtrados.length
-                ? `${jogos.length} de ${naCompeticao.length} disponíveis`
-                : `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}`,
+              : filtrados[0].team_name) + (metricasDiferentes ? ` · ${NOME_DA_METRICA[spec.metrica]}` : ''),
+        // O subtítulo sobrou para UMA coisa: dizer que faltou dado em alguns
+        // jogos, porque aí a média não é sobre todos e quem lê divide errado.
+        //
+        // Saíram daqui, em duas rodadas, o "5 de 40 disponíveis" e o "5 dos
+        // últimos 10 jogos". O 40 era quantas linhas a consulta trouxe —
+        // parâmetro nosso, não conceito de produto. O 10 é a janela do modelo,
+        // que já é a mesma em toda a tela e não precisa ser repetida em cada
+        // gráfico. Os dois levantavam a mesma pergunta errada — "por que só
+        // cinco?" — quando a contagem no título já responde.
+        sub: semDado > 0 ? `${semDado} sem o dado` : '',
         metrica: spec.metrica,
+        comoLer: COMO_LER[spec.metrica],
         direcao: spec.direcao,
         media,
         mostraMedia: spec.mostraMedia !== false,
@@ -412,11 +453,22 @@ export function storyDaPremissa(
   const spec0 = specs[0];
   return {
     series,
-    comoLer: COMO_LER[metrica],
+    comoLer: series.every((x) => x.metrica === metrica) ? COMO_LER[metrica] : '',
     referencia: metrica === 'total' && linha != null ? { valor: linha, label: `linha ${String(linha).replace('.', ',')}` } : undefined,
     consolidado: consolidadoDe(series, spec0, linha),
   };
 }
+
+/** O nome da métrica no título do gráfico, onde as séries divergem. */
+const NOME_DA_METRICA: Record<Metrica, string> = {
+  ga: 'gols sofridos',
+  gf: 'gols marcados',
+  xg: 'gols esperados',
+  total: 'gols no jogo',
+  resultado: 'resultado',
+  sem_sofrer: 'jogos sem sofrer',
+  sem_marcar: 'jogos sem marcar',
+};
 
 const UNIDADE: Partial<Record<Metrica, string>> = {
   ga: 'gols sofridos por jogo, somando os dois',
@@ -462,8 +514,29 @@ export function evidenciaDoHistorico(
 ): Evidencia | null {
   if (!hist?.length) return null;
   const p = papeis(lado);
+  /**
+   * A MESMA amostra que o gráfico desenha, e pelo mesmo motivo que ele.
+   *
+   * Esta função varria o histórico inteiro — sem recorte de jogos e sem filtro
+   * de competição — enquanto o gráfico logo abaixo aplicava os dois. As duas
+   * descreviam o mesmo número e discordavam: no Goiás × Fortaleza de 05/09 a
+   * frase dizia "1,2 contra 1,2" e o gráfico desenhava 1,3 e 1,1.
+   *
+   * Ninguém veria por leitura de código, porque são duas funções que calculam
+   * a mesma coisa por caminhos diferentes. Agora as duas leem a especificação,
+   * então divergir de novo exige mexer nela — que é onde a decisão mora.
+   */
+  const spec = SPECS[slug]?.[0];
+  const recortar = (rows: FutebolFixtureHistorico[]) => {
+    const naCompeticao =
+      spec?.competicoes === 'qualquer' ? rows : rows.filter((r) => r.mesma_competicao !== false);
+    return spec?.ultimos ? naCompeticao.slice(-spec.ultimos) : naCompeticao;
+  };
   const doLado = (s: 'home' | 'away', proprio: boolean) => {
-    const rows = hist.filter((r) => r.side === s);
+    // Competição e recorte primeiro, mando depois — a ordem é a do modelo, e a
+    // mesma que `storyDaPremissa` usa. Invertida, "os últimos 10" viraria "os
+    // últimos 10 em casa", que pode atravessar meia temporada a mais.
+    const rows = recortar(hist.filter((r) => r.side === s));
     return proprio ? rows.filter((r) => r.em_casa === (s === 'home')) : rows;
   };
   const media = (rows: FutebolFixtureHistorico[], f: (r: FutebolFixtureHistorico) => number | null) => {
@@ -520,7 +593,10 @@ export function evidenciaDoHistorico(
 
   if (slug === 'historico_over' || slug === 'historico_under') {
     if (linha == null) return null;
-    const todos = hist;
+    // Recortado por LADO, como o gráfico faz: `hist` traz os jogos dos dois
+    // times inteiros, e contar sobre ele daria uma base maior que a desenhada.
+    // Era a última divergência frase×gráfico que sobrou do alinhamento.
+    const todos = [...recortar(hist.filter((r) => r.side === 'home')), ...recortar(hist.filter((r) => r.side === 'away'))];
     const acima = todos.filter((r) => r.total_gols > linha).length;
     const alvo = slug === 'historico_over' ? acima : todos.length - acima;
     const comp = slug === 'historico_over' ? 'passaram de' : 'ficaram abaixo de';
@@ -538,8 +614,95 @@ export function evidenciaDoHistorico(
     };
   }
 
-  return null;
+  return fraseDoGrafico(slug, hist, lado, linha);
 }
+
+/**
+ * A frase montada do PRÓPRIO gráfico, para qualquer premissa que tenha um.
+ *
+ * Existe para tapar o buraco medido em 05/09: dos 49 pares mercado:slug, só 10 têm o
+ * critério transcrito — e as dez são do mercado de Gols. O denominador conta
+ * PARES mercado:slug, e não slugs: a mesma premissa em dois mercados tem dois
+ * critérios, e é o critério que falta. São 48 slugs distintos e 49 pares.
+ *
+ * Nas outras quatro
+ * famílias a frase saía do perfil de temporada, que mede outra coisa:
+ *
+ *   Goiás, gols sofridos por jogo
+ *     perfil de temporada (25 jogos, foto de 31/08)   1,20
+ *     últimos 10, que é o que o modelo usa            0,90
+ *
+ * Trinta e três por cento de diferença, e o perfil ainda por cima é um snapshot
+ * com data — para um jogo de hoje ele está cinco dias parado, enquanto o modelo
+ * é point-in-time por partida.
+ *
+ * ⚠️ Isto NÃO é o número do modelo: é a mesma AMOSTRA que ele usa, medida por
+ * nós. A diferença importa e some quando o critério da premissa for transcrito
+ * — aí a prestação de contas assume, com o corte junto, e esta função deixa de
+ * ser chamada para aquela premissa. Enquanto isso, o card ao menos para de se
+ * contradizer entre a frase e o gráfico logo abaixo dela.
+ */
+function fraseDoGrafico(
+  slug: string,
+  hist: FutebolFixtureHistorico[] | undefined,
+  lado: 'home' | 'away' | null,
+  linha: number | null,
+): Evidencia | null {
+  const story = storyDaPremissa(slug, hist, lado, linha);
+  if (!story) return null;
+
+  // Premissa de RESULTADO não tem média: a barra é vitória, empate ou derrota.
+  // A frase honesta ali é a contagem, na mesma janela — é a mesma forma que o
+  // perfil de temporada usava ("6 vitórias, 2 empates e 4 derrotas"), com o
+  // recorte trocado.
+  const deResultado = story.series.filter((x) => x.metrica === 'resultado');
+  if (deResultado.length) {
+    const partes = deResultado.map((x) => {
+      const conta = (r: 'V' | 'E' | 'D') => x.jogos.filter((j) => j.resultado === r).length;
+      const [v, e, d] = [conta('V'), conta('E'), conta('D')];
+      const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
+      return `${x.teamName}: ${plural(v, 'vitória', 'vitórias')}, ${plural(e, 'empate', 'empates')} e ${plural(d, 'derrota', 'derrotas')} em ${x.jogos.length}`;
+    });
+    return { texto: partes.join(' · ') };
+  }
+
+  const series = story.series.filter((x) => x.media != null);
+  if (!series.length) return null;
+
+  // Numa métrica binária a média é a FRAÇÃO de jogos, e escrevê-la como "0,4"
+  // embaixo de uma premissa que compara 40% seria o card falando outra língua
+  // que o gráfico. Mesma régua do rótulo da média.
+  const comoEscrever = (v: number, m: Metrica) =>
+    EH_BINARIA(m) ? `${Math.round(v * 100)}%` : n1(v);
+
+  // O VERBO sai da métrica de CADA série, não da primeira.
+  //
+  // A versão anterior pegava a unidade da série [0] e a colava no fim da frase
+  // inteira. Em `forca_mismatch` — Fortaleza marca, Goiás sofre — isso escrevia
+  // "Fortaleza EC 0,8 · Goias 0,6 gols marcados por jogo", atribuindo ao Goiás
+  // um número que é de gols SOFRIDOS. A frase que existia antes disso, vinda do
+  // perfil de temporada, já dizia certo: "Fortaleza EC marca 0,8 e Goias sofre
+  // 0,6". O texto estava certo e a amostra errada; trocar a amostra não era
+  // motivo para perder o texto.
+  const partes = series.map((x) => FRASE_DA_METRICA[x.metrica](x.teamName, comoEscrever(x.media!, x.metrica)));
+  const porJogo = series.every((x) => !EH_BINARIA(x.metrica) && x.metrica !== 'resultado');
+  return { texto: `${partes.join(' · ')}${porJogo ? ' por jogo' : ''}` };
+}
+
+/**
+ * Cada métrica com o seu verbo. Sem isso a frase precisa de uma unidade única
+ * para o card inteiro, e as duas premissas que comparam ataque com defesa não
+ * têm uma.
+ */
+const FRASE_DA_METRICA: Record<Metrica, (time: string, valor: string) => string> = {
+  gf: (t, v) => `${t} marca ${v}`,
+  ga: (t, v) => `${t} sofre ${v}`,
+  xg: (t, v) => `${t} cria ${v}`,
+  total: (t, v) => `${t}: ${v} gols`,
+  resultado: (t, v) => `${t}: ${v}`,
+  sem_sofrer: (t, v) => `${t} não sofreu gol em ${v} dos jogos`,
+  sem_marcar: (t, v) => `${t} não marcou em ${v} dos jogos`,
+};
 
 /**
  * O "Como chegam" na JANELA DA PREMISSA.

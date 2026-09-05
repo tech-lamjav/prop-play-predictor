@@ -32,6 +32,7 @@ import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
@@ -229,7 +230,7 @@ function SeloRes({ r }: { r: BetResult }) {
       ? { bg: '#dcefe2', fg: '#0a3d2e', dot: '#2f7d50' }
       : b.tone === 'push'
         ? { bg: '#eef0eb', fg: '#5a625a', dot: '#8a8f86' }
-        : { bg: '#fbe3e8', fg: '#be123c', dot: '#be123c' };
+        : { bg: '#fbeeec', fg: '#b8341c', dot: '#b8341c' };
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 h-6 rounded-full text-[10.5px] font-bold tracking-[0.06em]"
@@ -289,6 +290,7 @@ export function BancadaMercados({
     mercadosVisiveis.find((m) => m.slug === mercadoAtivo) ?? mercadosVisiveis[0] ?? MERCADOS[0];
   const ehLinha = TIPO_LINHA.has(mercado.slug);
   const ehAH = mercado.slug === 'asian_handicap';
+  const noCelular = useIsMobile();
 
   const resumos = useMemo(
     () => resumoDosMercados(rows, valueRows, preferida, ocultos),
@@ -627,6 +629,18 @@ export function BancadaMercados({
   }
 
   const pickAtual = labelDe(principal);
+  /**
+   * Todos os rótulos que o título pode assumir NESTE mercado.
+   *
+   * Servem de fantasma: renderizados invisíveis na mesma célula do título,
+   * eles é que definem a altura da caixa. A reserva passa a ser exatamente o
+   * necessário para este mercado, em vez de um número fixo dimensionado pelo
+   * pior nome do catálogo inteiro — em Gols, onde todo rótulo é "Mais de X
+   * gols", isso devolve uma linha de 35px que antes ficava vazia.
+   */
+  const titulosPossiveis = Array.from(
+    new Set([...doMercado.map((o) => outcomeLabel(o, jogo.home, jogo.away)), pickAtual].filter(Boolean)),
+  );
   const linhaExibida = linhaDaSaida({
     market: mercado.slug,
     outcome: principal?.outcome ?? 'Home',
@@ -652,7 +666,10 @@ export function BancadaMercados({
           ...cotacaoDoDraft,
         }}
         variant="ambar"
-        rotulo="Adicionar à gestão"
+        // O mesmo nome do botão do cabeçalho e do da mensagem no Telegram.
+        // "Adicionar à gestão" e "Registrar aposta" abriam o mesmo modal e
+        // gravavam a mesma coisa, a quinze centímetros um do outro.
+        rotulo="Registrar aposta"
       />
     ) : null;
 
@@ -823,51 +840,196 @@ export function BancadaMercados({
               subiu para a linha do rótulo, que tem altura fixa, e o pick e o
               veredito ganharam altura mínima. */}
           <div className="relative flex items-end justify-between gap-7 flex-wrap">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 min-h-6 md:h-6">
-                <span className="text-[10px] uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,.45)' }}>
-                  Mercado aberto · {mercado.label}
-                </span>
-                {cotacaoPrincipal.estado === 'cotada' && (
-                  <span
-                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
-                    style={{ background: '#dcefe2', color: '#0a3d2e' }}
-                  >
-                    Cotada · fora dos filtros
-                  </span>
-                )}
-                {cotacaoPrincipal.estado === 'oportunidade' && (
-                  <span
-                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
-                    style={{ background: '#fbbf24', color: '#1a1d1a' }}
-                  >
-                    Oportunidade
-                  </span>
-                )}
-                {cotacaoPrincipal.estado === 'sem_cotacao' && (
-                  <span
-                    className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
-                    style={{ background: '#ede4ce', color: '#6b6350' }}
-                  >
-                    Sem cotação
-                  </span>
-                )}
-                {resPrincipal && <SeloRes r={resPrincipal} />}
+            {/* `w-full` no celular: sem ele a largura deste bloco vinha do conteúdo
+                mais largo dentro dele — o título — e parava 12px antes da borda.
+                Como os selos se alinham pela direita DESTE bloco, eles herdavam
+                o recuo e ficavam com um vão sobrando à direita, desalinhados da
+                fileira de números logo abaixo, que ocupa a largura inteira. */}
+            <div className="min-w-0 w-full md:w-auto">
+              {/* O rótulo em duas linhas no CELULAR, com os selos empilhados à
+                  direita — um por linha, e não lado a lado.
+                  
+                  Numa linha só o rótulo não cabia: "Mercado aberto · Gols (mais
+                  ou menos)" mede 263px de 294, antes de qualquer selo, e o que
+                  cortava era o nome do mercado — justamente o que a pessoa
+                  precisa ler. Partido em dois, cada linha ganha um selo ao lado
+                  e nada disputa espaço.
+                  
+                  A coluna dos selos tem altura fixa de propósito: um jogo
+                  encerrado mostra Oportunidade E Green, e sem reserva o
+                  cabeçalho cresceria só nesse caso.
+                  
+                  No desktop continua tudo numa linha: lá há 560px. */}
+              <div className={noCelular ? 'flex items-start justify-between gap-2.5 h-11' : 'flex items-center gap-2.5 h-6'}>
+                <div className="min-w-0 flex-1">
+                  <div className="h-6 flex items-center">
+                    <span className="text-[10px] uppercase tracking-[0.16em] truncate" style={{ color: 'rgba(255,255,255,.45)' }}>
+                      {noCelular ? 'Mercado aberto' : `Mercado aberto · ${mercado.label}`}
+                    </span>
+                  </div>
+                  {noCelular && (
+                    <div className="h-4 text-[10px] uppercase tracking-[0.16em] truncate" style={{ color: 'rgba(255,255,255,.7)' }}>
+                      {mercado.label}
+                    </div>
+                  )}
+                </div>
+                {/* O selo "Cotada · fora dos filtros" saiu daqui.
+                    
+                    Ele dizia, em 163px de pílula, exatamente o que a frase logo
+                    abaixo já diz por extenso: "X tem cotação, mas ficou fora dos
+                    filtros de oportunidade". E dizia em vocabulário nosso —
+                    "filtros" é a nossa máquina, não o mundo de quem lê.
+                    
+                    O estado continua sinalizado onde ele muda o que fazer: na
+                    lista de mercados ("cotada @ 1.09") e na faixa verde do
+                    rodapé, que pede para conferir a cotação antes de registrar. */}
+                <div className={noCelular ? 'flex flex-col items-end gap-1 shrink-0' : 'flex items-center gap-2.5 shrink-0'}>
+                  {cotacaoPrincipal.estado === 'oportunidade' && (
+                    <span
+                      className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
+                      style={{ background: '#fbbf24', color: '#1a1d1a' }}
+                    >
+                      Oportunidade
+                    </span>
+                  )}
+                  {cotacaoPrincipal.estado === 'sem_cotacao' && (
+                    <span
+                      className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
+                      style={{ background: '#ede4ce', color: '#6b6350' }}
+                    >
+                      Sem cotação
+                    </span>
+                  )}
+                  {resPrincipal && <SeloRes r={resPrincipal} />}
+                </div>
               </div>
-              <div className="mt-1.5 text-[28px] md:text-[34px] font-semibold leading-tight tracking-[-0.035em] text-white min-h-[42px] md:min-h-[46px]">
-                {pickAtual || '—'}
+              {/* Mesmo remédio do veredito, e pelo mesmo motivo: o piso de
+                  `min-h-[42px]` segurava "Bahia ou empate" numa linha e não
+                  fazia nada contra "RB Bragantino ou empate", que ocupa duas.
+                  Alternar entre os dois chips media 236px e 264px de cabeçalho,
+                  ida e volta.
+                  
+                  Duas linhas reservadas no celular. O nome que passar disso
+                  corta — e não se perde, porque os chips de saída logo abaixo
+                  trazem o texto inteiro. No desktop o título nunca quebrou nas
+                  medições, então lá o piso continua servindo. */}
+              {/* A altura sai do MAIOR rótulo possível deste mercado, medido pelo
+                  próprio navegador: os fantasmas ocupam a mesma célula da grade,
+                  invisíveis, e a célula fica do tamanho do mais alto.
+                  
+                  Antes eram duas linhas fixas para todo mundo, dimensionadas
+                  pelo pior nome do catálogo ("Borussia Mönchengladbach ou
+                  empate"). Em Gols, onde todo rótulo cabe numa linha, sobrava
+                  uma linha vazia em cima de toda folha. Assim a reserva
+                  acompanha o mercado, e continua imóvel ao trocar de saída —
+                  que é o que causava o samba. */}
+              <div className="mt-1.5 grid">
+                {noCelular && titulosPossiveis.map((t) => (
+                  <div
+                    key={t}
+                    aria-hidden
+                    className="invisible col-start-1 row-start-1 text-[28px] font-semibold leading-tight tracking-[-0.035em]"
+                  >
+                    {t}
+                  </div>
+                ))}
+                <div className="col-start-1 row-start-1 text-[28px] md:text-[34px] font-semibold leading-tight tracking-[-0.035em] text-white md:min-h-[46px]">
+                  {pickAtual || '—'}
+                </div>
               </div>
+              {/* Altura FIXA, não mínima, e é a diferença entre resolver e
+                  parecer que resolveu.
+                  
+                  O `min-h-[42px]` daqui era um piso de duas linhas. A frase do
+                  veredito varia de uma a três linhas conforme a saída, então o
+                  piso segurava a curta e não fazia nada contra a longa: em
+                  Dupla chance, alternar entre os dois chips media 300px e 276px
+                  de cabeçalho, ida e volta, a cada toque — com a fileira de
+                  chips subindo e descendo embaixo do dedo de quem escolhe.
+                  
+                  DUAS linhas, e não três. Medindo os 8 modelos de frase contra
+                  os 8 rótulos mais longos do catálogo — 64 combinações —, 61%
+                  cabem em duas linhas, 20% numa e só 19% pedem três. E esses
+                  19% são todos do mesmo punhado de nomes gigantes. Reservar a
+                  terceira linha custava 22px em TODA folha para servir os
+                  jogos do Mönchengladbach; agora esses cortam com reticências.
+                  
+                  A cauda cortada é sempre a parte repetida da frase ("não como
+                  aposta", "não foi detalhado aqui"), nunca o pick. */}
               <div
-                className="mt-2 text-[13.5px] leading-relaxed max-w-[560px] min-h-[42px]"
+                className="mt-2 text-[13.5px] leading-relaxed max-w-[560px] h-[44px] line-clamp-2"
                 style={{ color: 'rgba(255,255,255,.78)' }}
               >
                 {veredito}
               </div>
             </div>
 
-            {/* Sem `shrink-0`: com quatro colunas fixas, a linha estourava a largura
-                no celular e a página inteira ganhava rolagem lateral. */}
-            <div className="flex items-end gap-4 md:gap-6 flex-wrap">
+            {/* O Score é a ÂNCORA, não mais um número da fileira.
+                
+                A grade de quatro colunas iguais que existia aqui resolvia o
+                espaço e estragava a hierarquia: o Score virava o quarto de
+                quatro pares, do mesmo tamanho e peso, quando ele é a leitura
+                principal da folha. No celular ele volta a ser o maior elemento,
+                sozinho de um lado, e chance/odd/valor empilham do outro como
+                ficha técnica — que é o papel delas.
+                
+                No desktop a fileira de sempre: lá há largura para os quatro
+                lado a lado sem que nenhum perca destaque. */}
+            {noCelular ? (
+              <div className="flex items-center gap-4 w-full">
+                {/* Alinhado à ESQUERDA, e não centralizado: centralizado, as três
+                    linhas flutuavam no meio dos 84px reservados e o bloco nascia
+                    recuado da borda, com um vão à esquerda que não era de
+                    ninguém. Alinhado, o Score compartilha a margem esquerda com
+                    o rótulo do mercado e o título, logo acima.
+                    
+                    O `min-w` continua: ele é que segura a régua vertical no
+                    lugar quando o rótulo troca entre "Faixa Alta" e
+                    "Premissas", ou o número entre uma e três casas. */}
+                <div className="shrink-0 text-left min-w-[84px]">
+                  <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>
+                    {valPrincipal ? 'Score' : 'Premissas'}
+                  </div>
+                  <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em] mt-1" style={{ color: '#fbbf24' }}>
+                    {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
+                  </div>
+                  <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] h-3 leading-[12px]" style={{ color: 'rgba(255,255,255,.5)' }}>
+                    {valPrincipal ? rotuloDaFaixa(valPrincipal.faixa) : 'a favor'}
+                  </div>
+                </div>
+                {/* Rótulo à esquerda, número à direita: as três linhas viram uma
+                    tabelinha, e os números alinham numa coluna só. */}
+                <div className="flex-1 min-w-0 grid gap-1.5 pl-4 border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
+                  {[
+                    {
+                      rotulo: 'Chance',
+                      valor: valPrincipal ? `${Math.round(valPrincipal.prob_justa_fechamento * 100)}%` : '—',
+                      cor: '#fff',
+                    },
+                    {
+                      rotulo: 'Odd',
+                      valor: cotacaoPrincipal.odd != null ? cotacaoPrincipal.odd.toFixed(2) : '—',
+                      cor: '#fff',
+                    },
+                    {
+                      rotulo: 'Valor',
+                      valor: valPrincipal
+                        ? `${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`
+                        : '—',
+                      cor: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)',
+                    },
+                  ].map(({ rotulo, valor, cor }) => (
+                    <div key={rotulo} className="flex items-baseline justify-between gap-2">
+                      <span className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{rotulo}</span>
+                      <span className="tabular-nums text-[17px] font-semibold leading-none" style={{ color: cor }}>
+                        <Blur active={locked}>{valor}</Blur>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+            <div className="flex items-end gap-6 flex-wrap">
               <div className="min-w-[58px]">
                 <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
@@ -883,7 +1045,7 @@ export function BancadaMercados({
                 </div>
               </div>
               <div className="min-w-[76px]">
-                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Vantagem</div>
+                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Valor</div>
                 <div
                   className="tabular-nums text-[22px] font-semibold leading-none mt-1"
                   style={{ color: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}
@@ -895,26 +1057,34 @@ export function BancadaMercados({
                   )}
                 </div>
               </div>
-              {/* A régua vertical só separa onde há duas colunas lado a lado. No
-                  celular o bloco desce para baixo do texto e a barra vira um risco
-                  solto na esquerda do número. */}
-              <div className="text-center sm:pl-6 min-w-[128px] sm:border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
+              {/* A régua vertical só separa onde há duas colunas lado a lado. */}
+              <div className="text-center pl-6 min-w-[128px] border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                 <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
                   {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
                 </div>
                 <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                  {valPrincipal
-                    ? `Score · ${rotuloDaFaixa(valPrincipal.faixa)}`
-                    : 'premissas a favor'}
+                  {valPrincipal ? `Score · ${rotuloDaFaixa(valPrincipal.faixa)}` : 'premissas a favor'}
                 </div>
               </div>
             </div>
+            )}
           </div>
 
           {/* A régua de paradas mora no hero: trocar a parada troca o que precisa ser
               verdade, e o Score muda junto. */}
           <div data-tour="fut-jogo-regua" className="relative mt-5 pt-4 flex items-center gap-3.5 flex-wrap" style={{ borderTop: '1px solid rgba(255,255,255,.15)' }}>
-            <span className="text-[9.5px] uppercase tracking-[0.14em] shrink-0" style={{ color: 'rgba(255,255,255,.45)' }}>
+            {/* No celular o rótulo fica numa linha só dele, e as saídas usam a
+                largura inteira embaixo. Ao lado dos chips ele empurrava todos
+                49px para dentro, e a segunda linha herdava esse recuo sem ter
+                rótulo nenhum à esquerda — sobrava um buraco sem dono.
+                
+                No desktop ele continua ao lado: lá os chips cabem numa linha. */}
+            <span
+              className={`text-[9.5px] uppercase tracking-[0.14em] ${
+                noCelular && !ehLinha ? 'w-full' : 'shrink-0 self-start mt-2 md:self-auto md:mt-0'
+              }`}
+              style={{ color: 'rgba(255,255,255,.45)' }}
+            >
               {ehLinha ? 'Linha' : 'Saída'}
             </span>
 
@@ -969,12 +1139,26 @@ export function BancadaMercados({
                 />
               </>
             ) : (
-              <div className="flex-1 min-w-0 flex gap-1.5 flex-wrap">
+              /* Empilhadas no celular, uma por linha e ocupando os 294px.
+                 
+                 Em `flex-wrap` as larguras vinham do conteúdo — 109, 65 e 166px
+                 no Bahia × Bragantino — e a fileira serrilhava dos dois lados,
+                 com o ponto de quebra mudando conforme quem é o mandante.
+                 
+                 Empilhado, nenhum nome trunca: medi os dez piores do catálogo e
+                 até "Vitória do Borussia Mönchengladbach" cabe. As casas de
+                 aposta resolvem isso com segmentos iguais, mas lá o chip mostra
+                 a ODD, que é curta; o nosso mostra o nome da aposta, o estado
+                 dela e o resultado — é lista para ler, não botão para tocar
+                 rápido, e lista se lê empilhada. */
+              <div className={`flex-1 min-w-0 flex gap-1.5 ${noCelular ? 'flex-col' : 'flex-wrap'}`}>
                 {paradasUI.map((p) => (
                   <button
                     key={p.chave}
                     onClick={p.escolher}
-                    className="h-7 px-3 rounded-full inline-flex items-center gap-1.5 cursor-pointer border-0 whitespace-nowrap tabular-nums"
+                    className={`h-7 px-3 rounded-full inline-flex items-center gap-1.5 cursor-pointer border-0 whitespace-nowrap tabular-nums ${
+                      noCelular ? 'w-full justify-between' : ''
+                    }`}
                     style={{
                       background: p.ativa ? '#fbbf24' : 'rgba(255,255,255,.08)',
                       color: p.ativa ? '#1a1d1a' : 'rgba(255,255,255,.72)',
@@ -986,7 +1170,7 @@ export function BancadaMercados({
                     {p.res && (
                       <span
                         className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: isHit(p.res) ? '#2f7d50' : p.res === 'push' ? '#8a8f86' : '#be123c' }}
+                        style={{ background: isHit(p.res) ? '#2f7d50' : p.res === 'push' ? '#8a8f86' : '#b8341c' }}
                       />
                     )}
                   </button>

@@ -69,14 +69,24 @@ function injuryReason(r: string): string {
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
-function fmtDateTime(raw: string | null): string {
-  if (!raw) return '—';
+/**
+ * Data e hora do apito, SEPARADAS.
+ *
+ * A faixa do jogo mostra as duas em lugares diferentes — a data na linha da
+ * rodada, a hora no meio da grade —, então formatar "10/08, 18:30" e recortar
+ * depois só criaria um formato para alguém quebrar sem perceber.
+ */
+function fmtDataEHora(raw: string | null): { data: string; hora: string } {
+  if (!raw) return { data: '—', hora: '—' };
   const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
   const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
-  if (isNaN(d.getTime())) return raw;
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  }).format(d);
+  if (isNaN(d.getTime())) return { data: raw, hora: '—' };
+  const parte = (opcoes: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, ...opcoes }).format(d);
+  return {
+    data: parte({ day: '2-digit', month: '2-digit' }),
+    hora: parte({ hour: '2-digit', minute: '2-digit' }),
+  };
 }
 
 function fmtDate(raw: string | null): string {
@@ -180,7 +190,7 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
   const b = resultBadge(r);
   const c = b.tone === 'won' ? { bg: '#dcefe2', fg: '#0a3d2e', dot: '#2f7d50' }
     : b.tone === 'push' ? { bg: '#eef0ec', fg: '#5a625a', dot: '#8a8f86' }
-    : { bg: '#fbe3e8', fg: '#be123c', dot: '#be123c' };
+    : { bg: '#fbeeec', fg: '#b8341c', dot: '#b8341c' };
   return (
     <span
       className={`shrink-0 inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-[0.06em] ${big ? 'h-7 px-2.5 text-[11px]' : 'h-5 px-1.5 text-[10px]'}`}
@@ -327,6 +337,8 @@ export default function FutebolJogo() {
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
   const finished = isFinished(fixture?.status_short);
+  // Uma formatação só: a data e a hora saem juntas do mesmo instante.
+  const quandoJoga = fmtDataEHora(fixture?.kickoff_utc ?? null);
   // "Já começou" inclui o jogo em andamento, não só o encerrado: depois do
   // apito não dá para prometer que a escalação "sai daqui a pouco".
   const jogoComecou = finished || isLive(fixture?.status_short);
@@ -484,9 +496,9 @@ export default function FutebolJogo() {
               <div className="flex-1 h-2 rounded-full overflow-hidden flex bg-canvas-2">
                 <div style={{ width: `${h2hPct(h2hHomeWins)}%`, background: 'var(--forest)' }} />
                 <div style={{ width: `${h2hPct(h2hDraws)}%`, background: 'var(--ink-3)' }} />
-                <div style={{ width: `${h2hPct(h2hAwayWins)}%`, background: '#be123c' }} />
+                <div style={{ width: `${h2hPct(h2hAwayWins)}%`, background: '#b8341c' }} />
               </div>
-              <span className="text-[20px] font-semibold tabular-nums shrink-0" style={{ color: '#be123c' }}>{h2hAwayWins}</span>
+              <span className="text-[20px] font-semibold tabular-nums shrink-0" style={{ color: '#b8341c' }}>{h2hAwayWins}</span>
             </div>
             <p className="text-[11px] mb-2 text-ink-3">{h2hTotal} confronto{h2hTotal === 1 ? '' : 's'} · {h2hHomeWins} {fixture.home_team_name} · {h2hDraws} empate · {h2hAwayWins} {fixture.away_team_name}</p>
             {h2h.slice(0, 6).map((m) => {
@@ -495,7 +507,7 @@ export default function FutebolJogo() {
                 <div key={m.fixture_id} className="grid grid-cols-[1fr_auto_60px] gap-2 items-center py-2 text-[12px] border-t border-line/60">
                   <span className="text-[11px] text-ink-3 truncate">{fmtDate(m.date_utc)} · {m.competition}</span>
                   <span className="font-semibold tabular-nums text-ink">{m.goals_home} × {m.goals_away}</span>
-                  <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#be123c' : 'var(--ink-3)' }}>{win === 'home' ? 'Casa' : win === 'away' ? 'Fora' : 'Empate'}</span>
+                  <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#b8341c' : 'var(--ink-3)' }}>{win === 'home' ? 'Casa' : win === 'away' ? 'Fora' : 'Empate'}</span>
                 </div>
               );
             })}
@@ -551,7 +563,8 @@ export default function FutebolJogo() {
                   locked={locked}
                   rodada={prettyRound(fixture.round)}
                   estadio={fixture.venue_name ? `${fixture.venue_name}${fixture.venue_city ? `, ${fixture.venue_city}` : ''}` : null}
-                  quando={fmtDateTime(fixture.kickoff_utc)}
+                  data={quandoJoga.data}
+                  hora={quandoJoga.hora}
                   formHome={extrasLoading ? [] : extras?.form_home || []}
                   formAway={extrasLoading ? [] : extras?.form_away || []}
                   homeTeamId={fixture.home_team_id}

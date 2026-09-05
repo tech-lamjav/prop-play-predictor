@@ -24,6 +24,32 @@ import { cleanup, configure } from '@testing-library/react';
  */
 configure({ asyncUtilTimeout: 10_000 });
 
+/**
+ * `matchMedia`, que o jsdom não implementa.
+ *
+ * O `useIsMobile` chama isto para saber a largura, e sem o stub qualquer
+ * componente que decida arranjo por breakpoint quebra o teste com
+ * "window.matchMedia is not a function" — um erro que fala de ambiente e não do
+ * que o teste queria dizer.
+ *
+ * Responde SEMPRE `matches: false`, ou seja, desktop. É o mesmo lado que o
+ * `window.innerWidth` padrão do jsdom (1024) já dá ao estado inicial do hook,
+ * então o stub concorda com ele em vez de criar um terceiro comportamento.
+ * Teste que precise do celular mocka o hook, como o da FaixaPartida faz.
+ */
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = ((consulta: string) => ({
+    matches: false,
+    media: consulta,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+}
+
 afterEach(() => {
   cleanup();
 });

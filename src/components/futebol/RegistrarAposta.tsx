@@ -244,11 +244,18 @@ export function RegistrarApostaCTA({
   draft,
   variant = 'footer',
   rotulo,
+  larguraTotal = false,
 }: {
   draft: FutebolBetDraft;
   /** `ambar` é o botão sólido da faixa da partida e da folha do mercado. */
   variant?: 'footer' | 'text' | 'ambar';
   rotulo?: string;
+  /**
+   * O botão ocupa a linha inteira. Só no `ambar`, e existe para o celular:
+   * lá ele deixa de dividir a linha com o Score e passa a ser a última coisa
+   * do bloco, onde um alvo de toque estreito é o que mais atrapalha.
+   */
+  larguraTotal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const trigger = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault(); setOpen(true); };
@@ -259,7 +266,7 @@ export function RegistrarApostaCTA({
         <button
           type="button"
           onClick={trigger}
-          className="inline-flex items-center justify-center h-9 px-4 rounded-[9px] text-[12.5px] font-bold whitespace-nowrap transition hover:brightness-95"
+          className={`inline-flex items-center justify-center h-9 px-4 rounded-[9px] text-[12.5px] font-bold whitespace-nowrap transition hover:brightness-95${larguraTotal ? ' w-full' : ''}`}
           style={{ background: '#fbbf24', color: '#1a1d1a' }}
         >
           {rotulo ?? 'Registrar aposta'}

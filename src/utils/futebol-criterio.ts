@@ -176,7 +176,7 @@ interface Criterio {
  * Transcritos de `int_futebol_premissas_ou`, CTE `flags`, no estado atual do
  * modelo — a metodologia nova, já sem as premissas de preço (#103, ADR 0012).
  */
-const CRITERIOS: Record<string, Criterio> = {
+export const CRITERIOS: Record<string, Criterio> = {
   // ── Família de média combinada (#353, #354) ──
   // Os dois times somam uma média e o total vai contra a linha com uma margem.
   //

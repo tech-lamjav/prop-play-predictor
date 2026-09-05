@@ -131,7 +131,7 @@ export function GruposFase({
                   </span>
                   <span
                     className="text-center text-[11px] tabular-nums"
-                    style={{ color: r.goals_diff > 0 ? '#0a3d2e' : r.goals_diff < 0 ? '#be123c' : '#6b6350' }}
+                    style={{ color: r.goals_diff > 0 ? '#0a3d2e' : r.goals_diff < 0 ? '#b8341c' : '#6b6350' }}
                   >
                     {sg}
                   </span>

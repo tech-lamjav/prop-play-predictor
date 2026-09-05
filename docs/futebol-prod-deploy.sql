@@ -1101,7 +1101,7 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'goals_over_under', 'xg_baixo_combinado', 'any', 4, 'Os dois criam pouca chance de gol'),
   ('evidencia', 'goals_over_under', 'xg_combinado_alto', 'any', 5, 'Os dois criam muita chance de gol'),
   ('evidencia', 'goals_over_under', 'clean_sheets_altos', 'any', 6, 'Os dois passam muitos jogos sem sofrer gol'),
-  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 7, 'Ataques fracos dos dois lados'),
+  ('evidencia', 'goals_over_under', 'ataques_fracos', 'any', 7, 'Ataque fraco em pelo menos um lado'),
   ('evidencia', 'goals_over_under', 'historico_under', 'any', 8, 'Histórico de jogo com poucos gols'),
   ('evidencia', 'goals_over_under', 'ambos_vazam', 'any', 9, 'Os dois sofrem gol quase todo jogo'),
   ('evidencia', 'goals_over_under', 'ritmo_alto', 'any', 10, 'Jogo de ritmo alto'),
@@ -1118,7 +1118,7 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('aviso', 'goals_over_under', 'pen_odd_juice', 'any', 4, 'Odd baixa, retorno pequeno pro risco'),
   ('aviso', 'goals_over_under', 'linha_extrema', 'any', 5, 'Linha muito longe do normal'),
   ('evidencia', 'match_winner', 'forma', 'any', 1, 'Em boa fase, vem ganhando'),
-  ('evidencia', 'match_winner', 'mando', 'any', 2, 'Mando relevante'),
+  ('evidencia', 'match_winner', 'mando', 'any', 2, 'O mando pesa neste jogo'),
   ('evidencia', 'match_winner', 'mando', 'home', 2, 'Manda bem em casa'),
   ('evidencia', 'match_winner', 'mando', 'away', 2, 'Vai bem fora de casa'),
   ('evidencia', 'match_winner', 'superioridade_tabela', 'any', 3, 'Bem à frente na tabela'),
@@ -1126,8 +1126,8 @@ insert into public.futebol_premissa_copy (tipo, market, slug, mando, ordem, text
   ('evidencia', 'match_winner', 'superioridade_xg', 'any', 5, 'Cria mais chances de gol que o adversário'),
   ('evidencia', 'match_winner', 'h2h_favoravel', 'any', 6, 'Leva vantagem no histórico do confronto'),
   ('evidencia', 'match_winner', 'desfalque_adversario', 'any', 7, 'Adversário com desfalque de titular importante'),
-  ('contra', 'match_winner', 'mando', 'home', 1, 'Em casa, o mando não entrou como sinal a favor'),
-  ('contra', 'match_winner', 'mando', 'away', 1, 'Fora de casa, o mando não entrou como sinal a favor'),
+  ('contra', 'match_winner', 'mando', 'home', 1, 'Em casa, o desempenho não entrou como sinal a favor'),
+  ('contra', 'match_winner', 'mando', 'away', 1, 'Fora de casa, o desempenho não entrou como sinal a favor'),
   ('contra', 'match_winner', 'superioridade_tabela', 'any', 2, 'A posição na tabela não entrou como sinal a favor'),
   ('contra', 'match_winner', 'forca_mismatch', 'any', 3, 'O duelo entre ataque e defesa não entrou como sinal a favor'),
   ('aviso', 'match_winner', 'pen_odd_outlier', 'any', 1, 'Só uma casa paga essa odd, pode ser linha furada'),
@@ -2800,6 +2800,32 @@ as $function$
 $function$;
 
 grant execute on function public.get_futebol_mercados_ocultos() to anon, authenticated, service_role;
+
+-- A MESMA vitrine, com a data em que cada mercado saiu (migration 119). A data
+-- é o que separa a linha que foi publicada e vista da que nunca esteve na
+-- tela: sem ela o painel só sabia esconder o presente, e o histórico devolvia
+-- o mercado escondido no dia seguinte.
+--
+-- Convive com a leitura acima em vez de substituí-la: as duas funções de
+-- notificação só olham o board — presente e futuro, sempre depois do corte —
+-- e para elas a lista de nomes basta.
+create or replace function public.get_futebol_vitrine()
+returns table (market text, oculto_desde timestamptz)
+ language sql
+ stable
+ security definer
+ set search_path to ''
+as $function$
+  select o.market, o.oculto_desde
+    from public.futebol_mercados_ocultos o
+   where o.oculto
+   order by o.market;
+$function$;
+
+comment on function public.get_futebol_vitrine() is
+  'Mercados fora da vitrine COM a data de corte. A data é o que separa a linha que foi publicada e vista da que nunca esteve na tela.';
+
+grant execute on function public.get_futebol_vitrine() to anon, authenticated, service_role;
 
 insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)
 values (
