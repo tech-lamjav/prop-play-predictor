@@ -636,6 +636,7 @@ function LinhaPremissa({
 }) {
   const forte = pesoForte(p);
   const podeAbrir = story != null;
+  const Cabecalho = podeAbrir ? 'button' : 'div';
 
   // Abrir uma premissa leva o topo dela para logo abaixo do cabeçalho.
   //
@@ -668,13 +669,26 @@ function LinhaPremissa({
       className="rounded-[14px] overflow-hidden bg-white"
       style={{ border: `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}` }}
     >
-      <button
-        type="button"
-        onClick={podeAbrir ? alternarPorToque : undefined}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left border-0"
+      {/* A premissa SEM gráfico não é um acordeão, e agora não parece um.
+          
+          Ela usava o mesmo cabeçalho de faixa areia com divisória embaixo — a
+          forma que diz "toca aqui" — e a única pista de que não abria era um
+          "sem jogo a jogo" em cinza claro no canto. O PM tocou esperando abrir;
+          o assinante faria igual.
+          
+          Sem a faixa e sem a divisória ela vira um bloco contínuo, e a forma
+          para de prometer o que não existe. A moldura de fora fica: sem ela a
+          lista teria uns itens emoldurados e outros soltos, o que parece
+          quebrado em vez de intencional.
+          
+          E deixa de ser `<button>`: um botão sem ação se anuncia ao leitor de
+          tela como botão, e não faz nada quando acionado. */}
+      <Cabecalho
+        {...(podeAbrir ? { type: 'button' as const, onClick: alternarPorToque } : {})}
+        className={`w-full flex items-center gap-3 px-4 text-left border-0 ${podeAbrir ? 'py-3' : 'pt-3 pb-1'}`}
         style={{
-          background: aberta ? '#0a3d2e' : '#f4eddc',
-          borderBottom: `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}`,
+          background: aberta ? '#0a3d2e' : podeAbrir ? '#f4eddc' : 'transparent',
+          borderBottom: podeAbrir ? `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}` : 'none',
           cursor: podeAbrir ? 'pointer' : 'default',
         }}
       >
@@ -715,12 +729,8 @@ function LinhaPremissa({
             <span className="sr-only md:not-sr-only">{aberta ? 'fechar' : 'ver os jogos'}</span>
             <ChevronRight className="w-3.5 h-3.5 transition-transform" style={{ transform: `rotate(${aberta ? 90 : 0}deg)` }} />
           </span>
-        ) : (
-          <span className="shrink-0 text-[11px]" style={{ color: aberta ? 'rgba(255,255,255,.5)' : '#8d8672' }}>
-            sem jogo a jogo
-          </span>
-        )}
-      </button>
+        ) : null}
+      </Cabecalho>
 
       {(ev || (p.peso === 0 && p.motivo)) && (
         <div className="px-4 py-3 text-[12.5px] leading-relaxed" style={{ color: '#5a625a' }}>
