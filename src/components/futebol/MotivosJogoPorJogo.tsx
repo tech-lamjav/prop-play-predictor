@@ -168,7 +168,7 @@ function BlocoSerie({
       <div className="flex items-center gap-1.5 mb-2 min-w-0">
         <Crest name={s.teamName} id={s.teamId} size={16} />
         <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
-        <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>
+        {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>}
       </div>
       {/* A barra se ajusta à largura, sem rolagem — e isso passou a caber
           porque o RECORTE mudou.

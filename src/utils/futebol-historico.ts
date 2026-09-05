@@ -404,16 +404,25 @@ export function storyDaPremissa(
             : spec.ultimos
               ? `${filtrados[0].team_name}, últimos ${filtrados.length} jogos`
               : filtrados[0].team_name,
+        // O subtítulo só existe quando ACRESCENTA. Três casos, nesta ordem:
+        //
+        //   · faltou dado em alguns jogos -> a média não é sobre todos, e isso
+        //     precisa estar escrito;
+        //   · a premissa olha só um mando -> o título diz "Fortaleza EC fora" e
+        //     não carrega contagem nenhuma, então ela vem aqui;
+        //   · nos demais o título já diz "últimos N jogos", e repetir o N seria
+        //     dizer duas vezes.
+        //
+        // Saiu daqui o "5 de 40 disponíveis". O 40 era quantas linhas a consulta
+        // trouxe — parâmetro nosso, não conceito de produto — e desde que a
+        // janela passou a ser a do modelo ele só levantava a pergunta errada:
+        // "por que não 40?". Porque o modelo nunca olhou 40.
         sub:
           semDado > 0
             ? `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}, ${semDado} sem o dado`
-            : spec.mando === 'proprio' && spec.ultimos
+            : spec.mando === 'proprio'
               ? `${jogos.length} dos últimos ${naJanela.length} jogos`
-              // "de 27 disponíveis", e não "na competição": a consulta parou de
-              // filtrar por competição (#350), e a frase antiga virou falsa.
-              : spec.ultimos && naCompeticao.length > filtrados.length
-                ? `${jogos.length} de ${naCompeticao.length} disponíveis`
-                : `${jogos.length} ${jogos.length === 1 ? 'jogo' : 'jogos'}`,
+              : '',
         metrica: spec.metrica,
         direcao: spec.direcao,
         media,
