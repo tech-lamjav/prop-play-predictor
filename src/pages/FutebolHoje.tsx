@@ -28,6 +28,7 @@ import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futeb
 // como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
 import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
+import { selecionarJogosDaGrade } from '@/utils/futebol-grade-de-jogos';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
@@ -534,6 +535,14 @@ export default function FutebolHoje() {
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
   const gameList = isDemo ? demoFutebolFixtures : dayGames;
+  // O que CABE na coluna, que não é o mesmo que o total do dia — o cabeçalho
+  // continua dizendo "33 partidas" porque essa é a verdade sobre o dia; o que
+  // muda é quantas linhas a coluna empilha. Recalcula com o relógio, então o
+  // jogo que apita sai sozinho e outro entra no lugar, sem recarregar a página.
+  const gradeDeJogos = useMemo(
+    () => selecionarJogosDaGrade(gameList, agora),
+    [gameList, agora],
+  );
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
   // melhor valor entre as oportunidades realmente exibidas, não o edge bruto de longshots
   const surfaced = oppsByFixture.filter((o) => ehDestaque(o.faixa));
@@ -660,9 +669,9 @@ export default function FutebolHoje() {
             </div>
             {loading ? (
               <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
-            ) : gameList.length > 0 ? (
+            ) : gradeDeJogos.length > 0 ? (
               <div className={`${CARD} overflow-hidden`}>
-                {gameList.map((f) => (
+                {gradeDeJogos.map((f) => (
                   <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))} />
                 ))}
               </div>
