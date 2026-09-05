@@ -184,6 +184,7 @@ function BlocoSerie({
           O que se perde é o panorama — ver o conjunto de uma vez. A alternativa
           era cortar a janela para 10 jogos no celular, mas isso mudaria a média
           desenhada, e a média é o número da premissa. Preferimos rolar a mentir. */}
+      <div className="relative">
       <div className={rolando ? 'overflow-x-auto -mx-1 px-1' : ''}>
       <div className="relative" style={{ height: PLOT, width: rolando ? 'max-content' : undefined, minWidth: '100%' }}>
         <div className="absolute inset-0 flex items-end gap-[3px]">
@@ -217,18 +218,10 @@ function BlocoSerie({
           />
         )}
         {s.media != null && s.mostraMedia && (
-          <>
-            <div
-              className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
-              style={{ borderColor: '#d4a017', bottom: y(s.media) }}
-            />
-            <span
-              className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
-              style={{ color: '#b8870f', bottom: y(s.media) + 2 }}
-            >
-              {rotuloMedia(s.media, s.metrica)}
-            </span>
-          </>
+          <div
+            className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
+            style={{ borderColor: '#d4a017', bottom: y(s.media) }}
+          />
         )}
       </div>
       {/* Contra quem foi cada jogo. Fica DENTRO do mesmo contêiner rolável,
@@ -240,6 +233,37 @@ function BlocoSerie({
           </div>
         ))}
       </div>
+      </div>
+      {/* A sombra na borda direita é o aviso de que há mais jogo para o lado.
+          
+          A barra de rolagem do celular só aparece DURANTE o gesto, então sem
+          ela nada dizia que o gráfico continuava — a pessoa via um corte seco e
+          concluía que aquilo era tudo. É o mesmo recurso que o mercado usa em
+          carrossel horizontal.
+          
+          O limiar de dez é o que cabe na tela: dez barras de 28px mais os vãos
+          dão 310px contra ~290 de espaço. Abaixo disso não há o que rolar, e a
+          sombra seria enfeite mentindo. */}
+      {rolando && s.jogos.length > 10 && (
+        <div
+          className="absolute top-0 right-0 w-8 pointer-events-none"
+          style={{ height: PLOT, background: 'linear-gradient(to left, #fff, rgba(255,255,255,0))' }}
+        />
+      )}
+      {/* O rótulo da média fica FORA do contêiner que rola, e por isso não sai
+          da tela quando a pessoa arrasta — antes ele viajava junto com as
+          barras e sumia no primeiro gesto.
+          
+          Posicionado pelo TOPO porque a caixa de fora inclui a fileira de
+          escudos: medido pela base, o rótulo desceria a altura dela. */}
+      {s.media != null && s.mostraMedia && (
+        <span
+          className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
+          style={{ color: '#b8870f', top: PLOT - y(s.media) - 14 }}
+        >
+          {rotuloMedia(s.media, s.metrica)}
+        </span>
+      )}
       </div>
     </div>
   );

@@ -48,7 +48,24 @@ import { n1 } from '@/utils/futebol-evidencias';
  * o gráfico mudou de janela e o número do xG ficou para trás, então card e barras
  * mostravam médias diferentes da mesma coisa, lado a lado.
  */
-const JANELA_DE_GOLS = 10;
+/**
+ * O recorte que o MODELO usa, e por isso o que a tela desenha.
+ *
+ * Desde a analytics-engineering#91 (ADR 0010), fechada em 25/08/2026, os
+ * defaults dos modelos de premissa são `todas` as competições e os `ultimos_10`
+ * jogos — e produção usa o default. Antes disso eram "só a competição do jogo"
+ * e "a temporada", que é o que estas especificações descreviam.
+ *
+ * O modelo mudou embaixo delas e nada quebrou, porque nada obriga as duas
+ * pontas a concordarem. O resultado media-se assim, no Goiás × Fortaleza de
+ * 05/09: o critério acendeu com 1,5 contra 1,0 (últimos 10, todas), a frase da
+ * tela dizia 1,2 contra 1,2 (o histórico inteiro) e o gráfico desenhava 1,3
+ * contra 1,1 (só a Série B). Três leituras do mesmo número, e a que decide não
+ * aparecia em lugar nenhum.
+ */
+const JANELA_DO_MODELO = 10;
+
+const JANELA_DE_GOLS = JANELA_DO_MODELO;
 const ULTIMOS_DE_GOLS = <T>(rows: T[]): T[] => rows.slice(-JANELA_DE_GOLS);
 
 /**
@@ -128,7 +145,7 @@ interface SerieSpec {
  * Que gráfico prova cada premissa. Slug fora do mapa não ganha gráfico: melhor a aba
  * dizer que não tem como conferir do que desenhar um número que não é o da premissa.
  */
-const SPECS: Record<string, SerieSpec[]> = {
+export const SPECS: Record<string, SerieSpec[]> = {
   // ── Gols ──
   // ⚠️ `ultimos: 10` e `competicoes: 'qualquer'` nas dez, e o `mando` UM A UM.
   //
@@ -174,30 +191,30 @@ const SPECS: Record<string, SerieSpec[]> = {
   historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Resultado ──
-  forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
-  invicto_recente: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5 }],
-  mando: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior' }],
-  mando_forte: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior' }],
-  superioridade_xg: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior' }],
+  forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
+  invicto_recente: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
+  mando: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  mando_forte: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  superioridade_xg: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
   forca_mismatch: [
-    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior' },
-    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior' },
+    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
+    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
   ],
 
   // ── Handicap ──
   tende_golear: [
-    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior' },
-    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior' },
+    { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
+    { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
   ],
-  adversario_fragil_fora: [{ quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior' }],
-  defesa_fora_solida: [{ quem: 'time', metrica: 'ga', mando: 'proprio', direcao: 'menor' }],
-  raramente_perde_por_2: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior' }],
+  adversario_fragil_fora: [{ quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  defesa_fora_solida: [{ quem: 'time', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  raramente_perde_por_2: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
 
   // ── Ambos marcam / dupla chance ──
-  ambos_marcam: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior' }],
-  ataque_dos_dois: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior' }],
-  defesa_forte: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor' }],
-  adversario_limitado: [{ quem: 'adversario', metrica: 'gf', mando: 'todos', direcao: 'menor' }],
+  ambos_marcam: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  ataque_dos_dois: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  defesa_forte: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  adversario_limitado: [{ quem: 'adversario', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
 };
 
 export interface JogoBarra {
@@ -462,8 +479,29 @@ export function evidenciaDoHistorico(
 ): Evidencia | null {
   if (!hist?.length) return null;
   const p = papeis(lado);
+  /**
+   * A MESMA amostra que o gráfico desenha, e pelo mesmo motivo que ele.
+   *
+   * Esta função varria o histórico inteiro — sem recorte de jogos e sem filtro
+   * de competição — enquanto o gráfico logo abaixo aplicava os dois. As duas
+   * descreviam o mesmo número e discordavam: no Goiás × Fortaleza de 05/09 a
+   * frase dizia "1,2 contra 1,2" e o gráfico desenhava 1,3 e 1,1.
+   *
+   * Ninguém veria por leitura de código, porque são duas funções que calculam
+   * a mesma coisa por caminhos diferentes. Agora as duas leem a especificação,
+   * então divergir de novo exige mexer nela — que é onde a decisão mora.
+   */
+  const spec = SPECS[slug]?.[0];
+  const recortar = (rows: FutebolFixtureHistorico[]) => {
+    const naCompeticao =
+      spec?.competicoes === 'qualquer' ? rows : rows.filter((r) => r.mesma_competicao !== false);
+    return spec?.ultimos ? naCompeticao.slice(-spec.ultimos) : naCompeticao;
+  };
   const doLado = (s: 'home' | 'away', proprio: boolean) => {
-    const rows = hist.filter((r) => r.side === s);
+    // Competição e recorte primeiro, mando depois — a ordem é a do modelo, e a
+    // mesma que `storyDaPremissa` usa. Invertida, "os últimos 10" viraria "os
+    // últimos 10 em casa", que pode atravessar meia temporada a mais.
+    const rows = recortar(hist.filter((r) => r.side === s));
     return proprio ? rows.filter((r) => r.em_casa === (s === 'home')) : rows;
   };
   const media = (rows: FutebolFixtureHistorico[], f: (r: FutebolFixtureHistorico) => number | null) => {

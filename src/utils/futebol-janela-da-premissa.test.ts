@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { storyDaPremissa, evidenciaDoHistorico } from './futebol-historico';
+import { storyDaPremissa, evidenciaDoHistorico, SPECS } from './futebol-historico';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
 // ============================================================================
@@ -175,26 +175,66 @@ describe('o número da evidência usa a mesma janela do gráfico', () => {
   });
 });
 
-describe('a janela larga vale só para quem a declarou', () => {
-  // A #350 ampliou a janela na CONSULTA, e isso valia para todos os consumidores:
-  // as premissas de resultado e handicap passaram a desenhar jogos de outros
-  // campeonatos enquanto a frase acima delas continuava saindo do perfil de uma
-  // competição só. O gráfico e o texto discordavam em mercados que a issue nem
-  // tocava. A janela passou a ser declarada por premissa, com o padrão
-  // conservador.
-  const MISTURADO: FutebolFixtureHistorico[] = [
-    jogo({ past_fixture_id: 1, ordem: 1, mesma_competicao: true, em_casa: true, gols_contra: 1 }),
-    jogo({ past_fixture_id: 2, ordem: 2, mesma_competicao: false, em_casa: true, gols_contra: 1 }),
-    jogo({ past_fixture_id: 3, ordem: 3, mesma_competicao: false, em_casa: true, gols_contra: 1 }),
-  ];
+describe('toda premissa declara a janela do modelo', () => {
+  // ==========================================================================
+  // O guarda que impede a tela de desenhar outra amostra que a do Score
+  // ==========================================================================
+  // Havia um padrão implícito: premissa que não declarasse via só a competição
+  // do confronto, e o histórico inteiro. Ele reproduzia o modelo de ANTES da
+  // analytics-engineering#91 (ADR 0010), fechada em 25/08/2026, que passou os
+  // defaults para `todas` as competições e os `ultimos_10` jogos.
+  //
+  // O modelo mudou embaixo das especificações e nada quebrou, porque nada
+  // obrigava as duas pontas a concordarem. Medido no Goiás × Fortaleza de
+  // 05/09: o critério acendeu com 1,5 contra 1,0, a frase da tela dizia 1,2
+  // contra 1,2 e o gráfico desenhava 1,3 contra 1,1 — três leituras do mesmo
+  // número, e a que decide não aparecia em lugar nenhum.
+  //
+  // Não existe mais padrão implícito: cada premissa DECLARA os dois eixos. É o
+  // que este teste cobra, e é o que faz a próxima mudança do modelo virar uma
+  // edição visível em vez de uma divergência muda.
+  // ==========================================================================
 
-  it('premissa de gols vê os três jogos', () => {
-    const story = storyDaPremissa('defesas_firmes', MISTURADO, 'home', 2.5);
+  const RECORTE_ESPECIAL: Record<string, number> = {
+    // Contam quantos dos ÚLTIMOS CINCO ficaram de um lado da linha.
+    historico_over: 5,
+    historico_under: 5,
+    // Saem do `n_wins_last5` do modelo, que é de cinco por construção.
+    forma: 5,
+    invicto_recente: 5,
+  };
+
+  for (const [slug, series] of Object.entries(SPECS)) {
+    it(`${slug} declara competição e recorte`, () => {
+      for (const spec of series) {
+        expect(spec.competicoes, `${slug} não declara competição`).toBe('qualquer');
+        expect(spec.ultimos, `${slug} não declara recorte`).toBe(RECORTE_ESPECIAL[slug] ?? 10);
+      }
+    });
+  }
+
+  it('a frase e o gráfico leem a MESMA especificação', () => {
+    // Três jogos, dois de outra competição. Com o recorte declarado, os dois
+    // lados enxergam os três — e o que importa é enxergarem o mesmo.
+    // Os DOIS lados: `superioridade_xg` compara o time com o adversário, e sem
+    // as linhas do visitante a frase não é gerada.
+    const misturado: FutebolFixtureHistorico[] = [
+      jogo({ past_fixture_id: 1, ordem: 1, mesma_competicao: true, xg: 1 }),
+      jogo({ past_fixture_id: 2, ordem: 2, mesma_competicao: false, xg: 3 }),
+      jogo({ past_fixture_id: 3, ordem: 3, mesma_competicao: false, xg: 3 }),
+      jogo({ side: 'away', past_fixture_id: 4, ordem: 1, mesma_competicao: true, em_casa: false, xg: 1 }),
+      jogo({ side: 'away', past_fixture_id: 5, ordem: 2, mesma_competicao: false, em_casa: false, xg: 1 }),
+    ];
+    // `superioridade_xg` porque ela tem gráfico E frase — a maioria das
+    // premissas só tem um dos dois, e só onde há os dois é que a divergência
+    // aparecia na tela.
+    const story = storyDaPremissa('superioridade_xg', misturado, 'home', null);
+    const ev = evidenciaDoHistorico('superioridade_xg', misturado, 'home', null);
+
     expect(story?.series[0].jogos).toHaveLength(3);
-  });
-
-  it('premissa que não declarou vê só a competição do confronto', () => {
-    const story = storyDaPremissa('defesa_fora_solida', MISTURADO, 'home', null);
-    expect(story?.series[0].jogos).toHaveLength(1);
+    expect(ev?.texto).toBeTruthy();
+    // A média do gráfico é o número que a frase repete.
+    const media = story!.series[0].media!;
+    expect(ev!.texto).toContain(media.toFixed(1).replace('.', ','));
   });
 });
