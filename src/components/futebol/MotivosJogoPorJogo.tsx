@@ -833,8 +833,8 @@ export function MotivosJogoPorJogo({
               ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
               : 'Nenhum motivo a favor desta saída.'
             : total > 0
-              ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e ficaram aquém do corte. Não são sinal para o outro lado: são a ausência deste.`
-              : 'Nenhuma premissa desta saída ficou aquém do corte: todas as que valem acenderam.'}
+              ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e não atingiram o corte. Não são sinal para o outro lado: são a ausência deste.`
+              : 'Todas as premissas que valem nesta saída atingiram o corte.'}
           {/* A definição do corte, UMA vez na lista e não em cada card. Ela só
               aparece quando existe premissa prestando contas, senão a tela
               explicaria um conceito que não está em lugar nenhum dela. */}
