@@ -21,9 +21,9 @@ const C = {
   line: '#e3e6e0',
   lineSoft: '#eef0ec',
   lineSoft2: '#f4f5f2',
-  rose: '#be123c',
+  danger: '#b8341c',
   greenBg: '#dcefe2', greenFg: '#0a3d2e',
-  roseBg: '#fbe3e8', roseFg: '#be123c',
+  dangerBg: '#fbeeec', dangerFg: '#b8341c',
 };
 
 const SCOPE_ORDER = ['geral', 'casa', 'fora'] as const;
@@ -53,7 +53,7 @@ function FormDots({ form, size = 16 }: { form: string; size?: number }) {
   const map: Record<string, { letter: string; bg: string }> = {
     W: { letter: 'V', bg: C.forest },
     D: { letter: 'E', bg: C.ink3 },
-    L: { letter: 'D', bg: C.rose },
+    L: { letter: 'D', bg: C.danger },
   };
   const last = form.slice(-5).split('');
   return (
@@ -223,7 +223,7 @@ export default function FutebolTime() {
                 </div>
               </div>
               <div className="grid grid-cols-4">
-                {([['Vitórias', raiox?.wins_total, C.forest], ['Empates', raiox?.draws_total, C.ink2], ['Derrotas', raiox?.loses_total, C.rose], ['Gols', stand ? `${stand.goals_for}:${stand.goals_against}` : '—', C.ink]] as [string, number | string | null | undefined, string][]).map(([l, v, color], i) => (
+                {([['Vitórias', raiox?.wins_total, C.forest], ['Empates', raiox?.draws_total, C.ink2], ['Derrotas', raiox?.loses_total, C.danger], ['Gols', stand ? `${stand.goals_for}:${stand.goals_against}` : '—', C.ink]] as [string, number | string | null | undefined, string][]).map(([l, v, color], i) => (
                   <div key={l} className="px-2 md:px-6 py-3 md:py-4 text-center" style={{ borderLeft: i ? `1px solid ${C.lineSoft}` : 'none' }}>
                     <div className="text-lg md:text-[22px] font-extrabold tabular-nums tracking-tight leading-none" style={{ color }}>{v ?? '—'}</div>
                     <div className="text-[9px] uppercase tracking-[0.14em] font-bold mt-1.5 text-ink-3">{l}</div>
@@ -303,7 +303,7 @@ export default function FutebolTime() {
               {recent.length ? recent.map((g, i) => (
                 <div key={i} className="px-5 py-2.5 flex items-center gap-3" style={{ borderTop: i ? `1px solid ${C.lineSoft2}` : 'none' }}>
                   <span className="inline-flex w-6 h-6 rounded items-center justify-center text-[11px] font-bold text-white shrink-0"
-                    style={{ background: g.res === 'V' ? C.forest : g.res === 'E' ? C.ink3 : C.rose }}>{g.res}</span>
+                    style={{ background: g.res === 'V' ? C.forest : g.res === 'E' ? C.ink3 : C.danger }}>{g.res}</span>
                   <span className="text-[11px] tabular-nums w-12 shrink-0 text-ink-3">{g.loc}</span>
                   <Crest name={g.oppName} id={g.oppId} size={22} />
                   <span className="text-[12px] font-semibold tracking-tight flex-1 min-w-0 truncate text-ink">{g.oppName}</span>
@@ -347,7 +347,7 @@ function EficBar({ label, real, esperado, good }: { label: string; real: number;
       <div className="flex items-center justify-between mb-2">
         <span className="text-[12px] font-semibold tracking-tight text-ink">{label}</span>
         <span className="text-[11px] tabular-nums font-semibold px-1.5 h-5 inline-flex items-center rounded"
-          style={{ background: positive ? C.greenBg : C.roseBg, color: positive ? C.greenFg : C.roseFg }}>
+          style={{ background: positive ? C.greenBg : C.dangerBg, color: positive ? C.greenFg : C.dangerFg }}>
           {delta > 0 ? '+' : ''}{delta} vs esperado
         </span>
       </div>

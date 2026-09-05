@@ -190,7 +190,7 @@ function ResultBadge({ r }: { r: BetResult }) {
   const b = resultBadge(r);
   const style = b.tone === 'won' ? { background: '#dcefe2', color: '#0a3d2e' }
     : b.tone === 'push' ? { background: '#eef0ec', color: '#5a625a' }
-    : { background: '#fbe3e8', color: '#be123c' };
+    : { background: '#fbeeec', color: '#b8341c' };
   return (
     <span className="shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.06em]" style={style}>
       {b.label}
