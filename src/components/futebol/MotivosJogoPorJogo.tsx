@@ -81,7 +81,7 @@ const COR_CONTRA = '#c9cec6';
 const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
   V: { bg: '#dcefe2', fg: '#0a3d2e' },
   E: { bg: '#eef0eb', fg: '#5a625a' },
-  D: { bg: '#fbe3e8', fg: '#be123c' },
+  D: { bg: '#fbeeec', fg: '#b8341c' },
 };
 
 /** Sequência de resultados: um quadro por jogo, com placar, escudo e adversário. */
@@ -246,13 +246,20 @@ function GraficoUnificado({ story }: { story: Story }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-3 flex-wrap justify-end">
+      {/* À ESQUERDA, na mesma margem dos gráficos que ela explica — antes ela
+          ficava encostada à direita e lia como se pertencesse a outra coisa.
+          
+          No celular empilha, e os itens alinham pela esquerda: é isso que põe
+          as duas bolinhas na mesma coluna. Alinhar pela direita alinharia o fim
+          do texto, que tem comprimentos diferentes, e as bolinhas ficariam
+          tortas. */}
+      <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_FAVOR }} />
+          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
           <span className="text-[10.5px] text-ink-2">{quer ? 'acima da média' : 'abaixo da média'}, o lado que a premissa quer</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_CONTRA }} />
+          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
           <span className="text-[10.5px] text-ink-3">{quer ? 'abaixo' : 'acima'}</span>
         </span>
       </div>
@@ -701,7 +708,11 @@ function LinhaPremissa({
         </span>
         {podeAbrir ? (
           <span className="shrink-0 inline-flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: aberta ? '#fbbf24' : '#0a3d2e' }}>
-            {aberta ? 'fechar' : 'ver os jogos'}
+            {/* `sr-only` e não `hidden`: no celular o texto some da TELA e
+                continua no leitor de tela. Escondido de vez, o botão passaria a
+                se anunciar só pelo nome da premissa, sem dizer que abre nada.
+                A seta sozinha basta para quem enxerga — ela já gira ao abrir. */}
+            <span className="sr-only md:not-sr-only">{aberta ? 'fechar' : 'ver os jogos'}</span>
             <ChevronRight className="w-3.5 h-3.5 transition-transform" style={{ transform: `rotate(${aberta ? 90 : 0}deg)` }} />
           </span>
         ) : (
@@ -781,13 +792,6 @@ export function MotivosJogoPorJogo({
     [mercado, premissas, numeros, historico, lado, linha, acesa],
   );
 
-  // Abre a primeira que tem gráfico: chegar numa lista toda fechada esconde o que a
-  // aba veio mostrar.
-  const primeira = itens.find((x) => x.story != null)?.p.slug ?? null;
-  const [aberta, setAberta] = useState<string | null>(primeira);
-  const chave = itens.map((x) => x.p.slug).join('|');
-  useEffect(() => setAberta(primeira), [chave, primeira]);
-
   const total = itens.length + (extras?.length ?? 0);
   const blocosOrdenados = useMemo(
     () => [
@@ -796,6 +800,25 @@ export function MotivosJogoPorJogo({
     ].sort((a, b) => b.peso - a.peso),
     [itens, extras],
   );
+
+  /**
+   * A primeira com gráfico NA ORDEM EM QUE ELAS APARECEM — chegar numa lista
+   * toda fechada esconde o que a aba veio mostrar.
+   *
+   * "Primeira" era calculada sobre `itens`, que é a ordem de origem, enquanto a
+   * tela desenha `blocosOrdenados`, que ordena por peso. As duas quase nunca
+   * coincidem: abrir o jogo mostrava a terceira premissa aberta e as duas de
+   * cima fechadas, e a que abria era justamente a de menor peso.
+   */
+  const primeira = (() => {
+    for (const bloco of blocosOrdenados) {
+      if (bloco.tipo === 'premissa' && bloco.item.story != null) return bloco.item.p.slug;
+    }
+    return null;
+  })();
+  const [aberta, setAberta] = useState<string | null>(primeira);
+  const chave = itens.map((x) => x.p.slug).join('|');
+  useEffect(() => setAberta(primeira), [chave, primeira]);
 
   if (!historico) {
     return <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>Carregando os jogos anteriores.</div>;
@@ -823,14 +846,16 @@ export function MotivosJogoPorJogo({
             </span>
           )}
         </div>
+        {/* Mesma regra da legenda do jogo a jogo: empilha no celular com as
+            bolinhas numa coluna só. */}
         {itens.some((x) => x.story != null) && (
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-4">
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_FAVOR }} />
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
               <span className="text-[10.5px]" style={{ color: '#5a625a' }}>o lado que a premissa quer</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: COR_CONTRA }} />
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
               <span className="text-[10.5px]" style={{ color: '#8d8672' }}>o lado contrário</span>
             </span>
           </div>
