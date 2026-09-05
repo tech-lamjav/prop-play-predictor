@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { FaixaPartida } from './FaixaPartida';
 import type { JogoInfo } from './JogoResumo';
 
+// O cabeçalho tem dois arranjos e o hook decide qual. Fixá-lo por teste é o que
+// permite cobrir os dois sem depender da largura que o jsdom inventa.
+const ehMobile = vi.fn(() => false);
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => ehMobile() }));
+
 // ============================================================================
 // Os três estados da leitura na faixa da partida
 // ============================================================================
@@ -38,7 +43,8 @@ function renderFaixa(props: Partial<Parameters<typeof FaixaPartida>[0]> = {}) {
       locked={false}
       rodada="Rodada 24"
       estadio="Allianz Parque"
-      quando="sáb 19:00"
+      data="05/09"
+      hora="19:00"
       formHome={[]}
       formAway={[]}
       homeTeamId={10}
@@ -66,7 +72,7 @@ describe('FaixaPartida · estado da leitura', () => {
 
     expect(screen.getByText('Palmeiras')).toBeInTheDocument();
     expect(screen.getByText('Flamengo')).toBeInTheDocument();
-    expect(screen.getByText('sáb 19:00')).toBeInTheDocument();
+    expect(screen.getByText('05/09, 19:00')).toBeInTheDocument();
     expect(screen.getByText('Allianz Parque')).toBeInTheDocument();
   });
 
@@ -75,5 +81,62 @@ describe('FaixaPartida · estado da leitura', () => {
 
     expect(screen.queryByTestId('faixa-leitura-carregando')).not.toBeInTheDocument();
     expect(screen.getByText('Sem leitura ainda')).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// Os dois arranjos do cabeçalho
+// ============================================================================
+// No celular o nome do time desce para baixo do escudo, e a data e o estado
+// sobem para a linha da rodada. Não é gosto: com o escudo ao lado sobravam 77px
+// para o nome, e de 202 times das nossas ligas só 119 cabiam.
+//
+// Os testes olham ONDE a informação está, e nunca o número dela — a regra do
+// arquivo (#310) continua valendo.
+// ============================================================================
+
+describe('FaixaPartida · arranjo do cabeçalho', () => {
+  it('no desktop, data e hora ficam juntas no meio da grade', () => {
+    ehMobile.mockReturnValue(false);
+    renderFaixa();
+
+    expect(screen.getByText('05/09, 19:00')).toBeInTheDocument();
+    expect(screen.getByText('Não começou')).toBeInTheDocument();
+  });
+
+  it('no celular, a hora fica sozinha e a data sobe para a linha da rodada', () => {
+    ehMobile.mockReturnValue(true);
+    renderFaixa();
+
+    // Separadas: é isso que devolve largura para o nome do time.
+    expect(screen.getByText('19:00')).toBeInTheDocument();
+    expect(screen.getByText('05/09')).toBeInTheDocument();
+    expect(screen.queryByText('05/09, 19:00')).not.toBeInTheDocument();
+  });
+
+  it('o estado do jogo aparece uma vez só, nos dois arranjos', () => {
+    // Renderizar os dois arranjos e esconder um por CSS duplicaria o texto para
+    // o leitor de tela. O hook existe para isso.
+    ehMobile.mockReturnValue(true);
+    const { unmount } = renderFaixa();
+    expect(screen.getAllByText('Não começou')).toHaveLength(1);
+    unmount();
+
+    ehMobile.mockReturnValue(false);
+    renderFaixa();
+    expect(screen.getAllByText('Não começou')).toHaveLength(1);
+  });
+
+  it('o nome do time aparece nos dois arranjos', () => {
+    ehMobile.mockReturnValue(true);
+    const { unmount } = renderFaixa();
+    expect(screen.getByText('Palmeiras')).toBeInTheDocument();
+    expect(screen.getByText('Flamengo')).toBeInTheDocument();
+    unmount();
+
+    ehMobile.mockReturnValue(false);
+    renderFaixa();
+    expect(screen.getByText('Palmeiras')).toBeInTheDocument();
+    expect(screen.getByText('Flamengo')).toBeInTheDocument();
   });
 });

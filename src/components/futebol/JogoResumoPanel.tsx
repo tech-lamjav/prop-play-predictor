@@ -334,7 +334,7 @@ export function JogoResumoPanel({
                     </div>
                   </div>
                   <div>
-                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Vantagem</div>
+                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Valor</div>
                     <div className="tabular-nums text-[15px] font-semibold mt-0.5" style={{ color: best.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}>
                       <Blur active={borraValor} strength={5}>
                         {`${best.edge >= 0 ? '+' : '−'}${Math.abs(best.edge * 100).toFixed(1).replace('.', ',')}%`}
