@@ -597,7 +597,7 @@ export default function FutebolOportunidades() {
           {(showAlertStatus || (!isLoading && distribuicao.length > 0)) && (
             <div className="flex items-end gap-2">
               {showAlertStatus && publicationAlerts && (
-                <AlertasPublicacaoStatus estado={publicationAlerts} onOpenSettings={() => navigate('/settings')} />
+                <AlertasPublicacaoStatus estado={publicationAlerts} onOpenSettings={() => navigate('/settings?secao=alertas')} />
               )}
               {!isLoading && distribuicao.length > 0 && (
                 <div className="hidden sm:flex items-end gap-2">
