@@ -516,17 +516,30 @@ export function BancadaMercados({
   const naoAtingiuOCorte = apagadas.filter((p) => temOQueMostrar(p, false));
   const favorVisivel = favor.filter((p) => temOQueMostrar(p, true));
 
-  const motivosDoContrato = (itens: FutebolFixtureReasonContractRow['favor']) => {
+  // O `temOQueMostrar` vale AQUI TAMBÉM, e não só no caminho legado.
+  //
+  // Era por aqui que a premissa de ritmo chegava à tela: o contrato manda o slug,
+  // o catálogo devolve a premissa e ela ia renderizada sem passar pela regra que
+  // decidiu, logo acima, que premissa sem peso e sem número não se mostra. O
+  // assinante via um card com o selo "não ajuda" DENTRO da aba "A favor", dizendo
+  // que atrapalha nos dois testes e sem número nenhum embaixo para conferir: a
+  // tela se contradizendo e sem oferecer como checar.
+  //
+  // A regra é uma só para os dois lados (#351), então o `acesa` acompanha o lado:
+  // a favor a premissa está acesa, contra ela está apagada — e é isso que decide
+  // se o número dela pode ser suprimido.
+  const motivosDoContrato = (itens: FutebolFixtureReasonContractRow['favor'], acesa: boolean) => {
     const separados = separarMotivosDoContrato(itens);
     return {
       premissas: separados.slugsDePremissas
         .map((slug) => premissaDe(mercado.slug, slug))
-        .filter((p): p is Premissa => p != null),
+        .filter((p): p is Premissa => p != null)
+        .filter((p) => temOQueMostrar(p, acesa)),
       extras: separados.motivosSemDrilldown,
     };
   };
   const motivosFavor = contratoMotivos
-    ? motivosDoContrato(contratoMotivos.favor)
+    ? motivosDoContrato(contratoMotivos.favor, true)
     : requerContratoMotivos
       ? { premissas: [], extras: [] }
       : { premissas: favorVisivel, extras: [] };
@@ -567,7 +580,7 @@ export function BancadaMercados({
     return out;
   }, [requerContratoMotivos, valPrincipal, penAtivas, injuries, ladoPrincipal, jogo.homeId, jogo.awayId]);
   const motivosContra = contratoMotivos
-    ? motivosDoContrato(contratoMotivos.contra)
+    ? motivosDoContrato(contratoMotivos.contra, false)
     : requerContratoMotivos
       ? { premissas: [], extras: [] }
       : { premissas: naoAtingiuOCorte, extras: contras };
