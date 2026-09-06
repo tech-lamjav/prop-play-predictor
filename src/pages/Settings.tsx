@@ -209,18 +209,28 @@ export default function Settings() {
                   type="button"
                   onClick={() => abrirSecao(sec.id)}
                   aria-current={ativa ? 'page' : undefined}
+                  /* Fundo em TODAS, e não só na aberta.
+
+                     Sem fundo, as três fechadas viravam texto solto no bege da
+                     página: nada dizia que dá para clicar nelas, e a aberta
+                     parecia a única coisa ali. Agora toda seção é um cartão.
+
+                     O par de cores sai do guia visual, e não de invenção:
+                     secundário é branco com borda, primário é forest com texto
+                     branco. É o mesmo contraste dos botões da casa, então a
+                     seção aberta lê como escolha feita, e não como destaque. */
                   className={`shrink-0 md:shrink text-left rounded-rebrand-md border px-3 py-2.5 cursor-pointer transition flex items-center gap-2.5 ${
                     ativa
-                      ? 'bg-white border-line shadow-sm'
-                      : 'bg-transparent border-transparent hover:bg-white/60'
+                      ? 'bg-forest border-forest shadow-sm'
+                      : 'bg-white border-line hover:bg-canvas-2'
                   }`}
                 >
-                  <Icone className={`h-4 w-4 shrink-0 ${ativa ? 'text-forest' : 'text-ink-2'}`} />
+                  <Icone className={`h-4 w-4 shrink-0 ${ativa ? 'text-white' : 'text-ink-2'}`} />
                   <span className="min-w-0">
-                    <span className={`block text-[13.5px] whitespace-nowrap ${ativa ? 'font-semibold text-ink' : 'font-medium text-ink-2'}`}>
+                    <span className={`block text-[13.5px] whitespace-nowrap ${ativa ? 'font-semibold text-white' : 'font-medium text-ink'}`}>
                       {sec.rotulo}
                     </span>
-                    <span className="hidden md:block text-[11px] text-ink-3 truncate">{sec.resumo}</span>
+                    <span className={`hidden md:block text-[11px] truncate ${ativa ? 'text-white/65' : 'text-ink-3'}`}>{sec.resumo}</span>
                   </span>
                 </button>
               );
