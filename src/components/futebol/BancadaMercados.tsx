@@ -861,7 +861,19 @@ export function BancadaMercados({
                   
                   No desktop continua tudo numa linha: lá há 560px. */}
               <div className={noCelular ? 'flex items-start justify-between gap-2.5 h-11' : 'flex items-center gap-2.5 h-6'}>
-                <div className="min-w-0 flex-1">
+                {/* No CELULAR o rótulo cresce: os selos ficam presos à direita,
+                    numa coluna própria, e o `justify-between` precisa de alguém
+                    ocupando o meio.
+
+                    No DESKTOP ele NÃO cresce. Crescendo, o bloco tomava toda a
+                    largura livre e jogava o selo contra a borda direita da coluna.
+                    Em Gols, que tem o rótulo mais longo do catálogo, o selo
+                    encostava no texto por acaso; em Resultado, Ambos marcam e
+                    Dupla chance sobrava um vão enorme entre o nome do mercado e o
+                    selo. Sem crescer, o bloco mede o texto e o selo vem logo
+                    depois, à mesma distância em todo mercado. O `min-w-0` fica: é
+                    ele que deixa o rótulo truncar se um dia não couber. */}
+                <div className={`min-w-0 ${noCelular ? 'flex-1' : ''}`}>
                   <div className="h-6 flex items-center">
                     <span className="text-[10px] uppercase tracking-[0.16em] truncate" style={{ color: 'rgba(255,255,255,.45)' }}>
                       {noCelular ? 'Mercado aberto' : `Mercado aberto · ${mercado.label}`}
