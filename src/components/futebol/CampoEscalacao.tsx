@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Crest } from '@/components/futebol/Crest';
+import { getFutebolPlayerPhotoUrl, crestInitials } from '@/utils/futebol-logos';
 import { paraTela, posicoesNoCampo, reservasDoLado, type OrientacaoDoCampo } from '@/utils/futebol-campo';
 import type { FutebolLineup, FutebolLineupPlayer, FutebolInjury } from '@/services/futebol-data.service';
 
@@ -199,19 +200,16 @@ export function CampoEscalacao({
                 className="absolute flex flex-col items-center"
                 style={{ left: `${left}%`, top: `${top}%`, transform: 'translate(-50%,-50%)' }}
               >
-                <div
-                  className="rounded-full grid place-items-center font-bold tabular-nums"
-                  style={{
-                    width: noCelular ? 22 : 27,
-                    height: noCelular ? 22 : 27,
-                    fontSize: noCelular ? 8.5 : 10,
-                    background: '#fff',
-                    color: '#0a3d2e',
-                    border: '1.5px solid rgba(255,255,255,.85)',
-                  }}
-                >
-                  {numero}
-                </div>
+                <Retrato
+                  playerId={p.player_id}
+                  nome={p.player_name}
+                  tamanho={noCelular ? 24 : 30}
+                />
+                {/* Número JUNTO do nome, como no Sofascore, e não dentro do
+                    círculo. É o que deixa a foto entrar sem custo: o círculo
+                    passa a ser retrato, e quem ainda não tem foto mostra sigla
+                    sem perder informação nenhuma — a camisa continua legível
+                    aqui embaixo, nos dois casos. */}
                 <span
                   className="font-semibold mt-1 px-1 rounded whitespace-nowrap"
                   style={{
@@ -220,7 +218,7 @@ export function CampoEscalacao({
                     background: 'rgba(0,0,0,.42)',
                   }}
                 >
-                  {nome}
+                  <span className="tabular-nums opacity-70">{numero}</span> {nome}
                 </span>
               </div>
             );
@@ -302,6 +300,59 @@ export function CampoEscalacao({
           </Bloco>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * O retrato do jogador, com sigla quando o espelho ainda não tem a foto.
+ *
+ * A cobertura do bucket é parcial — ele varria só artilheiros e líderes de
+ * cartão, e passou a varrer escalações há pouco, então enquanto o espelho não
+ * roda de novo boa parte do gramado cai na sigla. Isso é aceitável PORQUE o
+ * número da camisa saiu de dentro do círculo e foi para o rótulo: sem foto não
+ * se perde dado, muda só o retrato.
+ *
+ * Mesma moldura nos dois casos, de propósito. É ela que faz a mistura ler como
+ * uma galeria com retratos pendentes, e não como imagem quebrada.
+ */
+function Retrato({
+  playerId,
+  nome,
+  tamanho,
+}: {
+  playerId: number | null;
+  nome: string | null;
+  tamanho: number;
+}) {
+  const [erro, setErro] = useState(false);
+  const foto = getFutebolPlayerPhotoUrl(playerId);
+  const moldura = {
+    width: tamanho,
+    height: tamanho,
+    background: '#fff',
+    border: '1.5px solid rgba(255,255,255,.85)',
+  } as const;
+
+  if (foto && !erro) {
+    return (
+      <img
+        src={foto}
+        alt={nome ?? ''}
+        onError={() => setErro(true)}
+        loading="lazy"
+        className="rounded-full object-cover shrink-0"
+        style={moldura}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="rounded-full grid place-items-center font-bold shrink-0"
+      style={{ ...moldura, color: '#0a3d2e', fontSize: tamanho * 0.34 }}
+    >
+      {crestInitials(nome ?? '')}
     </div>
   );
 }
