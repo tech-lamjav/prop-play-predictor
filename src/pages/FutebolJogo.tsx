@@ -54,20 +54,6 @@ function useBancadaLadoALado(): boolean {
   return lado;
 }
 
-const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
-  'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
-  Questionable: { label: 'Dúvida', cls: 'bg-amber text-canvas' },
-};
-const INJURY_REASON_PT: Record<string, string> = {
-  Rest: 'Poupado', 'Yellow Cards': 'Suspenso', 'Red Card': 'Suspenso', Suspended: 'Suspenso',
-  'Loan agreement': 'Empréstimo', Inactive: 'Inativo', "Coach's decision": 'Decisão técnica',
-  'National selection': 'Seleção', 'Personal problems': 'Pessoal',
-};
-function injuryReason(r: string): string {
-  if (INJURY_REASON_PT[r]) return INJURY_REASON_PT[r];
-  if (/injury/i.test(r)) return 'Lesão';
-  return r;
-}
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 

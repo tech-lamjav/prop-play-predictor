@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Crest } from '@/components/futebol/Crest';
 import { getFutebolPlayerPhotoUrl, crestInitials } from '@/utils/futebol-logos';
+import { estaEmDuvida, motivoDoDesfalque } from '@/utils/futebol-desfalques';
 import { paraTela, posicoesNoCampo, reservasDoLado, type OrientacaoDoCampo } from '@/utils/futebol-campo';
 import type { FutebolLineup, FutebolLineupPlayer, FutebolInjury } from '@/services/futebol-data.service';
 
@@ -279,14 +280,15 @@ export function CampoEscalacao({
               <Vazio>Sem desfalques</Vazio>
             ) : (
               desfalques.map((d, i) => {
-                const duvida = /quest|doubt|dúvid/i.test(d.injury_type || '');
+                const duvida = estaEmDuvida(d.injury_type);
+                const motivo = motivoDoDesfalque(d.injury_reason) ?? motivoDoDesfalque(d.injury_type);
                 return (
                   <div
                     key={d.player_id ?? i}
                     className={`flex items-center gap-2 py-1.5 text-[12px] ${i ? 'border-t border-line/60' : ''}`}
                   >
                     <span className="font-semibold tracking-tight text-ink truncate">{d.player_name}</span>
-                    <span className="text-[10px] text-ink-3 truncate">{d.injury_reason || d.injury_type}</span>
+                    <span className="text-[10px] text-ink-3 truncate">{motivo}</span>
                     <span
                       className="px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold ml-auto shrink-0"
                       style={duvida ? { background: '#fef7df', color: '#9a6c00' } : { background: '#fde2e7', color: '#9a1f2e' }}
@@ -357,9 +359,22 @@ function Retrato({
   );
 }
 
+/**
+ * Um bloco de informação de um lado: título miúdo e conteúdo.
+ *
+ * O teto de largura é o ponto. A coluna de cada time mede quase 700px num
+ * desktop largo, e as linhas de dentro têm um item preso à direita — a posição
+ * no banco, o selo de "Fora" no desfalque. Sem teto, o número ficava numa ponta
+ * e a posição na outra, com meio metro de nada no meio, e a linha deixava de ler
+ * como uma linha.
+ *
+ * Alinhado à esquerda nos DOIS lados, e não espelhado: lista se lê da esquerda
+ * para a direita mesmo quando descreve o time da direita. É o que o Sofascore
+ * faz na coluna de desfalques.
+ */
 function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 max-w-[420px]">
       <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">{titulo}</div>
       {children}
     </div>
