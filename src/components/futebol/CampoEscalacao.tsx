@@ -4,6 +4,15 @@ import { Crest } from '@/components/futebol/Crest';
 import { paraTela, posicoesNoCampo, reservasDoLado, type OrientacaoDoCampo } from '@/utils/futebol-campo';
 import type { FutebolLineup, FutebolLineupPlayer, FutebolInjury } from '@/services/futebol-data.service';
 
+/** A escalação de um time noutro jogo, já reetiquetada para o lado deste. */
+export interface EscalacaoDeReferencia {
+  jogadores: FutebolLineupPlayer[];
+  formacao: string | null;
+  tecnico: string | null;
+  adversario: string;
+  dia: string | null;
+}
+
 /**
  * A escalação dos dois times num campo só, na referência do Sofascore.
  *
@@ -30,6 +39,7 @@ export function CampoEscalacao({
   homeId,
   awayId,
   vazio,
+  referencia,
 }: {
   times: FutebolLineup[];
   jogadores: FutebolLineupPlayer[];
@@ -39,6 +49,16 @@ export function CampoEscalacao({
   homeId?: number | null;
   awayId?: number | null;
   vazio: string;
+  /**
+   * A escalação do ÚLTIMO jogo de cada time, para o jogo cuja escalação ainda
+   * não saiu. Vem por lado porque os dois times jogaram partidas diferentes, e a
+   * tela precisa nomear cada uma — mostrar o time de outro jogo sem dizer de
+   * onde ele veio seria a tela mentindo com cara de dado.
+   */
+  referencia?: {
+    home?: EscalacaoDeReferencia | null;
+    away?: EscalacaoDeReferencia | null;
+  };
 }) {
   const noCelular = useIsMobile();
   const orientacao: OrientacaoDoCampo = noCelular ? 'em-pe' : 'deitado';
@@ -47,13 +67,27 @@ export function CampoEscalacao({
   // mesmo `lado` espalhadas pelo render. Cada bloco abaixo é um `map` sobre isto.
   const lados = (['home', 'away'] as const).map((lado) => {
     const id = lado === 'home' ? homeId : awayId;
+
+    // A referência só entra onde não há escalação deste jogo, e por lado: um time
+    // pode ter a sua publicada e o outro não. Assim que a de verdade chega, a
+    // própria presença dela desliga a referência — sem estado, sem flag.
+    const proprios = posicoesNoCampo(jogadores, lado);
+    const ref = proprios.length ? null : (referencia?.[lado] ?? null);
+    const fonte = ref ? ref.jogadores : jogadores;
+    const time = times.find((t) => t.team_side === lado);
+
     return {
       lado,
       id,
+      ref,
       nome: lado === 'home' ? homeName : awayName,
-      time: times.find((t) => t.team_side === lado),
-      emCampo: posicoesNoCampo(jogadores, lado),
-      reservas: reservasDoLado(jogadores, lado),
+      formacao: ref ? ref.formacao : (time?.formation ?? null),
+      tecnico: ref ? ref.tecnico : (time?.coach_name ?? null),
+      emCampo: ref ? posicoesNoCampo(fonte, lado) : proprios,
+      reservas: reservasDoLado(fonte, lado),
+      // Desfalque é sempre DESTE jogo. Puxar o do jogo passado junto com a
+      // escalação diria que fulano está fora hoje porque estava fora na rodada
+      // anterior, que é exatamente o contrário do que o assinante precisa saber.
       desfalques: injuries.filter((x) => x.team_id === id),
     };
   });
@@ -65,7 +99,7 @@ export function CampoEscalacao({
       {/* Cabeçalho do campo: quem, com que desenho tático. Cada time fica na
           ponta em que joga, para o cabeçalho não desmentir o campo logo abaixo. */}
       <div className="flex items-center gap-3">
-        {lados.map(({ lado, nome, id, time }, i) => (
+        {lados.map(({ lado, nome, id, formacao, ref }, i) => (
           <div
             key={lado}
             className={`flex-1 min-w-0 flex items-center gap-2 ${i ? 'justify-end flex-row-reverse' : ''}`}
@@ -73,8 +107,16 @@ export function CampoEscalacao({
             <Crest name={nome} id={id} size={22} />
             <div className={`min-w-0 ${i ? 'text-right' : ''}`}>
               <div className="text-[13px] font-semibold text-ink truncate">{nome}</div>
-              {time?.formation && (
-                <div className="text-[10.5px] tabular-nums text-ink-3">{time.formation}</div>
+              {ref ? (
+                // O jogo de origem vai junto, e não só "última escalação": sem o
+                // adversário e a data, o assinante não tem como julgar se aquele
+                // time ainda diz alguma coisa sobre hoje.
+                <div className="text-[10.5px] text-ink-3 truncate">
+                  Última escalação{formacao ? ` · ${formacao}` : ''} · {ref.adversario}
+                  {ref.dia ? ` · ${ref.dia}` : ''}
+                </div>
+              ) : (
+                formacao && <div className="text-[10.5px] tabular-nums text-ink-3">{formacao}</div>
               )}
             </div>
           </div>
@@ -180,11 +222,24 @@ export function CampoEscalacao({
       {/* Técnico, banco e desfalques: três blocos em duas colunas, um time de
           cada lado. Os dois primeiros são dado que já vinha no payload e não
           aparecia em tela nenhuma. */}
+
+      {/* Com escalação de referência, esta coluna mistura duas épocas: técnico,
+          banco e formação são do jogo passado, e o desfalque é de hoje. A
+          diferença importa — desfalque do jogo passado diria que fulano está
+          fora agora porque estava fora antes, que é o contrário do que se quer
+          saber. Uma frase resolve os três blocos de uma vez, em vez de um selo
+          em cada título. */}
+      {lados.some((l) => l.ref) && (
+        <p className="text-[11px] text-ink-3 -mb-1">
+          Time, formação, técnico e banco são do último jogo. Os desfalques são deste.
+        </p>
+      )}
+
       <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-        {lados.map(({ lado, time }) => (
+        {lados.map(({ lado, tecnico }) => (
           <Bloco key={`tec-${lado}`} titulo="Técnico">
-            {time?.coach_name ? (
-              <div className="text-[12.5px] font-semibold text-ink truncate">{time.coach_name}</div>
+            {tecnico ? (
+              <div className="text-[12.5px] font-semibold text-ink truncate">{tecnico}</div>
             ) : (
               <Vazio>Não informado</Vazio>
             )}

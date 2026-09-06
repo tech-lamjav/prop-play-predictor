@@ -21,7 +21,8 @@ import {
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
-import { isFinished, isLive } from '@/utils/futebol-datas';
+import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-referencia';
+import { isFinished, isLive, brtDayOf, fmtDayShort } from '@/utils/futebol-datas';
 import { PARAMS_DA_SAIDA } from '@/utils/futebol-links';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
@@ -392,6 +393,46 @@ export default function FutebolJogo() {
   const escalacao = escalacaoExibida(extras?.lineups, extras?.lineup_players);
   const rotulo = rotuloEscalacao(escalacao.fase, jogoComecou);
 
+  // Sem escalação publicada, a aba mostrava um gramado vazio — e é justamente no
+  // jogo por vir que ela seria útil, porque é o único em que se aposta. Na nossa
+  // base a escalação só chega a partir do apito.
+  //
+  // Enquanto a coleta não roda antes do jogo, entra a escalação do ÚLTIMO jogo de
+  // cada time, nomeada como tal. Some sozinha quando a de verdade chega, porque a
+  // busca só é ligada enquanto falta escalação e o jogo não começou.
+  const faltaEscalacao = !escalacao.jogadores.length && !jogoComecou;
+  const ultimoDoMandante = faltaEscalacao ? ultimoJogoDoTime(extras?.form_home) : null;
+  const ultimoDoVisitante = faltaEscalacao ? ultimoJogoDoTime(extras?.form_away) : null;
+
+  // Duas RPCs a mais, e só neste caso: com escalação publicada os dois ids ficam
+  // indefinidos e o hook não busca nada.
+  const { data: extrasMandante } = useFutebolFixtureExtras(ultimoDoMandante?.fixture_id);
+  const { data: extrasVisitante } = useFutebolFixtureExtras(ultimoDoVisitante?.fixture_id);
+
+  const referenciaDe = (
+    jogo: typeof ultimoDoMandante,
+    extrasDoJogo: typeof extras,
+    teamId: number | undefined,
+    lado: 'home' | 'away',
+  ) => {
+    if (!jogo || !extrasDoJogo || teamId == null) return null;
+    const jogadores = escalacaoDoTime(extrasDoJogo.lineup_players, teamId, lado);
+    if (!jogadores.length) return null;
+    const time = (extrasDoJogo.lineups || []).find((t) => t.team_id === teamId);
+    return {
+      jogadores,
+      formacao: time?.formation ?? null,
+      tecnico: time?.coach_name ?? null,
+      adversario: jogo.opponent,
+      dia: fmtDayShort(brtDayOf(jogo.date_utc)),
+    };
+  };
+
+  const referencia = {
+    home: referenciaDe(ultimoDoMandante, extrasMandante, fixture?.home_team_id, 'home'),
+    away: referenciaDe(ultimoDoVisitante, extrasVisitante, fixture?.away_team_id, 'away'),
+  };
+
   const escalacaoCard = fixture ? (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
       <div className="px-5 py-3 border-b border-line">
@@ -411,6 +452,7 @@ export default function FutebolJogo() {
           // duas vezes, o card já anunciou "quem entrou em campo" com o corpo
           // dizendo que a escalação sai daqui a pouco.
           vazio={rotulo.subtitulo ? `${rotulo.titulo} · ${rotulo.subtitulo}.` : `${rotulo.titulo}.`}
+          referencia={referencia}
         />
       </div>
     </div>
