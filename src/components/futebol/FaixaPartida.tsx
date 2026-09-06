@@ -86,10 +86,10 @@ function TimeDoCabecalho({
   const escudo = (
     <span
       className={`rounded-full bg-white/10 grid place-items-center shrink-0 ${
-        empilhado ? 'w-11 h-11' : 'w-9 h-9 md:w-[42px] md:h-[42px]'
+        empilhado ? 'w-11 h-11' : 'w-9 h-9 md:w-[42px] md:h-[42px] xl:w-[50px] xl:h-[50px]'
       }`}
     >
-      <Crest name={nome} id={teamId} size={empilhado ? 32 : 26} />
+      <Crest name={nome} id={teamId} size={empilhado ? 32 : 30} />
     </span>
   );
 
@@ -116,7 +116,7 @@ function TimeDoCabecalho({
 
   const texto = (
     <div className="min-w-0">
-      <div className={`text-[15px] md:text-[18px] font-semibold leading-tight text-white truncate${lado === 'fora' ? ' text-right' : ''}`}>
+      <div className={`text-[15px] md:text-[18px] xl:text-[20px] font-semibold leading-tight text-white truncate${lado === 'fora' ? ' text-right' : ''}`}>
         {nome}
       </div>
       <Forma form={form} alinhar={lado === 'fora' ? 'fim' : undefined} />
@@ -259,7 +259,7 @@ export function FaixaPartida({
         </div>
       ) : (
         <div className={`tabular-nums font-bold leading-none text-white whitespace-nowrap ${
-          empilhado ? 'text-[17px]' : 'text-[15px] md:text-[17px]'
+          empilhado ? 'text-[17px]' : 'text-[15px] md:text-[17px] xl:text-[19px]'
         }`}>
           {empilhado ? hora : `${data}, ${hora}`}
         </div>
@@ -278,8 +278,8 @@ export function FaixaPartida({
         className="absolute pointer-events-none"
         style={{ right: 180, top: -140, width: 420, height: 420, borderRadius: 999, background: 'radial-gradient(circle,rgba(251,191,36,.22),transparent 68%)' }}
       />
-      <div className="relative grid xl:grid-cols-[1fr_1px_470px] gap-6 xl:gap-8 items-center p-5 md:p-6">
-        <div className="min-w-0">
+      <div className="relative grid xl:grid-cols-[1fr_1px_470px] gap-6 xl:gap-8 items-center xl:items-start p-5 md:p-6">
+        <div className="min-w-0 xl:h-full xl:flex xl:flex-col">
           {/* Rodada · [data · estado] · estádio. Os dois do meio só existem no
               celular; no desktop eles moram no miolo da grade. O estádio vai
               por último de propósito: é o único que trunca, e truncar o menos
@@ -313,14 +313,14 @@ export function FaixaPartida({
           {/* Mandante · placar · visitante numa grade de três colunas. Em `flex-wrap`
               o visitante caía para a linha de baixo e o placar ficava colado no
               mandante, parecendo o placar dele. */}
-          <div className={`grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-4 mt-3 ${empilhado ? 'items-stretch' : 'items-center'}`}>
+          <div className={`grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-4 mt-3 xl:flex-1 ${empilhado ? 'items-stretch' : 'items-center'}`}>
             <TimeDoCabecalho nome={jogo.home} teamId={homeTeamId} form={formHome} lado="casa" empilhado={empilhado} />
             {centro}
             <TimeDoCabecalho nome={jogo.away} teamId={awayTeamId} form={formAway} lado="fora" empilhado={empilhado} />
           </div>
         </div>
 
-        <div className="hidden xl:block h-[76px] w-px bg-white/15" />
+        <div className="hidden xl:block xl:self-center h-[76px] w-px bg-white/15" />
 
         {/* A melhor leitura, na mesma faixa. Sem preço coletado, o número grande é
             quantas premissas sustentam, que é o que existe para afirmar. */}
