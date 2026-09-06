@@ -555,13 +555,19 @@ export default function FutebolJogo() {
                   depois do respiro da página, e a terceira era cortada pela
                   borda sem nada indicando que ela existe.
 
-                  `max-w-full` no lugar de largura automática: sem ele o
-                  `inline-flex` mede o conteúdo inteiro e não tem o que rolar. E
-                  `shrink-0` em cada botão, senão eles se espremem e o texto
+                `min-w-0` junto do `max-w-full`, e o par é obrigatório. Item de
+                  flex nasce com `min-width: auto`, que o proíbe de encolher abaixo
+                  do próprio conteúdo — e no CSS o `min-width` GANHA do
+                  `max-width`. Com as três abas em `whitespace-nowrap`, o
+                  conteúdo mínimo é a barra inteira, então o teto não valia nada e
+                  ela seguia passando do respiro da página. É a mesma armadilha
+                  que obriga o `min-w-0` para um `truncate` funcionar.
+
+                  E `shrink-0` em cada botão, senão eles se espremem e o texto
                   quebra em duas linhas em vez de sair da vista. */}
               <div
                 data-tour="fut-jogo-abas"
-                className="inline-flex max-w-full overflow-x-auto no-scrollbar p-[3px] rounded-[11px]"
+                className="inline-flex min-w-0 max-w-full overflow-x-auto no-scrollbar p-[3px] rounded-[11px]"
                 style={{ background: 'var(--canvas-2)', border: '1px solid #ded2b6' }}
               >
                 {(
