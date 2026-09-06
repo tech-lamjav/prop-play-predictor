@@ -96,13 +96,22 @@ export function CampoEscalacao({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Cabeçalho do campo: quem, com que desenho tático. Cada time fica na
-          ponta em que joga, para o cabeçalho não desmentir o campo logo abaixo. */}
+      {/* Cabeçalho do campo: quem, com que desenho tático. Cada time encosta na
+          ponta do card em que joga.
+
+          O visitante estava boiando no meio, e a causa é uma pegadinha do
+          `flex-row-reverse`: com a direção invertida, o main-start passa para a
+          DIREITA, então `justify-end` — que parece "empurra para a direita" —
+          empacotava tudo para a esquerda. Sem ele, o padrão `flex-start` já é a
+          direita, que é onde o visitante joga.
+
+          A inversão fica: é ela que põe o nome antes do escudo deste lado, num
+          espelho do mandante. */}
       <div className="flex items-center gap-3">
         {lados.map(({ lado, nome, id, formacao, ref }, i) => (
           <div
             key={lado}
-            className={`flex-1 min-w-0 flex items-center gap-2 ${i ? 'justify-end flex-row-reverse' : ''}`}
+            className={`flex-1 min-w-0 flex items-center gap-2 ${i ? 'flex-row-reverse' : ''}`}
           >
             <Crest name={nome} id={id} size={22} />
             <div className={`min-w-0 ${i ? 'text-right' : ''}`}>
