@@ -666,6 +666,10 @@ function LinhaPremissa({
 }) {
   const forte = pesoForte(p);
   const podeAbrir = story != null;
+  // Existe bloco de explicação embaixo do cabeçalho? É ele quem dá o respiro
+  // inferior do card quando a premissa não abre gráfico — e por isso o padding
+  // de baixo precisa perguntar por ele, e não pelo `podeAbrir`.
+  const temExplicacao = ev != null || (p.peso === 0 && p.motivo != null);
   const Cabecalho = podeAbrir ? 'button' : 'div';
 
   // Abrir uma premissa leva o topo dela para logo abaixo do cabeçalho.
@@ -715,7 +719,7 @@ function LinhaPremissa({
           tela como botão, e não faz nada quando acionado. */}
       <Cabecalho
         {...(podeAbrir ? { type: 'button' as const, onClick: alternarPorToque } : {})}
-        className={`w-full flex items-center gap-3 px-4 text-left border-0 ${podeAbrir ? 'py-3' : 'pt-3 pb-1'}`}
+        className={`w-full flex items-center gap-3 px-4 text-left border-0 ${podeAbrir || !temExplicacao ? 'py-3' : 'pt-3 pb-1'}`}
         style={{
           background: aberta ? '#0a3d2e' : podeAbrir ? '#f4eddc' : 'transparent',
           borderBottom: podeAbrir ? `1px solid ${aberta ? '#0a3d2e' : '#ded2b6'}` : 'none',
@@ -762,7 +766,7 @@ function LinhaPremissa({
         ) : null}
       </Cabecalho>
 
-      {(ev || (p.peso === 0 && p.motivo)) && (
+      {temExplicacao && (
         <div className="px-4 py-3 text-[12.5px] leading-relaxed" style={{ color: '#5a625a' }}>
           {ev?.texto}
           {/* O motivo do peso zero fica VISÍVEL, e não num `title`: no celular
