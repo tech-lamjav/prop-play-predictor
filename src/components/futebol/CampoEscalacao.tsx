@@ -6,6 +6,20 @@ import { estaEmDuvida, motivoDoDesfalque } from '@/utils/futebol-desfalques';
 import { paraTela, posicoesNoCampo, reservasDoLado, type OrientacaoDoCampo } from '@/utils/futebol-campo';
 import type { FutebolLineup, FutebolLineupPlayer, FutebolInjury } from '@/services/futebol-data.service';
 
+/**
+ * Teto de largura do conteúdo no desktop.
+ *
+ * O card ocupa os ~1480px da aba, e nem o campo nem as listas querem tudo isso:
+ * solto, o gramado passava de 900px de altura e as duas colunas de informação
+ * ficavam separadas por um vão do tamanho de uma delas.
+ *
+ * É UM número para os dois de propósito. Quando o campo e as listas tinham cada
+ * um a sua largura, as colunas não caíam embaixo da metade do campo que
+ * descrevem — e essa correspondência é o que faz a leitura funcionar: o banco do
+ * mandante embaixo do lado do mandante.
+ */
+const LARGURA_DESKTOP = 820;
+
 /** A escalação de um time noutro jogo, já reetiquetada para o lado deste. */
 export interface EscalacaoDeReferencia {
   jogadores: FutebolLineupPlayer[];
@@ -149,7 +163,7 @@ export function CampoEscalacao({
       <div
         className="relative rounded-rebrand-md overflow-hidden w-full mx-auto"
         style={{
-          maxWidth: noCelular ? undefined : 820,
+          maxWidth: noCelular ? undefined : LARGURA_DESKTOP,
           aspectRatio: noCelular ? '68 / 105' : '105 / 68',
           background: 'linear-gradient(160deg, #0f5238, #0a3d2e)',
         }}
@@ -237,13 +251,17 @@ export function CampoEscalacao({
           fora agora porque estava fora antes, que é o contrário do que se quer
           saber. Uma frase resolve os três blocos de uma vez, em vez de um selo
           em cada título. */}
-      {lados.some((l) => l.ref) && (
-        <p className="text-[11px] text-ink-3 -mb-1">
-          Time, formação, técnico e banco são do último jogo. Os desfalques são deste.
-        </p>
-      )}
+      <div
+        className="w-full mx-auto flex flex-col gap-5"
+        style={{ maxWidth: noCelular ? undefined : LARGURA_DESKTOP }}
+      >
+        {lados.some((l) => l.ref) && (
+          <p className="text-[11px] text-ink-3 -mb-2">
+            Time, formação, técnico e banco são do último jogo. Os desfalques são deste.
+          </p>
+        )}
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-5">
         {lados.map(({ lado, tecnico }) => (
           <Bloco key={`tec-${lado}`} titulo="Técnico">
             {tecnico ? (
@@ -301,6 +319,7 @@ export function CampoEscalacao({
             )}
           </Bloco>
         ))}
+        </div>
       </div>
     </div>
   );
@@ -362,19 +381,16 @@ function Retrato({
 /**
  * Um bloco de informação de um lado: título miúdo e conteúdo.
  *
- * O teto de largura é o ponto. A coluna de cada time mede quase 700px num
- * desktop largo, e as linhas de dentro têm um item preso à direita — a posição
- * no banco, o selo de "Fora" no desfalque. Sem teto, o número ficava numa ponta
- * e a posição na outra, com meio metro de nada no meio, e a linha deixava de ler
- * como uma linha.
- *
  * Alinhado à esquerda nos DOIS lados, e não espelhado: lista se lê da esquerda
  * para a direita mesmo quando descreve o time da direita. É o que o Sofascore
  * faz na coluna de desfalques.
+ *
+ * Sem teto de largura próprio: quem limita é o contêiner, na mesma medida do
+ * campo. Dois tetos concorrentes é como eles se desencontram.
  */
 function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <div className="min-w-0 max-w-[420px]">
+    <div className="min-w-0">
       <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">{titulo}</div>
       {children}
     </div>
