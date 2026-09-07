@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import { useAuth } from "@/hooks/use-auth";
+import { useScrollDepthPixel } from "@/hooks/use-scroll-depth-pixel";
 import { PlayCircle, ArrowRight, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
 
@@ -115,6 +116,9 @@ const FutebolLP = () => {
   const [selectedId, setSelectedId] = useState(OPPS[0].id);
   const selected = useMemo(() => OPPS.find((o) => o.id === selectedId) ?? OPPS[0], [selectedId]);
   const v = verdict(selected.edge);
+
+  // Meta Pixel: 25/50/75/100% de leitura desta LP (evento `ScrollDepth`).
+  useScrollDepthPixel("futebol-comecar");
 
   // Separado pela FAIXA, como o produto faz. O corte por número que existia
   // aqui era da fórmula antiga e, na escala do Score de contexto, classificaria
