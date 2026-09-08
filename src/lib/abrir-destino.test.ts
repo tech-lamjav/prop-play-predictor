@@ -22,9 +22,9 @@ describe('abrirDestino', () => {
 
   it('link externo abre em aba nova, e não pelo router', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
-    abrirDestino('https://wa.me/5511952136845?text=Oi', semNavegar as never);
+    abrirDestino('https://exemplo.com/oi', semNavegar as never);
     expect(open).toHaveBeenCalledWith(
-      'https://wa.me/5511952136845?text=Oi',
+      'https://exemplo.com/oi',
       '_blank',
       'noopener,noreferrer',
     );

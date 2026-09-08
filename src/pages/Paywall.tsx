@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Lock, Zap, BarChart3, ArrowRight, ArrowLeft, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { whatsappDoTime } from "@/config/contato";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
@@ -150,7 +151,7 @@ export default function Paywall() {
   const handleUpgrade = () => {
     // Open WhatsApp with pre-filled message for upgrade (Betinho)
     const message = "Oi, gostaria de fazer upgrade do meu plano Betinho (registro de apostas)";
-    const whatsappUrl = `https://wa.me/5511952136845?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = whatsappDoTime(message);
     
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');

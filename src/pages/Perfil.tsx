@@ -11,7 +11,7 @@ import { useBets } from '@/hooks/use-bets';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { useReferral } from '@/components/ReferralProvider';
 import { getInitials } from '@/lib/user-display';
-import { itensDaConta } from '@/config/menu-da-conta';
+import { itensDaConta, type ItemDaConta } from '@/config/menu-da-conta';
 import { abrirDestino } from '@/lib/abrir-destino';
 
 /**
@@ -22,13 +22,8 @@ import { abrirDestino } from '@/lib/abrir-destino';
  * "Configurações" deixou de ser navegação global e virou o primeiro item daqui.
  */
 
-type Row = {
-  label: string;
-  icon: typeof Settings;
-  href?: string;
-  onClick?: () => void;
-  danger?: boolean;
-};
+/** Um item do menu, mais o "Sair da conta", que é o único em vermelho. */
+type Row = ItemDaConta & { danger?: boolean };
 
 export default function Perfil() {
   const navigate = useNavigate();

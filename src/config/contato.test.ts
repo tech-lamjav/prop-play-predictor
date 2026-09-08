@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
 import { WHATSAPP_DO_TIME, WHATSAPP_FALAR_COM_O_TIME, whatsappDoTime } from './contato';
 
 // ============================================================================
@@ -22,8 +22,13 @@ const FOOTER = readFileSync(resolve(__dirname, '../components/Footer.tsx'), 'utf
   '\n',
 );
 
-/** O número, escrito por extenso só aqui — para poder proibi-lo lá. */
-const NUMERO_CRU = '5511952136845';
+/**
+ * O número, tirado da própria constante.
+ *
+ * Não escrito à mão de propósito: o teste abaixo varre o app inteiro atrás
+ * dele, e um literal aqui faria o arquivo de teste se acusar.
+ */
+const NUMERO_CRU = WHATSAPP_DO_TIME.split('/').pop() as string;
 
 describe('contato do time', () => {
   it('o WhatsApp é um link wa.me', () => {
@@ -53,5 +58,32 @@ describe('contato do time', () => {
     expect(linha).toBeDefined();
     expect(linha).toContain('WHATSAPP_FALAR_COM_O_TIME');
     expect(linha).not.toContain('mailto:');
+  });
+
+  it('o número não aparece em mais nenhum arquivo do app', () => {
+    // Este é o teste que torna o comentário lá em cima verdadeiro. Sem ele, o
+    // módulo AFIRMA ser a fonte única e três telas de paywall e o modal do
+    // bolão seguiam com o número escrito na mão — a promessa valia só para
+    // quem tivesse lido os dois lugares.
+    const raiz = resolve(__dirname, '..');
+    const fora: string[] = [];
+
+    const varrer = (dir: string) => {
+      for (const item of readdirSync(dir, { withFileTypes: true })) {
+        const caminho = resolve(dir, item.name);
+        if (item.isDirectory()) {
+          varrer(caminho);
+          continue;
+        }
+        if (!/\.(ts|tsx)$/.test(item.name)) continue;
+        if (caminho === resolve(__dirname, 'contato.ts')) continue;
+        if (readFileSync(caminho, 'utf8').includes(NUMERO_CRU)) {
+          fora.push(relative(raiz, caminho).replace(/\\/g, '/'));
+        }
+      }
+    };
+    varrer(raiz);
+
+    expect(fora).toEqual([]);
   });
 });

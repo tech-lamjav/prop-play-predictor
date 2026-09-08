@@ -2,10 +2,10 @@
  * Os canais de contato do time.
  *
  * Uma constante, e não a string repetida em cada tela: o WhatsApp aparece no
- * rodapé, no menu da conta e nas telas de paywall, e a exigência do produto é
- * que TODOS levem ao mesmo lugar. Copiada, a string sobrevive à primeira
- * mudança de número em um lugar só — e aí metade do app manda a pessoa para um
- * telefone que não atende mais.
+ * rodapé, no menu da conta, nas telas de paywall e no modal do bolão, e a
+ * exigência do produto é que TODOS levem ao mesmo lugar. Copiada, a string
+ * sobrevive à primeira mudança de número em um lugar só — e aí metade do app
+ * manda a pessoa para um telefone que não atende mais.
  */
 export const WHATSAPP_DO_TIME = 'https://wa.me/5511952136845';
 
@@ -16,8 +16,8 @@ export const EMAIL_DO_TIME = 'tecnologia@smartbetting.app';
  * O link do WhatsApp já com a primeira mensagem escrita.
  *
  * A codificação é do `encodeURIComponent`, e não da mão: acento e espaço
- * quebram a URL, e um link do bolão foi escrito com `%C3%A1` digitado
- * manualmente — funciona até alguém editar a frase e esquecer de recodificar.
+ * quebram a URL, e o link do PIX do bolão estava com o `%C3%A1` digitado
+ * manualmente — funcionava até alguém editar a frase e esquecer de recodificar.
  */
 export function whatsappDoTime(mensagem: string): string {
   return `${WHATSAPP_DO_TIME}?text=${encodeURIComponent(mensagem)}`;

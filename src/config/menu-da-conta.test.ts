@@ -53,10 +53,12 @@ describe('itens do menu da conta', () => {
     expect(indicar).toHaveBeenCalledOnce();
   });
 
-  it('"Como usar" respeita a chave, e hoje está desligado', () => {
+  // O teste segue a chave em vez de fixar o valor dela: prender `false` aqui
+  // faria o CI quebrar em quem religar o item, que é exatamente a instrução
+  // escrita em como-usar.ts.
+  it('"Como usar" respeita a chave', () => {
     const temComoUsar = itensDaConta(() => {}).some((i) => i.label === 'Como usar');
     expect(temComoUsar).toBe(SHOW_COMO_USAR_ENTRY_POINTS);
-    expect(SHOW_COMO_USAR_ENTRY_POINTS).toBe(false);
   });
 
   it('as duas telas leem do catálogo, e nenhuma monta lista própria', () => {

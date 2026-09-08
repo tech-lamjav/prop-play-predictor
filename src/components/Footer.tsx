@@ -2,7 +2,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Instagram, MessageCircle, Mail } from 'lucide-react';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from '@/config/como-usar';
-import { EMAIL_DO_TIME, WHATSAPP_DO_TIME, WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
+import { EMAIL_DO_TIME, WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
+import { ehExterno } from '@/lib/abrir-destino';
 import { useReferral } from './ReferralProvider';
 
 /**
@@ -61,12 +62,11 @@ const Footer = () => {
         </button>
       );
     }
-    const external = l.href?.startsWith('mailto:') || l.href?.startsWith('http');
-    if (external) {
-      // Só o link http sai em aba nova. No mailto o navegador entrega ao
+    const novaAba = l.href != null && ehExterno(l.href);
+    if (novaAba || l.href?.startsWith('mailto:')) {
+      // Só o link externo sai em aba nova. No mailto o navegador entrega ao
       // cliente de e-mail sem navegar, então o target ali deixaria uma aba em
       // branco aberta para trás.
-      const novaAba = l.href?.startsWith('http');
       return (
         <a
           key={l.label}
@@ -117,7 +117,7 @@ const Footer = () => {
               <Instagram className="w-4 h-4" />
             </a>
             <a
-              href={WHATSAPP_DO_TIME}
+              href={WHATSAPP_FALAR_COM_O_TIME}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="WhatsApp"
