@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Instagram, MessageCircle, Mail } from 'lucide-react';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
+import { SHOW_COMO_USAR_ENTRY_POINTS } from '@/config/como-usar';
 import { EMAIL_DO_TIME, WHATSAPP_DO_TIME, WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
 import { useReferral } from './ReferralProvider';
 
@@ -41,7 +42,7 @@ const Footer = () => {
   // não são o que a gente oferece, são coisas da conta do usuário.
   const suporte: FooterLink[] = [
     { label: 'Planos e preços', href: '/planos' },
-    { label: 'Como usar', href: '/como-usar' },
+    ...(SHOW_COMO_USAR_ENTRY_POINTS ? [{ label: 'Como usar', href: '/como-usar' }] : []),
     { label: 'Configurações da conta', href: '/settings' },
     { label: 'Indique um amigo', onClick: openReferral },
     // WhatsApp, e não e-mail: é onde o time de fato responde, e é o mesmo

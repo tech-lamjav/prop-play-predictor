@@ -19,6 +19,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReferral } from './ReferralProvider';
 import { WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
+import { SHOW_COMO_USAR_ENTRY_POINTS } from '@/config/como-usar';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { getInitials } from '@/lib/user-display';
 
@@ -79,7 +80,7 @@ export default function UserNav({ className }: UserNavProps) {
     { label: 'Configurações', icon: Settings, href: '/settings' },
     { label: 'Planos e preços', icon: CreditCard, href: '/planos' },
     { label: 'Indique um amigo', icon: Gift, onClick: openReferral },
-    { label: 'Como usar', icon: BookOpen, href: '/como-usar' },
+    ...(SHOW_COMO_USAR_ENTRY_POINTS ? [{ label: 'Como usar', icon: BookOpen, href: '/como-usar' }] : []),
     // Mesmo destino do rodapé, pela constante e não por uma cópia da string.
     { label: 'Falar com o time', icon: MessageCircle, href: WHATSAPP_FALAR_COM_O_TIME },
   ];
