@@ -7,19 +7,14 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
-  Settings,
   LogOut,
-  Gift,
-  BookOpen,
-  CreditCard,
-  MessageCircle,
   ChevronRight,
   Zap,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReferral } from './ReferralProvider';
-import { WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
-import { SHOW_COMO_USAR_ENTRY_POINTS } from '@/config/como-usar';
+import { itensDaConta, type ItemDaConta } from '@/config/menu-da-conta';
+import { abrirDestino } from '@/lib/abrir-destino';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { getInitials } from '@/lib/user-display';
 
@@ -38,13 +33,6 @@ interface UserNavProps {
 }
 
 /** Itens do menu, na ordem do desenho. `Configurações` é sempre o primeiro. */
-type MenuItem = {
-  label: string;
-  icon: typeof Settings;
-  href?: string;
-  onClick?: () => void;
-};
-
 export default function UserNav({ className }: UserNavProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -76,29 +64,11 @@ export default function UserNav({ className }: UserNavProps) {
     ? new Date(activeSub.periodEnd).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
     : null;
 
-  const items: MenuItem[] = [
-    { label: 'Configurações', icon: Settings, href: '/settings' },
-    { label: 'Planos e preços', icon: CreditCard, href: '/planos' },
-    { label: 'Indique um amigo', icon: Gift, onClick: openReferral },
-    ...(SHOW_COMO_USAR_ENTRY_POINTS ? [{ label: 'Como usar', icon: BookOpen, href: '/como-usar' }] : []),
-    // Mesmo destino do rodapé, pela constante e não por uma cópia da string.
-    { label: 'Falar com o time', icon: MessageCircle, href: WHATSAPP_FALAR_COM_O_TIME },
-  ];
+  const items = itensDaConta(openReferral);
 
-  const go = (item: MenuItem) => {
+  const go = (item: ItemDaConta) => {
     if (item.onClick) return item.onClick();
-    // Link externo abre em aba nova, e precisa vir ANTES do navigate: o
-    // `navigate` do router trataria a URL inteira como rota interna e
-    // levaria a pessoa para o 404 em vez do WhatsApp.
-    if (item.href?.startsWith('http')) {
-      window.open(item.href, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    if (item.href?.startsWith('mailto:')) {
-      window.location.href = item.href;
-      return;
-    }
-    if (item.href) navigate(item.href);
+    if (item.href) abrirDestino(item.href, navigate);
   };
 
   return (
