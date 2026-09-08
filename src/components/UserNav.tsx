@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReferral } from './ReferralProvider';
+import { WHATSAPP_DO_TIME } from '@/config/contato';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { getInitials } from '@/lib/user-display';
 
@@ -79,11 +80,19 @@ export default function UserNav({ className }: UserNavProps) {
     { label: 'Planos e preços', icon: CreditCard, href: '/planos' },
     { label: 'Indique um amigo', icon: Gift, onClick: openReferral },
     { label: 'Como usar', icon: BookOpen, href: '/como-usar' },
-    { label: 'Falar com o time', icon: HelpCircle, href: 'mailto:tecnologia@smartbetting.app' },
+    // Mesmo destino do rodapé, pela constante e não por uma cópia da string.
+    { label: 'Falar com o time', icon: HelpCircle, href: WHATSAPP_DO_TIME },
   ];
 
   const go = (item: MenuItem) => {
     if (item.onClick) return item.onClick();
+    // Link externo abre em aba nova, e precisa vir ANTES do navigate: o
+    // `navigate` do router trataria a URL inteira como rota interna e
+    // levaria a pessoa para o 404 em vez do WhatsApp.
+    if (item.href?.startsWith('http')) {
+      window.open(item.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (item.href?.startsWith('mailto:')) {
       window.location.href = item.href;
       return;
