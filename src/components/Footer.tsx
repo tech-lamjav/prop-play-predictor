@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Instagram, MessageCircle, Mail } from 'lucide-react';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
-import { EMAIL_DO_TIME, WHATSAPP_DO_TIME } from '@/config/contato';
+import { EMAIL_DO_TIME, WHATSAPP_DO_TIME, WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
 import { useReferral } from './ReferralProvider';
 
 /**
@@ -47,7 +47,7 @@ const Footer = () => {
     // WhatsApp, e não e-mail: é onde o time de fato responde, e é o mesmo
     // canal do ícone aqui embaixo. Duas portas com o mesmo nome levando a
     // lugares diferentes era o que existia antes.
-    { label: 'Falar com o time', href: WHATSAPP_DO_TIME },
+    { label: 'Falar com o time', href: WHATSAPP_FALAR_COM_O_TIME },
   ];
 
   const linkCls = 'text-[13px] text-white/70 hover:text-white transition-colors text-left';

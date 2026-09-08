@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { WHATSAPP_DO_TIME } from './contato';
+import { WHATSAPP_DO_TIME, WHATSAPP_FALAR_COM_O_TIME, whatsappDoTime } from './contato';
 
 // ============================================================================
 // "Falar com o time" leva ao mesmo lugar nos dois menus
@@ -26,15 +26,31 @@ const USER_NAV = fonte('components/UserNav.tsx');
 /** O número, escrito por extenso só aqui — para poder proibi-lo lá. */
 const NUMERO_CRU = '5511952136845';
 
+const linhaDoItem = (arquivo: string) =>
+  arquivo.split('\n').find((l) => l.includes("label: 'Falar com o time'"));
+
 describe('contato do time', () => {
   it('o WhatsApp é um link wa.me', () => {
     expect(WHATSAPP_DO_TIME).toMatch(/^https:\/\/wa\.me\/\d+$/);
   });
 
+  it('a mensagem pronta é codificada, e não escrita à mão', () => {
+    // Acento e espaço quebram a URL. Um link do bolão foi escrito com o %C3%A1
+    // digitado na mão, e é isso que este teste impede de virar hábito.
+    expect(whatsappDoTime('Olá, tudo bem?')).toBe(
+      `${WHATSAPP_DO_TIME}?text=Ol%C3%A1%2C%20tudo%20bem%3F`,
+    );
+  });
+
+  it('o link de falar com o time leva mensagem pronta', () => {
+    expect(WHATSAPP_FALAR_COM_O_TIME).toContain(`${WHATSAPP_DO_TIME}?text=`);
+    expect(decodeURIComponent(WHATSAPP_FALAR_COM_O_TIME.split('?text=')[1])).toMatch(/\S/);
+  });
+
   it('o rodapé e o menu da conta leem a mesma constante', () => {
     for (const arquivo of [FOOTER, USER_NAV]) {
       expect(arquivo).toContain("from '@/config/contato'");
-      expect(arquivo).toContain('WHATSAPP_DO_TIME');
+      expect(linhaDoItem(arquivo)).toContain('WHATSAPP_FALAR_COM_O_TIME');
     }
   });
 
@@ -45,11 +61,8 @@ describe('contato do time', () => {
 
   it('"Falar com o time" não é mais e-mail em nenhum dos dois', () => {
     for (const arquivo of [FOOTER, USER_NAV]) {
-      const linha = arquivo
-        .split('\n')
-        .find((l) => l.includes("label: 'Falar com o time'"));
+      const linha = linhaDoItem(arquivo);
       expect(linha).toBeDefined();
-      expect(linha).toContain('WHATSAPP_DO_TIME');
       expect(linha).not.toContain('mailto:');
     }
   });

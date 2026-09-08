@@ -12,13 +12,13 @@ import {
   Gift,
   BookOpen,
   CreditCard,
-  HelpCircle,
+  MessageCircle,
   ChevronRight,
   Zap,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReferral } from './ReferralProvider';
-import { WHATSAPP_DO_TIME } from '@/config/contato';
+import { WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { getInitials } from '@/lib/user-display';
 
@@ -81,7 +81,7 @@ export default function UserNav({ className }: UserNavProps) {
     { label: 'Indique um amigo', icon: Gift, onClick: openReferral },
     { label: 'Como usar', icon: BookOpen, href: '/como-usar' },
     // Mesmo destino do rodapé, pela constante e não por uma cópia da string.
-    { label: 'Falar com o time', icon: HelpCircle, href: WHATSAPP_DO_TIME },
+    { label: 'Falar com o time', icon: MessageCircle, href: WHATSAPP_FALAR_COM_O_TIME },
   ];
 
   const go = (item: MenuItem) => {
