@@ -4,7 +4,11 @@
 // A fonte NÃO publica escalação provável, em momento nenhum. O que existe são
 // duas fases, e elas são coisas diferentes:
 //
-//   'confirmed' — a escalação anunciada, que sai perto de 1h antes do apito
+//   'confirmed' — a escalação anunciada
+//   ⚠️ NA NOSSA BASE ela não chega antes do apito. Medido em 06/09/2026: os três
+//   jogos já em andamento tinham confirmada com 46 jogadores cada, e os três a
+//   começar — dois a 30 minutos do apito, um a 1h30 — tinham zero. A coleta roda
+//   a partir do jogo, não antes dele.
 //   'real'      — o registro de quem entrou em campo, montado depois do jogo
 //
 // A RPC devolve UMA fase por jogo (migration 098): prefere a confirmada e cai
@@ -97,8 +101,15 @@ export function rotuloEscalacao(
   if (fase === 'real') {
     return { titulo: 'Quem entrou em campo', subtitulo: 'registro do jogo' };
   }
-  // Sem escalação. Só promete o horário quando ainda dá tempo de ela sair.
+  // Sem escalação, e SEM prometer prazo.
+  //
+  // O subtítulo dizia "costuma sair cerca de 1h antes", e isso não acontece em
+  // jogo nenhum: na nossa base a escalação só aparece a partir do apito. A tela
+  // marcava hora com o assinante e não aparecia — pior que não dizer nada,
+  // porque ele volta para conferir.
+  //
+  // O prazo só volta quando a coleta rodar antes do jogo.
   return jogoComecou
     ? { titulo: 'Escalação não registrada', subtitulo: null }
-    : { titulo: 'Escalação ainda não anunciada', subtitulo: 'costuma sair cerca de 1h antes' };
+    : { titulo: 'Escalação ainda não anunciada', subtitulo: null };
 }

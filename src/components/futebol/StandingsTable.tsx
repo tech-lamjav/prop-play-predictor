@@ -26,7 +26,7 @@ const GRID_M = 'grid grid-cols-[22px_1fr_24px_32px_34px] gap-2 items-center';
 /** Traduz a descrição oficial da API para o rótulo curto que vai na tela. */
 function rotuloZona(desc: string): { texto: string; cor: string } {
   const d = desc.toLowerCase();
-  if (d.includes('relegation')) return { texto: 'Rebaixamento', cor: '#be123c' };
+  if (d.includes('relegation')) return { texto: 'Rebaixamento', cor: '#b8341c' };
   if (d.includes('libertadores')) {
     return d.includes('qualification')
       ? { texto: 'Pré-Libertadores', cor: '#2f7d50' }
@@ -72,7 +72,7 @@ function Linha({
   compacto: boolean;
 }) {
   const sgTexto = r.goals_diff > 0 ? `+${r.goals_diff}` : r.goals_diff < 0 ? `−${Math.abs(r.goals_diff)}` : '0';
-  const sgCor = r.goals_diff > 0 ? '#0a3d2e' : r.goals_diff < 0 ? '#be123c' : '#6b6350';
+  const sgCor = r.goals_diff > 0 ? '#0a3d2e' : r.goals_diff < 0 ? '#b8341c' : '#6b6350';
   const num = 'text-center text-[11.5px] tabular-nums';
 
   return (

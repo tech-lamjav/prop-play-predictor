@@ -205,7 +205,7 @@ export function FixtureRow({
             : bateu != null
               ? bateu
                 ? { borderRadius: 11, background: '#dcefe2', border: '1px solid #a9d4bb', color: '#0a3d2e' }
-                : { borderRadius: 11, background: '#fbe3e8', border: '1px solid #f0c2cc', color: '#be123c' }
+                : { borderRadius: 11, background: '#fbeeec', border: '1px solid #f0c8c1', color: '#b8341c' }
               : alto
                 ? { borderRadius: 11, background: '#0a3d2e', color: '#fff' }
                 : ehDestaque(best.faixa)

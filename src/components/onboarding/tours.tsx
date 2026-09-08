@@ -241,9 +241,9 @@ export function makeFutebolJogoSteps({
       id: 'fut-jogo-abas',
       target: '[data-tour="fut-jogo-abas"]',
       placement: 'bottom',
-      title: 'Duas abas',
+      title: 'Três abas',
       content:
-        'Leitura e mercados é onde a análise mora. Times é o retrato dos dois: campanha, forma e confrontos diretos.',
+        'Leitura e mercados é onde a análise mora. Escalações traz o time que entra em campo, com banco e desfalques. Estatísticas é o retrato dos dois: campanha e confrontos diretos.',
     },
     {
       id: 'fut-jogo-mercados',

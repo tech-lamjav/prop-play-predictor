@@ -75,34 +75,73 @@ describe('a prateleira do detalhe respeita a vitrine', () => {
   });
 });
 
-describe('a lista de hoje não reabre o mercado pelo histórico', () => {
+describe('o histórico não reabre o mercado escondido', () => {
+  // O corte real da #324: o Handicap saiu da vitrine em 01/09.
+  const VITRINE = [{ market: 'asian_handicap', ocultoDesde: '2026-09-01T00:00:00Z' }];
+
   // 2026-09-01 12:00 BRT. O jogo das 10h já começou: nesse caso a linha do
   // HISTÓRICO vence o desempate, e era por aí que o mercado voltava.
   const agora = Date.parse('2026-09-01T15:00:00Z');
   const jogoDeHoje = '2026-09-01T13:00:00';
-  const jogoDeOntem = '2026-08-31T13:00:00';
+  const jogoAntesDoCorte = '2026-08-31T13:00:00';
 
   it('esconde o mercado quando quem vence o desempate é o histórico', () => {
     const hist = [linhaDoBoard('asian_handicap', jogoDeHoje)];
-    const saida = mergeBoardAndHistory([], hist, agora, OCULTOS);
-    expect(saida).toHaveLength(0);
+    expect(mergeBoardAndHistory([], hist, agora, VITRINE)).toHaveLength(0);
   });
 
-  it('mantém o mercado no dia passado, que é registro do que foi visto', () => {
-    const hist = [linhaDoBoard('asian_handicap', jogoDeOntem)];
-    const saida = mergeBoardAndHistory([], hist, agora, OCULTOS);
+  it('mantém o que é anterior ao corte, que é registro do que foi visto', () => {
+    const hist = [linhaDoBoard('asian_handicap', jogoAntesDoCorte)];
+    const saida = mergeBoardAndHistory([], hist, agora, VITRINE);
     expect(saida).toHaveLength(1);
     expect(saida[0].market).toBe('asian_handicap');
   });
 
+  // ── O defeito que esta mudança conserta ───────────────────────────────────
+  // A régua antiga cortava por "hoje", então a linha de um dia JÁ PASSADO
+  // sempre entrava. Efeito na tela: o jogo de hoje não mostrava Handicap e o
+  // MESMO jogo mostrava amanhã, quando a linha passava a vir do histórico. Em
+  // produção eram 31 linhas que nunca estiveram em tela nenhuma.
+  it('esconde o dia passado que já é posterior ao corte', () => {
+    const depois = Date.parse('2026-09-05T15:00:00Z');
+    const hist = [linhaDoBoard('asian_handicap', '2026-09-03T13:00:00')];
+    expect(mergeBoardAndHistory([], hist, depois, VITRINE)).toHaveLength(0);
+  });
+
+  it('a mesma linha de hoje continua escondida amanhã', () => {
+    const hist = [linhaDoBoard('asian_handicap', jogoDeHoje)];
+    const hoje = mergeBoardAndHistory([], hist, agora, VITRINE);
+    const amanha = mergeBoardAndHistory([], hist, agora + 86_400_000, VITRINE);
+    expect(amanha).toEqual(hoje);
+    expect(amanha).toHaveLength(0);
+  });
+
   it('não mexe nos outros mercados de hoje', () => {
     const hist = [linhaDoBoard('goals_over_under', jogoDeHoje)];
-    const saida = mergeBoardAndHistory([], hist, agora, OCULTOS);
+    const saida = mergeBoardAndHistory([], hist, agora, VITRINE);
     expect(saida.map((r) => r.market)).toEqual(['goals_over_under']);
   });
 
   it('sem vitrine configurada, nada muda', () => {
     const hist = [linhaDoBoard('asian_handicap', jogoDeHoje)];
     expect(mergeBoardAndHistory([], hist, agora, [])).toHaveLength(1);
+  });
+
+  // ── O escuro ──────────────────────────────────────────────────────────────
+  // Vitrine sem data é o front publicado antes da migration 119. Ali vale a
+  // régua antiga — esconde de hoje em diante, não toca no passado —, que é
+  // degradação e não regressão.
+  describe('vitrine sem data', () => {
+    const SEM_DATA = [{ market: 'asian_handicap', ocultoDesde: null }];
+
+    it('ainda esconde o de hoje', () => {
+      const hist = [linhaDoBoard('asian_handicap', jogoDeHoje)];
+      expect(mergeBoardAndHistory([], hist, agora, SEM_DATA)).toHaveLength(0);
+    });
+
+    it('não apaga o passado, que ela não sabe classificar', () => {
+      const hist = [linhaDoBoard('asian_handicap', jogoAntesDoCorte)];
+      expect(mergeBoardAndHistory([], hist, agora, SEM_DATA)).toHaveLength(1);
+    });
   });
 });
