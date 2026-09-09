@@ -16,10 +16,13 @@
 //   LP 4 · "Mais clareza para analisar. Mais segurança para decidir"
 //          título + não depender de palpite + o "você consegue"
 //
-// As quatro fecham igual: "O que dizem nossos usuários", "Ainda está em
-// dúvida?", a oferta, o bônus, o preço e o CTA.
+// As quatro fecham igual: os bilhetes ganhos, "O que dizem nossos usuários",
+// "Ainda está em dúvida?", a oferta, o bônus, o preço e o CTA.
 //
-// Nada além do documento. Se aparecer bloco novo aqui, é porque alguém inventou.
+// Nada além do documento, com UMA exceção declarada: o bloco "bilhetes" não
+// está no documento de copy, entrou por decisão de produto em 08/09/2026 (ver
+// o comentário do FECHO). Fora essa, se aparecer bloco novo aqui é porque
+// alguém inventou.
 //
 // Marcação dentro da copy: ==destaque== sai com marca-texto âmbar,
 // !!alerta!! sai em vermelho (ver components/lp/Marcado.tsx).
@@ -33,6 +36,7 @@ export type LpBloco =
   | "beneficios" // 5. mais clareza, o "você consegue"
   | "depoimentos" // 6. o que dizem nossos usuários
   | "faq" // 7. ainda está em dúvida
+  | "bilhetes" // bilhetes ganhos; fora do documento, ver FECHO
   | "oferta"; // 8. assinatura, bônus, preço e CTA
 
 export interface LpVariant {
@@ -80,8 +84,12 @@ const CTA = {
  * Fecho compartilhado pelas quatro. O resto do documento não se repete: cada
  * título é de uma LP só, e o bloco que pertence a um título não aparece nas
  * outras páginas.
+ *
+ * "bilhetes" é o único bloco daqui que não sai do documento de copy. Abre o
+ * fecho: entra depois do corpo da LP, quando o argumento já foi feito, e antes
+ * da fala de usuário — prova de resultado primeiro, prova de gente depois.
  */
-const FECHO: LpBloco[] = ["depoimentos", "faq", "oferta"];
+const FECHO: LpBloco[] = ["bilhetes", "depoimentos", "faq", "oferta"];
 
 export const LP_VARIANTS: LpVariant[] = [
   // LP 1 · título da promessa. O roteiro segue inteiro, sem promoção.
