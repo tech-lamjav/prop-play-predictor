@@ -1,6 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Instagram, MessageCircle, Mail } from 'lucide-react';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
+import { SHOW_COMO_USAR_ENTRY_POINTS } from '@/config/como-usar';
+import { EMAIL_DO_TIME, WHATSAPP_FALAR_COM_O_TIME } from '@/config/contato';
+import { ehExterno } from '@/lib/abrir-destino';
 import { useReferral } from './ReferralProvider';
 
 /**
@@ -40,10 +43,13 @@ const Footer = () => {
   // não são o que a gente oferece, são coisas da conta do usuário.
   const suporte: FooterLink[] = [
     { label: 'Planos e preços', href: '/planos' },
-    { label: 'Como usar', href: '/como-usar' },
+    ...(SHOW_COMO_USAR_ENTRY_POINTS ? [{ label: 'Como usar', href: '/como-usar' }] : []),
     { label: 'Configurações da conta', href: '/settings' },
     { label: 'Indique um amigo', onClick: openReferral },
-    { label: 'Falar com o time', href: 'mailto:tecnologia@smartbetting.app' },
+    // WhatsApp, e não e-mail: é onde o time de fato responde, e é o mesmo
+    // canal do ícone aqui embaixo. Duas portas com o mesmo nome levando a
+    // lugares diferentes era o que existia antes.
+    { label: 'Falar com o time', href: WHATSAPP_FALAR_COM_O_TIME },
   ];
 
   const linkCls = 'text-[13px] text-white/70 hover:text-white transition-colors text-left';
@@ -56,10 +62,19 @@ const Footer = () => {
         </button>
       );
     }
-    const external = l.href?.startsWith('mailto:') || l.href?.startsWith('http');
-    if (external) {
+    const novaAba = l.href != null && ehExterno(l.href);
+    if (novaAba || l.href?.startsWith('mailto:')) {
+      // Só o link externo sai em aba nova. No mailto o navegador entrega ao
+      // cliente de e-mail sem navegar, então o target ali deixaria uma aba em
+      // branco aberta para trás.
       return (
-        <a key={l.label} href={l.href} className={linkCls}>
+        <a
+          key={l.label}
+          href={l.href}
+          target={novaAba ? '_blank' : undefined}
+          rel={novaAba ? 'noopener noreferrer' : undefined}
+          className={linkCls}
+        >
           {l.label}
         </a>
       );
@@ -102,7 +117,7 @@ const Footer = () => {
               <Instagram className="w-4 h-4" />
             </a>
             <a
-              href="https://wa.me/5511952136845"
+              href={WHATSAPP_FALAR_COM_O_TIME}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="WhatsApp"
@@ -110,7 +125,7 @@ const Footer = () => {
             >
               <MessageCircle className="w-4 h-4" />
             </a>
-            <a href="mailto:tecnologia@smartbetting.app" aria-label="E-mail" className={socialCls}>
+            <a href={`mailto:${EMAIL_DO_TIME}`} aria-label="E-mail" className={socialCls}>
               <Mail className="w-4 h-4" />
             </a>
           </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { whatsappDoTime } from '@/config/contato';
 import {
   Trophy,
   Users,
@@ -47,8 +48,10 @@ const PREMIUM_FEATURES = [
   { icon: Sparkles, text: 'Tudo do Free incluído', highlight: true },
 ];
 
-const WHATSAPP_PIX_URL =
-  'https://wa.me/5511952136845?text=Ol%C3%A1!%20Quero%20pagar%20o%20Bol%C3%A3o%20Premium%20via%20PIX';
+// A frase em português, e a codificação por conta do encodeURIComponent. O
+// %C3%A1 estava digitado na mão aqui, e sobrevivia até alguém editar o texto e
+// esquecer de recodificar — aí o WhatsApp abre com lixo no campo.
+const WHATSAPP_PIX_URL = whatsappDoTime('Olá! Quero pagar o Bolão Premium via PIX');
 
 export const CreateBolaoModal: React.FC<CreateBolaoModalProps> = ({
   open,

@@ -100,8 +100,18 @@ oportunidades de valor…"). Repetia o que o H1 da página já diz, e o
 **6. Rodapé lista produtos, não sub-páginas.**
 O desenho listava 6 links em Análises e 5 em Produtos — uma cópia do menu.
 Virou: **Análises** (Futebol · NBA), **Ferramentas** (Betinho) e **Suporte**
-(Planos e preços · Como usar · Configurações · Indique um amigo · Falar com o
-time). As sub-seções já vivem na faixa 2 do header.
+(Planos e preços · Configurações · Indique um amigo · Falar com o time). As
+sub-seções já vivem na faixa 2 do header.
+
+> Atualizado em 08/09/2026. **"Como usar" saiu** da coluna Suporte: a página é
+> o guia do Betinho no Telegram e ficou para trás do produto. Sai atrás da
+> chave `SHOW_COMO_USAR_ENTRY_POINTS` (`src/config/como-usar.ts`), no mesmo formato do
+> Bolão — a rota continua de pé, e reativar é trocar um `false` por `true`.
+>
+> **"Falar com o time" deixou de ser `mailto:` e virou WhatsApp**, com a
+> primeira mensagem já escrita. É o mesmo destino do ícone de WhatsApp aqui do
+> rodapé, que também passou a levar a mensagem: duas portas do mesmo número
+> lado a lado, uma delas abrindo conversa vazia, era o que existia antes.
 
 **7. Termos e privacidade num link só.**
 `/termos` e `/privacidade` renderizam a mesma página (`App.tsx`), que traz as
@@ -130,7 +140,7 @@ Regra: **um conceito, um glifo** — em toda a navegação, nos dois esportes.
 | Análise 360 | `Radar` | só NBA |
 | Relatório | `FileText` | só NBA |
 | Apostas | `Target` | Betinho |
-| Banca / Dashboard | `Wallet` | era `BarChart3`; o gráfico já é "Análises". Mesmo glifo do item de banca na `/perfil` |
+| Banca / Dashboard | `Wallet` | era `BarChart3`; o gráfico já é "Análises" |
 
 Os dois SVGs próprios ficam em `src/components/icons/sports.tsx`. Nasceram no
 hub `/inicio` e foram extraídos quando o header passou a precisar dos mesmos —

@@ -7,17 +7,14 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import {
-  Settings,
   LogOut,
-  Gift,
-  BookOpen,
-  CreditCard,
-  HelpCircle,
   ChevronRight,
   Zap,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReferral } from './ReferralProvider';
+import { itensDaConta, type ItemDaConta } from '@/config/menu-da-conta';
+import { abrirDestino } from '@/lib/abrir-destino';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { getInitials } from '@/lib/user-display';
 
@@ -36,13 +33,6 @@ interface UserNavProps {
 }
 
 /** Itens do menu, na ordem do desenho. `Configurações` é sempre o primeiro. */
-type MenuItem = {
-  label: string;
-  icon: typeof Settings;
-  href?: string;
-  onClick?: () => void;
-};
-
 export default function UserNav({ className }: UserNavProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -74,21 +64,11 @@ export default function UserNav({ className }: UserNavProps) {
     ? new Date(activeSub.periodEnd).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
     : null;
 
-  const items: MenuItem[] = [
-    { label: 'Configurações', icon: Settings, href: '/settings' },
-    { label: 'Planos e preços', icon: CreditCard, href: '/planos' },
-    { label: 'Indique um amigo', icon: Gift, onClick: openReferral },
-    { label: 'Como usar', icon: BookOpen, href: '/como-usar' },
-    { label: 'Falar com o time', icon: HelpCircle, href: 'mailto:tecnologia@smartbetting.app' },
-  ];
+  const items = itensDaConta(openReferral);
 
-  const go = (item: MenuItem) => {
+  const go = (item: ItemDaConta) => {
     if (item.onClick) return item.onClick();
-    if (item.href?.startsWith('mailto:')) {
-      window.location.href = item.href;
-      return;
-    }
-    if (item.href) navigate(item.href);
+    if (item.href) abrirDestino(item.href, navigate);
   };
 
   return (
