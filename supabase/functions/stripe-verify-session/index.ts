@@ -69,9 +69,12 @@ serve(async (req) => {
     }
 
     const productType = (session.metadata?.productType || 'betinho').toLowerCase();
-    const subscriptionField = (productType === 'analytics' || productType === 'platform')
-      ? 'analytics_subscription_status'
-      : 'betinho_subscription_status';
+    const subscriptionField =
+      productType === 'futebol'
+        ? 'futebol_subscription_status'
+        : (productType === 'analytics' || productType === 'platform')
+          ? 'analytics_subscription_status'
+          : 'betinho_subscription_status';
 
     console.log(`[VerifySession] Payment verified. Updating ${subscriptionField} to premium for user:`, user.id);
 

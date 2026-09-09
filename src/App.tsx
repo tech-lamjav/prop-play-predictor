@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
 import { ReferralProvider } from "@/components/ReferralProvider";
-import { BrowserRouter, Routes, Route, Outlet, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
@@ -63,6 +63,7 @@ const FutebolCampeonatos = lazyWithRetry(() => import("./pages/FutebolCampeonato
 const FutebolCampeonato = lazyWithRetry(() => import("./pages/FutebolCampeonato"));
 const FutebolTime = lazyWithRetry(() => import("./pages/FutebolTime"));
 const FutebolLP = lazyWithRetry(() => import("./pages/FutebolLP"));
+const FutebolAssinar = lazyWithRetry(() => import("./pages/FutebolAssinar"));
 const BolaoEntry = lazyWithRetry(() => import("./pages/BolaoEntry"));
 const BolaoHome = lazyWithRetry(() => import("./pages/BolaoHome"));
 const BolaoDetail = lazyWithRetry(() => import("./pages/BolaoDetail"));
@@ -82,11 +83,6 @@ const LazyFallback = () => (
 );
 
 /** Redireciona preservando a query string (utm, ref). */
-const RedirecionaParaPlanos = () => {
-  const { search } = useLocation();
-  return <Navigate to={{ pathname: "/planos", search }} replace />;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -177,7 +173,7 @@ const App = () => (
                 rede para o dev local, que não lê aquele arquivo. Nos dois casos
                 a query string sobrevive: o endereço circulou em links com utm e
                 ref, e perdê-los apagaria a atribuição. */}
-            <Route path="/futebol/assinar" element={<RedirecionaParaPlanos />} />
+            <Route path="/futebol/assinar" element={<FutebolAssinar />} />
             <Route path="/nba-dashboard/:playerName" element={<NBADashboard />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/paywall" element={<Paywall />} />
