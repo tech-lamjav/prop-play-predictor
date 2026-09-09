@@ -391,7 +391,7 @@ export function JogoResumo({
                             ? { background: '#dcefe2', color: '#0a3d2e' }
                             : res === 'push'
                               ? { background: '#eef0eb', color: '#5a625a' }
-                              : { background: '#fbe3e8', color: '#be123c' }
+                              : { background: '#fbeeec', color: '#b8341c' }
                         }
                       >
                         {resultBadge(res).label}

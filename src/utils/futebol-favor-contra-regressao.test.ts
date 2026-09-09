@@ -104,3 +104,41 @@ describe('Juventude × CRB · Mais de 1,5', () => {
     ]);
   });
 });
+
+// ============================================================================
+// A premissa de ritmo dentro de "A favor" — o card que não deveria existir
+// ============================================================================
+// A tela mostrava, na aba A FAVOR, um card "Jogo de ritmo alto" com o selo
+// "não ajuda" e a frase "atrapalha nos dois testes", e nenhum número embaixo.
+// Três afirmações que se contradizem, e nada com que o assinante confira.
+//
+// A regra que barra isso já existia — premissa que não conta para o Score e não
+// tem número não se mostra (#348, #351) — mas era aplicada só no caminho legado.
+// Quando os motivos passaram a vir do contrato do backend, o caminho novo mapeou
+// slug para premissa e renderizou direto, sem passar por ela.
+//
+// Guarda de fonte, e não de render: o que quebrou não foi uma conta, foi uma
+// regra existir em um dos dois caminhos e não no outro. É isso que se vigia aqui.
+// ============================================================================
+
+describe('motivos do contrato passam pela mesma regra do caminho legado', () => {
+  const BANCADA = readFileSync(
+    resolve(__dirname, '../components/futebol/BancadaMercados.tsx'),
+    'utf8',
+  );
+
+  it('o mapeamento do contrato filtra por temOQueMostrar', () => {
+    const inicio = BANCADA.indexOf('const motivosDoContrato =');
+    expect(inicio, 'não achei motivosDoContrato').toBeGreaterThan(-1);
+
+    const corpo = BANCADA.slice(inicio, BANCADA.indexOf('const motivosFavor', inicio));
+    expect(corpo).toContain('temOQueMostrar(p, acesa)');
+  });
+
+  it('os dois lados dizem se a premissa está acesa', () => {
+    // O `acesa` não é enfeite: é ele que decide se o número pode ser suprimido.
+    // Trocado em silêncio, traz de volta a premissa apagada sem nada para ver.
+    expect(BANCADA).toContain('motivosDoContrato(contratoMotivos.favor, true)');
+    expect(BANCADA).toContain('motivosDoContrato(contratoMotivos.contra, false)');
+  });
+});

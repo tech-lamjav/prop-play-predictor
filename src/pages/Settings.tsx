@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -18,6 +18,18 @@ import { ptBR } from 'date-fns/locale';
 import { telegramBotUrl } from '../config/environment';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { resetAllOnboarding } from '../components/onboarding/useOnboardingTour';
+import { SECOES, secaoAtiva, type SecaoId } from '../utils/settings-secoes';
+
+/**
+ * O ícone de cada seção. Mora aqui, e não no catálogo: ícone é JSX, e o catálogo
+ * precisa ser dado puro para o teste dele não ter que renderizar nada.
+ */
+const ICONE_DA_SECAO: Record<SecaoId, typeof User> = {
+  perfil: User,
+  alertas: Bell,
+  assinatura: CreditCard,
+  tour: Compass,
+};
 
 const COUNTRY_CODES = [
   { value: '+55', label: '🇧🇷 +55' },
@@ -64,6 +76,22 @@ function formatDate(iso: string | null): string {
 
 export default function Settings() {
   const navigate = useNavigate();
+
+  // A seção aberta vive na URL, e não em estado local.
+  //
+  // Assim ela sobrevive ao recarregar e vira link: "vá em Configurações, aba
+  // Alertas" passa a ser um endereço que se manda, em vez de uma instrução que
+  // se digita. É o mesmo caminho que a tela do jogo já usa para o mercado aberto.
+  //
+  // `replace` de propósito: trocar de seção não é navegar, e empilhar as quatro
+  // no histórico faria o botão Voltar percorrer abas em vez de sair da tela.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const secao = secaoAtiva(searchParams.get('secao'));
+  const abrirSecao = (id: SecaoId) => {
+    const proximo = new URLSearchParams(searchParams);
+    proximo.set('secao', id);
+    setSearchParams(proximo, { replace: true });
+  };
   const { toast } = useToast();
   const { profile, subscription, isLoading, isSaving, error, updateProfile } = useSettingsData();
   const { data: publicationAlerts, isLoading: isLoadingPublicationAlerts, isSaving: isSavingPublicationAlerts, setEnabled } = useFutebolPublicationAlerts();
@@ -153,11 +181,66 @@ export default function Settings() {
     <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
       <AnalyticsNav variant="rebrand" showBack title="Configurações" />
 
-      <div className="container mx-auto px-4 py-8 max-w-2xl flex-1">
-        <h1 className="text-2xl font-bold text-ink mb-6">Configurações do Perfil</h1>
+      <div className="container mx-auto px-4 py-8 max-w-5xl flex-1">
+        {/* "do Perfil" saiu do título: perfil virou UMA das quatro seções, e o
+            título não pode nomear só ela. */}
+        <h1 className="text-2xl font-bold text-ink mb-6">Configurações</h1>
 
-        {/* Perfil */}
-        <Card className="mb-8 bg-white border border-line text-ink">
+        <div className="grid gap-6 md:grid-cols-[220px_1fr] md:gap-8 items-start">
+          {/* No COMPUTADOR a navegação é uma coluna ao lado, com o resumo de cada
+              seção embaixo do nome. É o resumo que responde "onde eu mexo no
+              Telegram?" sem obrigar a abrir as quatro.
+
+              No CELULAR vira uma fileira que rola, como as outras fileiras desta
+              casa, e o resumo sai: em 360px ele empurraria a quarta seção para
+              fora da vista antes de a pessoa saber que ela existe.
+
+              min-w-0 junto do overflow-x-auto, e o par é obrigatório: item de
+              flex nasce com min-width auto, que o proíbe de encolher abaixo do
+              próprio conteúdo, e no CSS o min-width ganha do max-width. Sem ele a
+              fileira passa da margem da página em vez de rolar dentro dela. */}
+          <nav className="flex md:flex-col gap-1.5 min-w-0 overflow-x-auto no-scrollbar md:overflow-visible">
+            {SECOES.map((sec) => {
+              const Icone = ICONE_DA_SECAO[sec.id];
+              const ativa = sec.id === secao;
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => abrirSecao(sec.id)}
+                  aria-current={ativa ? 'page' : undefined}
+                  /* Fundo em TODAS, e não só na aberta.
+
+                     Sem fundo, as três fechadas viravam texto solto no bege da
+                     página: nada dizia que dá para clicar nelas, e a aberta
+                     parecia a única coisa ali. Agora toda seção é um cartão.
+
+                     O par de cores sai do guia visual, e não de invenção:
+                     secundário é branco com borda, primário é forest com texto
+                     branco. É o mesmo contraste dos botões da casa, então a
+                     seção aberta lê como escolha feita, e não como destaque. */
+                  className={`shrink-0 md:shrink text-left rounded-rebrand-md border px-3 py-2.5 cursor-pointer transition flex items-center gap-2.5 ${
+                    ativa
+                      ? 'bg-forest border-forest shadow-sm'
+                      : 'bg-white border-line hover:bg-canvas-2'
+                  }`}
+                >
+                  <Icone className={`h-4 w-4 shrink-0 ${ativa ? 'text-white' : 'text-ink-2'}`} />
+                  <span className="min-w-0">
+                    <span className={`block text-[13.5px] whitespace-nowrap ${ativa ? 'font-semibold text-white' : 'font-medium text-ink'}`}>
+                      {sec.rotulo}
+                    </span>
+                    <span className={`hidden md:block text-[11px] truncate ${ativa ? 'text-white/65' : 'text-ink-3'}`}>{sec.resumo}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="min-w-0">
+
+        {secao === 'perfil' && (
+        <Card className="bg-white border border-line text-ink">
           <CardHeader>
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-forest" />
@@ -266,8 +349,12 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        )}
+
         {/* Alertas de oportunidades */}
-        <Card className="mb-8 bg-white border border-line text-ink">
+
+        {secao === 'alertas' && (
+        <Card className="bg-white border border-line text-ink">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-forest" />
@@ -339,7 +426,11 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        )}
+
         {/* Assinatura */}
+
+        {secao === 'assinatura' && (
         <Card className="bg-white border border-line text-ink">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -419,8 +510,10 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Ajuda / Tour guiado */}
-        <Card className="mt-8 bg-white border border-line text-ink">
+        )}
+
+        {secao === 'tour' && (
+        <Card className="bg-white border border-line text-ink">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Compass className="h-5 w-5 text-forest" />
@@ -447,6 +540,9 @@ export default function Settings() {
             </Button>
           </CardContent>
         </Card>
+        )}
+          </div>
+        </div>
       </div>
 
     </div>

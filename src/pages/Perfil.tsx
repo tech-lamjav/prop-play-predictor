@@ -1,10 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Settings,
-  Wallet,
-  CreditCard,
-  Gift,
-  HelpCircle,
   LogOut,
   ChevronRight,
   Zap,
@@ -15,6 +11,8 @@ import { useBets } from '@/hooks/use-bets';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { useReferral } from '@/components/ReferralProvider';
 import { getInitials } from '@/lib/user-display';
+import { itensDaConta, type ItemDaConta } from '@/config/menu-da-conta';
+import { abrirDestino } from '@/lib/abrir-destino';
 
 /**
  * Tela de Perfil — o equivalente mobile do dropdown do pill no desktop.
@@ -24,13 +22,8 @@ import { getInitials } from '@/lib/user-display';
  * "Configurações" deixou de ser navegação global e virou o primeiro item daqui.
  */
 
-type Row = {
-  label: string;
-  icon: typeof Settings;
-  href?: string;
-  onClick?: () => void;
-  danger?: boolean;
-};
+/** Um item do menu, mais o "Sair da conta", que é o único em vermelho. */
+type Row = ItemDaConta & { danger?: boolean };
 
 export default function Perfil() {
   const navigate = useNavigate();
@@ -49,18 +42,17 @@ export default function Perfil() {
     navigate('/auth');
   };
 
+  // Os itens vêm do catálogo compartilhado com o menu do computador. Só o
+  // "Sair da conta" nasce aqui: ele é o único que muda de forma entre as duas
+  // telas — lá é um bloco separado embaixo, aqui é a última linha da lista.
   const rows: Row[] = [
-    { label: 'Configurações', icon: Settings, href: '/settings' },
-    { label: 'Minha banca e apostas', icon: Wallet, href: '/bets' },
-    { label: 'Plano e pagamento', icon: CreditCard, href: '/planos' },
-    { label: 'Indique um amigo', icon: Gift, onClick: openReferral },
-    { label: 'Ajuda e suporte', icon: HelpCircle, href: '/como-usar' },
+    ...itensDaConta(openReferral),
     { label: 'Sair da conta', icon: LogOut, onClick: handleSignOut, danger: true },
   ];
 
   const go = (row: Row) => {
     if (row.onClick) return row.onClick();
-    if (row.href) navigate(row.href);
+    if (row.href) abrirDestino(row.href, navigate);
   };
 
   // Só mostra o bloco de números quando já carregou. Zerado tem significado

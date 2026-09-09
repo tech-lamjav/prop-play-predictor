@@ -10,6 +10,7 @@ import { LpTrabalhoManual } from "@/components/lp/LpTrabalhoManual";
 import { LpComoFunciona } from "@/components/lp/LpComoFunciona";
 import { LpBeneficios } from "@/components/lp/LpBeneficios";
 import { LpDepoimentos } from "@/components/lp/LpDepoimentos";
+import { LpBilhetesGreen } from "@/components/lp/LpBilhetesGreen";
 import { LpFaq } from "@/components/lp/LpFaq";
 import { lpFaqSchema } from "@/components/lp/lp-faq-data";
 import { LpOferta } from "@/components/lp/LpOferta";
@@ -85,6 +86,8 @@ function LpConteudo({ variant }: { variant: LpVariantConfig }) {
         return <LpComoFunciona key={bloco} />;
       case "beneficios":
         return <LpBeneficios key={bloco} semCabecalho={ehGancho} />;
+      case "bilhetes":
+        return <LpBilhetesGreen key={bloco} />;
       case "depoimentos":
         return <LpDepoimentos key={bloco} />;
       case "faq":

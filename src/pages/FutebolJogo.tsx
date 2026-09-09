@@ -7,6 +7,7 @@ import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { type JogoInfo } from '@/components/futebol/JogoResumo';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
+import { CampoEscalacao } from '@/components/futebol/CampoEscalacao';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
@@ -20,7 +21,8 @@ import {
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
-import { isFinished, isLive } from '@/utils/futebol-datas';
+import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-referencia';
+import { isFinished, isLive, brtDayOf, fmtDayShort } from '@/utils/futebol-datas';
 import { PARAMS_DA_SAIDA } from '@/utils/futebol-links';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
@@ -52,31 +54,27 @@ function useBancadaLadoALado(): boolean {
   return lado;
 }
 
-const INJURY_TYPE: Record<string, { label: string; cls: string }> = {
-  'Missing Fixture': { label: 'Fora', cls: 'bg-status-danger text-canvas' },
-  Questionable: { label: 'Dúvida', cls: 'bg-amber text-canvas' },
-};
-const INJURY_REASON_PT: Record<string, string> = {
-  Rest: 'Poupado', 'Yellow Cards': 'Suspenso', 'Red Card': 'Suspenso', Suspended: 'Suspenso',
-  'Loan agreement': 'Empréstimo', Inactive: 'Inativo', "Coach's decision": 'Decisão técnica',
-  'National selection': 'Seleção', 'Personal problems': 'Pessoal',
-};
-function injuryReason(r: string): string {
-  if (INJURY_REASON_PT[r]) return INJURY_REASON_PT[r];
-  if (/injury/i.test(r)) return 'Lesão';
-  return r;
-}
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
-function fmtDateTime(raw: string | null): string {
-  if (!raw) return '—';
+/**
+ * Data e hora do apito, SEPARADAS.
+ *
+ * A faixa do jogo mostra as duas em lugares diferentes — a data na linha da
+ * rodada, a hora no meio da grade —, então formatar "10/08, 18:30" e recortar
+ * depois só criaria um formato para alguém quebrar sem perceber.
+ */
+function fmtDataEHora(raw: string | null): { data: string; hora: string } {
+  if (!raw) return { data: '—', hora: '—' };
   const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
   const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
-  if (isNaN(d.getTime())) return raw;
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  }).format(d);
+  if (isNaN(d.getTime())) return { data: raw, hora: '—' };
+  const parte = (opcoes: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, ...opcoes }).format(d);
+  return {
+    data: parte({ day: '2-digit', month: '2-digit' }),
+    hora: parte({ hour: '2-digit', minute: '2-digit' }),
+  };
 }
 
 function fmtDate(raw: string | null): string {
@@ -180,7 +178,7 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
   const b = resultBadge(r);
   const c = b.tone === 'won' ? { bg: '#dcefe2', fg: '#0a3d2e', dot: '#2f7d50' }
     : b.tone === 'push' ? { bg: '#eef0ec', fg: '#5a625a', dot: '#8a8f86' }
-    : { bg: '#fbe3e8', fg: '#be123c', dot: '#be123c' };
+    : { bg: '#fbeeec', fg: '#b8341c', dot: '#b8341c' };
   return (
     <span
       className={`shrink-0 inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-[0.06em] ${big ? 'h-7 px-2.5 text-[11px]' : 'h-5 px-1.5 text-[10px]'}`}
@@ -189,46 +187,6 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.dot }} />
       {b.label}
     </span>
-  );
-}
-
-// Oportunidades mapeadas de um jogo ENCERRADO + como performaram (green/red).
-function Pitch({ players, side, formation, vazio }: { players: FutebolLineupPlayer[]; side: 'home' | 'away'; formation: string | null; vazio: string }) {
-  const starters = players.filter((p) => p.team_side === side && p.is_starter && p.grid);
-  if (!starters.length) {
-    // O texto vem de fora porque depende do estado do jogo: "sai próximo ao
-    // jogo" mente num jogo que já acabou.
-    return <div className="rounded-rebrand-sm grid place-items-center text-[11px] text-white/60 text-center px-3" style={{ aspectRatio: '3 / 3.4', background: 'linear-gradient(160deg, #0e5238, #0a3d2e)' }}>{vazio}</div>;
-  }
-  const parsed = starters.map((p) => { const [r, c] = (p.grid || '1:1').split(':').map(Number); return { p, r: r || 1, c: c || 1 }; });
-  const maxR = Math.max(...parsed.map((x) => x.r));
-  const byRow: Record<number, typeof parsed> = {};
-  parsed.forEach((x) => { (byRow[x.r] ||= []).push(x); });
-  Object.values(byRow).forEach((arr) => arr.sort((a, b) => a.c - b.c));
-  return (
-    <div className="rounded-rebrand-sm overflow-hidden relative" style={{ aspectRatio: '3 / 3.4', background: 'linear-gradient(160deg, #0e5238, #0a3d2e)' }}>
-      <svg viewBox="0 0 100 113" className="absolute inset-0 w-full h-full" style={{ opacity: 0.28 }}>
-        <rect x="3" y="3" width="94" height="107" fill="none" stroke="#fff" strokeWidth="0.6" />
-        <line x1="3" y1="56.5" x2="97" y2="56.5" stroke="#fff" strokeWidth="0.6" />
-        <circle cx="50" cy="56.5" r="10" fill="none" stroke="#fff" strokeWidth="0.6" />
-        <rect x="30" y="3" width="40" height="15" fill="none" stroke="#fff" strokeWidth="0.6" />
-        <rect x="30" y="95" width="40" height="15" fill="none" stroke="#fff" strokeWidth="0.6" />
-      </svg>
-      {parsed.map((x, i) => {
-        const arr = byRow[x.r]; const idx = arr.indexOf(x); const n = arr.length;
-        const xPct = ((idx + 1) / (n + 1)) * 100;
-        const yPct = maxR > 1 ? 90 - ((x.r - 1) / (maxR - 1)) * 74 : 50;
-        const label = x.p.player_name?.split(' ').slice(-1)[0] || '';
-        const dot = x.p.shirt_number != null ? String(x.p.shirt_number) : (x.p.position?.slice(0, 1) ?? '');
-        return (
-          <div key={i} className="absolute flex flex-col items-center" style={{ left: `${xPct}%`, top: `${yPct}%`, transform: 'translate(-50%,-50%)' }}>
-            <div className="rounded-full grid place-items-center text-[8px] font-bold" style={{ width: 22, height: 22, background: '#fff', color: '#0a3d2e', border: '1.5px solid rgba(255,255,255,0.85)' }}>{dot}</div>
-            <span className="text-[7px] font-semibold mt-0.5 px-1 rounded whitespace-nowrap" style={{ color: '#fff', background: 'rgba(0,0,0,0.4)' }}>{label}</span>
-          </div>
-        );
-      })}
-      {formation && <div className="absolute top-2 left-2 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold tabular-nums" style={{ background: 'rgba(0,0,0,0.45)', color: '#fff' }}>{formation}</div>}
-    </div>
   );
 }
 
@@ -327,6 +285,8 @@ export default function FutebolJogo() {
   const home = stats.find((s) => s.team_side === 'home');
   const away = stats.find((s) => s.team_side === 'away');
   const finished = isFinished(fixture?.status_short);
+  // Uma formatação só: a data e a hora saem juntas do mesmo instante.
+  const quandoJoga = fmtDataEHora(fixture?.kickoff_utc ?? null);
   // "Já começou" inclui o jogo em andamento, não só o encerrado: depois do
   // apito não dá para prometer que a escalação "sai daqui a pouco".
   const jogoComecou = finished || isLive(fixture?.status_short);
@@ -363,8 +323,9 @@ export default function FutebolJogo() {
     (h2h && h2h.length) || extras?.form_home?.length || extras?.form_away?.length
   );
 
-  // Duas abas (Leitura & mercados · Times) e o mercado aberto na bancada.
-  const [aba, setAba] = useState<'mercados' | 'times'>('mercados');
+  // Três abas (Leitura & mercados · Escalações · Estatísticas) e o mercado
+  // aberto na bancada.
+  const [aba, setAba] = useState<'mercados' | 'escalacoes' | 'estatisticas'>('mercados');
   const bancadaLadoALado = useBancadaLadoALado();
   // Abre já no mercado do card clicado; sem link, no de gols, como sempre foi.
   const [mercadoAtivo, setMercadoAtivo] = useState(() => preferida?.market ?? 'goals_over_under');
@@ -418,57 +379,67 @@ export default function FutebolJogo() {
   const escalacao = escalacaoExibida(extras?.lineups, extras?.lineup_players);
   const rotulo = rotuloEscalacao(escalacao.fase, jogoComecou);
 
+  // Sem escalação publicada, a aba mostrava um gramado vazio — e é justamente no
+  // jogo por vir que ela seria útil, porque é o único em que se aposta. Na nossa
+  // base a escalação só chega a partir do apito.
+  //
+  // Enquanto a coleta não roda antes do jogo, entra a escalação do ÚLTIMO jogo de
+  // cada time, nomeada como tal. Some sozinha quando a de verdade chega, porque a
+  // busca só é ligada enquanto falta escalação e o jogo não começou.
+  const faltaEscalacao = !escalacao.jogadores.length && !jogoComecou;
+  const ultimoDoMandante = faltaEscalacao ? ultimoJogoDoTime(extras?.form_home) : null;
+  const ultimoDoVisitante = faltaEscalacao ? ultimoJogoDoTime(extras?.form_away) : null;
+
+  // Duas RPCs a mais, e só neste caso: com escalação publicada os dois ids ficam
+  // indefinidos e o hook não busca nada.
+  const { data: extrasMandante } = useFutebolFixtureExtras(ultimoDoMandante?.fixture_id);
+  const { data: extrasVisitante } = useFutebolFixtureExtras(ultimoDoVisitante?.fixture_id);
+
+  const referenciaDe = (
+    jogo: typeof ultimoDoMandante,
+    extrasDoJogo: typeof extras,
+    teamId: number | undefined,
+    lado: 'home' | 'away',
+  ) => {
+    if (!jogo || !extrasDoJogo || teamId == null) return null;
+    const jogadores = escalacaoDoTime(extrasDoJogo.lineup_players, teamId, lado);
+    if (!jogadores.length) return null;
+    const time = (extrasDoJogo.lineups || []).find((t) => t.team_id === teamId);
+    return {
+      jogadores,
+      formacao: time?.formation ?? null,
+      tecnico: time?.coach_name ?? null,
+      adversario: jogo.opponent,
+      dia: fmtDayShort(brtDayOf(jogo.date_utc)),
+    };
+  };
+
+  const referencia = {
+    home: referenciaDe(ultimoDoMandante, extrasMandante, fixture?.home_team_id, 'home'),
+    away: referenciaDe(ultimoDoVisitante, extrasVisitante, fixture?.away_team_id, 'away'),
+  };
+
   const escalacaoCard = fixture ? (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-      <div className="px-5 py-3 flex items-center justify-between border-b border-line">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{rotulo.titulo} & desfalques</div>
-          {rotulo.subtitulo && <div className="text-[10px] text-ink-3 mt-0.5">{rotulo.subtitulo}</div>}
-        </div>
-        {escalacao.times.length ? (
-          <span className="text-[10px] tabular-nums text-ink-3">{escalacao.times.find((l) => l.team_side === 'home')?.formation || '—'} × {escalacao.times.find((l) => l.team_side === 'away')?.formation || '—'}</span>
-        ) : null}
+      <div className="px-5 py-3 border-b border-line">
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{rotulo.titulo}</div>
+        {rotulo.subtitulo && <div className="text-[10px] text-ink-3 mt-0.5">{rotulo.subtitulo}</div>}
       </div>
       <div className="p-5">
-        {escalacao.jogadores.length ? (
-          <div className="grid grid-cols-2 gap-4">
-            {(['home', 'away'] as const).map((sideKey) => {
-              const teamName = sideKey === 'home' ? fixture.home_team_name : fixture.away_team_name;
-              const teamId = sideKey === 'home' ? fixture.home_team_id : fixture.away_team_id;
-              const formation = escalacao.times.find((l) => l.team_side === sideKey)?.formation ?? null;
-              const inj = (injuries || []).filter((x) => x.team_id === teamId);
-              return (
-                <div key={sideKey}>
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-[12px] font-semibold tracking-tight text-ink truncate">{teamName}</span>
-                    {formation && <span className="text-[10px] tabular-nums ml-auto text-ink-3">{formation}</span>}
-                  </div>
-                  <Pitch players={escalacao.jogadores} side={sideKey} formation={formation} vazio={rotulo.titulo} />
-                  <div className="mt-3">
-                    <div className="text-[9px] uppercase tracking-[0.16em] font-bold mb-1.5 text-ink-3">Desfalques</div>
-                    {inj.length === 0 ? <div className="text-[11px] text-ink-3">Sem desfalques</div> : inj.map((d, i) => {
-                      const duvida = /quest|doubt|dúvid/i.test(d.injury_type || '');
-                      return (
-                        <div key={i} className={`flex items-center gap-2 py-1.5 text-[12px] ${i ? 'border-t border-line/60' : ''}`}>
-                          <span className="font-semibold tracking-tight text-ink truncate">{d.player_name}</span>
-                          <span className="text-[10px] text-ink-3 truncate">{d.injury_reason || d.injury_type}</span>
-                          <span className="px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold ml-auto shrink-0" style={duvida ? { background: '#fef7df', color: '#9a6c00' } : { background: '#fde2e7', color: '#9a1f2e' }}>{duvida ? 'Dúvida' : 'Fora'}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          // Deriva do mesmo rótulo do cabeçalho: com a regra escrita duas vezes,
-          // o card já chegou a anunciar "Quem entrou em campo" com o corpo
+        <CampoEscalacao
+          times={escalacao.times}
+          jogadores={escalacao.jogadores}
+          injuries={injuries || []}
+          homeName={fixture.home_team_name}
+          awayName={fixture.away_team_name}
+          homeId={fixture.home_team_id}
+          awayId={fixture.away_team_id}
+          // O texto do campo vazio vem do MESMO rótulo do cabeçalho. Escrito
+          // duas vezes, o card já anunciou "quem entrou em campo" com o corpo
           // dizendo que a escalação sai daqui a pouco.
-          <p className="text-sm text-ink-3 text-center py-6">
-            {rotulo.subtitulo ? `${rotulo.titulo} · ${rotulo.subtitulo}.` : `${rotulo.titulo}.`}
-          </p>
-        )}
+          vazio={rotulo.subtitulo ? `${rotulo.titulo} · ${rotulo.subtitulo}.` : `${rotulo.titulo}.`}
+          referencia={referencia}
+        />
       </div>
     </div>
   ) : null;
@@ -484,9 +455,9 @@ export default function FutebolJogo() {
               <div className="flex-1 h-2 rounded-full overflow-hidden flex bg-canvas-2">
                 <div style={{ width: `${h2hPct(h2hHomeWins)}%`, background: 'var(--forest)' }} />
                 <div style={{ width: `${h2hPct(h2hDraws)}%`, background: 'var(--ink-3)' }} />
-                <div style={{ width: `${h2hPct(h2hAwayWins)}%`, background: '#be123c' }} />
+                <div style={{ width: `${h2hPct(h2hAwayWins)}%`, background: '#b8341c' }} />
               </div>
-              <span className="text-[20px] font-semibold tabular-nums shrink-0" style={{ color: '#be123c' }}>{h2hAwayWins}</span>
+              <span className="text-[20px] font-semibold tabular-nums shrink-0" style={{ color: '#b8341c' }}>{h2hAwayWins}</span>
             </div>
             <p className="text-[11px] mb-2 text-ink-3">{h2hTotal} confronto{h2hTotal === 1 ? '' : 's'} · {h2hHomeWins} {fixture.home_team_name} · {h2hDraws} empate · {h2hAwayWins} {fixture.away_team_name}</p>
             {h2h.slice(0, 6).map((m) => {
@@ -495,7 +466,7 @@ export default function FutebolJogo() {
                 <div key={m.fixture_id} className="grid grid-cols-[1fr_auto_60px] gap-2 items-center py-2 text-[12px] border-t border-line/60">
                   <span className="text-[11px] text-ink-3 truncate">{fmtDate(m.date_utc)} · {m.competition}</span>
                   <span className="font-semibold tabular-nums text-ink">{m.goals_home} × {m.goals_away}</span>
-                  <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#be123c' : 'var(--ink-3)' }}>{win === 'home' ? 'Casa' : win === 'away' ? 'Fora' : 'Empate'}</span>
+                  <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#b8341c' : 'var(--ink-3)' }}>{win === 'home' ? 'Casa' : win === 'away' ? 'Fora' : 'Empate'}</span>
                 </div>
               );
             })}
@@ -551,7 +522,8 @@ export default function FutebolJogo() {
                   locked={locked}
                   rodada={prettyRound(fixture.round)}
                   estadio={fixture.venue_name ? `${fixture.venue_name}${fixture.venue_city ? `, ${fixture.venue_city}` : ''}` : null}
-                  quando={fmtDateTime(fixture.kickoff_utc)}
+                  data={quandoJoga.data}
+                  hora={quandoJoga.hora}
                   formHome={extrasLoading ? [] : extras?.form_home || []}
                   formAway={extrasLoading ? [] : extras?.form_away || []}
                   homeTeamId={fixture.home_team_id}
@@ -567,25 +539,48 @@ export default function FutebolJogo() {
 
             {!finished && showValue && <FutebolAccessBanner access={access} className="mt-5" />}
 
-            {/* Duas abas: a leitura com os 5 mercados de um lado, os times do outro.
+            {/* Três abas. A de Times fazia o papel de três coisas ao mesmo tempo:
+                médias da temporada, confronto direto e escalação, empilhadas numa
+                rolagem só. A escalação é a que o assinante procura perto do jogo, e
+                ficava por último, embaixo de tudo.
+
                 O antigo "Resumo" virou a própria faixa da partida mais a coluna de
                 mercados, então deixou de ser uma aba. */}
             <div className="mt-5 flex items-center justify-between gap-4 flex-wrap">
+              {/* Rola na horizontal no celular, como toda fileira desta casa
+                  (a régua de datas da agenda, a coluna de mercados da bancada, a
+                  régua de rodadas). Com duas abas cabia num aparelho de 360px;
+                  com três, "Leitura & mercados" mais "Escalações" mais
+                  "Estatísticas" passam de 370px contra os ~328px que sobram
+                  depois do respiro da página, e a terceira era cortada pela
+                  borda sem nada indicando que ela existe.
+
+                `min-w-0` junto do `max-w-full`, e o par é obrigatório. Item de
+                  flex nasce com `min-width: auto`, que o proíbe de encolher abaixo
+                  do próprio conteúdo — e no CSS o `min-width` GANHA do
+                  `max-width`. Com as três abas em `whitespace-nowrap`, o
+                  conteúdo mínimo é a barra inteira, então o teto não valia nada e
+                  ela seguia passando do respiro da página. É a mesma armadilha
+                  que obriga o `min-w-0` para um `truncate` funcionar.
+
+                  E `shrink-0` em cada botão, senão eles se espremem e o texto
+                  quebra em duas linhas em vez de sair da vista. */}
               <div
                 data-tour="fut-jogo-abas"
-                className="inline-flex p-[3px] rounded-[11px]"
+                className="inline-flex min-w-0 max-w-full overflow-x-auto no-scrollbar p-[3px] rounded-[11px]"
                 style={{ background: 'var(--canvas-2)', border: '1px solid #ded2b6' }}
               >
                 {(
                   [
                     ['mercados', 'Leitura & mercados'],
-                    ['times', 'Times'],
+                    ['escalacoes', 'Escalações'],
+                    ['estatisticas', 'Estatísticas'],
                   ] as const
                 ).map(([k, label]) => (
                   <button
                     key={k}
                     onClick={() => setAba(k)}
-                    className={`h-8 px-4 rounded-lg text-[13px] cursor-pointer transition border-0 ${
+                    className={`h-8 px-4 shrink-0 whitespace-nowrap rounded-lg text-[13px] cursor-pointer transition border-0 ${
                       aba === k ? 'bg-white text-ink font-semibold shadow-sm' : 'bg-transparent text-ink-2 font-medium'
                     }`}
                   >
@@ -611,13 +606,12 @@ export default function FutebolJogo() {
                 />
               )}
 
-              {aba === 'times' && (
-                <div data-tour="fut-jogo-contexto" className="flex flex-col gap-5">
-                  <div className="grid lg:grid-cols-2 gap-5 items-start">
-                    {statsCard}
-                    {h2hCard}
-                  </div>
-                  {escalacaoCard}
+              {aba === 'escalacoes' && escalacaoCard}
+
+              {aba === 'estatisticas' && (
+                <div data-tour="fut-jogo-contexto" className="grid lg:grid-cols-2 gap-5 items-start">
+                  {statsCard}
+                  {h2hCard}
                 </div>
               )}
             </div>

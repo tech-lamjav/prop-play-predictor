@@ -68,7 +68,7 @@ const FUTEBOL_ITEMS: SubItem[] = [
 const BETINHO_ITEMS: SubItem[] = [
   { name: 'Apostas', href: '/bets', icon: Target },
   // `Wallet` e não `BarChart3`: é a banca, e o gráfico já é "Análises" na
-  // faixa 1. Mesmo glifo do item "Minha banca e apostas" da tela /perfil.
+  // faixa 1. Mesmo glifo da banca no rodapé (ver docs/design-system/handoff-header-footer.md).
   { name: 'Dashboard', href: '/betting-dashboard', icon: Wallet },
 ];
 

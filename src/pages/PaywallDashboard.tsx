@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, ArrowRight, ArrowLeft, MessageCircle, Loader2, Check, BarChart2, Database, FileText, BarChart3 } from "lucide-react";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
+import { whatsappDoTime } from "@/config/contato";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
@@ -137,7 +138,7 @@ export default function PaywallDashboard() {
 
   const handleWhatsApp = () => {
     const message = "Oi, gostaria de fazer upgrade do meu plano Smartbetting para acessar o Dashboard Premium";
-    const whatsappUrl = `https://wa.me/5511952136845?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = whatsappDoTime(message);
     window.open(whatsappUrl, '_blank');
   };
 

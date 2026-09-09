@@ -112,15 +112,17 @@ describe('rotuloEscalacao', () => {
     });
   });
 
-  it('sem escalação e jogo por vir: diz que ainda não saiu e quando costuma sair', () => {
+  it('sem escalação e jogo por vir: diz que ainda não saiu, e não promete quando sai', () => {
     expect(rotuloEscalacao(null, false)).toEqual({
       titulo: 'Escalação ainda não anunciada',
-      subtitulo: 'costuma sair cerca de 1h antes',
+      // Sem prazo: na nossa base a escalação nunca chega antes do apito, e
+      // marcar hora com quem vai voltar para conferir é pior do que não marcar.
+      subtitulo: null,
     });
   });
 
   it('sem escalação e jogo encerrado: diz que não foi registrada, sem prometer nada', () => {
-    // Não pode prometer "sai 1h antes" num jogo que já acabou.
+    // Num jogo que já acabou não há o que esperar.
     expect(rotuloEscalacao(null, true)).toEqual({
       titulo: 'Escalação não registrada',
       subtitulo: null,
