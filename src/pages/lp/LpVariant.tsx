@@ -86,12 +86,12 @@ function LpConteudo({ variant }: { variant: LpVariantConfig }) {
         return <LpComoFunciona key={bloco} />;
       case "beneficios":
         return <LpBeneficios key={bloco} semCabecalho={ehGancho} />;
+      case "bilhetes":
+        return <LpBilhetesGreen key={bloco} />;
       case "depoimentos":
         return <LpDepoimentos key={bloco} />;
       case "faq":
         return <LpFaq key={bloco} />;
-      case "bilhetes":
-        return <LpBilhetesGreen key={bloco} />;
       case "oferta":
         return <LpOferta key={bloco} variant={variant} onCta={() => onCta("oferta")} />;
       default:

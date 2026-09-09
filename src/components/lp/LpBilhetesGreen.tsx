@@ -11,6 +11,10 @@ import { BILHETES_GREEN } from "./lp-bilhetes-green";
  * os bilhetes são: nenhum deles corresponde a uma oportunidade publicada, e
  * isso foi conferido no banco (ver o cabeçalho de lp-bilhetes-green.ts, que
  * lista jogo por jogo). Enquanto for assim, esta seção não cita o Score.
+ *
+ * A REDAÇÃO do título e da ressalva é provisória: ficou de ser decidida depois
+ * (08/09/2026). O que não é provisório é o limite — sem citar a metodologia e
+ * sem taxa de acerto, enquanto os bilhetes não vierem de picks publicados.
  */
 export function LpBilhetesGreen() {
   return (
@@ -26,9 +30,9 @@ export function LpBilhetesGreen() {
               key={b.src}
               className="rounded-rebrand-lg border border-line bg-white overflow-hidden flex flex-col shadow-sm"
             >
-              {/* O recorte é escuro e vem da casa. O fundo preto atrás dele
-                  evita a borda clara aparecendo por baixo enquanto carrega. */}
-              <div className="bg-black">
+              {/* O recorte é escuro e vem da casa. O escuro do sistema atrás
+                  dele evita a borda clara aparecendo por baixo enquanto carrega. */}
+              <div className="bg-ink">
                 <img
                   src={b.src}
                   alt={b.alt}

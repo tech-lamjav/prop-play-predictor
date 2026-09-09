@@ -18,19 +18,22 @@
 //     27/07, então aqui não dá pra concluir nada nos dois sentidos.
 //
 // Por isso a copy desta seção fala de aposta da casa, e NÃO diz que a
-// metodologia do Score apontou estes jogos. Se um dia entrar aqui um bilhete
-// que bata com um pick publicado, aí sim dá pra citar o Score — e o campo
-// `oportunidadePublicada` existe pra isso.
+// metodologia do Score apontou estes jogos. No dia em que entrar aqui um
+// bilhete que bata com um pick publicado, aí sim dá pra citar o Score — e aí
+// os campos do Score entram junto com o primeiro bilhete que os use, não
+// antes.
 //
 // Os mercados foram filtrados de propósito: só entra bilhete de mercado que a
-// plataforma cobre (resultado final e total de gols). Os prints também tinham
-// green de escanteio, cartão, chutes por jogador e marcador, que ficaram de
-// fora — um green de escanteio na landing manda o visitante procurar escanteio
-// no produto e não achar.
+// plataforma cobre, que são cinco — resultado final, total de gols, handicap
+// asiático, ambas marcam e dupla chance. Os prints de origem também tinham
+// green de escanteio, cartão, chutes por jogador, marcador e tempo extra, e
+// esses ficaram de fora: um green de escanteio na landing manda o visitante
+// procurar escanteio no produto e não achar.
 //
-// VALIDADE: nada com mais de 90 dias. Quem trocar, recorta do print no mesmo
-// enquadramento (do "Simples • Ganha" até a linha de dinheiro) e atualiza a
-// data aqui embaixo.
+// VALIDADE: nada com mais de 90 dias, e quem garante isso é o teste ao lado,
+// que lê o campo `dataISO`. Quando ele ficar vermelho, é porque a prova social
+// envelheceu — troque o bilhete mais antigo, recortando do print no mesmo
+// enquadramento (do "Simples • Ganha" até a linha de dinheiro).
 // ============================================================
 
 export interface BilheteGreen {
@@ -43,16 +46,12 @@ export interface BilheteGreen {
   alt: string;
   jogo: string;
   competicao: string;
-  /** Dia da aposta, no formato que aparece na legenda. */
+  /** Dia da aposta, escrito como aparece na legenda. */
   data: string;
+  /** O mesmo dia em formato comparável, que é o que o teste dos 90 dias lê. */
+  dataISO: string;
   /** Placar final, conferido em futebol.fact_fixtures. */
   placar: string;
-  /**
-   * Preenchido só quando o bilhete corresponder a uma oportunidade que a
-   * plataforma publicou. Hoje nenhum corresponde, e enquanto for assim a seção
-   * não pode citar o Score.
-   */
-  oportunidadePublicada?: { score: number; faixa: string };
 }
 
 export const BILHETES_GREEN: BilheteGreen[] = [
@@ -64,6 +63,7 @@ export const BILHETES_GREEN: BilheteGreen[] = [
     jogo: "Cruzeiro x Mirassol",
     competicao: "Brasileirão Série A",
     data: "9 de agosto de 2026",
+    dataISO: "2026-08-09",
     placar: "3 x 1",
   },
   {
@@ -74,6 +74,7 @@ export const BILHETES_GREEN: BilheteGreen[] = [
     jogo: "Chelsea x Brighton",
     competicao: "Premier League",
     data: "30 de agosto de 2026",
+    dataISO: "2026-08-30",
     placar: "4 x 3",
   },
   {
@@ -84,6 +85,10 @@ export const BILHETES_GREEN: BilheteGreen[] = [
     jogo: "Argentina x Egito",
     competicao: "Copa 2026",
     data: "7 de julho de 2026",
+    dataISO: "2026-07-07",
     placar: "3 x 2",
   },
 ];
+
+/** Quanto tempo um bilhete pode ficar na página antes de virar prova velha. */
+export const VALIDADE_EM_DIAS = 90;
