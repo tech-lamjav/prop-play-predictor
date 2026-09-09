@@ -89,9 +89,18 @@ serve(async (req) => {
       Deno.env.get('STRIPE_PRICE_ID_ANALYTICS'),
     ].filter(Boolean) as string[];
 
-    let finalProductType: 'analytics' | 'betinho' | 'bolao_premium';
+    const futebolPriceId = Deno.env.get('STRIPE_PRICE_ID_FUTEBOL');
+
+    let finalProductType: 'analytics' | 'betinho' | 'bolao_premium' | 'futebol';
     if (normalizedProductType === 'bolao_premium') {
       finalProductType = 'bolao_premium';
+    } else if (normalizedProductType === 'futebol') {
+      finalProductType = 'futebol';
+    } else if (futebolPriceId && priceId === futebolPriceId) {
+      // Rede de segurança: se o front esquecer o productType, o preço decide.
+      // Sem isso o futebol cairia no `else` final e viraria assinatura do
+      // Betinho — o usuário pagaria o futebol e destravaria o produto errado.
+      finalProductType = 'futebol';
     } else if (normalizedProductType === 'analytics' || normalizedProductType === 'platform') {
       finalProductType = 'analytics';
     } else if (analyticsPriceIds.includes(priceId)) {
@@ -196,7 +205,12 @@ serve(async (req) => {
       successUrl = `${SITE_URL}/bolao/${bolaoId}?success=true&session_id={CHECKOUT_SESSION_ID}`;
       cancelUrl = `${SITE_URL}/bolao/${bolaoId}?canceled=true`;
     } else {
-      const paywallPath = finalProductType === 'analytics' ? '/paywall-platform' : '/paywall';
+      const paywallPath =
+        finalProductType === 'futebol'
+          ? '/futebol/assinar'
+          : finalProductType === 'analytics'
+            ? '/paywall-platform'
+            : '/paywall';
       successUrl = `${SITE_URL}${paywallPath}?success=true&session_id={CHECKOUT_SESSION_ID}`;
       cancelUrl = `${SITE_URL}${paywallPath}?canceled=true`;
     }

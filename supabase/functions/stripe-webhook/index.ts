@@ -75,6 +75,9 @@ serve(async (req) => {
     // Helper function to determine which subscription field to update
     const getSubscriptionField = (productType: string | undefined): string => {
       const product = (productType || 'betinho').toLowerCase();
+      if (product === 'futebol') {
+        return 'futebol_subscription_status';
+      }
       if (product === 'analytics' || product === 'platform') {
         return 'analytics_subscription_status';
       }
@@ -82,10 +85,21 @@ serve(async (req) => {
     };
 
     // Helper to build product-specific metadata update (period_end, cancel_at, etc.)
+    // O futebol tem só a coluna de status — não existem
+    // `futebol_subscription_period_end` / `_cancel_at` / `_cancel_at_period_end`
+    // na tabela `users`. Gravar prefixo inexistente derruba o UPDATE inteiro e o
+    // assinante fica sem acesso, então aqui devolvemos vazio de propósito. O
+    // gate (`get_futebol_access`) só lê o status, então nada se perde; se um dia
+    // a tela de assinatura precisar mostrar renovação do futebol, aí sim entra
+    // migration criando as três colunas.
+    const produtoSemMetadados = (productType: string | undefined) =>
+      (productType || 'betinho').toLowerCase() === 'futebol';
+
     const getProductMetadataUpdate = (
       productType: string | undefined,
       subscription: Stripe.Subscription
     ): Record<string, unknown> => {
+      if (produtoSemMetadados(productType)) return {};
       const product = (productType || 'betinho').toLowerCase();
       const prefix =
         product === 'analytics' || product === 'platform' ? 'analytics_subscription' : 'betinho_subscription';
@@ -101,6 +115,7 @@ serve(async (req) => {
     };
 
     const getProductMetadataClear = (productType: string | undefined): Record<string, unknown> => {
+      if (produtoSemMetadados(productType)) return {};
       const product = (productType || 'betinho').toLowerCase();
       const prefix =
         product === 'analytics' || product === 'platform' ? 'analytics_subscription' : 'betinho_subscription';
@@ -389,8 +404,11 @@ serve(async (req) => {
             Deno.env.get('STRIPE_PRICE_ID_PLATFORM') ||
             Deno.env.get('STRIPE_PRICE_ID_ANALYTICS');
           const betinhoPriceId = Deno.env.get('STRIPE_PRICE_ID_BETINHO');
+          const futebolPriceId = Deno.env.get('STRIPE_PRICE_ID_FUTEBOL');
 
-          if (analyticsPriceId && linePriceId === analyticsPriceId) {
+          if (futebolPriceId && linePriceId === futebolPriceId) {
+            productType = 'futebol';
+          } else if (analyticsPriceId && linePriceId === analyticsPriceId) {
             productType = 'analytics';
           } else if (betinhoPriceId && linePriceId === betinhoPriceId) {
             productType = 'betinho';

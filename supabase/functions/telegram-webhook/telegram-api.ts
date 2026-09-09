@@ -115,7 +115,7 @@ async function sendHelpMessageTelegram(chatId: string | number): Promise<void> {
 }
 
 async function sendPaywallMessageTelegram(chatId: string | number): Promise<void> {
-  const paywallUrl = "https://www.smartbetting.app/planos"
+  const paywallUrl = "https://www.smartbetting.app/paywall"
   const paywallMessage = [
     "🚫 *Limite Diário Atingido!*",
     "",
