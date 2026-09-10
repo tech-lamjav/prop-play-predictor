@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // ============================================================================
 // Taxa de acerto e ROI das oportunidades de futebol, medidos em produção
 // ============================================================================
@@ -38,9 +37,16 @@
 //    para medir o board bruto, que é outra pergunta.
 //
 // ── O que este script NÃO consegue responder ────────────────────────────────
-// ROI por PREMISSA. Quais premissas acenderam em cada linha não existe no
-// Postgres — não há coluna de evidência nem array de premissas em
-// `fact_value_opportunities_hist`. Isso vive só no mart, no BigQuery.
+// ROI por PREMISSA, no sentido de "quando a premissa X acendeu". Quais
+// premissas acenderam em cada linha não existe no Postgres: não há coluna de
+// evidência nem array de premissas em `fact_value_opportunities_hist`. Isso
+// vive só no mart, no BigQuery.
+//
+// O que a tabela TEM, e serve de aproximação grosseira: `pts_premissas` (a
+// soma dos pesos que acenderam, sem dizer quais), `premissas_sem_dado`,
+// `modelo_api_concorda`, `linha_sharp_confirma` e os quatro `pen_*`. Dá para
+// cortar por eles, e não é a mesma pergunta — por isso não estão nas tabelas
+// padrão.
 // ============================================================================
 
 import { readFileSync } from 'node:fs';
@@ -133,27 +139,61 @@ export function estatistica(linhas) {
 
 // ── consulta ───────────────────────────────────────────────────────────────
 
+let tokenEmCache = null;
+
 function tokenDeAcesso() {
-  if (process.env.SUPABASE_ACCESS_TOKEN) return process.env.SUPABASE_ACCESS_TOKEN;
-  const env = readFileSync(resolve(RAIZ, '.env.local'), 'utf8');
+  if (tokenEmCache) return tokenEmCache;
+  if (process.env.SUPABASE_ACCESS_TOKEN) {
+    tokenEmCache = process.env.SUPABASE_ACCESS_TOKEN;
+    return tokenEmCache;
+  }
+  let env;
+  try {
+    env = readFileSync(resolve(RAIZ, '.env.local'), 'utf8');
+  } catch {
+    throw new Error(
+      'sem SUPABASE_ACCESS_TOKEN no ambiente e sem .env.local para ler. ' +
+      'Exporte a variável ou crie o arquivo.',
+    );
+  }
   const m = /^SUPABASE_ACCESS_TOKEN=(.*)$/m.exec(env);
   if (!m) throw new Error('SUPABASE_ACCESS_TOKEN não encontrado no ambiente nem em .env.local');
-  return m[1].trim().replace(/^["']|["']$/g, '');
+  tokenEmCache = m[1].trim().replace(/^["']|["']$/g, '');
+  return tokenEmCache;
 }
 
+/**
+ * Uma consulta somente leitura na produção.
+ *
+ * O status HTTP é checado antes do corpo, como faz `apply-sql-dev.mjs`: sem
+ * isso, um 401 ou um HTML de gateway viram `SyntaxError: Unexpected token '<'`
+ * e o motivo real da falha se perde.
+ */
 async function consultar(sql) {
-  const r = await fetch(
-    `https://api.supabase.com/v1/projects/${PROJETO_PRD}/database/query`,
-    {
+  let r;
+  try {
+    r = await fetch(`https://api.supabase.com/v1/projects/${PROJETO_PRD}/database/query`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${tokenDeAcesso()}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ query: sql, read_only: true }),
-    },
-  );
-  const j = await r.json();
+    });
+  } catch (e) {
+    throw new Error(`não consegui falar com a API do Supabase: ${e.message}`);
+  }
+
+  const corpo = await r.text();
+  if (!r.ok) {
+    throw new Error(`consulta recusada (HTTP ${r.status}): ${corpo.slice(0, 300)}`);
+  }
+  let j;
+  try {
+    j = JSON.parse(corpo);
+  } catch {
+    throw new Error(`resposta não era JSON (HTTP ${r.status}): ${corpo.slice(0, 200)}`);
+  }
   if (!Array.isArray(j)) throw new Error(`consulta falhou: ${JSON.stringify(j).slice(0, 300)}`);
   return j;
 }
@@ -215,7 +255,7 @@ function tabela(titulo, linhas, chave, ordem) {
   }
 }
 
-const FAIXA_DE_ODD = (o) => {
+const faixaDeOdd = (o) => {
   const x = Number(o);
   if (x < 1.6) return '1.25–1.59';
   if (x < 2.0) return '1.60–1.99';
@@ -223,17 +263,42 @@ const FAIXA_DE_ODD = (o) => {
   return '2.60–4.00';
 };
 
-const CORTE_DE_SCORE = (s) => {
+/**
+ * A faixa do produto, com a Alta partida em duas.
+ *
+ * Eram duas tabelas — "por faixa" e "por corte de Score" — e a segunda era a
+ * primeira com um corte a mais, o que é a mesma informação escrita duas vezes.
+ * Ficou uma, no vocabulário que o assinante vê, e o corte extra em 80 vive
+ * dentro dela: é onde a amostra desta semana mostrou a diferença maior.
+ */
+const faixaDoScore = (s) => {
   const n = Number(s);
-  if (n < 30) return 'Score <30';
-  if (n < 60) return 'Score 30–59';
-  if (n < 80) return 'Score 60–79';
-  return 'Score 80+';
+  if (n < 30) return 'Baixa (<30)';
+  if (n < 60) return 'Média (30–59)';
+  if (n < 80) return 'Alta (60–79)';
+  return 'Alta (80+)';
 };
 
-const ORDEM_FAIXA = (a, b) =>
-  ['Alta', 'Média', 'Baixa'].indexOf(a[0]) - ['Alta', 'Média', 'Baixa'].indexOf(b[0]);
-const ALFABETICA = (a, b) => a[0].localeCompare(b[0]);
+const alfabetica = (a, b) => a[0].localeCompare(b[0]);
+
+/** As flags que existem. Qualquer outra é erro de digitação, e erro de digitação silencioso faz o relatório mentir sem avisar. */
+const FLAGS = new Set(['desde', 'fonte', 'com-ocultos']);
+
+/**
+ * A linha entra no recorte?
+ *
+ * A comparação é textual porque as duas datas são ISO, mas as duas FONTES têm
+ * precisão diferente: o board carimba `dbt_valid_from` com hora, e os picks
+ * carimbam `sent_date`, que é só o dia. Comparar `'2026-09-04'` com
+ * `'2026-09-04 14:35'` dá falso, e o dia inteiro sumia do relatório em
+ * silêncio. Quando um dos lados não tem hora, a comparação é de dia contra dia.
+ */
+function dentroDoRecorte(carimbo, desde) {
+  if (!desde) return true;
+  const valor = String(carimbo);
+  const soDia = !valor.includes(':') || !desde.includes(':');
+  return soDia ? valor.slice(0, 10) >= desde.slice(0, 10) : valor >= desde;
+}
 
 async function principal() {
   const args = Object.fromEntries(
@@ -242,8 +307,21 @@ async function principal() {
       return [k, v.join('=') || true];
     }),
   );
+  const desconhecidas = Object.keys(args).filter((k) => !FLAGS.has(k));
+  if (desconhecidas.length) {
+    throw new Error(
+      `flag desconhecida: ${desconhecidas.join(', ')}. Existem: ${[...FLAGS].map((f) => '--' + f).join(', ')}`,
+    );
+  }
+
   const fonte = args.fonte === 'picks' ? 'picks' : 'board';
+  if (args.fonte != null && !['picks', 'board'].includes(args.fonte)) {
+    throw new Error(`--fonte aceita "board" ou "picks", não "${args.fonte}"`);
+  }
   const desde = typeof args.desde === 'string' ? args.desde : null;
+  if (desde && !/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(desde)) {
+    throw new Error(`--desde precisa ser "AAAA-MM-DD" ou "AAAA-MM-DD HH:MM", não "${desde}"`);
+  }
   const comOcultos = args['com-ocultos'] === true;
 
   const ocultos = comOcultos ? [] : await consultar(SQL_OCULTOS);
@@ -251,7 +329,7 @@ async function principal() {
 
   const brutas = await consultar(fonte === 'picks' ? SQL_PICKS : SQL_BOARD);
   const noRecorte = brutas
-    .filter((l) => (desde ? String(l.dbt_valid_from) >= desde : true))
+    .filter((l) => dentroDoRecorte(l.dbt_valid_from, desde))
     .filter((l) => !mercadosOcultos.has(l.market));
 
   const liquidadas = [];
@@ -267,6 +345,13 @@ async function principal() {
 
   const g = estatistica(liquidadas);
   console.log(`# ${fonte === 'picks' ? 'Picks enviados no Telegram' : 'Board publicado'}${desde ? ` — desde ${desde}` : ''}`);
+  console.log(`\n> Fonte: projeto ${PROJETO_PRD} (PRODUÇÃO), somente leitura.`);
+  if (fonte === 'picks') {
+    console.log(
+      '> Os picks não carregam `score_versao`: a tabela de envio nunca guardou a ' +
+      'escala. Sem `--desde` depois do cutover, o corte de Score mistura as duas.',
+    );
+  }
   for (const o of ocultos) {
     console.log(
       `\n> Fora da conta: ${o.market}, oculto da vitrine desde ` +
@@ -282,12 +367,11 @@ async function principal() {
   if (g.n === 0) return;
 
   tabela('Por mercado', liquidadas, (l) => l.market);
-  tabela('Por faixa', liquidadas, (l) => l.faixa, ORDEM_FAIXA);
-  tabela('Por corte de Score', liquidadas, (l) => CORTE_DE_SCORE(l.score), ALFABETICA);
-  tabela('Por faixa de odd', liquidadas, (l) => FAIXA_DE_ODD(l.best_odd), ALFABETICA);
+  tabela('Por faixa de Score', liquidadas, (l) => faixaDoScore(l.score), alfabetica);
+  tabela('Por faixa de odd', liquidadas, (l) => faixaDeOdd(l.best_odd), alfabetica);
   tabela('Por campeonato', liquidadas, (l) => l.competition);
-  tabela('Por dia do JOGO (BRT)', liquidadas, (l) => diaBrt(l.kickoff_utc), ALFABETICA);
-  tabela('Por dia da DETECÇÃO', liquidadas, (l) => String(l.dbt_valid_from).slice(0, 10), ALFABETICA);
+  tabela('Por dia do JOGO (BRT)', liquidadas, (l) => diaBrt(l.kickoff_utc), alfabetica);
+  tabela('Por dia da DETECÇÃO', liquidadas, (l) => String(l.dbt_valid_from).slice(0, 10), alfabetica);
 
   console.log(
     '\n> Erro-padrão maior que a diferença entre dois recortes significa que a ' +

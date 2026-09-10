@@ -1,8 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { settleFutebol } from './futebol-settlement';
+import { isHit, settleFutebol } from './futebol-settlement';
 import type { Saida } from './futebol-saida';
-// O script de operação, em .mjs. O `allowJs` do projeto o resolve sozinho.
-import { liquidar, lucroDaAposta } from '../../scripts/futebol-roi.mjs';
+/**
+ * O script de operação, em .mjs.
+ *
+ * ⚠️ O import chega SEM TIPO. `allowJs` só existe no tsconfig da raiz, que é o
+ * que não compila nada; o `tsconfig.app.json`, que compila, não o tem. Com
+ * `noImplicitAny: false` isso degrada para `any` em silêncio — o compilador não
+ * confere nada aqui, e é por isso que a paridade tem de ser verificada em
+ * EXECUÇÃO, caso a caso, como está abaixo.
+ *
+ * O script também não pode ter shebang: o `#!` sobrevive à transformação do
+ * vitest e quebra o parse quando o caminho do projeto tem espaço, deixando o
+ * arquivo de teste inteiro sem rodar — passou uma vez assim, verde no CI e
+ * morto na máquina.
+ */
+import { ehAcerto, liquidar, lucroDaAposta } from '../../scripts/futebol-roi.mjs';
 
 // ============================================================================
 // O script de ROI liquida igual ao produto
@@ -55,6 +68,14 @@ describe('paridade entre o script de ROI e a liquidação do produto', () => {
           if (doProduto !== doScript) {
             divergencias.push(
               `${market} ${outcome} linha ${line} placar ${gh}x${ga}: produto=${doProduto} script=${doScript}`,
+            );
+          }
+          // A terceira cópia: `ehAcerto` no script, `isHit` no produto. Ela
+          // decide a TAXA DE ACERTO, e ficava fora do guarda — meio-green
+          // contar como acerto num lado e não no outro passaria batido.
+          if (doProduto != null && isHit(doProduto) !== ehAcerto(doScript)) {
+            divergencias.push(
+              `${market} ${outcome} linha ${line} placar ${gh}x${ga}: acerto diverge (${doProduto})`,
             );
           }
         }
