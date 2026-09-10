@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
 import { ETAPAS, ROTA_DOS_SOCIOS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
+import { Bloco } from './Bloco';
+import { MensagemPronta } from './MensagemPronta';
+import { mensagemPara } from './crm-mensagens';
 import {
   acessos,
   ganchoDe,
   nomeDoPlano,
   type Pessoa,
   type ResumoDeApostas,
+  primeiroNome,
   type TipoDeGancho,
 } from './crm-ficha';
 
@@ -23,21 +27,6 @@ export type EstadoDaFicha =
 function dia(carimbo: string | null): string | null {
   const d = brtDayOf(carimbo);
   return d ? formatarDia(d) : null;
-}
-
-function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <section
-      role="region"
-      aria-label={titulo}
-      className="mt-6 rounded-rebrand-md border border-line-2 bg-white p-5"
-    >
-      <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-ink-2">
-        {titulo}
-      </h2>
-      <div className="mt-3">{children}</div>
-    </section>
-  );
 }
 
 function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
@@ -244,6 +233,16 @@ function Conteudo({
           É leitura do que o banco registrou, não do que a pessoa disse.
         </p>
       </Bloco>
+
+      {/* Só depois de saber a etapa: o modelo depende dela, e o campo é semeado
+          uma vez só — nascer com a etapa errada deixaria o texto desatualizado
+          sem o sócio perceber. */}
+      {etapa && (
+        <MensagemPronta
+          modelo={mensagemPara(gancho.tipo, etapa, primeiroNome(pessoa.name))}
+          numero={pessoa.whatsapp_number}
+        />
+      )}
 
       <Bloco titulo="Comportamento">
         <p className="text-[14px] text-ink-2">

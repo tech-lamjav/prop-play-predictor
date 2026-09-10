@@ -194,3 +194,15 @@ export function ganchoDe(p: Pessoa, apostas: ResumoDeApostas | null): Gancho {
 
   return gancho('indefinido', 'ainda não deu sinal nenhum no produto');
 }
+
+/**
+ * O primeiro nome, ou nulo.
+ *
+ * Nulo e não string vazia: a mensagem pronta preenche a saudação com isto, e
+ * string vazia vira "Oi, !".
+ */
+export function primeiroNome(nome: string | null): string | null {
+  const inteiro = (nome ?? '').trim();
+  if (!inteiro) return null;
+  return inteiro.split(/\s+/)[0];
+}

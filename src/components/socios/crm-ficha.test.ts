@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acessos, ganchoDe, nomeDoPlano, type Pessoa } from './crm-ficha';
+import { acessos, ganchoDe, nomeDoPlano, primeiroNome, type Pessoa } from './crm-ficha';
 
 const pessoa = (over: Partial<Pessoa> = {}): Pessoa => ({
   id: 'u1',
@@ -156,5 +156,17 @@ describe('ganchoDe', () => {
       ganchoDe(pessoa(), { total: 0, ultima: null }),
     ];
     for (const c of casos) expect(c.porque.trim().length).toBeGreaterThan(0);
+  });
+});
+
+describe('primeiroNome', () => {
+  it('pega só o primeiro', () => {
+    expect(primeiroNome('Maria Silva Souza')).toBe('Maria');
+  });
+
+  it('sem nome, devolve nulo em vez de string vazia', () => {
+    // String vazia vira "Oi, !" na mensagem pronta.
+    expect(primeiroNome(null)).toBeNull();
+    expect(primeiroNome('   ')).toBeNull();
   });
 });

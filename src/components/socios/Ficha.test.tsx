@@ -250,3 +250,36 @@ describe('Ficha · a linha do tempo entra na página', () => {
     expect(screen.queryByText('a linha do tempo')).not.toBeInTheDocument();
   });
 });
+
+describe('Ficha · a mensagem pronta', () => {
+  it('nasce com o texto do gancho e da etapa daquela pessoa', () => {
+    montar(pessoa({ name: 'Maria Silva' }), { total: 12, ultima: null }, { etapa: 'novo' });
+    const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
+    // Gancho de Betinho, porque ela registrou apostas — e é esse o assunto que
+    // a mensagem tem de puxar.
+    // toHaveValue compara o valor inteiro; para trecho, é o texto na mão.
+    const texto = (within(bloco).getByRole('textbox') as HTMLTextAreaElement).value;
+    expect(texto).toContain('Betinho');
+    expect(texto).toContain('Maria');
+  });
+
+  it('cadastro sem nome não vira "Oi, !"', () => {
+    montar(pessoa({ name: null }), { total: 0, ultima: null }, { etapa: 'novo' });
+    const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
+    expect((within(bloco).getByRole('textbox') as HTMLTextAreaElement).value).not.toMatch(
+      /,\s*[!?.]/,
+    );
+  });
+
+  it('sem WhatsApp no cadastro, não oferece o link', () => {
+    montar(pessoa({ whatsapp_number: null }), { total: 0, ultima: null }, { etapa: 'novo' });
+    expect(screen.queryByRole('link', { name: /whatsapp/i })).not.toBeInTheDocument();
+  });
+
+  it('enquanto a etapa não chegou, a mensagem espera', () => {
+    // O campo é semeado uma vez só. Nascer com a etapa errada deixaria o texto
+    // desatualizado sem o sócio perceber.
+    montar(pessoa(), { total: 0, ultima: null }, { etapa: null });
+    expect(screen.queryByRole('region', { name: 'Mensagem pronta' })).not.toBeInTheDocument();
+  });
+});
