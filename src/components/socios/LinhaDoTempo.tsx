@@ -40,7 +40,7 @@ function Item({
 }) {
   return (
     <li className="border-t border-line-2 py-3 first:border-t-0 first:pt-0">
-      <p className="text-[12px] text-ink-3">
+      <p className="text-[12px] text-ink-2">
         {quando(item.em)} · {nomeDoSocio(item.por)}
         {item.natureza === 'anotacao' ? ` · ${ROTULO_DO_TIPO[item.tipo]}` : null}
       </p>
@@ -99,7 +99,7 @@ function FormularioDeAnotacao({
         onChange={(e) => setTexto(e.target.value)}
         rows={3}
         placeholder="O que aconteceu nessa conversa?"
-        className="w-full rounded-rebrand-sm border border-line-2 px-3 py-2 text-[14px] text-ink placeholder:text-ink-3"
+        className="w-full rounded-rebrand-sm border border-line-2 px-3 py-2 text-[14px] text-ink placeholder:text-ink-dim"
       />
       <div className="mt-2 flex items-center gap-3">
         <select

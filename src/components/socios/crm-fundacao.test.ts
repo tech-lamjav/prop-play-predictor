@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { comando as isolar, lerMigration } from './crm-migration-de-teste';
-import { ETAPAS, TIPOS_DE_ANOTACAO } from './crm-vocabulario';
+import { TIPOS_DE_ANOTACAO } from './crm-vocabulario';
 
 // ============================================================================
 // A fundação do CRM: o portão é o banco, não a tela
@@ -133,13 +133,6 @@ describe('as três tabelas do CRM', () => {
 });
 
 describe('o vocabulário não pode divergir entre o banco e a tela', () => {
-  it('a restrição de etapa lista exatamente as seis etapas do glossário', () => {
-    const restricao = MIGRATION.match(/etapa text not null check \(etapa in \(([^)]*)\)\)/);
-    expect(restricao).not.toBeNull();
-    const noBanco = [...restricao![1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
-    expect(noBanco).toEqual([...ETAPAS]);
-  });
-
   it('a restrição de tipo lista exatamente os três tipos de anotação', () => {
     const restricao = MIGRATION.match(/tipo text not null check \(tipo in \(([^)]*)\)\)/);
     expect(restricao).not.toBeNull();

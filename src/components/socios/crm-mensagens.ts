@@ -58,6 +58,15 @@ const POR_PAR: Partial<Record<Etapa, Partial<Record<TipoDeGancho, string>>>> = {
       'Análise 360 da NBA, e o que ainda falta pra ficar redondo pro seu uso.',
   },
 
+  boletada: {
+    betinho:
+      '{saudacao} Te mandei um bilhete esses dias. Queria saber se você chegou a registrar ele no ' +
+      'Betinho — é ali que dá pra acompanhar o resultado sem ter que anotar nada na mão.',
+    futebol:
+      '{saudacao} Te mandei um bilhete esses dias, que saiu da leitura de futebol daquele dia. ' +
+      'Queria saber o que você achou do raciocínio por trás dele.',
+  },
+
   contatado: {
     betinho:
       '{saudacao} Passando de novo pra saber se você chegou a ver o resumo semanal da banca no ' +
@@ -90,17 +99,17 @@ const POR_ETAPA: Record<Etapa, string> = {
     '{saudacao} Aqui é da Smart Betting. Vi que você se cadastrou e queria entender o que te ' +
     'trouxe até aqui, pra te mostrar a parte da plataforma que mais faz sentido pro seu caso.',
   contatado:
-    '{saudacao} Passando pra saber se você chegou a explorar a plataforma depois da nossa última ' +
-    'conversa. Qualquer dúvida, pode me chamar por aqui.',
-  conversando:
+    '{saudacao} Passando pra saber se você chegou a explorar a plataforma depois da nossa ' +
+    'última conversa. Qualquer dúvida, pode me chamar por aqui.',
+  nutrindo:
+    '{saudacao} Separei uma coisa que acho que vale pra você: posso te mandar a leitura de ' +
+    'hoje pra você ver como a gente monta a análise por trás de uma oportunidade.',
+  boletada:
+    '{saudacao} Te mandei um bilhete esses dias — queria saber se você chegou a acompanhar e ' +
+    'o que achou da leitura por trás dele.',
+  interesse:
     '{saudacao} Retomando nossa conversa: ficou alguma dúvida sobre o que a gente falou? Se ' +
     'quiser, eu te mostro na prática antes de você decidir qualquer coisa.',
-  proposta:
-    '{saudacao} Passando pra saber o que você achou da proposta. Se algum ponto ficou fora do ' +
-    'que você esperava, me fala qual que a gente ajusta.',
-  assinou:
-    '{saudacao} Que bom ter você com a gente. Queria saber como está sendo a primeira semana e ' +
-    'se tem algo travando o seu uso — nessa fase, seu feedback muda o produto de verdade.',
   sem_resposta:
     `{saudacao} ${NAO_INSISTIR} Deixo a porta aberta: se quiser retomar em algum momento, é só ` +
     'me chamar por aqui.',

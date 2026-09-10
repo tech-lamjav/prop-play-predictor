@@ -12,15 +12,21 @@
 /**
  * As seis etapas do funil, na ordem em que aparecem na tela.
  *
- * `sem_resposta` é o FIM DA LINHA, e não um degrau anterior a `assinou`: ele
- * fecha o caso do outro lado. A ordem aqui é de exibição, não de progressão.
+ * As seis descrevem a CONVERSA, e vieram do funil que o Victor já tinha no CRM
+ * antigo. `nutrindo` é mandar conteúdo sem pedir nada; `boletada` é ter mandado
+ * um bilhete para o lead — é a mais específica do processo daqui.
+ *
+ * `sem_resposta` é o fim da linha do outro lado. A ordem aqui é de progressão.
+ *
+ * ⚠️ "Assinante" e "em teste" NÃO estão nesta lista de propósito: o banco
+ * responde as duas, e etapa manual para o que o banco sabe nasce desatualizada.
  */
 export const ETAPAS = [
   'novo',
   'contatado',
-  'conversando',
-  'proposta',
-  'assinou',
+  'nutrindo',
+  'boletada',
+  'interesse',
   'sem_resposta',
 ] as const;
 
@@ -30,9 +36,9 @@ export type Etapa = (typeof ETAPAS)[number];
 export const ROTULO_DA_ETAPA: Record<Etapa, string> = {
   novo: 'Novo',
   contatado: 'Contatado',
-  conversando: 'Conversando',
-  proposta: 'Proposta',
-  assinou: 'Assinou',
+  nutrindo: 'Nutrindo',
+  boletada: 'Boletada',
+  interesse: 'Interesse',
   sem_resposta: 'Sem resposta',
 };
 

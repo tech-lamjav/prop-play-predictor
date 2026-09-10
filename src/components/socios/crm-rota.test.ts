@@ -63,3 +63,20 @@ describe('a rota nasce com o portão', () => {
     expect(APP).not.toContain(`path="${ROTA_DOS_SOCIOS}"`);
   });
 });
+
+describe('o painel usa o cabeçalho do site', () => {
+  it('a página do painel monta o header do produto', () => {
+    // O pedido foi explícito: o painel é uma tela interna do produto, e não um
+    // lugar à parte. Sem este guarda, tirar o header não quebra teste nenhum —
+    // e foi assim que ele nasceu sem header na primeira versão.
+    expect(raiz('src/pages/PainelDosSocios.tsx')).toContain('<AnalyticsNav');
+  });
+
+  it('a ficha também', () => {
+    expect(raiz('src/pages/FichaDaPessoa.tsx')).toContain('<AnalyticsNav');
+  });
+
+  it('e o painel tem a faixa de identidade do CRM', () => {
+    expect(raiz('src/components/socios/PainelCrm.tsx')).toContain('<CabecalhoDoCrm');
+  });
+});

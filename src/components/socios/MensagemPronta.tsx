@@ -72,7 +72,7 @@ export function MensagemPronta({ modelo, numero }: { modelo: string; numero: str
             Abrir no WhatsApp
           </a>
         ) : (
-          <span className="text-[13px] text-ink-3">Sem WhatsApp no cadastro</span>
+          <span className="text-[13px] text-ink-2">Sem WhatsApp no cadastro</span>
         )}
 
         {editado !== null && (

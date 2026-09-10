@@ -13,7 +13,7 @@ describe('etapaDe', () => {
   });
 
   it('devolve a etapa gravada quando existe', () => {
-    expect(etapaDe({ u1: 'proposta' }, 'u1')).toBe('proposta');
+    expect(etapaDe({ u1: 'nutrindo' }, 'u1')).toBe('nutrindo');
   });
 
   it('etapa desconhecida no banco não vira etapa fantasma na tela', () => {
@@ -34,7 +34,7 @@ describe('ROTULO_DA_ETAPA', () => {
 
 describe('filtrarPorEtapa', () => {
   const base = [cadastro({ id: 'a' }), cadastro({ id: 'b' }), cadastro({ id: 'c' })];
-  const etapas = { b: 'contatado', c: 'assinou' };
+  const etapas = { b: 'contatado', c: 'interesse' };
 
   it('sem filtro, devolve tudo', () => {
     expect(filtrarPorEtapa(base, etapas, null)).toHaveLength(3);

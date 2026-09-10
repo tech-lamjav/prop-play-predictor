@@ -1,4 +1,4 @@
-import { addDays, brtDayOf } from '@/utils/futebol-datas';
+import { brtDayOf } from '@/utils/futebol-datas';
 
 // ============================================================================
 // A lista de cadastros, agrupada por dia
@@ -29,61 +29,72 @@ export interface Cadastro {
   betinho_subscription_status: string | null;
   futebol_subscription_status: string | null;
   analytics_subscription_status: string | null;
+  // Os quatro abaixo existem para o GANCHO, que a lista agora também calcula.
+  // Não são sensíveis e a consulta já vinha larga; o que eles evitam é chamar
+  // a ficha de cada pessoa para descobrir o que atraiu ela.
+  telegram_synced: boolean | null;
+  subscription_product_type: string | null;
+  futebol_trial_started_at: string | null;
+  futebol_publication_alerts_ack_at: string | null;
 }
 
-export interface DiaDeCadastros {
+export interface DiaDe<T> {
   /** `YYYY-MM-DD` em Brasília, ou `null` para o grupo dos sem data. */
   dia: string | null;
-  cadastros: Cadastro[];
-}
-
-/**
- * Do mais recente para o mais antigo, com o identificador desempatando.
- *
- * O desempate não é preciosismo: dois cadastros com o mesmo carimbo não têm
- * ordem garantida pelo Postgres, e a lista trocaria de ordem entre dois
- * carregamentos sem nada ter mudado.
- *
- * Ordenar aqui, e não confiar no `order by` da consulta, é o que impede que
- * mexer na consulta reordene a tela sem nenhum teste acender.
- */
-function maisRecentePrimeiro(a: Cadastro, b: Cadastro): number {
-  const ca = a.created_at ?? '';
-  const cb = b.created_at ?? '';
-  if (ca !== cb) return cb.localeCompare(ca);
-  return a.id.localeCompare(b.id);
+  itens: T[];
 }
 
 /**
  * Agrupa pelo dia de Brasília, do mais recente para o mais antigo.
  *
- * Dias sem cadastro não viram grupo: a lista é o registro do que aconteceu, e
- * não um calendário com buracos desenhados.
+ * Ordenar aqui, e não confiar no `order by` da consulta, é o que impede que
+ * mexer na consulta reordene a tela sem nenhum teste acender.
  *
- * Quem não tem data cai num grupo próprio, no fim. `created_at` é anulável no
+ * Genérica no item, e recebendo o carimbo por função, porque o painel agrupa
+ * DUAS coisas diferentes: cadastros crus e leads já montados. Uma segunda
+ * implementação divergiria no ponto que mais importa — qual é "o dia" —, que é
+ * exatamente o erro que `utils/futebol-datas` existe para ter consertado.
+ *
+ * Dias sem item não viram grupo: a lista é o registro do que aconteceu, e não
+ * um calendário com buracos desenhados.
+ *
+ * Quem não tem data cai num grupo próprio, no fim. O carimbo é anulável no
  * banco, e descartar a linha esconderia uma pessoa real do painel — o pior
  * desfecho possível num CRM.
  */
-export function agruparPorDia(cadastros: Cadastro[]): DiaDeCadastros[] {
-  const porDia = new Map<string, Cadastro[]>();
-  const semData: Cadastro[] = [];
+export function agruparPorDia<T extends { id: string }>(
+  itens: T[],
+  carimbo: (item: T) => string | null,
+): DiaDe<T>[] {
+  // O desempate pelo identificador não é preciosismo: dois cadastros com o
+  // mesmo carimbo não têm ordem garantida pelo Postgres, e a lista trocaria de
+  // ordem entre dois carregamentos sem nada ter mudado.
+  const maisRecentePrimeiro = (a: T, b: T) => {
+    const ca = carimbo(a) ?? '';
+    const cb = carimbo(b) ?? '';
+    if (ca !== cb) return cb.localeCompare(ca);
+    return a.id.localeCompare(b.id);
+  };
 
-  for (const c of [...cadastros].sort(maisRecentePrimeiro)) {
-    const dia = brtDayOf(c.created_at);
+  const porDia = new Map<string, T[]>();
+  const semData: T[] = [];
+
+  for (const item of [...itens].sort(maisRecentePrimeiro)) {
+    const dia = brtDayOf(carimbo(item));
     if (!dia) {
-      semData.push(c);
+      semData.push(item);
       continue;
     }
     const grupo = porDia.get(dia);
-    if (grupo) grupo.push(c);
-    else porDia.set(dia, [c]);
+    if (grupo) grupo.push(item);
+    else porDia.set(dia, [item]);
   }
 
   const dias = [...porDia.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
-    .map(([dia, doDia]) => ({ dia, cadastros: doDia }));
+    .map(([dia, doDia]) => ({ dia, itens: doDia }));
 
-  return semData.length ? [...dias, { dia: null, cadastros: semData }] : dias;
+  return semData.length ? [...dias, { dia: null, itens: semData }] : dias;
 }
 
 /** Minúsculas e sem acento — quem procura "joao" tem de achar "João". */
@@ -131,38 +142,6 @@ export function ehAssinante(c: Cadastro): boolean {
     c.futebol_subscription_status === 'premium' ||
     c.analytics_subscription_status === 'premium'
   );
-}
-
-export interface Contadores {
-  hoje: number;
-  semana: number;
-  assinantes: number;
-}
-
-/**
- * Os números do topo, contados sobre a MESMA coleção que a lista desenha.
- *
- * Se eles contassem a base inteira enquanto a lista mostra o resultado da
- * busca, os dois números na mesma tela discordariam sem nenhuma explicação.
- *
- * A semana são sete dias contados para trás a partir de hoje, hoje incluído —
- * do contrário ela seria sempre menor que o contador ao lado.
- */
-export function contadores(cadastros: Cadastro[], hoje: string): Contadores {
-  const inicioDaSemana = addDays(hoje, -6);
-
-  let deHoje = 0;
-  let daSemana = 0;
-  let assinantes = 0;
-
-  for (const c of cadastros) {
-    const dia = brtDayOf(c.created_at);
-    if (dia === hoje) deHoje += 1;
-    if (dia && dia >= inicioDaSemana && dia <= hoje) daSemana += 1;
-    if (ehAssinante(c)) assinantes += 1;
-  }
-
-  return { hoje: deHoje, semana: daSemana, assinantes };
 }
 
 /** `2026-09-10` → `10/09/2026`. */

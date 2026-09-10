@@ -5,23 +5,22 @@ import { MemoryRouter } from 'react-router-dom';
 import { Ficha } from './Ficha';
 import type { Pessoa, ResumoDeApostas } from './crm-ficha';
 import type { Etapa } from './crm-vocabulario';
+import { cadastroDeTeste } from './crm-cadastro-de-teste';
 
 const pessoa = (over: Partial<Pessoa> = {}): Pessoa => ({
-  id: 'u1',
-  name: 'Maria Silva',
-  email: 'maria@exemplo.com',
-  whatsapp_number: '5511998877665',
+  ...cadastroDeTeste({
+    name: 'Maria Silva',
+    email: 'maria@exemplo.com',
+    whatsapp_number: '5511998877665',
+    created_at: '2026-09-01T12:00:00Z',
+    telegram_synced: true,
+    subscription_product_type: 'essencial',
+    betinho_subscription_status: 'premium',
+    futebol_subscription_status: 'premium',
+  }),
   telegram_username: 'maria',
-  telegram_synced: true,
-  created_at: '2026-09-01T12:00:00Z',
-  subscription_product_type: 'essencial',
-  betinho_subscription_status: 'premium',
-  futebol_subscription_status: 'premium',
-  analytics_subscription_status: 'free',
   betinho_subscription_period_end: '2026-10-01T00:00:00Z',
   analytics_subscription_period_end: null,
-  futebol_trial_started_at: null,
-  futebol_publication_alerts_ack_at: null,
   ...over,
 });
 
@@ -175,8 +174,8 @@ describe('Ficha · etapa', () => {
     montar(pessoa(), { total: 0, ultima: null }, extras);
 
   it('mostra em que etapa o lead está', () => {
-    montarComEtapa({ etapa: 'proposta' });
-    expect(screen.getByRole('combobox', { name: /etapa/i })).toHaveValue('proposta');
+    montarComEtapa({ etapa: 'nutrindo' });
+    expect(screen.getByRole('combobox', { name: /etapa/i })).toHaveValue('nutrindo');
   });
 
   it('lead nunca tocado aparece como novo', () => {

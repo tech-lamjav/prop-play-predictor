@@ -21,9 +21,13 @@ Todo cadastro é um lead; a palavra muda porque o assunto muda.
 _Avoid_: Prospect, contato, usuário
 
 **Etapa**:
-Onde o lead está no funil de abordagem. São seis, nesta ordem: novo, contatado,
-conversando, proposta, assinou, sem resposta. "Sem resposta" é o fim da linha,
-não um degrau anterior a "assinou".
+Onde o lead está na CONVERSA. São seis, nesta ordem: novo, contatado,
+nutrindo, boletada, interesse, sem resposta. `Nutrindo` é mandar conteúdo sem
+pedir nada; `boletada` é ter mandado um bilhete para o lead. `Sem resposta` é o
+fim da linha do outro lado, e não um degrau anterior ao fechamento.
+
+Etapa é sempre MANUAL: alguém move. O que o banco responde sozinho não é etapa,
+é **posição calculada**.
 _Avoid_: Status, estágio, fase, coluna
 
 **Gancho**:
@@ -36,6 +40,32 @@ _Avoid_: Interesse, motivo, origem, fonte
 De onde o lead veio — campanha, anúncio, indicação. **Não existe no banco**, só
 no PostHog. Não use a palavra como se a tela soubesse: ela não sabe.
 _Avoid_: Usar como sinônimo de gancho
+
+**Posição**:
+Onde o lead aparece no funil da tela. São oito: as seis etapas mais duas que o
+banco responde sozinho — **em teste** (o teste gratuito ainda de pé) e
+**assinante** (qualquer um dos três acessos em premium). A posição calculada
+VENCE a etapa manual: quem já assina não está sentado em interesse, e mostrar
+nos dois lugares faria o funil somar duas vezes a mesma pessoa.
+_Avoid_: Coluna, estágio, degrau
+
+**Toque**:
+O último sinal de vida de uma conversa: a mudança de etapa mais recente ou a
+anotação mais recente, o que for depois. Quem nunca recebeu nada não tem toque,
+e aí o relógio conta desde o cadastro.
+_Avoid_: Interação, contato, atividade
+
+**Parado**:
+Dias desde o último toque. A partir de sete, uma conversa já começada entra na
+fila de retomada. Para quem nunca foi tocado, conta desde o cadastro — o
+relógio do lead começa quando ele chega, não no primeiro contato que não houve.
+_Avoid_: Inativo, frio, esquecido
+
+**Fila de trabalho**:
+As duas listas do que fazer agora: conversas esfriando e nunca abordados. Elas
+não se cruzam de propósito — a segunda é sempre muito maior, e numa lista só a
+primeira sumiria embaixo dela.
+_Avoid_: Tarefas, pendências, to-do
 
 **Anotação**:
 Um registro livre na linha do tempo de uma pessoa. Tem três tipos: anotação,

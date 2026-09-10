@@ -1,29 +1,27 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { buscar, type Cadastro } from './crm-lista';
 import {
-  agruparPorDia,
-  buscar,
-  contadores,
-  ehAssinante,
-  formatarDia,
-  type Cadastro,
-} from './crm-lista';
-import { ETAPAS, ROTA_DOS_SOCIOS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
-import type { EtapasGravadas } from './crm-funil';
-import { etapaDe, filtrarPorEtapa } from './crm-funil';
+  contarPorPosicao,
+  filaDeTrabalho,
+  metricasDeNegocio,
+  montarLeads,
+  type Posicao,
+} from './crm-painel';
 import type { EstadoDasEtapas } from '@/hooks/use-etapas';
+import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
+import { CabecalhoDoCrm } from './CabecalhoDoCrm';
+import { FaixaDoFunil } from './FaixaDoFunil';
+import { FilaDeTrabalhoLista } from './FilaDeTrabalhoLista';
+import { ListaPorDia } from './ListaPorDia';
+import { MetricasDoTopo } from './MetricasDoTopo';
+import { TabelaDeLeads } from './TabelaDeLeads';
 
 /**
  * O que a tela sabe no momento em que desenha.
  *
- * Três estados num tipo só, e não campos soltos. Com `cadastros` e `carregando`
- * separados existiria a combinação "sem dados e sem carregar", que não quer
- * dizer nada e cairia no galho da base vazia — a tela mentiria "nenhum
- * cadastro" justamente quando a consulta falhasse.
- *
  * `totalNaBase` vem junto porque a consulta tem teto. Sem ele, uma base que
- * passasse do teto seria desenhada inteira, com os contadores contando só a
- * fatia — dois números errados sem nada denunciando.
+ * passasse do teto seria desenhada inteira, com os números contando só a
+ * fatia — errados sem nada denunciando.
  */
 export type EstadoDoPainel =
   | { tipo: 'carregando' }
@@ -33,60 +31,25 @@ export type EstadoDoPainel =
 /** Um array novo a cada render invalidaria os useMemo abaixo sem nada ter mudado. */
 const VAZIO: Cadastro[] = [];
 
-/** Mesmo motivo: um mapa novo a cada render invalidaria os useMemo à toa. */
-const SEM_ETAPAS: EtapasGravadas = {};
+type Aba = 'fila' | 'todos' | 'dia';
 
-function Contador({ rotulo, valor }: { rotulo: string; valor: number }) {
-  return (
-    <div className="flex-1">
-      <p className="font-display text-3xl font-black tabular-nums text-ink" aria-label={rotulo}>
-        {valor}
-      </p>
-      <p className="mt-0.5 text-[12px] text-ink-2">{rotulo.toLowerCase()}</p>
-    </div>
-  );
-}
-
-function LinhaDoCadastro({ cadastro, etapa }: { cadastro: Cadastro; etapa: Etapa | null }) {
-  const contato = [cadastro.name ? cadastro.email : null, cadastro.whatsapp_number]
-    .filter(Boolean)
-    .join(' · ');
-
-  return (
-    <li className="border-t border-line-2 first:border-t-0">
-      <Link
-        to={`${ROTA_DOS_SOCIOS}/${cadastro.id}`}
-        className="flex items-center gap-3 px-4 py-3 hover:bg-canvas"
-      >
-        <div className="min-w-0 flex-1">
-          {/* Sem nome, o e-mail sobe para a linha principal em vez de deixar uma
-              faixa em branco onde deveria estar a pessoa. */}
-          <p className="truncate text-[15px] font-bold text-ink">
-            {cadastro.name ?? cadastro.email}
-          </p>
-          {contato ? <p className="truncate text-[13px] text-ink-2">{contato}</p> : null}
-        </div>
-        {etapa ? (
-          <span className="shrink-0 rounded-full border border-line-2 px-2.5 py-1 text-[11px] font-bold text-ink-2">
-            {ROTULO_DA_ETAPA[etapa]}
-          </span>
-        ) : null}
-        {ehAssinante(cadastro) ? (
-          <span className="shrink-0 rounded-full bg-forest px-2.5 py-1 text-[11px] font-bold text-white">
-            Assinante
-          </span>
-        ) : null}
-      </Link>
-    </li>
-  );
-}
+const ABAS: { id: Aba; rotulo: string }[] = [
+  { id: 'fila', rotulo: 'Fila de trabalho' },
+  { id: 'todos', rotulo: 'Todos' },
+  { id: 'dia', rotulo: 'Por dia' },
+];
 
 /**
- * O painel dos sócios: os cadastros agrupados pelo dia em que nasceram.
+ * O painel dos sócios.
  *
- * A busca mora aqui e não no container porque ela não toca o banco — a base
- * inteira já veio, e filtrar seiscentas linhas em memória é instantâneo. Uma
- * busca que fosse ao servidor a cada tecla seria mais código e mais lenta.
+ * A primeira versão era uma lista por dia, e o diagnóstico do Victor estava
+ * certo: um registro cronológico responde "o que aconteceu", e um CRM precisa
+ * responder "com quem eu falo agora". A ordem da tela é essa resposta —
+ * números de acompanhamento, funil clicável, e só então a lista, com a FILA na
+ * frente e a visão por dia em último.
+ *
+ * O funil e a busca filtram as três abas ao mesmo tempo: são recortes da mesma
+ * base, e não três telas diferentes.
  *
  * `hoje` chega por prop em vez de ser lido do relógio aqui dentro: assim o
  * teste manda o dia e a tela não muda de comportamento à meia-noite.
@@ -94,121 +57,169 @@ function LinhaDoCadastro({ cadastro, etapa }: { cadastro: Cadastro; etapa: Etapa
 export function PainelCrm({
   estado,
   etapas,
+  movimento,
   hoje,
 }: {
   estado: EstadoDoPainel;
   etapas: EstadoDasEtapas;
+  movimento: EstadoDoMovimento;
   hoje: string;
 }) {
   const [busca, setBusca] = useState('');
-  const [etapa, setEtapa] = useState<Etapa | null>(null);
+  const [posicao, setPosicao] = useState<Posicao | null>(null);
+  const [aba, setAba] = useState<Aba>('fila');
 
   const cadastros = estado.tipo === 'pronto' ? estado.cadastros : VAZIO;
-  const gravadas = etapas.tipo === 'pronto' ? etapas.etapas : SEM_ETAPAS;
-  // Sem as etapas na mão, o crachá some em vez de afirmar "Novo" para todo
-  // mundo — e o filtro sai do ar em vez de devolver a base inteira em qualquer
-  // etapa que o sócio escolher.
-  const temEtapas = etapas.tipo === 'pronto';
-  const filtrados = useMemo(
-    () => filtrarPorEtapa(buscar(cadastros, busca), gravadas, temEtapas ? etapa : null),
-    [cadastros, busca, gravadas, temEtapas, etapa],
+  // Nulo enquanto as etapas não chegam. Um mapa vazio faria todo mundo cair em
+  // "Novo", que é uma afirmação e não um vazio — e o funil inteiro mentiria.
+  const gravadas = etapas.tipo === 'pronto' ? etapas.etapas : null;
+
+  // Sem os toques não dá para dizer há quanto tempo alguém está parado, e um
+  // mapa vazio faria a fila inchar com gente que já foi abordada. Por isso o
+  // painel espera as duas consultas, e não desenha com meia informação.
+  const movido = movimento.tipo === 'pronto' ? movimento.movimento : null;
+
+  /**
+   * A base inteira, sem filtro nenhum.
+   *
+   * Os números do topo e o funil saem DAQUI, e não do recorte: eles respondem
+   * "como está a operação", e essa resposta não pode mudar porque alguém
+   * digitou um nome na busca. Na primeira versão saíam do recorte, e procurar
+   * "maria" fazia a conversão ser recalculada sobre uma pessoa só.
+   */
+  const todos = useMemo(
+    () =>
+      gravadas && movido
+        ? montarLeads(cadastros, gravadas, movido.toques, movido.apostas, hoje)
+        : null,
+    [cadastros, gravadas, movido, hoje],
   );
-  const dias = useMemo(() => agruparPorDia(filtrados), [filtrados]);
-  const numeros = useMemo(() => contadores(filtrados, hoje), [filtrados, hoje]);
+
+  const faltouAlgo = etapas.tipo === 'erro' || movimento.tipo === 'erro';
+
+  const contagem = useMemo(() => (todos ? contarPorPosicao(todos) : null), [todos]);
+  const metricas = useMemo(() => (todos ? metricasDeNegocio(todos, hoje) : null), [todos, hoje]);
+
+  // A busca roda sobre os cadastros porque é lá que ela já existe e está
+  // testada; o conjunto de ids traz o resultado de volta para o mundo dos leads
+  // sem uma segunda implementação de busca.
+  const achados = useMemo(
+    () => new Set(buscar(cadastros, busca).map((c) => c.id)),
+    [cadastros, busca],
+  );
+
+  const noRecorte = useMemo(
+    () =>
+      todos?.filter(
+        (l) => achados.has(l.id) && (posicao === null || l.posicao === posicao),
+      ) ?? null,
+    [todos, achados, posicao],
+  );
+
+  const fila = useMemo(() => (noRecorte ? filaDeTrabalho(noRecorte) : null), [noRecorte]);
 
   const baseVazia = estado.tipo === 'pronto' && estado.cadastros.length === 0;
   const truncada = estado.tipo === 'pronto' && estado.totalNaBase > estado.cadastros.length;
 
   return (
-    <div className="min-h-screen bg-canvas px-4 py-10">
-      <div className="mx-auto max-w-3xl">
-        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-forest">
-          Uso interno
-        </p>
-        <h1 className="mt-2 font-display text-4xl font-black text-ink">CRM</h1>
+    <div className="min-h-screen bg-canvas">
+      <CabecalhoDoCrm estado={estado} />
 
+      <div className="mx-auto max-w-6xl px-4 py-6">
         {estado.tipo === 'carregando' && (
-          <p className="mt-8 text-[15px] text-ink-2">Carregando os cadastros…</p>
+          <p className="text-[15px] text-ink-2">Carregando os cadastros…</p>
         )}
-
         {estado.tipo === 'erro' && (
-          <p className="mt-8 text-[15px] text-ink-2">Não deu para carregar os cadastros agora.</p>
+          <p className="text-[15px] text-ink-2">Não deu para carregar os cadastros agora.</p>
         )}
-
-        {baseVazia && <p className="mt-8 text-[15px] text-ink-2">Nenhum cadastro na base.</p>}
+        {baseVazia && <p className="text-[15px] text-ink-2">Nenhum cadastro na base.</p>}
 
         {estado.tipo === 'pronto' && !baseVazia && (
           <>
-            {/* O aviso vem ANTES dos números de propósito: com a base truncada
-                eles contam a fatia, e um número errado sem aviso é pior que
-                número nenhum. */}
+            {/* O aviso vem ANTES dos números: com a base truncada eles contam a
+                fatia, e um número errado sem aviso é pior que número nenhum. */}
             {truncada && (
-              <p className="mt-8 rounded-rebrand-sm border border-line-2 bg-white px-4 py-3 text-[13px] text-ink-2">
+              <p className="mb-4 rounded-rebrand-sm border border-line-2 bg-white px-4 py-3 text-[13px] text-ink-2">
                 A base passou do teto da consulta. Estes são os {estado.cadastros.length} cadastros
                 mais recentes de {estado.totalNaBase}, e os números abaixo contam só eles.
               </p>
             )}
 
-            <section
-              role="region"
-              aria-label="Resumo da base"
-              className="mt-6 flex gap-4 rounded-rebrand-md border border-line-2 bg-white p-5"
-            >
-              <Contador rotulo="Cadastros hoje" valor={numeros.hoje} />
-              <Contador rotulo="Cadastros na semana" valor={numeros.semana} />
-              <Contador rotulo="Assinantes" valor={numeros.assinantes} />
-            </section>
+            {metricas && <MetricasDoTopo metricas={metricas} />}
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-4">
+              {contagem ? (
+                <FaixaDoFunil contagem={contagem} selecionada={posicao} aoSelecionar={setPosicao} />
+              ) : (
+                <p className="rounded-rebrand-md border border-line-2 bg-white px-4 py-6 text-[14px] text-ink-2">
+                  {faltouAlgo
+                    ? 'Não deu para montar o funil: o histórico de etapas não carregou.'
+                    : 'Carregando o funil…'}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <input
                 type="search"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Buscar por nome, e-mail ou telefone"
                 aria-label="Buscar cadastro"
-                className="h-11 flex-1 rounded-rebrand-sm border border-line-2 bg-white px-4 text-[15px] text-ink placeholder:text-ink-3"
+                className="h-11 min-w-[240px] flex-1 rounded-rebrand-sm border border-line-2 bg-white px-4 text-[15px] text-ink placeholder:text-ink-dim"
               />
-              <select
-                value={etapa ?? ''}
-                disabled={!temEtapas}
-                onChange={(e) => setEtapa((e.target.value || null) as Etapa | null)}
-                aria-label="Filtrar por etapa"
-                className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-3 text-[15px] text-ink"
-              >
-                <option value="">Todas as etapas</option>
-                {ETAPAS.map((e) => (
-                  <option key={e} value={e}>
-                    {ROTULO_DA_ETAPA[e]}
-                  </option>
-                ))}
-              </select>
+              {posicao && (
+                <button
+                  type="button"
+                  onClick={() => setPosicao(null)}
+                  className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-4 text-[14px] font-bold text-ink hover:border-forest hover:text-forest"
+                >
+                  Limpar filtro do funil
+                </button>
+              )}
             </div>
 
-            <section role="region" aria-label="Cadastros por dia" className="mt-6">
-              {dias.length === 0 ? (
-                <p className="text-[15px] text-ink-2">Nenhum cadastro encontrado com esses filtros.</p>
-              ) : (
-                dias.map((grupo) => (
-                  <div key={grupo.dia ?? 'sem-data'} className="mb-6">
-                    <h2 className="mb-2 font-mono text-[12px] font-bold uppercase tracking-[0.12em] text-ink-2">
-                      {grupo.dia ? formatarDia(grupo.dia) : 'Sem data de cadastro'}
-                      <span className="ml-2 font-sans normal-case tracking-normal text-ink-3">
-                        {grupo.cadastros.length}
-                      </span>
-                    </h2>
-                    <ul className="rounded-rebrand-md border border-line-2 bg-white">
-                      {grupo.cadastros.map((c) => (
-                        <LinhaDoCadastro
-                          key={c.id}
-                          cadastro={c}
-                          etapa={temEtapas ? etapaDe(gravadas, c.id) : null}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                ))
+            <div className="mt-5 rounded-rebrand-md border border-line-2 bg-white">
+              <div
+                role="tablist"
+                aria-label="Como ver a base"
+                className="flex border-b border-line-2"
+              >
+                {ABAS.map(({ id, rotulo }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={aba === id}
+                    onClick={() => setAba(id)}
+                    className={`px-4 py-3 text-[14px] font-bold transition ${
+                      aba === id
+                        ? 'border-b-2 border-forest text-ink'
+                        : 'text-ink-2 hover:text-ink-2'
+                    }`}
+                  >
+                    {rotulo}
+                  </button>
+                ))}
+              </div>
+
+              {aba === 'fila' &&
+                (fila ? (
+                  <FilaDeTrabalhoLista fila={fila} />
+                ) : (
+                  <p className="px-4 py-6 text-[14px] text-ink-2">
+                    {faltouAlgo
+                      ? 'Sem o histórico de etapas não dá para montar a fila sem inventar.'
+                      : 'Carregando a fila…'}
+                  </p>
+                ))}
+
+              {aba === 'todos' && (
+                <TabelaDeLeads leads={noRecorte ?? []} vazio="Nenhum cadastro com esses filtros." />
               )}
-            </section>
+
+              {aba === 'dia' && <ListaPorDia leads={noRecorte ?? []} />}
+            </div>
           </>
         )}
       </div>

@@ -1,22 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { acessos, ganchoDe, nomeDoPlano, primeiroNome, type Pessoa } from './crm-ficha';
+import { cadastroDeTeste } from './crm-cadastro-de-teste';
 
+/**
+ * A ficha é o cadastro da lista mais três campos. A fábrica reflete isso em vez
+ * de repetir a dúzia de campos comuns — cópias de fixture divergem calado.
+ */
 const pessoa = (over: Partial<Pessoa> = {}): Pessoa => ({
-  id: 'u1',
-  name: 'Maria Silva',
-  email: 'maria@exemplo.com',
-  whatsapp_number: null,
+  ...cadastroDeTeste({
+    name: 'Maria Silva',
+    email: 'maria@exemplo.com',
+    created_at: '2026-09-01T12:00:00Z',
+  }),
   telegram_username: null,
-  telegram_synced: false,
-  created_at: '2026-09-01T12:00:00Z',
-  subscription_product_type: null,
-  betinho_subscription_status: 'free',
-  futebol_subscription_status: 'free',
-  analytics_subscription_status: 'free',
   betinho_subscription_period_end: null,
   analytics_subscription_period_end: null,
-  futebol_trial_started_at: null,
-  futebol_publication_alerts_ack_at: null,
   ...over,
 });
 

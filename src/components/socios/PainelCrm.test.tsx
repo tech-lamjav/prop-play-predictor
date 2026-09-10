@@ -5,8 +5,20 @@ import { MemoryRouter } from 'react-router-dom';
 import { PainelCrm } from './PainelCrm';
 import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 import type { Cadastro } from './crm-lista';
+import type { Apostas, Toques } from './crm-painel';
+import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
+import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 
-const HOJE = '2026-09-10';
+// ============================================================================
+// O painel responde "com quem eu falo agora"
+// ============================================================================
+// A primeira versão desta tela era uma lista por dia, e o diagnóstico foi que
+// ela parecia um registro do que aconteceu, e não um CRM. Estes testes guardam
+// a diferença: os números no topo, o funil clicável, e a FILA na frente da
+// lista.
+// ============================================================================
+
+const HOJE = '2026-09-11';
 
 const base = [
   cadastro({ id: 'a', name: 'Maria Silva', email: 'maria@exemplo.com' }),
@@ -15,218 +27,254 @@ const base = [
     name: 'João Souza',
     email: 'joao@exemplo.com',
     created_at: '2026-09-08T12:00:00Z',
-    futebol_subscription_status: 'premium',
   }),
 ];
 
-const pronto = (
-  cadastros: Cadastro[] = base,
-  totalNaBase = cadastros.length,
-  etapas: Record<string, string> = {},
-) =>
-  render(
+function montar({
+  cadastros = base,
+  etapas = {} as Record<string, string>,
+  toques = {} as Toques,
+  apostas = {} as Apostas,
+  totalNaBase,
+  estadoDasEtapas,
+  estadoDoMovimento,
+}: {
+  cadastros?: Cadastro[];
+  etapas?: Record<string, string>;
+  toques?: Toques;
+  apostas?: Apostas;
+  totalNaBase?: number;
+  estadoDasEtapas?: EstadoDasEtapas;
+  estadoDoMovimento?: EstadoDoMovimento;
+} = {}) {
+  return render(
     <MemoryRouter>
       <PainelCrm
-        estado={{ tipo: 'pronto', cadastros, totalNaBase }}
-        etapas={{ tipo: 'pronto', etapas }}
+        estado={{ tipo: 'pronto', cadastros, totalNaBase: totalNaBase ?? cadastros.length }}
+        etapas={estadoDasEtapas ?? { tipo: 'pronto', etapas }}
+        movimento={estadoDoMovimento ?? { tipo: 'pronto', movimento: { toques, apostas } }}
         hoje={HOJE}
       />
     </MemoryRouter>,
   );
+}
 
-/**
- * O valor exato de um contador.
- *
- * `toHaveTextContent('1')` casa por SUBSTRING, então ele fica verde com 1, 10 e
- * 21. Uma mutação que multiplicava os contadores por dez passou por aqui sem
- * acender nada — daí a âncora.
- */
-const contador = (rotulo: string) =>
-  within(screen.getByRole('region', { name: 'Resumo da base' })).getByLabelText(rotulo);
+const funil = () => screen.getByRole('region', { name: 'Funil' });
+const degrau = (nome: RegExp) => within(funil()).getByRole('button', { name: nome });
 
-describe('PainelCrm', () => {
-  it('agrupa os cadastros por dia, do mais recente para o mais antigo', () => {
-    pronto();
-    const dias = screen.getAllByRole('heading', { level: 2 });
-    expect(dias[0]).toHaveTextContent(/10\/09/);
-    expect(dias[1]).toHaveTextContent(/08\/09/);
+describe('PainelCrm · os números do topo', () => {
+  it('mostra cadastros do mês, conversão e abordados', () => {
+    montar({ etapas: { b: 'contatado' }, cadastros: [...base, cadastro({ id: 'c', futebol_subscription_status: 'premium' })] });
+    const topo = screen.getByRole('region', { name: 'Números da operação' });
+    expect(within(topo).getByLabelText('Cadastros em 30 dias')).toHaveTextContent(/^3$/);
+    expect(within(topo).getByLabelText('Conversão')).toHaveTextContent(/^33%$/);
+    expect(within(topo).getByLabelText('Abordados')).toHaveTextContent(/^33%$/);
   });
 
-  it('mostra os contadores do topo', () => {
-    pronto();
-    expect(contador('Cadastros hoje')).toHaveTextContent(/^1$/);
-    expect(contador('Cadastros na semana')).toHaveTextContent(/^2$/);
-    expect(contador('Assinantes')).toHaveTextContent(/^1$/);
-  });
-
-  it('marca quem assina e não marca quem não assina', () => {
-    pronto();
-    const lista = screen.getByRole('region', { name: 'Cadastros por dia' });
-    expect(within(lista).getAllByText(/assinante/i)).toHaveLength(1);
-  });
-
-  it('a busca filtra a lista e os contadores juntos', async () => {
-    // Os dois vivem na mesma tela. Filtrar um e não o outro deixaria dois
-    // números discordando sem explicação nenhuma.
-    pronto();
-    await userEvent.type(screen.getByRole('searchbox'), 'maria');
-    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
-    expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
-    expect(contador('Assinantes')).toHaveTextContent(/^0$/);
-    expect(contador('Cadastros hoje')).toHaveTextContent(/^1$/);
-  });
-
-  it('busca sem resultado diz isso em vez de mostrar uma lista vazia', async () => {
-    pronto();
-    await userEvent.type(screen.getByRole('searchbox'), 'ninguem');
-    expect(screen.getByText(/nenhum cadastro encontrado/i)).toBeInTheDocument();
-  });
-
-  it('cadastro sem nome aparece pelo e-mail, e não como linha em branco', () => {
-    pronto([cadastro({ id: 'c', name: null, email: 'anonimo@exemplo.com' })]);
-    expect(screen.getByText('anonimo@exemplo.com')).toBeInTheDocument();
-  });
-
-  it('base vazia é dita com palavra, sem contadores zerados em cima', () => {
-    // Três zeros grandes acima de "nenhum cadastro" são o mesmo zero solto que
-    // a tela evita em todo lugar: parecem um dado, e não a ausência dele.
-    pronto([]);
-    expect(screen.getByText(/nenhum cadastro na base/i)).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Resumo da base' })).not.toBeInTheDocument();
-  });
-
-  it('quando a base passa do teto da consulta, a tela avisa', () => {
-    // Sem o aviso, os contadores contariam só a fatia trazida e ninguém teria
-    // como desconfiar: a lista continua parecendo completa.
-    pronto(base, 5000);
-    expect(screen.getByText(/passou do teto/i)).toBeInTheDocument();
-    expect(screen.getByText(/de 5000/)).toBeInTheDocument();
-  });
-
-  it('sem truncamento, nenhum aviso aparece', () => {
-    pronto();
-    expect(screen.queryByText(/passou do teto/i)).not.toBeInTheDocument();
-  });
-
-  it('enquanto carrega, diz que está carregando e não desenha zero', () => {
-    // Zero é resposta possível e assustadora: uma tela que pisca "0 cadastros"
-    // antes de carregar parece base vazia. E um galho que não desenha NADA
-    // passaria por um teste que só nega o zero — daí as duas asserções.
-    const { container } = render(
-      <MemoryRouter>
-        <PainelCrm estado={{ tipo: 'carregando' }} etapas={{ tipo: 'carregando' }} hoje={HOJE} />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText(/carregando os cadastros/i)).toBeInTheDocument();
-    expect(container.textContent).not.toContain('0');
-  });
-
-  it('quando a consulta falha, diz que falhou em vez de fingir base vazia', () => {
-    render(
-      <MemoryRouter>
-        <PainelCrm estado={{ tipo: 'erro' }} etapas={{ tipo: 'erro' }} hoje={HOJE} />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText(/não deu para carregar/i)).toBeInTheDocument();
-    expect(screen.queryByText(/nenhum cadastro na base/i)).not.toBeInTheDocument();
-  });
-
-  it('cada nome leva à ficha daquela pessoa', () => {
-    // A rota é própria, e não um painel lateral: assim o endereço vira
-    // compartilhável entre os sócios.
-    pronto();
-    expect(screen.getByRole('link', { name: /Maria Silva/ })).toHaveAttribute('href', '/socios/a');
-  });
-
-  it('não promete saber de onde a pessoa veio', () => {
-    // Não existe campo de origem, campanha ou UTM em lugar nenhum do banco —
-    // isso só existe no PostHog. Uma coluna com esse rótulo estaria vazia para
-    // sempre, e uma coluna vazia é lida como "essa pessoa não veio de lugar
-    // nenhum", que é diferente de "a gente não sabe".
-    //
-    // A asserção é sobre o HTML, e não sobre o texto visível: rótulo de campo
-    // mora em `placeholder` e `aria-label`, e um teste que só lê o texto passa
-    // por cima justamente de onde essa palavra apareceria.
-    const { container } = pronto();
-    expect(container.innerHTML).not.toMatch(/origem|veio de|campanha|utm|fonte/i);
+  it('base sem assinante não vira NaN', () => {
+    // Um "NaN%" na primeira dobra faz o sócio desconfiar de todos os outros
+    // números da tela.
+    montar();
+    const topo = screen.getByRole('region', { name: 'Números da operação' });
+    expect(within(topo).getByLabelText('Conversão')).toHaveTextContent(/^0%$/);
   });
 });
 
-describe('PainelCrm · funil', () => {
-  it('cada linha mostra em que etapa o lead está', () => {
-    pronto(base, base.length, { a: 'proposta' });
-    const lista = screen.getByRole('region', { name: 'Cadastros por dia' });
-    expect(within(lista).getByText('Proposta')).toBeInTheDocument();
-    // Quem nunca foi tocado não tem linha na tabela, e aparece como Novo.
-    expect(within(lista).getByText('Novo')).toBeInTheDocument();
+describe('PainelCrm · o funil', () => {
+  it('desenha as oito posições, inclusive as vazias', () => {
+    // Degrau com zero precisa aparecer: a faixa mostra a FORMA do funil, e um
+    // degrau que some esconde justamente onde está o gargalo.
+    montar();
+    expect(within(funil()).getAllByRole('button')).toHaveLength(8);
   });
 
-  it('filtrar por etapa encolhe a lista e os contadores juntos', async () => {
-    pronto(base, base.length, { a: 'proposta' });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'proposta');
-    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
-    expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
-    expect(contador('Assinantes')).toHaveTextContent(/^0$/);
+  it('marca as duas posições que o banco responde', () => {
+    montar();
+    expect(within(funil()).getAllByText(/o banco responde/i)).toHaveLength(2);
   });
 
-  it('o filtro de Novo acha quem nunca foi tocado', async () => {
-    // É a etapa onde está todo mundo que ainda falta abordar, e ninguém ali
-    // tem linha gravada. Um filtro que só olhasse o que está no banco
-    // devolveria zero justamente na lista mais importante.
-    pronto(base, base.length, { a: 'proposta' });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'novo');
+  it('quem assina aparece como assinante, e não na etapa manual', () => {
+    // O estado calculado vence a etapa: mostrar a pessoa nos dois lugares faria
+    // o funil somar duas vezes o mesmo lead.
+    montar({
+      cadastros: [cadastro({ id: 'a', futebol_subscription_status: 'premium' })],
+      etapas: { a: 'interesse' },
+    });
+    expect(degrau(/Assinante/)).toHaveTextContent('1');
+    expect(degrau(/Interesse/)).toHaveTextContent('0');
+  });
+
+  it('clicar num degrau filtra a lista', async () => {
+    montar({ etapas: { b: 'contatado' } });
+    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
+    await userEvent.click(degrau(/Contatado/));
     expect(screen.getByText('João Souza')).toBeInTheDocument();
     expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument();
   });
 
-  it('etapa e busca filtram juntas', async () => {
-    pronto(base, base.length, { a: 'proposta', b: 'proposta' });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'proposta');
+  it('clicar de novo no mesmo degrau limpa o filtro', async () => {
+    // Sem isso, sair do filtro exige achar um botão em outro canto da tela.
+    montar({ etapas: { b: 'contatado' } });
+    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
+    await userEvent.click(degrau(/Contatado/));
+    await userEvent.click(degrau(/Contatado/));
+    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
+  });
+
+  it('enquanto as etapas não chegam, o funil não afirma nada', () => {
+    montar({ estadoDasEtapas: { tipo: 'carregando' } });
+    expect(screen.queryByRole('region', { name: 'Funil' })).not.toBeInTheDocument();
+    expect(screen.getByText(/carregando o funil/i)).toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · as abas', () => {
+  it('abre na fila de trabalho, e não na lista', () => {
+    // A fila é a resposta para "com quem eu falo agora". Abrir na lista faria a
+    // tela voltar a ser um registro do que aconteceu.
+    montar();
+    expect(screen.getByRole('tab', { name: 'Fila de trabalho' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('region', { name: 'Nunca abordados' })).toBeInTheDocument();
+  });
+
+  it('separa conversas esfriando de quem nunca foi abordado', () => {
+    // Numa lista só, a fila de retomada sumiria embaixo da de primeiro
+    // contato, que é sempre muito maior.
+    montar({
+      etapas: { b: 'contatado' },
+      toques: { b: '2026-08-01T12:00:00Z' },
+    });
+    const esfriando = screen.getByRole('region', { name: 'Conversas esfriando' });
+    expect(within(esfriando).getByText('João Souza')).toBeInTheDocument();
+    const nunca = screen.getByRole('region', { name: 'Nunca abordados' });
+    expect(within(nunca).getByText('Maria Silva')).toBeInTheDocument();
+  });
+
+  it('a aba Todos mostra a tabela com há quantos dias o lead está parado', async () => {
+    montar({ etapas: { b: 'contatado' }, toques: { b: '2026-09-04T12:00:00Z' } });
+    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText('7d')).toBeInTheDocument();
+  });
+
+  it('a aba Por dia agrupa pelo dia de Brasília', async () => {
+    montar();
+    await userEvent.click(screen.getByRole('tab', { name: 'Por dia' }));
+    expect(screen.getByText(/10\/09\/2026/)).toBeInTheDocument();
+    expect(screen.getByText(/08\/09\/2026/)).toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · a base', () => {
+  it('a busca filtra as três abas', async () => {
+    montar();
     await userEvent.type(screen.getByRole('searchbox'), 'maria');
     expect(screen.getByText('Maria Silva')).toBeInTheDocument();
     expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
   });
 
-  it('sem filtro, nenhum lead some', async () => {
-    pronto(base, base.length, { a: 'proposta' });
-    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
-    expect(screen.getByText('João Souza')).toBeInTheDocument();
+  it('o gancho aparece na tabela, porque é o que decide a abordagem', async () => {
+    // É a razão de o CRM existir: um assinante do Essencial cujo olho brilhou
+    // no Betinho precisa ser abordado por Betinho.
+    montar({ apostas: { a: 12 } });
+    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
+    expect(screen.getByText('Betinho')).toBeInTheDocument();
+  });
+
+  it('cada nome leva à ficha daquela pessoa', () => {
+    montar();
+    expect(screen.getByRole('link', { name: 'Maria Silva' })).toHaveAttribute(
+      'href',
+      '/socios/a',
+    );
+  });
+
+  it('base vazia é dita com palavra, sem números zerados em cima', () => {
+    montar({ cadastros: [] });
+    expect(screen.getByText(/nenhum cadastro na base/i)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Números da operação' })).not.toBeInTheDocument();
+  });
+
+  it('quando a base passa do teto da consulta, a tela avisa', () => {
+    montar({ totalNaBase: 5000 });
+    expect(screen.getByText(/passou do teto/i)).toBeInTheDocument();
+  });
+
+  it('não promete saber de onde a pessoa veio', () => {
+    // Não existe campo de origem em lugar nenhum do banco. A asserção é sobre
+    // o HTML porque rótulo de campo mora em placeholder e aria-label.
+    const { container } = montar();
+    expect(container.innerHTML).not.toMatch(/origem|veio de|campanha|utm/i);
   });
 });
 
-describe('PainelCrm · enquanto as etapas não chegam', () => {
-  const semEtapas = (etapas: { tipo: 'carregando' } | { tipo: 'erro' }) =>
+describe('PainelCrm · quando não dá para carregar', () => {
+  const semBase = (estado: { tipo: 'carregando' } | { tipo: 'erro' }) =>
     render(
       <MemoryRouter>
         <PainelCrm
-          estado={{ tipo: 'pronto', cadastros: base, totalNaBase: base.length }}
-          etapas={etapas}
+          estado={estado}
+          etapas={{ tipo: 'carregando' }}
+          movimento={{ tipo: 'carregando' }}
           hoje={HOJE}
         />
       </MemoryRouter>,
     );
 
-  it('a lista aparece, mas sem crachá de etapa', () => {
-    // "Novo" é uma afirmação, não um vazio: pintá-lo antes da resposta chegar
-    // diz que ninguém foi abordado, que é justamente o contrário do que o sócio
-    // precisa saber.
-    semEtapas({ tipo: 'carregando' });
-    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
-    const lista = screen.getByRole('region', { name: 'Cadastros por dia' });
-    expect(within(lista).queryByText('Novo')).not.toBeInTheDocument();
+  it('carregando diz que está carregando, e não desenha zero', () => {
+    const { container } = semBase({ tipo: 'carregando' });
+    expect(screen.getByText(/carregando os cadastros/i)).toBeInTheDocument();
+    expect(container.textContent).not.toContain('0');
   });
 
-  it('e o filtro de etapa fica fora do ar', () => {
-    // Filtrar sem as etapas devolveria a base inteira em qualquer escolha, e o
-    // sócio leria isso como "ninguém está nessa etapa".
-    semEtapas({ tipo: 'carregando' });
-    expect(screen.getByRole('combobox', { name: /etapa/i })).toBeDisabled();
+  it('erro diz que falhou em vez de fingir base vazia', () => {
+    semBase({ tipo: 'erro' });
+    expect(screen.getByText(/não deu para carregar/i)).toBeInTheDocument();
+    expect(screen.queryByText(/nenhum cadastro na base/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · o que a busca NÃO pode mexer', () => {
+  it('os números do topo contam a base inteira, mesmo com a busca ligada', async () => {
+    // Na primeira versão as métricas saíam do recorte: procurar "maria" fazia
+    // "Cadastros em 30 dias" virar 1 e a conversão ser recalculada sobre uma
+    // pessoa só. Eles respondem "como está a operação", e essa resposta não
+    // muda porque alguém digitou um nome.
+    montar({ cadastros: [...base, cadastro({ id: 'c', futebol_subscription_status: 'premium' })] });
+    const topo = screen.getByRole('region', { name: 'Números da operação' });
+    expect(within(topo).getByLabelText('Conversão')).toHaveTextContent(/^33%$/);
+    await userEvent.type(screen.getByRole('searchbox'), 'maria');
+    expect(within(topo).getByLabelText('Conversão')).toHaveTextContent(/^33%$/);
   });
 
-  it('a consulta de etapas falhando não inventa etapa para ninguém', () => {
-    semEtapas({ tipo: 'erro' });
-    const lista = screen.getByRole('region', { name: 'Cadastros por dia' });
-    expect(within(lista).queryByText('Novo')).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /etapa/i })).toBeDisabled();
+  it('e o funil também', async () => {
+    montar({ etapas: { b: 'contatado' } });
+    expect(degrau(/Novo/)).toHaveTextContent('1');
+    await userEvent.type(screen.getByRole('searchbox'), 'maria');
+    expect(degrau(/Contatado/)).toHaveTextContent('1');
+  });
+});
+
+describe('PainelCrm · quando o movimento não carrega', () => {
+  it('não monta a fila com meia informação', () => {
+    // Sem os toques, todo mundo aparece como nunca tocado: a fila de primeiro
+    // contato incha com gente já abordada e "parado há N dias" passa a contar
+    // desde o cadastro. A tela inteira mentiria e nada acusaria.
+    montar({ estadoDoMovimento: { tipo: 'erro' } });
+    expect(screen.getByText(/não dá para montar a fila sem inventar/i)).toBeInTheDocument();
+  });
+
+  it('e diz que o funil não pôde ser montado', () => {
+    montar({ estadoDoMovimento: { tipo: 'erro' } });
+    expect(screen.getByText(/não deu para montar o funil/i)).toBeInTheDocument();
+  });
+
+  it('a contagem de apostas falhando não derruba o resto', () => {
+    // Ela é um sinal a menos no gancho, e não motivo para a tela sumir.
+    montar({ estadoDoMovimento: { tipo: 'pronto', movimento: { toques: {}, apostas: null } } });
+    expect(screen.getByRole('region', { name: 'Funil' })).toBeInTheDocument();
   });
 });

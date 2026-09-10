@@ -16,5 +16,9 @@ export const cadastroDeTeste = (over: Partial<Cadastro> = {}): Cadastro => ({
   betinho_subscription_status: 'free',
   futebol_subscription_status: 'free',
   analytics_subscription_status: 'free',
+  telegram_synced: false,
+  subscription_product_type: null,
+  futebol_trial_started_at: null,
+  futebol_publication_alerts_ack_at: null,
   ...over,
 });

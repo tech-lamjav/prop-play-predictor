@@ -47,7 +47,8 @@ conveniência; a segurança de verdade está na política. Isso implica uma fun�
 `SECURITY DEFINER` para consultar a coluna: uma política sobre `users` que
 consulta `users` recursa e derruba a tabela inteira.
 
-**A tela mora no próprio site**, numa rota fora de qualquer menu, e quem não é
+**A tela mora no próprio site**, com o header do produto e uma faixa própria de
+identidade, numa rota fora de qualquer menu, e quem não é
 sócio recebe a página de não encontrado — não uma de acesso negado, que
 confirmaria que a página existe. A página é `noindex`, e fica fora do
 `public-routes.json`, então não entra no sitemap. Fica **fora do robots.txt** de
@@ -56,9 +57,22 @@ propósito: listar o caminho lá é anunciá-lo.
 **Cadastro é linha na tabela de usuários**, agrupada pelo dia de criação. A
 lista de espera fica de fora desta primeira volta.
 
-**O funil tem seis etapas**: novo, contatado, conversando, proposta, assinou,
-sem resposta. A etapa muda na mão, e cada mudança fica registrada — para depois
-dar para medir quanto tempo cada lead ficou parado onde.
+**O funil tem seis etapas manuais e duas posições calculadas.** As manuais
+descrevem a conversa: novo, contatado, nutrindo, boletada, interesse, sem
+resposta. Elas vieram do CRM que o Victor já tinha escrito no repositório
+privado `crm-smart` (migration 012), porque as genéricas de manual não falavam
+de nutrição nem de boletada — e é justamente isso que o processo daqui tem de
+próprio.
+
+As duas calculadas são **em teste** e **assinante**, e o banco responde as duas.
+Etapa manual para o que o banco sabe nasce desatualizada: alguém esquece de
+mover quando a assinatura cai, e a tela passa a mentir. No CRM antigo elas eram
+colunas arrastadas na mão porque lá o lead podia nem ter conta; aqui todo lead
+já tem cadastro no produto. A posição calculada vence a manual na tela, senão o
+funil somaria duas vezes a mesma pessoa.
+
+A etapa muda na mão, e cada mudança fica registrada — para depois dar para medir
+quanto tempo cada lead ficou parado onde.
 
 **O gancho sai do banco, e pode ser corrigido na mão.** Sem PostHog, o que dá
 para inferir é: qual plano tem, se sincronizou o Telegram, se registrou aposta,
@@ -87,10 +101,23 @@ As três tabelas do CRM só são legíveis e escrevíveis por sócio.
 
 ## Telas
 
-**Lista** — cadastros agrupados por dia, do mais novo para o mais velho. Cada
-linha traz nome, contato, etapa, gancho e se assinou. No topo, os contadores do
-dia, da semana e de assinantes. Busca por nome, e-mail ou telefone, e filtro por
-etapa.
+**Painel** — na ordem em que a tela responde "com quem eu falo agora": três
+números de acompanhamento (cadastros em trinta dias, conversão, abordados), a
+faixa do funil com as oito posições e clicável como filtro, a busca, e três abas.
+
+A **fila de trabalho** vem primeiro, e tem duas listas que não se cruzam:
+conversas esfriando — começadas e sem toque há sete dias ou mais — e nunca
+abordados. A aba **todos** é a tabela, com etapa, gancho e há quantos dias o lead
+está parado. A aba **por dia** é a lista cronológica, que sobrevive porque é a
+única que mostra o RITMO de chegada.
+
+Os números do topo e o funil contam a base INTEIRA, e não o recorte da busca:
+eles respondem como está a operação, e essa resposta não muda porque alguém
+digitou um nome.
+
+A primeira versão desta tela era só a lista por dia. O diagnóstico do Victor foi
+que ela parecia um registro do que aconteceu, e não um CRM — e estava certo: uma
+lista cronológica responde "o que aconteceu", não "com quem eu falo agora".
 
 **Ficha** — contatos, plano e acessos, datas, gancho, seletor de etapa, linha do
 tempo, e o bloco da mensagem pronta com um botão que copia e outro que abre o

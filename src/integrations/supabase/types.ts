@@ -1138,6 +1138,10 @@ export type Database = {
         Args: { p_week_start_date?: string }
         Returns: undefined
       }
+      crm_apostas_de_todos: {
+        Args: Record<string, never>
+        Returns: { user_id: string; total: number; ultima: string | null }[]
+      }
       crm_anotar: {
         Args: { p_user_id: string; p_tipo: string; p_texto: string }
         Returns: string

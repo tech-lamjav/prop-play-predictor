@@ -36,7 +36,7 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
       {/* Sem valor, a palavra explícita. Um campo em branco é lido como dado, e
           o que existe aqui é a ausência dele. */}
       <span className="text-right text-[14px] text-ink">
-        {valor ?? <span className="text-ink-3">não informado</span>}
+        {valor ?? <span className="text-ink-2">não informado</span>}
       </span>
     </div>
   );
@@ -170,7 +170,7 @@ function Conteudo({
             Não deu para gravar a etapa. Ela continua como estava.
           </p>
         ) : (
-          <p className="mt-2 text-[12px] text-ink-3">
+          <p className="mt-2 text-[12px] text-ink-2">
             {mudandoEtapa ? 'Gravando…' : 'Cada mudança fica registrada, com quem mudou e quando.'}
           </p>
         )}
@@ -229,7 +229,7 @@ function Conteudo({
             Não deu para consultar as apostas, então este palpite está incompleto.
           </p>
         ) : null}
-        <p className="mt-3 text-[12px] text-ink-3">
+        <p className="mt-3 text-[12px] text-ink-2">
           É leitura do que o banco registrou, não do que a pessoa disse.
         </p>
       </Bloco>

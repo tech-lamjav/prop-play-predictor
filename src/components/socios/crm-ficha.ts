@@ -21,12 +21,8 @@ import type { Cadastro } from './crm-lista';
  */
 export interface Pessoa extends Cadastro {
   telegram_username: string | null;
-  telegram_synced: boolean | null;
-  subscription_product_type: string | null;
   betinho_subscription_period_end: string | null;
   analytics_subscription_period_end: string | null;
-  futebol_trial_started_at: string | null;
-  futebol_publication_alerts_ack_at: string | null;
 }
 
 /** O que o banco sabe sobre as apostas de alguém, e nada além disso. */
@@ -140,6 +136,34 @@ export function acessos(p: Pessoa, agora = Date.now()): Acesso[] {
   ];
 }
 
+/**
+ * O que o gancho precisa saber, e nada além.
+ *
+ * Assim a LISTA calcula o gancho com o que já trouxe do banco, sem precisar do
+ * resto da ficha de cada pessoa.
+ */
+export type SinaisDoGancho = Pick<
+  Cadastro,
+  | 'telegram_synced'
+  | 'subscription_product_type'
+  | 'futebol_trial_started_at'
+  | 'futebol_publication_alerts_ack_at'
+>;
+
+/**
+ * O nome curto de cada gancho, para caber numa célula de tabela.
+ *
+ * `Record<TipoDeGancho, …>` e não `Record<string, …>`: com string solta, um
+ * gancho novo cai calado num traço, e ninguém descobre até alguém reparar que
+ * a coluna nunca mostra o valor novo.
+ */
+export const NOME_DO_GANCHO: Record<TipoDeGancho, string> = {
+  betinho: 'Betinho',
+  futebol: 'Futebol',
+  nba: 'NBA',
+  indefinido: '—',
+};
+
 export interface Gancho {
   tipo: TipoDeGancho;
   /** Em que sinal o palpite se apoiou. A tela mostra, para o sócio poder discordar. */
@@ -169,7 +193,7 @@ export interface Gancho {
  * apostou. Os dois casos caíam no mesmo lugar antes, e o palpite dizia "não deu
  * sinal nenhum" com a cara de quem tinha conferido.
  */
-export function ganchoDe(p: Pessoa, apostas: ResumoDeApostas | null): Gancho {
+export function ganchoDe(p: SinaisDoGancho, apostas: ResumoDeApostas | null): Gancho {
   const apostasDesconhecidas = apostas === null;
   const gancho = (tipo: TipoDeGancho, porque: string): Gancho => ({
     tipo,

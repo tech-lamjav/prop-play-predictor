@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom';
+import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Ficha } from '@/components/socios/Ficha';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
@@ -27,6 +28,7 @@ export default function FichaDaPessoa() {
   return (
     <>
       <Seo noindex title="CRM | Smart Betting" />
+      <AnalyticsNav />
       <Ficha
         estado={estado}
         // Nulo enquanto as etapas não chegam: o seletor espera em vez de
