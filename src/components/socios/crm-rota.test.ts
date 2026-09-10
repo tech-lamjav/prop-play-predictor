@@ -28,9 +28,8 @@ describe('o painel não é anunciado', () => {
     expect(raiz('public/robots.txt')).not.toContain(ROTA_DOS_SOCIOS);
   });
 
-  it.each(['src/pages/PainelDosSocios.tsx', 'src/pages/FichaDaPessoa.tsx'])(
-    '%s é noindex',
-    (pagina) => {
+  it('a página do painel é noindex', () => {
+    const pagina = 'src/pages/PainelDosSocios.tsx';
       // Ficar fora do sitemap não basta: o Google chega por qualquer link, e
       // uma página de app sem noindex vira página fantasma no índice. Tirar o
       // noindex não quebrava nada até este guarda existir.
@@ -72,8 +71,15 @@ describe('o painel usa o cabeçalho do site', () => {
     expect(raiz('src/pages/PainelDosSocios.tsx')).toContain('<AnalyticsNav');
   });
 
-  it('a ficha também', () => {
-    expect(raiz('src/pages/FichaDaPessoa.tsx')).toContain('<AnalyticsNav');
+  it('e a ficha herda isso, porque as duas rotas desenham a mesma página', () => {
+    // A rota da lista e a da ficha apontam para PainelDosSocios: a segunda é a
+    // primeira com o modal aberto por cima. É isso que mantém o endereço
+    // compartilhável sem tirar ninguém da lista.
+    const rotas = raiz('src/App.tsx')
+      .split('\n')
+      .filter((l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'));
+    expect(rotas).toHaveLength(2);
+    for (const rota of rotas) expect(rota).toContain('PainelDosSocios');
   });
 
   it('e o painel tem a faixa de identidade do CRM', () => {

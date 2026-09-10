@@ -158,7 +158,7 @@ export function LinhaDoTempo({
     <section
       role="region"
       aria-label="Linha do tempo"
-      className="mt-6 rounded-rebrand-md border border-line-2 bg-white p-5"
+      className="rounded-rebrand-md border border-line-2 bg-white p-5"
     >
       <div className="flex items-center justify-between gap-4">
         <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-ink-2">

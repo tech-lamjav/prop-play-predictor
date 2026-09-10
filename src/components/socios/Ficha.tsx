@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
-import { ETAPAS, ROTA_DOS_SOCIOS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
+import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
 import { mensagemPara } from './crm-mensagens';
@@ -77,35 +76,25 @@ export function Ficha({
    *  ficha continua sendo só desenho. */
   linhaDoTempo: ReactNode;
 }) {
+  if (estado.tipo !== 'pronta') {
+    const recado =
+      estado.tipo === 'carregando'
+        ? 'Carregando a ficha…'
+        : estado.tipo === 'erro'
+          ? 'Não deu para carregar a ficha agora.'
+          : 'Não encontramos esse cadastro.';
+    return <p className="p-8 text-[15px] text-ink-2">{recado}</p>;
+  }
+
   return (
-    <div className="min-h-screen bg-canvas px-4 py-10">
-      <div className="mx-auto max-w-2xl">
-        <Link to={ROTA_DOS_SOCIOS} className="text-[13px] font-bold text-forest hover:underline">
-          ← Voltar para a lista
-        </Link>
-
-        {estado.tipo === 'carregando' && (
-          <p className="mt-8 text-[15px] text-ink-2">Carregando a ficha…</p>
-        )}
-        {estado.tipo === 'erro' && (
-          <p className="mt-8 text-[15px] text-ink-2">Não deu para carregar a ficha agora.</p>
-        )}
-        {estado.tipo === 'nao-encontrada' && (
-          <p className="mt-8 text-[15px] text-ink-2">Não encontramos esse cadastro.</p>
-        )}
-
-        {estado.tipo === 'pronta' && (
-          <Conteudo
-            {...estado}
-            etapa={etapa}
-            aoMudarEtapa={aoMudarEtapa}
-            mudandoEtapa={mudandoEtapa}
-            erroAoMudarEtapa={erroAoMudarEtapa}
-            linhaDoTempo={linhaDoTempo}
-          />
-        )}
-      </div>
-    </div>
+    <Conteudo
+      {...estado}
+      etapa={etapa}
+      aoMudarEtapa={aoMudarEtapa}
+      mudandoEtapa={mudandoEtapa}
+      erroAoMudarEtapa={erroAoMudarEtapa}
+      linhaDoTempo={linhaDoTempo}
+    />
   );
 }
 
@@ -133,123 +122,135 @@ function Conteudo({
   const ultimaAposta = apostas?.ultima ? dia(apostas.ultima) : null;
 
   return (
-    <>
+    <div className="flex max-h-[82vh] flex-col">
       {/* Sem nome, o e-mail vira o título: a ficha precisa ter uma pessoa no
           topo, e não uma faixa vazia. */}
-      <h1 className="mt-4 font-display text-3xl font-black text-ink">
-        {pessoa.name ?? pessoa.email}
-      </h1>
-      <p className="mt-1 text-[13px] text-ink-2">
-        {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
-      </p>
+      <div className="border-b border-line-2 bg-white px-6 py-5">
+        <h1 className="font-display text-2xl font-black text-ink">{pessoa.name ?? pessoa.email}</h1>
+        <p className="mt-1 text-[13px] text-ink-2">
+          {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
+        </p>
+      </div>
 
-      <Bloco titulo="Etapa">
-        <select
-          value={etapa ?? ''}
-          disabled={mudandoEtapa || etapa === null}
-          onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
-          aria-label="Etapa do lead"
-          className="h-11 w-full rounded-rebrand-sm border border-line-2 bg-white px-3 text-[15px] text-ink disabled:opacity-60"
-        >
-          {etapa === null ? <option value="">Carregando…</option> : null}
-          {ETAPAS.map((e) => (
-            <option key={e} value={e}>
-              {ROTULO_DA_ETAPA[e]}
-            </option>
-          ))}
-        </select>
-        {/* Travar enquanto grava não é detalhe de conforto: duas mudanças em
+      {/*
+        Duas colunas, e a divisão é a tese do formato escolhido no protótipo:
+        à esquerda o que é CONSULTA — você olha uma vez e não olha mais —, e à
+        direita o que é TRABALHO: o palpite, a mensagem e o registro do que
+        aconteceu. A versão anterior empilhava os seis blocos com o mesmo peso,
+        e era isso que fazia a ficha parecer formulário.
+      */}
+      <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[300px_1fr]">
+        <div className="space-y-4 overflow-y-auto border-line-2 bg-white p-5 md:border-r">
+          <Bloco titulo="Etapa">
+            <select
+              value={etapa ?? ''}
+              disabled={mudandoEtapa || etapa === null}
+              onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
+              aria-label="Etapa do lead"
+              className="h-11 w-full rounded-rebrand-sm border border-line-2 bg-white px-3 text-[15px] text-ink disabled:opacity-60"
+            >
+              {etapa === null ? <option value="">Carregando…</option> : null}
+              {ETAPAS.map((e) => (
+                <option key={e} value={e}>
+                  {ROTULO_DA_ETAPA[e]}
+                </option>
+              ))}
+            </select>
+            {/* Travar enquanto grava não é detalhe de conforto: duas mudanças em
             voo gravariam dois eventos, e o segundo registraria um "de" que já
             não era verdade. */}
-        {/* A frase de rodapé é uma promessa. Quando a gravação falha ela vira
+            {/* A frase de rodapé é uma promessa. Quando a gravação falha ela vira
             mentira exatamente no momento em que nada foi registrado, e o
             seletor ainda volta sozinho para a etapa antiga — sem aviso, parece
             um clique que não pegou. */}
-        {erroAoMudarEtapa ? (
-          <p className="mt-2 text-[13px] font-bold text-ink">
-            Não deu para gravar a etapa. Ela continua como estava.
-          </p>
-        ) : (
-          <p className="mt-2 text-[12px] text-ink-2">
-            {mudandoEtapa ? 'Gravando…' : 'Cada mudança fica registrada, com quem mudou e quando.'}
-          </p>
-        )}
-      </Bloco>
+            {erroAoMudarEtapa ? (
+              <p className="mt-2 text-[13px] font-bold text-ink">
+                Não deu para gravar a etapa. Ela continua como estava.
+              </p>
+            ) : (
+              <p className="mt-2 text-[12px] text-ink-2">
+                {mudandoEtapa
+                  ? 'Gravando…'
+                  : 'Cada mudança fica registrada, com quem mudou e quando.'}
+              </p>
+            )}
+          </Bloco>
 
-      <Bloco titulo="Contatos">
-        <Campo rotulo="E-mail" valor={pessoa.email} />
-        <Campo rotulo="WhatsApp" valor={pessoa.whatsapp_number} />
-        <Campo
-          rotulo="Telegram"
-          valor={
-            pessoa.telegram_username
-              ? `@${pessoa.telegram_username}${pessoa.telegram_synced ? '' : ' (não vinculado)'}`
-              : null
-          }
-        />
-      </Bloco>
+          <Bloco titulo="Contatos">
+            <Campo rotulo="E-mail" valor={pessoa.email} />
+            <Campo rotulo="WhatsApp" valor={pessoa.whatsapp_number} />
+            <Campo
+              rotulo="Telegram"
+              valor={
+                pessoa.telegram_username
+                  ? `@${pessoa.telegram_username}${pessoa.telegram_synced ? '' : ' (não vinculado)'}`
+                  : null
+              }
+            />
+          </Bloco>
 
-      {linhaDoTempo}
+          <Bloco titulo="Planos e acessos">
+            <Campo rotulo="Plano" valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)} />
+            {acessos(pessoa).map((a) => (
+              <Campo
+                key={a.produto}
+                rotulo={a.produto}
+                valor={
+                  a.ativo
+                    ? a.renovaEm
+                      ? `Ativo · renova em ${dia(a.renovaEm)}`
+                      : a.semDataNoBanco
+                        ? 'Ativo · o banco não guarda a renovação do futebol'
+                        : 'Ativo'
+                    : 'Sem acesso'
+                }
+              />
+            ))}
+          </Bloco>
 
-      <Bloco titulo="Planos e acessos">
-        <Campo
-          rotulo="Plano"
-          valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)}
-        />
-        {acessos(pessoa).map((a) => (
-          <Campo
-            key={a.produto}
-            rotulo={a.produto}
-            valor={
-              a.ativo
-                ? a.renovaEm
-                  ? `Ativo · renova em ${dia(a.renovaEm)}`
-                  : a.semDataNoBanco
-                    ? 'Ativo · o banco não guarda a renovação do futebol'
-                    : 'Ativo'
-                : 'Sem acesso'
-            }
-          />
-        ))}
-      </Bloco>
+          <Bloco titulo="Comportamento">
+            <p className="text-[13px] text-ink-2">
+              Páginas vistas, número de sessões e tempo de tela ainda não aparecem aqui. Esses
+              números moram no PostHog, e trazê-los exige uma função no servidor.
+            </p>
+          </Bloco>
+        </div>
 
-      <Bloco titulo="Gancho">
-        <p className="text-[15px] text-ink">
-          <span className="font-bold">Palpite:</span> {COMO_CHAMAR[gancho.tipo]}
-        </p>
-        <p className="mt-1 text-[13px] text-ink-2">Porque {gancho.porque}.</p>
-        {ultimaAposta ? (
-          <p className="mt-1 text-[13px] text-ink-2">Última aposta em {ultimaAposta}.</p>
-        ) : null}
-        {/* A aposta é o sinal mais forte e o primeiro da fila. Sem ela, o
-            palpite abaixo pode estar apontando para o lado errado, e o sócio
-            precisa saber disso antes de abrir a conversa. */}
-        {gancho.apostasDesconhecidas ? (
-          <p className="mt-2 text-[13px] font-bold text-ink">
-            Não deu para consultar as apostas, então este palpite está incompleto.
-          </p>
-        ) : null}
-        <p className="mt-3 text-[12px] text-ink-2">
-          É leitura do que o banco registrou, não do que a pessoa disse.
-        </p>
-      </Bloco>
+        <div className="space-y-4 overflow-y-auto p-5">
+          <Bloco titulo="Gancho">
+            <p className="text-[15px] text-ink">
+              <span className="font-bold">Palpite:</span> {COMO_CHAMAR[gancho.tipo]}
+            </p>
+            <p className="mt-1 text-[13px] text-ink-2">Porque {gancho.porque}.</p>
+            {ultimaAposta ? (
+              <p className="mt-1 text-[13px] text-ink-2">Última aposta em {ultimaAposta}.</p>
+            ) : null}
+            {/* A aposta é o sinal mais forte e o primeiro da fila. Sem ela, o
+                palpite abaixo pode estar apontando para o lado errado, e o
+                sócio precisa saber disso antes de abrir a conversa. */}
+            {gancho.apostasDesconhecidas ? (
+              <p className="mt-2 text-[13px] font-bold text-ink">
+                Não deu para consultar as apostas, então este palpite está incompleto.
+              </p>
+            ) : null}
+            <p className="mt-3 text-[12px] text-ink-2">
+              É leitura do que o banco registrou, não do que a pessoa disse.
+            </p>
+          </Bloco>
 
-      {/* Só depois de saber a etapa: o modelo depende dela, e o campo é semeado
-          uma vez só — nascer com a etapa errada deixaria o texto desatualizado
-          sem o sócio perceber. */}
-      {etapa && (
-        <MensagemPronta
-          modelo={mensagemPara(gancho.tipo, etapa, primeiroNome(pessoa.name))}
-          numero={pessoa.whatsapp_number}
-        />
-      )}
+          {/* Só depois de saber a etapa: o modelo depende dela, e o campo é
+              semeado uma vez só — nascer com a etapa errada deixaria o texto
+              desatualizado sem o sócio perceber. */}
+          {etapa && (
+            <MensagemPronta
+              modelo={mensagemPara(gancho.tipo, etapa, primeiroNome(pessoa.name))}
+              numero={pessoa.whatsapp_number}
+            />
+          )}
 
-      <Bloco titulo="Comportamento">
-        <p className="text-[14px] text-ink-2">
-          Páginas vistas, número de sessões e tempo de tela ainda não aparecem aqui. Esses números
-          moram no PostHog, e trazê-los exige uma função no servidor.
-        </p>
-      </Bloco>
-    </>
+          {linhaDoTempo}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -163,10 +163,6 @@ describe('Ficha', () => {
     expect(screen.getByText(/não encontramos esse cadastro/i)).toBeInTheDocument();
   });
 
-  it('tem sempre a volta para a lista', () => {
-    montar();
-    expect(screen.getByRole('link', { name: /voltar/i })).toHaveAttribute('href', '/socios');
-  });
 });
 
 describe('Ficha · etapa', () => {
