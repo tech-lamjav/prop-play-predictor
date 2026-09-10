@@ -15,6 +15,7 @@
     "build:staging": "vite build --mode staging",
     "postbuild:staging": "node scripts/gen-route-heads.mjs",
     "lint": "eslint .",
+    "typecheck": "node scripts/typecheck.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
