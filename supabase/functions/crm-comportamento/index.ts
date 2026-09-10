@@ -69,6 +69,18 @@ async function perguntar(sql: string, valores: Record<string, unknown>) {
 }
 
 /**
+ * Quem é a pessoa, para o PostHog.
+ *
+ * Por identificador E por e-mail, porque os dois falham em casos diferentes. O
+ * `distinct_id` só acha evento POSTERIOR ao login; o e-mail acha tudo que o
+ * PostHog costurou naquela pessoa, inclusive a visita anônima que veio antes.
+ *
+ * A primeira versão filtrava só por identificador, e devolveu ZERO para o
+ * próprio sócio que estava usando o produto naquele instante.
+ */
+const QUEM = `(distinct_id = {distinct_id} OR person.properties.email = {email})`;
+
+/**
  * O resumo de uma pessoa.
  *
  * `primeiroEvento` não é enfeite: ele diz até onde o PostHog ainda tem
@@ -83,22 +95,31 @@ const RESUMO = `
     count(),
     count(DISTINCT $session_id)
   FROM events
-  WHERE distinct_id = {distinct_id}
+  WHERE ${QUEM}
 `;
 
 const TEMPO_POR_SESSAO = `
   SELECT sum(duracao) FROM (
     SELECT dateDiff('second', min(timestamp), max(timestamp)) AS duracao
     FROM events
-    WHERE distinct_id = {distinct_id} AND $session_id IS NOT NULL
+    WHERE ${QUEM} AND $session_id IS NOT NULL
     GROUP BY $session_id
   )
 `;
 
+/**
+ * Quantos eventos o projeto inteiro recebeu na semana.
+ *
+ * Só é consultado quando a pessoa some do resultado, e serve para separar duas
+ * causas que se parecem na tela: filtro errado, ou projeto/endereço errados.
+ * Zero aqui significa que a função está perguntando no lugar errado.
+ */
+const PULSO = `SELECT count() FROM events WHERE timestamp > now() - INTERVAL 7 DAY`;
+
 const PAGINAS = `
   SELECT properties.path, count() AS vezes
   FROM events
-  WHERE distinct_id = {distinct_id} AND event = '$pageview'
+  WHERE ${QUEM} AND event = '$pageview'
   GROUP BY properties.path
   ORDER BY vezes DESC
   LIMIT 8
@@ -126,15 +147,18 @@ serve(async (req) => {
   if (ehSocio !== true) return json({ erro: 'apenas_socios' }, 403);
 
   let userId = '';
+  let email = '';
   try {
-    userId = String(((await req.json()) as { user_id?: string })?.user_id ?? '');
+    const corpo = (await req.json()) as { user_id?: string; email?: string };
+    userId = String(corpo?.user_id ?? '');
+    email = String(corpo?.email ?? '');
   } catch {
     return json({ erro: 'corpo_invalido' }, 400);
   }
   if (!userId) return json({ erro: 'sem_user_id' }, 400);
 
   try {
-    const valores = { distinct_id: userId };
+    const valores = { distinct_id: userId, email };
     const [resumo, tempo, paginas] = await Promise.all([
       perguntar(RESUMO, valores),
       perguntar(TEMPO_POR_SESSAO, valores),
@@ -143,12 +167,17 @@ serve(async (req) => {
 
     const [primeiro, ultimo, eventos, sessoes] = resumo[0] ?? [null, null, 0, 0];
 
+    // Sem nenhum evento para a pessoa, o pulso do projeto diz se o problema é
+    // o filtro ou o endereço.
+    const pulso = Number(eventos ?? 0) === 0 ? Number((await perguntar(PULSO, {}))[0]?.[0] ?? 0) : null;
+
     return json({
       primeiroEvento: primeiro,
       ultimoEvento: ultimo,
       eventos: Number(eventos ?? 0),
       sessoes: Number(sessoes ?? 0),
       segundosDeTela: Number(tempo[0]?.[0] ?? 0),
+      eventosNoProjetoNaSemana: pulso,
       paginas: paginas.map(([caminho, vezes]) => ({
         caminho: String(caminho ?? ''),
         vezes: Number(vezes ?? 0),

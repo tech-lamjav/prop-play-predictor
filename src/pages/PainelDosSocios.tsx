@@ -72,7 +72,10 @@ function FichaDoModal({ id }: { id: string }) {
   const linha = useLinhaDoTempo(id);
   const anotar = useAnotar(id);
   const nomeDoSocio = useNomeDoSocio();
-  const comportamento = useComportamento(id);
+  const comportamento = useComportamento(
+    id,
+    estado.tipo === 'pronta' ? estado.pessoa.email : undefined,
+  );
 
   return (
     <Ficha

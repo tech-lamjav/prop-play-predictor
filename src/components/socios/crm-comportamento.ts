@@ -14,6 +14,14 @@ export interface Comportamento {
   sessoes: number;
   segundosDeTela: number;
   paginas: { caminho: string; vezes: number }[];
+  /**
+   * Quantos eventos o PROJETO inteiro recebeu na semana.
+   *
+   * Só vem preenchido quando a pessoa não tem evento nenhum, e existe para
+   * separar duas causas que se parecem na tela: a pessoa realmente não usou, ou
+   * a função está perguntando no projeto errado.
+   */
+  eventosNoProjetoNaSemana?: number | null;
 }
 
 /**

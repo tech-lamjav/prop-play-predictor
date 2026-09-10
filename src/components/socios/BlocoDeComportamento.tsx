@@ -53,12 +53,17 @@ export function BlocoDeComportamento({
   const ultimo = dia(c.ultimoEvento);
 
   if (c.sessoes === 0) {
+    // Zero evento na pessoa E zero no projeto inteiro não é a pessoa: é a
+    // função perguntando no lugar errado. Dizer "não voltou ao site" aí seria
+    // uma afirmação sobre alguém, feita com base numa falha de configuração.
+    const projetoMudo = c.eventosNoProjetoNaSemana === 0;
+
     return (
       <Bloco titulo="Comportamento">
-        {/* Zero sessão é informação, e das boas: a pessoa se cadastrou e nunca
-            voltou. Dizer isso é diferente de deixar o bloco vazio. */}
         <p className="text-[13px] text-ink-2">
-          Nenhuma visita registrada. A pessoa se cadastrou e não voltou ao site.
+          {projetoMudo
+            ? 'O PostHog não registrou evento nenhum no projeto nesta semana — o problema é de configuração, e não desta pessoa.'
+            : 'Nenhuma visita registrada. A pessoa se cadastrou e não voltou ao site.'}
         </p>
       </Bloco>
     );

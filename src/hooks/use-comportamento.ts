@@ -19,7 +19,10 @@ export type EstadoDoComportamento =
  * chama. Uma consulta por pessoa aberta é barata; uma por linha da lista seria
  * seiscentas.
  */
-export function useComportamento(userId: string | undefined): EstadoDoComportamento {
+export function useComportamento(
+  userId: string | undefined,
+  email: string | undefined,
+): EstadoDoComportamento {
   const consulta = useQuery({
     queryKey: ['socios', 'comportamento', userId ?? ''],
     enabled: !!userId,
@@ -29,13 +32,22 @@ export function useComportamento(userId: string | undefined): EstadoDoComportame
     retry: false,
     queryFn: async (): Promise<Comportamento> => {
       const { data, error } = await createClient().functions.invoke('crm-comportamento', {
-        body: { user_id: userId },
+        // O e-mail vai junto porque o identificador sozinho só acha evento
+        // posterior ao login — e a primeira versão devolveu zero para quem
+        // estava usando o produto naquele instante.
+        body: { user_id: userId, email },
       });
       if (error) throw error;
       // A função responde com `erro` no corpo quando a chave não está
       // configurada ou o PostHog recusou. Sem isto, o corpo de erro seria lido
       // como um resumo com zero em tudo.
-      if (data?.erro) throw new Error(String(data.erro));
+      if (data?.erro) {
+        // O detalhe vai para o console, e não para a tela: ele carrega a
+        // mensagem crua do PostHog, que serve para depurar e não diz nada a
+        // quem está trabalhando um lead.
+        console.error('[crm-comportamento]', data.erro, data.detalhe ?? '');
+        throw new Error(String(data.erro));
+      }
       return data as Comportamento;
     },
   });

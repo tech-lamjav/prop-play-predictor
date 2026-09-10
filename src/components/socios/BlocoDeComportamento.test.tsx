@@ -70,3 +70,32 @@ describe('BlocoDeComportamento', () => {
     expect(container.textContent).not.toContain('0');
   });
 });
+
+describe('BlocoDeComportamento · zero que não é da pessoa', () => {
+  it('projeto mudo é dito como problema de configuração', () => {
+    // Zero na pessoa E zero no projeto inteiro não é a pessoa: é a função
+    // perguntando no lugar errado. Dizer "não voltou ao site" aí seria uma
+    // afirmação sobre alguém feita com base numa falha de configuração — foi
+    // exatamente o que a tela fez na primeira tentativa.
+    montar({
+      tipo: 'pronto',
+      comportamento: { ...CHEIO, sessoes: 0, eventos: 0, paginas: [], eventosNoProjetoNaSemana: 0 },
+    });
+    expect(screen.getByText(/problema é de configuração/i)).toBeInTheDocument();
+    expect(screen.queryByText(/não voltou ao site/i)).not.toBeInTheDocument();
+  });
+
+  it('projeto com movimento e pessoa sem evento é a pessoa mesmo', () => {
+    montar({
+      tipo: 'pronto',
+      comportamento: {
+        ...CHEIO,
+        sessoes: 0,
+        eventos: 0,
+        paginas: [],
+        eventosNoProjetoNaSemana: 5000,
+      },
+    });
+    expect(screen.getByText(/não voltou ao site/i)).toBeInTheDocument();
+  });
+});
