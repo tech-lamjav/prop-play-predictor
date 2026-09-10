@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import {
-  normalizeFutebolFixtureValueRows,
-  normalizeFutebolValueBoardRows,
+  normalizeFutebolScoreRows,
   type FutebolScoreVersion,
 } from './futebol-score-contract';
 import {
@@ -999,7 +998,10 @@ export const futebolDataService = {
         this.getMercadosOcultos(),
       ]);
       if (error) throw error;
-      return filtrarMercadosOcultos(normalizeFutebolValueBoardRows(data || []), ocultos);
+      return filtrarMercadosOcultos(
+        normalizeFutebolScoreRows<FutebolValueBoardRow>(data || []),
+        ocultos,
+      );
     });
   },
 
@@ -1034,7 +1036,7 @@ export const futebolDataService = {
         p_to: to,
       });
       if (error) throw error;
-      return normalizeFutebolValueBoardRows(data || []);
+      return normalizeFutebolScoreRows<FutebolValueBoardRow>(data || []);
     });
   },
 
@@ -1061,7 +1063,10 @@ export const futebolDataService = {
         this.getMercadosOcultos(),
       ]);
       if (error) throw error;
-      return filtrarMercadosOcultos(normalizeFutebolFixtureValueRows(data || []), ocultos);
+      return filtrarMercadosOcultos(
+        normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
+        ocultos,
+      );
     });
   },
 

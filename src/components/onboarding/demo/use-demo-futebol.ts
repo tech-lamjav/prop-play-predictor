@@ -3,7 +3,7 @@ import type {
   FutebolFixtureValueRow,
   FutebolValueBoardRow,
 } from '@/services/futebol-data.service';
-import { versaoDaJanela, type FutebolScoreVersion } from '@/utils/futebol-score';
+import { escalaDeExibicao, type FutebolScoreVersion } from '@/utils/futebol-score';
 import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
 
 /**
@@ -14,23 +14,15 @@ import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
  * a anunciar uma régua diferente da que está ao lado dele — que é o defeito
  * inteiro, só que mais difícil de ver.
  *
- * Janela indeterminada — vazia, ou misturando as duas escalas — resolve na
- * escala que o produto PUBLICA hoje, `contexto_v1`.
- *
- * Era `legacy`, e a justificativa era o contrato antigo: linha sem
- * `score_versao` e com componentes de preço numéricos era deduzida como legacy,
- * e a linha de demonstração tinha essa forma. A contração do #310 matou a
- * dedução e tirou os componentes do contrato, e com isso o padrão virou
- * defeito — dia sem oportunidade publicada é janela vazia, e o tour anunciaria
- * 40+ enquanto o board publica 30+.
- *
- * `legacy` continua sendo herdado quando a janela é mesmo antiga: é o caso do
- * histórico point-in-time, e ali acompanhar é o certo.
+ * Janela indeterminada resolve na escala que o produto publica hoje, e a regra
+ * disso mora em `escalaDeExibicao` — a mesma que a tela real usa. Eram duas
+ * cópias, e as duas caíam em `legacy` por causa da inferência por forma que a
+ * contração matou (#310).
  */
 function useEscalaDoProduto(
   janela: readonly { score_versao?: FutebolScoreVersion }[] | null | undefined,
 ): FutebolScoreVersion {
-  return versaoDaJanela(janela ?? []) === 'legacy' ? 'legacy' : 'contexto_v1';
+  return escalaDeExibicao(janela ?? []);
 }
 
 /** O board de exemplo, na escala que o produto está usando. */

@@ -42,9 +42,9 @@ const base = (versao: FutebolScoreVersion, over: Partial<FutebolValueBoardRow>):
   n_casas: 6,
   janela_usada: 't1h',
   prob_justa_fechamento: 0.5,
-  // Preço não soma na nota desde o Score de contexto (spec #301). Os campos
-  // seguem no tipo durante a janela de compatibilidade e a demonstração os
-  // mantém zerados, para não ensinar a fórmula aposentada.
+  // Preço não soma na nota desde o Score de contexto (spec #301), e os campos
+  // dele saíram do tipo na contração do contrato (#310). Não há mais o que
+  // zerar aqui: a fórmula aposentada não tem como voltar pela demonstração.
   pts_premissas: 20,
   penalidades: 0,
   score: 50,

@@ -601,10 +601,10 @@ export function BancadaMercados({
       // cenário está bem a favor" acima de uma aba vazia é a tela se
       // contradizendo.
       //
-      // A causa era a janela da virada, e ela passou. A que restou é maior: das
-      // 48 premissas, só 10 têm o critério transcrito no front, e as dez são de
-      // Gols. Resultado, Ambos marcam, Dupla chance e Handicap podem publicar
-      // sem nada para mostrar em A favor.
+      // A causa era a janela da virada, e ela passou. A que restou é maior e tem
+      // ticket próprio (#361): só o mercado de Gols tem os critérios das
+      // premissas transcritos no front. Resultado, Ambos marcam, Dupla chance e
+      // Handicap podem publicar sem nada para mostrar em A favor.
       if (semMotivosAFavor) return `${lbl} está publicada, mas o cenário do jogo não foi detalhado aqui.`;
       if (ehFaixaAlta(valPrincipal.faixa)) return `O cenário do jogo está bem a favor de ${lbl}.`;
       if (ehDestaque(valPrincipal.faixa)) return `${lbl} tem parte do cenário a favor: leitura parcial.`;

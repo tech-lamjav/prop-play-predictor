@@ -6,7 +6,7 @@ import type {
 /**
  * Em que ESCALA a nota foi calculada.
  *
- * `legacy` não é mais um contrato aceito na entrada — é um dado do passado. O
+ * `legacy` não é um contrato aceito na entrada — é um dado do passado. O
  * histórico é point-in-time e continua devolvendo as 19.229 linhas anteriores
  * ao cutover de 03/09/2026, calculadas na régua antiga. Elas precisam continuar
  * abrindo, e a faixa delas tem fronteira própria: ver `fronteirasDoScore` em
@@ -19,15 +19,8 @@ import type {
  */
 export type FutebolScoreVersion = 'legacy' | 'contexto_v1';
 
-type RawBoardRow = Omit<Partial<FutebolValueBoardRow>, 'score_versao'> & {
-  score_versao?: unknown;
-  [key: string]: unknown;
-};
-
-type RawFixtureRow = Omit<Partial<FutebolFixtureValueRow>, 'score_versao'> & {
-  score_versao?: unknown;
-  [key: string]: unknown;
-};
+/** A linha como ela chega da RPC, antes de a versão ser validada. */
+type RawScoreRow = { score_versao?: unknown };
 
 /**
  * A versão vem DECLARADA, e ponto.
@@ -39,9 +32,9 @@ type RawFixtureRow = Omit<Partial<FutebolFixtureValueRow>, 'score_versao'> & {
  * inútil — carimbaria de `legacy` uma resposta malformada e a classificaria na
  * régua errada, em silêncio (#310).
  */
-function scoreVersion(row: { score_versao?: unknown }): FutebolScoreVersion {
+function scoreVersion(row: RawScoreRow): FutebolScoreVersion {
   if (row.score_versao == null) {
-    throw new Error('O contrato do Score exige score_versao');
+    throw new Error('O contrato do Score exige score_versao (legacy | contexto_v1)');
   }
   if (row.score_versao === 'legacy') return 'legacy';
   if (row.score_versao === 'contexto_v1') return 'contexto_v1';
@@ -49,28 +42,21 @@ function scoreVersion(row: { score_versao?: unknown }): FutebolScoreVersion {
 }
 
 /**
- * Porta de entrada do board: valida a versão e estreita o tipo.
+ * A porta de entrada das RPCs de valor: valida a versão e estreita o tipo.
  *
- * Ela injetava também os componentes de preço zerados (`pts_valor`,
- * `pts_corroboracao`), para que consumidores da metodologia antiga não
- * quebrassem durante a virada. Esses consumidores não existem mais, e os campos
- * saíram do contrato junto com eles.
+ * É uma função só porque board e detalhe passaram a fazer exatamente a mesma
+ * coisa. Elas eram duas enquanto cada uma tinha o seu conjunto de componentes
+ * de preço para zerar; sem eles, manter duas cópias seria manter a chance de
+ * uma divergir da outra (#310).
+ *
+ * O tipo de saída é escolhido por quem chama, que é quem sabe qual RPC
+ * respondeu.
  */
-export function normalizeFutebolValueBoardRows(
-  rows: readonly RawBoardRow[],
-): FutebolValueBoardRow[] {
+export function normalizeFutebolScoreRows<
+  T extends FutebolValueBoardRow | FutebolFixtureValueRow,
+>(rows: readonly RawScoreRow[]): T[] {
   return rows.map((row) => ({
     ...row,
     score_versao: scoreVersion(row),
-  })) as FutebolValueBoardRow[];
-}
-
-/** Mesma porta, para a RPC de detalhe. */
-export function normalizeFutebolFixtureValueRows(
-  rows: readonly RawFixtureRow[],
-): FutebolFixtureValueRow[] {
-  return rows.map((row) => ({
-    ...row,
-    score_versao: scoreVersion(row),
-  })) as FutebolFixtureValueRow[];
+  })) as T[];
 }

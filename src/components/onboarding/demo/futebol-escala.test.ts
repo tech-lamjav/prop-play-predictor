@@ -9,19 +9,20 @@ import { versaoDaJanela, opcoesDeFaixa, fronteirasDoScore } from '@/utils/futebo
 // ============================================================================
 // Ela cravava `contexto_v1`. Como a legenda deriva a escala das linhas que estão
 // na tela, e no tour as linhas são as da demonstração, o onboarding anunciava as
-// fronteiras novas enquanto o board real, ainda em `legacy`, anunciava as
+// fronteiras novas enquanto o board real, então ainda em `legacy`, anunciava as
 // antigas. O assinante aprendia uma régua e encontrava outra.
 //
-// Cravar `legacy` "consertaria" hoje e teria de ser desfeito no dia da virada.
-// Herdar fica certo dos dois lados sem ninguém tocar de novo.
+// Cravar `legacy` teria consertado só até a virada. Herdar ficou certo dos dois
+// lados sem ninguém tocar de novo — e segue valendo depois dela, porque o
+// histórico point-in-time continua devolvendo janelas na escala antiga.
 // ============================================================================
 
 describe('a escala da demonstração', () => {
-  it('segue a que o produto está usando: legacy', () => {
+  it('segue a escala antiga quando a janela é do histórico', () => {
     expect(versaoDaJanela(demoFutebolBoard('legacy'))).toBe('legacy');
   });
 
-  it('segue a que o produto está usando: contexto_v1', () => {
+  it('segue a escala de hoje quando a janela é do board', () => {
     expect(versaoDaJanela(demoFutebolBoard('contexto_v1'))).toBe('contexto_v1');
   });
 

@@ -9,6 +9,7 @@ import {
   faixaTone,
   rotuloDaFaixa,
   fronteirasDoScore,
+  escalaDeExibicao,
   opcoesDeFaixa,
   passaNoFiltroDeFaixas,
 } from './futebol-score';
@@ -55,18 +56,55 @@ describe('fronteiras da faixa', () => {
   // pessoa da próxima faxina precisa ver antes de apagar o ramo de 40/60.
   // ==========================================================================
   it('a mesma nota cai em faixas diferentes nas duas escalas', () => {
-    const nota = 35;
-    const antiga = fronteirasDoScore('legacy');
-    const nova = fronteirasDoScore('contexto_v1');
+    // Classifica pela régua da escala, que é o que o backend faz. Escrito aqui
+    // porque o front não classifica de propósito — ele lê a faixa pronta. Sem
+    // isto o teste compararia números com os mesmos números, e passaria a
+    // dizer bem menos do que parece.
+    const faixaDe = (score: number, escala: 'legacy' | 'contexto_v1') => {
+      const { media, alta } = fronteirasDoScore(escala);
+      return score >= alta ? 'Alta' : score >= media ? 'Média' : 'Baixa';
+    };
 
-    // 35 estava ABAIXO da régua da Média na escala antiga: era Baixa.
-    expect(nota).toBeLessThan(antiga.media);
-    // E está ACIMA na de hoje: seria Média.
-    expect(nota).toBeGreaterThanOrEqual(nova.media);
-
-    // Apagar o ramo de legacy é promover essa oportunidade de Baixa para Média
+    // Apagar o ramo de legacy é promover esta oportunidade de Baixa para Média
     // anos depois — a tela reescrevendo o passado de quem apostou.
-    expect(antiga).not.toEqual(nova);
+    expect(faixaDe(35, 'legacy')).toBe('Baixa');
+    expect(faixaDe(35, 'contexto_v1')).toBe('Média');
+  });
+});
+
+// ============================================================================
+// A escala que a tela usa quando a janela não declara nenhuma (#310)
+// ============================================================================
+// `versaoDaJanela` devolve `indefinida` para janela vazia ou mista, e cada tela
+// resolvia isso por conta própria — as duas caindo em `legacy`. A justificativa
+// escrita era a inferência por forma do contrato antigo, que a contração matou.
+//
+// Com ela morta, o padrão virou defeito: dia sem oportunidade publicada é
+// janela vazia, e a tela real passava a explicar o Score pela fórmula
+// aposentada, dizendo que ele "junta o cenário com o quanto a odd paga acima do
+// risco". O preço saiu do Score em 03/09.
+// ============================================================================
+
+describe('escala de exibição da janela', () => {
+  const linha = (score_versao?: 'legacy' | 'contexto_v1') => ({ score_versao });
+
+  it('janela vazia usa a escala que o produto publica hoje', () => {
+    expect(escalaDeExibicao([])).toBe('contexto_v1');
+  });
+
+  it('janela que mistura as duas escalas também', () => {
+    expect(escalaDeExibicao([linha('legacy'), linha('contexto_v1')])).toBe('contexto_v1');
+  });
+
+  it('janela sem nenhuma linha que declare versão também', () => {
+    // É o caso da oportunidade registrada, que vem de uma tabela sem versão.
+    expect(escalaDeExibicao([linha(), linha()])).toBe('contexto_v1');
+  });
+
+  it('mas janela realmente antiga continua sendo lida na régua antiga', () => {
+    // O histórico point-in-time devolve linhas legacy, e ali acompanhar é o
+    // certo: a legenda tem de anunciar 40+, não 30+.
+    expect(escalaDeExibicao([linha('legacy')])).toBe('legacy');
   });
 });
 

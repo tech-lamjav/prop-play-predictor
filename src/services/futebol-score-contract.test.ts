@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeFutebolFixtureValueRows,
-  normalizeFutebolValueBoardRows,
-} from './futebol-score-contract';
+import { normalizeFutebolScoreRows } from './futebol-score-contract';
+import type {
+  FutebolFixtureValueRow,
+  FutebolValueBoardRow,
+} from './futebol-data.service';
+
+const board = (linhas: readonly Record<string, unknown>[]) =>
+  normalizeFutebolScoreRows<FutebolValueBoardRow>(linhas);
+const detalhe = (linhas: readonly Record<string, unknown>[]) =>
+  normalizeFutebolScoreRows<FutebolFixtureValueRow>(linhas);
 
 const boardBase = {
   fixture_id: 101,
@@ -71,7 +77,7 @@ describe('contrato do Score de contexto', () => {
   // ==========================================================================
 
   it('linha sem versão declarada é contrato malformado, e não legacy', () => {
-    expect(() => normalizeFutebolValueBoardRows([boardBase])).toThrow(
+    expect(() => board([boardBase])).toThrow(
       'O contrato do Score exige score_versao',
     );
   });
@@ -80,14 +86,14 @@ describe('contrato do Score de contexto', () => {
     // Este era o caminho da dedução: componentes de preço numéricos viravam
     // `legacy` por conta própria.
     expect(() =>
-      normalizeFutebolValueBoardRows([
+      board([
         { ...boardBase, pts_valor: 20, pts_corroboracao: 8 },
       ]),
     ).toThrow('O contrato do Score exige score_versao');
   });
 
   it('aceita contexto_v1', () => {
-    const [row] = normalizeFutebolValueBoardRows([{
+    const [row] = board([{
       ...boardBase,
       score_versao: 'contexto_v1',
     }]);
@@ -99,7 +105,7 @@ describe('contrato do Score de contexto', () => {
     // `legacy` deixou de ser um contrato de entrada e virou um DADO DO PASSADO:
     // 19.229 linhas anteriores ao cutover, calculadas na escala antiga. Elas
     // continuam abrindo, e a régua delas é outra — ver futebol-faixas.test.ts.
-    const [row] = normalizeFutebolValueBoardRows([{
+    const [row] = board([{
       ...boardBase,
       score_versao: 'legacy',
     }]);
@@ -107,20 +113,23 @@ describe('contrato do Score de contexto', () => {
     expect(row.score_versao).toBe('legacy');
   });
 
-  it('o detalhe segue a mesma regra', () => {
-    const [row] = normalizeFutebolFixtureValueRows([{
+  it('o detalhe aceita a versão declarada', () => {
+    const [row] = detalhe([{
       ...fixtureBase,
       score_versao: 'contexto_v1',
     }]);
 
     expect(row.score_versao).toBe('contexto_v1');
-    expect(() => normalizeFutebolFixtureValueRows([fixtureBase])).toThrow(
+  });
+
+  it('e o detalhe também rejeita linha sem versão', () => {
+    expect(() => detalhe([fixtureBase])).toThrow(
       'O contrato do Score exige score_versao',
     );
   });
 
   it('rejeita uma versão desconhecida em vez de mascarar contrato inválido', () => {
-    expect(() => normalizeFutebolValueBoardRows([{
+    expect(() => board([{
       ...boardBase,
       score_versao: 'contexto_v2',
     }])).toThrow('Versão do Score desconhecida: contexto_v2');
