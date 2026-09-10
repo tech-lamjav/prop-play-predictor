@@ -14,6 +14,8 @@ import Picks from "./pages/Picks";
 import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
+import { PortaoDoSocio } from "./components/socios/PortaoDoSocio";
+import { ROTA_DOS_SOCIOS } from "./components/socios/crm-vocabulario";
 import { PostHogPageView } from "./components/PostHogPageView";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
@@ -45,6 +47,9 @@ const Planos = lazyWithRetry(() => import("./pages/Planos"));
 // resolvida pelo registry em pages/lp/variants.ts.
 const LpVariant = lazyWithRetry(() => import("./pages/lp/LpVariant"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+// Painel dos sócios: rota escondida, fora de todo menu. O portão vem eager
+// porque ele decide o que renderizar ANTES de valer a pena baixar o painel.
+const PainelDosSocios = lazyWithRetry(() => import("./pages/PainelDosSocios"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
@@ -182,6 +187,10 @@ const App = () => (
             <Route path="/planos" element={<Planos />} />
             <Route path="/lp/:slug" element={<LpVariant />} />
             <Route path="/como-usar" element={<ComoUsar />} />
+            {/* Painel dos sócios. Sem ProtectedRoute de propósito: aquele
+                REDIRECIONA para o login, e um redirecionamento denuncia que
+                existe algo ali. O portão devolve a página de não encontrado. */}
+            <Route path={ROTA_DOS_SOCIOS} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
             <Route path="/report" element={
               <ProtectedRoute>
                 <Report />

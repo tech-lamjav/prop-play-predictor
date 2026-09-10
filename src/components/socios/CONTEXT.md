@@ -6,7 +6,7 @@ registram sobre cada pessoa durante a abordagem.
 ## Language
 
 **Sócio**:
-Quem enxerga o painel administrativo. É uma marca no banco, ligada na mão, e não
+Quem enxerga o painel dos sócios. É uma marca no banco, ligada na mão, e não
 tem nada a ver com plano assinado.
 _Avoid_: Admin, administrador, usuário interno
 

@@ -267,6 +267,105 @@ export type Database = {
           },
         ]
       }
+      crm_anotacao: {
+        Row: {
+          criada_em: string
+          criada_por: string | null
+          id: string
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          texto?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_anotacao_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_etapa: {
+        Row: {
+          atualizada_em: string
+          atualizada_por: string | null
+          etapa: string
+          user_id: string
+        }
+        Insert: {
+          atualizada_em?: string
+          atualizada_por?: string | null
+          etapa: string
+          user_id: string
+        }
+        Update: {
+          atualizada_em?: string
+          atualizada_por?: string | null
+          etapa?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_etapa_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_etapa_evento: {
+        Row: {
+          de: string | null
+          em: string
+          id: string
+          para: string
+          por: string | null
+          user_id: string
+        }
+        Insert: {
+          de?: string | null
+          em?: string
+          id?: string
+          para: string
+          por?: string | null
+          user_id: string
+        }
+        Update: {
+          de?: string | null
+          em?: string
+          id?: string
+          para?: string
+          por?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_etapa_evento_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_queue: {
         Row: {
           channel: string | null
@@ -511,6 +610,7 @@ export type Database = {
           futebol_trial_started_at: string | null
           has_report_access: boolean | null
           id: string
+          is_socio: boolean
           name: string | null
           referral_code: string | null
           referred_by: string | null
@@ -554,6 +654,7 @@ export type Database = {
           futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
+          is_socio?: boolean
           name?: string | null
           referral_code?: string | null
           referred_by?: string | null
@@ -597,6 +698,7 @@ export type Database = {
           futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
+          is_socio?: boolean
           name?: string | null
           referral_code?: string | null
           referred_by?: string | null

@@ -1,9 +1,9 @@
 # CRM dos sócios
 
-> **Status:** spec aprovada em 2026-09-10 · **Branch:** `feat/crm-admin`
+> **Status:** spec aprovada em 2026-09-10 · **Branch:** `feat/crm-socios`
 > **Origem:** grill de 2026-09-10. Todas as recomendações foram aceitas.
 
-Um painel administrativo dentro do próprio site, visível só para os sócios, onde
+Um painel dentro do próprio site, visível só para os sócios, onde
 os cadastros aparecem por dia, cada nome abre uma ficha, e a abordagem de cada
 lead frio é registrada e acompanhada. O produto é um CRM mínimo para a fase de
 MVP — não substitui o PostHog, que continua sendo onde o comportamento mora.
@@ -100,7 +100,7 @@ WhatsApp com o texto já dentro.
 
 Cada item é uma bala traçante: sai ponta a ponta, do banco à tela.
 
-1. **Fundação** — migration, portão do sócio, rota escondida, tela vazia.
+1. **Fundação** — migration, portão do sócio, rota escondida, e uma casca que mostra o total de cadastros. O total é a bala traçante: sem a política de linha ele viria 1, a própria linha de quem perguntou.
 2. **Lista** — cadastros por dia, contadores, busca.
 3. **Ficha** — contatos, plano, acessos, gancho.
 4. **Funil** — etapa na ficha, histórico, filtro na lista.
