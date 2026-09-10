@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePostHog } from "@posthog/react";
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import { useAuth } from "@/hooks/use-auth";
@@ -126,8 +127,45 @@ const FutebolLP = () => {
   const comValor = OPPS.filter((o) => o.faixa !== "Baixa");
   const semValor = OPPS.filter((o) => o.faixa === "Baixa");
 
-  const goAuth = () => navigate("/auth");
-  const goProduct = () => navigate("/futebol");
+  // Esta LP recebe o tráfego pago de futebol e, até aqui, o único rastro dela no
+  // PostHog era o `$pageview` automático: quem clicava num CTA e desistia na tela
+  // de cadastro ficava indistinguível de quem nunca teve interesse. `secao` diz
+  // QUAL das cinco chamadas converteu, que é a pergunta que a mídia paga faz.
+  const posthog = usePostHog();
+  const cta = (secao: string, destino: "auth" | "produto") => {
+    posthog?.capture("futebol_lp_cta_click", {
+      product: "futebol",
+      secao,
+      destino,
+      logado: Boolean(user),
+    });
+  };
+
+  // A LP inteira convida a mexer na demonstração ("clica numa oportunidade aí
+  // embaixo"), e esse clique é o único sinal de interesse que existe antes do
+  // cadastro. Dispara uma vez por visita: o que interessa é se a pessoa mexeu,
+  // não quantas vezes.
+  const [demoTocada, setDemoTocada] = useState(false);
+  const abrirDemo = (o: MockOpp) => {
+    setSelectedId(o.id);
+    if (demoTocada) return;
+    setDemoTocada(true);
+    posthog?.capture("futebol_lp_demo_opened", {
+      product: "futebol",
+      mercado: o.market,
+      faixa: o.faixa,
+      score: o.score,
+    });
+  };
+
+  const goAuth = (secao: string) => {
+    cta(secao, "auth");
+    navigate("/auth");
+  };
+  const goProduct = (secao: string) => {
+    cta(secao, "produto");
+    navigate("/futebol");
+  };
 
   const FAQ: FaqItem[] = [
     {
@@ -167,14 +205,14 @@ const FutebolLP = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              onClick={() => navigate(user ? "/futebol" : "/auth")}
+              onClick={() => (user ? goProduct("nav") : goAuth("nav"))}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
               {user ? "Acessar" : "Entrar"}
             </button>
             <button
               type="button"
-              onClick={goAuth}
+              onClick={() => goAuth("nav")}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
             >
               Começar Grátis
@@ -204,7 +242,7 @@ const FutebolLP = () => {
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <button
               type="button"
-              onClick={goAuth}
+              onClick={() => goAuth("hero")}
               className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
             >
               <PlayCircle className="h-5 w-5 shrink-0" />
@@ -212,7 +250,7 @@ const FutebolLP = () => {
             </button>
             <button
               type="button"
-              onClick={goProduct}
+              onClick={() => goProduct("hero")}
               className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-white text-forest hover:bg-white/90 font-bold text-[15px] shadow-md transition-colors"
             >
               Espiar sem login
@@ -256,7 +294,7 @@ const FutebolLP = () => {
                     <button
                       key={o.id}
                       type="button"
-                      onClick={() => setSelectedId(o.id)}
+                      onClick={() => abrirDemo(o)}
                       className={`w-full text-left flex items-center gap-2.5 px-4 py-3 border-b border-line transition-colors ${active ? "bg-forest/[0.06]" : "hover:bg-canvas-2"}`}
                     >
                       <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[15px] w-9 h-8 shrink-0 ${faixaBadge(o.faixa)}`}>{o.score}</span>
@@ -285,7 +323,7 @@ const FutebolLP = () => {
                     <button
                       key={o.id}
                       type="button"
-                      onClick={() => setSelectedId(o.id)}
+                      onClick={() => abrirDemo(o)}
                       className={`w-full text-left flex items-center gap-2.5 px-4 py-3 border-b border-line last:border-b-0 opacity-60 transition-colors ${active ? "bg-forest/[0.06]" : "hover:bg-canvas-2"}`}
                     >
                       <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[15px] w-9 h-8 shrink-0 ${faixaBadge(o.faixa)}`}>{o.score}</span>
@@ -378,7 +416,7 @@ const FutebolLP = () => {
         <div className="text-center mt-8 sm:mt-10">
           <button
             type="button"
-            onClick={goProduct}
+            onClick={() => goProduct("produto")}
             className="inline-flex items-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
           >
             <PlayCircle className="h-5 w-5" />
@@ -539,7 +577,7 @@ const FutebolLP = () => {
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 md:min-w-[240px]">
             <button
               type="button"
-              onClick={goAuth}
+              onClick={() => goAuth("final")}
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
             >
               <PlayCircle className="h-5 w-5" />
@@ -547,7 +585,7 @@ const FutebolLP = () => {
             </button>
             <button
               type="button"
-              onClick={goProduct}
+              onClick={() => goProduct("final")}
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-bold text-[15px] transition-colors"
             >
               Espiar sem login

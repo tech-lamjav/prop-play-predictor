@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { Check, Loader2, Lock } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ export default function FutebolAssinar() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [assinouAgora, setAssinouAgora] = useState(false);
+  const posthog = usePostHog();
 
   const success = searchParams.get('success');
   const canceled = searchParams.get('canceled');
@@ -59,6 +61,14 @@ export default function FutebolAssinar() {
         const r = await stripeService.verifySession(sessionId);
         if (r.verified) {
           setAssinouAgora(true);
+          // ATENÇÃO: esta é a contagem do NAVEGADOR, e ela subconta por um motivo
+          // conhecido: quem fecha a aba depois de pagar nunca chega aqui. A
+          // contagem confiável é a do webhook do Stripe, que ainda não emite
+          // evento. Até lá, tratar este número como piso, nunca como receita.
+          posthog?.capture('futebol_subscribed', {
+            product: 'futebol',
+            fonte: 'retorno_checkout',
+          });
           await refetchAccess();
           toast({ title: 'Assinatura ativa!', description: 'Bom proveito. Te levando pras oportunidades...' });
           setTimeout(() => navigate('/futebol/oportunidades'), 1200);
@@ -72,7 +82,7 @@ export default function FutebolAssinar() {
 
     verificar(0);
     return () => { cancelado = true; };
-  }, [success, sessionId, user?.id, navigate, refetchAccess]);
+  }, [success, sessionId, user?.id, navigate, refetchAccess, posthog]);
 
   useEffect(() => {
     if (canceled) {
@@ -104,6 +114,11 @@ export default function FutebolAssinar() {
     }
 
     setIsLoading(true);
+    posthog?.capture('futebol_checkout_started', {
+      product: 'futebol',
+      estado_anterior: access?.state ?? null,
+      dias_restantes: access?.days_left ?? null,
+    });
     try {
       const { url } = await stripeService.createCheckoutSession(STRIPE_PRICE_ID, 'futebol');
       await stripeService.redirectToCheckout(url);

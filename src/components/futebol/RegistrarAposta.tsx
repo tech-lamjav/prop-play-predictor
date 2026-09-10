@@ -10,6 +10,7 @@
 // ============================================================
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { Receipt, Check, Loader2, ArrowRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
@@ -87,6 +88,7 @@ export function RegistrarApostaModal({
   const valid = !isNaN(stakeN) && stakeN > 0 && !isNaN(oddN) && oddN > 1;
   const retorno = valid ? stakeN * oddN : null;
   const atalhos = atalhosDaUnidade(unidade.unit_value);
+  const posthog = usePostHog();
 
   const handleSave = async () => {
     if (!draft || !user?.id || !valid) return;
@@ -111,6 +113,19 @@ export function RegistrarApostaModal({
         channel: 'futebol',
       });
       if (err) throw err;
+      // Mesmo evento do Betinho (Bets.tsx) de propósito: a liquidação já emite
+      // `bet_settled` com este esquema dos dois lados, então o futebol entra nas
+      // métricas que já rodam em vez de exigir uma análise paralela. O que separa
+      // os dois produtos é `product`/`channel`, não o nome do evento.
+      posthog?.capture('bet_created', {
+        product: 'futebol',
+        channel: 'futebol',
+        bet_type: 'single',
+        sport: 'Futebol',
+        betting_market: mkt,
+        odds: oddN,
+        is_credit_bet: false,
+      });
       setDone(true);
     } catch {
       setError('Não foi possível registrar a aposta. Tente de novo.');
