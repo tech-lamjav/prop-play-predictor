@@ -44,6 +44,7 @@ const montar = (
         mudandoEtapa={extras.mudandoEtapa ?? false}
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
         linhaDoTempo={extras.linhaDoTempo ?? null}
+        comportamento={<p>o comportamento</p>}
       />
     </MemoryRouter>,
   );
@@ -133,18 +134,12 @@ describe('Ficha', () => {
     expect(screen.queryByText(/palpite está incompleto/i)).not.toBeInTheDocument();
   });
 
-  it('o lugar do comportamento está reservado, e diz que ainda não tem nada', () => {
-    montar();
-    const comportamento = screen.getByRole('region', { name: 'Comportamento' });
-    expect(within(comportamento).getByText(/ainda não/i)).toBeInTheDocument();
-  });
-
   it('não promete saber de onde a pessoa veio', () => {
-    // Não existe campo de origem em lugar nenhum do banco. O bloco reservado
-    // pode DIZER que não sabe; o que ele não pode é rotular um campo vazio.
-    montar();
-    const comportamento = screen.getByRole('region', { name: 'Comportamento' });
-    expect(comportamento.textContent).toMatch(/ainda não aparecem aqui/i);
+    // Não existe campo de origem em lugar nenhum do banco. O bloco de
+    // comportamento pode DIZER que não sabe; o que ele não pode é rotular um
+    // campo vazio como se soubesse.
+    const { container } = montar();
+    expect(container.innerHTML).not.toMatch(/origem|campanha|utm/i);
   });
 
   it('quando a pessoa não existe, diz isso em vez de uma ficha em branco', () => {
@@ -157,6 +152,7 @@ describe('Ficha', () => {
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
           linhaDoTempo={null}
+          comportamento={null}
         />
       </MemoryRouter>,
     );
@@ -239,6 +235,7 @@ describe('Ficha · a linha do tempo entra na página', () => {
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
           linhaDoTempo={<p>a linha do tempo</p>}
+          comportamento={null}
         />
       </MemoryRouter>,
     );

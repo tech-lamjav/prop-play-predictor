@@ -3,6 +3,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Ficha } from '@/components/socios/Ficha';
 import { FichaEmModal } from '@/components/socios/FichaEmModal';
+import { BlocoDeComportamento } from '@/components/socios/BlocoDeComportamento';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
@@ -12,6 +13,7 @@ import { useCadastros } from '@/hooks/use-cadastros';
 import { useEtapas, useMudarEtapa } from '@/hooks/use-etapas';
 import { useLinhaDoTempo, useAnotar } from '@/hooks/use-linha-do-tempo';
 import { useMovimento } from '@/hooks/use-painel-do-crm';
+import { useComportamento } from '@/hooks/use-comportamento';
 import { useNomeDoSocio } from '@/hooks/use-nome-do-socio';
 import { usePessoa } from '@/hooks/use-pessoa';
 import { brtToday } from '@/utils/futebol-datas';
@@ -70,6 +72,7 @@ function FichaDoModal({ id }: { id: string }) {
   const linha = useLinhaDoTempo(id);
   const anotar = useAnotar(id);
   const nomeDoSocio = useNomeDoSocio();
+  const comportamento = useComportamento(id);
 
   return (
     <Ficha
@@ -80,6 +83,12 @@ function FichaDoModal({ id }: { id: string }) {
       aoMudarEtapa={(etapa) => mudar.mutate(etapa)}
       mudandoEtapa={mudar.isPending}
       erroAoMudarEtapa={mudar.isError}
+      comportamento={
+        <BlocoDeComportamento
+          estado={comportamento}
+          cadastradoEm={estado.tipo === 'pronta' ? estado.pessoa.created_at : null}
+        />
+      }
       linhaDoTempo={
         <LinhaDoTempo
           estado={linha}

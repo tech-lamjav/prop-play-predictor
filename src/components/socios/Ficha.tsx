@@ -62,6 +62,7 @@ export function Ficha({
   mudandoEtapa,
   erroAoMudarEtapa,
   linhaDoTempo,
+  comportamento,
 }: {
   estado: EstadoDaFicha;
   /**
@@ -72,6 +73,7 @@ export function Ficha({
   aoMudarEtapa: (etapa: Etapa) => void;
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
+  comportamento: ReactNode;
   /** A linha do tempo entra por fora: ela tem consulta e escrita próprias, e a
    *  ficha continua sendo só desenho. */
   linhaDoTempo: ReactNode;
@@ -94,6 +96,7 @@ export function Ficha({
       mudandoEtapa={mudandoEtapa}
       erroAoMudarEtapa={erroAoMudarEtapa}
       linhaDoTempo={linhaDoTempo}
+      comportamento={comportamento}
     />
   );
 }
@@ -106,6 +109,7 @@ function Conteudo({
   mudandoEtapa,
   erroAoMudarEtapa,
   linhaDoTempo,
+  comportamento,
 }: {
   pessoa: Pessoa;
   apostas: ResumoDeApostas | null;
@@ -114,6 +118,9 @@ function Conteudo({
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
   linhaDoTempo: ReactNode;
+  /** Entra por fora, como a linha do tempo: tem consulta própria, e só sai
+   *  quando o modal abre. */
+  comportamento: ReactNode;
 }) {
   const plano = nomeDoPlano(pessoa.subscription_product_type);
   const bruto = (pessoa.subscription_product_type ?? '').trim();
@@ -208,12 +215,7 @@ function Conteudo({
             ))}
           </Bloco>
 
-          <Bloco titulo="Comportamento">
-            <p className="text-[13px] text-ink-2">
-              Páginas vistas, número de sessões e tempo de tela ainda não aparecem aqui. Esses
-              números moram no PostHog, e trazê-los exige uma função no servidor.
-            </p>
-          </Bloco>
+          {comportamento}
         </div>
 
         <div className="space-y-4 overflow-y-auto p-5">
