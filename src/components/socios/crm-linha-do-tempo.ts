@@ -126,3 +126,43 @@ export function mensagemDoErro(erro: unknown): string {
   if (texto.includes('anotacao vazia')) return 'A anotação está vazia.';
   return 'Não deu para registrar. Tente de novo.';
 }
+
+/** Um feedback com o nome de quem falou, para a lista geral. */
+export interface FeedbackNaLista {
+  id: string;
+  userId: string;
+  /** O nome da pessoa, ou o e-mail quando não há nome. */
+  pessoa: string;
+  quando: string;
+  autor: string | null;
+  texto: string;
+}
+
+/**
+ * Todos os feedbacks da base, do mais recente para o mais antigo.
+ *
+ * Feedback nasce dentro de uma conversa, e é lá que ele faz sentido para
+ * trabalhar aquele lead. Mas quando a pergunta é "o que estão achando do
+ * produto", ler a conversa inteira de trinta pessoas não é resposta — e é para
+ * essa pergunta que esta lista existe.
+ *
+ * Quem não estiver no mapa de nomes some da lista de propósito: um feedback sem
+ * dono é um feedback que ninguém consegue responder, e mostrá-lo com um
+ * identificador cru só ocuparia espaço.
+ */
+export function montarFeedbacks(
+  anotacoes: (AnotacaoDoBanco & { user_id: string })[],
+  nomes: Record<string, string | undefined>,
+): FeedbackNaLista[] {
+  return anotacoes
+    .filter((a) => a.tipo === 'feedback' && nomes[a.user_id])
+    .map((a) => ({
+      id: a.id,
+      userId: a.user_id,
+      pessoa: nomes[a.user_id]!,
+      quando: a.criada_em,
+      autor: a.criada_por,
+      texto: a.texto,
+    }))
+    .sort((a, b) => (a.quando === b.quando ? a.id.localeCompare(b.id) : b.quando.localeCompare(a.quando)));
+}

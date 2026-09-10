@@ -204,34 +204,37 @@ export const DIAS_PARA_ESTAR_PARADO = 7;
 /** As duas pontas do funil: caso fechado, não é pendência de ninguém. */
 const FECHADAS: Posicao[] = ['assinante', 'sem_resposta'];
 
-export interface FilaDeTrabalho {
-  novosSemContato: Lead[];
-  parados: Lead[];
-}
-
 /**
- * O que fazer agora.
+ * Quem precisa de atenção agora, numa lista só.
  *
- * Duas filas, e elas não se cruzam: quem nunca saiu de "novo" precisa de um
- * primeiro contato, e quem está no meio do funil parado há uma semana precisa
- * de retomada. Juntar as duas numa lista só faria a segunda sumir embaixo da
- * primeira, que é sempre muito maior.
+ * Duas situações entram: a conversa já começada que esfriou — sem toque há uma
+ * semana — e quem nunca saiu de "novo". A primeira versão desenhava as duas em
+ * TABELAS separadas, com medo de a segunda enterrar a primeira, que é sempre
+ * muito maior. Era medo mal colocado: a coluna de etapa já separa as duas, e
+ * duas tabelas para mostrar uma diferença que a tabela já mostra é o que fazia
+ * a tela parecer cinco listas.
  *
- * As pontas ficam de fora: encher a fila de casos fechados é o jeito mais
- * rápido de fazer o sócio parar de olhar a fila.
+ * A ordem é que resolve o enterro: conversa esfriando vem antes de lead novo,
+ * porque ela já custou trabalho. Dentro de cada grupo, o mais parado primeiro.
+ *
+ * As pontas do funil ficam de fora: encher a fila de casos fechados é o jeito
+ * mais rápido de fazer o sócio parar de olhar a fila.
  */
-export function filaDeTrabalho(leads: Lead[]): FilaDeTrabalho {
-  const maisParadoPrimeiro = (a: Lead, b: Lead) => (b.diasParado ?? 0) - (a.diasParado ?? 0);
+export function precisamDeAtencao(leads: Lead[]): Lead[] {
+  const nuncaAbordado = (l: Lead) => l.posicao === ETAPA_PADRAO;
 
-  return {
-    novosSemContato: leads.filter((l) => l.posicao === ETAPA_PADRAO).sort(maisParadoPrimeiro),
-    parados: leads
-      .filter(
-        (l) =>
-          l.posicao !== ETAPA_PADRAO &&
-          !FECHADAS.includes(l.posicao) &&
-          (l.diasParado ?? 0) >= DIAS_PARA_ESTAR_PARADO,
-      )
-      .sort(maisParadoPrimeiro),
-  };
+  const esfriando = (l: Lead) =>
+    !nuncaAbordado(l) &&
+    !FECHADAS.includes(l.posicao) &&
+    (l.diasParado ?? 0) >= DIAS_PARA_ESTAR_PARADO;
+
+  return leads
+    .filter((l) => esfriando(l) || nuncaAbordado(l))
+    .sort((a, b) => {
+      // Esfriando antes de novo. `Number` sobre o booleano porque a ordenação
+      // precisa de número, e `false` tem de vir depois de `true`.
+      const prioridade = Number(esfriando(b)) - Number(esfriando(a));
+      if (prioridade !== 0) return prioridade;
+      return (b.diasParado ?? 0) - (a.diasParado ?? 0);
+    });
 }

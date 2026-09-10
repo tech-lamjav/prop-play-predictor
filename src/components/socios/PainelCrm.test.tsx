@@ -106,7 +106,7 @@ describe('PainelCrm · o funil', () => {
 
   it('clicar num degrau filtra a lista', async () => {
     montar({ etapas: { b: 'contatado' } });
-    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
     await userEvent.click(degrau(/Contatado/));
     expect(screen.getByText('João Souza')).toBeInTheDocument();
     expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument();
@@ -115,7 +115,7 @@ describe('PainelCrm · o funil', () => {
   it('clicar de novo no mesmo degrau limpa o filtro', async () => {
     // Sem isso, sair do filtro exige achar um botão em outro canto da tela.
     montar({ etapas: { b: 'contatado' } });
-    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
     await userEvent.click(degrau(/Contatado/));
     await userEvent.click(degrau(/Contatado/));
     expect(screen.getByText('Maria Silva')).toBeInTheDocument();
@@ -128,48 +128,52 @@ describe('PainelCrm · o funil', () => {
   });
 });
 
-describe('PainelCrm · as abas', () => {
-  it('abre na fila de trabalho, e não na lista', () => {
-    // A fila é a resposta para "com quem eu falo agora". Abrir na lista faria a
-    // tela voltar a ser um registro do que aconteceu.
+describe('PainelCrm · a lista', () => {
+  it('abre no recorte de quem precisa de atenção, e não na base inteira', () => {
+    // A lista é a resposta para "com quem eu falo agora". Abrir na base
+    // inteira faria a tela voltar a ser um registro do que aconteceu.
     montar();
-    expect(screen.getByRole('tab', { name: 'Fila de trabalho' })).toHaveAttribute(
-      'aria-selected',
+    expect(screen.getByRole('radio', { name: 'Precisa de atenção' })).toHaveAttribute(
+      'aria-checked',
       'true',
     );
-    expect(screen.getByRole('region', { name: 'Nunca abordados' })).toBeInTheDocument();
   });
 
-  it('separa conversas esfriando de quem nunca foi abordado', () => {
-    // Numa lista só, a fila de retomada sumiria embaixo da de primeiro
-    // contato, que é sempre muito maior.
-    montar({
-      etapas: { b: 'contatado' },
-      toques: { b: '2026-08-01T12:00:00Z' },
-    });
-    const esfriando = screen.getByRole('region', { name: 'Conversas esfriando' });
-    expect(within(esfriando).getByText('João Souza')).toBeInTheDocument();
-    const nunca = screen.getByRole('region', { name: 'Nunca abordados' });
-    expect(within(nunca).getByText('Maria Silva')).toBeInTheDocument();
+  it('é UMA tabela, e não uma pilha de listas', () => {
+    // A primeira versão tinha três abas, e a primeira ainda se dividia em duas
+    // tabelas por dentro: cinco listas para uma base só.
+    montar({ etapas: { b: 'contatado' }, toques: { b: '2026-08-01T12:00:00Z' } });
+    expect(screen.getAllByRole('table')).toHaveLength(1);
   });
 
-  it('a aba Todos mostra a tabela com há quantos dias o lead está parado', async () => {
-    montar({ etapas: { b: 'contatado' }, toques: { b: '2026-09-04T12:00:00Z' } });
-    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
-    expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(screen.getByText('7d')).toBeInTheDocument();
+  it('conversa esfriando aparece antes de lead nunca abordado', () => {
+    montar({ etapas: { b: 'contatado' }, toques: { b: '2026-08-01T12:00:00Z' } });
+    const linhas = screen.getAllByRole('row').slice(1);
+    expect(linhas[0]).toHaveTextContent('João Souza');
   });
 
-  it('a aba Por dia agrupa pelo dia de Brasília', async () => {
+  it('trocar para Todos mostra a base inteira', async () => {
+    montar({ etapas: { b: 'interesse' }, toques: { b: '2026-09-11T12:00:00Z' } });
+    expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
+    expect(screen.getByText('João Souza')).toBeInTheDocument();
+  });
+
+  it('agrupar por dia é uma chave à parte, que se combina com o recorte', async () => {
     montar();
-    await userEvent.click(screen.getByRole('tab', { name: 'Por dia' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /agrupar por dia/i }));
     expect(screen.getByText(/10\/09\/2026/)).toBeInTheDocument();
     expect(screen.getByText(/08\/09\/2026/)).toBeInTheDocument();
+  });
+
+  it('lista vazia de atenção é boa notícia, e a frase diz isso', async () => {
+    montar({ etapas: { a: 'interesse', b: 'interesse' }, toques: { a: '2026-09-11T12:00:00Z', b: '2026-09-11T12:00:00Z' } });
+    expect(screen.getByText(/ninguém esperando/i)).toBeInTheDocument();
   });
 });
 
 describe('PainelCrm · a base', () => {
-  it('a busca filtra as três abas', async () => {
+  it('a busca filtra a lista', async () => {
     montar();
     await userEvent.type(screen.getByRole('searchbox'), 'maria');
     expect(screen.getByText('Maria Silva')).toBeInTheDocument();
@@ -180,7 +184,7 @@ describe('PainelCrm · a base', () => {
     // É a razão de o CRM existir: um assinante do Essencial cujo olho brilhou
     // no Betinho precisa ser abordado por Betinho.
     montar({ apostas: { a: 12 } });
-    await userEvent.click(screen.getByRole('tab', { name: 'Todos' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
     expect(screen.getByText('Betinho')).toBeInTheDocument();
   });
 
@@ -264,7 +268,7 @@ describe('PainelCrm · quando o movimento não carrega', () => {
     // contato incha com gente já abordada e "parado há N dias" passa a contar
     // desde o cadastro. A tela inteira mentiria e nada acusaria.
     montar({ estadoDoMovimento: { tipo: 'erro' } });
-    expect(screen.getByText(/não dá para montar a fila sem inventar/i)).toBeInTheDocument();
+    expect(screen.getByText(/não dá para montar a lista sem inventar/i)).toBeInTheDocument();
   });
 
   it('e diz que o funil não pôde ser montado', () => {

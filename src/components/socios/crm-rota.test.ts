@@ -29,13 +29,11 @@ describe('o painel não é anunciado', () => {
   });
 
   it('a página do painel é noindex', () => {
-    const pagina = 'src/pages/PainelDosSocios.tsx';
-      // Ficar fora do sitemap não basta: o Google chega por qualquer link, e
-      // uma página de app sem noindex vira página fantasma no índice. Tirar o
-      // noindex não quebrava nada até este guarda existir.
-      expect(raiz(pagina)).toMatch(/<Seo\s+noindex/);
-    },
-  );
+    // Ficar fora do sitemap não basta: o Google chega por qualquer link, e uma
+    // página de app sem noindex vira página fantasma no índice. Tirar o noindex
+    // não quebrava nada até este guarda existir.
+    expect(raiz('src/pages/PainelDosSocios.tsx')).toMatch(/<Seo\s+noindex/);
+  });
 });
 
 describe('a rota nasce com o portão', () => {
@@ -71,18 +69,46 @@ describe('o painel usa o cabeçalho do site', () => {
     expect(raiz('src/pages/PainelDosSocios.tsx')).toContain('<AnalyticsNav');
   });
 
-  it('e a ficha herda isso, porque as duas rotas desenham a mesma página', () => {
+  it('e a ficha herda isso, porque ela desenha a mesma página da lista', () => {
     // A rota da lista e a da ficha apontam para PainelDosSocios: a segunda é a
     // primeira com o modal aberto por cima. É isso que mantém o endereço
     // compartilhável sem tirar ninguém da lista.
     const rotas = raiz('src/App.tsx')
       .split('\n')
-      .filter((l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'));
+      .filter((l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'))
+      // Os feedbacks são seção própria, com página própria: o que se lista lá
+      // não é gente, é o que a gente ouviu.
+      .filter((l) => !l.includes('feedbacks'));
     expect(rotas).toHaveLength(2);
     for (const rota of rotas) expect(rota).toContain('PainelDosSocios');
   });
 
+  it('a seção de feedbacks vem antes da rota com parâmetro', () => {
+    // `/socios/feedbacks` e `/socios/<id>` competem pelo mesmo formato. O React
+    // Router prioriza segmento fixo, então funcionaria de qualquer jeito — mas
+    // a ordem no arquivo é o que torna isso visível para quem lê.
+    const app = raiz('src/App.tsx');
+    expect(app.indexOf('/feedbacks`}')).toBeLessThan(app.indexOf('/:id`}'));
+  });
+
   it('e o painel tem a faixa de identidade do CRM', () => {
     expect(raiz('src/components/socios/PainelCrm.tsx')).toContain('<CabecalhoDoCrm');
+  });
+});
+
+describe('a seção de feedbacks', () => {
+  it('é noindex, como o resto do painel', () => {
+    expect(raiz('src/pages/FeedbacksDoCrm.tsx')).toMatch(/<Seo\s+noindex/);
+  });
+
+  it('usa o header do site e a faixa do CRM', () => {
+    const pagina = raiz('src/pages/FeedbacksDoCrm.tsx');
+    expect(pagina).toContain('<AnalyticsNav');
+    expect(pagina).toContain('<CabecalhoDoCrm');
+  });
+
+  it('não entra no sitemap nem no robots', () => {
+    expect(raiz('src/seo/public-routes.json')).not.toContain('feedbacks');
+    expect(raiz('public/robots.txt')).not.toContain('feedbacks');
   });
 });

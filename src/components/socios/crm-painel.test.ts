@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   contarPorPosicao,
   DIAS_PARA_ESTAR_PARADO,
-  filaDeTrabalho,
+  precisamDeAtencao,
   metricasDeNegocio,
   montarLeads,
   type Toques,
@@ -137,48 +137,62 @@ describe('metricasDeNegocio', () => {
   });
 });
 
-describe('filaDeTrabalho', () => {
-  it('novo sem contato é quem nunca saiu da primeira etapa', () => {
-    const fila = filaDeTrabalho(monta([cadastro({ id: 'a' }), cadastro({ id: 'b' })], { b: 'contatado' }));
-    expect(fila.novosSemContato.map((l) => l.id)).toEqual(['a']);
+describe('precisamDeAtencao', () => {
+  it('junta as duas situações numa lista só', () => {
+    // Duas TABELAS separadas era medo mal colocado: a coluna de etapa já
+    // distingue quem nunca foi abordado de quem esfriou.
+    const leads = monta(
+      [cadastro({ id: 'novo' }), cadastro({ id: 'frio' })],
+      { frio: 'contatado' },
+      { frio: '2026-08-01T12:00:00Z' },
+    );
+    expect(precisamDeAtencao(leads).map((l) => l.id)).toHaveLength(2);
   });
 
-  it('parado é quem está no meio do funil e não recebe nada há uma semana', () => {
+  it('conversa esfriando vem antes de lead nunca abordado', () => {
+    // A ordem é o que impede o enterro: a conversa já começada custou
+    // trabalho, e a fila de leads novos é sempre muito maior.
     const leads = monta(
-      [cadastro({ id: 'a' }), cadastro({ id: 'b' })],
-      { a: 'contatado', b: 'contatado' },
-      { a: '2026-09-01T12:00:00Z', b: '2026-09-10T12:00:00Z' },
+      [cadastro({ id: 'novo', created_at: '2020-01-01T12:00:00Z' }), cadastro({ id: 'frio' })],
+      { frio: 'contatado' },
+      { frio: '2026-08-01T12:00:00Z' },
     );
-    expect(fila(leads).parados.map((l) => l.id)).toEqual(['a']);
+    expect(precisamDeAtencao(leads)[0].id).toBe('frio');
+  });
+
+  it('dentro do mesmo grupo, o mais parado primeiro', () => {
+    const leads = monta([
+      cadastro({ id: 'recente', created_at: '2026-09-10T12:00:00Z' }),
+      cadastro({ id: 'antigo', created_at: '2026-01-01T12:00:00Z' }),
+    ]);
+    expect(precisamDeAtencao(leads).map((l) => l.id)).toEqual(['antigo', 'recente']);
+  });
+
+  it('conversa com toque recente não entra', () => {
+    const leads = monta(
+      [cadastro({ id: 'a' })],
+      { a: 'contatado' },
+      { a: '2026-09-10T12:00:00Z' },
+    );
+    expect(precisamDeAtencao(leads)).toEqual([]);
   });
 
   it('quem assina ou não respondeu não é cobrança pendente', () => {
-    // As duas são pontas do funil. Deixá-las na fila de parados enche a lista
-    // de casos fechados e o sócio para de olhar a fila.
+    // As duas são pontas do funil. Deixá-las na fila enche a lista de casos
+    // fechados e o sócio para de olhar a fila.
     const antigo = { a: '2026-01-01T12:00:00Z', b: '2026-01-01T12:00:00Z' };
     const leads = monta(
       [cadastro({ id: 'a', futebol_subscription_status: 'premium' }), cadastro({ id: 'b' })],
       { a: 'interesse', b: 'sem_resposta' },
       antigo,
     );
-    expect(fila(leads).parados).toEqual([]);
-  });
-
-  it('o mais parado aparece primeiro', () => {
-    const leads = monta(
-      [cadastro({ id: 'a' }), cadastro({ id: 'b' })],
-      { a: 'nutrindo', b: 'nutrindo' },
-      { a: '2026-08-01T12:00:00Z', b: '2026-08-20T12:00:00Z' },
-    );
-    expect(fila(leads).parados.map((l) => l.id)).toEqual(['a', 'b']);
+    expect(precisamDeAtencao(leads)).toEqual([]);
   });
 
   it('o corte é declarado, e não um número solto no meio do código', () => {
     expect(DIAS_PARA_ESTAR_PARADO).toBe(7);
   });
 });
-
-const fila = (leads: ReturnType<typeof monta>) => filaDeTrabalho(leads);
 
 describe('montarLeads · quando a contagem de apostas falha', () => {
   it('o gancho se declara incompleto em vez de dizer que ninguém apostou', () => {

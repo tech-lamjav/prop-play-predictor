@@ -1,18 +1,17 @@
 import { useMemo, useState } from 'react';
-import { buscar, type Cadastro } from './crm-lista';
+import { agruparPorDia, buscar, formatarDia, type Cadastro } from './crm-lista';
 import {
   contarPorPosicao,
-  filaDeTrabalho,
   metricasDeNegocio,
   montarLeads,
+  precisamDeAtencao,
+  type Lead,
   type Posicao,
 } from './crm-painel';
 import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
 import { CabecalhoDoCrm } from './CabecalhoDoCrm';
 import { FaixaDoFunil } from './FaixaDoFunil';
-import { FilaDeTrabalhoLista } from './FilaDeTrabalhoLista';
-import { ListaPorDia } from './ListaPorDia';
 import { MetricasDoTopo } from './MetricasDoTopo';
 import { TabelaDeLeads } from './TabelaDeLeads';
 
@@ -31,13 +30,35 @@ export type EstadoDoPainel =
 /** Um array novo a cada render invalidaria os useMemo abaixo sem nada ter mudado. */
 const VAZIO: Cadastro[] = [];
 
-type Aba = 'fila' | 'todos' | 'dia';
+/**
+ * Qual fatia da base a lista mostra.
+ *
+ * Duas, e não mais: a primeira versão tinha três abas, e a primeira delas ainda
+ * se dividia em duas tabelas por dentro — cinco listas para uma base só. O
+ * recorte é filtro, e agrupar por dia é uma chave à parte, porque as duas
+ * coisas se combinam em vez de competir.
+ */
+type Recorte = 'atencao' | 'todos';
 
-const ABAS: { id: Aba; rotulo: string }[] = [
-  { id: 'fila', rotulo: 'Fila de trabalho' },
-  { id: 'todos', rotulo: 'Todos' },
-  { id: 'dia', rotulo: 'Por dia' },
+const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
+  {
+    id: 'atencao',
+    rotulo: 'Precisa de atenção',
+    explicacao: 'conversas esfriando primeiro, depois quem nunca foi abordado',
+  },
+  { id: 'todos', rotulo: 'Todos', explicacao: 'a base inteira, do mais parado ao mais recente' },
 ];
+
+/**
+ * O que dizer quando a lista sai vazia.
+ *
+ * A frase muda com o recorte de propósito: lista vazia em "precisa de atenção"
+ * é uma boa notícia, e a mesma frase genérica faria parecer defeito.
+ */
+const vazioDo = (recorte: Recorte) =>
+  recorte === 'atencao'
+    ? 'Ninguém esperando. Toda conversa começada teve toque na última semana, e todo lead novo já foi abordado.'
+    : 'Nenhum cadastro com esses filtros.';
 
 /**
  * O painel dos sócios.
@@ -67,7 +88,8 @@ export function PainelCrm({
 }) {
   const [busca, setBusca] = useState('');
   const [posicao, setPosicao] = useState<Posicao | null>(null);
-  const [aba, setAba] = useState<Aba>('fila');
+  const [recorte, setRecorte] = useState<Recorte>('atencao');
+  const [agrupado, setAgrupado] = useState(false);
 
   const cadastros = estado.tipo === 'pronto' ? estado.cadastros : VAZIO;
   // Nulo enquanto as etapas não chegam. Um mapa vazio faria todo mundo cair em
@@ -116,14 +138,37 @@ export function PainelCrm({
     [todos, achados, posicao],
   );
 
-  const fila = useMemo(() => (noRecorte ? filaDeTrabalho(noRecorte) : null), [noRecorte]);
+  /**
+   * A lista que a tela desenha, já no recorte e na ordem certa.
+   *
+   * "Todos" ordena pelo mais parado, e não pelo mais recente: numa base que
+   * ninguém abordou, a ordem cronológica só mostra os últimos que chegaram, que
+   * são justamente os menos urgentes.
+   */
+  const lista = useMemo(() => {
+    if (!noRecorte) return null;
+    if (recorte === 'atencao') return precisamDeAtencao(noRecorte);
+    return [...noRecorte].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
+  }, [noRecorte, recorte]);
+
+  const porDia = useMemo(
+    () => (lista && agrupado ? agruparPorDia(lista, (l) => l.cadastradoEm) : null),
+    [lista, agrupado],
+  );
+
+  const resumo =
+    estado.tipo === 'pronto'
+      ? `${estado.totalNaBase} ${estado.totalNaBase === 1 ? 'cadastro' : 'cadastros'} na base`
+      : estado.tipo === 'erro'
+        ? 'base indisponível'
+        : 'carregando…';
 
   const baseVazia = estado.tipo === 'pronto' && estado.cadastros.length === 0;
   const truncada = estado.tipo === 'pronto' && estado.totalNaBase > estado.cadastros.length;
 
   return (
     <div className="min-h-screen bg-canvas">
-      <CabecalhoDoCrm estado={estado} />
+      <CabecalhoDoCrm resumo={resumo} />
 
       <div className="mx-auto max-w-6xl px-4 py-6">
         {estado.tipo === 'carregando' && (
@@ -180,45 +225,65 @@ export function PainelCrm({
             </div>
 
             <div className="mt-5 rounded-rebrand-md border border-line-2 bg-white">
-              <div
-                role="tablist"
-                aria-label="Como ver a base"
-                className="flex border-b border-line-2"
-              >
-                {ABAS.map(({ id, rotulo }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="tab"
-                    aria-selected={aba === id}
-                    onClick={() => setAba(id)}
-                    className={`px-4 py-3 text-[14px] font-bold transition ${
-                      aba === id
-                        ? 'border-b-2 border-forest text-ink'
-                        : 'text-ink-2 hover:text-ink-2'
-                    }`}
-                  >
-                    {rotulo}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-2 px-4 py-3">
+                <div
+                  role="radiogroup"
+                  aria-label="Recorte da lista"
+                  className="flex flex-wrap gap-1"
+                >
+                  {RECORTES.map(({ id, rotulo, explicacao }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={recorte === id}
+                      title={explicacao}
+                      onClick={() => setRecorte(id)}
+                      className={`rounded-rebrand-sm px-3 py-1.5 text-[14px] font-bold transition ${
+                        recorte === id
+                          ? 'bg-forest text-white'
+                          : 'text-ink-2 hover:bg-canvas hover:text-ink'
+                      }`}
+                    >
+                      {rotulo}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Agrupar é chave à parte, e não um terceiro recorte: ela se
+                    combina com os dois em vez de competir com eles. */}
+                <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                  <input
+                    type="checkbox"
+                    checked={agrupado}
+                    onChange={(e) => setAgrupado(e.target.checked)}
+                    aria-label="Agrupar por dia de cadastro"
+                  />
+                  Agrupar por dia
+                </label>
               </div>
 
-              {aba === 'fila' &&
-                (fila ? (
-                  <FilaDeTrabalhoLista fila={fila} />
-                ) : (
-                  <p className="px-4 py-6 text-[14px] text-ink-2">
-                    {faltouAlgo
-                      ? 'Sem o histórico de etapas não dá para montar a fila sem inventar.'
-                      : 'Carregando a fila…'}
-                  </p>
-                ))}
-
-              {aba === 'todos' && (
-                <TabelaDeLeads leads={noRecorte ?? []} vazio="Nenhum cadastro com esses filtros." />
+              {lista === null ? (
+                <p className="px-4 py-6 text-[14px] text-ink-2">
+                  {faltouAlgo
+                    ? 'Sem o histórico de etapas não dá para montar a lista sem inventar.'
+                    : 'Carregando a lista…'}
+                </p>
+              ) : porDia ? (
+                porDia.map((grupo) => (
+                  <div key={grupo.dia ?? 'sem-data'}>
+                    <h3 className="border-b border-line-2 bg-canvas px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-2">
+                      {grupo.dia ? formatarDia(grupo.dia) : 'Sem data de cadastro'}
+                      <span className="ml-2 font-sans normal-case tracking-normal">
+                        {grupo.itens.length}
+                      </span>
+                    </h3>
+                    <TabelaDeLeads leads={grupo.itens} vazio="" />
+                  </div>
+                ))
+              ) : (
+                <TabelaDeLeads leads={lista} vazio={vazioDo(recorte)} />
               )}
-
-              {aba === 'dia' && <ListaPorDia leads={noRecorte ?? []} />}
             </div>
           </>
         )}
