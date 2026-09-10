@@ -29,6 +29,14 @@
 //    OUTRA escala e não é comparável. Para medir a régua de hoje, use
 //    `--desde="2026-09-04 14:35"`.
 //
+// 4. MERCADO OCULTO NÃO CONTA. O Handicap sai da vitrine desde 01/09 e o
+//    assinante não o vê, embora o backend siga publicando para continuar
+//    medindo. Somar as linhas dele à taxa é responder por um produto que
+//    ninguém está usando. O script lê `public.futebol_mercados_ocultos` e os
+//    exclui por padrão — quando o mercado voltar à vitrine, a conta volta
+//    sozinha, sem ninguém lembrar de editar nada aqui. Use `--com-ocultos`
+//    para medir o board bruto, que é outra pergunta.
+//
 // ── O que este script NÃO consegue responder ────────────────────────────────
 // ROI por PREMISSA. Quais premissas acenderam em cada linha não existe no
 // Postgres — não há coluna de evidência nem array de premissas em
@@ -173,6 +181,12 @@ from public.daily_opportunity_picks p
 join futebol.fact_fixtures f on f.fixture_id = p.fixture_id
 `;
 
+const SQL_OCULTOS = `
+select market, oculto_desde, motivo
+from public.futebol_mercados_ocultos
+where oculto is true
+`;
+
 // ── apresentação ───────────────────────────────────────────────────────────
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
@@ -230,11 +244,15 @@ async function principal() {
   );
   const fonte = args.fonte === 'picks' ? 'picks' : 'board';
   const desde = typeof args.desde === 'string' ? args.desde : null;
+  const comOcultos = args['com-ocultos'] === true;
+
+  const ocultos = comOcultos ? [] : await consultar(SQL_OCULTOS);
+  const mercadosOcultos = new Set(ocultos.map((o) => o.market));
 
   const brutas = await consultar(fonte === 'picks' ? SQL_PICKS : SQL_BOARD);
-  const noRecorte = desde
-    ? brutas.filter((l) => String(l.dbt_valid_from) >= desde)
-    : brutas;
+  const noRecorte = brutas
+    .filter((l) => (desde ? String(l.dbt_valid_from) >= desde : true))
+    .filter((l) => !mercadosOcultos.has(l.market));
 
   const liquidadas = [];
   let pendentes = 0;
@@ -249,6 +267,13 @@ async function principal() {
 
   const g = estatistica(liquidadas);
   console.log(`# ${fonte === 'picks' ? 'Picks enviados no Telegram' : 'Board publicado'}${desde ? ` — desde ${desde}` : ''}`);
+  for (const o of ocultos) {
+    console.log(
+      `\n> Fora da conta: ${o.market}, oculto da vitrine desde ` +
+      `${String(o.oculto_desde).slice(0, 10)}. ${o.motivo}`,
+    );
+  }
+  if (comOcultos) console.log('\n> --com-ocultos: mercado escondido do assinante ESTÁ na conta.');
   console.log(
     `\n${noRecorte.length} no recorte · ${g.n} liquidadas · ${pendentes} pendentes` +
     `\ntaxa ${g.taxa == null ? '—' : pct(g.taxa)} · ROI ${pct(g.roi)} ± ${(g.ep * 100).toFixed(1)}pp`,
