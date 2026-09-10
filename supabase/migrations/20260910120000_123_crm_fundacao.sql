@@ -95,7 +95,7 @@ create index if not exists idx_crm_etapa_etapa on public.crm_etapa(etapa);
 comment on table public.crm_etapa is
   'Onde cada lead está no funil. Sem linha = novo.';
 
--- ── O histórico das mudanças ────────────────────────────────────────────────
+-- ── A linha do tempo das mudanças ────────────────────────────────────────────────
 -- Append-only: corrigir uma etapa errada acrescenta um evento, nunca apaga o
 -- anterior. É o que torna possível medir depois quanto tempo um lead ficou
 -- parado em cada etapa — e uma correção que apaga destrói justamente a medida.
@@ -111,7 +111,7 @@ create table if not exists public.crm_etapa_evento (
 create index if not exists idx_crm_etapa_evento_user on public.crm_etapa_evento(user_id, em desc);
 
 comment on table public.crm_etapa_evento is
-  'Histórico append-only das mudanças de etapa. Nunca sofre update nem delete.';
+  'Linha do tempo append-only das mudancas de etapa. Nunca sofre update nem delete.';
 
 -- ── A linha do tempo ────────────────────────────────────────────────────────
 create table if not exists public.crm_anotacao (
@@ -143,18 +143,18 @@ create policy "Socios gerenciam a etapa"
   on public.crm_etapa for all to authenticated
   using (public.eh_socio()) with check (public.eh_socio());
 
--- O histórico é append-only, e isso precisa ser a POLÍTICA, não um comentário.
+-- A linha do tempo é append-only, e isso precisa ser a POLÍTICA, não um comentário.
 -- Duas políticas em vez de um `for all`: sem update e sem delete, nem o sócio
 -- reescreve o passado. Corrigir uma etapa errada acrescenta um evento novo — e
--- é exatamente essa a diferença entre um histórico e um campo com data.
+-- é exatamente essa a diferença entre uma linha do tempo e um campo com data.
 drop policy if exists "Socios leem e registram eventos de etapa" on public.crm_etapa_evento;
-drop policy if exists "Socios leem o historico de etapa" on public.crm_etapa_evento;
-create policy "Socios leem o historico de etapa"
+drop policy if exists "Socios leem a linha do tempo de etapa" on public.crm_etapa_evento;
+create policy "Socios leem a linha do tempo de etapa"
   on public.crm_etapa_evento for select to authenticated
   using (public.eh_socio());
 
-drop policy if exists "Socios registram no historico de etapa" on public.crm_etapa_evento;
-create policy "Socios registram no historico de etapa"
+drop policy if exists "Socios registram na linha do tempo de etapa" on public.crm_etapa_evento;
+create policy "Socios registram na linha do tempo de etapa"
   on public.crm_etapa_evento for insert to authenticated
   with check (public.eh_socio());
 

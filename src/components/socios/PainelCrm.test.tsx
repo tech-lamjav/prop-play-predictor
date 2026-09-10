@@ -19,10 +19,18 @@ const base = [
   }),
 ];
 
-const pronto = (cadastros: Cadastro[] = base, totalNaBase = cadastros.length) =>
+const pronto = (
+  cadastros: Cadastro[] = base,
+  totalNaBase = cadastros.length,
+  etapas: Record<string, string> = {},
+) =>
   render(
     <MemoryRouter>
-      <PainelCrm estado={{ tipo: 'pronto', cadastros, totalNaBase }} hoje={HOJE} />
+      <PainelCrm
+        estado={{ tipo: 'pronto', cadastros, totalNaBase }}
+        etapas={{ tipo: 'pronto', etapas }}
+        hoje={HOJE}
+      />
     </MemoryRouter>,
   );
 
@@ -106,7 +114,7 @@ describe('PainelCrm', () => {
     // passaria por um teste que só nega o zero — daí as duas asserções.
     const { container } = render(
       <MemoryRouter>
-        <PainelCrm estado={{ tipo: 'carregando' }} hoje={HOJE} />
+        <PainelCrm estado={{ tipo: 'carregando' }} etapas={{ tipo: 'carregando' }} hoje={HOJE} />
       </MemoryRouter>,
     );
     expect(screen.getByText(/carregando os cadastros/i)).toBeInTheDocument();
@@ -116,7 +124,7 @@ describe('PainelCrm', () => {
   it('quando a consulta falha, diz que falhou em vez de fingir base vazia', () => {
     render(
       <MemoryRouter>
-        <PainelCrm estado={{ tipo: 'erro' }} hoje={HOJE} />
+        <PainelCrm estado={{ tipo: 'erro' }} etapas={{ tipo: 'erro' }} hoje={HOJE} />
       </MemoryRouter>,
     );
     expect(screen.getByText(/não deu para carregar/i)).toBeInTheDocument();
@@ -141,5 +149,84 @@ describe('PainelCrm', () => {
     // por cima justamente de onde essa palavra apareceria.
     const { container } = pronto();
     expect(container.innerHTML).not.toMatch(/origem|veio de|campanha|utm|fonte/i);
+  });
+});
+
+describe('PainelCrm · funil', () => {
+  it('cada linha mostra em que etapa o lead está', () => {
+    pronto(base, base.length, { a: 'proposta' });
+    const lista = screen.getByRole('region', { name: 'Cadastros por dia' });
+    expect(within(lista).getByText('Proposta')).toBeInTheDocument();
+    // Quem nunca foi tocado não tem linha na tabela, e aparece como Novo.
+    expect(within(lista).getByText('Novo')).toBeInTheDocument();
+  });
+
+  it('filtrar por etapa encolhe a lista e os contadores juntos', async () => {
+    pronto(base, base.length, { a: 'proposta' });
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'proposta');
+    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
+    expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
+    expect(contador('Assinantes')).toHaveTextContent(/^0$/);
+  });
+
+  it('o filtro de Novo acha quem nunca foi tocado', async () => {
+    // É a etapa onde está todo mundo que ainda falta abordar, e ninguém ali
+    // tem linha gravada. Um filtro que só olhasse o que está no banco
+    // devolveria zero justamente na lista mais importante.
+    pronto(base, base.length, { a: 'proposta' });
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'novo');
+    expect(screen.getByText('João Souza')).toBeInTheDocument();
+    expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument();
+  });
+
+  it('etapa e busca filtram juntas', async () => {
+    pronto(base, base.length, { a: 'proposta', b: 'proposta' });
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'proposta');
+    await userEvent.type(screen.getByRole('searchbox'), 'maria');
+    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
+    expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
+  });
+
+  it('sem filtro, nenhum lead some', async () => {
+    pronto(base, base.length, { a: 'proposta' });
+    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
+    expect(screen.getByText('João Souza')).toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · enquanto as etapas não chegam', () => {
+  const semEtapas = (etapas: { tipo: 'carregando' } | { tipo: 'erro' }) =>
+    render(
+      <MemoryRouter>
+        <PainelCrm
+          estado={{ tipo: 'pronto', cadastros: base, totalNaBase: base.length }}
+          etapas={etapas}
+          hoje={HOJE}
+        />
+      </MemoryRouter>,
+    );
+
+  it('a lista aparece, mas sem crachá de etapa', () => {
+    // "Novo" é uma afirmação, não um vazio: pintá-lo antes da resposta chegar
+    // diz que ninguém foi abordado, que é justamente o contrário do que o sócio
+    // precisa saber.
+    semEtapas({ tipo: 'carregando' });
+    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
+    const lista = screen.getByRole('region', { name: 'Cadastros por dia' });
+    expect(within(lista).queryByText('Novo')).not.toBeInTheDocument();
+  });
+
+  it('e o filtro de etapa fica fora do ar', () => {
+    // Filtrar sem as etapas devolveria a base inteira em qualquer escolha, e o
+    // sócio leria isso como "ninguém está nessa etapa".
+    semEtapas({ tipo: 'carregando' });
+    expect(screen.getByRole('combobox', { name: /etapa/i })).toBeDisabled();
+  });
+
+  it('a consulta de etapas falhando não inventa etapa para ninguém', () => {
+    semEtapas({ tipo: 'erro' });
+    const lista = screen.getByRole('region', { name: 'Cadastros por dia' });
+    expect(within(lista).queryByText('Novo')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /etapa/i })).toBeDisabled();
   });
 });

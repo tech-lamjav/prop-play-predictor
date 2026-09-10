@@ -26,6 +26,16 @@ export const ETAPAS = [
 
 export type Etapa = (typeof ETAPAS)[number];
 
+/** Como cada etapa se chama na tela. */
+export const ROTULO_DA_ETAPA: Record<Etapa, string> = {
+  novo: 'Novo',
+  contatado: 'Contatado',
+  conversando: 'Conversando',
+  proposta: 'Proposta',
+  assinou: 'Assinou',
+  sem_resposta: 'Sem resposta',
+};
+
 /**
  * Os três tipos de registro da linha do tempo.
  *
@@ -46,3 +56,13 @@ export type TipoDeAnotacao = (typeof TIPOS_DE_ANOTACAO)[number];
  * três verdes guardando um endereço que não existe mais.
  */
 export const ROTA_DOS_SOCIOS = '/socios';
+
+/**
+ * A etapa de quem nunca foi tocado.
+ *
+ * Um lead novo NÃO tem linha na tabela de etapa. É de propósito: exigir uma
+ * escrita no banco para um lead aparecer significaria que todo cadastro novo
+ * nasce dependendo de um gatilho — e um gatilho que falha esconde o lead em vez
+ * de mostrá-lo errado. A mesma regra está na função `crm_mudar_etapa`.
+ */
+export const ETAPA_PADRAO: Etapa = 'novo';

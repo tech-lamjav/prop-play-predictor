@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { lerMigration } from './crm-migration-de-teste';
 
 // ============================================================================
 // O agregado de apostas não pode virar uma porta para a tabela `bets`
@@ -14,13 +13,7 @@ import { resolve } from 'node:path';
 // identificador — e nada na tela denunciaria isso.
 // ============================================================================
 
-const ARQUIVO = readFileSync(
-  resolve(__dirname, '../../../supabase/migrations/20260910180000_124_crm_resumo_de_apostas.sql'),
-  'utf8',
-).replace(/\r\n/g, '\n');
-
-/** Sem os comentários: o bloco de aviso do topo fala das colunas que a função não devolve. */
-const MIGRATION = ARQUIVO.replace(/--.*$/gm, '');
+const MIGRATION = lerMigration('20260910180000_124_crm_resumo_de_apostas.sql');
 
 describe('crm_resumo_de_apostas', () => {
   it('roda como dono do banco, com search_path travado', () => {

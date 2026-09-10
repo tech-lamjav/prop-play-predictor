@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { comando as isolar, lerMigration } from './crm-migration-de-teste';
 import { ETAPAS, TIPOS_DE_ANOTACAO } from './crm-vocabulario';
 
 // ============================================================================
@@ -16,35 +15,10 @@ import { ETAPAS, TIPOS_DE_ANOTACAO } from './crm-vocabulario';
 // aparece em nenhuma tela — o painel continua bonito enquanto a fuga acontece.
 // ============================================================================
 
-const ARQUIVO = readFileSync(
-  resolve(__dirname, '../../../supabase/migrations/20260910120000_123_crm_fundacao.sql'),
-  'utf8',
-).replace(/\r\n/g, '\n');
+const MIGRATION = lerMigration('20260910120000_123_crm_fundacao.sql');
 
-/**
- * A migration sem os comentários.
- *
- * O bloco de aviso do topo escreve de propósito a política ERRADA, a que
- * recursa, para explicar por que ela não pode ser usada. Um guarda que lê o
- * arquivo inteiro acusa esse exemplo e fica vermelho com a migration certa —
- * foi o que aconteceu na primeira execução.
- */
-const MIGRATION = ARQUIVO.replace(/--.*$/gm, '');
-
-/**
- * Um comando isolado, do começo até o `;` que o fecha.
- *
- * Ler o arquivo inteiro é o erro que quase passou aqui: `toMatch(/security
- * definer/)` sobre a migration toda fica verde se QUALQUER outra função tiver
- * a palavra, mesmo com a `eh_socio` já sem ela. A asserção precisa cair dentro
- * da declaração que ela diz guardar.
- */
-const comando = (inicio: RegExp, fim = ';') => {
-  const i = MIGRATION.search(inicio);
-  if (i < 0) return null;
-  const f = MIGRATION.indexOf(fim, i);
-  return f < 0 ? null : MIGRATION.slice(i, f + fim.length);
-};
+/** Atalho para não repetir a migration em toda chamada. O porquê está no auxiliar. */
+const comando = (inicio: RegExp, fim?: string) => isolar(MIGRATION, inicio, fim);
 
 describe('a função que responde quem é sócio', () => {
   // O corpo termina no fechamento do `$function$`, não no primeiro `;` — há
@@ -142,10 +116,10 @@ describe('as três tabelas do CRM', () => {
     for (const politica of politicas) expect(politica).toMatch(/public\.eh_socio\(\)/);
   });
 
-  it('o histórico de etapa é append-only na política, não só no comentário', () => {
+  it('a linha do tempo de etapa é append-only na política, não só no comentário', () => {
     // Este era o buraco: a tabela dizia "nunca sofre update nem delete" num
     // comentário, e a política era `for all`. Qualquer sócio podia reescrever o
-    // passado, e o histórico deixava de ser histórico — vira um campo com data.
+    // passado, e a linha do tempo deixava de ser linha do tempo — virava um campo com data.
     const politicas =
       MIGRATION.match(
         regexDaTabela(String.raw`create policy [^;]*?on public\.§\b[^;]*;`, 'crm_etapa_evento', 'g'),

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
-import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
+import { ETAPAS, ROTA_DOS_SOCIOS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 import {
   acessos,
   ganchoDe,
@@ -66,7 +66,23 @@ const COMO_CHAMAR: Record<TipoDeGancho, string> = {
  * banco fica no hook, e todo o raciocínio em `crm-ficha.ts` — que é o que torna
  * o gancho testável sem montar tela nenhuma.
  */
-export function Ficha({ estado }: { estado: EstadoDaFicha }) {
+export function Ficha({
+  estado,
+  etapa,
+  aoMudarEtapa,
+  mudandoEtapa,
+  erroAoMudarEtapa,
+}: {
+  estado: EstadoDaFicha;
+  /**
+   * Fora do estado de propósito: a etapa vem de outra consulta, e um lead sem
+   * linha gravada já vale como novo sem precisar que a ficha tenha carregado.
+   */
+  etapa: Etapa | null;
+  aoMudarEtapa: (etapa: Etapa) => void;
+  mudandoEtapa: boolean;
+  erroAoMudarEtapa: boolean;
+}) {
   return (
     <div className="min-h-screen bg-canvas px-4 py-10">
       <div className="mx-auto max-w-2xl">
@@ -84,13 +100,35 @@ export function Ficha({ estado }: { estado: EstadoDaFicha }) {
           <p className="mt-8 text-[15px] text-ink-2">Não encontramos esse cadastro.</p>
         )}
 
-        {estado.tipo === 'pronta' && <Conteudo {...estado} />}
+        {estado.tipo === 'pronta' && (
+          <Conteudo
+            {...estado}
+            etapa={etapa}
+            aoMudarEtapa={aoMudarEtapa}
+            mudandoEtapa={mudandoEtapa}
+            erroAoMudarEtapa={erroAoMudarEtapa}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function Conteudo({ pessoa, apostas }: { pessoa: Pessoa; apostas: ResumoDeApostas | null }) {
+function Conteudo({
+  pessoa,
+  apostas,
+  etapa,
+  aoMudarEtapa,
+  mudandoEtapa,
+  erroAoMudarEtapa,
+}: {
+  pessoa: Pessoa;
+  apostas: ResumoDeApostas | null;
+  etapa: Etapa | null;
+  aoMudarEtapa: (etapa: Etapa) => void;
+  mudandoEtapa: boolean;
+  erroAoMudarEtapa: boolean;
+}) {
   const plano = nomeDoPlano(pessoa.subscription_product_type);
   const bruto = (pessoa.subscription_product_type ?? '').trim();
   const gancho = ganchoDe(pessoa, apostas);
@@ -107,6 +145,39 @@ function Conteudo({ pessoa, apostas }: { pessoa: Pessoa; apostas: ResumoDeAposta
       <p className="mt-1 text-[13px] text-ink-2">
         {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
       </p>
+
+      <Bloco titulo="Etapa">
+        <select
+          value={etapa ?? ''}
+          disabled={mudandoEtapa || etapa === null}
+          onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
+          aria-label="Etapa do lead"
+          className="h-11 w-full rounded-rebrand-sm border border-line-2 bg-white px-3 text-[15px] text-ink disabled:opacity-60"
+        >
+          {etapa === null ? <option value="">Carregando…</option> : null}
+          {ETAPAS.map((e) => (
+            <option key={e} value={e}>
+              {ROTULO_DA_ETAPA[e]}
+            </option>
+          ))}
+        </select>
+        {/* Travar enquanto grava não é detalhe de conforto: duas mudanças em
+            voo gravariam dois eventos, e o segundo registraria um "de" que já
+            não era verdade. */}
+        {/* A frase de rodapé é uma promessa. Quando a gravação falha ela vira
+            mentira exatamente no momento em que nada foi registrado, e o
+            seletor ainda volta sozinho para a etapa antiga — sem aviso, parece
+            um clique que não pegou. */}
+        {erroAoMudarEtapa ? (
+          <p className="mt-2 text-[13px] font-bold text-ink">
+            Não deu para gravar a etapa. Ela continua como estava.
+          </p>
+        ) : (
+          <p className="mt-2 text-[12px] text-ink-3">
+            {mudandoEtapa ? 'Gravando…' : 'Cada mudança fica registrada, com quem mudou e quando.'}
+          </p>
+        )}
+      </Bloco>
 
       <Bloco titulo="Contatos">
         <Campo rotulo="E-mail" valor={pessoa.email} />

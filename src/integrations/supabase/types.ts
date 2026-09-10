@@ -1138,6 +1138,10 @@ export type Database = {
         Args: { p_week_start_date?: string }
         Returns: undefined
       }
+      crm_mudar_etapa: {
+        Args: { p_user_id: string; p_etapa: string }
+        Returns: string
+      }
       crm_resumo_de_apostas: {
         Args: { p_user_id: string }
         Returns: { total: number; ultima: string | null }[]

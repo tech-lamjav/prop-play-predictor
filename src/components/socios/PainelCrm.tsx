@@ -8,7 +8,10 @@ import {
   formatarDia,
   type Cadastro,
 } from './crm-lista';
-import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
+import { ETAPAS, ROTA_DOS_SOCIOS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
+import type { EtapasGravadas } from './crm-funil';
+import { etapaDe, filtrarPorEtapa } from './crm-funil';
+import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 
 /**
  * O que a tela sabe no momento em que desenha.
@@ -30,6 +33,9 @@ export type EstadoDoPainel =
 /** Um array novo a cada render invalidaria os useMemo abaixo sem nada ter mudado. */
 const VAZIO: Cadastro[] = [];
 
+/** Mesmo motivo: um mapa novo a cada render invalidaria os useMemo à toa. */
+const SEM_ETAPAS: EtapasGravadas = {};
+
 function Contador({ rotulo, valor }: { rotulo: string; valor: number }) {
   return (
     <div className="flex-1">
@@ -41,7 +47,7 @@ function Contador({ rotulo, valor }: { rotulo: string; valor: number }) {
   );
 }
 
-function LinhaDoCadastro({ cadastro }: { cadastro: Cadastro }) {
+function LinhaDoCadastro({ cadastro, etapa }: { cadastro: Cadastro; etapa: Etapa | null }) {
   const contato = [cadastro.name ? cadastro.email : null, cadastro.whatsapp_number]
     .filter(Boolean)
     .join(' · ');
@@ -60,6 +66,11 @@ function LinhaDoCadastro({ cadastro }: { cadastro: Cadastro }) {
           </p>
           {contato ? <p className="truncate text-[13px] text-ink-2">{contato}</p> : null}
         </div>
+        {etapa ? (
+          <span className="shrink-0 rounded-full border border-line-2 px-2.5 py-1 text-[11px] font-bold text-ink-2">
+            {ROTULO_DA_ETAPA[etapa]}
+          </span>
+        ) : null}
         {ehAssinante(cadastro) ? (
           <span className="shrink-0 rounded-full bg-forest px-2.5 py-1 text-[11px] font-bold text-white">
             Assinante
@@ -80,11 +91,28 @@ function LinhaDoCadastro({ cadastro }: { cadastro: Cadastro }) {
  * `hoje` chega por prop em vez de ser lido do relógio aqui dentro: assim o
  * teste manda o dia e a tela não muda de comportamento à meia-noite.
  */
-export function PainelCrm({ estado, hoje }: { estado: EstadoDoPainel; hoje: string }) {
+export function PainelCrm({
+  estado,
+  etapas,
+  hoje,
+}: {
+  estado: EstadoDoPainel;
+  etapas: EstadoDasEtapas;
+  hoje: string;
+}) {
   const [busca, setBusca] = useState('');
+  const [etapa, setEtapa] = useState<Etapa | null>(null);
 
   const cadastros = estado.tipo === 'pronto' ? estado.cadastros : VAZIO;
-  const filtrados = useMemo(() => buscar(cadastros, busca), [cadastros, busca]);
+  const gravadas = etapas.tipo === 'pronto' ? etapas.etapas : SEM_ETAPAS;
+  // Sem as etapas na mão, o crachá some em vez de afirmar "Novo" para todo
+  // mundo — e o filtro sai do ar em vez de devolver a base inteira em qualquer
+  // etapa que o sócio escolher.
+  const temEtapas = etapas.tipo === 'pronto';
+  const filtrados = useMemo(
+    () => filtrarPorEtapa(buscar(cadastros, busca), gravadas, temEtapas ? etapa : null),
+    [cadastros, busca, gravadas, temEtapas, etapa],
+  );
   const dias = useMemo(() => agruparPorDia(filtrados), [filtrados]);
   const numeros = useMemo(() => contadores(filtrados, hoje), [filtrados, hoje]);
 
@@ -131,18 +159,34 @@ export function PainelCrm({ estado, hoje }: { estado: EstadoDoPainel; hoje: stri
               <Contador rotulo="Assinantes" valor={numeros.assinantes} />
             </section>
 
-            <input
-              type="search"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por nome, e-mail ou telefone"
-              aria-label="Buscar cadastro"
-              className="mt-6 h-11 w-full rounded-rebrand-sm border border-line-2 bg-white px-4 text-[15px] text-ink placeholder:text-ink-3"
-            />
+            <div className="mt-6 flex gap-3">
+              <input
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, e-mail ou telefone"
+                aria-label="Buscar cadastro"
+                className="h-11 flex-1 rounded-rebrand-sm border border-line-2 bg-white px-4 text-[15px] text-ink placeholder:text-ink-3"
+              />
+              <select
+                value={etapa ?? ''}
+                disabled={!temEtapas}
+                onChange={(e) => setEtapa((e.target.value || null) as Etapa | null)}
+                aria-label="Filtrar por etapa"
+                className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-3 text-[15px] text-ink"
+              >
+                <option value="">Todas as etapas</option>
+                {ETAPAS.map((e) => (
+                  <option key={e} value={e}>
+                    {ROTULO_DA_ETAPA[e]}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <section role="region" aria-label="Cadastros por dia" className="mt-6">
               {dias.length === 0 ? (
-                <p className="text-[15px] text-ink-2">Nenhum cadastro encontrado para essa busca.</p>
+                <p className="text-[15px] text-ink-2">Nenhum cadastro encontrado com esses filtros.</p>
               ) : (
                 dias.map((grupo) => (
                   <div key={grupo.dia ?? 'sem-data'} className="mb-6">
@@ -154,7 +198,11 @@ export function PainelCrm({ estado, hoje }: { estado: EstadoDoPainel; hoje: stri
                     </h2>
                     <ul className="rounded-rebrand-md border border-line-2 bg-white">
                       {grupo.cadastros.map((c) => (
-                        <LinhaDoCadastro key={c.id} cadastro={c} />
+                        <LinhaDoCadastro
+                          key={c.id}
+                          cadastro={c}
+                          etapa={temEtapas ? etapaDe(gravadas, c.id) : null}
+                        />
                       ))}
                     </ul>
                   </div>

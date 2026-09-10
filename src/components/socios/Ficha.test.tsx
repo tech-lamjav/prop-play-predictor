@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Ficha } from './Ficha';
 import type { Pessoa, ResumoDeApostas } from './crm-ficha';
+import type { Etapa } from './crm-vocabulario';
 
 const pessoa = (over: Partial<Pessoa> = {}): Pessoa => ({
   id: 'u1',
@@ -23,10 +25,25 @@ const pessoa = (over: Partial<Pessoa> = {}): Pessoa => ({
   ...over,
 });
 
-const montar = (p: Pessoa = pessoa(), apostas: ResumoDeApostas | null = { total: 0, ultima: null }) =>
+const montar = (
+  p: Pessoa = pessoa(),
+  apostas: ResumoDeApostas | null = { total: 0, ultima: null },
+  extras: {
+    etapa?: Etapa | null;
+    aoMudarEtapa?: (e: Etapa) => void;
+    mudandoEtapa?: boolean;
+    erroAoMudarEtapa?: boolean;
+  } = {},
+) =>
   render(
     <MemoryRouter>
-      <Ficha estado={{ tipo: 'pronta', pessoa: p, apostas }} />
+      <Ficha
+        estado={{ tipo: 'pronta', pessoa: p, apostas }}
+        etapa={extras.etapa === undefined ? 'novo' : extras.etapa}
+        aoMudarEtapa={extras.aoMudarEtapa ?? (() => {})}
+        mudandoEtapa={extras.mudandoEtapa ?? false}
+        erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
+      />
     </MemoryRouter>,
   );
 
@@ -132,7 +149,13 @@ describe('Ficha', () => {
   it('quando a pessoa não existe, diz isso em vez de uma ficha em branco', () => {
     render(
       <MemoryRouter>
-        <Ficha estado={{ tipo: 'nao-encontrada' }} />
+        <Ficha
+          estado={{ tipo: 'nao-encontrada' }}
+          etapa="novo"
+          aoMudarEtapa={() => {}}
+          mudandoEtapa={false}
+          erroAoMudarEtapa={false}
+        />
       </MemoryRouter>,
     );
     expect(screen.getByText(/não encontramos esse cadastro/i)).toBeInTheDocument();
@@ -141,5 +164,60 @@ describe('Ficha', () => {
   it('tem sempre a volta para a lista', () => {
     montar();
     expect(screen.getByRole('link', { name: /voltar/i })).toHaveAttribute('href', '/socios');
+  });
+});
+
+describe('Ficha · etapa', () => {
+  const montarComEtapa = (extras: Parameters<typeof montar>[2]) =>
+    montar(pessoa(), { total: 0, ultima: null }, extras);
+
+  it('mostra em que etapa o lead está', () => {
+    montarComEtapa({ etapa: 'proposta' });
+    expect(screen.getByRole('combobox', { name: /etapa/i })).toHaveValue('proposta');
+  });
+
+  it('lead nunca tocado aparece como novo', () => {
+    // Sem linha na tabela, e é assim de propósito: um lead novo não deveria
+    // exigir uma escrita no banco para existir.
+    montarComEtapa({});
+    expect(screen.getByRole('combobox', { name: /etapa/i })).toHaveValue('novo');
+  });
+
+  it('escolher outra etapa avisa quem cuida de gravar', async () => {
+    const aoMudarEtapa = vi.fn();
+    montarComEtapa({ etapa: 'novo', aoMudarEtapa });
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'contatado');
+    expect(aoMudarEtapa).toHaveBeenCalledWith('contatado');
+  });
+
+  it('enquanto grava, o seletor não aceita outra escolha', () => {
+    // Duas mudanças em voo gravariam dois eventos na linha do tempo, e o segundo
+    // registraria um "de" que já não era verdade.
+    montarComEtapa({ mudandoEtapa: true });
+    expect(screen.getByRole('combobox', { name: /etapa/i })).toBeDisabled();
+  });
+
+  it('as seis etapas estão à escolha', () => {
+    montarComEtapa({});
+    const seletor = screen.getByRole('combobox', { name: /etapa/i });
+    expect(within(seletor).getAllByRole('option')).toHaveLength(6);
+  });
+});
+
+describe('Ficha · quando a etapa não grava', () => {
+  it('avisa, em vez de deixar o seletor voltar em silêncio', () => {
+    // O seletor é controlado pelo valor do servidor: numa falha ele volta
+    // sozinho para a etapa antiga. Sem aviso isso parece um clique que não
+    // pegou, e o rodapé ainda promete que a mudança ficou registrada.
+    montar(pessoa(), { total: 0, ultima: null }, { erroAoMudarEtapa: true });
+    expect(screen.getByText(/não deu para gravar a etapa/i)).toBeInTheDocument();
+    expect(screen.queryByText(/fica registrada/i)).not.toBeInTheDocument();
+  });
+
+  it('enquanto as etapas não chegaram, não afirma que o lead é novo', () => {
+    montar(pessoa(), { total: 0, ultima: null }, { etapa: null });
+    const seletor = screen.getByRole('combobox', { name: /etapa/i });
+    expect(seletor).toBeDisabled();
+    expect(seletor).toHaveValue('');
   });
 });

@@ -1,6 +1,7 @@
 import { Seo } from '@/components/Seo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { useCadastros } from '@/hooks/use-cadastros';
+import { useEtapas } from '@/hooks/use-etapas';
 import { brtToday } from '@/utils/futebol-datas';
 
 /**
@@ -16,13 +17,14 @@ import { brtToday } from '@/utils/futebol-datas';
  */
 export default function PainelDosSocios() {
   const estado = useCadastros();
+  const etapas = useEtapas();
 
   return (
     <>
       <Seo noindex title="CRM | Smart Betting" />
       {/* O dia entra por prop para a tela não mudar de comportamento à
           meia-noite dentro de um teste. */}
-      <PainelCrm estado={estado} hoje={brtToday()} />
+      <PainelCrm estado={estado} etapas={etapas} hoje={brtToday()} />
     </>
   );
 }
