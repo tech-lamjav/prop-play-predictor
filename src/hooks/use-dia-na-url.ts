@@ -15,26 +15,49 @@ import { useSearchParams } from 'react-router-dom';
 // ============================================================================
 
 /** `2026-09-11`. Formato do seletor e da chave do dia BRT no resto do módulo. */
-const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
+export const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** O nome do parâmetro, num lugar só — as três telas precisam concordar. */
+/**
+ * O nome do parâmetro, num lugar só — as três telas precisam concordar.
+ *
+ * A agenda (`FutebolJogos`) consome esta constante e a regex, mas continua com
+ * o SETTER próprio, e isso é de propósito: ao trocar de dia ela descarta o
+ * `?jogo=`, porque o jogo selecionado pertencia ao dia anterior. O `trocar`
+ * daqui preserva os outros parâmetros, que é o certo para as outras duas telas
+ * e seria errado lá.
+ */
 export const PARAM_DO_DIA = 'dia';
 
-/** Monta o destino preservando o dia. `null` cai na rota limpa. */
+/**
+ * Monta o destino preservando o dia. `null` ou dia inválido caem na rota limpa.
+ *
+ * Usa `URLSearchParams` em vez de concatenar: hoje os dois destinos são rotas
+ * secas, mas uma rota que já tivesse query viraria uma URL com dois pontos de
+ * interrogação, quebrada e difícil de enxergar.
+ */
 export function comDia(rota: string, dia: string | null | undefined): string {
-  return dia && DIA_RE.test(dia) ? `${rota}?${PARAM_DO_DIA}=${dia}` : rota;
+  if (!dia || !DIA_RE.test(dia)) return rota;
+  const [caminho, query] = rota.split('?');
+  const params = new URLSearchParams(query);
+  params.set(PARAM_DO_DIA, dia);
+  return `${caminho}?${params.toString()}`;
 }
 
 /**
  * O dia escolhido, lido da URL, e como trocá-lo.
  *
  * Devolve `null` quando não há dia válido no endereço — quem chama decide o
- * padrão, porque ele não é o mesmo nas três telas (a home cai em hoje, a lista
- * de oportunidades cai no primeiro dia com linha).
+ * padrão, porque ele não é o mesmo nas três telas: a home cai em hoje, a lista
+ * de oportunidades cai no primeiro dia com linha, e a agenda cai em hoje pelo
+ * `brtToday()` dela.
  *
  * A troca usa `replace`: clicar cinco dias seguidos não deve encher o histórico
  * de cinco passos, e o botão voltar tem de sair da tela, não desfazer cliques
  * de seta.
+ *
+ * Devolve tupla, e não objeto como os outros hooks daqui, porque as duas telas
+ * substituíram exatamente um `useState<string | null>(null)` por esta chamada —
+ * a mesma forma manteve o diff numa linha por tela.
  */
 export function useDiaNaUrl(): [string | null, (dia: string) => void] {
   const [params, setParams] = useSearchParams();

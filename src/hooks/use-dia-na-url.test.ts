@@ -38,6 +38,40 @@ describe('comDia', () => {
     expect(comDia('/futebol/jogos', '2026-9-1')).toBe('/futebol/jogos');
     expect(comDia('/futebol/jogos', '')).toBe('/futebol/jogos');
   });
+
+  it('rota que já tem query não vira URL com dois pontos de interrogação', () => {
+    // Nenhum destino de hoje tem query. Concatenar funcionava por sorte, e a
+    // sorte acaba no dia em que alguém acrescentar um parâmetro na rota.
+    expect(comDia('/futebol/jogos?jogo=9', '2026-09-11')).toBe(
+      '/futebol/jogos?jogo=9&dia=2026-09-11',
+    );
+  });
+});
+
+// ============================================================================
+// As três telas concordam sobre o nome do parâmetro
+// ============================================================================
+// A docstring de PARAM_DO_DIA promete "num lugar só". A agenda tinha a própria
+// cópia da regex e a string 'dia' literal, então a promessa era falsa e nada
+// avisava: trocar o parâmetro para `?data=` quebraria a navegação entre telas
+// sem um teste ficar vermelho.
+//
+// A agenda mantém o SETTER próprio de propósito — ao trocar de dia ela descarta
+// o `?jogo=`, e o `trocar` daqui preserva os outros parâmetros. O que precisava
+// ser compartilhado é o nome e a validação, não a escrita.
+// ============================================================================
+
+describe('o parâmetro do dia é um só', () => {
+  const AGENDA = fonte('pages/FutebolJogos.tsx');
+
+  it('a agenda lê o nome e a validação daqui', () => {
+    expect(AGENDA).toContain("from '@/hooks/use-dia-na-url'");
+    expect(AGENDA).toContain('params.get(PARAM_DO_DIA)');
+  });
+
+  it('e não guarda uma segunda cópia da validação', () => {
+    expect(AGENDA).not.toMatch(/const DIA_RE\s*=/);
+  });
 });
 
 describe('os atalhos da home levam o dia junto', () => {
