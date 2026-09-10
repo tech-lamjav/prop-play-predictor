@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14.21.0";
+import { camposDoPlano, statusDoPlano } from "../shared/concessoes.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,15 +69,15 @@ serve(async (req) => {
       );
     }
 
-    const productType = (session.metadata?.productType || 'betinho').toLowerCase();
-    const subscriptionField = (productType === 'analytics' || productType === 'platform')
-      ? 'analytics_subscription_status'
-      : 'betinho_subscription_status';
+    // Mesma fonte de verdade do stripe-webhook (`shared/concessoes.ts`): se os
+    // dois divergirem, o usuário ganha um acesso na volta do checkout e perde
+    // outro quando o webhook chega.
+    const productType = session.metadata?.productType;
+    const campos = camposDoPlano(productType);
 
-    console.log(`[VerifySession] Payment verified. Updating ${subscriptionField} to premium for user:`, user.id);
+    console.log('[VerifySession] Payment verified. Concedendo:', campos.join(', '), 'para user:', user.id);
 
-    const updateData: Record<string, string> = {};
-    updateData[subscriptionField] = 'premium';
+    const updateData = statusDoPlano(productType, 'premium');
 
     const { error: updateError } = await supabase
       .from('users')
@@ -91,10 +92,10 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[VerifySession] ✅ ${subscriptionField} updated to premium`);
+    console.log(`[VerifySession] ✅ ${campos.join(', ')} updated to premium`);
 
     return new Response(
-      JSON.stringify({ verified: true, subscriptionField, status: 'premium' }),
+      JSON.stringify({ verified: true, granted: campos, status: 'premium' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

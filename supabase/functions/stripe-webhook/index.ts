@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14.21.0";
+import { prefixosDoPlano, statusDoPlano } from "../shared/concessoes.ts";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -72,43 +73,33 @@ serve(async (req) => {
     console.log('[Webhook] Received webhook event:', event.type);
     console.log('[Webhook] Event ID:', event.id);
     
-    // Helper function to determine which subscription field to update
-    const getSubscriptionField = (productType: string | undefined): string => {
-      const product = (productType || 'betinho').toLowerCase();
-      if (product === 'analytics' || product === 'platform') {
-        return 'analytics_subscription_status';
-      }
-      return 'betinho_subscription_status';
-    };
+    const statusUpdate = statusDoPlano;
 
-    // Helper to build product-specific metadata update (period_end, cancel_at, etc.)
     const getProductMetadataUpdate = (
       productType: string | undefined,
       subscription: Stripe.Subscription
     ): Record<string, unknown> => {
-      const product = (productType || 'betinho').toLowerCase();
-      const prefix =
-        product === 'analytics' || product === 'platform' ? 'analytics_subscription' : 'betinho_subscription';
       const update: Record<string, unknown> = {};
-      update[`${prefix}_period_end`] = subscription.current_period_end
-        ? new Date(subscription.current_period_end * 1000).toISOString()
-        : null;
-      update[`${prefix}_cancel_at`] = subscription.cancel_at
-        ? new Date(subscription.cancel_at * 1000).toISOString()
-        : null;
-      update[`${prefix}_cancel_at_period_end`] = subscription.cancel_at_period_end ?? false;
+      for (const prefix of prefixosDoPlano(productType)) {
+        update[`${prefix}_period_end`] = subscription.current_period_end
+          ? new Date(subscription.current_period_end * 1000).toISOString()
+          : null;
+        update[`${prefix}_cancel_at`] = subscription.cancel_at
+          ? new Date(subscription.cancel_at * 1000).toISOString()
+          : null;
+        update[`${prefix}_cancel_at_period_end`] = subscription.cancel_at_period_end ?? false;
+      }
       return update;
     };
 
     const getProductMetadataClear = (productType: string | undefined): Record<string, unknown> => {
-      const product = (productType || 'betinho').toLowerCase();
-      const prefix =
-        product === 'analytics' || product === 'platform' ? 'analytics_subscription' : 'betinho_subscription';
-      return {
-        [`${prefix}_period_end`]: null,
-        [`${prefix}_cancel_at`]: null,
-        [`${prefix}_cancel_at_period_end`]: false,
-      };
+      const clear: Record<string, unknown> = {};
+      for (const prefix of prefixosDoPlano(productType)) {
+        clear[`${prefix}_period_end`] = null;
+        clear[`${prefix}_cancel_at`] = null;
+        clear[`${prefix}_cancel_at_period_end`] = false;
+      }
+      return clear;
     };
 
     switch (event.type) {
@@ -253,11 +244,9 @@ serve(async (req) => {
             else console.log('[Webhook] Purchase recorded for user:', userId);
           }
         } else if (userId) {
-          // Subscription product (betinho / analytics)
-          const subscriptionField = getSubscriptionField(productType);
-          console.log(`[Webhook] Updating ${subscriptionField} to premium for user:`, userId);
-          const updateData: Record<string, string> = {};
-          updateData[subscriptionField] = 'premium';
+          // Plano de assinatura (entrada / essencial / completo e os nomes legados)
+          const updateData = statusUpdate(productType, 'premium');
+          console.log('[Webhook] Concedendo acesso:', Object.keys(updateData).join(', '), 'user:', userId);
 
           const { data, error } = await supabase
             .from('users')
@@ -267,7 +256,7 @@ serve(async (req) => {
           if (error) {
             console.error('[Webhook] Error updating subscription status:', error);
           } else {
-            console.log(`[Webhook] ✅ ${subscriptionField} updated to premium for user:`, userId);
+            console.log('[Webhook] ✅ Acesso concedido para user:', userId);
             console.log('[Webhook] Updated data:', JSON.stringify(data));
           }
         } else {
@@ -281,28 +270,33 @@ serve(async (req) => {
         const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata?.userId;
         const productType = subscription.metadata?.productType;
-        const subscriptionField = getSubscriptionField(productType);
-        
+
         console.log(`Subscription ${event.type} - userId: ${userId}, status: ${subscription.status}, productType: ${productType}`);
-        
+
         if (userId) {
-          const status = subscription.status === 'active' ? 'premium' : 'free';
+          // `trialing` também é acesso pago: é assinatura ativa em período de
+          // teste do Stripe. Tratar como 'free' bloquearia na hora quem acabou
+          // de assinar. Hoje o teste do futebol é do banco, não do Stripe, então
+          // isso não dispara — mas ligar `trial_period_days` no Stripe um dia
+          // não pode derrubar assinante.
+          const ativa = subscription.status === 'active' || subscription.status === 'trialing';
+          const status = ativa ? 'premium' : 'free';
           const updateData: Record<string, unknown> = {
-            [subscriptionField]: status,
+            ...statusUpdate(productType, status),
             stripe_subscription_id: subscription.id,
             subscription_product_type: productType || 'betinho',
             ...getProductMetadataUpdate(productType, subscription),
           };
-          
+
           const { error } = await supabase
             .from('users')
             .update(updateData)
             .eq('id', userId);
-          
+
           if (error) {
-            console.error(`Error updating ${subscriptionField}:`, error);
+            console.error('Error updating subscription access:', error);
           } else {
-            console.log(`${subscriptionField} updated to ${status} for user: ${userId}`);
+            console.log(`Acesso ${status} (${Object.keys(statusUpdate(productType, status)).join(', ')}) para user: ${userId}`);
           }
         } else {
           console.warn('No userId found in subscription metadata');
@@ -314,12 +308,13 @@ serve(async (req) => {
         const subscription = event.data.object as Stripe.Subscription;
         const userId = subscription.metadata?.userId;
         const productType = subscription.metadata?.productType;
-        const subscriptionField = getSubscriptionField(productType);
-        
+
         if (userId) {
           console.log(`Deleting subscription for user: ${userId}, productType: ${productType}`);
+          // Cancelar um plano tira TODOS os acessos que ele concedia — senão o
+          // Essencial cancelado deixaria o Betinho ilimitado para trás.
           const updateData: Record<string, unknown> = {
-            [subscriptionField]: 'free',
+            ...statusUpdate(productType, 'free'),
             ...getProductMetadataClear(productType),
           };
           const { data: userRow } = await supabase
@@ -338,9 +333,9 @@ serve(async (req) => {
             .eq('id', userId);
           
           if (error) {
-            console.error(`Error updating ${subscriptionField} to free:`, error);
+            console.error('Error revoking subscription access:', error);
           } else {
-            console.log(`${subscriptionField} updated to free for user: ${userId}`);
+            console.log(`Acesso revogado (${Object.keys(statusUpdate(productType, 'free')).join(', ')}) para user: ${userId}`);
           }
         }
         break;
@@ -389,8 +384,11 @@ serve(async (req) => {
             Deno.env.get('STRIPE_PRICE_ID_PLATFORM') ||
             Deno.env.get('STRIPE_PRICE_ID_ANALYTICS');
           const betinhoPriceId = Deno.env.get('STRIPE_PRICE_ID_BETINHO');
+          const futebolPriceId = Deno.env.get('STRIPE_PRICE_ID_FUTEBOL');
 
-          if (analyticsPriceId && linePriceId === analyticsPriceId) {
+          if (futebolPriceId && linePriceId === futebolPriceId) {
+            productType = 'futebol';
+          } else if (analyticsPriceId && linePriceId === analyticsPriceId) {
             productType = 'analytics';
           } else if (betinhoPriceId && linePriceId === betinhoPriceId) {
             productType = 'betinho';
@@ -427,12 +425,9 @@ serve(async (req) => {
           break;
         }
 
-        const subscriptionField = getSubscriptionField(productType);
+        const updateData = statusUpdate(productType, 'premium');
 
-        console.log('[Webhook] Updating field from invoice.paid:', subscriptionField);
-
-        const updateData: Record<string, string> = {};
-        updateData[subscriptionField] = 'premium';
+        console.log('[Webhook] Renovando acesso:', Object.keys(updateData).join(', '));
 
         const { data, error } = await supabase
           .from('users')
@@ -440,9 +435,9 @@ serve(async (req) => {
           .eq('id', userId);
 
         if (error) {
-          console.error(`[Webhook] Error updating ${subscriptionField} on invoice.paid:`, error);
+          console.error('[Webhook] Error renewing access on invoice.paid:', error);
         } else {
-          console.log(`[Webhook] ✅ ${subscriptionField} updated to premium via invoice.paid for user:`, userId);
+          console.log('[Webhook] ✅ Acesso renovado via invoice.paid para user:', userId);
           console.log('[Webhook] Updated data:', JSON.stringify(data));
         }
         break;
