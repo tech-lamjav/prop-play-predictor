@@ -1,0 +1,18 @@
+{
+  "_leia-me": "Divida de tipo declarada, arquivo por arquivo, medida em 09/09/2026. Nao e lista de tarefas: e a catraca de scripts/typecheck.mjs. Numero so pode DESCER. Arquivo fora desta lista nao pode ter erro nenhum. Chaves com _ no comeco sao ignoradas.",
+  "src/services/bolao.service.ts": 23,
+  "src/services/bigquery.service.ts": 14,
+  "src/hooks/use-bets.ts": 7,
+  "src/services/player-stats.service.ts": 7,
+  "src/services/prop-betting.service.ts": 4,
+  "src/hooks/use-bolao.ts": 2,
+  "src/components/bolao/AchievementProvider.tsx": 1,
+  "src/components/bolao/PredictionsList.tsx": 1,
+  "src/components/bolao/special-deadlines.test.ts": 1,
+  "src/components/bolao/SpecialPredictionsModal.tsx": 1,
+  "src/components/bolao/SpecialPredictionsSection.tsx": 1,
+  "src/hooks/use-injury-insights.ts": 1,
+  "src/pages/BolaoDetail.tsx": 1,
+  "src/pages/Dashboard.tsx": 1,
+  "src/pages/Onboarding.tsx": 1
+}
