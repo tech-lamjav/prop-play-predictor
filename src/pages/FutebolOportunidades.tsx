@@ -36,6 +36,7 @@ import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
+import { useDiaNaUrl } from '@/hooks/use-dia-na-url';
 
 const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
 
@@ -235,7 +236,8 @@ export default function FutebolOportunidades() {
   const [valor, setValor] = useState<FiltroDeValor>(FILTRO_DE_VALOR_PADRAO);
   // `null` significa todas: acompanha automaticamente as competições daquele dia.
   const [competicoesSelecionadas, setCompeticoesSelecionadas] = useState<string[] | null>(null);
-  const [day, setDay] = useState<string | null>(null);
+  // Mesma URL da home e da agenda, para o dia sobreviver à navegação e ao F5.
+  const [day, setDay] = useDiaNaUrl();
 
   // Dispensar o cartão é só marcar que a explicação foi lida; a preferência de
   // alerta continua onde estava. Um erro aqui não pode quebrar o painel: o
