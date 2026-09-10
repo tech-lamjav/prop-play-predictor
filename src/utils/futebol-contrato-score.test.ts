@@ -235,8 +235,8 @@ describe('motivos sem preço, corroboração e penalidade de odd', () => {
     ['shape file de produção', SHAPE],
   ])('%s: A favor não depende mais de o preço ter somado pontos', (_nome, sql) => {
     // O gate `pts_premissas > 0` era herança da nota antiga. Mantê-lo deixaria
-    // A favor vazio numa linha legacy publicada pelo preço, entre esta
-    // migration e a troca do mart.
+    // A favor vazio numa linha legacy publicada pelo preço — e o histórico
+    // point-in-time continua devolvendo essas linhas depois da virada.
     expect(corpoDoContratoDeMotivos(sql)).not.toMatch(/pts_premissas\s*>\s*0/);
   });
 

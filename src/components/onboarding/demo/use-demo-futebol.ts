@@ -3,7 +3,7 @@ import type {
   FutebolFixtureValueRow,
   FutebolValueBoardRow,
 } from '@/services/futebol-data.service';
-import { versaoDaJanela, type FutebolScoreVersion } from '@/utils/futebol-score';
+import { escalaDeExibicao, type FutebolScoreVersion } from '@/utils/futebol-score';
 import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
 
 /**
@@ -14,17 +14,15 @@ import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
  * a anunciar uma régua diferente da que está ao lado dele — que é o defeito
  * inteiro, só que mais difícil de ver.
  *
- * Janela indeterminada — vazia, ou misturando as duas escalas — resolve em
- * `legacy`. Não é chute: pelo contrato do repo, linha sem `score_versao` e com
- * componentes de preço numéricos **é** legacy, e a linha de demonstração tem
- * exatamente essa forma. Declarar outra coisa seria a demonstração contradizer
- * o adapter que o resto do app usa para ler o mesmo dado.
+ * Janela indeterminada resolve na escala que o produto publica hoje, e a regra
+ * disso mora em `escalaDeExibicao` — a mesma que a tela real usa. Eram duas
+ * cópias, e as duas caíam em `legacy` por causa da inferência por forma que a
+ * contração matou (#310).
  */
 function useEscalaDoProduto(
   janela: readonly { score_versao?: FutebolScoreVersion }[] | null | undefined,
 ): FutebolScoreVersion {
-  const versao = versaoDaJanela(janela ?? []);
-  return versao === 'contexto_v1' ? 'contexto_v1' : 'legacy';
+  return escalaDeExibicao(janela ?? []);
 }
 
 /** O board de exemplo, na escala que o produto está usando. */

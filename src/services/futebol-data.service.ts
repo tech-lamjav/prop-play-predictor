@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import {
-  normalizeFutebolFixtureValueRows,
-  normalizeFutebolValueBoardRows,
+  normalizeFutebolScoreRows,
   type FutebolScoreVersion,
 } from './futebol-score-contract';
 import {
@@ -559,9 +558,7 @@ export interface FutebolValueBoardRow {
   janela_usada: string;    // t15m | t1h | t24h
   prob_justa_fechamento: number; // "Chance" (prob justa devigada) 0..1
   score_versao: FutebolScoreVersion;
-  pts_valor: number;
   pts_premissas: number;
-  pts_corroboracao: number;
   penalidades: number;
   score: number;           // 0..100
   faixa: string;           // 'Alta' | 'Média' | 'Baixa'
@@ -613,11 +610,8 @@ export interface FutebolFixtureValueRow {
   janela_usada: string;
   prob_justa_fechamento: number;
   score_versao: FutebolScoreVersion;
-  pts_valor: number;
   pts_premissas: number;
-  pts_corroboracao: number;
   penalidades: number;
-  penalidades_globais_pts: number;
   penalidades_especificas_pts: number;
   score: number;
   faixa: string;
@@ -1004,7 +998,10 @@ export const futebolDataService = {
         this.getMercadosOcultos(),
       ]);
       if (error) throw error;
-      return filtrarMercadosOcultos(normalizeFutebolValueBoardRows(data || []), ocultos);
+      return filtrarMercadosOcultos(
+        normalizeFutebolScoreRows<FutebolValueBoardRow>(data || []),
+        ocultos,
+      );
     });
   },
 
@@ -1039,7 +1036,7 @@ export const futebolDataService = {
         p_to: to,
       });
       if (error) throw error;
-      return normalizeFutebolValueBoardRows(data || []);
+      return normalizeFutebolScoreRows<FutebolValueBoardRow>(data || []);
     });
   },
 
@@ -1066,7 +1063,10 @@ export const futebolDataService = {
         this.getMercadosOcultos(),
       ]);
       if (error) throw error;
-      return filtrarMercadosOcultos(normalizeFutebolFixtureValueRows(data || []), ocultos);
+      return filtrarMercadosOcultos(
+        normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
+        ocultos,
+      );
     });
   },
 

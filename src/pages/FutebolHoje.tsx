@@ -14,7 +14,7 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
-  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, versaoDaJanela,
+  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
 } from '@/utils/futebol-score';
 import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -529,9 +529,7 @@ export default function FutebolHoje() {
     };
   }, [heroOpp, contratoMotivos]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
-  const textoScore = textoDoScore(
-    versaoDaJanela(dayRows) === 'contexto_v1' ? 'contexto_v1' : 'legacy',
-  );
+  const textoScore = textoDoScore(escalaDeExibicao(dayRows));
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
   const gameList = isDemo ? demoFutebolFixtures : dayGames;
