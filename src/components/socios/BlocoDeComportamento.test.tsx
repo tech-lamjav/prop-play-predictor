@@ -33,11 +33,12 @@ describe('BlocoDeComportamento', () => {
     expect(screen.getByText('/futebol')).toBeInTheDocument();
   });
 
-  it('zero visita é informação, e das boas', () => {
-    // A pessoa se cadastrou e nunca voltou. Dizer isso é diferente de deixar o
-    // bloco vazio, que seria lido como "não sabemos".
+  it('zero visita fala do que achamos, e não do que a pessoa fez', () => {
+    // A primeira versão afirmava que a pessoa não voltou ao site — e disse isso
+    // sobre o sócio que estava usando o produto naquele instante. Enquanto a
+    // busca não encontrar todo mundo, a frase tem de falar da BUSCA.
     montar({ tipo: 'pronto', comportamento: { ...CHEIO, sessoes: 0, paginas: [] } });
-    expect(screen.getByText(/se cadastrou e não voltou/i)).toBeInTheDocument();
+    expect(screen.getByText(/não tem visita registrada para esta pessoa/i)).toBeInTheDocument();
   });
 
   it('avisa quando o PostHog só guarda parte da história', () => {
@@ -82,7 +83,7 @@ describe('BlocoDeComportamento · zero que não é da pessoa', () => {
       comportamento: { ...CHEIO, sessoes: 0, eventos: 0, paginas: [], eventosNoProjetoNaSemana: 0 },
     });
     expect(screen.getByText(/problema é de configuração/i)).toBeInTheDocument();
-    expect(screen.queryByText(/não voltou ao site/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/não tem visita registrada/i)).not.toBeInTheDocument();
   });
 
   it('projeto com movimento e pessoa sem evento é a pessoa mesmo', () => {
@@ -96,6 +97,6 @@ describe('BlocoDeComportamento · zero que não é da pessoa', () => {
         eventosNoProjetoNaSemana: 5000,
       },
     });
-    expect(screen.getByText(/não voltou ao site/i)).toBeInTheDocument();
+    expect(screen.getByText(/não tem visita registrada/i)).toBeInTheDocument();
   });
 });
