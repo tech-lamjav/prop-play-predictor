@@ -10,11 +10,80 @@ board. Este documento mede as premissas dele contra resultado, separando lado,
 tamanho da linha, preço, mando e campeonato, e responde o que precisa ser
 arrumado antes de religar.
 
-A resposta curta: **as premissas do handicap funcionam melhor do que a
-metodologia escrita supõe, e o encanamento entre o mart e a tela está trocado.**
-O que não funciona é a porta — ela publica no pedaço mais caro do mercado, e o
-preço, que a metodologia tirou da nota de propósito, é o único número que separa
-ganhador de perdedor de forma consistente.
+---
+
+## 0. A causa raiz
+
+**O produto publica pagando pior que a referência sharp, e a odd longa multiplica
+esse erro. Não há nada além disso.**
+
+A média de vantagem das 600 oportunidades de handicap publicadas é −2,74%, e só
+49 delas têm vantagem positiva. Isso não é acidente de execução: é a consequência
+direta da revisão de 01/08/2026, que tirou o preço da nota **de propósito** e o
+rebaixou a filtro de sanidade. A porta de publicação passou a ser contexto puro.
+Uma porta que não olha preço publica descorrelacionada do preço, e o board cai
+onde cair.
+
+O quanto isso custa depende de onde a linha cai, e é aí que o handicap entra:
+
+| Vantagem sobre a linha sharp | odd < 2,00 | odd ≥ 2,00 |
+|---|---:|---:|
+| acima de −2% | +18,1% (n=56) | +20,7% (n=28) |
+| abaixo de −2% | −3,0% (n=87) | −24,9% (n=173) |
+
+A tabela se lê pelas linhas. **Com preço bom, a faixa de odd não importa** — 18%
+contra 21% é a mesma coisa. **Com preço ruim, a faixa de odd decide tudo** — de
+−3% para −25%. A odd longa não causa prejuízo: ela multiplica o prejuízo de ter
+pago mal. O handicap é o pior mercado do board porque é o que vive nas odds
+longas, e não porque as premissas dele sejam piores que as dos outros.
+
+### O que NÃO é causa
+
+Três recortes que parecem vazamento e são o preço aparecendo com outro nome. O
+teste é sempre o mesmo: segurar a faixa de odd e ver se a diferença sobrevive.
+
+| Recorte | Diferença bruta | Controlada por preço |
+|---|---:|---:|
+| favorito contra azarão | −11,9pp | **+12,2pp** |
+| handicap de 1,5 ou mais contra 0,5 | −5,6pp | **+0,4pp** |
+| mandante contra visitante | −5,8pp | −4,9pp |
+
+O lado **inverte de sinal**. Na tabela bruta o azarão parece muito melhor que o
+favorito; dentro da mesma faixa de odd o favorito rende 12,2pp a mais. A vantagem
+aparente do azarão era composição: favorito vive em odd longa, azarão em odd
+curta. O tamanho do handicap **evapora**, de −5,6pp para nada, porque handicap
+grande e odd longa são a mesma variável dita duas vezes. Só o mando sobrevive, e
+fraco.
+
+### O que é causa secundária, e de tamanho errado para resolver
+
+As premissas carregam sinal próprio, e ele **sobrevive** ao controle de preço:
+
+| Premissa | Controlando tamanho da linha | Controlando preço |
+|---|---:|---:|
+| `supremacia` | +13,4pp ± 8,2 | +10,8pp ± 7,5 |
+| `tende_golear` | +11,6pp ± 10,1 | +10,5pp ± 9,7 |
+| `sem_rodizio` | +6,7pp ± 8,1 | +6,2pp ± 8,2 |
+| `favorito_irregular` | +5,0pp ± 3,3 | +4,2pp ± 2,5 |
+| `raramente_perde_por_2` | +3,4pp ± 3,2 | +1,7pp ± 2,4 |
+| `mando_forte` | −3,2pp ± 8,0 | −4,6pp ± 7,1 |
+| `defesa_fora_solida` | −2,1pp ± 2,8 | −3,8pp ± 2,4 |
+| `adversario_fragil_fora` | −5,5pp ± 7,8 | −6,3pp ± 7,1 |
+
+Então o método não está errado, está subdimensionado. Os defeitos de encanamento
+da seção 2 — peso divergente entre mart e catálogo, premissa que a tela não
+conhece, porta que não é porta — são reais e valem consertar, mas mexem nesses 5
+a 10 pontos. Não encostam nos 25 que o preço custa.
+
+### Por que nada disso apareceu antes
+
+Até 09/09/2026 nada era medido contra resultado: a regra de liquidação rodava no
+navegador e era descartada ao fechar a aba, e o script que fecha essa malha tem
+cinco dias (#388). Num sistema sem malha fechada toda regra é decidida por
+argumento, e nada denuncia o desacordo. É por isso que a recalibragem de agosto
+pôde chegar ao frontend e não ao mart e durar um mês, e é por isso que
+`linha_sharp_confirma` está `false` em 100% das 2.371 publicações desde sempre
+sem ninguém notar.
 
 ---
 
@@ -93,9 +162,13 @@ com o motivo "efeito zero nos dois testes". No mart ela desconta 12 pontos, o qu
 
 ---
 
-## 3. Onde o dinheiro vaza
+## 3. As tabelas brutas, e por que elas enganam
 
-### O lado, e o tamanho da linha
+Esta seção existe para registrar o que se vê antes de controlar por preço, porque
+é o que qualquer um vai ver ao abrir o dado pela primeira vez — e porque duas
+destas três leituras estão erradas, do jeito descrito na seção 0.
+
+### O lado, e o tamanho da linha (artefato de preço)
 
 | Recorte | n | taxa | ROI (melhor odd) | erro-padrão |
 |---|---:|---:|---:|---:|
@@ -105,13 +178,13 @@ com o motivo "efeito zero nos dois testes". No mart ela desconta 12 pontos, o qu
 | handicap −0,5 | 965 | 40,5% | −7,5% | ±4,1pp |
 | handicap +1,5 | 946 | 79,4% | −2,2% | ±1,8pp |
 
-O lado do favorito perde quatro vezes mais que o do azarão, e a maior parte do
-buraco está numa célula só: o favorito dando 1,5 gol de vantagem, que perde 25%
-em quase mil linhas. Isso importa porque **é exatamente para lá que as premissas
-do favorito empurram** — `tende_golear` e `supremacia` acendem justamente quando
-o time é muito superior, que é quando a casa cobra handicap grande.
+Lido assim, o favorito perde quatro vezes mais que o azarão e o buraco todo está
+no handicap de 1,5 gol. **Está errado.** Dentro da mesma faixa de odd o favorito
+rende 12,2pp a MAIS que o azarão, e o handicap grande some junto, porque handicap
+grande e odd longa são a mesma coisa dita duas vezes. O que estas duas tabelas
+medem é a faixa de preço em que cada lado costuma viver.
 
-### O preço
+### O preço (a causa)
 
 | Faixa de odd | n | taxa | ROI (melhor odd) | erro-padrão |
 |---|---:|---:|---:|---:|
@@ -128,17 +201,18 @@ handicap entre 1,50 e 4,00, ou seja, **a faixa de publicação atravessa a front
 e pega os dois lados dela**. No board de 344 linhas liquidadas, 201 estão acima de
 2,00.
 
-### O mando
+### O mando (sobrevive, e é pequeno)
 
 | Recorte | n | taxa | ROI | erro-padrão |
 |---|---:|---:|---:|---:|
 | mandante | 2.608 | 47,2% | −12,6% | ±2,7pp |
 | visitante | 2.600 | 51,8% | −6,7% | ±2,7pp |
 
-Apostar no time de casa é pior nos dois lados do handicap, e a diferença sobrevive
-ao erro-padrão. Isso conversa com a seção seguinte: as duas premissas do catálogo
-que falam de mando (`mando_forte` e `adversario_fragil_fora`) são as duas que não
-medem nada.
+Este é o único dos três recortes brutos que sobra depois do controle: a diferença
+cai de 5,8pp para 4,9pp quando se segura a faixa de odd. Apostar no time de casa
+é de fato um pouco pior. Isso conversa com a seção 4: as duas premissas do
+catálogo que falam de mando (`mando_forte` e `adversario_fragil_fora`) são as duas
+que não medem nada.
 
 ---
 
@@ -204,6 +278,9 @@ favorito parece melhor mas tem 124 linhas e ±13,3pp: não decide nada.
 
 ## 5. A premissa que falta é o preço
 
+Esta seção é a seção 0 vista de perto: o mesmo achado, com os números que o
+sustentam e o que mais veio junto.
+
 A revisão de 01/08/2026 tirou o preço da nota e o transformou em filtro de
 sanidade, com o argumento de que a regra antiga "vantagem maior que zero" era a
 única das quatro testadas que perdia dinheiro. No handicap, o dado de hoje diz o
@@ -253,26 +330,46 @@ marcam são publicadas sem premissa nenhuma.
 
 ## 6. O que precisa acontecer para religar
 
-Em ordem, e cada item é verificável isolado.
+A ordem é por tamanho de efeito, não por facilidade. Os dois primeiros itens
+mexem na causa; os outros quatro mexem em consequências, e nenhum deles salva o
+mercado sozinho.
 
-1. **Sincronizar peso entre mart e catálogo, e versionar a régua.** Enquanto as
-   duas existirem em desacordo, nenhuma recalibragem tem onde pousar. É o único
-   item que bloqueia todos os outros.
-2. **Registrar `favorito_irregular` no catálogo.** Ela é a premissa mais forte do
+**Primeiro, o que vale os 25 pontos:**
+
+1. **Vantagem mínima como porta de exclusão.** Não publicar o que está muito
+   abaixo da linha sharp. É o inverso da regra que a revisão de agosto aposentou:
+   aquela usava preço como porta de ENTRADA, e publicar tudo que tem vantagem
+   positiva contra uma linha mal estimada é armadilha. Esta usa preço como corte
+   de SAÍDA, e é a única mudança grande o suficiente para inverter o sinal do
+   mercado. Vale para os cinco mercados — os cinco publicam com vantagem média
+   negativa, entre −1,87% e −4,62%.
+2. **Fechar a malha antes de mudar qualquer peso.** O script de #388 e o deste
+   documento medem, mas nada roda sozinho e nada alerta. Enquanto a medição for um
+   comando que alguém lembra de rodar, a próxima divergência entre mart e frontend
+   vai durar o mesmo mês que esta durou.
+
+**Depois, o que vale os 5 a 10 pontos** — e que só compensa fazer porque é barato,
+não porque decide:
+
+3. **Sincronizar peso entre mart e catálogo, e versionar a régua.** Enquanto as
+   duas existirem em desacordo, nenhuma recalibragem tem onde pousar. Bloqueia os
+   dois itens seguintes.
+4. **Registrar `favorito_irregular` no catálogo.** Ela é a premissa mais forte do
    lado do azarão e a tela não sabe que ela existe. Precisa de nome, frase,
    negativo e evidência, como qualquer outra.
-3. **Trocar os pesos do azarão pelo que a medição mostra.** `favorito_irregular` e
+5. **Trocar os pesos do azarão pelo que a medição mostra.** `favorito_irregular` e
    `raramente_perde_por_2` na frente, `defesa_fora_solida` para o grupo de preço.
-4. **Estreitar a faixa de odd do handicap.** A fronteira de 2,00 é nítida e a
-   faixa atual (1,50 a 4,00) atravessa ela.
-5. **Adotar vantagem mínima como porta de exclusão**, não como porta de entrada:
-   não publicar o que está muito abaixo da linha sharp. Vale para os cinco
-   mercados, e o handicap é só onde o efeito é maior.
 6. **Reconciliar a porta de contexto com o que o mart faz.** Ou o mart passa a
    exigir duas premissas, ou a metodologia para de dizer que ele exige.
 
-Só depois disso a pergunta "o handicap volta à vitrine?" tem como ser respondida,
-porque só depois disso o mercado que voltaria é o que este documento mediu.
+O que **não** está nesta lista, e estava na primeira versão deste documento:
+estreitar a faixa de odd. A odd longa não é causa — ela multiplica o erro de
+preço, e com preço bom não custa nada (+18,1% abaixo de 2,00 contra +20,7% acima).
+Cortar odd longa sem corrigir preço joga fora metade do board para tratar o
+sintoma; corrigir preço torna o corte desnecessário.
+
+Só depois do item 1 a pergunta "o handicap volta à vitrine?" tem como ser
+respondida, porque só depois dele o mercado que voltaria é outro.
 
 ---
 

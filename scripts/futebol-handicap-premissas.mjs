@@ -159,16 +159,21 @@ function estatistica(linhas, campo = 'lucro') {
 }
 
 /**
- * Quanto a premissa acrescenta, já descontado o tamanho do handicap.
+ * Quanto a premissa acrescenta, já descontado o que `chave` isola.
  *
- * Dentro de cada linha compara acesa contra apagada; depois soma as diferenças
+ * Dentro de cada célula compara acesa contra apagada; depois soma as diferenças
  * pesadas pelo número de linhas acesas. Célula com menos de dez de cada lado
  * fica de fora: ela não mede, só balança o total.
+ *
+ * A chave é parâmetro porque as duas estratificações respondem coisas
+ * diferentes. Por TAMANHO DE HANDICAP, a pergunta é se a premissa mede algo além
+ * do tamanho da linha. Por FAIXA DE PREÇO, a pergunta é se ela mede algo que o
+ * mercado ainda não cobrou — e essa é a que decide se vale a pena tê-la.
  */
-function diferencaEstratificada(linhas, premissa) {
+function diferencaEstratificada(linhas, premissa, chave = (l) => Number(l.side_handicap)) {
   const celulas = new Map();
   for (const l of linhas) {
-    const k = Number(l.side_handicap);
+    const k = chave(l);
     if (!celulas.has(k)) celulas.set(k, []);
     celulas.get(k).push(l);
   }
@@ -233,6 +238,55 @@ const faixaDeOdd = (o) => {
   return '4.00+';
 };
 
+/**
+ * Faixas estreitas de preço, para segurar o mercado constante.
+ *
+ * Mais estreitas que `faixaDeOdd`, que é a faixa de leitura do produto: aqui o
+ * objetivo é que dentro de cada célula o mercado esteja dizendo a mesma coisa,
+ * e faixa larga demais deixa preço sobrando dentro da célula.
+ */
+const bandaDePreco = (o) => {
+  const x = Number(o);
+  if (x < 1.15) return 'a <1,15';
+  if (x < 1.30) return 'b 1,15–1,29';
+  if (x < 1.45) return 'c 1,30–1,44';
+  if (x < 1.65) return 'd 1,45–1,64';
+  if (x < 1.90) return 'e 1,65–1,89';
+  if (x < 2.20) return 'f 1,90–2,19';
+  if (x < 2.70) return 'g 2,20–2,69';
+  if (x < 3.50) return 'h 2,70–3,49';
+  if (x < 5.00) return 'i 3,50–4,99';
+  return 'j 5,00+';
+};
+
+/**
+ * A diferença entre dois recortes, antes e depois de segurar o preço.
+ *
+ * É o teste que separa causa de artefato, e o único do relatório que já mudou
+ * uma conclusão: o lado favorito/azarão INVERTE de sinal quando o preço é
+ * controlado, porque favorito vive em odd longa e azarão em odd curta. Lido
+ * bruto, o recorte mede a faixa de preço de cada grupo e chama isso de lado.
+ */
+function contraPreco(rotulo, linhas, pertence) {
+  const a0 = linhas.filter(pertence), b0 = linhas.filter((l) => !pertence(l));
+  const bruta = estatistica(a0).roi - estatistica(b0).roi;
+  const celulas = new Map();
+  for (const l of linhas) {
+    const k = bandaDePreco(l.melhor ?? l.best_odd);
+    if (!celulas.has(k)) celulas.set(k, []);
+    celulas.get(k).push(l);
+  }
+  let peso = 0, soma = 0;
+  for (const [, v] of celulas) {
+    const a = v.filter(pertence), b = v.filter((l) => !pertence(l));
+    if (a.length < 20 || b.length < 20) continue;
+    const w = Math.min(a.length, b.length);
+    peso += w;
+    soma += w * (estatistica(a).roi - estatistica(b).roi);
+  }
+  console.log(`| ${rotulo} | ${pp(bruta)} | ${peso ? pp(soma / peso) : '—'} |`);
+}
+
 // ── programa ───────────────────────────────────────────────────────────────
 
 function liquidarLinhas(brutas, odd, extras = () => ({})) {
@@ -283,17 +337,31 @@ async function principal() {
   tabela('Universo, por faixa de odd', universo, (l) => faixaDeOdd(l.melhor));
   tabela('Universo, por mando', universo, (l) => (l.outcome === 'Home' ? 'mandante' : 'visitante'));
 
+  console.log('\n### Causa ou artefato de preço?');
+  console.log('| recorte | diferença bruta | controlada por preço |');
+  console.log('|---|---:|---:|');
+  contraPreco('favorito contra azarão', universo, (l) => l.lado === 'favorito');
+  contraPreco('mandante contra visitante', universo, (l) => l.outcome === 'Home');
+  contraPreco('handicap de 1,5 ou mais contra 0,5', universo,
+    (l) => Math.abs(Number(l.side_handicap)) >= 1.5);
+  console.log(
+    '\n> Recorte que INVERTE de sinal ao controlar o preço não é causa: é a faixa ' +
+    'de preço do grupo, com outro nome.',
+  );
+
   for (const [nome, linhas] of [['FAVORITO', favorito], ['AZARÃO', azarao]]) {
     const e = estatistica(linhas);
     console.log(`\n### ${nome} — o que cada premissa acrescenta (${linhas.length} linhas, ROI base ${pct(e.roi)})`);
-    console.log('| premissa | n acesa | ROI acesa | n apagada | ROI apagada | diferença estratificada |');
+    console.log('| premissa | n acesa | ROI acesa | ROI apagada | controlando a linha | controlando o PREÇO |');
     console.log('|---|---:|---:|---:|---:|---:|');
     for (const p of PREMISSAS) {
       const d = diferencaEstratificada(linhas, p);
       if (!d) continue;
+      const q = diferencaEstratificada(linhas, p, (l) => bandaDePreco(l.melhor));
       console.log(
-        `| ${p} | ${d.nAcesa} | ${pct(d.roiAcesa)} | ${d.nApagada} | ${pct(d.roiApagada)} | ` +
-        `${pp(d.dif)} ± ${(d.ep * 100).toFixed(1)} |`,
+        `| ${p} | ${d.nAcesa} | ${pct(d.roiAcesa)} | ${pct(d.roiApagada)} | ` +
+        `${pp(d.dif)} ± ${(d.ep * 100).toFixed(1)} | ` +
+        `${q ? `${pp(q.dif)} ± ${(q.ep * 100).toFixed(1)}` : '—'} |`,
       );
     }
   }
@@ -315,6 +383,20 @@ async function principal() {
   linha('vantagem acima de zero', board.filter((l) => Number(l.edge) > 0));
   linha('vantagem entre -2% e zero', board.filter((l) => Number(l.edge) <= 0 && Number(l.edge) > -0.02));
   linha('vantagem abaixo de -2%', board.filter((l) => Number(l.edge) <= -0.02));
+
+  // A tabela que estabelece a ordem causal entre preço pago e odd longa. Lida
+  // pelas LINHAS: com vantagem boa, a faixa de odd não muda quase nada; com
+  // vantagem ruim, ela decide tudo. Logo a odd longa não causa o prejuízo, ela
+  // multiplica o prejuízo de ter pago mal — e cortar odd longa sem corrigir
+  // preço é tratar o sintoma.
+  cabecalho('Vantagem contra faixa de odd — qual das duas manda');
+  for (const [rot, ok] of [['vantagem acima de -2%', (l) => Number(l.edge) > -0.02],
+                           ['vantagem abaixo de -2%', (l) => Number(l.edge) <= -0.02]]) {
+    for (const [banda, dentro] of [['odd < 2,00', (l) => Number(l.best_odd) < 2],
+                                   ['odd >= 2,00', (l) => Number(l.best_odd) >= 2]]) {
+      linha(`${rot}, ${banda}`, board.filter((l) => ok(l) && dentro(l)));
+    }
+  }
   tabela('Board publicado, por faixa de odd', board, (l) => faixaDeOdd(l.best_odd));
   tabela('Board publicado, por campeonato', board, (l) => l.competition);
 
