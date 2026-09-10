@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePostHog } from '@posthog/react';
 import { Lock, Sparkles } from 'lucide-react';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import type { FutebolAccess } from '@/services/futebol-data.service';
@@ -82,6 +83,7 @@ export function FutebolTrialChip() {
  */
 export function FutebolAccessBanner({ access, className = '' }: { access?: FutebolAccess; className?: string }) {
   const navigate = useNavigate();
+  const posthog = usePostHog();
   // Durante o trial (estado saudável) NÃO mostramos faixa — o chip do cabeçalho
   // cuida disso. A faixa forte fica só pra expirado/deslogado (hora de agir).
   if (!access || access.state === 'subscribed' || access.state === 'trial') return null;
@@ -101,7 +103,16 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
         </div>
       </div>
       <button
-        onClick={() => navigate(expired ? '/futebol/assinar' : '/auth')}
+        onClick={() => {
+          // Quem esbarrou na parede e reagiu. Mede intenção de quem NÃO tem
+          // acesso, que é o oposto do funil de uso e a outra metade da conta.
+          posthog?.capture('futebol_gate_hit', {
+            product: 'futebol',
+            acesso: access.state,
+            acao: expired ? 'assinar' : 'criar_conta',
+          });
+          navigate(expired ? '/futebol/assinar' : '/auth');
+        }}
         className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-rebrand-sm bg-forest text-canvas text-[12px] font-bold px-4 h-9 hover:bg-forest-2 transition"
       >
         {expired ? 'Assinar Futebol' : 'Criar conta grátis'}

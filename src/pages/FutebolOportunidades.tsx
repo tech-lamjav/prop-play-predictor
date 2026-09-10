@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { usePostHog } from '@posthog/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
@@ -67,11 +67,30 @@ function Crest({ teamId, name, size = 20 }: { teamId: number; name: string; size
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
+// Abrir a análise a partir daqui é o passo que separa "chegou no board" de
+// "usou o produto". O evento sai no CLIQUE, e não na tela do jogo, porque só
+// aqui se sabe de onde a pessoa veio; a tela do jogo é alcançável por link
+// direto, alerta do Telegram e home.
+function useAbrirOportunidade(origem: 'board' | 'board_mobile') {
+  const posthog = usePostHog();
+  return (o: OppLike) => {
+    posthog?.capture('futebol_opportunity_opened', {
+      product: 'futebol',
+      origem,
+      fixture_id: o.fixture_id,
+      mercado: o.market,
+      faixa: o.faixa ?? null,
+      score: o.score ?? null,
+    });
+  };
+}
+
 // Linha da tabela (desktop)
 function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
   o: OppLike; to: string; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
 }) {
+  const abrir = useAbrirOportunidade('board');
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
@@ -80,7 +99,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
   // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
   const badgeCls = o.faixa != null ? faixaBadgeCls(o.faixa) : 'bg-canvas-2 text-ink-3 border border-line';
   return (
-    <Link to={to} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
+    <Link to={to} onClick={() => abrir(o)} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
       <span className={`inline-flex items-center justify-center rounded-md font-bold tabular-nums text-[16px] w-10 h-9 ${badgeCls}`}>{o.score ?? '—'}</span>
       <span className={`px-1.5 h-5 w-fit inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${badgeCls}`}>{o.faixa != null ? faixaWord(o.faixa) : '—'}</span>
       <div className="flex items-center gap-2.5 min-w-0">
@@ -117,13 +136,14 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
   o: OppLike; to: string; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null; canRegister?: boolean;
 }) {
+  const abrir = useAbrirOportunidade('board_mobile');
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result;
   const hasScore = homeGoals != null && awayGoals != null;
   return (
     <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
-      <Link to={to} className="block w-full text-left p-3.5">
+      <Link to={to} onClick={() => abrir(o)} className="block w-full text-left p-3.5">
         <div className="flex items-start gap-3">
           <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
@@ -488,6 +508,23 @@ export default function FutebolOportunidades() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isPastDay, comValor, goalsMap, fixtureMap],
   );
+
+  // "Chegou a ver o produto": é o passo que faltava entre o cadastro e o uso, e
+  // sem ele um lead que nunca abriu o board é indistinguível de um bom. Dispara
+  // UMA vez por visita: esta tela remonta a cada troca de dia, faixa, mercado e
+  // competição, e sem a trava viraria uma dúzia de eventos por sessão (foi o que
+  // aconteceu com o `bolao_ranking_viewed` sem guarda em BolaoDetail).
+  const boardViewFired = useRef(false);
+  useEffect(() => {
+    if (boardViewFired.current || isLoading || isDemo) return;
+    boardViewFired.current = true;
+    posthog?.capture('futebol_board_viewed', {
+      product: 'futebol',
+      dia: selectedDay,
+      oportunidades: bestRows.length,
+      acesso: access?.state ?? null,
+    });
+  }, [isLoading, isDemo, selectedDay, bestRows.length, access?.state, posthog]);
 
   // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
   // e some do histórico sem barulho — foi assim que a #323 passou despercebida
