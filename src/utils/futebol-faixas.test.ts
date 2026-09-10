@@ -36,11 +36,37 @@ describe('fronteiras da faixa', () => {
   });
 
   it('na escala antiga a legenda mostra os números antigos', () => {
-    // Entre esta entrega e a troca do mart o board ainda vem em legacy. Anunciar
+    // O histórico é point-in-time e continua devolvendo linhas legacy. Anunciar
     // 60+ ali classificaria errado: uma nota legacy de 57 é Média.
     expect(fronteirasDoScore('legacy')).toEqual({ media: 40, alta: 60 });
     expect(fronteirasDoScore('contexto_v1')).toEqual({ media: 30, alta: 60 });
     expect(opcoesDeFaixa('legacy').map((o) => o.selo)).toEqual(['60+', '40+', '<40']);
+  });
+
+  // ==========================================================================
+  // A tradução do histórico não pode ser apagada junto com o contrato antigo
+  // ==========================================================================
+  // A contração do #310 removeu o contrato legacy do board — a inferência por
+  // forma, os componentes de preço, os defaults zerados. O que NÃO pode sair é
+  // isto aqui: `legacy` continua sendo a escala de 19.229 oportunidades
+  // anteriores ao cutover de 03/09/2026, e ela tem régua própria.
+  //
+  // O teste acima fixa os NÚMEROS. Este fixa a CONSEQUÊNCIA, que é o que a
+  // pessoa da próxima faxina precisa ver antes de apagar o ramo de 40/60.
+  // ==========================================================================
+  it('a mesma nota cai em faixas diferentes nas duas escalas', () => {
+    const nota = 35;
+    const antiga = fronteirasDoScore('legacy');
+    const nova = fronteirasDoScore('contexto_v1');
+
+    // 35 estava ABAIXO da régua da Média na escala antiga: era Baixa.
+    expect(nota).toBeLessThan(antiga.media);
+    // E está ACIMA na de hoje: seria Média.
+    expect(nota).toBeGreaterThanOrEqual(nova.media);
+
+    // Apagar o ramo de legacy é promover essa oportunidade de Baixa para Média
+    // anos depois — a tela reescrevendo o passado de quem apostou.
+    expect(antiga).not.toEqual(nova);
   });
 });
 

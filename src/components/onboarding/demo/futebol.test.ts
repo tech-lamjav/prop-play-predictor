@@ -22,11 +22,15 @@ describe('dados de demonstração do futebol', () => {
   });
 
   it('nenhuma linha de exemplo carrega componente de preço no Score', () => {
-    // Os campos continuam no tipo durante a janela de compatibilidade, mas a
-    // demonstração não pode sugerir que preço soma na nota.
+    // Os campos saíram do tipo na contração do contrato (#310), então o
+    // compilador já barra a volta deles pela porta da frente. O que este teste
+    // ainda pega é a porta dos fundos: um `as` no construtor da demonstração
+    // reintroduz a chave sem o compilador reclamar, e a demonstração voltaria a
+    // sugerir que preço soma na nota.
     for (const linha of demoFutebolBoard('contexto_v1')) {
-      expect(linha.pts_valor, `${linha.market} ${linha.outcome}`).toBe(0);
-      expect(linha.pts_corroboracao, `${linha.market} ${linha.outcome}`).toBe(0);
+      const chaves = Object.keys(linha);
+      expect(chaves, `${linha.market} ${linha.outcome}`).not.toContain('pts_valor');
+      expect(chaves, `${linha.market} ${linha.outcome}`).not.toContain('pts_corroboracao');
     }
   });
 });

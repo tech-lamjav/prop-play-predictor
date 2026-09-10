@@ -23,7 +23,7 @@ function linha(over: Partial<FutebolValueBoardRow> & { kickoff_utc: string }): F
     status_short: 'NS', market: 'match_winner', outcome: 'Home', line_value: null,
     edge: 5, best_odd: 2, best_book: 'x', avg_odd: 1.9, n_casas: 8,
     janela_usada: 't24h', prob_justa_fechamento: 0.5,
-    pts_valor: 10, pts_premissas: 10, pts_corroboracao: 0, penalidades: 0,
+    pts_premissas: 10, penalidades: 0,
     score: 50, faixa: 'Média', evidencias: [], premissas_sem_dado: 0,
     ...over,
   } as FutebolValueBoardRow;

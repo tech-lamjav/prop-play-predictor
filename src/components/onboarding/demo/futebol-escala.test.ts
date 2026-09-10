@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { renderHook } from '@testing-library/react';
 import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
+import { useDemoFutebolBoard } from './use-demo-futebol';
 import { versaoDaJanela, opcoesDeFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 
 // ============================================================================
@@ -26,6 +28,31 @@ describe('a escala da demonstração', () => {
   it('vale também para as linhas do detalhe do jogo', () => {
     expect(versaoDaJanela(demoFixtureValueRows('legacy'))).toBe('legacy');
     expect(versaoDaJanela(demoFixtureValueRows('contexto_v1'))).toBe('contexto_v1');
+  });
+
+  // ==========================================================================
+  // Sem janela para herdar, a demonstração usa a régua de HOJE (#310)
+  // ==========================================================================
+  // O padrão era `legacy`, e a justificativa escrita era o contrato antigo:
+  // linha sem `score_versao` e com componentes de preço numéricos era deduzida
+  // como legacy, e a linha de demonstração tinha essa forma.
+  //
+  // A contração matou a dedução e tirou os componentes de preço do contrato.
+  // Com isso o padrão virou defeito: dia sem oportunidade publicada é janela
+  // vazia, e o tour anunciaria 40+ enquanto o produto publica 30+.
+  // ==========================================================================
+
+  it('janela vazia cai na escala que o produto publica hoje, não na antiga', () => {
+    const { result } = renderHook(() => useDemoFutebolBoard([]));
+    expect(versaoDaJanela(result.current)).toBe('contexto_v1');
+  });
+
+  it('mas janela realmente em legacy continua sendo herdada', () => {
+    // O histórico point-in-time devolve linhas na escala antiga, e ali a
+    // demonstração tem de acompanhar — senão volta o defeito da #333, com o
+    // tour ensinando uma régua e o board ao lado mostrando outra.
+    const { result } = renderHook(() => useDemoFutebolBoard(demoFutebolBoard('legacy')));
+    expect(versaoDaJanela(result.current)).toBe('legacy');
   });
 });
 
