@@ -50,6 +50,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 // Painel dos sócios: rota escondida, fora de todo menu. O portão vem eager
 // porque ele decide o que renderizar ANTES de valer a pena baixar o painel.
 const PainelDosSocios = lazyWithRetry(() => import("./pages/PainelDosSocios"));
+const FichaDaPessoa = lazyWithRetry(() => import("./pages/FichaDaPessoa"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
@@ -191,6 +192,7 @@ const App = () => (
                 REDIRECIONA para o login, e um redirecionamento denuncia que
                 existe algo ali. O portão devolve a página de não encontrado. */}
             <Route path={ROTA_DOS_SOCIOS} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
+            <Route path={`${ROTA_DOS_SOCIOS}/:id`} element={<PortaoDoSocio><FichaDaPessoa /></PortaoDoSocio>} />
             <Route path="/report" element={
               <ProtectedRoute>
                 <Report />

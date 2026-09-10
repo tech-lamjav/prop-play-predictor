@@ -57,6 +57,10 @@ $function$;
 comment on function public.eh_socio() is
   'Responde se quem chamou é sócio. Definer de propósito: uma política sobre users que consulta users recursa.';
 
+-- Revoke antes do grant: funcao nova nasce executavel por PUBLIC, e PUBLIC
+-- inclui o anon. O portao interno barraria (auth.uid e nulo fora da sessao),
+-- mas um grant que sugere restricao sem ter e pior que nenhum.
+revoke execute on function public.eh_socio() from public;
 grant execute on function public.eh_socio() to authenticated;
 
 -- ── O que o sócio enxerga ───────────────────────────────────────────────────

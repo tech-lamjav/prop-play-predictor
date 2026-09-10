@@ -27,6 +27,16 @@ describe('o painel não é anunciado', () => {
   it('não entra no robots.txt — listar o caminho lá é publicá-lo', () => {
     expect(raiz('public/robots.txt')).not.toContain(ROTA_DOS_SOCIOS);
   });
+
+  it.each(['src/pages/PainelDosSocios.tsx', 'src/pages/FichaDaPessoa.tsx'])(
+    '%s é noindex',
+    (pagina) => {
+      // Ficar fora do sitemap não basta: o Google chega por qualquer link, e
+      // uma página de app sem noindex vira página fantasma no índice. Tirar o
+      // noindex não quebrava nada até este guarda existir.
+      expect(raiz(pagina)).toMatch(/<Seo\s+noindex/);
+    },
+  );
 });
 
 describe('a rota nasce com o portão', () => {

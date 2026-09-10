@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   agruparPorDia,
   buscar,
@@ -7,6 +8,7 @@ import {
   formatarDia,
   type Cadastro,
 } from './crm-lista';
+import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
 
 /**
  * O que a tela sabe no momento em que desenha.
@@ -45,18 +47,25 @@ function LinhaDoCadastro({ cadastro }: { cadastro: Cadastro }) {
     .join(' · ');
 
   return (
-    <li className="flex items-center gap-3 border-t border-line-2 px-4 py-3 first:border-t-0">
-      <div className="min-w-0 flex-1">
-        {/* Sem nome, o e-mail sobe para a linha principal em vez de deixar uma
-            faixa em branco onde deveria estar a pessoa. */}
-        <p className="truncate text-[15px] font-bold text-ink">{cadastro.name ?? cadastro.email}</p>
-        {contato ? <p className="truncate text-[13px] text-ink-2">{contato}</p> : null}
-      </div>
-      {ehAssinante(cadastro) ? (
-        <span className="shrink-0 rounded-full bg-forest px-2.5 py-1 text-[11px] font-bold text-white">
-          Assinante
-        </span>
-      ) : null}
+    <li className="border-t border-line-2 first:border-t-0">
+      <Link
+        to={`${ROTA_DOS_SOCIOS}/${cadastro.id}`}
+        className="flex items-center gap-3 px-4 py-3 hover:bg-canvas"
+      >
+        <div className="min-w-0 flex-1">
+          {/* Sem nome, o e-mail sobe para a linha principal em vez de deixar uma
+              faixa em branco onde deveria estar a pessoa. */}
+          <p className="truncate text-[15px] font-bold text-ink">
+            {cadastro.name ?? cadastro.email}
+          </p>
+          {contato ? <p className="truncate text-[13px] text-ink-2">{contato}</p> : null}
+        </div>
+        {ehAssinante(cadastro) ? (
+          <span className="shrink-0 rounded-full bg-forest px-2.5 py-1 text-[11px] font-bold text-white">
+            Assinante
+          </span>
+        ) : null}
+      </Link>
     </li>
   );
 }

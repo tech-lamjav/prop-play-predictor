@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { PainelCrm } from './PainelCrm';
 import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 import type { Cadastro } from './crm-lista';
@@ -19,7 +20,11 @@ const base = [
 ];
 
 const pronto = (cadastros: Cadastro[] = base, totalNaBase = cadastros.length) =>
-  render(<PainelCrm estado={{ tipo: 'pronto', cadastros, totalNaBase }} hoje={HOJE} />);
+  render(
+    <MemoryRouter>
+      <PainelCrm estado={{ tipo: 'pronto', cadastros, totalNaBase }} hoje={HOJE} />
+    </MemoryRouter>,
+  );
 
 /**
  * O valor exato de um contador.
@@ -99,15 +104,30 @@ describe('PainelCrm', () => {
     // Zero é resposta possível e assustadora: uma tela que pisca "0 cadastros"
     // antes de carregar parece base vazia. E um galho que não desenha NADA
     // passaria por um teste que só nega o zero — daí as duas asserções.
-    const { container } = render(<PainelCrm estado={{ tipo: 'carregando' }} hoje={HOJE} />);
+    const { container } = render(
+      <MemoryRouter>
+        <PainelCrm estado={{ tipo: 'carregando' }} hoje={HOJE} />
+      </MemoryRouter>,
+    );
     expect(screen.getByText(/carregando os cadastros/i)).toBeInTheDocument();
     expect(container.textContent).not.toContain('0');
   });
 
   it('quando a consulta falha, diz que falhou em vez de fingir base vazia', () => {
-    render(<PainelCrm estado={{ tipo: 'erro' }} hoje={HOJE} />);
+    render(
+      <MemoryRouter>
+        <PainelCrm estado={{ tipo: 'erro' }} hoje={HOJE} />
+      </MemoryRouter>,
+    );
     expect(screen.getByText(/não deu para carregar/i)).toBeInTheDocument();
     expect(screen.queryByText(/nenhum cadastro na base/i)).not.toBeInTheDocument();
+  });
+
+  it('cada nome leva à ficha daquela pessoa', () => {
+    // A rota é própria, e não um painel lateral: assim o endereço vira
+    // compartilhável entre os sócios.
+    pronto();
+    expect(screen.getByRole('link', { name: /Maria Silva/ })).toHaveAttribute('href', '/socios/a');
   });
 
   it('não promete saber de onde a pessoa veio', () => {

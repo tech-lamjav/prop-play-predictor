@@ -1138,6 +1138,10 @@ export type Database = {
         Args: { p_week_start_date?: string }
         Returns: undefined
       }
+      crm_resumo_de_apostas: {
+        Args: { p_user_id: string }
+        Returns: { total: number; ultima: string | null }[]
+      }
       create_referral: {
         Args: {
           p_referral_code: string
