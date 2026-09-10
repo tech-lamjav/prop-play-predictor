@@ -1,6 +1,7 @@
 import { Seo } from '@/components/Seo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
-import { useTotalDeCadastros } from '@/hooks/use-total-de-cadastros';
+import { useCadastros } from '@/hooks/use-cadastros';
+import { brtToday } from '@/utils/futebol-datas';
 
 /**
  * O painel dos sócios.
@@ -14,12 +15,14 @@ import { useTotalDeCadastros } from '@/hooks/use-total-de-cadastros';
  * a política de linha da migration 123; a rota escondida é só conveniência.
  */
 export default function PainelDosSocios() {
-  const contagem = useTotalDeCadastros();
+  const estado = useCadastros();
 
   return (
     <>
       <Seo noindex title="CRM | Smart Betting" />
-      <PainelCrm contagem={contagem} />
+      {/* O dia entra por prop para a tela não mudar de comportamento à
+          meia-noite dentro de um teste. */}
+      <PainelCrm estado={estado} hoje={brtToday()} />
     </>
   );
 }
