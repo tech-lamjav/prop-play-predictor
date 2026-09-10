@@ -61,11 +61,17 @@ fila de retomada. Para quem nunca foi tocado, conta desde o cadastro — o
 relógio do lead começa quando ele chega, não no primeiro contato que não houve.
 _Avoid_: Inativo, frio, esquecido
 
-**Fila de trabalho**:
-As duas listas do que fazer agora: conversas esfriando e nunca abordados. Elas
-não se cruzam de propósito — a segunda é sempre muito maior, e numa lista só a
-primeira sumiria embaixo dela.
-_Avoid_: Tarefas, pendências, to-do
+**Recorte**:
+Qual fatia da base a lista mostra. São dois: **precisa de atenção** e **todos**.
+Agrupar por dia não é recorte — é chave à parte, que se combina com os dois.
+_Avoid_: Aba, visão, filtro (filtro é o do funil e o da busca)
+
+**Precisa de atenção**:
+O recorte de quem espera alguma coisa: conversa começada e sem toque há sete
+dias ou mais, e quem nunca saiu de "novo". Numa lista só, ordenada — a conversa
+esfriando vem antes, porque já custou trabalho, e a coluna de etapa é o que
+distingue as duas situações.
+_Avoid_: Fila, pendências, to-do
 
 **Anotação**:
 Um registro livre na linha do tempo de uma pessoa. Tem três tipos: anotação,
@@ -79,5 +85,7 @@ consequência do que foi anotado logo antes.
 _Avoid_: Histórico, log, atividades
 
 **Ficha**:
-A tela de uma pessoa: contatos, plano, acessos, gancho, etapa e linha do tempo.
+A tela de uma pessoa: contatos, plano, acessos, gancho, etapa, linha do tempo e
+mensagem pronta. Abre em modal por cima da lista, e não numa página separada —
+o trabalho é abrir, registrar, fechar, abrir o próximo.
 _Avoid_: Perfil, detalhe, página do usuário

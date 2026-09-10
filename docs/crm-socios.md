@@ -103,17 +103,41 @@ As três tabelas do CRM só são legíveis e escrevíveis por sócio.
 
 **Painel** — na ordem em que a tela responde "com quem eu falo agora": três
 números de acompanhamento (cadastros em trinta dias, conversão, abordados), a
-faixa do funil com as oito posições e clicável como filtro, a busca, e três abas.
+faixa do funil com as oito posições e clicável como filtro, a busca, e **uma
+tabela só**.
 
-A **fila de trabalho** vem primeiro, e tem duas listas que não se cruzam:
-conversas esfriando — começadas e sem toque há sete dias ou mais — e nunca
-abordados. A aba **todos** é a tabela, com etapa, gancho e há quantos dias o lead
-está parado. A aba **por dia** é a lista cronológica, que sobrevive porque é a
-única que mostra o RITMO de chegada.
+A tabela tem um **recorte** — precisa de atenção, ou todos — e uma chave
+separada para agrupar por dia. "Precisa de atenção" junta duas situações numa
+lista ordenada: conversa começada e sem toque há sete dias ou mais vem primeiro,
+depois quem nunca saiu de "novo". As duas já eram distinguíveis pela coluna de
+etapa, e separá-las em tabelas diferentes era o que fazia a tela parecer cinco
+listas.
+
+Agrupar por dia é chave à parte, e não um terceiro recorte: ela se combina com
+os dois em vez de competir. É a única visão que mostra o RITMO de chegada.
 
 Os números do topo e o funil contam a base INTEIRA, e não o recorte da busca:
 eles respondem como está a operação, e essa resposta não muda porque alguém
 digitou um nome.
+
+**Ficha** — abre em **modal por cima da lista**, em duas colunas: à esquerda o
+que é consulta (etapa, contatos, planos, comportamento), à direita o que é
+trabalho (o palpite, a mensagem pronta, a linha do tempo). O formato saiu de um
+protótipo de três variações, na branch `prototype/ficha-do-lead`.
+
+O endereço continua `/socios/<id>`, porque a ficha precisa ser compartilhável
+entre os sócios. As duas rotas desenham a mesma página: a segunda é a primeira
+com o modal aberto. Fechar navega de volta, e o botão voltar do navegador
+funciona sozinho.
+
+**Feedbacks** — seção própria na faixa do CRM, em `/socios/feedbacks`. Todos os
+feedbacks da base numa lista, do mais recente para o mais antigo, com quem
+registrou e o nome levando de volta para a ficha.
+
+Ela existe porque são duas perguntas diferentes: a lista de leads responde "com
+quem eu falo agora", e esta responde "o que estão achando do produto". O
+feedback continua morando na linha do tempo de quem falou — é lá que ele tem
+contexto —, e esta tela é a leitura transversal dele.
 
 A primeira versão desta tela era só a lista por dia. O diagnóstico do Victor foi
 que ela parecia um registro do que aconteceu, e não um CRM — e estava certo: uma
