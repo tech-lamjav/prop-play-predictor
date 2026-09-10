@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Check, Loader2, Lock } from 'lucide-react';
+import { Check, Loader2, Lock, MessageCircle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Button } from '@/components/ui/button';
+import { whatsappDoTime } from '@/config/contato';
 import { useAuth } from '@/hooks/use-auth';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { stripeService } from '@/services/stripe.service';
@@ -82,6 +83,14 @@ export default function FutebolAssinar() {
       });
     }
   }, [canceled]);
+
+  // A mensagem já vem escrita, como no resto do app: diz de onde a pessoa veio,
+  // senão a conversa começa com um "oi" solto e o time gasta uma rodada só para
+  // descobrir o assunto. O número vive em `config/contato` — nunca literal aqui.
+  const falarNoWhatsApp = () => {
+    const mensagem = 'Oi! Tenho uma dúvida sobre a assinatura do Futebol (R$ 39,90/mês).';
+    window.open(whatsappDoTime(mensagem), '_blank');
+  };
 
   const assinar = async () => {
     if (authLoading) return;
@@ -181,6 +190,16 @@ export default function FutebolAssinar() {
               ) : (
                 <span>{user ? 'Assinar o Futebol' : 'Criar conta e assinar'}</span>
               )}
+            </Button>
+
+            <Button
+              onClick={falarNoWhatsApp}
+              variant="outline"
+              size="lg"
+              className="w-full py-6 mt-3 gap-2 bg-white border-line text-ink hover:bg-canvas-2"
+            >
+              <MessageCircle className="h-5 w-5" />
+              <span className="text-sm sm:text-base text-center">Ou fale com a gente pelo WhatsApp</span>
             </Button>
 
             <p className="text-[12px] text-ink-3 text-center mt-4">
