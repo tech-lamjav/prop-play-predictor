@@ -175,7 +175,7 @@ const P_OU: Premissa[] = [
   P('historico_under', 'Histórico de jogo com poucos gols', 'O histórico de poucos gols não entrou como sinal a favor', 'preco', 3, { lado: 'under', motivo: 'sinal fraco' }),
   P('ambos_vazam', 'Os dois sofrem gol quase todo jogo', 'Os gols sofridos não entraram como sinal a favor', 'preco', 0, {
     lado: 'over',
-    motivo: 'o preço cobra mais do que ela vale',
+    motivo: 'o preço já cobra',
   }),
   P('ritmo_alto', 'Jogo de ritmo alto', 'O ritmo do jogo não entrou como sinal a favor', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),
   P('historico_over', 'Histórico de jogo com muitos gols', 'O histórico de muitos gols não entrou como sinal a favor', 'preco', 0, { lado: 'over', motivo: 'atrapalha nos dois testes' }),

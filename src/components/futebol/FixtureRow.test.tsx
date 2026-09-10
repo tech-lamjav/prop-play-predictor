@@ -76,6 +76,42 @@ describe('FixtureRow · estado da leitura', () => {
     expect(screen.queryByTestId('linha-leitura-carregando')).not.toBeInTheDocument();
     expect(screen.getAllByText(/sem leitura/i).length).toBeGreaterThan(0);
   });
+
+  // ==========================================================================
+  // Depois do apito a frase não pode afirmar nada sobre odds
+  // ==========================================================================
+  // O board é point-in-time: o expurgo tira a linha no apito, e a partir daí a
+  // agenda lê um lugar onde o jogo já não está. Ela não sabe se houve leitura,
+  // só que não há mais.
+  //
+  // As duas frases antigas afirmavam mais do que isso, e as duas foram
+  // reportadas no smoke test da virada (#309): "odds entram perto do jogo"
+  // aparecia com a bola rolando, e "não teve odds coletadas" aparecia em jogo
+  // cujo histórico listava quatro oportunidades com odd.
+  // ==========================================================================
+
+  it('jogo ao vivo não promete odds que ainda vão entrar', () => {
+    renderLinha({ fixture: { ...jogo, status_short: '2H' } as typeof jogo, best: null });
+
+    expect(screen.getByText('Ao vivo')).toBeInTheDocument();
+    expect(screen.queryByText(/odds entram perto do jogo/i)).not.toBeInTheDocument();
+  });
+
+  it('jogo encerrado não afirma que não teve odds coletadas', () => {
+    renderLinha({
+      fixture: { ...jogo, status_short: 'FT', goals_home: 1, goals_away: 0 } as typeof jogo,
+      best: null,
+    });
+
+    expect(screen.queryByText(/não teve odds coletadas/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/odds entram perto do jogo/i)).not.toBeInTheDocument();
+  });
+
+  it('antes do apito a promessa das odds continua, porque ali ela é verdade', () => {
+    renderLinha({ fixture: { ...jogo, status_short: 'NS' } as typeof jogo, best: null });
+
+    expect(screen.getByText(/odds entram perto do jogo/i)).toBeInTheDocument();
+  });
 });
 
 // ============================================================================
