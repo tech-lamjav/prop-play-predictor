@@ -14,7 +14,7 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
-  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, versaoDaJanela,
+  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
 } from '@/utils/futebol-score';
 import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -36,6 +36,7 @@ import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } 
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { rotuloPremissa } from '@/utils/futebol-premissas';
 import { useNow } from '@/hooks/use-now';
+import { comDia, useDiaNaUrl } from '@/hooks/use-dia-na-url';
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
 const DAY_WINDOW = 8;
 
@@ -360,7 +361,9 @@ export default function FutebolHoje() {
   // ele mesmo inventou, que era o defeito.
   const locked = isDemo ? false : !access?.unlocked;
 
-  const [day, setDay] = useState<string | null>(null);
+  // O dia mora na URL: os atalhos daqui levam o contexto junto, e quem estava
+  // vendo amanhã para de cair em hoje ao clicar em "Ver todas".
+  const [day, setDay] = useDiaNaUrl();
 
   // dias (BRT) com jogos ainda não começados — base da navegação por dias.
   // Limita aos próximos dias (não varre a temporada inteira do Brasileirão).
@@ -529,9 +532,7 @@ export default function FutebolHoje() {
     };
   }, [heroOpp, contratoMotivos]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
-  const textoScore = textoDoScore(
-    versaoDaJanela(dayRows) === 'contexto_v1' ? 'contexto_v1' : 'legacy',
-  );
+  const textoScore = textoDoScore(escalaDeExibicao(dayRows));
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
   const gameList = isDemo ? demoFutebolFixtures : dayGames;
@@ -642,7 +643,7 @@ export default function FutebolHoje() {
                 <div className={LABEL}>Mais oportunidades</div>
                 <div className="text-lg font-bold tracking-tight text-ink mt-0.5">Por confiabilidade</div>
               </div>
-              <Link to="/futebol/oportunidades" className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
+              <Link to={comDia('/futebol/oportunidades', selectedDay)} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
                 Ver todas <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -663,7 +664,7 @@ export default function FutebolHoje() {
                 <div className={LABEL}>{isToday ? 'Jogos de hoje' : 'Jogos do dia'}</div>
                 <div className="text-lg font-bold tracking-tight text-ink mt-0.5">{gameList.length} partida{gameList.length === 1 ? '' : 's'}</div>
               </div>
-              <Link to="/futebol/jogos" className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
+              <Link to={comDia('/futebol/jogos', selectedDay)} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
                 Ver todos <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

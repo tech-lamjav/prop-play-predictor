@@ -3,9 +3,13 @@ import type { FutebolScoreVersion } from '@/services/futebol-score-contract';
 /**
  * As definições dos quatro números da leitura.
  *
- * O texto do Score depende da escala: até a virada ele soma preço e contexto;
- * depois passa a medir só o contexto (spec #301). Escrever a versão nova antes
- * da hora faria a tela explicar uma metodologia que ainda não está rodando.
+ * O texto do Score depende da escala em que a nota foi calculada. Desde a
+ * virada de 03/09/2026 o produto publica só `contexto_v1`, e o preço não entra
+ * mais na nota (spec #301).
+ *
+ * O ramo `legacy` não é resíduo: o histórico é point-in-time e continua
+ * devolvendo linhas da régua antiga, onde a nota SOMAVA preço. Explicá-las com
+ * o texto novo seria descrever errado uma leitura que já aconteceu.
  */
 export function textoDoScore(versao: FutebolScoreVersion | undefined): string {
   return versao === 'contexto_v1'

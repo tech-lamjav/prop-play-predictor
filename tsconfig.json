@@ -1,3 +1,11 @@
+// ⚠️ ESTE ARQUIVO NÃO CHECA NADA SOZINHO.
+//
+// `"files": []` mais `references` é a forma de projeto composto: sem `-b` ou
+// `-p <projeto>`, o tsc compila a lista vazia e sai com SUCESSO. Foi assim que
+// o repositório passou a existência inteira sem nunca ter sido typechecado —
+// `npx tsc --noEmit` aqui sempre passou olhando zero arquivo (#343).
+//
+// O comando que checa de verdade é `npm run typecheck`.
 {
   "files": [],
   "references": [

@@ -29,6 +29,18 @@ jobs:
 
       - run: npm run lint
 
+      # O typecheck entrou em 09/09/2026, e até então NENHUM dos passos deste
+      # arquivo olhava tipo: lint não olha, teste não olha, e o build é
+      # Vite/esbuild, que apaga os tipos sem verificá-los. Um erro de tipo
+      # compilava e subia (#343).
+      #
+      # Não é `tsc --noEmit`: na raiz esse comando compila zero arquivo e passa.
+      # `npm run typecheck` aponta para os projetos de verdade e é uma CATRACA —
+      # a dívida de hoje está declarada em scripts/typecheck-divida.json e o que
+      # ele impede é ela crescer. Ligar o gate inteiro hoje deixaria o CI vermelho
+      # no primeiro PR, e gate vermelho por dívida velha é gate desligado.
+      - run: npm run typecheck
+
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL_STAGING }}

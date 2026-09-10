@@ -220,6 +220,29 @@ export function versaoDaJanela(
 }
 
 /**
+ * A escala em que a tela deve LER uma janela, incluindo o caso de a janela não
+ * declarar nenhuma.
+ *
+ * `indefinida` — janela vazia, mista, ou só de oportunidade registrada — resolve
+ * na escala que o produto publica hoje. Cada tela resolvia isso por conta
+ * própria, e as duas caíam em `legacy`; a justificativa escrita era a inferência
+ * por forma do contrato antigo, que a contração matou (#310).
+ *
+ * Com ela morta, o padrão virou defeito: dia sem oportunidade publicada é janela
+ * vazia, e a tela passava a explicar o Score pela fórmula aposentada — "junta o
+ * cenário com o quanto a odd paga acima do risco". O preço saiu do Score na
+ * virada de 03/09.
+ *
+ * `legacy` continua sendo herdado quando a janela é mesmo antiga: é o caso do
+ * histórico point-in-time, e ali acompanhar é o certo.
+ */
+export function escalaDeExibicao(
+  linhas: readonly { score_versao?: FutebolScoreVersion }[],
+): FutebolScoreVersion {
+  return versaoDaJanela(linhas) === 'legacy' ? 'legacy' : 'contexto_v1';
+}
+
+/**
  * As três faixas, na ordem em que a legenda as apresenta.
  *
  * Numa janela indefinida o selo sai: ou as duas escalas convivem e um número

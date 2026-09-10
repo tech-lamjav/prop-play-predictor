@@ -9,6 +9,7 @@ import {
   faixaTone,
   rotuloDaFaixa,
   fronteirasDoScore,
+  escalaDeExibicao,
   opcoesDeFaixa,
   passaNoFiltroDeFaixas,
 } from './futebol-score';
@@ -36,11 +37,74 @@ describe('fronteiras da faixa', () => {
   });
 
   it('na escala antiga a legenda mostra os números antigos', () => {
-    // Entre esta entrega e a troca do mart o board ainda vem em legacy. Anunciar
+    // O histórico é point-in-time e continua devolvendo linhas legacy. Anunciar
     // 60+ ali classificaria errado: uma nota legacy de 57 é Média.
     expect(fronteirasDoScore('legacy')).toEqual({ media: 40, alta: 60 });
     expect(fronteirasDoScore('contexto_v1')).toEqual({ media: 30, alta: 60 });
     expect(opcoesDeFaixa('legacy').map((o) => o.selo)).toEqual(['60+', '40+', '<40']);
+  });
+
+  // ==========================================================================
+  // A tradução do histórico não pode ser apagada junto com o contrato antigo
+  // ==========================================================================
+  // A contração do #310 removeu o contrato legacy do board — a inferência por
+  // forma, os componentes de preço, os defaults zerados. O que NÃO pode sair é
+  // isto aqui: `legacy` continua sendo a escala de 19.229 oportunidades
+  // anteriores ao cutover de 03/09/2026, e ela tem régua própria.
+  //
+  // O teste acima fixa os NÚMEROS. Este fixa a CONSEQUÊNCIA, que é o que a
+  // pessoa da próxima faxina precisa ver antes de apagar o ramo de 40/60.
+  // ==========================================================================
+  it('a mesma nota cai em faixas diferentes nas duas escalas', () => {
+    // Classifica pela régua da escala, que é o que o backend faz. Escrito aqui
+    // porque o front não classifica de propósito — ele lê a faixa pronta. Sem
+    // isto o teste compararia números com os mesmos números, e passaria a
+    // dizer bem menos do que parece.
+    const faixaDe = (score: number, escala: 'legacy' | 'contexto_v1') => {
+      const { media, alta } = fronteirasDoScore(escala);
+      return score >= alta ? 'Alta' : score >= media ? 'Média' : 'Baixa';
+    };
+
+    // Apagar o ramo de legacy é promover esta oportunidade de Baixa para Média
+    // anos depois — a tela reescrevendo o passado de quem apostou.
+    expect(faixaDe(35, 'legacy')).toBe('Baixa');
+    expect(faixaDe(35, 'contexto_v1')).toBe('Média');
+  });
+});
+
+// ============================================================================
+// A escala que a tela usa quando a janela não declara nenhuma (#310)
+// ============================================================================
+// `versaoDaJanela` devolve `indefinida` para janela vazia ou mista, e cada tela
+// resolvia isso por conta própria — as duas caindo em `legacy`. A justificativa
+// escrita era a inferência por forma do contrato antigo, que a contração matou.
+//
+// Com ela morta, o padrão virou defeito: dia sem oportunidade publicada é
+// janela vazia, e a tela real passava a explicar o Score pela fórmula
+// aposentada, dizendo que ele "junta o cenário com o quanto a odd paga acima do
+// risco". O preço saiu do Score em 03/09.
+// ============================================================================
+
+describe('escala de exibição da janela', () => {
+  const linha = (score_versao?: 'legacy' | 'contexto_v1') => ({ score_versao });
+
+  it('janela vazia usa a escala que o produto publica hoje', () => {
+    expect(escalaDeExibicao([])).toBe('contexto_v1');
+  });
+
+  it('janela que mistura as duas escalas também', () => {
+    expect(escalaDeExibicao([linha('legacy'), linha('contexto_v1')])).toBe('contexto_v1');
+  });
+
+  it('janela sem nenhuma linha que declare versão também', () => {
+    // É o caso da oportunidade registrada, que vem de uma tabela sem versão.
+    expect(escalaDeExibicao([linha(), linha()])).toBe('contexto_v1');
+  });
+
+  it('mas janela realmente antiga continua sendo lida na régua antiga', () => {
+    // O histórico point-in-time devolve linhas legacy, e ali acompanhar é o
+    // certo: a legenda tem de anunciar 40+, não 30+.
+    expect(escalaDeExibicao([linha('legacy')])).toBe('legacy');
   });
 });
 

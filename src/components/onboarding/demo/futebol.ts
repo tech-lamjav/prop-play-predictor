@@ -42,12 +42,10 @@ const base = (versao: FutebolScoreVersion, over: Partial<FutebolValueBoardRow>):
   n_casas: 6,
   janela_usada: 't1h',
   prob_justa_fechamento: 0.5,
-  // Preço não soma na nota desde o Score de contexto (spec #301). Os campos
-  // seguem no tipo durante a janela de compatibilidade e a demonstração os
-  // mantém zerados, para não ensinar a fórmula aposentada.
-  pts_valor: 0,
+  // Preço não soma na nota desde o Score de contexto (spec #301), e os campos
+  // dele saíram do tipo na contração do contrato (#310). Não há mais o que
+  // zerar aqui: a fórmula aposentada não tem como voltar pela demonstração.
   pts_premissas: 20,
-  pts_corroboracao: 0,
   penalidades: 0,
   score: 50,
   evidencias: [],
@@ -255,8 +253,8 @@ export const demoFixtureDetail: FutebolFixtureDetail = {
 const vr = (versao: FutebolScoreVersion, over: Partial<FutebolFixtureValueRow>): FutebolFixtureValueRow => ({
   market: 'match_winner', outcome: 'Home', outcome_order: 1, line_value: null,
   edge: 0.05, best_odd: 2, best_book: 'Bet365', avg_odd: 1.95, n_casas: 6, janela_usada: 't1h',
-  prob_justa_fechamento: 0.5, pts_valor: 0, pts_premissas: 20, pts_corroboracao: 0,
-  penalidades: 0, penalidades_globais_pts: 0, penalidades_especificas_pts: 0,
+  prob_justa_fechamento: 0.5, pts_premissas: 20,
+  penalidades: 0, penalidades_especificas_pts: 0,
   score: 50, modelo_api_concorda: true, linha_sharp_confirma: true,
   evidencias: [], avisos: [], contras: [], ...over,
   score_versao: versao,

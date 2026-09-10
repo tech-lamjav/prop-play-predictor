@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeFutebolFixtureValueRows,
-  normalizeFutebolValueBoardRows,
-} from './futebol-score-contract';
+import { normalizeFutebolScoreRows } from './futebol-score-contract';
+import type {
+  FutebolFixtureValueRow,
+  FutebolValueBoardRow,
+} from './futebol-data.service';
+
+const board = (linhas: readonly Record<string, unknown>[]) =>
+  normalizeFutebolScoreRows<FutebolValueBoardRow>(linhas);
+const detalhe = (linhas: readonly Record<string, unknown>[]) =>
+  normalizeFutebolScoreRows<FutebolFixtureValueRow>(linhas);
 
 const boardBase = {
   fixture_id: 101,
@@ -56,79 +62,74 @@ const fixtureBase = {
   premissas_sem_dado: 0,
 };
 
-describe('compatibilidade do contrato do Score de contexto', () => {
-  it('identifica como legacy uma linha antiga e preserva seus componentes', () => {
-    const [row] = normalizeFutebolValueBoardRows([{
-      ...boardBase,
-      pts_valor: 20,
-      pts_corroboracao: 8,
-    }]);
+describe('contrato do Score de contexto', () => {
+  // ==========================================================================
+  // A versão é DECLARADA, nunca deduzida da forma da linha (#310)
+  // ==========================================================================
+  // Durante a expansão o contrato aceitava linha sem `score_versao` e deduzia a
+  // versão pela presença dos componentes de preço. Era andaime: a RPC ainda
+  // podia responder na forma antiga enquanto o mart migrava.
+  //
+  // As três RPCs declaram a versão desde a virada de 03/09 (conferido em
+  // produção por `pg_get_functiondef`). Manter a dedução depois disso é pior do
+  // que inútil: uma resposta malformada seria silenciosamente carimbada de
+  // `legacy` e classificada na régua errada, sem ninguém saber.
+  // ==========================================================================
 
-    expect(row.score_versao).toBe('legacy');
-    expect(row.pts_valor).toBe(20);
-    expect(row.pts_corroboracao).toBe(8);
+  it('linha sem versão declarada é contrato malformado, e não legacy', () => {
+    expect(() => board([boardBase])).toThrow(
+      'O contrato do Score exige score_versao',
+    );
   });
 
-  it('aceita contexto_v1 sem exigir os componentes removidos', () => {
-    const [row] = normalizeFutebolValueBoardRows([{
+  it('nem a forma antiga faz a linha passar sem declarar a versão', () => {
+    // Este era o caminho da dedução: componentes de preço numéricos viravam
+    // `legacy` por conta própria.
+    expect(() =>
+      board([
+        { ...boardBase, pts_valor: 20, pts_corroboracao: 8 },
+      ]),
+    ).toThrow('O contrato do Score exige score_versao');
+  });
+
+  it('aceita contexto_v1', () => {
+    const [row] = board([{
       ...boardBase,
       score_versao: 'contexto_v1',
     }]);
 
     expect(row.score_versao).toBe('contexto_v1');
-    expect(row.pts_valor).toBe(0);
-    expect(row.pts_corroboracao).toBe(0);
   });
 
-  it('rejeita a forma nova quando contexto_v1 não foi declarado', () => {
-    expect(() => normalizeFutebolValueBoardRows([boardBase])).toThrow(
-      'O contrato novo do Score exige score_versao: contexto_v1',
-    );
-  });
-
-  it('aceita legacy sem componentes de preço, que é o histórico depois da virada', () => {
-    // Depois da virada a RPC tem uma forma só, sem pts_valor. O histórico
-    // point-in-time continua devolvendo linhas calculadas na escala antiga, e
-    // elas precisam continuar abrindo: legacy é a ESCALA da nota, não a
-    // presença dos componentes na resposta.
-    const [row] = normalizeFutebolValueBoardRows([{
+  it('aceita legacy, que é o que o histórico point-in-time devolve', () => {
+    // `legacy` deixou de ser um contrato de entrada e virou um DADO DO PASSADO:
+    // 19.229 linhas anteriores ao cutover, calculadas na escala antiga. Elas
+    // continuam abrindo, e a régua delas é outra — ver futebol-faixas.test.ts.
+    const [row] = board([{
       ...boardBase,
       score_versao: 'legacy',
     }]);
 
     expect(row.score_versao).toBe('legacy');
-    expect(row.pts_valor).toBe(0);
-    expect(row.pts_corroboracao).toBe(0);
   });
 
-  it('adapta o detalhe novo sem exigir penalidade global de odd', () => {
-    const [row] = normalizeFutebolFixtureValueRows([{
+  it('o detalhe aceita a versão declarada', () => {
+    const [row] = detalhe([{
       ...fixtureBase,
       score_versao: 'contexto_v1',
     }]);
 
     expect(row.score_versao).toBe('contexto_v1');
-    expect(row.pts_valor).toBe(0);
-    expect(row.pts_corroboracao).toBe(0);
-    expect(row.penalidades_globais_pts).toBe(0);
   });
 
-  it('preserva o contrato legacy do detalhe usado em produção', () => {
-    const [row] = normalizeFutebolFixtureValueRows([{
-      ...fixtureBase,
-      pts_valor: 20,
-      pts_corroboracao: 8,
-      penalidades_globais_pts: 5,
-    }]);
-
-    expect(row.score_versao).toBe('legacy');
-    expect(row.pts_valor).toBe(20);
-    expect(row.pts_corroboracao).toBe(8);
-    expect(row.penalidades_globais_pts).toBe(5);
+  it('e o detalhe também rejeita linha sem versão', () => {
+    expect(() => detalhe([fixtureBase])).toThrow(
+      'O contrato do Score exige score_versao',
+    );
   });
 
   it('rejeita uma versão desconhecida em vez de mascarar contrato inválido', () => {
-    expect(() => normalizeFutebolValueBoardRows([{
+    expect(() => board([{
       ...boardBase,
       score_versao: 'contexto_v2',
     }])).toThrow('Versão do Score desconhecida: contexto_v2');

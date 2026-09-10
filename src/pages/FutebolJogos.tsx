@@ -26,6 +26,7 @@ import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
+import { DIA_RE, PARAM_DO_DIA } from '@/hooks/use-dia-na-url';
 import {
   demoFutebolNumeros,
   demoFutebolPremissas,
@@ -79,13 +80,11 @@ function monthRange(dayKey: string): { from: string; to: string } {
   };
 }
 
-const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 export default function FutebolJogos() {
   const hasPanel = useHasPanel();
   const [params, setParams] = useSearchParams();
 
-  const diaParam = params.get('dia');
+  const diaParam = params.get(PARAM_DO_DIA);
   const dia = DIA_RE.test(diaParam ?? '') ? (diaParam as string) : brtToday();
   const jogoParam = Number(params.get('jogo')) || null;
 
@@ -200,7 +199,12 @@ export default function FutebolJogos() {
   const selectDay = (d: string) => {
     // replace pra seta de dia não empilhar histórico; o jogo selecionado cai fora
     // porque ele pertencia ao dia anterior.
-    setParams({ dia: d }, { replace: true });
+    //
+    // Por isso esta tela NÃO usa o `trocar` do useDiaNaUrl: aquele preserva os
+    // outros parâmetros, que é o certo nas outras duas telas e seria errado aqui
+    // — o `?jogo=` sobreviveria à troca de dia. O nome do parâmetro e a validação
+    // vêm de lá, que é o que precisava ser um lugar só.
+    setParams({ [PARAM_DO_DIA]: d }, { replace: true });
   };
 
   /**

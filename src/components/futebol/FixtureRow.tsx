@@ -80,6 +80,14 @@ export function FixtureRow({
 }) {
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
+  /**
+   * O apito já foi, esteja a bola rolando ou o jogo encerrado.
+   *
+   * A leitura da agenda separava só encerrado de não-encerrado, e o jogo ao
+   * vivo caía no lado errado da conta: prometia odds futuras para uma partida
+   * em andamento, três centímetros ao lado do próprio selo "Ao vivo".
+   */
+  const apitou = fim || live;
   const temPlacar = fim || live;
   const gh = fixture.goals_home;
   const ga = fixture.goals_away;
@@ -160,7 +168,7 @@ export function FixtureRow({
         ) : (
         <>
         <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: '#8d8672' }}>
-          {best ? marketShort(best.market) : fim ? 'sem leitura' : 'sem leitura ainda'}
+          {best ? marketShort(best.market) : apitou ? 'sem leitura' : 'sem leitura ainda'}
         </span>
         {best ? (
           <>
@@ -179,8 +187,17 @@ export function FixtureRow({
         ) : (
           <span className="block sm:mt-0.5 text-[10.5px] sm:text-[11px] truncate" style={{ color: '#8d8672' }}>
             <span className="sm:hidden">sem leitura</span>
-            {/* Em jogo encerrado não faz sentido prometer que as odds entram. */}
-            <span className="hidden sm:inline">{fim ? 'não teve odds coletadas' : 'odds entram perto do jogo'}</span>
+            {/* Depois do apito a agenda não sabe se houve leitura, só que não há
+                mais: o board é point-in-time e o expurgo tira a linha no apito,
+                então a agenda passa a ler um lugar onde o jogo já não está.
+
+                As duas frases anteriores afirmavam mais do que isso. Em jogo AO
+                VIVO dizia "odds entram perto do jogo", promessa de futuro com a
+                bola rolando. Em jogo ENCERRADO dizia "não teve odds coletadas",
+                e teve — o mesmo jogo aparecia no histórico com quatro
+                oportunidades e odd em cada uma. Ambas reportadas no smoke test
+                da virada (#309). */}
+            <span className="hidden sm:inline">{apitou ? 'a leitura sai antes do apito' : 'odds entram perto do jogo'}</span>
           </span>
         )}
         </>
