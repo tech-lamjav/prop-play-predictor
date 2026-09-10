@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
@@ -72,6 +73,7 @@ export function Ficha({
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
+  linhaDoTempo,
 }: {
   estado: EstadoDaFicha;
   /**
@@ -82,6 +84,9 @@ export function Ficha({
   aoMudarEtapa: (etapa: Etapa) => void;
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
+  /** A linha do tempo entra por fora: ela tem consulta e escrita próprias, e a
+   *  ficha continua sendo só desenho. */
+  linhaDoTempo: ReactNode;
 }) {
   return (
     <div className="min-h-screen bg-canvas px-4 py-10">
@@ -107,6 +112,7 @@ export function Ficha({
             aoMudarEtapa={aoMudarEtapa}
             mudandoEtapa={mudandoEtapa}
             erroAoMudarEtapa={erroAoMudarEtapa}
+            linhaDoTempo={linhaDoTempo}
           />
         )}
       </div>
@@ -121,6 +127,7 @@ function Conteudo({
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
+  linhaDoTempo,
 }: {
   pessoa: Pessoa;
   apostas: ResumoDeApostas | null;
@@ -128,6 +135,7 @@ function Conteudo({
   aoMudarEtapa: (etapa: Etapa) => void;
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
+  linhaDoTempo: ReactNode;
 }) {
   const plano = nomeDoPlano(pessoa.subscription_product_type);
   const bruto = (pessoa.subscription_product_type ?? '').trim();
@@ -191,6 +199,8 @@ function Conteudo({
           }
         />
       </Bloco>
+
+      {linhaDoTempo}
 
       <Bloco titulo="Planos e acessos">
         <Campo

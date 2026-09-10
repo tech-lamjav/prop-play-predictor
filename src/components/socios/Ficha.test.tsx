@@ -33,6 +33,7 @@ const montar = (
     aoMudarEtapa?: (e: Etapa) => void;
     mudandoEtapa?: boolean;
     erroAoMudarEtapa?: boolean;
+    linhaDoTempo?: React.ReactNode;
   } = {},
 ) =>
   render(
@@ -43,6 +44,7 @@ const montar = (
         aoMudarEtapa={extras.aoMudarEtapa ?? (() => {})}
         mudandoEtapa={extras.mudandoEtapa ?? false}
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
+        linhaDoTempo={extras.linhaDoTempo ?? null}
       />
     </MemoryRouter>,
   );
@@ -155,6 +157,7 @@ describe('Ficha', () => {
           aoMudarEtapa={() => {}}
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
+          linhaDoTempo={null}
         />
       </MemoryRouter>,
     );
@@ -219,5 +222,31 @@ describe('Ficha · quando a etapa não grava', () => {
     const seletor = screen.getByRole('combobox', { name: /etapa/i });
     expect(seletor).toBeDisabled();
     expect(seletor).toHaveValue('');
+  });
+});
+
+describe('Ficha · a linha do tempo entra na página', () => {
+  it('o bloco recebido é desenhado dentro da ficha', () => {
+    // A linha do tempo tem consulta e escrita próprias, então ela entra por
+    // fora. Sem este teste, apagar a variável do corpo da ficha fazia a seção
+    // inteira sumir da tela com a suíte verde.
+    montar(pessoa(), { total: 0, ultima: null }, { linhaDoTempo: <p>a linha do tempo</p> });
+    expect(screen.getByText('a linha do tempo')).toBeInTheDocument();
+  });
+
+  it('e não aparece quando a pessoa não foi encontrada', () => {
+    render(
+      <MemoryRouter>
+        <Ficha
+          estado={{ tipo: 'nao-encontrada' }}
+          etapa="novo"
+          aoMudarEtapa={() => {}}
+          mudandoEtapa={false}
+          erroAoMudarEtapa={false}
+          linhaDoTempo={<p>a linha do tempo</p>}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText('a linha do tempo')).not.toBeInTheDocument();
   });
 });

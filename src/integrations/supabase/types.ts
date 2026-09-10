@@ -1138,6 +1138,10 @@ export type Database = {
         Args: { p_week_start_date?: string }
         Returns: undefined
       }
+      crm_anotar: {
+        Args: { p_user_id: string; p_tipo: string; p_texto: string }
+        Returns: string
+      }
       crm_mudar_etapa: {
         Args: { p_user_id: string; p_etapa: string }
         Returns: string

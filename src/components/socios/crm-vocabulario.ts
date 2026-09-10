@@ -66,3 +66,10 @@ export const ROTA_DOS_SOCIOS = '/socios';
  * de mostrá-lo errado. A mesma regra está na função `crm_mudar_etapa`.
  */
 export const ETAPA_PADRAO: Etapa = 'novo';
+
+/** Como cada tipo de registro se chama na tela. */
+export const ROTULO_DO_TIPO: Record<TipoDeAnotacao, string> = {
+  anotacao: 'Anotação',
+  feedback: 'Feedback',
+  objecao: 'Objeção',
+};
