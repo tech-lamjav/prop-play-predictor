@@ -2,7 +2,7 @@
 --
 -- O CRM dos sócios: quem enxerga, e onde a abordagem fica registrada.
 --
--- Spec em `docs/crm-socios.md`, vocabulário em `src/components/admin/CONTEXT.md`.
+-- Spec em `docs/crm-socios.md`, vocabulário em `src/components/socios/CONTEXT.md`.
 --
 -- Até aqui o repositório não tinha NENHUMA noção de sócio, papel ou permissão
 -- elevada. O site inteiro lê o banco direto do navegador com a chave pública, e

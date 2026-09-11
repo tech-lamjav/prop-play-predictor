@@ -28,9 +28,7 @@ export interface Movimento {
  * inteira mente e nada acusa.
  */
 export type EstadoDoMovimento =
-  | { tipo: 'carregando' }
-  | { tipo: 'erro' }
-  | { tipo: 'pronto'; movimento: Movimento };
+  { tipo: 'carregando' } | { tipo: 'erro' } | { tipo: 'pronto'; movimento: Movimento };
 
 export function useMovimento(): EstadoDoMovimento {
   const consulta = useQuery({
@@ -56,12 +54,9 @@ export function useMovimento(): EstadoDoMovimento {
       for (const a of anotacoes.data ?? []) maisRecente(a.user_id, a.criada_em);
 
       // A contagem de apostas pode falhar sozinha sem derrubar o resto: sem ela
-      // o gancho perde um sinal, e a tabela continua útil. Derrubar a tela toda
-      // por causa da coluna de gancho seria trocar um problema pequeno por um
-      // grande.
-      // A contagem de apostas pode falhar sozinha sem derrubar o resto: sem
-      // ela o gancho perde um sinal e diz que perdeu. Derrubar a tela toda por
-      // causa de uma coluna seria trocar um problema pequeno por um grande.
+      // o gancho perde um sinal e DIZ que perdeu, e a tabela continua útil.
+      // Derrubar a tela toda por causa de uma coluna seria trocar um problema
+      // pequeno por um grande.
       let contagem: Apostas | null = null;
       if (!apostas.error) {
         contagem = {};

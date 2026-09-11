@@ -60,7 +60,7 @@ function montar({
 }
 
 const funil = () => screen.getByRole('region', { name: 'Funil' });
-const degrau = (nome: RegExp) => within(funil()).getByRole('button', { name: nome });
+const posicaoNoFunil = (nome: RegExp) => within(funil()).getByRole('button', { name: nome });
 
 describe('PainelCrm · os números do topo', () => {
   it('mostra cadastros do mês, conversão e abordados', () => {
@@ -86,7 +86,7 @@ describe('PainelCrm · os números do topo', () => {
 describe('PainelCrm · o funil', () => {
   it('desenha as oito posições, inclusive as vazias', () => {
     // Degrau com zero precisa aparecer: a faixa mostra a FORMA do funil, e um
-    // degrau que some esconde justamente onde está o gargalo.
+    // posição que some esconde justamente onde está o gargalo.
     montar();
     expect(within(funil()).getAllByRole('button')).toHaveLength(8);
   });
@@ -103,24 +103,24 @@ describe('PainelCrm · o funil', () => {
       cadastros: [cadastro({ id: 'a', futebol_subscription_status: 'premium' })],
       etapas: { a: 'interesse' },
     });
-    expect(degrau(/Assinante/)).toHaveTextContent('1');
-    expect(degrau(/Interesse/)).toHaveTextContent('0');
+    expect(posicaoNoFunil(/Assinante/)).toHaveTextContent('1');
+    expect(posicaoNoFunil(/Interesse/)).toHaveTextContent('0');
   });
 
-  it('clicar num degrau filtra a lista', async () => {
+  it('clicar numa posição filtra a lista', async () => {
     montar({ etapas: { b: 'contatado' } });
     await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
-    await userEvent.click(degrau(/Contatado/));
+    await userEvent.click(posicaoNoFunil(/Contatado/));
     expect(screen.getByText('João Souza')).toBeInTheDocument();
     expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument();
   });
 
-  it('clicar de novo no mesmo degrau limpa o filtro', async () => {
+  it('clicar de novo na mesma posição limpa o filtro', async () => {
     // Sem isso, sair do filtro exige achar um botão em outro canto da tela.
     montar({ etapas: { b: 'contatado' } });
     await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
-    await userEvent.click(degrau(/Contatado/));
-    await userEvent.click(degrau(/Contatado/));
+    await userEvent.click(posicaoNoFunil(/Contatado/));
+    await userEvent.click(posicaoNoFunil(/Contatado/));
     expect(screen.getByText('Maria Silva')).toBeInTheDocument();
   });
 
@@ -143,7 +143,7 @@ describe('PainelCrm · a lista', () => {
   });
 
   it('é UMA tabela, e não uma pilha de listas', () => {
-    // A primeira versão tinha três abas, e a primeira ainda se dividia em duas
+    // A primeira versão tinha três recortes, e o primeiro ainda se dividia em duas
     // tabelas por dentro: cinco listas para uma base só.
     montar({ etapas: { b: 'contatado' }, toques: { b: '2026-08-01T12:00:00Z' } });
     expect(screen.getAllByRole('table')).toHaveLength(1);
@@ -259,9 +259,9 @@ describe('PainelCrm · o que a busca NÃO pode mexer', () => {
 
   it('e o funil também', async () => {
     montar({ etapas: { b: 'contatado' } });
-    expect(degrau(/Novo/)).toHaveTextContent('1');
+    expect(posicaoNoFunil(/Novo/)).toHaveTextContent('1');
     await userEvent.type(screen.getByRole('searchbox'), 'maria');
-    expect(degrau(/Contatado/)).toHaveTextContent('1');
+    expect(posicaoNoFunil(/Contatado/)).toHaveTextContent('1');
   });
 });
 

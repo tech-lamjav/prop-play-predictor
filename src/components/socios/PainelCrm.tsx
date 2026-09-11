@@ -37,7 +37,7 @@ const VAZIO: Cadastro[] = [];
 /**
  * Qual fatia da base a lista mostra.
  *
- * Duas, e não mais: a primeira versão tinha três abas, e a primeira delas ainda
+ * Duas, e não mais: a primeira versão tinha três recortes, e o primeiro deles ainda
  * se dividia em duas tabelas por dentro — cinco listas para uma base só. O
  * recorte é filtro, e agrupar por dia é uma chave à parte, porque as duas
  * coisas se combinam em vez de competir.
@@ -77,10 +77,10 @@ const vazioDo = (recorte: Recorte) =>
  * certo: um registro cronológico responde "o que aconteceu", e um CRM precisa
  * responder "com quem eu falo agora". A ordem da tela é essa resposta —
  * números de acompanhamento, funil clicável, e só então a lista, com a FILA na
- * frente e a visão por dia em último.
+ * frente e o agrupamento por dia como chave à parte.
  *
- * O funil e a busca filtram as três abas ao mesmo tempo: são recortes da mesma
- * base, e não três telas diferentes.
+ * O funil e a busca filtram os dois recortes ao mesmo tempo: são recortes da
+ * mesma base, e não duas telas diferentes.
  *
  * `hoje` chega por prop em vez de ser lido do relógio aqui dentro: assim o
  * teste manda o dia e a tela não muda de comportamento à meia-noite.

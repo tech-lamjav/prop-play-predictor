@@ -21,7 +21,7 @@ export type EstadoDasAssinaturas =
   { tipo: 'carregando' } | { tipo: 'erro' } | { tipo: 'pronto'; assinaturas: Assinatura[] };
 
 /**
- * As cortesias abertas, com quem são as pessoas.
+ * As assinaturas manuais abertas, com quem são as pessoas.
  *
  * Só as abertas: `encerrada_em is null`. As encerradas ficam na tabela para o
  * histórico, e não pertencem a uma fila de cobrança.
@@ -74,7 +74,7 @@ export function useDarAssinatura(userId: string | undefined) {
 }
 
 /**
- * Encerrar uma cortesia.
+ * Encerrar uma assinatura manual.
  *
  * Recebe o id da CONCESSÃO, e não o da pessoa: encerrar é fechar uma linha
  * específica, e com o id da pessoa a função teria que escolher qual fechar.

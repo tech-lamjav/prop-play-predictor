@@ -15,9 +15,7 @@ const CHAVE = ['socios', 'etapas'] as const;
  * ainda falta abordar — devolvia todo mundo que já tinha sido abordado.
  */
 export type EstadoDasEtapas =
-  | { tipo: 'carregando' }
-  | { tipo: 'erro' }
-  | { tipo: 'pronto'; etapas: EtapasGravadas };
+  { tipo: 'carregando' } | { tipo: 'erro' } | { tipo: 'pronto'; etapas: EtapasGravadas };
 
 /**
  * As etapas gravadas, de todo mundo.

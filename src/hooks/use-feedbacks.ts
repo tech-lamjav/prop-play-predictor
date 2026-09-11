@@ -8,9 +8,7 @@ import {
 import type { Cadastro } from '@/components/socios/crm-lista';
 
 export type EstadoDosFeedbacks =
-  | { tipo: 'carregando' }
-  | { tipo: 'erro' }
-  | { tipo: 'pronto'; feedbacks: FeedbackNaLista[] };
+  { tipo: 'carregando' } | { tipo: 'erro' } | { tipo: 'pronto'; feedbacks: FeedbackNaLista[] };
 
 /**
  * Todos os feedbacks da base.

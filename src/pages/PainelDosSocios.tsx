@@ -113,8 +113,8 @@ function FichaDoModal({ id }: { id: string }) {
   // meia-noite, e passar o dia por três níveis de componente custaria mais.
   const hoje = brtToday();
 
-  /** A cortesia aberta desta pessoa, se houver. */
-  const cortesia =
+  /** A assinatura manual aberta desta pessoa, se houver. */
+  const assinaturaAberta =
     assinaturas.tipo === 'pronto'
       ? (assinaturas.assinaturas.find((a) => a.userId === id) ?? null)
       : null;
@@ -149,13 +149,17 @@ function FichaDoModal({ id }: { id: string }) {
               <DarAssinatura
                 hoje={hoje}
                 atual={
-                  cortesia
-                    ? { id: cortesia.id, plano: cortesia.plano, venceEm: cortesia.venceEm }
+                  assinaturaAberta
+                    ? {
+                        id: assinaturaAberta.id,
+                        plano: assinaturaAberta.plano,
+                        venceEm: assinaturaAberta.venceEm,
+                      }
                     : null
                 }
                 estado={concessao}
                 aoConceder={(plano, venceEm) => darAssinatura.mutate({ plano, venceEm })}
-                aoEncerrar={(idDaCortesia) => encerrarAssinatura.mutate(idDaCortesia)}
+                aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
               />
             }
           />

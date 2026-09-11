@@ -24,7 +24,7 @@ function montar(props: Partial<Parameters<typeof DarAssinatura>[0]> = {}) {
 
 describe('DarAssinatura', () => {
   it('pede plano e prazo, que é o que faz a cobrança existir', () => {
-    // Uma cortesia sem data nunca é cobrada, porque ninguém sabe quando ela
+    // Uma assinatura manual sem data nunca é cobrada, porque ninguém sabe quando ela
     // deveria acabar. A data é o ponto de toda esta tela.
     montar();
     expect(screen.getByLabelText('Plano da assinatura manual')).toBeInTheDocument();
@@ -33,7 +33,7 @@ describe('DarAssinatura', () => {
 
   it('a data já vem preenchida com um mês', () => {
     // O prazo mais comum, pronto. Campo vazio é um passo a mais entre combinar
-    // a cortesia e registrá-la, e é nesse passo que ela deixa de ser registrada.
+    // a assinatura e registrá-la, e é nesse passo que ela deixa de ser registrada.
     montar();
     expect(screen.getByLabelText('Assinatura manual vai até')).toHaveValue('2026-10-12');
   });
@@ -68,30 +68,30 @@ describe('DarAssinatura', () => {
     expect(aoConceder).not.toHaveBeenCalled();
   });
 
-  it('quem já tem cortesia vê qual é, e até quando', () => {
+  it('quem já tem assinatura manual vê qual é, e até quando', () => {
     // A frase inteira, e não só o nome do plano: "Essencial" também aparece na
     // opção do seletor, e casar com ele deixaria o teste verde mesmo sem a
-    // cortesia estar escrita em lugar nenhum.
+    // assinatura estar escrita em lugar nenhum.
     montar({ atual: { id: 'c1', plano: 'essencial', venceEm: '2026-10-31' } });
     expect(screen.getByText(/na mão, até/)).toBeInTheDocument();
     expect(screen.getByText(/31\/10\/2026/)).toBeInTheDocument();
   });
 
-  it('com cortesia aberta, o formulário abre no plano e no prazo dela', () => {
-    // Abrir em branco sobre uma cortesia que existe faria trocar só o prazo
+  it('com assinatura manual aberta, o formulário abre no plano e no prazo dela', () => {
+    // Abrir em branco sobre uma assinatura manual que existe faria trocar só o prazo
     // virar troca de plano sem ninguém pedir.
     montar({ atual: { id: 'c1', plano: 'completo', venceEm: '2026-10-31' } });
     expect(screen.getByLabelText('Plano da assinatura manual')).toHaveValue('completo');
     expect(screen.getByLabelText('Assinatura manual vai até')).toHaveValue('2026-10-31');
   });
 
-  it('dá para encerrar a cortesia aberta', async () => {
+  it('dá para encerrar a assinatura manual aberta', async () => {
     const { aoEncerrar } = montar({ atual: { id: 'c1', plano: 'entrada', venceEm: '2026-10-31' } });
-    await userEvent.click(screen.getByRole('button', { name: /Encerrar a cortesia/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Encerrar a assinatura/ }));
     expect(aoEncerrar).toHaveBeenCalledWith('c1');
   });
 
-  it('sem cortesia, não existe botão de encerrar', () => {
+  it('sem assinatura manual, não existe botão de encerrar', () => {
     montar();
     expect(screen.queryByRole('button', { name: /Encerrar/ })).not.toBeInTheDocument();
   });

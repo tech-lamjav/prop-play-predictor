@@ -1,3 +1,4 @@
+import { diasEntre } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
 import { primeiroNome } from './crm-ficha';
 
@@ -21,13 +22,6 @@ import { primeiroNome } from './crm-ficha';
  */
 export type Prazo =
   { tipo: 'a_vencer'; dias: number } | { tipo: 'hoje' } | { tipo: 'vencida'; dias: number };
-
-const UM_DIA = 24 * 60 * 60 * 1000;
-
-/** Dias inteiros entre dois dias BRT, positivo quando o segundo é depois. */
-function diasEntre(de: string, ate: string): number {
-  return Math.round((Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`)) / UM_DIA);
-}
 
 export function prazoDe(vence: string, hoje: string): Prazo {
   const dias = diasEntre(hoje, vence);

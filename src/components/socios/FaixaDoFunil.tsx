@@ -7,13 +7,13 @@ import {
 } from './crm-painel';
 
 /**
- * O funil inteiro numa faixa, e cada degrau é um filtro.
+ * O funil inteiro numa faixa, e cada posição é um filtro.
  *
- * A barra é proporcional ao maior degrau, e não ao total: com quatrocentos em
- * "Novo" e quatro em "Boletada", proporção ao total faria os cinco últimos
- * degraus desaparecerem — e o gargalo é justamente lá que se vê.
+ * A barra é proporcional à maior posição, e não ao total: com quatrocentos em
+ * "Novo" e quatro em "Boletada", proporção ao total faria as cinco últimas
+ * posições desaparecerem — e o gargalo é justamente lá que se vê.
  *
- * Os dois últimos degraus vêm do banco, não da mão de ninguém. A faixa marca
+ * As duas últimas posições vêm do banco, não da mão de ninguém. A faixa marca
  * isso: um número que o sócio não consegue mudar arrastando precisa avisar que
  * não se muda arrastando.
  */
@@ -44,7 +44,7 @@ export function FaixaDoFunil({
             <button
               key={posicao}
               type="button"
-              // Clicar de novo no degrau ativo limpa o filtro: sem isso, sair
+              // Clicar de novo na posição ativa limpa o filtro: sem isso, sair
               // dele exige achar um "limpar" em outro canto da tela.
               onClick={() => aoSelecionar(ativa ? null : posicao)}
               aria-pressed={ativa}
@@ -55,7 +55,7 @@ export function FaixaDoFunil({
               <p className="font-display text-3xl font-black tabular-nums text-ink">{valor}</p>
               <div className="mt-1.5 h-2 w-full rounded-full bg-canvas">
                 <div
-                  // A mesma escala do ponto da tabela: um degrau tem a mesma cor
+                  // A mesma escala do ponto da tabela: uma posição tem a mesma cor
                   // nos dois lugares, senão são dois vocabulários para uma coisa.
                   className={`h-2 rounded-full ${TOM_DA_POSICAO[posicao]}`}
                   style={{ width: `${Math.round((valor / maior) * 100)}%` }}

@@ -23,7 +23,7 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
     rotulo: 'A cobrar',
     explicacao: `quem vence nos próximos ${DIAS_PARA_COBRAR} dias, e quem já venceu`,
   },
-  { id: 'todas', rotulo: 'Todas', explicacao: 'todas as cortesias abertas' },
+  { id: 'todas', rotulo: 'Todas', explicacao: 'todas as assinaturas manuais abertas' },
 ];
 
 /**
@@ -100,7 +100,7 @@ export default function AssinaturasDoCrm() {
                 hoje={hoje}
                 vazio={
                   recorte === 'cobrar'
-                    ? 'Ninguém para cobrar agora. Nenhuma cortesia vence nesta semana.'
+                    ? 'Ninguém para cobrar agora. Nenhuma assinatura manual vence nesta semana.'
                     : 'Nenhuma assinatura dada na mão até agora.'
                 }
               />

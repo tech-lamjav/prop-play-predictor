@@ -18,7 +18,7 @@ import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
  * trabalho que alguém faça. O número do que sobrou diz o tamanho do problema
  * sem fingir que a coluna é navegável.
  */
-const TETO_DA_COLUNA = 25;
+const TETO_POR_POSICAO = 25;
 
 function Cartao({ lead }: { lead: Lead }) {
   const parado = lead.diasParado;
@@ -56,13 +56,13 @@ function Cartao({ lead }: { lead: Lead }) {
  * disposição.
  */
 export function KanbanDeLeads({ leads }: { leads: Lead[] }) {
-  const colunas = agruparPorPosicao(leads);
+  const grupos = agruparPorPosicao(leads);
 
   return (
     <div className="flex gap-3 overflow-x-auto p-4">
-      {colunas.map(({ posicao, leads: daColuna }) => {
-        const visiveis = daColuna.slice(0, TETO_DA_COLUNA);
-        const sobram = daColuna.length - visiveis.length;
+      {grupos.map(({ posicao, leads: daPosicao }) => {
+        const visiveis = daPosicao.slice(0, TETO_POR_POSICAO);
+        const sobram = daPosicao.length - visiveis.length;
         const calculada = POSICOES_CALCULADAS.includes(posicao);
 
         return (
@@ -83,7 +83,7 @@ export function KanbanDeLeads({ leads }: { leads: Lead[] }) {
                 {ROTULO_DA_POSICAO[posicao]}
               </p>
               <span className="shrink-0 font-display text-[15px] font-black tabular-nums text-ink">
-                {daColuna.length}
+                {daPosicao.length}
               </span>
             </div>
 
@@ -93,7 +93,7 @@ export function KanbanDeLeads({ leads }: { leads: Lead[] }) {
             {calculada && <p className="mb-1 text-[10px] text-ink-2">o banco responde</p>}
 
             <div className="max-h-[460px] space-y-2 overflow-y-auto rounded-rebrand-sm bg-canvas p-2">
-              {daColuna.length === 0 ? (
+              {daPosicao.length === 0 ? (
                 <p className="p-2 text-[12px] text-ink-2">vazia</p>
               ) : (
                 visiveis.map((lead) => <Cartao key={lead.id} lead={lead} />)

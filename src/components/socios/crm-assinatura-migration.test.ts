@@ -51,7 +51,7 @@ describe('a tabela', () => {
   });
 
   it('encerrar é marcar, e não apagar', () => {
-    // O histórico é o que responde "quantas cortesias a gente deu este mês" e
+    // O histórico é o que responde "quantas assinaturas manuais a gente deu este mês" e
     // "esta pessoa já teve uma antes". Deletar joga fora as duas respostas.
     expect(MIGRATION).toMatch(/encerrada_em timestamptz/);
     expect(ENCERRAR).toMatch(/update public\.crm_assinatura_manual/);
@@ -178,5 +178,58 @@ describe('a escada de planos não pode divergir do Stripe', () => {
     expect(noStripe('entrada')).toHaveLength(1);
     expect(noStripe('essencial')).toHaveLength(2);
     expect(noStripe('completo')).toHaveLength(3);
+  });
+});
+
+describe('encerrar tira só o que o plano deu', () => {
+  /**
+   * A escada é cumulativa, então cada plano deu um conjunto diferente. Encerrar
+   * um "Entrada" e zerar futebol e análises junto apaga acesso que veio de
+   * outro lugar — dos interruptores por produto, que existem justamente para
+   * dar um produto solto.
+   *
+   * A primeira versão lia o plano da linha, guardava numa variável e nunca a
+   * usava: zerava os três de uma vez. A variável sem leitor era a pista.
+   */
+  const ENCERRAR_VIGENTE = comando(
+    lerMigration('20260913160000_132_crm_encerrar_por_plano.sql'),
+    /create or replace function public\.crm_encerrar_assinatura_manual/,
+    '$function$;',
+  );
+
+  it('usa o plano que estava guardado na linha', () => {
+    expect(ENCERRAR_VIGENTE).toMatch(/v_plano/);
+    // Lido, e não só atribuído: um `if` sobre ele é a prova de que ele decide
+    // alguma coisa.
+    expect(ENCERRAR_VIGENTE).toMatch(/if v_plano = |case v_plano/);
+  });
+
+  it('cada plano tem o próprio ramo de saída', () => {
+    for (const plano of PLANOS_A_VENDER) {
+      expect(ENCERRAR_VIGENTE, plano).toContain(`'${plano}'`);
+    }
+  });
+
+  it('encerrar um Entrada não encosta no futebol nem nas análises', () => {
+    const ramo = ENCERRAR_VIGENTE?.slice(ENCERRAR_VIGENTE.indexOf("v_plano = 'entrada'")) ?? '';
+    const ate = ramo.indexOf('where id = v_user_id');
+    const escrita = ramo.slice(0, ate);
+    expect(escrita).toMatch(/betinho_subscription_status/);
+    expect(escrita).not.toMatch(/futebol_subscription_status/);
+    expect(escrita).not.toMatch(/analytics_subscription_status/);
+  });
+
+  it('encerrar um Essencial não encosta nas análises', () => {
+    const ramo = ENCERRAR_VIGENTE?.slice(ENCERRAR_VIGENTE.indexOf("v_plano = 'essencial'")) ?? '';
+    const escrita = ramo.slice(0, ramo.indexOf('where id = v_user_id'));
+    expect(escrita).toMatch(/futebol_subscription_status/);
+    expect(escrita).toMatch(/betinho_subscription_status/);
+    expect(escrita).not.toMatch(/analytics_subscription_status/);
+  });
+
+  it('quem paga no Stripe continua com o acesso', () => {
+    // A assinatura manual acabou, mas a assinatura dela é outra coisa, e derrubar as
+    // duas juntas tiraria o produto de quem está pagando por ele.
+    expect(ENCERRAR_VIGENTE).toMatch(/stripe_subscription_id is not null/);
   });
 });

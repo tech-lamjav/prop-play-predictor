@@ -1,4 +1,4 @@
-import { addDays, brtDayOf } from '@/utils/futebol-datas';
+import { addDays, brtDayOf, diasEntre } from '@/utils/futebol-datas';
 import { ehAssinante, type Cadastro } from './crm-lista';
 import { ganchoDe, type Gancho } from './crm-ficha';
 import { etapaDe, type EtapasGravadas } from './crm-funil';
@@ -39,7 +39,7 @@ export type Posicao = Etapa | (typeof CALCULADAS)[number];
 /**
  * As posições derivam das ETAPAS em vez de redigitá-las: com duas listas, somar
  * uma etapa exigiria lembrar da segunda, e esquecer não quebraria nada — o
- * degrau simplesmente não apareceria no funil.
+ * posição simplesmente não apareceria no funil.
  *
  * "Sem resposta" sai do meio e volta para o fim: as calculadas acontecem ANTES
  * de alguém desistir, e o funil desenha a ordem em que as coisas acontecem.
@@ -69,8 +69,8 @@ export const POSICOES_CALCULADAS: readonly Posicao[] = CALCULADAS;
  *
  * As exceções são as duas pontas, e são de propósito. "Assinante" é o único que
  * ganha âmbar, porque é a linha de chegada e a tela inteira existe para levar
- * gente até lá. "Sem resposta" fica cinza, fora da escala, porque não é um
- * degrau mais fundo do funil: é sair dele.
+ * gente até lá. "Sem resposta" fica cinza, fora da escala, porque não é uma
+ * posição mais funda do funil: é sair dele.
  */
 export const TOM_DA_POSICAO: Record<Posicao, string> = {
   novo: 'bg-forest/20',
@@ -113,12 +113,6 @@ export interface Lead {
    * fazer, e zero seria uma resposta inventada.
    */
   diasParado: number | null;
-}
-
-/** Dias inteiros entre dois dias BRT. */
-function diasEntre(de: string, ate: string): number {
-  const ms = Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`);
-  return Math.round(ms / 86_400_000);
 }
 
 /**
@@ -171,7 +165,7 @@ export function montarLeads(
  * Quantos leads em cada etapa.
  *
  * Todas as seis, inclusive as vazias: a faixa do funil desenha a FORMA do
- * funil, e um degrau que some faz o desenho mentir sobre onde está o gargalo.
+ * funil, e uma posição que some faz o desenho mentir sobre onde está o gargalo.
  */
 export function contarPorPosicao(leads: Lead[]): Record<Posicao, number> {
   const contagem = Object.fromEntries(POSICOES.map((p) => [p, 0])) as Record<Posicao, number>;
@@ -263,22 +257,22 @@ export function precisamDeAtencao(leads: Lead[]): Lead[] {
     });
 }
 
-export interface ColunaDoFunil {
+export interface GrupoDaPosicao {
   posicao: Posicao;
   leads: Lead[];
 }
 
 /**
- * Os leads em colunas, uma por posição do funil.
+ * Os leads agrupados, um grupo por posição do funil.
  *
  * Todas as oito, inclusive as vazias — pelo mesmo motivo da faixa: o kanban
- * desenha a FORMA do funil, e uma coluna que some esconde onde está o gargalo.
+ * desenha a FORMA do funil, e uma posição que some esconde onde está o gargalo.
  *
- * A ordem dentro da coluna é a de quem chegou: a lista já vem ordenada de quem
+ * A ordem dentro do grupo é a de quem chegou: a lista já vem ordenada de quem
  * chama, e reordenar aqui faria o kanban discordar da tabela com os mesmos
  * filtros ligados.
  */
-export function agruparPorPosicao(leads: Lead[]): ColunaDoFunil[] {
+export function agruparPorPosicao(leads: Lead[]): GrupoDaPosicao[] {
   const porPosicao = new Map<Posicao, Lead[]>(POSICOES.map((p) => [p, []]));
   for (const lead of leads) porPosicao.get(lead.posicao)?.push(lead);
   return POSICOES.map((posicao) => ({ posicao, leads: porPosicao.get(posicao) ?? [] }));

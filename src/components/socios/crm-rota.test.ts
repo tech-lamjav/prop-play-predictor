@@ -28,11 +28,35 @@ describe('o painel não é anunciado', () => {
     expect(raiz('public/robots.txt')).not.toContain(ROTA_DOS_SOCIOS);
   });
 
-  it('a página do painel é noindex', () => {
-    // Ficar fora do sitemap não basta: o Google chega por qualquer link, e uma
-    // página de app sem noindex vira página fantasma no índice. Tirar o noindex
-    // não quebrava nada até este guarda existir.
-    expect(raiz('src/pages/PainelDosSocios.tsx')).toMatch(/<Seo\s+noindex/);
+  /**
+   * Toda página do CRM é noindex, e não só a primeira.
+   *
+   * Ficar fora do sitemap não basta: o Google chega por qualquer link, e uma
+   * página de app sem noindex vira página fantasma no índice. O guarda nasceu
+   * olhando só o painel, e as duas seções que vieram depois passaram ao largo
+   * dele — a de assinaturas chegou a entrar sem ninguém conferir.
+   *
+   * A lista é escrita à mão porque é curta e porque escrever o nome aqui é o
+   * momento em que alguém lembra da regra.
+   */
+  const PAGINAS = ['PainelDosSocios', 'FeedbacksDoCrm', 'AssinaturasDoCrm'];
+
+  for (const pagina of PAGINAS) {
+    it(`a página ${pagina} é noindex`, () => {
+      expect(raiz(`src/pages/${pagina}.tsx`)).toMatch(/<Seo\s+noindex/);
+    });
+  }
+
+  it('toda página do CRM está na lista acima', () => {
+    // Sem isto, uma quarta seção nasceria sem noindex e o laço de cima ficaria
+    // verde ignorando ela. A conta sai do App: cada rota do painel monta uma
+    // página, e são essas que precisam estar aqui.
+    const montadas = raiz('src/App.tsx')
+      .split('\n')
+      .filter((l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'))
+      .flatMap((l) => [...l.matchAll(/<(\w+) \/>/g)].map((m) => m[1]));
+    expect(montadas.length).toBeGreaterThan(0);
+    expect(new Set(montadas)).toEqual(new Set(PAGINAS));
   });
 });
 

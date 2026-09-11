@@ -68,7 +68,7 @@ describe('montarLeads', () => {
 describe('contarPorPosicao', () => {
   it('conta as oito posições, inclusive as vazias', () => {
     // Posição com zero precisa aparecer: a faixa do funil desenha a FORMA do
-    // funil, e um degrau que some faz o desenho mentir sobre onde está o
+    // funil, e uma posição que some faz o desenho mentir sobre onde está o
     // gargalo.
     const contagem = contarPorPosicao(
       monta([cadastro({ id: 'a' }), cadastro({ id: 'b' })], { b: 'interesse' }),
@@ -214,24 +214,24 @@ describe('montarLeads · quando a contagem de apostas falha', () => {
 });
 
 describe('agruparPorPosicao', () => {
-  it('devolve as oito colunas, inclusive as vazias', () => {
-    // Coluna que some esconde onde está o gargalo — o mesmo motivo da faixa.
-    const colunas = agruparPorPosicao(monta([cadastro({ id: 'a' })]));
-    expect(colunas).toHaveLength(8);
-    expect(colunas.find((c) => c.posicao === 'boletada')?.leads).toEqual([]);
+  it('devolve as oito posições, inclusive as vazias', () => {
+    // Posição que some esconde onde está o gargalo, o mesmo motivo da faixa.
+    const grupos = agruparPorPosicao(monta([cadastro({ id: 'a' })]));
+    expect(grupos).toHaveLength(8);
+    expect(grupos.find((c) => c.posicao === 'boletada')?.leads).toEqual([]);
   });
 
-  it('põe cada lead na coluna da sua posição', () => {
-    const colunas = agruparPorPosicao(
+  it('põe cada lead no grupo da sua posição', () => {
+    const grupos = agruparPorPosicao(
       monta(
         [cadastro({ id: 'a' }), cadastro({ id: 'b', futebol_subscription_status: 'premium' })],
         { b: 'interesse' },
       ),
     );
-    expect(colunas.find((c) => c.posicao === 'novo')?.leads.map((l) => l.id)).toEqual(['a']);
+    expect(grupos.find((c) => c.posicao === 'novo')?.leads.map((l) => l.id)).toEqual(['a']);
     // O estado calculado vence a etapa manual aqui também.
-    expect(colunas.find((c) => c.posicao === 'assinante')?.leads.map((l) => l.id)).toEqual(['b']);
-    expect(colunas.find((c) => c.posicao === 'interesse')?.leads).toEqual([]);
+    expect(grupos.find((c) => c.posicao === 'assinante')?.leads.map((l) => l.id)).toEqual(['b']);
+    expect(grupos.find((c) => c.posicao === 'interesse')?.leads).toEqual([]);
   });
 
   it('mantém a ordem que recebeu', () => {

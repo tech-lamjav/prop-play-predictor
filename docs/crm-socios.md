@@ -212,6 +212,26 @@ Cada item é uma bala traçante: sai ponta a ponta, do banco à tela.
 Fora desta spec, registrado como issue à parte: o bloco de comportamento vindo
 do PostHog.
 
+## O que entrou depois da spec
+
+A spec foi aprovada em 2026-09-10 e a branch continuou andando em cima do uso.
+Estas três coisas não estavam nela, e estão aqui para a spec não mentir sobre o
+que existe:
+
+**O bloco de comportamento do PostHog entrou**, com a edge function e tudo. A
+decisão original era adiar ("a ficha nasce com o lugar dele reservado"), e ela
+foi revertida em conversa. ⚠️ Ele ainda não devolve dado: a busca da pessoa no
+PostHog não acha ninguém, e está registrado na issue #397.
+
+**O filtro por data de cadastro na lista.** Atalhos de 7, 30 e 90 dias mais um
+personalizado. Ele recorta a lista e não os números do topo nem o funil, pela
+mesma regra da busca.
+
+**O gancho corrigido na mão NÃO existe.** A seção "Decisões" diz que o gancho
+"pode ser corrigido na mão", e essa metade nunca foi feita: não há coluna,
+função nem campo. Na prática o gancho é só leitura, e a tela diz que é palpite.
+Corrigir a spec ou fazer o campo é decisão em aberto.
+
 ## Assinaturas dadas na mão
 
 Terceira seção do CRM, em `/socios/assinaturas`, ao lado de Leads e Feedbacks.
@@ -238,6 +258,12 @@ necessidade — a fonte da verdade é `shared/concessoes.ts`, que roda em Deno, 
 migration roda no Postgres, sem módulo que os dois importem. Há um teste que lê
 os dois arquivos e cobra que concedam o mesmo: se divergirem, um assinante
 manual do Essencial ganha um acesso a menos que um pagante do mesmo plano.
+
+**Encerrar tira só o que AQUELE plano deu.** A escada é cumulativa, então cada
+plano concedeu um conjunto diferente, e os interruptores por produto existem
+justamente para dar um produto solto por fora de plano nenhum. A primeira versão
+zerava os três acessos de uma vez: encerrar um "Entrada" apagava futebol e
+análises que tinham vindo de outro lugar. Corrigido na migration 132.
 
 **Encerrar é marcar, e não apagar.** O histórico é o que responde "quantas a
 gente deu este mês" e "esta pessoa já teve uma antes". E quem passou a pagar de

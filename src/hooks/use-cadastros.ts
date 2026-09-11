@@ -11,20 +11,35 @@ import type { Cadastro } from '@/components/socios/crm-lista';
  * deles. A lista é escrita à mão de propósito: `select('*')` cresce sozinho
  * toda vez que alguém acrescenta uma coluna sensível na tabela.
  *
- * O `satisfies` é o que impede a lista de divergir do tipo em silêncio: pedir
- * uma coluna a menos do que o `Cadastro` promete vira erro de tipo aqui, e não
- * um campo `undefined` aparecendo na tela.
+ * ⚠️ `Record<keyof Cadastro, true>`, e NÃO um array com `satisfies`. Este
+ * arquivo já teve a versão com array, e ela deixou passar quatro colunas: o
+ * `satisfies readonly (keyof Cadastro)[]` valida cada item da lista e nunca a
+ * completude dela, então pedir oito de doze passava calado. O que chegava à
+ * tela eram quatro campos `undefined`, e a consequência era o degrau "Em teste"
+ * ficar em zero para sempre e o gancho da lista discordar do gancho da ficha
+ * sobre a mesma pessoa.
+ *
+ * Com o objeto, faltar uma coluna vira erro de compilação aqui. É a mesma forma
+ * que `use-pessoa.ts` usa, e foi por isso que a ficha nunca teve o problema.
  */
-const CAMPOS = [
-  'id',
-  'name',
-  'email',
-  'whatsapp_number',
-  'created_at',
-  'betinho_subscription_status',
-  'futebol_subscription_status',
-  'analytics_subscription_status',
-] as const satisfies readonly (keyof Cadastro)[];
+const MAPA_DE_CAMPOS: Record<keyof Cadastro, true> = {
+  id: true,
+  name: true,
+  email: true,
+  whatsapp_number: true,
+  created_at: true,
+  betinho_subscription_status: true,
+  futebol_subscription_status: true,
+  analytics_subscription_status: true,
+  // Os quatro do gancho e da posição calculada. Sem eles, `posicaoDe` pergunta
+  // pelo teste do futebol com `undefined` na mão.
+  telegram_synced: true,
+  subscription_product_type: true,
+  futebol_trial_started_at: true,
+  futebol_publication_alerts_ack_at: true,
+};
+
+const CAMPOS = Object.keys(MAPA_DE_CAMPOS) as (keyof Cadastro)[];
 
 /**
  * Teto de linhas.

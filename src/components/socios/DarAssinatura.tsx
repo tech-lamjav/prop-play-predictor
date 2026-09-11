@@ -39,7 +39,7 @@ export type EstadoDaConcessao =
  * nenhum.
  *
  * A data é obrigatória, e é o ponto de tudo isto: é ela que coloca a pessoa na
- * fila de cobrança. Uma cortesia sem data nunca é cobrada, porque ninguém sabe
+ * fila de cobrança. Uma assinatura manual sem data nunca é cobrada, porque ninguém sabe
  * quando ela deveria acabar.
  */
 export function DarAssinatura({
@@ -50,7 +50,7 @@ export function DarAssinatura({
   aoEncerrar,
 }: {
   hoje: string;
-  /** A cortesia aberta desta pessoa, se houver. */
+  /** A assinatura manual aberta desta pessoa, se houver. */
   atual: { id: string; plano: PlanoAVender; venceEm: string } | null;
   estado: EstadoDaConcessao;
   aoConceder: (plano: PlanoAVender, venceEm: string) => void;
@@ -75,7 +75,7 @@ export function DarAssinatura({
             onClick={() => aoEncerrar(atual.id)}
             className="mt-1 text-[12px] font-bold text-ink-2 underline hover:text-ink disabled:opacity-40"
           >
-            Encerrar a cortesia
+            Encerrar a assinatura
           </button>
         </div>
       ) : null}
