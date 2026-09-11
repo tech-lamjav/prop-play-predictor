@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acessos, ganchoDe, nomeDoPlano, primeiroNome, type Pessoa } from './crm-ficha';
+import { ganchoDe, nomeDoPlano, primeiroNome, type Pessoa } from './crm-ficha';
 import { cadastroDeTeste } from './crm-cadastro-de-teste';
 
 /**
@@ -39,45 +39,6 @@ describe('nomeDoPlano', () => {
     expect(nomeDoPlano('qualquer-coisa')).toBeNull();
     expect(nomeDoPlano(null)).toBeNull();
     expect(nomeDoPlano('  ')).toBeNull();
-  });
-});
-
-describe('acessos', () => {
-  it('diz qual está ligado', () => {
-    const lista = acessos(pessoa({ futebol_subscription_status: 'premium' }));
-    expect(lista.find((a) => a.produto === 'Futebol')?.ativo).toBe(true);
-    expect(lista.find((a) => a.produto === 'Betinho')?.ativo).toBe(false);
-  });
-
-  it('o teste gratuito conta como acesso ao futebol', () => {
-    const agora = Date.parse('2026-09-10T12:00:00Z');
-    const dentro = pessoa({ futebol_trial_started_at: '2026-09-08T12:00:00Z' });
-    const fora = pessoa({ futebol_trial_started_at: '2026-08-01T12:00:00Z' });
-    expect(acessos(dentro, agora).find((a) => a.produto === 'Futebol')?.ativo).toBe(true);
-    expect(acessos(fora, agora).find((a) => a.produto === 'Futebol')?.ativo).toBe(false);
-  });
-
-  it('o futebol não tem data de renovação no banco, e isso é dito', () => {
-    // `public.users` só tem `futebol_subscription_status`, sem as três colunas
-    // de metadados. É deliberado, está em `shared/concessoes.ts`. Mostrar um
-    // traço ali seria lido como "não renova", que é outra coisa.
-    const futebol = acessos(pessoa({ futebol_subscription_status: 'premium' })).find(
-      (a) => a.produto === 'Futebol',
-    );
-    expect(futebol?.semDataNoBanco).toBe(true);
-    expect(futebol?.renovaEm).toBeNull();
-  });
-
-  it('os outros dois trazem a renovação quando existe', () => {
-    const lista = acessos(
-      pessoa({
-        betinho_subscription_status: 'premium',
-        betinho_subscription_period_end: '2026-10-01T00:00:00Z',
-      }),
-    );
-    const betinho = lista.find((a) => a.produto === 'Betinho');
-    expect(betinho?.semDataNoBanco).toBe(false);
-    expect(betinho?.renovaEm).toBe('2026-10-01T00:00:00Z');
   });
 });
 

@@ -74,24 +74,6 @@ describe('Ficha', () => {
     expect(within(contatos).getAllByText(/não informado/i).length).toBeGreaterThan(0);
   });
 
-  it('o futebol explica a ausência da renovação em vez de mostrar um traço', () => {
-    // O banco não tem as colunas de metadados do futebol, e é deliberado. Um
-    // traço ali seria lido como "não renova", que é outra coisa.
-    montar();
-    const acessos = screen.getByRole('region', { name: 'Planos e acessos' });
-    expect(
-      within(acessos).getByText(/o banco não guarda a renovação do futebol/i),
-    ).toBeInTheDocument();
-  });
-
-  it('mostra a renovação dos acessos que têm data, no fuso de Brasília', () => {
-    // O Stripe grava 01/10 à meia-noite UTC, que é 30/09 às 21h aqui. A data
-    // que o sócio lê é a daqui — ele vai falar com alguém que mora neste fuso.
-    montar();
-    const acessos = screen.getByRole('region', { name: 'Planos e acessos' });
-    expect(within(acessos).getByText(/30\/09\/2026/)).toBeInTheDocument();
-  });
-
   it('plano desconhecido não vira nome inventado: mostra o valor bruto', () => {
     montar(pessoa({ subscription_product_type: 'combo-novo' }));
     expect(screen.getByText(/não identificado/i)).toBeInTheDocument();

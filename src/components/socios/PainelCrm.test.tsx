@@ -327,3 +327,60 @@ describe('PainelCrm · tabela e kanban', () => {
   });
 });
 
+describe('PainelCrm · o filtro de data', () => {
+  const comIdades = [
+    cadastro({ id: 'novo', name: 'Recente', created_at: '2026-09-10T12:00:00Z' }),
+    cadastro({ id: 'velho', name: 'Antigo', created_at: '2026-06-01T12:00:00Z' }),
+  ];
+
+  it('nasce desligado, mostrando a base inteira', () => {
+    montar({ cadastros: comIdades });
+    expect(screen.getByRole('link', { name: 'Recente' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Antigo' })).toBeInTheDocument();
+  });
+
+  it('os últimos sete dias deixam só quem chegou agora', async () => {
+    montar({ cadastros: comIdades });
+    await userEvent.selectOptions(screen.getByLabelText('Período de cadastro'), '7');
+    expect(screen.getByRole('link', { name: 'Recente' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Antigo' })).not.toBeInTheDocument();
+  });
+
+  it('os números do topo continuam contando a base inteira', async () => {
+    // A mesma regra da busca, e ela existe porque os números respondem "como
+    // está a operação" — resposta que não muda porque alguém foi olhar quem
+    // chegou esta semana. A conversão sobre o recorte seria outra coisa.
+    montar({ cadastros: comIdades });
+    const numeros = within(screen.getByRole('region', { name: 'Números da operação' }));
+    const antes = numeros.getByLabelText('Conversão').textContent;
+    await userEvent.selectOptions(screen.getByLabelText('Período de cadastro'), '7');
+    expect(numeros.getByLabelText('Conversão').textContent).toBe(antes);
+  });
+
+  it('os campos de data só aparecem no personalizado', async () => {
+    montar({ cadastros: comIdades });
+    expect(screen.queryByLabelText('Cadastrado a partir de')).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('Período de cadastro'), 'personalizado');
+    expect(screen.getByLabelText('Cadastrado a partir de')).toBeInTheDocument();
+  });
+
+  it('o personalizado abre sem recorte, e não herdando o atalho anterior', async () => {
+    // Herdar faria o calendário abrir já filtrando por um período que o sócio
+    // não escolheu, e sumindo com gente sem ele ter pedido nada.
+    montar({ cadastros: comIdades });
+    await userEvent.selectOptions(screen.getByLabelText('Período de cadastro'), '7');
+    await userEvent.selectOptions(screen.getByLabelText('Período de cadastro'), 'personalizado');
+    expect(screen.getByRole('link', { name: 'Antigo' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Cadastrado a partir de')).toHaveValue('');
+  });
+
+  it('vale para o kanban também, e não só para a tabela', async () => {
+    // Os dois desenham o MESMO recorte. Um filtro que valesse só para um faria
+    // trocar de vista mudar o conteúdo, e não só a disposição.
+    montar({ cadastros: comIdades });
+    await userEvent.selectOptions(screen.getByLabelText('Período de cadastro'), '7');
+    await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
+    expect(screen.getByText('Recente')).toBeInTheDocument();
+    expect(screen.queryByText('Antigo')).not.toBeInTheDocument();
+  });
+});

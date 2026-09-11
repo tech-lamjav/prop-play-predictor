@@ -29,7 +29,9 @@ export function FichaEmModal({
     <Dialog open={aberta} onOpenChange={(aberto) => !aberto && aoFechar()}>
       {/* O tema entra aqui também, e não só no painel: o modal sai por portal,
           fora da árvore da página, então não herda a classe de lá. */}
-      <DialogContent className="theme-bolao max-w-5xl gap-0 overflow-hidden bg-canvas p-0 text-ink">
+      {/* `max-w-6xl` e não `5xl`: com a coluna da esquerda a 360px, o 5xl
+          espremia os contatos a ponto de "E-mail" quebrar em duas linhas. */}
+      <DialogContent className="theme-bolao max-w-6xl gap-0 overflow-hidden bg-canvas p-0 text-ink">
         {/* O título existe para o leitor de tela: o Radix avisa no console
             quando falta, e sem ele quem navega por teclado não sabe o que
             abriu. Some da vista sem sumir da árvore de acessibilidade. */}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  filtrarPorPeriodo,
+  periodoDosUltimos,
+  type Periodo,
   agruparPorPosicao,
   contarPorPosicao,
   DIAS_PARA_ESTAR_PARADO,
@@ -236,5 +239,81 @@ describe('agruparPorPosicao', () => {
     const leads = monta([cadastro({ id: 'a' }), cadastro({ id: 'b' }), cadastro({ id: 'c' })]);
     const coluna = agruparPorPosicao(leads).find((c) => c.posicao === 'novo');
     expect(coluna?.leads.map((l) => l.id)).toEqual(leads.map((l) => l.id));
+  });
+});
+
+describe('filtrarPorPeriodo', () => {
+  const DIA = '2026-09-12';
+
+  const base = montarLeads(
+    [
+      cadastro({ id: 'hoje', created_at: '2026-09-12T10:00:00Z' }),
+      cadastro({ id: 'tres-dias', created_at: '2026-09-09T10:00:00Z' }),
+      cadastro({ id: 'vinte-dias', created_at: '2026-08-23T10:00:00Z' }),
+      cadastro({ id: 'sem-data', created_at: null }),
+    ],
+    {},
+    {},
+    {},
+    DIA,
+  );
+
+  const ids = (periodo: Periodo) => filtrarPorPeriodo(base, periodo).map((l) => l.id);
+
+  it('sem período escolhido, a base inteira passa', () => {
+    expect(ids({ de: null, ate: null })).toHaveLength(4);
+  });
+
+  it('os últimos sete dias pegam hoje e não pegam o de vinte dias', () => {
+    expect(ids(periodoDosUltimos(7, DIA))).toEqual(['hoje', 'tres-dias']);
+  });
+
+  it('o sétimo dia ainda está dentro, e o oitavo não', () => {
+    // Contar sete e cortar no sexto é o erro de um a menos clássico, e ele não
+    // aparece na tela: a lista só fica um pouco menor do que deveria.
+    const periodo = periodoDosUltimos(7, DIA);
+    expect(periodo.de).toBe('2026-09-06');
+    const pontas = montarLeads(
+      [
+        cadastro({ id: 'dentro', created_at: '2026-09-06T23:00:00Z' }),
+        cadastro({ id: 'fora', created_at: '2026-09-05T23:00:00Z' }),
+      ],
+      {},
+      {},
+      {},
+      DIA,
+    );
+    expect(filtrarPorPeriodo(pontas, periodo).map((l) => l.id)).toEqual(['dentro']);
+  });
+
+  it('quem não tem data de cadastro some quando há período', () => {
+    // Ele não é recente nem antigo: é desconhecido. Deixá-lo passar faria
+    // "quem chegou esta semana" incluir gente sem data nenhuma.
+    expect(ids(periodoDosUltimos(30, DIA))).not.toContain('sem-data');
+  });
+
+  it('só o começo aberto pega tudo dali em diante', () => {
+    expect(ids({ de: '2026-09-09', ate: null })).toEqual(['hoje', 'tres-dias']);
+  });
+
+  it('só o fim aberto pega tudo até lá', () => {
+    expect(ids({ de: null, ate: '2026-09-09' })).toEqual(['tres-dias', 'vinte-dias']);
+  });
+
+  it('os dois dias das pontas entram', () => {
+    expect(ids({ de: '2026-09-09', ate: '2026-09-12' })).toEqual(['hoje', 'tres-dias']);
+  });
+
+  it('conta pelo dia de Brasília, e não pelo de Greenwich', () => {
+    // 02:00Z do dia 13 ainda é o dia 12 aqui. Com a data crua do banco, o
+    // cadastro da madrugada cai no dia seguinte e some do filtro de hoje.
+    const madrugada = montarLeads(
+      [cadastro({ id: 'madrugada', created_at: '2026-09-13T02:00:00Z' })],
+      {},
+      {},
+      {},
+      DIA,
+    );
+    expect(filtrarPorPeriodo(madrugada, { de: '2026-09-12', ate: '2026-09-12' })).toHaveLength(1);
   });
 });

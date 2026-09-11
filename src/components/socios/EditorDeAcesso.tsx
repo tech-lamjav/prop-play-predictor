@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Bloco } from './Bloco';
+
 import { acessoAtual, estadoDoTeste, PRODUTOS_EDITAVEIS, type ProdutoEditavel } from './crm-acesso';
 import type { Pessoa } from './crm-ficha';
+import { formatarDia } from './crm-lista';
 
 export interface MudancaDeAcesso {
   produto: ProdutoEditavel['id'];
@@ -133,10 +134,10 @@ function Teste({
     estado.tipo === 'nunca'
       ? 'Nunca usou o teste.'
       : estado.tipo === 'correndo'
-        ? `Correndo, termina em ${estado.terminaEm} (${estado.diasRestantes} ${
+        ? `Correndo, termina em ${formatarDia(estado.terminaEm)} (${estado.diasRestantes} ${
             estado.diasRestantes === 1 ? 'dia' : 'dias'
           }).`
-        : `Já usou. Terminou em ${estado.terminouEm}.`;
+        : `Já usou. Terminou em ${formatarDia(estado.terminouEm)}.`;
 
   const ligado = estado.tipo === 'correndo';
 
@@ -181,6 +182,11 @@ function Teste({
  * Cada gravação deixa um registro na linha do tempo, ao lado das anotações:
  * daqui a três meses alguém vai perguntar por que essa pessoa tem o Completo
  * sem nunca ter pago, e a resposta precisa estar junto do resto da conversa.
+ *
+ * Não desenha bloco próprio: entra DENTRO de "Planos e acessos", na ficha.
+ * Havia uma lista só de leitura logo acima dele mostrando exatamente a mesma
+ * coisa, e dois lugares dizendo o mesmo é um convite a discordarem — quando
+ * discordassem, ninguém saberia qual acreditar.
  */
 export function EditorDeAcesso({
   pessoa,
@@ -194,7 +200,7 @@ export function EditorDeAcesso({
   aoDefinirTeste: (ligado: boolean) => void;
 }) {
   return (
-    <Bloco titulo="Dar acesso na mão">
+    <div className="border-t border-line-2 pt-3">
       <p className="mb-3 flex gap-2 rounded-rebrand-sm bg-amber-400/10 p-2.5 text-[12px] text-ink">
         <AlertTriangle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <span>
@@ -218,6 +224,6 @@ export function EditorDeAcesso({
       ))}
 
       <Teste pessoa={pessoa} escrita={escrita} aoDefinir={aoDefinirTeste} />
-    </Bloco>
+    </div>
   );
 }

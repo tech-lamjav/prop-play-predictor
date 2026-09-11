@@ -138,7 +138,7 @@ describe('o teste do futebol', () => {
     const { aoDefinirTeste } = montar({
       pessoa: pessoa({ futebol_trial_started_at: '2026-09-10T12:00:00Z' }),
     });
-    expect(screen.getByText(/termina em 2026-09-17/)).toBeInTheDocument();
+    expect(screen.getByText('Correndo, termina em 17/09/2026 (5 dias).')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Encerrar o teste/ }));
     expect(aoDefinirTeste).toHaveBeenCalledWith(false);
     vi.useRealTimers();

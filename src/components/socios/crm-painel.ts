@@ -283,3 +283,51 @@ export function agruparPorPosicao(leads: Lead[]): ColunaDoFunil[] {
   for (const lead of leads) porPosicao.get(lead.posicao)?.push(lead);
   return POSICOES.map((posicao) => ({ posicao, leads: porPosicao.get(posicao) ?? [] }));
 }
+
+/**
+ * Um recorte de datas de cadastro, em dias de Brasília.
+ *
+ * As duas pontas são opcionais e INCLUSIVAS. Nulo dos dois lados é "tudo", e
+ * não "nada": o filtro nasce desligado, e um estado que esconde a base inteira
+ * pareceria uma tela quebrada.
+ */
+export interface Periodo {
+  /** `YYYY-MM-DD`, ou nulo para sem começo. */
+  de: string | null;
+  /** `YYYY-MM-DD`, ou nulo para sem fim. */
+  ate: string | null;
+}
+
+/**
+ * "Os últimos N dias", contados de hoje para trás.
+ *
+ * N dias INCLUINDO hoje, e é por isso que o recuo é `n - 1`: "os últimos 7
+ * dias" com `addDays(hoje, -7)` devolveria oito dias. O erro não aparece na
+ * tela — a lista só fica um pouco maior do que deveria.
+ */
+export function periodoDosUltimos(dias: number, hoje: string): Periodo {
+  return { de: addDays(hoje, -(dias - 1)), ate: hoje };
+}
+
+/**
+ * Os leads cadastrados dentro do período.
+ *
+ * Quem não tem data de cadastro SOME quando há período, e fica quando não há.
+ * Ele não é recente nem antigo: é desconhecido, e deixá-lo passar faria "quem
+ * chegou esta semana" incluir gente sem data nenhuma.
+ *
+ * A comparação é entre dias de Brasília, e não entre carimbos: um cadastro das
+ * duas da manhã em Greenwich é do dia anterior aqui, e comparar o carimbo cru
+ * o jogaria para o dia seguinte — sumindo do filtro de hoje.
+ */
+export function filtrarPorPeriodo(leads: Lead[], periodo: Periodo): Lead[] {
+  if (!periodo.de && !periodo.ate) return leads;
+
+  return leads.filter((lead) => {
+    const dia = brtDayOf(lead.cadastradoEm);
+    if (!dia) return false;
+    if (periodo.de && dia < periodo.de) return false;
+    if (periodo.ate && dia > periodo.ate) return false;
+    return true;
+  });
+}

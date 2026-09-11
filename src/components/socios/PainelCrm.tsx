@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { agruparPorDia, buscar, formatarDia, type Cadastro } from './crm-lista';
 import {
   contarPorPosicao,
+  filtrarPorPeriodo,
+  type Periodo,
   metricasDeNegocio,
   montarLeads,
   precisamDeAtencao,
@@ -12,6 +14,7 @@ import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
 import { CabecalhoDoCrm } from './CabecalhoDoCrm';
 import { FaixaDoFunil } from './FaixaDoFunil';
+import { ATALHO_PADRAO, FiltroDePeriodo } from './FiltroDePeriodo';
 import { MetricasDoTopo } from './MetricasDoTopo';
 import { KanbanDeLeads } from './KanbanDeLeads';
 import { TabelaDeLeads } from './TabelaDeLeads';
@@ -96,6 +99,14 @@ export function PainelCrm({
   const [busca, setBusca] = useState('');
   const [posicao, setPosicao] = useState<Posicao | null>(null);
   const [recorte, setRecorte] = useState<Recorte>('atencao');
+  /**
+   * O recorte por data de cadastro, e qual atalho o produziu.
+   *
+   * Os dois juntos porque "desde sempre" e um personalizado com os dois campos
+   * vazios filtram igual, e só um deles deve abrir os campos de data.
+   */
+  const [atalhoDoPeriodo, setAtalhoDoPeriodo] = useState(ATALHO_PADRAO);
+  const [periodo, setPeriodo] = useState<Periodo>({ de: null, ate: null });
   const [agrupado, setAgrupado] = useState(false);
   /**
    * Tabela ou kanban.
@@ -144,12 +155,15 @@ export function PainelCrm({
     [cadastros, busca],
   );
 
-  const noRecorte = useMemo(
-    () =>
-      todos?.filter((l) => achados.has(l.id) && (posicao === null || l.posicao === posicao)) ??
-      null,
-    [todos, achados, posicao],
-  );
+  const noRecorte = useMemo(() => {
+    if (!todos) return null;
+    const porFiltros = todos.filter(
+      (l) => achados.has(l.id) && (posicao === null || l.posicao === posicao),
+    );
+    // O período entra por último porque é o único filtro que olha uma coluna
+    // que os outros dois ignoram, e assim ele fica testável sozinho.
+    return filtrarPorPeriodo(porFiltros, periodo);
+  }, [todos, achados, posicao, periodo]);
 
   /**
    * A lista que a tela desenha, já no recorte e na ordem certa.
@@ -230,6 +244,16 @@ export function PainelCrm({
                 aria-label="Buscar cadastro"
                 className="h-11 min-w-[240px] flex-1 rounded-rebrand-sm border border-line-2 bg-white px-4 text-[15px] text-ink placeholder:text-ink-dim"
               />
+              <FiltroDePeriodo
+                atalho={atalhoDoPeriodo}
+                periodo={periodo}
+                hoje={hoje}
+                aoMudar={(a, p) => {
+                  setAtalhoDoPeriodo(a);
+                  setPeriodo(p);
+                }}
+              />
+
               {posicao && (
                 <button
                   type="button"

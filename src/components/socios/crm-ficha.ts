@@ -98,44 +98,6 @@ export function nomeDoPlano(bruto: string | null | undefined): string | null {
   return planoDe(bruto)?.nome ?? null;
 }
 
-export interface Acesso {
-  produto: string;
-  ativo: boolean;
-  renovaEm: string | null;
-  /**
-   * O banco não guarda data de renovação deste acesso.
-   *
-   * Só o futebol. Mostrar um traço ali seria lido como "não renova", que é
-   * outra coisa — a ficha precisa dizer que a informação não existe.
-   */
-  semDataNoBanco: boolean;
-}
-
-export function acessos(p: Pessoa, agora = Date.now()): Acesso[] {
-  return [
-    {
-      produto: 'Betinho',
-      ativo: p.betinho_subscription_status === 'premium',
-      renovaEm: p.betinho_subscription_period_end,
-      semDataNoBanco: false,
-    },
-    {
-      produto: 'Futebol',
-      // O teste gratuito de sete dias vale como acesso — a mesma regra que a
-      // tela de configurações usa, e que mora em `utils/futebol-acesso`.
-      ativo: temAcessoAoFutebol(p.futebol_subscription_status, p.futebol_trial_started_at, agora),
-      renovaEm: null,
-      semDataNoBanco: true,
-    },
-    {
-      produto: 'Análises',
-      ativo: p.analytics_subscription_status === 'premium',
-      renovaEm: p.analytics_subscription_period_end,
-      semDataNoBanco: false,
-    },
-  ];
-}
-
 /**
  * O que o gancho precisa saber, e nada além.
  *

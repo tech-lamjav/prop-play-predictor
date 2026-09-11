@@ -1,5 +1,6 @@
 import type { Pessoa } from './crm-ficha';
 import { temAcessoAoFutebol } from '@/utils/futebol-acesso';
+import { brtDayOf } from '@/utils/futebol-datas';
 
 // ============================================================================
 // Acesso dado na mão
@@ -54,11 +55,15 @@ export interface AcessoAtual {
   ate: string;
 }
 
-/** `2026-10-12T03:00:00Z` vira `2026-10-12`. Vazio quando não há data. */
+/**
+ * `2026-10-12T03:00:00Z` vira `2026-10-12`. Vazio quando não há data.
+ *
+ * Pelo dia de BRASÍLIA, e não por `toISOString`. Uma renovação marcada para as
+ * 23h do dia 30 aqui é o dia 1º em Greenwich, e o campo mostraria a data
+ * errada por um dia — sempre para frente, e só em algumas contas.
+ */
 function comoDiaDoFormulario(bruto: string | null): string {
-  if (!bruto) return '';
-  const d = new Date(bruto);
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  return brtDayOf(bruto) ?? '';
 }
 
 export function acessoAtual(p: Pessoa, produto: ProdutoEditavel['id']): AcessoAtual {
@@ -100,7 +105,9 @@ export function estadoDoTeste(p: Pessoa, agora = Date.now()): EstadoDoTeste {
   if (Number.isNaN(inicio)) return { tipo: 'nunca' };
 
   const fim = inicio + DIAS_DE_TESTE * UM_DIA;
-  const dia = new Date(fim).toISOString().slice(0, 10);
+  // Dia de Brasília aqui também: um teste que vence às 22h do dia 17 daqui
+  // cairia no dia 18 por `toISOString`, e a tela prometeria um dia a mais.
+  const dia = brtDayOf(new Date(fim).toISOString()) ?? '';
 
   if (fim <= agora) return { tipo: 'vencido', terminouEm: dia };
   return { tipo: 'correndo', terminaEm: dia, diasRestantes: Math.ceil((fim - agora) / UM_DIA) };

@@ -41,6 +41,17 @@ describe('acessoAtual', () => {
     expect(acessoAtual(p, 'betinho')).toEqual({ ativo: true, ate: '' });
   });
 
+  it('a renovação é o dia de Brasília, e não o de Greenwich', () => {
+    // O Stripe grava 01/10 à meia-noite UTC, que é 30/09 às 21h aqui. A data
+    // que o sócio lê é a daqui: ele vai falar com alguém que mora neste fuso,
+    // e um dia a mais no campo vira um dia a mais prometido na conversa.
+    const p = pessoa({
+      betinho_subscription_status: 'premium',
+      betinho_subscription_period_end: '2026-10-01T00:00:00Z',
+    });
+    expect(acessoAtual(p, 'betinho').ate).toBe('2026-09-30');
+  });
+
   it('data ilegível no banco não vira "Invalid Date" no campo', () => {
     const p = pessoa({
       betinho_subscription_status: 'premium',
