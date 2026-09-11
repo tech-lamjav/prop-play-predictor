@@ -1,10 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import {
-  Settings,
-  LogOut,
-  ChevronRight,
-  Zap,
-} from 'lucide-react';
+import { Settings, LogOut, ChevronRight, Zap } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { useAuth } from '@/hooks/use-auth';
 import { useBets } from '@/hooks/use-bets';
@@ -13,6 +8,7 @@ import { useReferral } from '@/components/ReferralProvider';
 import { getInitials } from '@/lib/user-display';
 import { itensDaConta, type ItemDaConta } from '@/config/menu-da-conta';
 import { abrirDestino } from '@/lib/abrir-destino';
+import { useSocio } from '@/hooks/use-socio';
 
 /**
  * Tela de Perfil — o equivalente mobile do dropdown do pill no desktop.
@@ -31,6 +27,8 @@ export default function Perfil() {
   const { openReferral } = useReferral();
   const { profile, subscription } = useSettingsData();
   const { stats } = useBets(user?.id ?? '');
+  // Falso enquanto carrega, então o item não pisca no menu de ninguém.
+  const { ehSocio } = useSocio();
 
   const name = (user?.user_metadata?.name as string | undefined) ?? profile?.name ?? undefined;
   const initials = getInitials(name);
@@ -45,10 +43,17 @@ export default function Perfil() {
   // Os itens vêm do catálogo compartilhado com o menu do computador. Só o
   // "Sair da conta" nasce aqui: ele é o único que muda de forma entre as duas
   // telas — lá é um bloco separado embaixo, aqui é a última linha da lista.
+  const doCatalogo = itensDaConta(openReferral, ehSocio);
+
   const rows: Row[] = [
-    ...itensDaConta(openReferral),
+    ...doCatalogo.filter((i) => !i.interno),
     { label: 'Sair da conta', icon: LogOut, onClick: handleSignOut, danger: true },
   ];
+
+  // Em cartão próprio, e ANTES das ações da conta: assim o "Sair da conta"
+  // continua sendo a última coisa da página, que é onde a pessoa procura por
+  // ele, e a ferramenta interna não se mistura com o que o assinante usa.
+  const internos = doCatalogo.filter((i) => i.interno);
 
   const go = (row: Row) => {
     if (row.onClick) return row.onClick();
@@ -101,7 +106,10 @@ export default function Perfil() {
         {kpis && (
           <section className="grid grid-cols-3 gap-2">
             {kpis.map((k) => (
-              <div key={k.label} className="bg-sand border border-sand-line rounded-xl px-[11px] py-2.5">
+              <div
+                key={k.label}
+                className="bg-sand border border-sand-line rounded-xl px-[11px] py-2.5"
+              >
                 <div className="text-[8.5px] uppercase tracking-[0.14em] font-semibold text-sand-ink-2">
                   {k.label}
                 </div>
@@ -112,6 +120,32 @@ export default function Perfil() {
                 </div>
               </div>
             ))}
+          </section>
+        )}
+
+        {/* Uso interno — só aparece para sócio, e em cartão à parte */}
+        {internos.length > 0 && (
+          <section className="bg-white border border-sand-line rounded-2xl overflow-hidden">
+            <span className="block px-3.5 pt-3 pb-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-sand-ink-2">
+              Uso interno
+            </span>
+            {internos.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => go(item)}
+                  className="w-full h-[52px] px-3.5 flex items-center gap-3 text-[13.5px] font-medium text-ink transition-colors hover:bg-sand-50"
+                >
+                  <span className="w-8 h-8 rounded-[9px] grid place-items-center shrink-0 bg-sand-100 text-forest">
+                    <Icon className="w-4 h-4" />
+                  </span>
+                  <span className="flex-1 text-left">{item.label}</span>
+                  <ChevronRight className="w-[15px] h-[15px] text-sand-chevron shrink-0" />
+                </button>
+              );
+            })}
           </section>
         )}
 
@@ -137,7 +171,9 @@ export default function Perfil() {
                   <Icon className="w-4 h-4" />
                 </span>
                 <span className="flex-1 text-left">{row.label}</span>
-                {!row.danger && <ChevronRight className="w-[15px] h-[15px] text-sand-chevron shrink-0" />}
+                {!row.danger && (
+                  <ChevronRight className="w-[15px] h-[15px] text-sand-chevron shrink-0" />
+                )}
               </button>
             );
           })}

@@ -6,8 +6,9 @@ import { useSocio } from '@/hooks/use-socio';
  * Deixa passar quem é sócio; para todo mundo, a página de não encontrado.
  *
  * Não é uma tela de acesso negado de propósito: negar acesso confirma que o
- * painel existe naquele endereço, e ele não é anunciado em canto nenhum — nem
- * no menu, nem no sitemap, nem no robots.txt.
+ * painel existe naquele endereço, e ele não é anunciado para quem não entra —
+ * nem no sitemap, nem no robots.txt, nem no menu da conta, que só mostra o item
+ * quando o banco responde que a pessoa é sócia.
  *
  * Enquanto a resposta não chega não desenha nada. Um vazio de meio segundo é
  * melhor que a página de erro piscando na cara do sócio a cada recarga.

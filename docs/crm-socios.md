@@ -48,11 +48,25 @@ conveniência; a segurança de verdade está na política. Isso implica uma fun�
 consulta `users` recursa e derruba a tabela inteira.
 
 **A tela mora no próprio site**, com o header do produto e uma faixa própria de
-identidade, numa rota fora de qualquer menu, e quem não é
+identidade, e quem não é
 sócio recebe a página de não encontrado — não uma de acesso negado, que
 confirmaria que a página existe. A página é `noindex`, e fica fora do
 `public-routes.json`, então não entra no sitemap. Fica **fora do robots.txt** de
 propósito: listar o caminho lá é anunciá-lo.
+
+**A rota tem entrada no menu da conta, e só sócio a enxerga.** A primeira versão
+deixava ela fora de qualquer menu, e o preço era o sócio decorar o endereço —
+uma rota que só se alcança de cabeça é uma rota que ninguém usa. O item entra no
+catálogo compartilhado entre o dropdown do computador e a tela de perfil do
+celular, num grupo à parte com a etiqueta "uso interno", e só aparece quando
+`is_socio` volta verdadeiro.
+
+Isso NÃO muda quem protege o painel: continua sendo a política de linha do
+banco. O caminho da rota está no bundle, que é público, e esconder o item nunca
+foi segurança — é só não anunciar a porta para quem não pode entrar. Enquanto a
+resposta do banco não chega, o item não aparece: errar para menos esconde a
+porta de um sócio por meio segundo, e errar para mais a mostraria para a base
+inteira.
 
 **Cadastro é linha na tabela de usuários**, agrupada pelo dia de criação. A
 lista de espera fica de fora desta primeira volta.
