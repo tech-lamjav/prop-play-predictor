@@ -124,8 +124,12 @@ describe('EditorDeAcesso', () => {
   it('quando falha, diz que nada mudou', () => {
     // "Não deu para gravar" sozinho deixa o sócio sem saber se o acesso foi
     // pela metade. A frase precisa dizer o estado, e não só o erro.
-    montar({ escrita: { tipo: 'erro', alvo: 'betinho' } });
+    montar({
+      escrita: { tipo: 'erro', alvo: 'betinho', recado: 'Esta parte ainda não existe no banco.' },
+    });
     expect(screen.getByText(/continua como estava/)).toBeInTheDocument();
+    // E o motivo junto: sem ele, o sócio não sabe se adianta tentar de novo.
+    expect(screen.getByText(/ainda não existe no banco/)).toBeInTheDocument();
   });
 });
 

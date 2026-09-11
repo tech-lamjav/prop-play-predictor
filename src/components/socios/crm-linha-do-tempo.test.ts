@@ -100,6 +100,25 @@ describe('mensagemDoErro', () => {
     expect(mensagemDoErro({ message: 'anotacao vazia' })).toMatch(/vazia/i);
   });
 
+  it('função que não existe no banco diz para aplicar as migrations', () => {
+    // O PostgREST devolve PGRST202 quando a função não está no banco, e isso
+    // acontece exatamente uma vez por migration nova: o código foi para a
+    // branch e o banco ficou para trás. "Tente de novo" manda o sócio clicar
+    // a tarde inteira num botão que nunca vai funcionar.
+    expect(
+      mensagemDoErro({
+        code: 'PGRST202',
+        message: 'Could not find the function public.crm_dar_assinatura_manual',
+      }),
+    ).toMatch(/migration/i);
+  });
+
+  it('a tabela que não existe diz a mesma coisa', () => {
+    expect(mensagemDoErro({ code: '42P01', message: 'relation does not exist' })).toMatch(
+      /migration/i,
+    );
+  });
+
   it('qualquer outra falha cai no genérico', () => {
     expect(mensagemDoErro({ message: 'connection reset' })).toMatch(/tente de novo/i);
     expect(mensagemDoErro(null)).toMatch(/tente de novo/i);

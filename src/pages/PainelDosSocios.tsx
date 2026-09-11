@@ -99,9 +99,13 @@ function FichaDoModal({ id }: { id: string }) {
     : teste.isPending
       ? { tipo: 'salvando', alvo: 'teste' }
       : acesso.isError
-        ? { tipo: 'erro', alvo: acesso.variables?.produto ?? '' }
+        ? {
+            tipo: 'erro',
+            alvo: acesso.variables?.produto ?? '',
+            recado: mensagemDoErro(acesso.error),
+          }
         : teste.isError
-          ? { tipo: 'erro', alvo: 'teste' }
+          ? { tipo: 'erro', alvo: 'teste', recado: mensagemDoErro(teste.error) }
           : { tipo: 'parado' };
 
   // Lido aqui, e não recebido por prop como no painel: a ficha só existe

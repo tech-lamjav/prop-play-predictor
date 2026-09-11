@@ -118,11 +118,23 @@ export function soFeedbacks(itens: ItemDaLinhaDoTempo[]): ItemDaLinhaDoTempo[] {
  * tentar a noite inteira que não vai gravar.
  */
 export function mensagemDoErro(erro: unknown): string {
-  const texto = String((erro as { message?: string } | null)?.message ?? '');
+  const { message, code } = (erro ?? {}) as { message?: string; code?: string };
+  const texto = String(message ?? '');
+
   if (texto.includes('apenas socios')) {
     return 'Sua conta não está mais marcada como sócio. Fale com o outro sócio.';
   }
   if (texto.includes('anotacao vazia')) return 'A anotação está vazia.';
+
+  // `PGRST202` é o PostgREST dizendo que a função não está no banco;
+  // `42P01` é o Postgres dizendo que a tabela não existe. Os dois significam a
+  // mesma coisa na prática, e ela acontece uma vez por migration nova: o código
+  // foi para a branch e o banco ficou para trás. "Tente de novo" manda o sócio
+  // clicar a tarde inteira num botão que nunca vai funcionar.
+  if (code === 'PGRST202' || code === '42P01' || texto.includes('Could not find the function')) {
+    return 'Esta parte ainda não existe no banco. Falta aplicar as migrations novas.';
+  }
+
   return 'Não deu para registrar. Tente de novo.';
 }
 

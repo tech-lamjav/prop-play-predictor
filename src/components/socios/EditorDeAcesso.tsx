@@ -20,7 +20,16 @@ export interface MudancaDeAcesso {
  * três linhas e pareceria que a tela congelou.
  */
 export type EstadoDaEscrita =
-  { tipo: 'parado' } | { tipo: 'salvando'; alvo: string } | { tipo: 'erro'; alvo: string };
+  | { tipo: 'parado' }
+  | { tipo: 'salvando'; alvo: string }
+  /**
+   * O motivo vem junto, e não uma frase fixa aqui dentro.
+   *
+   * "Não deu para gravar, tente de novo" é conselho errado quando a função nem
+   * existe no banco: o sócio clica a tarde inteira num botão que nunca vai
+   * funcionar. Quem sabe o motivo é quem chamou a mutação.
+   */
+  | { tipo: 'erro'; alvo: string; recado: string };
 
 /**
  * Uma linha de produto: o interruptor, o prazo e o botão de salvar.
@@ -88,7 +97,7 @@ function LinhaDoProduto({
 
       {falhou && (
         <p className="mt-2 text-[13px] font-bold text-ink">
-          Não deu para gravar. O acesso continua como estava.
+          {escrita.tipo === 'erro' ? escrita.recado : ''} O acesso continua como estava.
         </p>
       )}
 
@@ -146,7 +155,7 @@ function Teste({
 
       {falhou && (
         <p className="mt-2 text-[13px] font-bold text-ink">
-          Não deu para gravar. O teste continua como estava.
+          {escrita.tipo === 'erro' ? escrita.recado : ''} O teste continua como estava.
         </p>
       )}
 
