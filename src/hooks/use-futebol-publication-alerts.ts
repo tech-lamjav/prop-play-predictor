@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
+import { temAcessoAoFutebol } from '@/utils/futebol-acesso';
 
 export interface FutebolPublicationAlerts {
   enabled: boolean;
@@ -8,12 +9,6 @@ export interface FutebolPublicationAlerts {
   accessActive: boolean;
   /** O cartão explicativo já foi dispensado alguma vez, em qualquer dispositivo. */
   onboardingAcknowledged: boolean;
-}
-
-function hasActiveFutebolAccess(status: string | null, trialStartedAt: string | null): boolean {
-  if (status === 'premium') return true;
-  if (!trialStartedAt) return false;
-  return new Date(trialStartedAt).getTime() + 7 * 24 * 60 * 60 * 1000 > Date.now();
 }
 
 /**
@@ -41,7 +36,7 @@ export function useFutebolPublicationAlerts() {
       return {
         enabled: data.futebol_publication_alerts_enabled ?? true,
         telegramLinked: !!data.telegram_chat_id,
-        accessActive: hasActiveFutebolAccess(data.futebol_subscription_status, data.futebol_trial_started_at),
+        accessActive: temAcessoAoFutebol(data.futebol_subscription_status, data.futebol_trial_started_at),
         onboardingAcknowledged: !!data.futebol_publication_alerts_ack_at,
       };
     },

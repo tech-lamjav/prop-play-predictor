@@ -1,6 +1,7 @@
-import { Settings, CreditCard, Gift, BookOpen, MessageCircle } from 'lucide-react';
+import { Settings, CreditCard, Gift, BookOpen, MessageCircle, Users } from 'lucide-react';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from './como-usar';
 import { WHATSAPP_FALAR_COM_O_TIME } from './contato';
+import { ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
 
 /**
  * Os itens do menu da conta — a mesma lista no computador e no celular.
@@ -22,9 +23,28 @@ export type ItemDaConta = {
   icon: typeof Settings;
   href?: string;
   onClick?: () => void;
+  /**
+   * Item de uso interno, que só sócio enxerga.
+   *
+   * As duas telas desenham ele separado do resto: ele não é uma coisa que o
+   * assinante faz na conta dele, é uma ferramenta de quem toca a operação, e
+   * misturado na mesma lista pareceria mais uma tela do produto.
+   */
+  interno?: boolean;
 };
 
-export function itensDaConta(indicarUmAmigo: () => void): ItemDaConta[] {
+/**
+ * Os itens da conta.
+ *
+ * `ehSocio` chega por parâmetro em vez de o catálogo consultar o banco: assim
+ * ele continua sendo uma função pura, testável sem montar tela nem servidor, e
+ * quem decide quando perguntar é quem desenha.
+ *
+ * O padrão é `false`, e é de propósito. Uma tela que esquecer de passar o
+ * parâmetro esconde o item de um sócio, que é um incômodo; o contrário
+ * mostraria a porta do painel para a base inteira.
+ */
+export function itensDaConta(indicarUmAmigo: () => void, ehSocio = false): ItemDaConta[] {
   return [
     { label: 'Configurações', icon: Settings, href: '/settings' },
     { label: 'Planos e preços', icon: CreditCard, href: '/planos' },
@@ -33,5 +53,10 @@ export function itensDaConta(indicarUmAmigo: () => void): ItemDaConta[] {
       ? [{ label: 'Como usar', icon: BookOpen, href: '/como-usar' }]
       : []),
     { label: 'Falar com o time', icon: MessageCircle, href: WHATSAPP_FALAR_COM_O_TIME },
+    // Por último, e só para sócio. Quem protege o painel continua sendo a
+    // política de linha do banco — este item governa o que a tela desenha, e
+    // o caminho da rota está no bundle, que é público. O que ele evita é
+    // anunciar a porta para quem não pode entrar.
+    ...(ehSocio ? [{ label: 'CRM', icon: Users, href: ROTA_DOS_SOCIOS, interno: true }] : []),
   ];
 }

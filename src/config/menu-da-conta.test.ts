@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { itensDaConta } from './menu-da-conta';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from './como-usar';
 import { WHATSAPP_FALAR_COM_O_TIME } from './contato';
+import { ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
 
 // ============================================================================
 // O menu da conta é o mesmo no computador e no celular
@@ -63,7 +64,7 @@ describe('itens do menu da conta', () => {
 
   it('as duas telas leem do catálogo, e nenhuma monta lista própria', () => {
     for (const arquivo of [USER_NAV, PERFIL]) {
-      expect(arquivo).toContain('itensDaConta(openReferral)');
+      expect(arquivo).toContain('itensDaConta(openReferral,');
       // Nenhum item de menu escrito à mão dentro da tela. Um item de menu é uma
       // linha com rótulo E ícone — os blocos de número da tela de Perfil também
       // têm `label`, e não são menu. O "Sair da conta" é a exceção declarada:
@@ -73,5 +74,49 @@ describe('itens do menu da conta', () => {
         .filter((l) => /label: '/.test(l) && /icon:/.test(l) && !l.includes('Sair da conta'));
       expect(itensNaMao).toEqual([]);
     }
+  });
+});
+
+describe('a entrada do CRM', () => {
+  const doSocio = (ehSocio: boolean) => itensDaConta(() => {}, ehSocio);
+
+  it('não existe para quem não é sócio', () => {
+    // Quem protege o painel é a política de linha do banco, e não este item.
+    // Mas mostrar a porta para quem não pode entrar é anunciar que ela existe,
+    // que é justamente o que a rota escondida evita.
+    expect(doSocio(false).some((i) => i.label === 'CRM')).toBe(false);
+  });
+
+  it('aparece para sócio', () => {
+    expect(doSocio(true).some((i) => i.label === 'CRM')).toBe(true);
+  });
+
+  it('o padrão é não mostrar', () => {
+    // Errar para menos: uma tela que esquecer de passar o parâmetro esconde o
+    // item de um sócio, e não mostra a porta para a base inteira.
+    expect(itensDaConta(() => {}).some((i) => i.label === 'CRM')).toBe(false);
+  });
+
+  it('leva para a rota dos sócios, e não para um endereço escrito à mão', () => {
+    const item = doSocio(true).find((i) => i.label === 'CRM');
+    expect(item?.href).toBe(ROTA_DOS_SOCIOS);
+  });
+
+  it('vem por último, e marcado como interno', () => {
+    // Último porque não disputa espaço com o que o assinante usa, e marcado
+    // porque as duas telas desenham ele separado do resto.
+    const itens = doSocio(true);
+    expect(itens[itens.length - 1].label).toBe('CRM');
+    expect(itens[itens.length - 1].interno).toBe(true);
+  });
+
+  it('nenhum outro item é interno', () => {
+    // Se "interno" virasse decoração, o separador nas duas telas deixaria de
+    // significar alguma coisa.
+    expect(
+      doSocio(true)
+        .filter((i) => i.interno)
+        .map((i) => i.label),
+    ).toEqual(['CRM']);
   });
 });

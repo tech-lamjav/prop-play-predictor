@@ -14,6 +14,8 @@ import Picks from "./pages/Picks";
 import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
+import { PortaoDoSocio } from "./components/socios/PortaoDoSocio";
+import { ROTA_DOS_SOCIOS } from "./components/socios/crm-vocabulario";
 import { PostHogPageView } from "./components/PostHogPageView";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
@@ -45,6 +47,11 @@ const Planos = lazyWithRetry(() => import("./pages/Planos"));
 // resolvida pelo registry em pages/lp/variants.ts.
 const LpVariant = lazyWithRetry(() => import("./pages/lp/LpVariant"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+// Painel dos sócios: rota escondida, fora de todo menu. O portão vem eager
+// porque ele decide o que renderizar ANTES de valer a pena baixar o painel.
+const PainelDosSocios = lazyWithRetry(() => import("./pages/PainelDosSocios"));
+const FeedbacksDoCrm = lazyWithRetry(() => import("./pages/FeedbacksDoCrm"));
+const AssinaturasDoCrm = lazyWithRetry(() => import("./pages/AssinaturasDoCrm"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
@@ -182,6 +189,19 @@ const App = () => (
             <Route path="/planos" element={<Planos />} />
             <Route path="/lp/:slug" element={<LpVariant />} />
             <Route path="/como-usar" element={<ComoUsar />} />
+            {/* Painel dos sócios. Sem ProtectedRoute de propósito: aquele
+                REDIRECIONA para o login, e um redirecionamento denuncia que
+                existe algo ali. O portão devolve a página de não encontrado. */}
+            <Route path={ROTA_DOS_SOCIOS} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
+            {/* Antes da rota com parametro: o React Router ja prioriza
+                segmento fixo, e a ordem aqui torna isso visivel para quem le. */}
+            <Route path={`${ROTA_DOS_SOCIOS}/feedbacks`} element={<PortaoDoSocio><FeedbacksDoCrm /></PortaoDoSocio>} />
+            {/* A fila de cobranca das assinaturas dadas na mao. */}
+            <Route path={`${ROTA_DOS_SOCIOS}/assinaturas`} element={<PortaoDoSocio><AssinaturasDoCrm /></PortaoDoSocio>} />
+            {/* A ficha desenha o MESMO painel com o modal aberto por cima:
+                o endereço continua compartilhável, e abrir um lead não tira
+                ninguém da lista. */}
+            <Route path={`${ROTA_DOS_SOCIOS}/:id`} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
             <Route path="/report" element={
               <ProtectedRoute>
                 <Report />
