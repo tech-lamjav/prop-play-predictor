@@ -37,6 +37,9 @@ function montar(props: Partial<Parameters<typeof EditorDeAcesso>[0]> = {}) {
       escrita={PARADO}
       aoSalvar={aoSalvar}
       aoDefinirTeste={aoDefinirTeste}
+      // O formulário de assinatura tem testes próprios. Aqui ele é um marcador,
+      // porque o que estes testes guardam é o comportamento dos interruptores.
+      assinatura={<p>o formulário de assinatura</p>}
       {...props}
     />,
   );

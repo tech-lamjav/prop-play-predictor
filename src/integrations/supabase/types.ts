@@ -302,6 +302,47 @@ export type Database = {
           },
         ]
       }
+      crm_assinatura_manual: {
+        Row: {
+          criada_em: string
+          criada_por: string | null
+          encerrada_em: string | null
+          encerrada_por: string | null
+          id: string
+          plano: string
+          user_id: string
+          vence_em: string
+        }
+        Insert: {
+          criada_em?: string
+          criada_por?: string | null
+          encerrada_em?: string | null
+          encerrada_por?: string | null
+          id?: string
+          plano: string
+          user_id: string
+          vence_em: string
+        }
+        Update: {
+          criada_em?: string
+          criada_por?: string | null
+          encerrada_em?: string | null
+          encerrada_por?: string | null
+          id?: string
+          plano?: string
+          user_id?: string
+          vence_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_assinatura_manual_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_etapa: {
         Row: {
           atualizada_em: string
@@ -1149,6 +1190,14 @@ export type Database = {
       crm_definir_teste_do_futebol: {
         Args: { p_user_id: string; p_ligado: boolean }
         Returns: string | null
+      }
+      crm_dar_assinatura_manual: {
+        Args: { p_user_id: string; p_plano: string; p_vence_em: string }
+        Returns: string
+      }
+      crm_encerrar_assinatura_manual: {
+        Args: { p_id: string }
+        Returns: undefined
       }
       crm_anotar: {
         Args: { p_user_id: string; p_tipo: string; p_texto: string }

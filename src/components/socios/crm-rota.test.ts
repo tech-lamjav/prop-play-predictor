@@ -76,9 +76,11 @@ describe('o painel usa o cabeçalho do site', () => {
     const rotas = raiz('src/App.tsx')
       .split('\n')
       .filter((l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'))
-      // Os feedbacks são seção própria, com página própria: o que se lista lá
-      // não é gente, é o que a gente ouviu.
-      .filter((l) => !l.includes('feedbacks'));
+      // As outras duas seções têm página própria porque respondem outras
+      // perguntas: a de feedbacks lista o que a gente ouviu, e a de assinaturas
+      // lista quem precisa ser cobrado. Nenhuma das duas lista gente para
+      // abordar, que é o que o painel faz.
+      .filter((l) => !l.includes('feedbacks') && !l.includes('assinaturas'));
     expect(rotas).toHaveLength(2);
     for (const rota of rotas) expect(rota).toContain('PainelDosSocios');
   });

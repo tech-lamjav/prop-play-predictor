@@ -51,6 +51,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 // porque ele decide o que renderizar ANTES de valer a pena baixar o painel.
 const PainelDosSocios = lazyWithRetry(() => import("./pages/PainelDosSocios"));
 const FeedbacksDoCrm = lazyWithRetry(() => import("./pages/FeedbacksDoCrm"));
+const AssinaturasDoCrm = lazyWithRetry(() => import("./pages/AssinaturasDoCrm"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
@@ -195,6 +196,8 @@ const App = () => (
             {/* Antes da rota com parametro: o React Router ja prioriza
                 segmento fixo, e a ordem aqui torna isso visivel para quem le. */}
             <Route path={`${ROTA_DOS_SOCIOS}/feedbacks`} element={<PortaoDoSocio><FeedbacksDoCrm /></PortaoDoSocio>} />
+            {/* A fila de cobranca das assinaturas dadas na mao. */}
+            <Route path={`${ROTA_DOS_SOCIOS}/assinaturas`} element={<PortaoDoSocio><AssinaturasDoCrm /></PortaoDoSocio>} />
             {/* A ficha desenha o MESMO painel com o modal aberto por cima:
                 o endereço continua compartilhável, e abrir um lead não tira
                 ninguém da lista. */}

@@ -5,6 +5,7 @@ import { Ficha } from '@/components/socios/Ficha';
 import { FichaEmModal } from '@/components/socios/FichaEmModal';
 import { BlocoDeComportamento } from '@/components/socios/BlocoDeComportamento';
 import { EditorDeAcesso, type EstadoDaEscrita } from '@/components/socios/EditorDeAcesso';
+import { DarAssinatura, type EstadoDaConcessao } from '@/components/socios/DarAssinatura';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
@@ -16,6 +17,7 @@ import { useLinhaDoTempo, useAnotar } from '@/hooks/use-linha-do-tempo';
 import { useMovimento } from '@/hooks/use-painel-do-crm';
 import { useComportamento } from '@/hooks/use-comportamento';
 import { useDefinirAcesso, useDefinirTeste } from '@/hooks/use-acesso';
+import { useAssinaturas, useDarAssinatura, useEncerrarAssinatura } from '@/hooks/use-assinaturas';
 import { useNomeDoSocio } from '@/hooks/use-nome-do-socio';
 import { usePessoa } from '@/hooks/use-pessoa';
 import { brtToday } from '@/utils/futebol-datas';
@@ -76,6 +78,10 @@ function FichaDoModal({ id }: { id: string }) {
   const nomeDoSocio = useNomeDoSocio();
   const acesso = useDefinirAcesso(id);
   const teste = useDefinirTeste(id);
+  const cadastros = useCadastros();
+  const assinaturas = useAssinaturas(cadastros.tipo === 'pronto' ? cadastros.cadastros : []);
+  const darAssinatura = useDarAssinatura(id);
+  const encerrarAssinatura = useEncerrarAssinatura();
   const comportamento = useComportamento(
     id,
     estado.tipo === 'pronta' ? estado.pessoa.email : undefined,
@@ -98,6 +104,24 @@ function FichaDoModal({ id }: { id: string }) {
           ? { tipo: 'erro', alvo: 'teste' }
           : { tipo: 'parado' };
 
+  // Lido aqui, e não recebido por prop como no painel: a ficha só existe
+  // enquanto o modal está aberto, então não há teste dela que atravesse a
+  // meia-noite, e passar o dia por três níveis de componente custaria mais.
+  const hoje = brtToday();
+
+  /** A cortesia aberta desta pessoa, se houver. */
+  const cortesia =
+    assinaturas.tipo === 'pronto'
+      ? (assinaturas.assinaturas.find((a) => a.userId === id) ?? null)
+      : null;
+
+  const concessao: EstadoDaConcessao =
+    darAssinatura.isPending || encerrarAssinatura.isPending
+      ? { tipo: 'salvando' }
+      : darAssinatura.isError || encerrarAssinatura.isError
+        ? { tipo: 'erro', recado: mensagemDoErro(darAssinatura.error ?? encerrarAssinatura.error) }
+        : { tipo: 'parado' };
+
   return (
     <Ficha
       estado={estado}
@@ -117,6 +141,19 @@ function FichaDoModal({ id }: { id: string }) {
             escrita={escrita}
             aoSalvar={(mudanca) => acesso.mutate(mudanca)}
             aoDefinirTeste={(ligado) => teste.mutate(ligado)}
+            assinatura={
+              <DarAssinatura
+                hoje={hoje}
+                atual={
+                  cortesia
+                    ? { id: cortesia.id, plano: cortesia.plano, venceEm: cortesia.venceEm }
+                    : null
+                }
+                estado={concessao}
+                aoConceder={(plano, venceEm) => darAssinatura.mutate({ plano, venceEm })}
+                aoEncerrar={(idDaCortesia) => encerrarAssinatura.mutate(idDaCortesia)}
+              />
+            }
           />
         ) : null
       }

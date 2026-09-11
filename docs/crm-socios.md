@@ -211,3 +211,47 @@ Cada item é uma bala traçante: sai ponta a ponta, do banco à tela.
 
 Fora desta spec, registrado como issue à parte: o bloco de comportamento vindo
 do PostHog.
+
+## Assinaturas dadas na mão
+
+Terceira seção do CRM, em `/socios/assinaturas`, ao lado de Leads e Feedbacks.
+Ela responde uma terceira pergunta: a lista de leads responde "com quem eu falo
+agora", a de feedbacks responde "o que estão achando", e esta responde "quem eu
+preciso cobrar".
+
+**Existe porque assinatura manual não renova sozinha.** Ela vence. Sem um lugar
+que junte quem está vencendo, o acesso some um dia e a conversa acontece tarde,
+com a pessoa já sem o produto e sem motivo nenhum para voltar.
+
+**A concessão vira um fato com linha própria** em `crm_assinatura_manual`: quem,
+qual plano, até quando, quem deu. O estado em `public.users` continua sendo o
+que manda para o produto; esta tabela é o que manda para a cobrança. Uma pessoa
+não tem duas abertas, e o índice único parcial garante isso: com duas, a fila
+mostraria a mesma pessoa duas vezes com datas diferentes.
+
+**A data é obrigatória**, e é o ponto de tudo. Uma cortesia sem data nunca é
+cobrada, porque ninguém sabe quando ela deveria acabar.
+
+**A escada é cumulativa**, a mesma do Stripe: Entrada é o Betinho, Essencial é
+futebol mais Betinho, Completo é os três. Ela está escrita duas vezes por
+necessidade — a fonte da verdade é `shared/concessoes.ts`, que roda em Deno, e a
+migration roda no Postgres, sem módulo que os dois importem. Há um teste que lê
+os dois arquivos e cobra que concedam o mesmo: se divergirem, um assinante
+manual do Essencial ganha um acesso a menos que um pagante do mesmo plano.
+
+**Encerrar é marcar, e não apagar.** O histórico é o que responde "quantas a
+gente deu este mês" e "esta pessoa já teve uma antes". E quem passou a pagar de
+verdade no meio do caminho mantém o acesso: encerrar a cortesia não pode
+derrubar uma assinatura do Stripe, que é outra coisa.
+
+**A mensagem de cobrança já vem escrita**, aberta na tela e não atrás de um
+botão: o trabalho é copiar e colar num WhatsApp, e cada clique a mais entre ver
+a pessoa e ter o texto na mão é um motivo a mais para deixar para depois. O
+texto muda com o prazo, porque a conversa muda: mandar "vai até o dia 20" para
+quem perdeu o acesso semana passada é a mensagem chegando depois do fato. Ela
+não inventa link nem valor, porque quem sabe o preço combinado é o sócio.
+
+**Os interruptores por produto continuam existindo**, na ficha, e servem a outra
+coisa: consertar UM acesso, ou dar os Relatórios, que não pertencem a plano
+nenhum. O formulário de assinatura vem primeiro porque é assim que a venda
+acontece.

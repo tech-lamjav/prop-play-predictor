@@ -107,3 +107,19 @@ produto convidaria a implementá-lo como `premium`, que dá acesso para sempre c
 cara de teste. Tem três estados, e não dois — nunca usou, correndo, já usou —,
 porque o terceiro é o que decide se dar outro faz sentido.
 _Avoid_: Trial, free trial, degustação, período de teste
+
+**Assinatura manual**:
+Um plano inteiro concedido por um sócio, fora do Stripe, com prazo. Segue a
+escada cumulativa: Entrada é o Betinho, Essencial é futebol mais Betinho,
+Completo é os três. É coisa diferente de um acesso avulso, que liga UM produto
+sem plano nem prazo. Toda concessão vira linha em `crm_assinatura_manual`, e é
+dessa tabela que sai a fila de cobrança.
+_Avoid_: Cortesia paga, plano de teste, assinatura interna
+
+**Fila de cobrança**:
+Quem tem assinatura manual vencendo nos próximos sete dias, ou já vencida, na
+ordem de quem vence primeiro. Existe porque assinatura manual não renova
+sozinha: sem a fila, o acesso some um dia e a conversa acontece tarde, com a
+pessoa já sem o produto. É a terceira seção do CRM, ao lado de Leads e
+Feedbacks, e responde uma terceira pergunta: "quem eu preciso cobrar".
+_Avoid_: Renovações, vencimentos, inadimplentes

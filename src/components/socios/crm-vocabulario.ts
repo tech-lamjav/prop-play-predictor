@@ -77,6 +77,24 @@ export type TipoNaLinhaDoTempo = (typeof TIPOS_NA_LINHA_DO_TEMPO)[number];
 export const ROTA_DOS_SOCIOS = '/socios';
 
 /**
+ * Os planos que se vende, e como cada um se chama na tela.
+ *
+ * Aqui estão só os TRÊS atuais, porque é o que se pode dar na mão hoje. Os
+ * apelidos legados do Stripe (`betinho`, `futebol`, `analytics`, `platform`)
+ * continuam em `crm-ficha.ts`, que é quem LÊ o que já está gravado: a leitura
+ * precisa entender o passado, e a escrita não pode criar mais dele.
+ */
+export const PLANOS_A_VENDER = ['entrada', 'essencial', 'completo'] as const;
+
+export type PlanoAVender = (typeof PLANOS_A_VENDER)[number];
+
+export const ROTULO_DO_PLANO: Record<PlanoAVender, string> = {
+  entrada: 'Entrada',
+  essencial: 'Essencial',
+  completo: 'Completo',
+};
+
+/**
  * A etapa de quem nunca foi tocado.
  *
  * Um lead novo NÃO tem linha na tabela de etapa. É de propósito: exigir uma
