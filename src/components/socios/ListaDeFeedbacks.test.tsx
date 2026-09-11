@@ -78,10 +78,7 @@ describe('ListaDeFeedbacks', () => {
     // Feedback sem a conversa em volta costuma ser mal interpretado, e o
     // caminho de volta precisa ser um clique.
     montar(pronto());
-    expect(screen.getByRole('link', { name: 'Maria Silva' })).toHaveAttribute(
-      'href',
-      '/socios/u1',
-    );
+    expect(screen.getByRole('link', { name: 'Maria Silva' })).toHaveAttribute('href', '/socios/u1');
   });
 
   it('feedback de gente que não está na base some, em vez de virar identificador cru', () => {

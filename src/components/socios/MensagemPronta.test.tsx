@@ -83,7 +83,6 @@ describe('MensagemPronta', () => {
     montar();
     expect(screen.queryByRole('button', { name: /voltar ao modelo/i })).not.toBeInTheDocument();
   });
-
 });
 
 describe('MensagemPronta · quando o modelo muda na tela', () => {

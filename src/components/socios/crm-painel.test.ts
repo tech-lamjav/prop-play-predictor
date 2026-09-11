@@ -109,7 +109,11 @@ describe('contarPorPosicao', () => {
 describe('metricasDeNegocio', () => {
   const base = [
     cadastro({ id: 'a', created_at: '2026-09-10T12:00:00Z' }),
-    cadastro({ id: 'b', created_at: '2026-07-01T12:00:00Z', futebol_subscription_status: 'premium' }),
+    cadastro({
+      id: 'b',
+      created_at: '2026-07-01T12:00:00Z',
+      futebol_subscription_status: 'premium',
+    }),
     cadastro({ id: 'c', created_at: '2026-07-01T12:00:00Z' }),
     cadastro({ id: 'd', created_at: '2026-07-01T12:00:00Z' }),
   ];
@@ -170,11 +174,7 @@ describe('precisamDeAtencao', () => {
   });
 
   it('conversa com toque recente não entra', () => {
-    const leads = monta(
-      [cadastro({ id: 'a' })],
-      { a: 'contatado' },
-      { a: '2026-09-10T12:00:00Z' },
-    );
+    const leads = monta([cadastro({ id: 'a' })], { a: 'contatado' }, { a: '2026-09-10T12:00:00Z' });
     expect(precisamDeAtencao(leads)).toEqual([]);
   });
 

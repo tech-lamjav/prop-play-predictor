@@ -2,6 +2,7 @@ import {
   POSICOES,
   POSICOES_CALCULADAS,
   ROTULO_DA_POSICAO,
+  TOM_DA_POSICAO,
   type Posicao,
 } from './crm-painel';
 
@@ -51,17 +52,23 @@ export function FaixaDoFunil({
                 ativa ? 'border-forest bg-forest/5' : 'border-transparent hover:bg-canvas'
               }`}
             >
-              <p className="font-display text-2xl font-black tabular-nums text-ink">{valor}</p>
-              <div className="mt-1 h-1.5 w-full rounded-full bg-line-2">
+              <p className="font-display text-3xl font-black tabular-nums text-ink">{valor}</p>
+              <div className="mt-1.5 h-2 w-full rounded-full bg-canvas">
                 <div
-                  className={`h-1.5 rounded-full ${calculada ? 'bg-ink-dim' : 'bg-forest'}`}
+                  // A mesma escala do ponto da tabela: um degrau tem a mesma cor
+                  // nos dois lugares, senão são dois vocabulários para uma coisa.
+                  className={`h-2 rounded-full ${TOM_DA_POSICAO[posicao]}`}
                   style={{ width: `${Math.round((valor / maior) * 100)}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-[12px] font-bold leading-tight text-ink">
+              <p className="mt-2 text-[12px] font-bold leading-tight text-ink">
                 {ROTULO_DA_POSICAO[posicao]}
               </p>
-              {calculada && <p className="text-[10px] text-ink-2">o banco responde</p>}
+              {calculada && (
+                <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim">
+                  o banco responde
+                </p>
+              )}
             </button>
           );
         })}

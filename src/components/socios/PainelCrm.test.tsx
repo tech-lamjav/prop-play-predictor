@@ -64,7 +64,10 @@ const degrau = (nome: RegExp) => within(funil()).getByRole('button', { name: nom
 
 describe('PainelCrm · os números do topo', () => {
   it('mostra cadastros do mês, conversão e abordados', () => {
-    montar({ etapas: { b: 'contatado' }, cadastros: [...base, cadastro({ id: 'c', futebol_subscription_status: 'premium' })] });
+    montar({
+      etapas: { b: 'contatado' },
+      cadastros: [...base, cadastro({ id: 'c', futebol_subscription_status: 'premium' })],
+    });
     const topo = screen.getByRole('region', { name: 'Números da operação' });
     expect(within(topo).getByLabelText('Cadastros em 30 dias')).toHaveTextContent(/^3$/);
     expect(within(topo).getByLabelText('Conversão')).toHaveTextContent(/^33%$/);
@@ -167,7 +170,10 @@ describe('PainelCrm · a lista', () => {
   });
 
   it('lista vazia de atenção é boa notícia, e a frase diz isso', async () => {
-    montar({ etapas: { a: 'interesse', b: 'interesse' }, toques: { a: '2026-09-11T12:00:00Z', b: '2026-09-11T12:00:00Z' } });
+    montar({
+      etapas: { a: 'interesse', b: 'interesse' },
+      toques: { a: '2026-09-11T12:00:00Z', b: '2026-09-11T12:00:00Z' },
+    });
     expect(screen.getByText(/ninguém esperando/i)).toBeInTheDocument();
   });
 });
@@ -190,10 +196,7 @@ describe('PainelCrm · a base', () => {
 
   it('cada nome leva à ficha daquela pessoa', () => {
     montar();
-    expect(screen.getByRole('link', { name: 'Maria Silva' })).toHaveAttribute(
-      'href',
-      '/socios/a',
-    );
+    expect(screen.getByRole('link', { name: 'Maria Silva' })).toHaveAttribute('href', '/socios/a');
   });
 
   it('base vazia é dita com palavra, sem números zerados em cima', () => {

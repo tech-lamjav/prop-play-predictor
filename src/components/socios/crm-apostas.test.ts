@@ -63,7 +63,9 @@ describe('crm_resumo_de_apostas', () => {
     // Função nova nasce executável por PUBLIC, e PUBLIC inclui o anon. O portão
     // interno barraria assim mesmo, mas um grant que sugere restrição sem ter é
     // pior que nenhum.
-    expect(MIGRATION).toMatch(/revoke execute on function public\.crm_resumo_de_apostas\(uuid\) from public/);
+    expect(MIGRATION).toMatch(
+      /revoke execute on function public\.crm_resumo_de_apostas\(uuid\) from public/,
+    );
   });
 
   it('não abre a tabela de apostas com política nenhuma', () => {

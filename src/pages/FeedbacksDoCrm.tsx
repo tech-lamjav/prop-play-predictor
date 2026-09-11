@@ -32,7 +32,7 @@ export default function FeedbacksDoCrm() {
       <Seo noindex title="CRM | Smart Betting" />
       <AnalyticsNav />
 
-      <div className="min-h-screen bg-canvas">
+      <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <CabecalhoDoCrm resumo={resumo} />
 
         <div className="mx-auto max-w-3xl px-4 py-6">

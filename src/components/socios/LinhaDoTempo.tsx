@@ -18,9 +18,7 @@ import {
  * "ainda não sei" precisa ser um estado próprio, e não um array vazio.
  */
 export type EstadoDaLinhaDoTempo =
-  | { tipo: 'carregando' }
-  | { tipo: 'erro' }
-  | { tipo: 'pronta'; itens: ItemDaLinhaDoTempo[] };
+  { tipo: 'carregando' } | { tipo: 'erro' } | { tipo: 'pronta'; itens: ItemDaLinhaDoTempo[] };
 
 function quando(carimbo: string): string {
   const d = brtDayOf(carimbo);
@@ -175,11 +173,7 @@ export function LinhaDoTempo({
         </label>
       </div>
 
-      <FormularioDeAnotacao
-        aoAnotar={aoAnotar}
-        anotando={anotando}
-        erroAoAnotar={erroAoAnotar}
-      />
+      <FormularioDeAnotacao aoAnotar={aoAnotar} anotando={anotando} erroAoAnotar={erroAoAnotar} />
 
       <div className="mt-5">
         {estado.tipo === 'erro' && (

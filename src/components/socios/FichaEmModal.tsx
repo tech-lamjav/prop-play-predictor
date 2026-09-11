@@ -27,7 +27,9 @@ export function FichaEmModal({
 }) {
   return (
     <Dialog open={aberta} onOpenChange={(aberto) => !aberto && aoFechar()}>
-      <DialogContent className="max-w-5xl gap-0 overflow-hidden bg-canvas p-0">
+      {/* O tema entra aqui também, e não só no painel: o modal sai por portal,
+          fora da árvore da página, então não herda a classe de lá. */}
+      <DialogContent className="theme-bolao max-w-5xl gap-0 overflow-hidden bg-canvas p-0 text-ink">
         {/* O título existe para o leitor de tela: o Radix avisa no console
             quando falta, e sem ele quem navega por teclado não sabe o que
             abriu. Some da vista sem sumir da árvore de acessibilidade. */}

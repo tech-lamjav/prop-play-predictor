@@ -38,7 +38,9 @@ describe('KanbanDeLeads', () => {
     // Coluna que some esconde onde está o gargalo.
     montar(leads(1));
     expect(screen.getAllByRole('region')).toHaveLength(8);
-    expect(within(screen.getByRole('region', { name: 'Boletada' })).getByText('vazia')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Boletada' })).getByText('vazia'),
+    ).toBeInTheDocument();
   });
 
   it('cada coluna diz quantos tem, mesmo os que não desenha', () => {
@@ -75,7 +77,11 @@ describe('KanbanDeLeads', () => {
 
   it('põe cada lead na coluna da sua posição', () => {
     montar(leads(2, { '1': 'boletada' }));
-    expect(within(screen.getByRole('region', { name: 'Boletada' })).getByText('Pessoa 1')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Novo' })).getByText('Pessoa 0')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Boletada' })).getByText('Pessoa 1'),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Novo' })).getByText('Pessoa 0'),
+    ).toBeInTheDocument();
   });
 });

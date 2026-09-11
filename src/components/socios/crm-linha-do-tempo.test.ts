@@ -91,7 +91,9 @@ describe('mensagemDoErro', () => {
   it('perder a marca de sócio não se resolve tentando de novo', () => {
     // O banco levanta duas exceções diferentes. Mandar "tente de novo" para
     // esta é conselho errado: dá para tentar a noite inteira que não grava.
-    expect(mensagemDoErro({ message: 'apenas socios' })).toMatch(/não está mais marcada como sócio/i);
+    expect(mensagemDoErro({ message: 'apenas socios' })).toMatch(
+      /não está mais marcada como sócio/i,
+    );
   });
 
   it('anotação vazia é dita com clareza', () => {

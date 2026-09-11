@@ -128,3 +128,23 @@ describe('número sem código do país', () => {
     expect(linkDoWhatsApp('5511998877665', 'oi')).not.toBeNull();
   });
 });
+
+describe('nenhuma mensagem usa travessão', () => {
+  it('em nenhum par de gancho e etapa', () => {
+    // Pedido do Victor. A razão é prática: a mensagem é escrita aqui e colada
+    // no WhatsApp, onde ninguém escreve com travessão. O sinal denuncia que o
+    // texto foi redigido em outro lugar, e o que a gente quer é que pareça
+    // mensagem de gente.
+    //
+    // O teste percorre TODOS os pares, e não só os que existem hoje: um modelo
+    // novo escrito daqui a três meses cai aqui sozinho.
+    for (const gancho of GANCHOS) {
+      for (const etapa of ETAPAS) {
+        for (const nome of ['Maria', null]) {
+          const texto = mensagemPara(gancho, etapa, nome);
+          expect(texto, `${gancho} + ${etapa}`).not.toMatch(/[\u2013\u2014]/);
+        }
+      }
+    }
+  });
+});

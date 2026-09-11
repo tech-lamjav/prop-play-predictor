@@ -57,7 +57,9 @@ describe('BlocoDeComportamento', () => {
     // É problema de ambiente, e a frase precisa mandar o sócio para o lugar
     // certo em vez de sugerir que a pessoa não usou o produto.
     montar({ tipo: 'erro', motivo: 'Error: sem_chave' });
-    expect(screen.getByText(/chave de consulta do PostHog não está configurada/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/chave de consulta do PostHog não está configurada/i),
+    ).toBeInTheDocument();
   });
 
   it('outra falha não vira "sem chave"', () => {

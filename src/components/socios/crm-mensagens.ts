@@ -33,7 +33,15 @@ function saudacao(primeiroNome: string | null): string {
   return primeiroNome ? `Oi, ${primeiroNome}!` : 'Oi!';
 }
 
-const NAO_INSISTIR = 'Não quero insistir à toa — se agora não for o momento, tudo bem.';
+/**
+ * Nenhum modelo usa travessão.
+ *
+ * A mensagem é escrita aqui e colada no WhatsApp, onde ninguém escreve com
+ * travessão. O sinal denuncia que o texto foi redigido em outro lugar, e o que
+ * a gente quer é que pareça mensagem de gente. Ponto final ou vírgula fazem o
+ * mesmo trabalho. Há um teste que percorre todos os pares e cobra isso.
+ */
+const NAO_INSISTIR = 'Não quero insistir à toa. Se agora não for o momento, tudo bem.';
 
 /**
  * O texto de cada par de etapa e gancho.
@@ -48,7 +56,7 @@ const POR_PAR: Partial<Record<Etapa, Partial<Record<TipoDeGancho, string>>>> = {
   novo: {
     betinho:
       '{saudacao} Aqui é da Smart Betting. Vi que você começou a registrar suas apostas com o ' +
-      'Betinho. Queria saber o que você achou até agora — e te mostrar o resumo semanal da ' +
+      'Betinho. Queria saber o que você achou até agora, e te mostrar o resumo semanal da ' +
       'banca, que é a parte que costuma surpreender quem usa.',
     futebol:
       '{saudacao} Aqui é da Smart Betting. Queria saber se as análises de futebol estão fazendo ' +
@@ -61,7 +69,7 @@ const POR_PAR: Partial<Record<Etapa, Partial<Record<TipoDeGancho, string>>>> = {
   boletada: {
     betinho:
       '{saudacao} Te mandei um bilhete esses dias. Queria saber se você chegou a registrar ele no ' +
-      'Betinho — é ali que dá pra acompanhar o resultado sem ter que anotar nada na mão.',
+      'Betinho. É ali que dá pra acompanhar o resultado sem ter que anotar nada na mão.',
     futebol:
       '{saudacao} Te mandei um bilhete esses dias, que saiu da leitura de futebol daquele dia. ' +
       'Queria saber o que você achou do raciocínio por trás dele.',
@@ -105,7 +113,7 @@ const POR_ETAPA: Record<Etapa, string> = {
     '{saudacao} Separei uma coisa que acho que vale pra você: posso te mandar a leitura de ' +
     'hoje pra você ver como a gente monta a análise por trás de uma oportunidade.',
   boletada:
-    '{saudacao} Te mandei um bilhete esses dias — queria saber se você chegou a acompanhar e ' +
+    '{saudacao} Te mandei um bilhete esses dias. Queria saber se você chegou a acompanhar e ' +
     'o que achou da leitura por trás dele.',
   interesse:
     '{saudacao} Retomando nossa conversa: ficou alguma dúvida sobre o que a gente falou? Se ' +

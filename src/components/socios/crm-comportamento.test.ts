@@ -47,13 +47,19 @@ describe('historiaTruncada', () => {
     // plano do PostHog descartou o que era mais antigo. "2 sessões" ali parece
     // abandono e é outra coisa.
     expect(
-      historiaTruncada(comportamento({ primeiroEvento: '2026-09-01T12:00:00Z' }), '2026-03-05T12:00:00Z'),
+      historiaTruncada(
+        comportamento({ primeiroEvento: '2026-09-01T12:00:00Z' }),
+        '2026-03-05T12:00:00Z',
+      ),
     ).toBe(true);
   });
 
   it('primeiro evento junto do cadastro é história inteira', () => {
     expect(
-      historiaTruncada(comportamento({ primeiroEvento: '2026-03-05T12:05:00Z' }), '2026-03-05T12:00:00Z'),
+      historiaTruncada(
+        comportamento({ primeiroEvento: '2026-03-05T12:05:00Z' }),
+        '2026-03-05T12:00:00Z',
+      ),
     ).toBe(false);
   });
 

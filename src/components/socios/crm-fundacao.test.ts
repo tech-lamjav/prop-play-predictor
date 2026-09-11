@@ -122,7 +122,11 @@ describe('as três tabelas do CRM', () => {
     // passado, e a linha do tempo deixava de ser linha do tempo — virava um campo com data.
     const politicas =
       MIGRATION.match(
-        regexDaTabela(String.raw`create policy [^;]*?on public\.§\b[^;]*;`, 'crm_etapa_evento', 'g'),
+        regexDaTabela(
+          String.raw`create policy [^;]*?on public\.§\b[^;]*;`,
+          'crm_etapa_evento',
+          'g',
+        ),
       ) ?? [];
     expect(politicas.length).toBeGreaterThan(0);
     for (const politica of politicas) {

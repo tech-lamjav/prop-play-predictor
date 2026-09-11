@@ -85,7 +85,10 @@ describe('ganchoDe', () => {
   it('uso de verdade vence o plano', () => {
     // O caso que originou o CRM: assinante do Essencial cujo olho brilhou no
     // Betinho. Pelo plano o gancho seria futebol, e a abordagem erraria o alvo.
-    const g = ganchoDe(pessoa({ subscription_product_type: 'essencial' }), { total: 12, ultima: null });
+    const g = ganchoDe(pessoa({ subscription_product_type: 'essencial' }), {
+      total: 12,
+      ultima: null,
+    });
     expect(g.tipo).toBe('betinho');
     expect(g.porque).toMatch(/12 apostas/);
   });
@@ -116,7 +119,9 @@ describe('ganchoDe', () => {
   it('sem uso nenhum, o plano decide', () => {
     const semUso = { total: 0, ultima: null };
     expect(ganchoDe(pessoa({ subscription_product_type: 'completo' }), semUso).tipo).toBe('nba');
-    expect(ganchoDe(pessoa({ subscription_product_type: 'essencial' }), semUso).tipo).toBe('futebol');
+    expect(ganchoDe(pessoa({ subscription_product_type: 'essencial' }), semUso).tipo).toBe(
+      'futebol',
+    );
     expect(ganchoDe(pessoa({ subscription_product_type: 'entrada' }), semUso).tipo).toBe('betinho');
   });
 
@@ -149,7 +154,10 @@ describe('ganchoDe', () => {
   it('todo gancho vem com o porquê preenchido', () => {
     const casos = [
       ganchoDe(pessoa(), { total: 3, ultima: null }),
-      ganchoDe(pessoa({ futebol_trial_started_at: '2026-09-05T12:00:00Z' }), { total: 0, ultima: null }),
+      ganchoDe(pessoa({ futebol_trial_started_at: '2026-09-05T12:00:00Z' }), {
+        total: 0,
+        ultima: null,
+      }),
       ganchoDe(pessoa({ subscription_product_type: 'completo' }), { total: 0, ultima: null }),
       ganchoDe(pessoa(), { total: 0, ultima: null }),
     ];

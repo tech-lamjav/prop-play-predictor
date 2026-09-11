@@ -180,7 +180,11 @@ export function PainelCrm({
   const truncada = estado.tipo === 'pronto' && estado.totalNaBase > estado.cadastros.length;
 
   return (
-    <div className="min-h-screen bg-canvas">
+    // `theme-bolao` liga os raios de 20px, a tipografia display e as variáveis
+    // de cor do rebrand. Sem essa classe na raiz, as outras existem e não fazem
+    // nada: cantos quadrados e tracking padrão. As 37 telas do site abrem assim,
+    // e era por isso que o painel parecia de outro produto.
+    <div className="theme-bolao min-h-screen bg-canvas text-ink">
       <CabecalhoDoCrm resumo={resumo} />
 
       <div className="mx-auto max-w-6xl px-4 py-6">

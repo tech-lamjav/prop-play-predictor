@@ -121,7 +121,6 @@ describe('ehAssinante', () => {
   });
 });
 
-
 describe('formatarDia', () => {
   it('vira o dia para a ordem que se lê no Brasil', () => {
     expect(formatarDia('2026-09-10')).toBe('10/09/2026');

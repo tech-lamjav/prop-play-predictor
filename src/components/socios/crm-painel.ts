@@ -41,7 +41,7 @@ export type Posicao = Etapa | (typeof CALCULADAS)[number];
  * uma etapa exigiria lembrar da segunda, e esquecer não quebraria nada — o
  * degrau simplesmente não apareceria no funil.
  *
- *  sai do meio e volta para o fim: as calculadas acontecem ANTES
+ * "Sem resposta" sai do meio e volta para o fim: as calculadas acontecem ANTES
  * de alguém desistir, e o funil desenha a ordem em que as coisas acontecem.
  */
 export const POSICOES: readonly Posicao[] = [
@@ -58,6 +58,30 @@ export const ROTULO_DA_POSICAO: Record<Posicao, string> = {
 
 /** As duas que o banco responde. A tela marca essas como calculadas. */
 export const POSICOES_CALCULADAS: readonly Posicao[] = CALCULADAS;
+
+/**
+ * A cor do ponto de cada posição, na tabela e no kanban.
+ *
+ * Uma escala de floresta que escurece conforme a conversa avança, e não oito
+ * cores diferentes: a identidade tem UM acento, o âmbar, e gastá-lo em oito
+ * etiquetas apagaria justamente os números do topo, que é onde ele precisa
+ * gritar. A escala diz "mais adiante" sem precisar de legenda.
+ *
+ * As exceções são as duas pontas, e são de propósito. "Assinante" é o único que
+ * ganha âmbar, porque é a linha de chegada e a tela inteira existe para levar
+ * gente até lá. "Sem resposta" fica cinza, fora da escala, porque não é um
+ * degrau mais fundo do funil: é sair dele.
+ */
+export const TOM_DA_POSICAO: Record<Posicao, string> = {
+  novo: 'bg-forest/20',
+  contatado: 'bg-forest/40',
+  nutrindo: 'bg-forest/55',
+  boletada: 'bg-forest/70',
+  interesse: 'bg-forest/85',
+  em_teste: 'bg-forest',
+  assinante: 'bg-amber-400',
+  sem_resposta: 'bg-ink-dim',
+};
 
 export interface Lead {
   id: string;
