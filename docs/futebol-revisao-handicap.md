@@ -17,7 +17,7 @@ arrumado antes de religar.
 **O produto publica pagando pior que a referência sharp, e a odd longa multiplica
 esse erro. Não há nada além disso.**
 
-A média de vantagem das 600 oportunidades de handicap publicadas é −2,74%, e só
+A média de vantagem das 604 oportunidades de handicap publicadas é −2,74%, e só
 49 delas têm vantagem positiva. Isso não é acidente de execução: é a consequência
 direta da revisão de 01/08/2026, que tirou o preço da nota **de propósito** e o
 rebaixou a filtro de sanidade. A porta de publicação passou a ser contexto puro.
@@ -28,14 +28,24 @@ O quanto isso custa depende de onde a linha cai, e é aí que o handicap entra:
 
 | Vantagem sobre a linha sharp | odd < 2,00 | odd ≥ 2,00 |
 |---|---:|---:|
-| acima de −2% | +18,1% (n=56) | +20,7% (n=28) |
-| abaixo de −2% | −3,0% (n=87) | −24,9% (n=173) |
+| acima de −2% | +16,3% (n=60) | +27,5% (n=33) |
+| abaixo de −2% | −6,3% (n=95) | −23,2% (n=186) |
 
-A tabela se lê pelas linhas. **Com preço bom, a faixa de odd não importa** — 18%
-contra 21% é a mesma coisa. **Com preço ruim, a faixa de odd decide tudo** — de
-−3% para −25%. A odd longa não causa prejuízo: ela multiplica o prejuízo de ter
-pago mal. O handicap é o pior mercado do board porque é o que vive nas odds
-longas, e não porque as premissas dele sejam piores que as dos outros.
+E a mesma tabela só com o que foi detectado **depois do tombamento** de 04/09
+14h35, que é a régua de hoje (ver a seção 1 sobre por que isso precisa ser
+separado):
+
+| Vantagem sobre a linha sharp | odd < 2,00 | odd ≥ 2,00 |
+|---|---:|---:|
+| acima de −2% | +23,8% (n=25) | +59,2% (n=9) |
+| abaixo de −2% | −7,3% (n=32) | −36,1% (n=60) |
+
+A tabela se lê pelas linhas. **Com preço bom, a odd longa não atrapalha** — ela
+até ajuda, porque ganhar pagando bem paga mais. **Com preço ruim, a faixa de odd
+decide tudo** — de −6% para −23% no board inteiro, e de −7% para −36% na metade
+recente. A odd longa não causa prejuízo: ela multiplica o prejuízo de ter pago
+mal. O handicap é o pior mercado do board porque é o que vive nas odds longas, e
+não porque as premissas dele sejam piores que as dos outros.
 
 ### O que NÃO é causa
 
@@ -91,11 +101,26 @@ sem ninguém notar.
 
 Duas populações diferentes, e a diferença entre elas é o ponto de partida.
 
-**O board** são as 600 oportunidades de handicap publicadas na escala
-`contexto_v1`, das quais 344 já têm placar. É o que `scripts/futebol-roi.mjs` já
-media. Serve para dizer quanto o produto rendeu, e não serve para avaliar
+**O board** são as 604 oportunidades de handicap publicadas na escala
+`contexto_v1`, das quais 374 já têm placar. Os dois números crescem a cada rodada
+do dbt — subiram de 600 e 344 no meio da escrita deste documento —, então qualquer
+total aqui é a foto de 10/09/2026 e o script vai devolver outro. É o que
+`scripts/futebol-roi.mjs` já media. Serve para dizer quanto o produto rendeu, e não serve para avaliar
 premissa: toda linha ali dentro já passou pela porta, então a amostra é o próprio
 filtro que se quer julgar.
+
+O board tem um problema de composição que precisa ser dito antes de qualquer
+número dele: **248 das 374 linhas liquidadas vêm de um único dia**. Em 03/09 o
+snapshot capturou o board inteiro de uma vez, e essa captura responde por dois
+terços da amostra. Além disso, em 04/09 às 14h35 UTC o denominador da nota trocou
+do p95 para o teto de pontos, e linha anterior a isso tem Score em outra escala.
+Por isso toda tabela de board neste documento sai duas vezes: o board inteiro, e
+só o que foi detectado depois do tombamento.
+
+A vantagem sobre a linha sharp **não** foi afetada pela troca de escala — ela é
+estável em todos os dias, entre −2,4% e −3,3%. É por isso que as duas metades
+respondem a mesma pergunta, e é por isso que o achado da seção 0 sobrevive: ele
+aparece nas duas, e mais forte na metade recente.
 
 **O universo** são as 5.208 linhas de handicap de meio gol que tiveram preço
 coletado a T−24h em pelo menos três casas, com jogo encerrado, entre 16/06 e
@@ -286,11 +311,17 @@ sanidade, com o argumento de que a regra antiga "vantagem maior que zero" era a
 única das quatro testadas que perdia dinheiro. No handicap, o dado de hoje diz o
 contrário do que essa decisão supõe:
 
-| Board publicado, por vantagem sobre a linha da Pinnacle | n | taxa | ROI | erro-padrão |
+| Board inteiro, por vantagem sobre a linha da Pinnacle | n | taxa | ROI | erro-padrão |
 |---|---:|---:|---:|---:|
-| vantagem acima de zero | 25 | 76,0% | +42,2% | ±17,6pp |
-| vantagem entre −2% e zero | 59 | 57,6% | +9,1% | ±13,0pp |
-| vantagem abaixo de −2% | 260 | 37,7% | −17,6% | ±7,0pp |
+| vantagem acima de zero | 30 | 70,0% | +32,0% | ±17,0pp |
+| vantagem entre −2% e zero | 63 | 58,7% | +14,7% | ±13,1pp |
+| vantagem abaixo de −2% | 281 | 37,7% | −17,5% | ±6,7pp |
+
+| Só depois do tombamento | n | taxa | ROI | erro-padrão |
+|---|---:|---:|---:|---:|
+| vantagem acima de zero | 15 | 73,3% | +34,5% | ±22,7pp |
+| vantagem entre −2% e zero | 19 | 63,2% | +32,1% | ±27,0pp |
+| vantagem abaixo de −2% | 92 | 34,8% | −26,1% | ±11,4pp |
 
 É a separação mais forte que este documento encontrou em qualquer recorte, e o
 número que a produz é o único que a nota decidiu não olhar.
@@ -300,9 +331,9 @@ preço como porta** e **usar o preço como corte de exclusão**. A regra antiga
 publicava tudo que tinha vantagem positiva, e vantagem positiva contra uma linha
 mal estimada é uma armadilha. O que a tabela acima mostra é o outro uso: vantagem
 muito negativa é motivo para **não** publicar. São 260 das 344 linhas liquidadas —
-três quartos do board de handicap está no pedaço que perde 17,6%.
+três quartos do board de handicap está no pedaço que perde 17,5%.
 
-E há um número que resume o mercado inteiro: das 600 oportunidades de handicap
+E há um número que resume o mercado inteiro: das 604 oportunidades de handicap
 publicadas, **49 têm vantagem positiva** e a média é de −2,74%. O produto publica,
 em média, linhas cotadas quase três por cento pior do que a referência sharp. Isso
 não é específico do handicap — os cinco mercados publicam com vantagem média
@@ -319,7 +350,7 @@ e nunca entrou em fila nenhuma.
 **`modelo_api_concorda` só existe no Resultado.** Acende em 285 das 390 linhas de
 `match_winner` e em zero linha dos outros quatro mercados, handicap incluído.
 
-**A porta de contexto não é a porta.** 61 das 600 oportunidades de handicap foram
+**A porta de contexto não é a porta.** 61 das 604 oportunidades de handicap foram
 publicadas com `pts_premissas` igual a zero, ou seja, sem nenhuma premissa acesa.
 A `PORTA_PREMISSAS = 2` que a metodologia descreve como porta de publicação vive
 em `src/utils/futebol-premissas.ts` e não governa o que o mart publica. Nos outros
@@ -391,6 +422,15 @@ estrutural ausente.
 10/09/2026 e inclui 842 linhas de `copa_mundo`, que é competição de seleção e não
 de clube. Nenhum recorte por campeonato deste documento tem tamanho para decidir
 sozinho.
+
+**O board tem uma semana útil de vida, e dois terços dela são um dia só.** Tudo
+que depende de `edge` — ou seja, a causa raiz da seção 0 e o de-para da seção 6 —
+mede 374 linhas, das quais 248 vieram da captura em massa de 03/09. Separado, o
+que veio depois do tombamento são 126 linhas, e o recorte de vantagem boa dentro
+delas tem 34. O achado aparece nas duas metades e é grande nas duas, mas 34 linhas
+com erro-padrão de ±17,9pp não fixam o tamanho do efeito — fixam o sinal dele.
+Nada disso vale para as conclusões de premissa, que vivem no universo de 5.208
+linhas e não dependem do board.
 
 **O universo usa T−24h para todas as linhas.** O produto escolhe a janela por
 linha, e as publicadas usaram janelas variadas. Contra o board a reconstrução

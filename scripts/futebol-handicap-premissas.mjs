@@ -51,6 +51,38 @@ import { liquidar, lucroDaAposta, ehAcerto } from './futebol-roi.mjs';
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PROJETO_PRD = 'lavclmlvvfzkblrstojd';
 
+/**
+ * O tombamento: em 04/09/2026 ~14h35 UTC o denominador da nota trocou do p95
+ * para o teto de pontos.
+ *
+ * Importa aqui por um motivo diferente do que importa em `futebol-roi.mjs`. Lá
+ * o problema é o Score, que antes disso está em outra escala. Aqui o problema é
+ * a COMPOSIÇÃO: em 03/09 o snapshot capturou o board inteiro de uma vez, e esse
+ * dia sozinho responde por 229 das 374 linhas liquidadas do handicap. Sem
+ * separar, 61% de qualquer conclusão sobre o board vem de uma única captura.
+ *
+ * A vantagem sobre a linha sharp NÃO foi afetada pela troca — ela é estável em
+ * todos os dias, entre −2,4% e −3,3% —, então as duas metades respondem a mesma
+ * pergunta e as duas saem no relatório.
+ */
+const TOMBAMENTO = '2026-09-04 14:35';
+
+/**
+ * Explode se o carimbo não vier na consulta, em vez de deixar passar.
+ *
+ * A primeira versão comparava `String(l.dbt_valid_from)` direto, e a consulta
+ * não trazia a coluna: `"undefined" >= "2026-09-04 14:35"` é VERDADEIRO em
+ * texto, porque 'u' vem depois de '2'. O relatório saiu dizendo que as 374
+ * linhas eram posteriores ao tombamento e que a captura em massa tinha zero,
+ * sem errar em lugar nenhum. Filtro de data que falha aberto mente calado.
+ */
+const depoisDoTombamento = (l) => {
+  if (l.dbt_valid_from == null) {
+    throw new Error('a consulta não trouxe `dbt_valid_from`: o corte do tombamento não tem como ser aplicado');
+  }
+  return String(l.dbt_valid_from).replace('T', ' ') >= TOMBAMENTO;
+};
+
 /** As nove colunas de premissa do mart. A nona não existe no catálogo da tela. */
 const PREMISSAS = [
   'supremacia', 'tende_golear', 'adversario_fragil_fora', 'mando_forte',
@@ -126,7 +158,8 @@ const SQL_BOARD = `
 with primeiro as (
   select distinct on (h.opportunity_key)
     h.fixture_id, h.outcome, h.line_value, h.best_odd, h.edge, h.score,
-    h.pts_premissas, h.competition, h.linha_sharp_confirma, h.modelo_api_concorda
+    h.pts_premissas, h.competition, h.linha_sharp_confirma, h.modelo_api_concorda,
+    h.dbt_valid_from
   from futebol.fact_value_opportunities_hist h
   where h.score_versao = 'contexto_v1' and h.market = 'asian_handicap'
   order by h.opportunity_key, h.dbt_valid_from asc
@@ -379,23 +412,40 @@ async function principal() {
     (l) => Number(l.melhor) >= 1.4 && Number(l.melhor) < 2.0 && l.outcome === 'Away',
   ));
 
-  cabecalho('Board publicado, pelo preço que a nota não olha');
-  linha('vantagem acima de zero', board.filter((l) => Number(l.edge) > 0));
-  linha('vantagem entre -2% e zero', board.filter((l) => Number(l.edge) <= 0 && Number(l.edge) > -0.02));
-  linha('vantagem abaixo de -2%', board.filter((l) => Number(l.edge) <= -0.02));
+  const pos = board.filter(depoisDoTombamento);
+  console.log(
+    `\n> Do board, ${board.length - pos.length} linhas vêm da captura em massa de ` +
+    `03/09 e ${pos.length} são posteriores ao tombamento de ${TOMBAMENTO}. As duas ` +
+    'metades saem separadas: sem isso, a maior parte da conclusão vem de um dia só.',
+  );
 
-  // A tabela que estabelece a ordem causal entre preço pago e odd longa. Lida
-  // pelas LINHAS: com vantagem boa, a faixa de odd não muda quase nada; com
-  // vantagem ruim, ela decide tudo. Logo a odd longa não causa o prejuízo, ela
-  // multiplica o prejuízo de ter pago mal — e cortar odd longa sem corrigir
-  // preço é tratar o sintoma.
-  cabecalho('Vantagem contra faixa de odd — qual das duas manda');
-  for (const [rot, ok] of [['vantagem acima de -2%', (l) => Number(l.edge) > -0.02],
-                           ['vantagem abaixo de -2%', (l) => Number(l.edge) <= -0.02]]) {
-    for (const [banda, dentro] of [['odd < 2,00', (l) => Number(l.best_odd) < 2],
-                                   ['odd >= 2,00', (l) => Number(l.best_odd) >= 2]]) {
-      linha(`${rot}, ${banda}`, board.filter((l) => ok(l) && dentro(l)));
+  for (const [nome, pop] of [['todo o board', board], ['só depois do tombamento', pos]]) {
+    cabecalho(`Board publicado, pelo preço que a nota não olha (${nome})`);
+    linha('vantagem acima de zero', pop.filter((l) => Number(l.edge) > 0));
+    linha('vantagem entre -2% e zero', pop.filter((l) => Number(l.edge) <= 0 && Number(l.edge) > -0.02));
+    linha('vantagem abaixo de -2%', pop.filter((l) => Number(l.edge) <= -0.02));
+
+    // A tabela que estabelece a ordem causal entre preço pago e odd longa. Lida
+    // pelas LINHAS: com vantagem boa, a faixa de odd não muda quase nada; com
+    // vantagem ruim, ela decide tudo. Logo a odd longa não causa o prejuízo, ela
+    // multiplica o prejuízo de ter pago mal — e cortar odd longa sem corrigir
+    // preço é tratar o sintoma.
+    cabecalho(`Vantagem contra faixa de odd — qual das duas manda (${nome})`);
+    for (const [rot, ok] of [['vantagem acima de -2%', (l) => Number(l.edge) > -0.02],
+                             ['vantagem abaixo de -2%', (l) => Number(l.edge) <= -0.02]]) {
+      for (const [banda, dentro] of [['odd < 2,00', (l) => Number(l.best_odd) < 2],
+                                     ['odd >= 2,00', (l) => Number(l.best_odd) >= 2]]) {
+        linha(`${rot}, ${banda}`, pop.filter((l) => ok(l) && dentro(l)));
+      }
     }
+
+    // O de-para que a decisão de produto usa: o board como está contra o board
+    // com o corte de valor. `n` cai para um quarto — isso é a proposta, não
+    // efeito colateral.
+    cabecalho(`De-para: o corte de valor na vitrine (${nome})`);
+    linha('AS-IS, board como está', pop);
+    linha('TO-BE, valor acima de -2%', pop.filter((l) => Number(l.edge) > -0.02));
+    linha('TO-BE, valor acima de zero', pop.filter((l) => Number(l.edge) > 0));
   }
   tabela('Board publicado, por faixa de odd', board, (l) => faixaDeOdd(l.best_odd));
   tabela('Board publicado, por campeonato', board, (l) => l.competition);
