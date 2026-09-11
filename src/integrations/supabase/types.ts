@@ -267,6 +267,146 @@ export type Database = {
           },
         ]
       }
+      crm_anotacao: {
+        Row: {
+          criada_em: string
+          criada_por: string | null
+          id: string
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          texto: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          criada_em?: string
+          criada_por?: string | null
+          id?: string
+          texto?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_anotacao_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_assinatura_manual: {
+        Row: {
+          criada_em: string
+          criada_por: string | null
+          encerrada_em: string | null
+          encerrada_por: string | null
+          id: string
+          plano: string
+          user_id: string
+          vence_em: string
+        }
+        Insert: {
+          criada_em?: string
+          criada_por?: string | null
+          encerrada_em?: string | null
+          encerrada_por?: string | null
+          id?: string
+          plano: string
+          user_id: string
+          vence_em: string
+        }
+        Update: {
+          criada_em?: string
+          criada_por?: string | null
+          encerrada_em?: string | null
+          encerrada_por?: string | null
+          id?: string
+          plano?: string
+          user_id?: string
+          vence_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_assinatura_manual_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_etapa: {
+        Row: {
+          atualizada_em: string
+          atualizada_por: string | null
+          etapa: string
+          user_id: string
+        }
+        Insert: {
+          atualizada_em?: string
+          atualizada_por?: string | null
+          etapa: string
+          user_id: string
+        }
+        Update: {
+          atualizada_em?: string
+          atualizada_por?: string | null
+          etapa?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_etapa_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_etapa_evento: {
+        Row: {
+          de: string | null
+          em: string
+          id: string
+          para: string
+          por: string | null
+          user_id: string
+        }
+        Insert: {
+          de?: string | null
+          em?: string
+          id?: string
+          para: string
+          por?: string | null
+          user_id: string
+        }
+        Update: {
+          de?: string | null
+          em?: string
+          id?: string
+          para?: string
+          por?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_etapa_evento_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_queue: {
         Row: {
           channel: string | null
@@ -511,6 +651,7 @@ export type Database = {
           futebol_trial_started_at: string | null
           has_report_access: boolean | null
           id: string
+          is_socio: boolean
           name: string | null
           referral_code: string | null
           referred_by: string | null
@@ -554,6 +695,7 @@ export type Database = {
           futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
+          is_socio?: boolean
           name?: string | null
           referral_code?: string | null
           referred_by?: string | null
@@ -597,6 +739,7 @@ export type Database = {
           futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
+          is_socio?: boolean
           name?: string | null
           referral_code?: string | null
           referred_by?: string | null
@@ -1035,6 +1178,38 @@ export type Database = {
       calculate_weekly_performance: {
         Args: { p_week_start_date?: string }
         Returns: undefined
+      }
+      crm_apostas_de_todos: {
+        Args: Record<string, never>
+        Returns: { user_id: string; total: number; ultima: string | null }[]
+      }
+      crm_definir_acesso: {
+        Args: { p_user_id: string; p_produto: string; p_ativo: boolean; p_ate: string | null }
+        Returns: undefined
+      }
+      crm_definir_teste_do_futebol: {
+        Args: { p_user_id: string; p_ligado: boolean }
+        Returns: string | null
+      }
+      crm_dar_assinatura_manual: {
+        Args: { p_user_id: string; p_plano: string; p_vence_em: string }
+        Returns: string
+      }
+      crm_encerrar_assinatura_manual: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      crm_anotar: {
+        Args: { p_user_id: string; p_tipo: string; p_texto: string }
+        Returns: string
+      }
+      crm_mudar_etapa: {
+        Args: { p_user_id: string; p_etapa: string }
+        Returns: string
+      }
+      crm_resumo_de_apostas: {
+        Args: { p_user_id: string }
+        Returns: { total: number; ultima: string | null }[]
       }
       create_referral: {
         Args: {

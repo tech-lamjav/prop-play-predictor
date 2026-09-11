@@ -54,6 +54,22 @@ export function addDays(dayKey: string, delta: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Dias inteiros entre duas chaves `YYYY-MM-DD`. Positivo quando `ate` é depois.
+ *
+ * Imune a fuso pelo mesmo truque de `addDays`: meio-dia UTC está longe das duas
+ * bordas do dia, então o horário de verão de qualquer lado não muda a conta.
+ *
+ * Vive aqui porque o CRM tinha DUAS cópias dela, uma em `crm-painel.ts` para
+ * contar há quantos dias um lead está parado e outra em `crm-cobranca.ts` para
+ * contar quanto falta até uma assinatura vencer. As duas já divergiam no
+ * comentário, que é sempre o primeiro sinal.
+ */
+export function diasEntre(de: string, ate: string): number {
+  const ms = Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`);
+  return Math.round(ms / 86_400_000);
+}
+
 /** `HH:MM` em BRT. */
 export function fmtTime(raw: string | null | undefined): string {
   const d = parseUtc(raw);
@@ -116,7 +132,11 @@ export function fmtDayChip(dayKey: string): { weekday: string; day: string } {
   const weekday = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short' })
     .format(d)
     .replace('.', '');
-  const day = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit' }).format(d);
+  const day = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: SAO_PAULO_TZ,
+    day: '2-digit',
+    month: '2-digit',
+  }).format(d);
   return { weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1), day };
 }
 
@@ -131,7 +151,15 @@ export function isFinished(status: string | null | undefined): boolean {
  * LIVE genérico.
  */
 export function isLive(status: string | null | undefined): boolean {
-  return status === '1H' || status === '2H' || status === 'HT' || status === 'ET' || status === 'BT' || status === 'P' || status === 'LIVE';
+  return (
+    status === '1H' ||
+    status === '2H' ||
+    status === 'HT' ||
+    status === 'ET' ||
+    status === 'BT' ||
+    status === 'P' ||
+    status === 'LIVE'
+  );
 }
 
 /**

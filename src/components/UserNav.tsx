@@ -1,22 +1,15 @@
 import { useAuth } from '../hooks/use-auth';
 import { Button } from './ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import {
-  LogOut,
-  ChevronRight,
-  Zap,
-} from 'lucide-react';
+import { LogOut, ChevronRight, Zap } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReferral } from './ReferralProvider';
 import { itensDaConta, type ItemDaConta } from '@/config/menu-da-conta';
 import { abrirDestino } from '@/lib/abrir-destino';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { getInitials } from '@/lib/user-display';
+import { useSocio } from '@/hooks/use-socio';
 
 /**
  * Menu de conta do desktop — pill "Perfil" na faixa 1 do header + dropdown.
@@ -41,6 +34,9 @@ export default function UserNav({ className }: UserNavProps) {
   const showMobileAvatar = !location.pathname.startsWith('/perfil');
   const { openReferral } = useReferral();
   const { profile, subscription } = useSettingsData();
+  // Enquanto a resposta não chega, `ehSocio` é falso e o item não aparece: um
+  // item piscando no menu é pior que ele demorar meio segundo a surgir.
+  const { ehSocio } = useSocio();
 
   const handleSignOut = async () => {
     await signOut();
@@ -61,10 +57,15 @@ export default function UserNav({ className }: UserNavProps) {
         ? subscription.analytics
         : null;
   const renovaEm = activeSub?.periodEnd
-    ? new Date(activeSub.periodEnd).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    ? new Date(activeSub.periodEnd).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+      })
     : null;
 
-  const items = itensDaConta(openReferral);
+  const items = itensDaConta(openReferral, ehSocio);
+  const daConta = items.filter((i) => !i.interno);
+  const internos = items.filter((i) => i.interno);
 
   const go = (item: ItemDaConta) => {
     if (item.onClick) return item.onClick();
@@ -89,79 +90,105 @@ export default function UserNav({ className }: UserNavProps) {
 
       <div className={`hidden md:flex items-center ${className ?? ''}`}>
         <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          {/* `data-[state=open]` = estado "aberto" do desenho: borda mais firme
+          <DropdownMenuTrigger asChild>
+            {/* `data-[state=open]` = estado "aberto" do desenho: borda mais firme
               e rótulo cheio, pra amarrar o pill ao painel. */}
-          <Button
-            variant="ghost"
-            className="h-9 pl-2.5 pr-1.5 gap-[7px] rounded-full border border-white/15 bg-transparent hover:bg-white/10 data-[state=open]:bg-white/10 data-[state=open]:border-white/45 transition-colors"
-            aria-label="Menu da conta"
-          >
-            <span className="text-[12px] font-medium text-white/85">Perfil</span>
-            <Avatar className="h-[26px] w-[26px]">
-              <AvatarFallback className="bg-sand text-forest text-[11px] font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent
-          align="end"
-          sideOffset={8}
-          className="w-[296px] p-0 overflow-hidden rounded-[14px] bg-white border-sand-line shadow-[0_10px_30px_-10px_rgba(10,61,46,0.22)]"
-        >
-          {/* Identidade — areia, pra separar quem você é das ações */}
-          <div className="flex items-center gap-3 p-4 bg-sand-50 border-b border-sand-line">
-            <span className="w-10 h-10 rounded-full bg-forest text-white text-sm font-bold grid place-items-center shrink-0">
-              {initials}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="text-[13.5px] font-semibold tracking-[-0.01em] text-ink truncate">
-                {name || 'Usuário'}
-              </div>
-              <div className="text-[11.5px] text-sand-ink-2 truncate">{user?.email}</div>
-            </div>
-          </div>
-
-          {activeSub && (
-            <div className="flex items-center justify-between gap-2.5 px-4 py-3 border-b border-sand-divider">
-              <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-md bg-forest text-white text-[10px] font-bold tracking-[0.1em]">
-                <Zap className="w-[11px] h-[11px] fill-amber-400" strokeWidth={0} />
-                PREMIUM
-              </span>
-              {renovaEm && <span className="text-[11px] text-sand-ink-2">renova {renovaEm}</span>}
-            </div>
-          )}
-
-          <div className="p-1.5 flex flex-col">
-            {items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => go(item)}
-                  className="h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-ink-strong hover:bg-sand-100 hover:text-forest transition-colors"
-                >
-                  <Icon className="w-4 h-4 text-forest shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-sand-chevron shrink-0" />
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="p-1.5 border-t border-sand-divider">
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="w-full h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-danger hover:bg-sand-danger-bg transition-colors"
+            <Button
+              variant="ghost"
+              className="h-9 pl-2.5 pr-1.5 gap-[7px] rounded-full border border-white/15 bg-transparent hover:bg-white/10 data-[state=open]:bg-white/10 data-[state=open]:border-white/45 transition-colors"
+              aria-label="Menu da conta"
             >
-              <LogOut className="w-4 h-4 shrink-0" />
-              Sair da conta
-            </button>
-          </div>
+              <span className="text-[12px] font-medium text-white/85">Perfil</span>
+              <Avatar className="h-[26px] w-[26px]">
+                <AvatarFallback className="bg-sand text-forest text-[11px] font-bold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="end"
+            sideOffset={8}
+            className="w-[296px] p-0 overflow-hidden rounded-[14px] bg-white border-sand-line shadow-[0_10px_30px_-10px_rgba(10,61,46,0.22)]"
+          >
+            {/* Identidade — areia, pra separar quem você é das ações */}
+            <div className="flex items-center gap-3 p-4 bg-sand-50 border-b border-sand-line">
+              <span className="w-10 h-10 rounded-full bg-forest text-white text-sm font-bold grid place-items-center shrink-0">
+                {initials}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13.5px] font-semibold tracking-[-0.01em] text-ink truncate">
+                  {name || 'Usuário'}
+                </div>
+                <div className="text-[11.5px] text-sand-ink-2 truncate">{user?.email}</div>
+              </div>
+            </div>
+
+            {activeSub && (
+              <div className="flex items-center justify-between gap-2.5 px-4 py-3 border-b border-sand-divider">
+                <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-md bg-forest text-white text-[10px] font-bold tracking-[0.1em]">
+                  <Zap className="w-[11px] h-[11px] fill-amber-400" strokeWidth={0} />
+                  PREMIUM
+                </span>
+                {renovaEm && <span className="text-[11px] text-sand-ink-2">renova {renovaEm}</span>}
+              </div>
+            )}
+
+            <div className="p-1.5 flex flex-col">
+              {daConta.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => go(item)}
+                    className="h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-ink-strong hover:bg-sand-100 hover:text-forest transition-colors"
+                  >
+                    <Icon className="w-4 h-4 text-forest shrink-0" />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-sand-chevron shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Os internos em grupo próprio, com a etiqueta. Misturados na lista
+              de cima pareceriam mais uma tela do produto, e o CRM não é: é a
+              ferramenta de quem toca a operação. */}
+            {internos.length > 0 && (
+              <div className="p-1.5 flex flex-col border-t border-sand-divider">
+                <span className="px-2.5 pt-1 pb-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-sand-ink-2">
+                  Uso interno
+                </span>
+                {internos.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => go(item)}
+                      className="h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-ink-strong hover:bg-sand-100 hover:text-forest transition-colors"
+                    >
+                      <Icon className="w-4 h-4 text-forest shrink-0" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-sand-chevron shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="p-1.5 border-t border-sand-divider">
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="w-full h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-danger hover:bg-sand-danger-bg transition-colors"
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                Sair da conta
+              </button>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

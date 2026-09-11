@@ -84,6 +84,12 @@ describe('shape file de futebol (docs/futebol-prod-deploy.sql)', () => {
       for (const nome of funcoesCriadas(sql)) {
         // Só as de futebol: este shape file não cobre NBA, bolão nem auth.
         if (!/futebol/i.test(nome)) continue;
+        // ⚠️ O filtro é por NOME, e o CRM tem função com "futebol" no nome sem
+        // ser do módulo de futebol: `crm_definir_teste_do_futebol` mexe no
+        // carimbo do teste gratuito pela ficha do lead. Ela sobe pelas
+        // migrations do CRM, e trazê-la para cá faria a provisão de futebol
+        // instalar meia tabela do CRM junto.
+        if (nome.startsWith('crm_')) continue;
         if (!doBanco.has(nome)) doBanco.set(nome, arq);
       }
     }
@@ -97,7 +103,7 @@ describe('shape file de futebol (docs/futebol-prod-deploy.sql)', () => {
     expect(
       faltando,
       `Estas funções existem em migration e NÃO estão no shape file:\n  ${faltando.join('\n  ')}\n` +
-        `Traga-as para docs/futebol-prod-deploy.sql (com grant) no mesmo PR da migration.`
+        `Traga-as para docs/futebol-prod-deploy.sql (com grant) no mesmo PR da migration.`,
     ).toEqual([]);
   });
 });
