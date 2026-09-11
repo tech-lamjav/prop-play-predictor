@@ -62,5 +62,6 @@ jobs:
           supabase functions deploy ingest-fixtures --no-verify-jwt
           supabase functions deploy notify-weekly-summary --no-verify-jwt
           supabase functions deploy ops-healthcheck --no-verify-jwt
+          supabase functions deploy crm-comportamento
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
