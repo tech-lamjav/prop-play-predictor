@@ -323,3 +323,19 @@ describe('PainelCrm · tabela e kanban', () => {
     expect(screen.getAllByText(/o banco responde/i).length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('PainelCrm · o recorte se explica na tela', () => {
+  it('diz o que "precisa de atenção" quer dizer, sem depender de passar o mouse', () => {
+    // A explicação existia só no `title`, que ninguém vê. A pergunta "qual a
+    // diferença entre os dois?" veio de quem estava olhando os dois botões.
+    montar();
+    expect(screen.getByText(/quem está esperando você/i)).toBeInTheDocument();
+  });
+
+  it('e troca junto com o recorte', async () => {
+    montar();
+    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
+    expect(screen.getByText(/incluindo casos fechados/i)).toBeInTheDocument();
+    expect(screen.queryByText(/quem está esperando você/i)).not.toBeInTheDocument();
+  });
+});

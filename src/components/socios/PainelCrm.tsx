@@ -45,9 +45,15 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
   {
     id: 'atencao',
     rotulo: 'Precisa de atenção',
-    explicacao: 'conversas esfriando primeiro, depois quem nunca foi abordado',
+    explicacao:
+      'quem está esperando você: conversas sem toque há 7 dias ou mais, e quem nunca foi abordado',
   },
-  { id: 'todos', rotulo: 'Todos', explicacao: 'a base inteira, do mais parado ao mais recente' },
+  {
+    id: 'todos',
+    rotulo: 'Todos',
+    explicacao:
+      'a base inteira, incluindo casos fechados e conversas que já tiveram toque esta semana',
+  },
 ];
 
 /**
@@ -232,7 +238,7 @@ export function PainelCrm({
             </div>
 
             <div className="mt-5 rounded-rebrand-md border border-line-2 bg-white">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-2 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-2 px-4 pb-1 pt-3">
                 <div
                   role="radiogroup"
                   aria-label="Recorte da lista"
@@ -293,6 +299,14 @@ export function PainelCrm({
                   )}
                 </div>
               </div>
+
+              {/* A explicação do recorte na TELA, e não só como dica de mouse.
+                  Ela existia só no `title`, que é invisível na prática — e a
+                  pergunta "qual a diferença entre os dois?" veio de quem tinha
+                  os dois botões à vista. */}
+              <p className="border-b border-line-2 px-4 pb-3 text-[12px] text-ink-2">
+                {RECORTES.find((r) => r.id === recorte)?.explicacao}
+              </p>
 
               {lista === null ? (
                 <p className="px-4 py-6 text-[14px] text-ink-2">
