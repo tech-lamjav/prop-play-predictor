@@ -417,6 +417,67 @@ Se o preço já sabe disso, não há produto. E aqui há um motivo real para esp
 que gol não tem: escanteio é cotado por **quatro casas**, contra dezenas em gols.
 Mercado fino erra mais. Mas isso é hipótese até a fase 5, não argumento.
 
+### Escanteio não é um mercado, são cinco
+
+Isto muda a conclusão, e é o motivo de a seção 6 não ser uma lista só. Os cinco
+tipos de aposta que a coleta vai trazer pedem insumos diferentes, e eles não
+valem a mesma coisa:
+
+| id | Mercado | Insumo que ele pede | Persistência do insumo |
+|---:|---|---|---:|
+| 56 | Handicap de escanteios | **saldo** de escanteios do time | **0,619** |
+| 45 | Total do jogo | escanteios a favor e sofridos | 0,589 / 0,546 |
+| 57 | Escanteios do mandante | escanteios a favor, só em casa | 0,588 |
+| 58 | Escanteios do visitante | escanteios a favor, só fora | **0,435** |
+| 77 | Total do primeiro tempo | escanteio por tempo | **não existe** |
+
+Duas coisas saltam.
+
+**O saldo persiste mais que as pontas que o formam.** 0,619 contra 0,589 e
+0,546. Faz sentido: quem domina jogo força escanteio e concede pouco, e as duas
+metades erram na mesma direção quando o time enfrenta um adversário forte. Na
+prática, a supremacia de escanteio é o traço mais estável que este mercado tem.
+
+**O primeiro tempo não tem insumo nenhum.** A base inteira tem uma única coluna
+de escanteio, `fact_fixture_stats.corner_kicks`, e ela é do jogo completo. Não
+há como escrever premissa para o id 77 — ele pode ser coletado, mas não
+modelado, e não deveria ir para a vitrine.
+
+### A separação, mercado a mercado
+
+Quintis da previsão point-in-time, sempre ao lado da régua equivalente em gols.
+
+**Handicap de escanteio** — mandante cobrindo o −0,5:
+
+| Quintil | Supremacia prevista | Saldo real | Mandante cobre |
+|---|---:|---:|---:|
+| 1 | −1,84 | −0,43 | 41,6% |
+| 2 | −0,75 | +0,40 | 47,5% |
+| 3 | −0,05 | +1,28 | 57,1% |
+| 4 | +0,63 | +1,67 | 61,2% |
+| 5 | +1,77 | +2,84 | 70,8% |
+
+A régua, no handicap de gols que já existe: 28,2% no primeiro quintil e 62,6% no
+quinto.
+
+| Mercado | Separação entre o 1º e o 5º quintil | Régua em gols |
+|---|---:|---:|
+| **Handicap de escanteio** | **29,2pp** | 34,4pp |
+| Total de escanteios | 10,3pp | 19,4pp |
+
+**O handicap de escanteio chega a 84% da separação do handicap de gols. O total
+de escanteios chega a 53% da do total de gols.** Dentro da família de escanteio,
+o handicap separa quase três vezes mais que o total.
+
+Isso inverte a ordem óbvia. A intuição manda começar pelo total, que é o mercado
+mais conhecido e o que tem mais casa cotando. O dado manda começar pelo
+handicap.
+
+Uma ressalva honesta: o handicap de gols é justamente o mercado que a gente
+desligou. Mas a causa do desligamento foi diagnosticada e é preço, não premissa
+— o board publicava com vantagem média de −2,74%. A capacidade de ordenar jogo
+nunca foi o problema dele.
+
 ### Quando o Teste 2 fica possível
 
 No ritmo atual — 61 jogos encerrados por semana nas 13 competições — a régua de
@@ -429,44 +490,103 @@ de novembro.
 
 ---
 
-## 6. O catálogo exaustivo proposto para escanteios
+## 6. A recomendação, e o catálogo inicial
 
-Primeira lista, para a fase 2. Todas point-in-time, todas em cima de
-`fact_fixture_stats`, que tem escanteios, finalizações, posse e gols esperados no
-mesmo grão.
+### A ordem
 
-O limiar aqui é **declaradamente provisório** — é o que a fase 3 e a fase 5
-existem para corrigir. O que não é provisório é a família: são todas estruturais,
-seguindo R2.
-
-**Lado Mais escanteios**
-
-| Premissa | Regra provisória | Por que este limiar |
+| Ordem | Mercado | Por quê |
 |---|---|---|
-| Os dois forçam escanteio | soma das médias de escanteios a favor ≥ linha + 0,5 | espelha `ataque_combinado` do Gols, que é a premissa mais bem medida da família |
-| Os dois cedem escanteio | soma das médias de escanteios sofridos ≥ linha + 0,5 | margem 0,5 e não zero, por causa do encolhimento medido na seção 5 |
-| Jogo de muita finalização | soma das médias de finalizações dos dois ≥ mediana da liga | finalização persiste 0,756, mais que escanteio; é o melhor insumo disponível |
-| Time que ataca pelo lado | percentual de escanteios sobre finalizações acima do p75 da liga | proxy de estilo; chute, a medir |
-| Assimetria de posse | diferença de posse média ≥ 15 pontos | time encurralado cede escanteio; chute, a medir |
+| 1º | **Handicap de escanteios** (56) | melhor insumo (0,619) e melhor separação (29,2pp) da família |
+| 2º | **Total do jogo** (45) | separação fraca, mas é o mercado que o assinante reconhece |
+| 3º | **Escanteios do mandante** (57) | 0,588, e reaproveita o catálogo do total |
+| — | **Escanteios do visitante** (58) | 0,435 raspa o piso da fase 1; entra só se o 57 medir bem |
+| — | **Primeiro tempo** (77) | sem insumo na base; coletar sim, publicar não |
 
-**Lado Menos escanteios**
+### Os limiares medidos
 
-| Premissa | Regra provisória | Por que este limiar |
-|---|---|---|
-| Os dois forçam pouco escanteio | soma das médias a favor ≤ linha − 0,5 | espelho |
-| Os dois cedem pouco escanteio | soma das médias sofridas ≤ linha − 0,5 | espelho |
-| Jogo de pouca finalização | soma das médias de finalizações ≤ mediana da liga | espelho |
-| Equilíbrio de posse | diferença de posse média ≤ 5 pontos | jogo equilibrado tende a menos pressão prolongada; chute |
+Tudo abaixo sai da base, não do olho. Times com 15 jogos ou mais no lado.
 
-**Deliberadamente fora, por R2:** qualquer premissa de "últimos cinco jogos acima
-da linha". O achado transversal diz que ela não ajuda em nenhum mercado, e não há
-motivo para escanteio ser exceção. Se alguém quiser incluir, que inclua como
-controle — para confirmar o achado, não para publicar.
+| Grandeza | Mandante | Visitante |
+|---|---:|---:|
+| escanteios a favor, mediana | 5,33 | 4,15 |
+| escanteios sofridos, p75 | 4,90 | 5,94 |
+| saldo de escanteios, p25 | −0,13 | −2,11 |
+| saldo de escanteios, p75 | +2,06 | −0,41 |
 
-**Uma premissa que só escanteio permite:** vantagem de mando. Em escanteio a
-diferença entre casa e fora é proporcionalmente maior que em gols (5,31 contra
-4,23, uma diferença de 25%). Vale testar uma premissa de mando no lado Mais que
-não tem equivalente útil em Gols.
+Por jogo, sobre 8.125 partidas: finalizações somadas com mediana 25 e p75 29;
+diferença de posse com mediana 16 pontos e p75 28.
+
+### Catálogo do handicap de escanteios (56)
+
+**Lado favorito** — o que dá o handicap.
+
+| Premissa | Regra | Grupo | Por que este limiar |
+|---|---|---|---|
+| Domina o jogo pelo lado | saldo médio de escanteios ≥ +2,0 | decide | p75 do mandante (+2,06); é o quartil superior de supremacia |
+| Encurrala o adversário | diferença de posse média ≥ 28 pontos | decide | p75 medido da diferença por jogo; a mediana (16) pegaria metade dos jogos |
+| Chuta muito mais | diferença de finalizações médias ≥ 6 | decide | metade do p75 de finalizações somadas, aplicada à diferença; a medir |
+| Adversário cede escanteio fora | escanteios sofridos do visitante ≥ 5,9 | decide | p75 medido de sofridos fora |
+| Joga melhor pelo lado em casa | saldo em casa especificamente ≥ +2,0 | decide | mesmo corte, mas com o histórico recortado pelo mando — o mando persiste 0,588 em casa |
+
+**Lado azarão** — o que recebe o handicap.
+
+| Premissa | Regra | Grupo | Por que este limiar |
+|---|---|---|---|
+| Segura o jogo fora | saldo médio fora ≥ −0,4 | decide | p75 medido do saldo fora; é o visitante do quartil superior |
+| Não se encolhe fora | posse média fora ≥ 45% | decide | chute, a medir; é o ponto em que o time deixa de ser o encurralado |
+| O favorito não domina pelo lado | saldo médio do adversário ≤ +1,0 | decide | metade do p75; premissa de negação, espelha `favorito_irregular` do handicap de gols |
+
+O lado azarão nasce com três premissas e a porta de contexto pede duas. Isso é
+proposital, e é a correção do defeito conhecido do handicap de gols, onde o
+azarão tem exatamente duas premissas de peso e por aritmética só publica quando
+as duas acendem.
+
+### Catálogo do total de escanteios (45)
+
+**Lado Mais**
+
+| Premissa | Regra | Grupo | Por que este limiar |
+|---|---|---|---|
+| Os dois forçam escanteio | soma das médias a favor ≥ linha + 0,5 | decide | espelha `ataque_combinado` do Gols; margem 0,5 e não zero por causa do encolhimento da seção 5 |
+| Os dois cedem escanteio | soma das médias sofridas ≥ linha + 0,5 | decide | mesma margem, pelo mesmo motivo |
+| Jogo de muita finalização | soma das médias de finalizações ≥ 29 | decide | p75 medido; finalização persiste 0,756, bem mais que escanteio |
+| Assimetria de posse | diferença de posse média ≥ 28 pontos | decide | p75 medido; time encurralado cede escanteio |
+| Mandante que pressiona | escanteios a favor do mandante em casa ≥ 5,3 | decide | mediana medida do mandante; a vantagem de mando em escanteio é 25%, maior que em gols |
+
+**Lado Menos**
+
+| Premissa | Regra | Grupo | Por que este limiar |
+|---|---|---|---|
+| Os dois forçam pouco escanteio | soma das médias a favor ≤ linha − 0,5 | decide | espelho |
+| Os dois cedem pouco escanteio | soma das médias sofridas ≤ linha − 0,5 | decide | espelho |
+| Jogo de pouca finalização | soma das médias de finalizações ≤ 25 | decide | mediana medida |
+| Equilíbrio de posse | diferença de posse média ≤ 5 pontos | decide | chute, a medir; jogo equilibrado tende a menos pressão prolongada |
+
+### Catálogo dos escanteios de um time (57 e 58)
+
+As mesmas quatro, com o histórico recortado pelo mando do time apostado:
+ataque próprio contra a linha, defesa do adversário contra a linha, finalizações
+do time, e posse do time. O corte usa a mediana do lado — 5,33 em casa, 4,15
+fora — em vez da soma dos dois.
+
+Vale registrar que o 58 entra com expectativa pior que todo o resto: a
+persistência do visitante é 0,435, e 0,4 é o piso.
+
+### O que fica deliberadamente fora
+
+**Histórico recente, por R2.** Nada de "três dos últimos cinco acima da linha".
+O achado transversal diz que não ajuda em nenhum mercado, e não há motivo para
+escanteio ser exceção. Se alguém quiser, que entre como controle — para
+confirmar o achado, não para publicar.
+
+**Escanteios por finalização, medido e cortado na fase 3.** A ideia era capturar
+estilo: time que ataca pelo lado converte mais finalização em escanteio. O dado
+diz que a razão quase não varia — p10 0,339, mediana 0,379, p90 0,431, desvio
+0,036. É praticamente uma constante do futebol, não um traço de time. Custaria
+uma linha de dbt para acender quase igual em todo mundo.
+
+Este é o primeiro uso prático da fase 3: a premissa morreu antes de custar
+código, e o motivo ficou escrito.
 
 ---
 
@@ -481,9 +601,13 @@ que escanteio é metade do mercado de gols vale para "prever a linha", e pode se
 inverter em "bater o preço" — mercado com quatro casas é outro bicho. Só a fase 5
 responde.
 
-**Não decide se escanteio entra.** Ele passa a porta da fase 1 na faixa baixa. A
-decisão de investir nele contra outra frente é de produto, e a única coisa que
-este documento acrescenta é que a expectativa deve ser calibrada para baixo.
+**Não decide se escanteio entra.** A decisão de investir nele contra outra
+frente é de produto. O que este documento acrescenta é a ordem: se entrar, entra
+pelo handicap, e o total vem depois com expectativa calibrada para baixo.
+
+**Não confere os limiares contra o preço.** Os cortes da seção 6 saem da
+distribuição da nossa base — p75, mediana, quartil. Isso decide quantas vezes a
+premissa acende, não se ela vale. O que ela vale é a fase 5.
 
 **Não reabre a task [B].** A limpeza do catálogo dos cinco mercados continua
 bloqueada pelos cinco termos declarados nela. Este documento não altera nenhum.

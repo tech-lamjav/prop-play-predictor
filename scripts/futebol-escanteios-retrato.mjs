@@ -53,7 +53,9 @@ async function q(sql) {
 /** O par do jogo: cada linha vira (feitos, sofridos) para um time. */
 const PARES_ESCANTEIO = `
   select a.fixture_id, a.date_utc, a.team_id, a.team_side lado,
-         a.corner_kicks feitos, b.corner_kicks sofridos
+         a.corner_kicks feitos, b.corner_kicks sofridos,
+         a.corner_kicks - b.corner_kicks saldo,
+         a.total_shots chutes, a.ball_possession posse
   from futebol.fact_fixture_stats a
   join futebol.fact_fixture_stats b
     on b.fixture_id = a.fixture_id and b.team_id <> a.team_id
@@ -149,6 +151,134 @@ async function separacao() {
   console.log(`\nSeparação entre o 1º e o 5º quintil: escanteio ${spread(esc).toFixed(1)}pp · gol ${spread(gol).toFixed(1)}pp`);
 }
 
+/**
+ * Escanteio não é um mercado, são cinco. Cada um pede um insumo diferente, e o
+ * saldo — que é o do handicap — persiste MAIS que as duas pontas que o formam.
+ */
+async function porMercado() {
+  const [saldo] = await q(`
+    with pares as (${PARES_ESCANTEIO}), ord as (
+      select *, row_number() over (partition by team_id order by date_utc) rn,
+             count(*) over (partition by team_id) tot from pares
+    ), met as (
+      select team_id, avg(case when rn <= tot/2 then saldo end) a1,
+             avg(case when rn > tot/2 then saldo end) a2, max(tot) tot
+      from ord group by 1)
+    select round(corr(a1,a2)::numeric,3) persistencia from met where tot >= 30`);
+
+  const mando = await q(`
+    with pares as (${PARES_ESCANTEIO}), ord as (
+      select *, row_number() over (partition by team_id, lado order by date_utc) rn,
+             count(*) over (partition by team_id, lado) tot from pares
+    ), met as (
+      select team_id, lado, avg(case when rn <= tot/2 then feitos end) f1,
+             avg(case when rn > tot/2 then feitos end) f2, max(tot) tot
+      from ord group by 1,2)
+    select lado, round(corr(f1,f2)::numeric,3) persistencia from met where tot >= 20 group by 1`);
+
+  const [tempo] = await q(`
+    select count(*) colunas_de_escanteio from information_schema.columns
+    where table_schema = 'futebol' and column_name ilike '%corner%'`);
+
+  console.log('\nOS CINCO MERCADOS DE ESCANTEIO — persistência do insumo de cada um');
+  console.table([
+    { id: 56, mercado: 'Handicap de escanteios', insumo: 'saldo', persistencia: saldo.persistencia },
+    { id: 45, mercado: 'Total do jogo', insumo: 'a favor + sofridos', persistencia: 'ver acima' },
+    { id: 57, mercado: 'Escanteios do mandante', insumo: 'a favor em casa', persistencia: mando.find((r) => r.lado === 'home')?.persistencia },
+    { id: 58, mercado: 'Escanteios do visitante', insumo: 'a favor fora', persistencia: mando.find((r) => r.lado === 'away')?.persistencia },
+    { id: 77, mercado: 'Total do 1º tempo', insumo: 'escanteio por tempo', persistencia: 'SEM INSUMO' },
+  ]);
+  console.log(`A base inteira tem ${tempo.colunas_de_escanteio} coluna de escanteio, e ela é do jogo completo.`);
+}
+
+/** A separação do handicap, que é a que inverte a ordem óbvia. */
+async function separacaoHandicap() {
+  const quintis = (pares, coberto) => `
+    with pares as (${pares}), pit as (
+      select *, avg(saldo) over (partition by team_id order by date_utc rows between 10 preceding and 1 preceding) m,
+             count(*) over (partition by team_id order by date_utc rows between 10 preceding and 1 preceding) n
+      from pares
+    ), jogo as (
+      select h.saldo real, (h.m - a.m) / 2.0 prev
+      from pit h join pit a on a.fixture_id = h.fixture_id and a.lado = 'away'
+      where h.lado = 'home' and h.n >= 10 and a.n >= 10
+    ), q5 as (select *, ntile(5) over (order by prev) quintil from jogo)
+    select quintil, count(*) jogos, round(avg(prev)::numeric,2) previsto,
+      round(avg(real)::numeric,2) saldo_real,
+      round(100.0 * sum(case when real > ${coberto} then 1 else 0 end) / count(*), 1) pct_acima
+    from q5 group by 1 order by 1`;
+
+  const esc = await q(quintis(PARES_ESCANTEIO, 0.5));
+  console.log('\nHANDICAP DE ESCANTEIO — quintis da supremacia prevista (mandante cobre o −0,5)');
+  console.table(esc);
+
+  const paresGol = `
+    select fixture_id, date_utc, home_team_id team_id, 'home' lado, goals_home - goals_away saldo
+    from futebol.fact_fixtures where status_short = 'FT' and goals_home is not null
+    union all
+    select fixture_id, date_utc, away_team_id, 'away', goals_away - goals_home
+    from futebol.fact_fixtures where status_short = 'FT' and goals_home is not null`;
+  const gol = await q(quintis(paresGol, 0.5));
+  console.log('\nHANDICAP DE GOLS — a mesma conta, como régua');
+  console.table(gol);
+
+  const spread = (t) => Number(t.at(-1).pct_acima) - Number(t[0].pct_acima);
+  console.log(`\nSeparação: handicap de escanteio ${spread(esc).toFixed(1)}pp · handicap de gol ${spread(gol).toFixed(1)}pp`);
+}
+
+/**
+ * Os cortes do catálogo. Saem da distribuição da nossa base — p75, mediana,
+ * quartil —, o que decide quantas vezes a premissa acende, não se ela vale.
+ * O que ela vale é a fase 5, e ela precisa de odds.
+ */
+async function limiares() {
+  const t = await q(`
+    with pares as (${PARES_ESCANTEIO}), m as (
+      select team_id, lado, avg(feitos) mf, avg(sofridos) ms, avg(saldo) msa
+      from pares group by 1,2 having count(*) >= 15)
+    select lado,
+      round(percentile_cont(0.50) within group (order by mf)::numeric,2)  a_favor_mediana,
+      round(percentile_cont(0.75) within group (order by ms)::numeric,2)  sofridos_p75,
+      round(percentile_cont(0.25) within group (order by msa)::numeric,2) saldo_p25,
+      round(percentile_cont(0.75) within group (order by msa)::numeric,2) saldo_p75
+    from m group by 1`);
+  console.log('\nLIMIARES MEDIDOS, por mando (times com >= 15 jogos no lado)');
+  console.table(t);
+
+  const [j] = await q(`
+    with pares as (${PARES_ESCANTEIO}), jogo as (
+      select h.chutes + a.chutes chutes_total, abs(h.posse - a.posse) gap_posse
+      from pares h join pares a on a.fixture_id = h.fixture_id and a.lado = 'away'
+      where h.lado = 'home')
+    select round(percentile_cont(0.50) within group (order by chutes_total)::numeric,1) chutes_mediana,
+           round(percentile_cont(0.75) within group (order by chutes_total)::numeric,1) chutes_p75,
+           round(percentile_cont(0.50) within group (order by gap_posse)::numeric,1) gap_posse_mediana,
+           round(percentile_cont(0.75) within group (order by gap_posse)::numeric,1) gap_posse_p75
+    from jogo`);
+  console.log('\nPOR JOGO — finalizações somadas e diferença de posse');
+  console.table([j]);
+
+  // A premissa de estilo que morreu na fase 3: a razão quase não varia entre times.
+  const [r] = await q(`
+    with pares as (
+      select a.team_id, a.corner_kicks feitos, a.total_shots chutes
+      from futebol.fact_fixture_stats a
+      join futebol.fact_fixture_stats b on b.fixture_id = a.fixture_id and b.team_id <> a.team_id
+      where a.corner_kicks is not null and a.total_shots > 0
+    ), m as (select team_id, sum(feitos)::numeric / sum(chutes) r from pares group by 1 having count(*) >= 30)
+    select round(percentile_cont(0.10) within group (order by r)::numeric,3) p10,
+           round(percentile_cont(0.50) within group (order by r)::numeric,3) mediana,
+           round(percentile_cont(0.90) within group (order by r)::numeric,3) p90,
+           round(stddev(r)::numeric,3) desvio
+    from m`);
+  console.log('\nESCANTEIOS POR FINALIZAÇÃO — a premissa de estilo, cortada na fase 3');
+  console.log('Quase não varia entre times: é constante do futebol, não traço de time.');
+  console.table([r]);
+}
+
 await cobertura();
 await persistencia();
+await porMercado();
 await separacao();
+await separacaoHandicap();
+await limiares();
