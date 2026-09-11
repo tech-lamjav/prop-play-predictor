@@ -15,7 +15,11 @@ import { PRODUTOS_EDITAVEIS } from './crm-acesso';
 // mandar" numa tabela que tem `is_socio` é entregar a chave junto com a porta.
 // ============================================================================
 
-const MIGRATION = lerMigration('20260912100000_129_crm_acesso_manual.sql');
+// A 130 substitui a função da 129 para somar o ramo dos relatórios. Os
+// guardas leem a versão VIGENTE: guardar a 129 deixaria a 130 entrar sem
+// portão, sem revoke e com `execute format` que ninguém conferiu.
+const MIGRATION_DO_TIPO = lerMigration('20260912100000_129_crm_acesso_manual.sql');
+const MIGRATION = lerMigration('20260912160000_130_crm_acesso_relatorios.sql');
 
 const ACESSO = comando(
   MIGRATION,
@@ -23,7 +27,7 @@ const ACESSO = comando(
   '$function$;',
 );
 const TESTE = comando(
-  MIGRATION,
+  MIGRATION_DO_TIPO,
   /create or replace function public\.crm_definir_teste_do_futebol/,
   '$function$;',
 );
@@ -110,7 +114,9 @@ describe('crm_definir_teste_do_futebol', () => {
   });
 
   it('não é executável por quem não está logado', () => {
-    expect(MIGRATION).toMatch(/revoke execute on function public\.crm_definir_teste_do_futebol/);
+    expect(MIGRATION_DO_TIPO).toMatch(
+      /revoke execute on function public\.crm_definir_teste_do_futebol/,
+    );
   });
 
   it('mexe no carimbo de início, e não no status da assinatura', () => {
@@ -133,7 +139,7 @@ describe('a linha do tempo aceita o tipo novo', () => {
     // As duas funções gravam `tipo = 'acesso'`, e o `check` da migration 123 só
     // conhece três tipos. Sem soltar a restrição, toda concessão de acesso
     // falharia no último passo, depois de já ter mexido no acesso da pessoa.
-    expect(MIGRATION).toMatch(/alter table public\.crm_anotacao/);
-    expect(MIGRATION).toMatch(/'acesso'/);
+    expect(MIGRATION_DO_TIPO).toMatch(/alter table public\.crm_anotacao/);
+    expect(MIGRATION_DO_TIPO).toMatch(/'acesso'/);
   });
 });

@@ -21,6 +21,7 @@ const pessoa = (over: Partial<Pessoa> = {}): Pessoa => ({
   telegram_username: 'maria',
   betinho_subscription_period_end: '2026-10-01T00:00:00Z',
   analytics_subscription_period_end: null,
+  has_report_access: null,
   ...over,
 });
 

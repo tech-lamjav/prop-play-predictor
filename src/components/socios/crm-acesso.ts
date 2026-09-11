@@ -21,22 +21,43 @@ import { brtDayOf } from '@/utils/futebol-datas';
 
 export type ProdutoEditavel = {
   /** O que a função do banco espera. Precisa existir como ramo lá dentro. */
-  id: 'betinho' | 'futebol' | 'analises';
+  id: 'betinho' | 'futebol' | 'analises' | 'relatorios';
   nome: string;
   /**
-   * O banco guarda quando este acesso termina?
+   * Por que este produto não tem campo de data, quando não tem.
    *
-   * Só o futebol não guarda, e está documentado em `shared/concessoes.ts`. Para
-   * ele, "liberar" é premium sem prazo, e tirar é uma decisão de alguém. A tela
-   * precisa dizer isso onde o sócio escolhe, e não depois.
+   * A frase, e não um booleano. Com `temPrazo: false` os dois produtos sem
+   * prazo dividiam a mesma explicação, e ela falava do futebol — a linha dos
+   * relatórios dizia que o banco não guarda o prazo DO FUTEBOL, que é verdade
+   * e não é sobre ela. Os motivos são diferentes e a tela precisa dizer o certo
+   * onde o sócio escolhe, não depois.
+   *
+   * Ausente significa que o produto tem prazo e ganha o campo de data.
    */
-  temPrazo: boolean;
+  semPrazoPorque?: string;
 };
 
+/**
+ * ⚠️ "Relatórios" não é assinatura: é a marca `has_report_access`, um sim ou
+ * não escrito na mão que ABRE os relatórios sem passar pelo Stripe. Ele existia
+ * no banco desde antes do CRM, `use-report-access` consulta ele antes de olhar
+ * qualquer assinatura, e a ficha não mostrava. O resultado é que uma conta
+ * liberada por ele aparecia aqui como "sem acesso" enquanto o produto deixava a
+ * pessoa entrar — e foi assim que a ficha pareceu não bater com o banco.
+ */
 export const PRODUTOS_EDITAVEIS: readonly ProdutoEditavel[] = [
-  { id: 'betinho', nome: 'Betinho', temPrazo: true },
-  { id: 'futebol', nome: 'Futebol', temPrazo: false },
-  { id: 'analises', nome: 'Análises', temPrazo: true },
+  { id: 'betinho', nome: 'Betinho' },
+  {
+    id: 'futebol',
+    nome: 'Futebol',
+    semPrazoPorque: 'O banco não guarda prazo do futebol. Liberado aqui vale até alguém tirar.',
+  },
+  { id: 'analises', nome: 'Análises' },
+  {
+    id: 'relatorios',
+    nome: 'Relatórios',
+    semPrazoPorque: 'É uma marca de sim ou não, sem prazo. Vale até alguém tirar.',
+  },
 ];
 
 /** Quantos dias dura o teste gratuito do futebol. O mesmo de `futebol-acesso`. */
@@ -78,6 +99,11 @@ export function acessoAtual(p: Pessoa, produto: ProdutoEditavel['id']): AcessoAt
       ativo: p.analytics_subscription_status === 'premium',
       ate: comoDiaDoFormulario(p.analytics_subscription_period_end),
     };
+  }
+  if (produto === 'relatorios') {
+    // Marca booleana, sem status nem prazo. `?? false` porque a coluna aceita
+    // nulo, e nulo aqui é "não", não "não sei".
+    return { ativo: p.has_report_access ?? false, ate: '' };
   }
   // Futebol: o status sozinho, sem o teste. O teste tem controle próprio, e
   // juntar os dois num interruptor só faria desligar o premium apagar o teste.

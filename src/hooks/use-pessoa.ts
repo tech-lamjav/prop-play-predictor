@@ -31,6 +31,7 @@ const MAPA_DE_CAMPOS: Record<keyof Pessoa, true> = {
   analytics_subscription_period_end: true,
   futebol_trial_started_at: true,
   futebol_publication_alerts_ack_at: true,
+  has_report_access: true,
 };
 
 const CAMPOS = Object.keys(MAPA_DE_CAMPOS).join(', ');
@@ -58,11 +59,7 @@ export function usePessoa(id: string | undefined): EstadoDaFicha {
     queryFn: async () => {
       const cliente = createClient();
 
-      const { data, error } = await cliente
-        .from('users')
-        .select(CAMPOS)
-        .eq('id', id!)
-        .single();
+      const { data, error } = await cliente.from('users').select(CAMPOS).eq('id', id!).single();
 
       if (error) {
         if (error.code === NAO_ENCONTRADO) return null;

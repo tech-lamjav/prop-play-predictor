@@ -49,7 +49,7 @@ function LinhaDoProduto({
   // Sem mudança não há o que salvar, e um botão sempre aceso convida a gravar
   // de novo o mesmo valor: cada gravação escreve um registro na linha do tempo,
   // e a linha encheria de "Betinho: liberou" repetido.
-  const mudou = ativo !== atual.ativo || (produto.temPrazo && ate !== atual.ate);
+  const mudou = ativo !== atual.ativo || (!produto.semPrazoPorque && ate !== atual.ate);
 
   return (
     <div className="border-t border-line-2 py-3 first:border-t-0 first:pt-0">
@@ -67,7 +67,12 @@ function LinhaDoProduto({
         </span>
       </label>
 
-      {produto.temPrazo ? (
+      {produto.semPrazoPorque ? (
+        /* O motivo fica ONDE o sócio escolhe: depois de digitar uma data que
+           seria descartada já é tarde. E vem do produto, porque os dois que não
+           têm prazo não têm pelo mesmo motivo. */
+        <p className="mt-2 text-[12px] text-ink-2">{produto.semPrazoPorque}</p>
+      ) : (
         <label className="mt-2 flex items-center gap-2 text-[12px] text-ink-2">
           até
           <input
@@ -79,13 +84,6 @@ function LinhaDoProduto({
             className="h-9 flex-1 rounded-rebrand-sm border border-line-2 bg-white px-2 text-[13px] text-ink disabled:opacity-50"
           />
         </label>
-      ) : (
-        /* O banco não guarda prazo do futebol, e está documentado em
-           `shared/concessoes.ts`. O aviso fica ONDE o sócio escolhe: depois de
-           digitar uma data que seria descartada já é tarde. */
-        <p className="mt-2 text-[12px] text-ink-2">
-          O banco não guarda prazo do futebol. Liberado aqui vale até alguém tirar.
-        </p>
       )}
 
       {falhou && (

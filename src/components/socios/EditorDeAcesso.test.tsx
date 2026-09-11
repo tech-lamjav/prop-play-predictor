@@ -21,6 +21,7 @@ function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
     telegram_username: null,
     betinho_subscription_period_end: null,
     analytics_subscription_period_end: null,
+    has_report_access: null,
     ...campos,
   };
 }

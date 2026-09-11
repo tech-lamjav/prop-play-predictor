@@ -21,6 +21,7 @@ function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
     telegram_username: null,
     betinho_subscription_period_end: null,
     analytics_subscription_period_end: null,
+    has_report_access: null,
     ...campos,
   };
 }
@@ -75,6 +76,22 @@ describe('acessoAtual', () => {
     expect(acessoAtual(p, 'analises').ativo).toBe(true);
     expect(acessoAtual(p, 'betinho').ativo).toBe(false);
     expect(acessoAtual(p, 'futebol').ativo).toBe(false);
+    expect(acessoAtual(p, 'relatorios').ativo).toBe(false);
+  });
+
+  it('a marca dos relatórios aparece, e ela não é assinatura', () => {
+    // `has_report_access` abre os relatórios sem passar pelo Stripe, e
+    // `use-report-access` olha ela ANTES de qualquer assinatura. A ficha não
+    // mostrava: uma conta liberada assim aparecia como "sem acesso" enquanto o
+    // produto deixava a pessoa entrar.
+    const p = pessoa({ has_report_access: true });
+    expect(acessoAtual(p, 'relatorios')).toEqual({ ativo: true, ate: '' });
+    // E não contamina os outros: é coluna à parte.
+    expect(acessoAtual(p, 'analises').ativo).toBe(false);
+  });
+
+  it('a coluna nula dos relatórios é "não", e não "não sei"', () => {
+    expect(acessoAtual(pessoa({ has_report_access: null }), 'relatorios').ativo).toBe(false);
   });
 });
 
@@ -135,15 +152,25 @@ describe('entraNoFutebol', () => {
 });
 
 describe('a lista de produtos', () => {
-  it('diz qual deles o banco não sabe datar', () => {
-    // O futebol não tem coluna de prazo, e está documentado em
-    // `shared/concessoes.ts`. A tela precisa avisar ONDE o sócio escolhe, e
-    // não depois de ele já ter digitado uma data que seria descartada.
-    const futebol = PRODUTOS_EDITAVEIS.find((p) => p.id === 'futebol');
-    expect(futebol?.temPrazo).toBe(false);
-    expect(PRODUTOS_EDITAVEIS.filter((p) => p.temPrazo).map((p) => p.id)).toEqual([
+  it('só o Betinho e as Análises têm prazo', () => {
+    // Os outros dois não têm coluna de data no banco. A tela precisa avisar
+    // ONDE o sócio escolhe, e não depois de ele já ter digitado uma data que
+    // seria descartada.
+    expect(PRODUTOS_EDITAVEIS.filter((p) => !p.semPrazoPorque).map((p) => p.id)).toEqual([
       'betinho',
       'analises',
     ]);
+  });
+
+  it('cada um sem prazo explica o SEU motivo', () => {
+    // Com um booleano, os dois dividiam a mesma frase, e ela falava do
+    // futebol: a linha dos relatórios dizia que o banco não guarda o prazo do
+    // futebol, que é verdade e não é sobre ela.
+    const semPrazo = PRODUTOS_EDITAVEIS.filter((p) => p.semPrazoPorque);
+    expect(semPrazo).toHaveLength(2);
+    expect(new Set(semPrazo.map((p) => p.semPrazoPorque)).size).toBe(2);
+    expect(PRODUTOS_EDITAVEIS.find((p) => p.id === 'relatorios')?.semPrazoPorque).not.toMatch(
+      /futebol/i,
+    );
   });
 });

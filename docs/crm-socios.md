@@ -172,6 +172,13 @@ CRM ganhasse do webhook, um clique errado viraria assinatura eterna de graça. A
 tela avisa isso onde o sócio clica, porque é o tipo de coisa que só aparece três
 semanas depois, quando o acesso "some sozinho".
 
+**Quatro produtos, e o quarto não é assinatura.** `users.has_report_access` é
+uma marca de sim ou não que abre os relatórios sem passar pelo Stripe, e
+`use-report-access` consulta ela ANTES de olhar qualquer assinatura. A ficha
+não mostrava nenhum dos dois lados disso: uma conta liberada por essa marca
+aparecia como "sem acesso" enquanto o produto deixava a pessoa entrar. Foi assim
+que a tela pareceu não bater com o banco, e a migration 130 fechou o buraco.
+
 **A função não recebe nome de coluna.** Ela recebe um produto de uma lista de
 três e decide sozinha o que mexer. A versão genérica — `execute format('update
 public.users set %I = ...')` — é uma linha mais curta e transforma "produto" em

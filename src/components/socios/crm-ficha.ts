@@ -23,6 +23,8 @@ export interface Pessoa extends Cadastro {
   telegram_username: string | null;
   betinho_subscription_period_end: string | null;
   analytics_subscription_period_end: string | null;
+  /** Marca escrita na mão que abre os relatórios sem passar pelo Stripe. */
+  has_report_access: boolean | null;
 }
 
 /** O que o banco sabe sobre as apostas de alguém, e nada além disso. */
