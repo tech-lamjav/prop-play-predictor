@@ -144,21 +144,41 @@ export default function Planos() {
     ? { label: 'Acessar', onClick: () => navigate('/inicio') }
     : { label: 'Criar conta grátis', onClick: () => navigate('/auth') };
 
-  // O checkout unificado ainda não está plugado. Quando estiver, trocar por
-  // stripeService.createCheckoutSession(priceId[plan][billing], plan): logado
-  // vai direto pro gateway; deslogado passa pelo /auth e volta pro checkout.
+  // Cada plano pago leva à paywall do produto que ele vende, em vez de esperar
+  // um checkout unificado que nunca chegou. Não é o desenho final — é parar de
+  // exibir botão morto no momento de maior intenção de compra da página.
   //
-  // Enquanto isso, o botão diz a verdade em vez de navegar em silêncio. Para
-  // quem está deslogado "Assinar" ainda tem ação real: criar a conta e começar
-  // o teste. Para quem já está logado não há para onde ir, e mandar para
-  // /inicio sem aviso é um beco sem saída invisível — a paywall do futebol, que
-  // esta página absorveu (issue #297), ao menos mostrava o botão desabilitado.
-  const semGateway = !!user;
-  const startCheckout = (_plan: PaidTier) => {
-    if (semGateway) return;
-    navigate('/auth');
+  // As duas telas de destino já cobram de verdade e já tratam quem chega
+  // deslogado (mandam para /auth), então não há caso especial aqui.
+  //
+  // O Completo segue sem destino de propósito: o preço dele não existe no
+  // Stripe, e a NBA — o único diferencial dele sobre o Essencial — não está
+  // recebendo cliente novo. Botão desabilitado é honesto; botão que cobra o
+  // plano errado, não.
+  const DESTINO: Record<PaidTier, string | null> = {
+    entrada: '/paywall',           // Betinho — R$ 14,90/mês
+    essencial: '/futebol/assinar', // Futebol + Betinho ilimitado — R$ 39,90/mês
+    completo: null,
   };
-  const rotuloAssinar = (nome: string) => (semGateway ? 'Pagamento em breve' : `Assinar ${nome}`);
+
+  // Os preços anuais não existem no Stripe. Mandar quem escolheu "Anual" para
+  // uma tela que cobra mensal seria cobrar diferente do que a página prometeu.
+  const anualIndisponivel = billing === 'annual';
+
+  const ctaPago = (plan: PaidTier) => {
+    if (anualIndisponivel) {
+      return { label: 'Anual em breve', disabled: true, onClick: () => {} };
+    }
+    const destino = DESTINO[plan];
+    if (!destino) {
+      return { label: 'Pagamento em breve', disabled: true, onClick: () => {} };
+    }
+    return {
+      label: `Assinar ${PLAN_NAMES[plan]}`,
+      disabled: false,
+      onClick: () => navigate(destino),
+    };
+  };
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas flex flex-col">
@@ -252,8 +272,8 @@ export default function Planos() {
               <div className="text-[13px] font-bold tracking-[0.02em]">Entrada</div>
               <div className="text-[13.5px] text-ink-3 mt-1 min-h-[41px]">Só o Betinho, sua banca no automático.</div>
               <PriceBlock tier="entrada" billing={billing} />
-              <button onClick={() => startCheckout('entrada')} disabled={semGateway} className="mt-5 w-full h-11 rounded-rebrand-sm text-sm font-bold bg-white border border-line-2 text-ink hover:border-forest hover:text-forest transition disabled:opacity-60 disabled:hover:border-line-2 disabled:hover:text-ink disabled:cursor-default">
-                {rotuloAssinar('Entrada')}
+              <button onClick={ctaPago('entrada').onClick} disabled={ctaPago('entrada').disabled} className="mt-5 w-full h-11 rounded-rebrand-sm text-sm font-bold bg-white border border-line-2 text-ink hover:border-forest hover:text-forest transition disabled:opacity-60 disabled:hover:border-line-2 disabled:hover:text-ink disabled:cursor-default">
+                {ctaPago('entrada').label}
               </button>
               <ul className="mt-5 pt-5 border-t border-line flex flex-col gap-2.5 text-sm">
                 <Feat><b className="text-ink font-semibold">Betinho ilimitado</b>, registra e liquida tudo no Telegram</Feat>
@@ -268,8 +288,8 @@ export default function Planos() {
               <div className="text-[13px] font-bold tracking-[0.02em]">Essencial</div>
               <div className="text-[13.5px] text-ink-3 mt-1 min-h-[41px]">Futebol completo + a banca no automático.</div>
               <PriceBlock tier="essencial" billing={billing} />
-              <button onClick={() => startCheckout('essencial')} disabled={semGateway} className="mt-5 w-full h-11 rounded-rebrand-sm text-sm font-bold bg-forest text-white hover:bg-forest-2 transition disabled:opacity-60 disabled:hover:bg-forest disabled:cursor-default">
-                {rotuloAssinar('Essencial')}
+              <button onClick={ctaPago('essencial').onClick} disabled={ctaPago('essencial').disabled} className="mt-5 w-full h-11 rounded-rebrand-sm text-sm font-bold bg-forest text-white hover:bg-forest-2 transition disabled:opacity-60 disabled:hover:bg-forest disabled:cursor-default">
+                {ctaPago('essencial').label}
               </button>
               <ul className="mt-5 pt-5 border-t border-line flex flex-col gap-2.5 text-sm">
                 <Feat><b className="text-ink font-semibold">Futebol completo</b> — oportunidades e Score sem limite</Feat>
@@ -307,8 +327,8 @@ export default function Planos() {
               <div className="text-[12.5px] mt-1.5 min-h-[19px]" style={{ color: '#9fbcae' }}>
                 {PRICES.completo[billing].billed || ' '}
               </div>
-              <button onClick={() => startCheckout('completo')} disabled={semGateway} className="mt-5 w-full h-11 rounded-rebrand-sm text-sm font-bold transition hover:brightness-95 disabled:opacity-60 disabled:hover:brightness-100 disabled:cursor-default" style={{ background: '#d4a017', color: '#2a1f00' }}>
-                {rotuloAssinar('Completo')}
+              <button onClick={ctaPago('completo').onClick} disabled={ctaPago('completo').disabled} className="mt-5 w-full h-11 rounded-rebrand-sm text-sm font-bold transition hover:brightness-95 disabled:opacity-60 disabled:hover:brightness-100 disabled:cursor-default" style={{ background: '#d4a017', color: '#2a1f00' }}>
+                {ctaPago('completo').label}
               </button>
               <ul className="mt-5 pt-5 flex flex-col gap-2.5 text-sm" style={{ borderTop: '1px solid rgba(255,255,255,0.14)' }}>
                 {[
