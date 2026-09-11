@@ -238,3 +238,24 @@ export function precisamDeAtencao(leads: Lead[]): Lead[] {
       return (b.diasParado ?? 0) - (a.diasParado ?? 0);
     });
 }
+
+export interface ColunaDoFunil {
+  posicao: Posicao;
+  leads: Lead[];
+}
+
+/**
+ * Os leads em colunas, uma por posição do funil.
+ *
+ * Todas as oito, inclusive as vazias — pelo mesmo motivo da faixa: o kanban
+ * desenha a FORMA do funil, e uma coluna que some esconde onde está o gargalo.
+ *
+ * A ordem dentro da coluna é a de quem chegou: a lista já vem ordenada de quem
+ * chama, e reordenar aqui faria o kanban discordar da tabela com os mesmos
+ * filtros ligados.
+ */
+export function agruparPorPosicao(leads: Lead[]): ColunaDoFunil[] {
+  const porPosicao = new Map<Posicao, Lead[]>(POSICOES.map((p) => [p, []]));
+  for (const lead of leads) porPosicao.get(lead.posicao)?.push(lead);
+  return POSICOES.map((posicao) => ({ posicao, leads: porPosicao.get(posicao) ?? [] }));
+}

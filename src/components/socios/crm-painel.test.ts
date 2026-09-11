@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agruparPorPosicao,
   contarPorPosicao,
   DIAS_PARA_ESTAR_PARADO,
   precisamDeAtencao,
@@ -206,5 +207,34 @@ describe('montarLeads · quando a contagem de apostas falha', () => {
   it('com a contagem respondendo, zero é zero mesmo', () => {
     const [lead] = montarLeads([cadastro({ id: 'a' })], {}, {}, {}, HOJE);
     expect(lead.gancho.apostasDesconhecidas).toBe(false);
+  });
+});
+
+describe('agruparPorPosicao', () => {
+  it('devolve as oito colunas, inclusive as vazias', () => {
+    // Coluna que some esconde onde está o gargalo — o mesmo motivo da faixa.
+    const colunas = agruparPorPosicao(monta([cadastro({ id: 'a' })]));
+    expect(colunas).toHaveLength(8);
+    expect(colunas.find((c) => c.posicao === 'boletada')?.leads).toEqual([]);
+  });
+
+  it('põe cada lead na coluna da sua posição', () => {
+    const colunas = agruparPorPosicao(
+      monta(
+        [cadastro({ id: 'a' }), cadastro({ id: 'b', futebol_subscription_status: 'premium' })],
+        { b: 'interesse' },
+      ),
+    );
+    expect(colunas.find((c) => c.posicao === 'novo')?.leads.map((l) => l.id)).toEqual(['a']);
+    // O estado calculado vence a etapa manual aqui também.
+    expect(colunas.find((c) => c.posicao === 'assinante')?.leads.map((l) => l.id)).toEqual(['b']);
+    expect(colunas.find((c) => c.posicao === 'interesse')?.leads).toEqual([]);
+  });
+
+  it('mantém a ordem que recebeu', () => {
+    // Reordenar aqui faria o kanban discordar da tabela com os mesmos filtros.
+    const leads = monta([cadastro({ id: 'a' }), cadastro({ id: 'b' }), cadastro({ id: 'c' })]);
+    const coluna = agruparPorPosicao(leads).find((c) => c.posicao === 'novo');
+    expect(coluna?.leads.map((l) => l.id)).toEqual(leads.map((l) => l.id));
   });
 });

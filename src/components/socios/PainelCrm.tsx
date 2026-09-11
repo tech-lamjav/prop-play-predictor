@@ -13,6 +13,7 @@ import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
 import { CabecalhoDoCrm } from './CabecalhoDoCrm';
 import { FaixaDoFunil } from './FaixaDoFunil';
 import { MetricasDoTopo } from './MetricasDoTopo';
+import { KanbanDeLeads } from './KanbanDeLeads';
 import { TabelaDeLeads } from './TabelaDeLeads';
 
 /**
@@ -90,6 +91,13 @@ export function PainelCrm({
   const [posicao, setPosicao] = useState<Posicao | null>(null);
   const [recorte, setRecorte] = useState<Recorte>('atencao');
   const [agrupado, setAgrupado] = useState(false);
+  /**
+   * Tabela ou kanban.
+   *
+   * Os dois desenham o MESMO recorte: a busca e o filtro do funil valem para os
+   * dois. Trocar de vista muda a disposição, e nunca o conteúdo.
+   */
+  const [vista, setVista] = useState<'tabela' | 'kanban'>('tabela');
 
   const cadastros = estado.tipo === 'pronto' ? estado.cadastros : VAZIO;
   // Nulo enquanto as etapas não chegam. Um mapa vazio faria todo mundo cair em
@@ -132,9 +140,8 @@ export function PainelCrm({
 
   const noRecorte = useMemo(
     () =>
-      todos?.filter(
-        (l) => achados.has(l.id) && (posicao === null || l.posicao === posicao),
-      ) ?? null,
+      todos?.filter((l) => achados.has(l.id) && (posicao === null || l.posicao === posicao)) ??
+      null,
     [todos, achados, posicao],
   );
 
@@ -250,17 +257,41 @@ export function PainelCrm({
                   ))}
                 </div>
 
-                {/* Agrupar é chave à parte, e não um terceiro recorte: ela se
-                    combina com os dois em vez de competir com eles. */}
-                <label className="flex items-center gap-2 text-[13px] text-ink-2">
-                  <input
-                    type="checkbox"
-                    checked={agrupado}
-                    onChange={(e) => setAgrupado(e.target.checked)}
-                    aria-label="Agrupar por dia de cadastro"
-                  />
-                  Agrupar por dia
-                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div role="radiogroup" aria-label="Formato da lista" className="flex gap-1">
+                    {(['tabela', 'kanban'] as const).map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="radio"
+                        aria-checked={vista === id}
+                        onClick={() => setVista(id)}
+                        className={`rounded-rebrand-sm px-3 py-1.5 text-[13px] font-bold transition ${
+                          vista === id
+                            ? 'bg-ink text-white'
+                            : 'text-ink-2 hover:bg-canvas hover:text-ink'
+                        }`}
+                      >
+                        {id === 'tabela' ? 'Tabela' : 'Kanban'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Agrupar é chave à parte, e não um terceiro recorte: ela se
+                    combina com os dois recortes em vez de competir com eles.
+                    Some no kanban, onde a coluna já é o agrupamento. */}
+                  {vista === 'tabela' && (
+                    <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                      <input
+                        type="checkbox"
+                        checked={agrupado}
+                        onChange={(e) => setAgrupado(e.target.checked)}
+                        aria-label="Agrupar por dia de cadastro"
+                      />
+                      Agrupar por dia
+                    </label>
+                  )}
+                </div>
               </div>
 
               {lista === null ? (
@@ -269,6 +300,8 @@ export function PainelCrm({
                     ? 'Sem o histórico de etapas não dá para montar a lista sem inventar.'
                     : 'Carregando a lista…'}
                 </p>
+              ) : vista === 'kanban' ? (
+                <KanbanDeLeads leads={lista} />
               ) : porDia ? (
                 porDia.map((grupo) => (
                   <div key={grupo.dia ?? 'sem-data'}>

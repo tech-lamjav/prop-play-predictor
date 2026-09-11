@@ -104,7 +104,19 @@ As três tabelas do CRM só são legíveis e escrevíveis por sócio.
 **Painel** — na ordem em que a tela responde "com quem eu falo agora": três
 números de acompanhamento (cadastros em trinta dias, conversão, abordados), a
 faixa do funil com as oito posições e clicável como filtro, a busca, e **uma
-tabela só**.
+lista só**.
+
+A lista tem duas vistas, **tabela** e **kanban**, e uma chave alterna entre
+elas. As duas desenham o MESMO recorte: a busca e o filtro do funil valem para
+as duas, e trocar de vista muda a disposição e nunca o conteúdo. A tabela é para
+trabalhar a fila; o kanban é para ver onde a base empilha.
+
+O formato saiu de um protótipo com três opções, na branch
+`prototype/painel-do-crm`. A chave que decidiu foi o TAMANHO DA BASE: com treze
+cadastros qualquer formato parece bom, e é com seiscentos, dos quais 82% em
+"Novo", que o kanban mostra o custo — uma coluna gigante e sete quase vazias. A
+coluna tem teto de cartões e diz quantos sobraram, porque fingir que ela é
+navegável seria pior que admitir o limite.
 
 A tabela tem um **recorte** — precisa de atenção, ou todos — e uma chave
 separada para agrupar por dia. "Precisa de atenção" junta duas situações numa
@@ -114,7 +126,8 @@ etapa, e separá-las em tabelas diferentes era o que fazia a tela parecer cinco
 listas.
 
 Agrupar por dia é chave à parte, e não um terceiro recorte: ela se combina com
-os dois em vez de competir. É a única visão que mostra o RITMO de chegada.
+os dois em vez de competir. É a única visão que mostra o RITMO de chegada, e
+some no kanban, onde a coluna já é o agrupamento.
 
 Os números do topo e o funil contam a base INTEIRA, e não o recorte da busca:
 eles respondem como está a operação, e essa resposta não muda porque alguém

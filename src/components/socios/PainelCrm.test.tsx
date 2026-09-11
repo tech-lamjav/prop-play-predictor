@@ -282,3 +282,44 @@ describe('PainelCrm · quando o movimento não carrega', () => {
     expect(screen.getByRole('region', { name: 'Funil' })).toBeInTheDocument();
   });
 });
+
+describe('PainelCrm · tabela e kanban', () => {
+  it('abre na tabela', () => {
+    montar();
+    expect(screen.getByRole('radio', { name: 'Tabela' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('trocar para kanban desenha as oito colunas', async () => {
+    montar();
+    await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Novo' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Boletada' })).toBeInTheDocument();
+  });
+
+  it('os dois desenham o MESMO recorte', async () => {
+    // Trocar de vista muda a disposição, e nunca o conteúdo. Se o kanban
+    // ignorasse a busca, o sócio veria gente que a tabela tinha escondido.
+    montar({ etapas: { b: 'contatado' } });
+    await userEvent.type(screen.getByRole('searchbox'), 'maria');
+    await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
+    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
+    expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
+  });
+
+  it('agrupar por dia some no kanban, onde a coluna já é o agrupamento', async () => {
+    montar();
+    expect(screen.getByRole('checkbox', { name: /agrupar por dia/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
+    expect(screen.queryByRole('checkbox', { name: /agrupar por dia/i })).not.toBeInTheDocument();
+  });
+
+  it('o kanban marca as colunas que o banco responde', async () => {
+    // O formato promete arrastar, e para essas duas não dá: quem move é o
+    // banco. Dizer isso onde a promessa é mais forte importa mais.
+    montar();
+    await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
+    expect(screen.getAllByText(/o banco responde/i).length).toBeGreaterThanOrEqual(2);
+  });
+});
