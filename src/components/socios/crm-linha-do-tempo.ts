@@ -1,4 +1,4 @@
-import { TIPOS_DE_ANOTACAO, type TipoDeAnotacao } from './crm-vocabulario';
+import { TIPOS_NA_LINHA_DO_TEMPO, type TipoNaLinhaDoTempo } from './crm-vocabulario';
 
 // ============================================================================
 // A linha do tempo de uma pessoa
@@ -36,8 +36,8 @@ export type ItemDaLinhaDoTempo =
       id: string;
       em: string;
       por: string | null;
-      /** Anotação, feedback ou objeção — o mesmo `tipo` da coluna e do glossário. */
-      tipo: TipoDeAnotacao;
+      /** O mesmo `tipo` da coluna e do glossário, `acesso` incluído. */
+      tipo: TipoNaLinhaDoTempo;
       texto: string;
     }
   | {
@@ -49,17 +49,18 @@ export type ItemDaLinhaDoTempo =
       para: string;
     };
 
-const TIPOS_CONHECIDOS = new Set<string>(TIPOS_DE_ANOTACAO);
+const TIPOS_CONHECIDOS = new Set<string>(TIPOS_NA_LINHA_DO_TEMPO);
 
 /**
  * O tipo gravado, ou o padrão.
  *
  * A coluna tem restrição no banco, mas ela pode ser afrouxada por migration
  * futura sem ninguém lembrar daqui — e um tipo desconhecido desenharia um
- * rótulo `undefined` ao lado do texto da pessoa.
+ * rótulo `undefined` ao lado do texto da pessoa. Foi exatamente o que a
+ * migration 129 fez ao acrescentar `acesso`, e a rede aqui segurou.
  */
-function tipoConhecido(bruto: string): TipoDeAnotacao {
-  return TIPOS_CONHECIDOS.has(bruto) ? (bruto as TipoDeAnotacao) : 'anotacao';
+function tipoConhecido(bruto: string): TipoNaLinhaDoTempo {
+  return TIPOS_CONHECIDOS.has(bruto) ? (bruto as TipoNaLinhaDoTempo) : 'anotacao';
 }
 
 /**
@@ -75,29 +76,27 @@ export function linhaDoTempo(
   eventos: EventoDeEtapa[],
 ): ItemDaLinhaDoTempo[] {
   const itens: ItemDaLinhaDoTempo[] = [
-    ...anotacoes.map(
-      (a): ItemDaLinhaDoTempo => ({
-        natureza: 'anotacao',
-        id: a.id,
-        em: a.criada_em,
-        por: a.criada_por,
-        tipo: tipoConhecido(a.tipo),
-        texto: a.texto,
-      }),
-    ),
-    ...eventos.map(
-      (e): ItemDaLinhaDoTempo => ({
-        natureza: 'etapa',
-        id: e.id,
-        em: e.em,
-        por: e.por,
-        de: e.de,
-        para: e.para,
-      }),
-    ),
+    ...anotacoes.map((a): ItemDaLinhaDoTempo => ({
+      natureza: 'anotacao',
+      id: a.id,
+      em: a.criada_em,
+      por: a.criada_por,
+      tipo: tipoConhecido(a.tipo),
+      texto: a.texto,
+    })),
+    ...eventos.map((e): ItemDaLinhaDoTempo => ({
+      natureza: 'etapa',
+      id: e.id,
+      em: e.em,
+      por: e.por,
+      de: e.de,
+      para: e.para,
+    })),
   ];
 
-  return itens.sort((a, b) => (a.em === b.em ? a.id.localeCompare(b.id) : b.em.localeCompare(a.em)));
+  return itens.sort((a, b) =>
+    a.em === b.em ? a.id.localeCompare(b.id) : b.em.localeCompare(a.em),
+  );
 }
 
 /**
@@ -164,5 +163,7 @@ export function montarFeedbacks(
       autor: a.criada_por,
       texto: a.texto,
     }))
-    .sort((a, b) => (a.quando === b.quando ? a.id.localeCompare(b.id) : b.quando.localeCompare(a.quando)));
+    .sort((a, b) =>
+      a.quando === b.quando ? a.id.localeCompare(b.id) : b.quando.localeCompare(a.quando),
+    );
 }

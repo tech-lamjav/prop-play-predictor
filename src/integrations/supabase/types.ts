@@ -1142,6 +1142,14 @@ export type Database = {
         Args: Record<string, never>
         Returns: { user_id: string; total: number; ultima: string | null }[]
       }
+      crm_definir_acesso: {
+        Args: { p_user_id: string; p_produto: string; p_ativo: boolean; p_ate: string | null }
+        Returns: undefined
+      }
+      crm_definir_teste_do_futebol: {
+        Args: { p_user_id: string; p_ligado: boolean }
+        Returns: string | null
+      }
       crm_anotar: {
         Args: { p_user_id: string; p_tipo: string; p_texto: string }
         Returns: string

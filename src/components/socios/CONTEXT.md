@@ -74,8 +74,10 @@ distingue as duas situações.
 _Avoid_: Fila, pendências, to-do
 
 **Anotação**:
-Um registro livre na linha do tempo de uma pessoa. Tem três tipos: anotação,
-feedback e objeção. Feedback não é uma tela separada, é um tipo de anotação.
+Um registro livre na linha do tempo de uma pessoa. Tem três tipos que o sócio
+escreve: anotação, feedback e objeção. Feedback não é uma tela separada, é um
+tipo de anotação. O quarto tipo da linha do tempo, `acesso`, não se digita: quem
+escreve é a função do banco quando alguém mexe no acesso de uma pessoa.
 _Avoid_: Nota, comentário, observação
 
 **Linha do tempo**:
@@ -89,3 +91,19 @@ A tela de uma pessoa: contatos, plano, acessos, gancho, etapa, linha do tempo e
 mensagem pronta. Abre em modal por cima da lista, e não numa página separada —
 o trabalho é abrir, registrar, fechar, abrir o próximo.
 _Avoid_: Perfil, detalhe, página do usuário
+
+**Acesso dado na mão**:
+Um sócio libera ou tira um produto de alguém pela ficha, sem passar pelo Stripe.
+Vale até o Stripe falar sobre aquela pessoa, e aí ele vence — o CRM nunca ganha
+do webhook, senão um clique errado viraria assinatura eterna de graça. Cada
+mudança deixa um registro do tipo `acesso` na linha do tempo, que ninguém digita
+à mão.
+_Avoid_: Cortesia, comp, override, liberar acesso manual
+
+**Teste do futebol**:
+A janela de sete dias contada a partir de `futebol_trial_started_at`. Não é
+status de assinatura, e tem controle próprio na ficha: tratá-lo como um quarto
+produto convidaria a implementá-lo como `premium`, que dá acesso para sempre com
+cara de teste. Tem três estados, e não dois — nunca usou, correndo, já usou —,
+porque o terceiro é o que decide se dar outro faz sentido.
+_Avoid_: Trial, free trial, degustação, período de teste

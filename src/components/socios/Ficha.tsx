@@ -63,6 +63,7 @@ export function Ficha({
   erroAoMudarEtapa,
   linhaDoTempo,
   comportamento,
+  edicaoDeAcesso,
 }: {
   estado: EstadoDaFicha;
   /**
@@ -74,6 +75,9 @@ export function Ficha({
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
   comportamento: ReactNode;
+  /** O editor de acesso entra por fora: ele tem escrita própria, e a ficha
+   *  continua sendo só desenho. */
+  edicaoDeAcesso: ReactNode;
   /** A linha do tempo entra por fora: ela tem consulta e escrita próprias, e a
    *  ficha continua sendo só desenho. */
   linhaDoTempo: ReactNode;
@@ -97,6 +101,7 @@ export function Ficha({
       erroAoMudarEtapa={erroAoMudarEtapa}
       linhaDoTempo={linhaDoTempo}
       comportamento={comportamento}
+      edicaoDeAcesso={edicaoDeAcesso}
     />
   );
 }
@@ -110,6 +115,7 @@ function Conteudo({
   erroAoMudarEtapa,
   linhaDoTempo,
   comportamento,
+  edicaoDeAcesso,
 }: {
   pessoa: Pessoa;
   apostas: ResumoDeApostas | null;
@@ -121,6 +127,7 @@ function Conteudo({
   /** Entra por fora, como a linha do tempo: tem consulta própria, e só sai
    *  quando o modal abre. */
   comportamento: ReactNode;
+  edicaoDeAcesso: ReactNode;
 }) {
   const plano = nomeDoPlano(pessoa.subscription_product_type);
   const bruto = (pessoa.subscription_product_type ?? '').trim();
@@ -214,6 +221,8 @@ function Conteudo({
               />
             ))}
           </Bloco>
+
+          {edicaoDeAcesso}
 
           {comportamento}
         </div>

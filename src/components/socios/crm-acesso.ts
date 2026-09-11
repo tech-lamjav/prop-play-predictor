@@ -1,0 +1,118 @@
+import type { Pessoa } from './crm-ficha';
+import { temAcessoAoFutebol } from '@/utils/futebol-acesso';
+
+// ============================================================================
+// Acesso dado na mão
+// ============================================================================
+// A primeira ESCRITA do CRM na tabela de usuários. Até aqui o sócio só lia.
+//
+// ⚠️ As colunas mexidas aqui são as mesmas que o webhook do Stripe escreve. Um
+// acesso dado na mão sobrevive até o Stripe falar sobre aquela pessoa, e aí ele
+// vence — é ele quem manda, e tem que continuar mandando, senão um erro do CRM
+// viraria assinatura eterna de graça. A tela diz isso em voz alta, porque é o
+// tipo de coisa que só aparece três semanas depois, quando alguém pergunta por
+// que o acesso do fulano sumiu.
+//
+// O que este módulo faz é vocabulário e regra pura. Quem escreve é a migration
+// 129, e ela não aceita nome de coluna vindo do cliente: recebe o id de um
+// produto desta lista e decide sozinha o que mexer.
+// ============================================================================
+
+export type ProdutoEditavel = {
+  /** O que a função do banco espera. Precisa existir como ramo lá dentro. */
+  id: 'betinho' | 'futebol' | 'analises';
+  nome: string;
+  /**
+   * O banco guarda quando este acesso termina?
+   *
+   * Só o futebol não guarda, e está documentado em `shared/concessoes.ts`. Para
+   * ele, "liberar" é premium sem prazo, e tirar é uma decisão de alguém. A tela
+   * precisa dizer isso onde o sócio escolhe, e não depois.
+   */
+  temPrazo: boolean;
+};
+
+export const PRODUTOS_EDITAVEIS: readonly ProdutoEditavel[] = [
+  { id: 'betinho', nome: 'Betinho', temPrazo: true },
+  { id: 'futebol', nome: 'Futebol', temPrazo: false },
+  { id: 'analises', nome: 'Análises', temPrazo: true },
+];
+
+/** Quantos dias dura o teste gratuito do futebol. O mesmo de `futebol-acesso`. */
+export const DIAS_DE_TESTE = 7;
+
+/**
+ * O estado atual de um produto, do jeito que o formulário precisa.
+ *
+ * Nasce da mesma linha que a ficha desenha: o formulário abre mostrando o que
+ * já vale, e não em branco. Um formulário em branco sobre um acesso que existe
+ * é um convite a apagá-lo sem querer.
+ */
+export interface AcessoAtual {
+  ativo: boolean;
+  /** `YYYY-MM-DD`, ou vazio quando não há prazo guardado. */
+  ate: string;
+}
+
+/** `2026-10-12T03:00:00Z` vira `2026-10-12`. Vazio quando não há data. */
+function comoDiaDoFormulario(bruto: string | null): string {
+  if (!bruto) return '';
+  const d = new Date(bruto);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
+export function acessoAtual(p: Pessoa, produto: ProdutoEditavel['id']): AcessoAtual {
+  if (produto === 'betinho') {
+    return {
+      ativo: p.betinho_subscription_status === 'premium',
+      ate: comoDiaDoFormulario(p.betinho_subscription_period_end),
+    };
+  }
+  if (produto === 'analises') {
+    return {
+      ativo: p.analytics_subscription_status === 'premium',
+      ate: comoDiaDoFormulario(p.analytics_subscription_period_end),
+    };
+  }
+  // Futebol: o status sozinho, sem o teste. O teste tem controle próprio, e
+  // juntar os dois num interruptor só faria desligar o premium apagar o teste.
+  return { ativo: p.futebol_subscription_status === 'premium', ate: '' };
+}
+
+/**
+ * O teste gratuito de alguém, em palavras.
+ *
+ * Três estados, e não dois: nunca começou, está correndo, já venceu. Juntar os
+ * dois últimos num "desligado" esconderia o caso em que o teste JÁ foi usado —
+ * que é justamente o que o sócio precisa saber antes de dar outro.
+ */
+export type EstadoDoTeste =
+  | { tipo: 'nunca' }
+  | { tipo: 'correndo'; terminaEm: string; diasRestantes: number }
+  | { tipo: 'vencido'; terminouEm: string };
+
+const UM_DIA = 24 * 60 * 60 * 1000;
+
+export function estadoDoTeste(p: Pessoa, agora = Date.now()): EstadoDoTeste {
+  if (!p.futebol_trial_started_at) return { tipo: 'nunca' };
+
+  const inicio = new Date(p.futebol_trial_started_at).getTime();
+  if (Number.isNaN(inicio)) return { tipo: 'nunca' };
+
+  const fim = inicio + DIAS_DE_TESTE * UM_DIA;
+  const dia = new Date(fim).toISOString().slice(0, 10);
+
+  if (fim <= agora) return { tipo: 'vencido', terminouEm: dia };
+  return { tipo: 'correndo', terminaEm: dia, diasRestantes: Math.ceil((fim - agora) / UM_DIA) };
+}
+
+/**
+ * A pessoa entra no futebol agora?
+ *
+ * Reexportado daqui porque a tela de edição precisa responder isso DEPOIS de
+ * mexer, e a regra é a mesma que a ficha já usa. Duas contas do mesmo acesso
+ * divergiriam no dia em que o prazo mudasse.
+ */
+export function entraNoFutebol(p: Pessoa, agora = Date.now()): boolean {
+  return temAcessoAoFutebol(p.futebol_subscription_status, p.futebol_trial_started_at, agora);
+}

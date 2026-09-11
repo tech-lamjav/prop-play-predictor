@@ -45,6 +45,7 @@ const montar = (
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
         linhaDoTempo={extras.linhaDoTempo ?? null}
         comportamento={<p>o comportamento</p>}
+        edicaoDeAcesso={<p>o editor de acesso</p>}
       />
     </MemoryRouter>,
   );
@@ -66,7 +67,9 @@ describe('Ficha', () => {
       telegram_synced: false,
     });
     expect(() => montar(magro)).not.toThrow();
-    expect(screen.getByRole('heading', { level: 1, name: 'maria@exemplo.com' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'maria@exemplo.com' }),
+    ).toBeInTheDocument();
     const contatos = screen.getByRole('region', { name: 'Contatos' });
     expect(within(contatos).getAllByText(/não informado/i).length).toBeGreaterThan(0);
   });
@@ -76,7 +79,9 @@ describe('Ficha', () => {
     // traço ali seria lido como "não renova", que é outra coisa.
     montar();
     const acessos = screen.getByRole('region', { name: 'Planos e acessos' });
-    expect(within(acessos).getByText(/o banco não guarda a renovação do futebol/i)).toBeInTheDocument();
+    expect(
+      within(acessos).getByText(/o banco não guarda a renovação do futebol/i),
+    ).toBeInTheDocument();
   });
 
   it('mostra a renovação dos acessos que têm data, no fuso de Brasília', () => {
@@ -153,12 +158,12 @@ describe('Ficha', () => {
           erroAoMudarEtapa={false}
           linhaDoTempo={null}
           comportamento={null}
+          edicaoDeAcesso={null}
         />
       </MemoryRouter>,
     );
     expect(screen.getByText(/não encontramos esse cadastro/i)).toBeInTheDocument();
   });
-
 });
 
 describe('Ficha · etapa', () => {
@@ -236,6 +241,7 @@ describe('Ficha · a linha do tempo entra na página', () => {
           erroAoMudarEtapa={false}
           linhaDoTempo={<p>a linha do tempo</p>}
           comportamento={null}
+          edicaoDeAcesso={null}
         />
       </MemoryRouter>,
     );

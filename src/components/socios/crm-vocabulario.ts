@@ -53,6 +53,19 @@ export const TIPOS_DE_ANOTACAO = ['anotacao', 'feedback', 'objecao'] as const;
 export type TipoDeAnotacao = (typeof TIPOS_DE_ANOTACAO)[number];
 
 /**
+ * Tudo que PODE aparecer na linha do tempo, escrito à mão ou não.
+ *
+ * Lista separada dos três acima de propósito. `acesso` é escrito pelas funções
+ * da migration 129 quando um sócio libera um produto na mão, e ninguém digita
+ * um: somar ele à lista de cima o colocaria no seletor do formulário, e um
+ * sócio poderia escrever "Betinho: liberou" sem ter liberado nada — um registro
+ * de auditoria que qualquer um forja não é registro de auditoria.
+ */
+export const TIPOS_NA_LINHA_DO_TEMPO = [...TIPOS_DE_ANOTACAO, 'acesso'] as const;
+
+export type TipoNaLinhaDoTempo = (typeof TIPOS_NA_LINHA_DO_TEMPO)[number];
+
+/**
  * O endereço do painel.
  *
  * O App importa daqui em vez de escrever a string na tabela de rotas, e não é
@@ -74,8 +87,9 @@ export const ROTA_DOS_SOCIOS = '/socios';
 export const ETAPA_PADRAO: Etapa = 'novo';
 
 /** Como cada tipo de registro se chama na tela. */
-export const ROTULO_DO_TIPO: Record<TipoDeAnotacao, string> = {
+export const ROTULO_DO_TIPO: Record<TipoNaLinhaDoTempo, string> = {
   anotacao: 'Anotação',
   feedback: 'Feedback',
   objecao: 'Objeção',
+  acesso: 'Acesso',
 };

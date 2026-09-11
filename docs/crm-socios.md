@@ -160,6 +160,37 @@ lista cronológica responde "o que aconteceu", não "com quem eu falo agora".
 tempo, e o bloco da mensagem pronta com um botão que copia e outro que abre o
 WhatsApp com o texto já dentro.
 
+## Acesso dado na mão
+
+A primeira ESCRITA do CRM na tabela de usuários. Até a migration 128 o sócio só
+lia; a 129 abre três interruptores de produto e o teste do futebol, na coluna
+esquerda da ficha.
+
+**O Stripe continua mandando.** O acesso dado aqui vale até o webhook falar
+sobre aquela pessoa, e aí ele vence. É uma escolha, e a alternativa é pior: se o
+CRM ganhasse do webhook, um clique errado viraria assinatura eterna de graça. A
+tela avisa isso onde o sócio clica, porque é o tipo de coisa que só aparece três
+semanas depois, quando o acesso "some sozinho".
+
+**A função não recebe nome de coluna.** Ela recebe um produto de uma lista de
+três e decide sozinha o que mexer. A versão genérica — `execute format('update
+public.users set %I = ...')` — é uma linha mais curta e transforma "produto" em
+qualquer coluna da tabela, `is_socio` inclusive: um sócio comprometido viraria
+todos os sócios. A escada de `if` é feia e é a escolha certa.
+
+**O teste do futebol é função à parte**, e não um quarto produto. Ele não é
+status de assinatura, é um carimbo de início de onde se contam sete dias.
+Juntá-lo aos outros convidaria a implementá-lo como `status = 'premium'`, que dá
+acesso para sempre com cara de teste. Na tela ele tem três estados, e não dois:
+nunca usou, correndo, já usou — o terceiro é o que decide se dar outro faz
+sentido.
+
+**Toda mudança vira registro na linha do tempo**, num quarto tipo, `acesso`, que
+ninguém digita: ele fica fora do seletor do formulário de propósito, porque um
+registro de auditoria que qualquer um forja não é registro de auditoria. Daqui a
+três meses alguém vai perguntar por que essa pessoa tem o Completo sem nunca ter
+pago, e a resposta precisa estar junto do resto da conversa.
+
 ## Ordem de execução
 
 Cada item é uma bala traçante: sai ponta a ponta, do banco à tela.

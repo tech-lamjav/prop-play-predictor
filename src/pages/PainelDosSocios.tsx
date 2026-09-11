@@ -4,6 +4,7 @@ import { Seo } from '@/components/Seo';
 import { Ficha } from '@/components/socios/Ficha';
 import { FichaEmModal } from '@/components/socios/FichaEmModal';
 import { BlocoDeComportamento } from '@/components/socios/BlocoDeComportamento';
+import { EditorDeAcesso, type EstadoDaEscrita } from '@/components/socios/EditorDeAcesso';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
@@ -14,6 +15,7 @@ import { useEtapas, useMudarEtapa } from '@/hooks/use-etapas';
 import { useLinhaDoTempo, useAnotar } from '@/hooks/use-linha-do-tempo';
 import { useMovimento } from '@/hooks/use-painel-do-crm';
 import { useComportamento } from '@/hooks/use-comportamento';
+import { useDefinirAcesso, useDefinirTeste } from '@/hooks/use-acesso';
 import { useNomeDoSocio } from '@/hooks/use-nome-do-socio';
 import { usePessoa } from '@/hooks/use-pessoa';
 import { brtToday } from '@/utils/futebol-datas';
@@ -72,10 +74,29 @@ function FichaDoModal({ id }: { id: string }) {
   const linha = useLinhaDoTempo(id);
   const anotar = useAnotar(id);
   const nomeDoSocio = useNomeDoSocio();
+  const acesso = useDefinirAcesso(id);
+  const teste = useDefinirTeste(id);
   const comportamento = useComportamento(
     id,
     estado.tipo === 'pronta' ? estado.pessoa.email : undefined,
   );
+
+  /**
+   * Quem está gravando neste instante, e não "está gravando".
+   *
+   * O alvo importa: com um booleano, salvar o Betinho travaria as três linhas
+   * do editor e o teste junto, e a tela pareceria congelada. `variables` é o
+   * que a mutação recebeu, então ele diz qual produto está em voo.
+   */
+  const escrita: EstadoDaEscrita = acesso.isPending
+    ? { tipo: 'salvando', alvo: acesso.variables.produto }
+    : teste.isPending
+      ? { tipo: 'salvando', alvo: 'teste' }
+      : acesso.isError
+        ? { tipo: 'erro', alvo: acesso.variables?.produto ?? '' }
+        : teste.isError
+          ? { tipo: 'erro', alvo: 'teste' }
+          : { tipo: 'parado' };
 
   return (
     <Ficha
@@ -86,6 +107,19 @@ function FichaDoModal({ id }: { id: string }) {
       aoMudarEtapa={(etapa) => mudar.mutate(etapa)}
       mudandoEtapa={mudar.isPending}
       erroAoMudarEtapa={mudar.isError}
+      // Só com a ficha carregada: o editor abre mostrando o que JÁ vale, e sem
+      // a linha do banco ele nasceria todo em branco — um convite a apagar sem
+      // querer o acesso de quem já tem.
+      edicaoDeAcesso={
+        estado.tipo === 'pronta' ? (
+          <EditorDeAcesso
+            pessoa={estado.pessoa}
+            escrita={escrita}
+            aoSalvar={(mudanca) => acesso.mutate(mudanca)}
+            aoDefinirTeste={(ligado) => teste.mutate(ligado)}
+          />
+        ) : null
+      }
       comportamento={
         <BlocoDeComportamento
           estado={comportamento}
