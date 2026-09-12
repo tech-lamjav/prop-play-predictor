@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { ROTA_DO_PLACAR } from '@/components/placar/placar-vocabulario';
 import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from './crm-vocabulario';
 
 // ============================================================================
@@ -22,15 +23,20 @@ const raiz = (caminho: string) =>
 /**
  * As rotas da área dos sócios, como linhas do App.
  *
- * Procura as duas CONSTANTES, e não a string do endereço: depois que o CRM
- * desceu um andar (ADR 0001), a área tem rotas escritas com `ROTA_DOS_SOCIOS` —
- * a raiz e o endereço antigo da ficha — e rotas escritas com `ROTA_DO_CRM`.
- * Filtrar por uma só deixaria metade da área sem guarda.
+ * Procura as CONSTANTES, e não a string do endereço: depois que o CRM desceu um
+ * andar (ADR 0001), a área tem rotas escritas com `ROTA_DOS_SOCIOS` — a raiz e o
+ * endereço antigo da ficha —, rotas com `ROTA_DO_CRM` e a do placar, com
+ * `ROTA_DO_PLACAR`. Filtrar por uma só deixaria parte da área sem guarda.
+ *
+ * ⚠️ Este arquivo guarda a ÁREA inteira, os dois andares, e não só o CRM. Foi
+ * escrito quando a área era só o CRM, e dividi-lo em dois por contexto criaria
+ * a chance de um andar novo nascer sem portão e sem noindex — que é justamente
+ * o que ele existe para impedir.
  */
 const rotasDaArea = () =>
   raiz('src/App.tsx')
     .split('\n')
-    .filter((l) => l.includes('<Route') && /ROTA_DO(S_SOCIOS|_CRM)\b/.test(l));
+    .filter((l) => l.includes('<Route') && /ROTA_DO(S_SOCIOS|_CRM|_PLACAR)\b/.test(l));
 
 /**
  * As rotas que só redirecionam, e por isso não desenham página.
@@ -60,7 +66,14 @@ describe('o painel não é anunciado', () => {
    * A lista é escrita à mão porque é curta e porque escrever o nome aqui é o
    * momento em que alguém lembra da regra.
    */
-  const PAGINAS = ['PainelDosSocios', 'FeedbacksDoCrm', 'AssinaturasDoCrm'];
+  const PAGINAS = [
+    'PainelDosSocios',
+    'FeedbacksDoCrm',
+    'AssinaturasDoCrm',
+    // O outro andar da área. Ele não é CRM, mas a regra de não ser anunciado é
+    // a mesma — e uma lista que só conhecesse um andar deixaria o outro passar.
+    'PlacarDaMetodologia',
+  ];
 
   for (const pagina of PAGINAS) {
     it(`a página ${pagina} é noindex`, () => {
@@ -197,6 +210,14 @@ describe('os dois andares da área', () => {
     // de ser declarada antes dela para não ser lida como um lead. Agora o
     // coringa que serve o CRM está um andar abaixo, e a raiz está livre.
     expect(APP).toContain('path={`${ROTA_DO_CRM}/:id`}');
+  });
+
+  it('o placar é irmão do CRM, e não uma seção dele', () => {
+    // Se o placar nascesse abaixo de `/socios/crm`, ele entraria na barra de
+    // seções do CRM — e o mapa de contextos manda não misturar "Leads" com
+    // "Oportunidades" na mesma barra.
+    expect(ROTA_DO_PLACAR.startsWith(`${ROTA_DOS_SOCIOS}/`)).toBe(true);
+    expect(ROTA_DO_PLACAR.startsWith(ROTA_DO_CRM)).toBe(false);
   });
 
   it('as seções do CRM ficam abaixo do CRM, não da raiz da área', () => {

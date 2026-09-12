@@ -17,6 +17,7 @@ import PremiumRoute from "./components/PremiumRoute";
 import { PortaoDoSocio } from "./components/socios/PortaoDoSocio";
 import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from "./components/socios/crm-vocabulario";
 import { FichaAntiga } from "./components/socios/FichaAntiga";
+import { ROTA_DO_PLACAR } from "./components/placar/placar-vocabulario";
 import { PostHogPageView } from "./components/PostHogPageView";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
@@ -53,6 +54,8 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const PainelDosSocios = lazyWithRetry(() => import("./pages/PainelDosSocios"));
 const FeedbacksDoCrm = lazyWithRetry(() => import("./pages/FeedbacksDoCrm"));
 const AssinaturasDoCrm = lazyWithRetry(() => import("./pages/AssinaturasDoCrm"));
+// O segundo andar da área: o placar da metodologia.
+const PlacarDaMetodologia = lazyWithRetry(() => import("./pages/PlacarDaMetodologia"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
@@ -207,6 +210,8 @@ const App = () => (
                 o endereço continua compartilhável, e abrir um lead não tira
                 ninguém da lista. */}
             <Route path={`${ROTA_DO_CRM}/:id`} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
+            {/* O placar da metodologia, o outro andar da área (ADR 0001). */}
+            <Route path={ROTA_DO_PLACAR} element={<PortaoDoSocio><PlacarDaMetodologia /></PortaoDoSocio>} />
             {/* O endereço antigo da ficha, de quando o CRM morava na raiz. */}
             <Route path={`${ROTA_DOS_SOCIOS}/:id`} element={<PortaoDoSocio><FichaAntiga /></PortaoDoSocio>} />
             <Route path="/report" element={
