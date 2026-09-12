@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
 import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
 import { mensagemPara } from './crm-mensagens';
@@ -47,6 +48,53 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
     </div>
   );
 }
+
+/**
+ * Um contato no cabeçalho.
+ *
+ * Rótulo em cima, valor embaixo, como o `Campo` — mas sem a borda de cima, que
+ * numa faixa horizontal viraria um risco entre colunas em vez de um separador
+ * entre linhas.
+ */
+function Contato({ rotulo, valor }: { rotulo: string; valor: string | null }) {
+  return (
+    <div className="min-w-[140px]">
+      <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim">
+        {rotulo}
+      </p>
+      {/* Sem valor, a palavra explícita: um campo em branco é lido como dado, e
+          o que existe aqui é a ausência dele. */}
+      <p className="mt-0.5 break-words text-[13.5px] text-ink">
+        {valor ?? <span className="text-ink-2">não informado</span>}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * O gatilho de uma aba: sublinhado, e não pílula.
+ *
+ * A primeira versão era uma pílula branca sobre o fundo creme, dentro de um
+ * `grid-cols-3`. Duas coisas saíram erradas ao mesmo tempo: as três colunas
+ * ficavam da largura da mais longa, então "Conversa" e "Planos" carregavam um
+ * vão morto do tamanho de "Comportamento"; e a pílula branca flutuando sobre o
+ * creme lia como botão apertado, não como aba selecionada.
+ *
+ * Sublinhado resolve os dois: cada aba ocupa a largura do próprio texto, e a
+ * linha de baixo é o que o olho já reconhece como "você está aqui".
+ */
+const ABA =
+  'relative -mb-px border-b-2 border-transparent px-1 pb-2.5 text-[13.5px] font-bold text-ink-2 transition hover:text-ink data-[state=active]:border-forest data-[state=active]:text-ink';
+
+/**
+ * O painel de uma aba.
+ *
+ * `min-h-0` junto do `flex-1` não é redundância: sem ele, um filho que rola
+ * dentro de um container flex cresce até o conteúdo caber, o `overflow-y-auto`
+ * nunca entra em ação, e a rolagem vaza para o modal — que foi o que produziu
+ * as duas barras de rolagem disputando a lateral.
+ */
+const PAINEL = 'min-h-0 flex-1 space-y-3.5 overflow-y-auto bg-canvas p-6 pt-5';
 
 const COMO_CHAMAR: Record<TipoDeGancho, string> = {
   betinho: 'veio pelo Betinho',
@@ -144,91 +192,128 @@ function Conteudo({
 
   return (
     <div className="flex max-h-[82vh] flex-col">
-      {/* Sem nome, o e-mail vira o título: a ficha precisa ter uma pessoa no
-          topo, e não uma faixa vazia. */}
-      <div className="border-b border-line-2 bg-white px-6 py-5">
-        <h1 className="font-display text-2xl font-black text-ink">{pessoa.name ?? pessoa.email}</h1>
-        <p className="mt-1 text-[13px] text-ink-2">
-          {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
-        </p>
-      </div>
-
       {/*
-        Duas colunas, e a divisão é a tese do formato escolhido no protótipo:
-        à esquerda o que é CONSULTA — você olha uma vez e não olha mais —, e à
-        direita o que é TRABALHO: o palpite, a mensagem e o registro do que
-        aconteceu. A versão anterior empilhava os seis blocos com o mesmo peso,
-        e era isso que fazia a ficha parecer formulário.
+        O cabeçalho carrega tudo que se olha UMA VEZ: quem é, em que pé está, e
+        como falar com a pessoa. Antes isso era uma coluna de 360px à esquerda,
+        e o Victor apontou o problema: planos, acessos e comportamento estavam
+        empilhados ali junto, quando são coisas que se CONSULTA de verdade — com
+        gráfico, com histórico, com detalhe. A coluna gastava a largura da ficha
+        para mostrar três linhas de contato.
+
+        Numa faixa horizontal, as mesmas informações ocupam duas linhas e
+        devolvem a largura inteira para as abas. A etapa fica aqui e não numa
+        aba de propósito: ela precisa estar à mão enquanto o sócio olha o que a
+        pessoa faz, que é justamente quando ele decide mover.
       */}
-      <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[360px_1fr]">
-        <div className="space-y-4 overflow-y-auto border-line-2 bg-white p-5 md:border-r">
-          <Bloco titulo="Etapa">
-            <select
-              value={etapa ?? ''}
-              disabled={mudandoEtapa || etapa === null}
-              onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
-              aria-label="Etapa do lead"
-              className="h-11 w-full rounded-rebrand-sm border border-line-2 bg-white px-3 text-[15px] text-ink disabled:opacity-60"
+      <section
+        role="region"
+        aria-label="Identificação do lead"
+        className="shrink-0 bg-white px-6 pt-5"
+      >
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div className="min-w-0">
+            {/* Sem nome, o e-mail vira o título: a ficha precisa ter uma pessoa
+                no topo, e não uma faixa vazia. */}
+            <h1 className="truncate font-display text-[26px] font-black leading-tight text-ink">
+              {pessoa.name ?? pessoa.email}
+            </h1>
+            <p className="mt-0.5 text-[12.5px] text-ink-2">
+              {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
+            </p>
+          </div>
+
+          {/* A etapa fica alinhada à DIREITA do nome, e não abaixo dos
+              contatos. É o único controle do cabeçalho, e misturá-lo na fileira
+              de leitura fazia o seletor parecer mais um campo de texto. */}
+          <div className="shrink-0">
+            <label
+              htmlFor="etapa-do-lead"
+              className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
             >
-              {etapa === null ? <option value="">Carregando…</option> : null}
-              {ETAPAS.map((e) => (
-                <option key={e} value={e}>
-                  {ROTULO_DA_ETAPA[e]}
-                </option>
-              ))}
-            </select>
-            {/* Travar enquanto grava não é detalhe de conforto: duas mudanças em
-            voo gravariam dois eventos, e o segundo registraria um "de" que já
-            não era verdade. */}
-            {/* A frase de rodapé é uma promessa. Quando a gravação falha ela vira
-            mentira exatamente no momento em que nada foi registrado, e o
-            seletor ainda volta sozinho para a etapa antiga — sem aviso, parece
-            um clique que não pegou. */}
-            {erroAoMudarEtapa ? (
-              <p className="mt-2 text-[13px] font-bold text-ink">
-                Não deu para gravar a etapa. Ela continua como estava.
-              </p>
-            ) : (
-              <p className="mt-2 text-[12px] text-ink-2">
-                {mudandoEtapa
-                  ? 'Gravando…'
-                  : 'Cada mudança fica registrada, com quem mudou e quando.'}
-              </p>
-            )}
-          </Bloco>
+              Etapa
+            </label>
+            <div className="mt-1 flex items-center gap-2">
+              <select
+                id="etapa-do-lead"
+                value={etapa ?? ''}
+                disabled={mudandoEtapa || etapa === null}
+                onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
+                aria-label="Etapa do lead"
+                className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
+              >
+                {etapa === null ? <option value="">Carregando…</option> : null}
+                {ETAPAS.map((e) => (
+                  <option key={e} value={e}>
+                    {ROTULO_DA_ETAPA[e]}
+                  </option>
+                ))}
+              </select>
+              {/* Travar enquanto grava não é conforto: duas mudanças em voo
+                  gravariam dois eventos, e o segundo registraria um "de" que já
+                  não era verdade.
 
-          <Bloco titulo="Contatos">
-            <Campo rotulo="E-mail" valor={pessoa.email} />
-            <Campo rotulo="WhatsApp" valor={pessoa.whatsapp_number} />
-            <Campo
-              rotulo="Telegram"
-              valor={
-                pessoa.telegram_username
-                  ? `@${pessoa.telegram_username}${pessoa.telegram_synced ? '' : ' (não vinculado)'}`
-                  : null
-              }
-            />
-          </Bloco>
-
-          {/*
-            Ler e editar no MESMO bloco. Eram dois: uma lista do que a pessoa
-            tem, e logo abaixo um editor que mostrava exatamente a mesma coisa
-            em interruptores. Além de ocupar a coluna inteira, dois lugares
-            dizendo a mesma coisa é um convite a discordarem — e quando
-            discordassem, ninguém saberia qual acreditar.
-
-            O que sobreviveu da lista é o plano, porque ele não se edita aqui:
-            quem escreve `subscription_product_type` é o Stripe.
-          */}
-          <Bloco titulo="Planos e acessos">
-            <Campo rotulo="Plano" valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)} />
-            {edicaoDeAcesso}
-          </Bloco>
-
-          {comportamento}
+                  O recado só aparece quando tem o que dizer. A versão anterior
+                  mantinha "Cada mudança fica registrada" permanentemente embaixo
+                  do seletor, e uma promessa que está sempre lá não é lida — só
+                  ocupa a linha de baixo. Quando a gravação falha, ela ainda
+                  virava mentira no exato momento em que nada foi registrado. */}
+              {(mudandoEtapa || erroAoMudarEtapa) && (
+                <span
+                  className={`text-[11.5px] ${erroAoMudarEtapa ? 'font-bold text-ink' : 'text-ink-2'}`}
+                >
+                  {erroAoMudarEtapa ? 'Não gravou. Continua como estava.' : 'Gravando…'}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-4 overflow-y-auto p-5">
+        <div className="mt-4 flex flex-wrap items-start gap-x-7 gap-y-3">
+          <Contato rotulo="E-mail" valor={pessoa.email} />
+          <Contato rotulo="WhatsApp" valor={pessoa.whatsapp_number} />
+          <Contato
+            rotulo="Telegram"
+            valor={
+              pessoa.telegram_username
+                ? `@${pessoa.telegram_username}${pessoa.telegram_synced ? '' : ' (não vinculado)'}`
+                : null
+            }
+          />
+        </div>
+      </section>
+
+      {/*
+        Três abas, e a divisão é por PERGUNTA e não por tipo de dado.
+
+        Conversa responde "o que eu digo a essa pessoa": o palpite do gancho, a
+        mensagem pronta e o registro do que já aconteceu. É a aba que abre,
+        porque é o trabalho.
+
+        Planos responde "o que essa pessoa tem", e é onde se dá e se tira. Ler e
+        escrever no mesmo lugar, pela razão de sempre: dois lugares dizendo a
+        mesma coisa acabam discordando, e ninguém sabe qual acreditar.
+
+        Comportamento responde "o que essa pessoa faz" — como ela aposta, e o
+        que o PostHog viu.
+      */}
+      <Tabs defaultValue="conversa" className="flex min-h-0 flex-1 flex-col">
+        {/* A tira das abas mora no BRANCO do cabeçalho e divide a borda de
+            baixo com ele. Antes ela flutuava sobre o creme, e a aba ativa
+            parecia um botão solto no meio do nada: o sublinhado precisa de uma
+            linha para interromper, senão não há o que sublinhar. */}
+        <TabsList className="h-auto shrink-0 justify-start gap-6 rounded-none border-b border-line-2 bg-white px-6 p-0">
+          <TabsTrigger value="conversa" className={ABA}>
+            Conversa
+          </TabsTrigger>
+          <TabsTrigger value="planos" className={ABA}>
+            Planos
+          </TabsTrigger>
+          <TabsTrigger value="comportamento" className={ABA}>
+            Comportamento
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="conversa" className={PAINEL}>
           <Bloco titulo="Gancho">
             <p className="text-[15px] text-ink">
               <span className="font-bold">Palpite:</span> {COMO_CHAMAR[gancho.tipo]}
@@ -238,8 +323,8 @@ function Conteudo({
               <p className="mt-1 text-[13px] text-ink-2">Última aposta em {ultimaAposta}.</p>
             ) : null}
             {/* A aposta é o sinal mais forte e o primeiro da fila. Sem ela, o
-                palpite abaixo pode estar apontando para o lado errado, e o
-                sócio precisa saber disso antes de abrir a conversa. */}
+                palpite pode estar apontando para o lado errado, e o sócio
+                precisa saber disso antes de abrir a conversa. */}
             {gancho.apostasDesconhecidas ? (
               <p className="mt-2 text-[13px] font-bold text-ink">
                 Não deu para consultar as apostas, então este palpite está incompleto.
@@ -261,8 +346,19 @@ function Conteudo({
           )}
 
           {linhaDoTempo}
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="planos" className={PAINEL}>
+          <Bloco titulo="Planos e acessos">
+            <Campo rotulo="Plano" valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)} />
+            {edicaoDeAcesso}
+          </Bloco>
+        </TabsContent>
+
+        <TabsContent value="comportamento" className={PAINEL}>
+          {comportamento}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
