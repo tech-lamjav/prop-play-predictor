@@ -51,7 +51,14 @@ export function FutebolTrialChip() {
       <button
         onClick={() => navigate('/futebol/assinar')}
         title={`Teste grátis · ${tempo.longo}`}
-        className={`hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[11px] font-semibold border transition ${
+        // Aparece no celular também. Era `hidden sm:inline-flex`, e some abaixo
+        // de 640px — o que significava nenhum contador no celular, porque
+        // durante o teste esta pílula é a ÚNICA superfície que mostra o tempo
+        // restante: a faixa do gate não aparece no estado de teste, de
+        // propósito. Com 7 dias isso passava; com 48 horas a urgência é o
+        // produto, e esconder o relógio de quem está no celular é esconder a
+        // oferta de quase todo mundo.
+        className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[11px] font-semibold border transition ${
           tempo.acabando ? 'border-amber/50 bg-amber/15 text-amber-2 hover:bg-amber/25' : 'border-line bg-canvas-2 text-ink-2 hover:bg-canvas'
         }`}
       >

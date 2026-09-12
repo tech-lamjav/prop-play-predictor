@@ -69,6 +69,19 @@ describe('a pílula durante o teste de 48 horas', () => {
   });
 });
 
+describe('a pílula existe no celular', () => {
+  it('não é escondida abaixo do breakpoint', () => {
+    // Era `hidden sm:inline-flex`, e sumia abaixo de 640px. Durante o teste
+    // esta pílula é a ÚNICA superfície com o tempo restante — a faixa do gate
+    // não aparece no estado de teste, de propósito —, então esconder no celular
+    // era não ter contador nenhum para a maior parte do tráfego.
+    montar(emTeste(31));
+    const chip = screen.getByRole('button');
+    expect(chip.className).not.toMatch(/\bhidden\b/);
+    expect(chip.className).toMatch(/\binline-flex\b/);
+  });
+});
+
 describe('o âmbar da última reta', () => {
   it('fica neutra com um dia e meio pela frente', () => {
     montar(emTeste(36));
