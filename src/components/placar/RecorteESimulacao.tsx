@@ -1,4 +1,5 @@
 import { SlidersHorizontal } from 'lucide-react';
+import { CampoNumerico } from './CampoNumerico';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ehSimulacao, type PesoPorFaixa } from './placar-agregacao';
 import {
@@ -7,6 +8,9 @@ import {
   temRecorte,
   type Recorte,
 } from './placar-filtros';
+
+/** Os tamanhos de aposta que a simulação usa de verdade. */
+const PESOS_RAPIDOS = [0, 0.5, 1] as const;
 
 /** O resumo que fica no botão, para o estado ser visível sem abrir. */
 function resumo(recorte: Recorte, pesos: PesoPorFaixa): string {
@@ -126,22 +130,14 @@ export function RecorteESimulacao({
                   {c.rotulo}
                 </button>
               ))}
-              <label className="flex items-center gap-1 text-[12px] text-ink-2">
-                <input
-                  type="number"
-                  step={0.5}
-                  aria-label="Valor mínimo em por cento"
-                  value={recorte.valorMinimo == null ? '' : (recorte.valorMinimo * 100).toFixed(1)}
-                  onChange={(e) =>
-                    aoMudarRecorte({
-                      ...recorte,
-                      valorMinimo: e.target.value === '' ? null : Number(e.target.value) / 100,
-                    })
-                  }
-                  className="w-16 rounded-rebrand-sm border border-line-2 px-2 py-1 text-right"
-                />
-                %
-              </label>
+              <CampoNumerico
+                aria="Valor mínimo em por cento"
+                sufixo="%"
+                valor={recorte.valorMinimo == null ? null : recorte.valorMinimo * 100}
+                aoMudar={(n) =>
+                  aoMudarRecorte({ ...recorte, valorMinimo: n == null ? null : n / 100 })
+                }
+              />
             </div>
           </div>
 
@@ -153,23 +149,38 @@ export function RecorteESimulacao({
               Quanto apostar em cada faixa. Zero é não apostar — a linha sai da conta e é contada à
               parte. Mexer aqui vira simulação, e a tela avisa.
             </p>
-            <div className="mt-2 flex flex-col gap-1">
+            <div className="mt-2 flex flex-col gap-1.5">
               {FAIXAS_PARA_FILTRAR.map((f) => (
-                <label key={f} className="flex items-center justify-between gap-2 text-[12px]">
+                <div key={f} className="flex items-center justify-between gap-2 text-[12px]">
                   <span className="text-ink-2">{f}</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={5}
-                    step={0.25}
-                    aria-label={`Unidades na faixa ${f}`}
-                    value={pesos[f] ?? 1}
-                    onChange={(e) =>
-                      aoMudarPesos({ ...pesos, [f]: Math.max(0, Number(e.target.value)) })
-                    }
-                    className="w-16 rounded-rebrand-sm border border-line-2 px-2 py-1 text-right tabular-nums"
-                  />
-                </label>
+                  <span className="flex items-center gap-1">
+                    {/* Os atalhos existem porque "meia unidade na média" é o que
+                        se quer dizer nove de cada dez vezes, e clicar não erra
+                        separador decimal. O campo fica ao lado para o resto. */}
+                    {PESOS_RAPIDOS.map((peso) => (
+                      <button
+                        key={peso}
+                        type="button"
+                        onClick={() => aoMudarPesos({ ...pesos, [f]: peso })}
+                        className={`rounded-rebrand-sm border px-1.5 py-0.5 text-[11px] font-bold transition ${
+                          (pesos[f] ?? 1) === peso
+                            ? 'border-ink bg-ink text-white'
+                            : 'border-line-2 text-ink-dim hover:text-ink'
+                        }`}
+                      >
+                        {String(peso).replace('.', ',')}
+                      </button>
+                    ))}
+                    <CampoNumerico
+                      aria={`Unidades na faixa ${f}`}
+                      valor={pesos[f] ?? 1}
+                      minimo={0}
+                      maximo={5}
+                      className="w-14"
+                      aoMudar={(n) => aoMudarPesos({ ...pesos, [f]: n ?? 0 })}
+                    />
+                  </span>
+                </div>
               ))}
             </div>
           </div>

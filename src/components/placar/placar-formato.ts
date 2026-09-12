@@ -41,3 +41,20 @@ export const tomDoRoi = (roi: number) =>
 
 /** O denominador, do jeito que ele aparece ao lado do número: "em 37". */
 export const emN = (n: number) => `em ${n}`;
+
+/**
+ * O caminho de volta: texto digitado por uma pessoa vira número.
+ *
+ * Aceita vírgula porque o produto é em português e o teclado numérico do
+ * celular manda vírgula, e aceita o menos tipográfico porque é o que a tela
+ * mostra — quem copia um número da tela e cola no campo cola o «−».
+ *
+ * Devolve `null` para os estados intermediários de quem está digitando ('',
+ * '-', '.'). Tratá-los como zero é o defeito que impedia digitar 0,5.
+ */
+export function parseNumero(texto: string): number | null {
+  const limpo = texto.trim().replace(',', '.').replace('−', '-');
+  if (limpo === '' || limpo === '-' || limpo === '.' || limpo === '-.') return null;
+  const n = Number(limpo);
+  return Number.isFinite(n) ? n : null;
+}
