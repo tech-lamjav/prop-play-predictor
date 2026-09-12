@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { comando, lerMigration } from '../socios/crm-migration-de-teste';
 
@@ -21,11 +23,45 @@ import { comando, lerMigration } from '../socios/crm-migration-de-teste';
 
 const MIGRATION = lerMigration('20260914200000_136_futebol_teste_48_horas.sql');
 
+/**
+ * A MESMA função, na outra cópia: o shape file de provisão.
+ *
+ * `get_futebol_access` existe duas vezes — na migration, que corre no banco
+ * vivo, e em `docs/futebol-prod-deploy.sql`, que é o DDL colado à mão para
+ * levantar ambiente novo. A guarda do shape file compara NOMES de função, não
+ * corpos, então as duas podem divergir caladas.
+ *
+ * E divergiram: a correção do usuário sem linha em `public.users` entrou só na
+ * migration, e o shape file ficou com a versão que devolvia 'expired'. Quem
+ * provisionasse ambiente novo receberia o bug já corrigido. Por isso as
+ * asserções de COMPORTAMENTO desta suíte rodam nas duas.
+ */
+const SHAPE = readFileSync(
+  resolve(__dirname, '../../../docs/futebol-prod-deploy.sql'),
+  'utf8',
+)
+  .replace(/\r\n/g, '\n')
+  .replace(/--.*$/gm, '');
+
 const ACESSO = comando(
   MIGRATION,
   /create or replace function public\.get_futebol_access/i,
   '$function$;',
 );
+const ACESSO_NO_SHAPE = comando(
+  SHAPE,
+  /create or replace function public\.get_futebol_access/i,
+  // No shape file o corpo fecha em `end $function$` com o `;` numa linha
+  // solta, então `$function$;` não casa — e `$function$` sozinho casaria com o
+  // delimitador de ABERTURA, devolvendo só a assinatura.
+  'end $function$',
+);
+
+/** As duas cópias de `get_futebol_access`, para asserção de comportamento. */
+const AS_DUAS_COPIAS: [string, string | null][] = [
+  ['migration 136', ACESSO],
+  ['shape file', ACESSO_NO_SHAPE],
+];
 const DURACAO = comando(
   MIGRATION,
   /create or replace function public\.futebol_trial_duracao/i,
@@ -108,18 +144,33 @@ describe('get_futebol_access', () => {
     expect(ACESSO).toMatch(/public\.futebol_trial_duracao\(\)/i);
   });
 
-  it('não depende de a linha do usuário existir para liberar o teste', () => {
-    // O bug que isto trava: a primeira versão lia o fim de volta com
-    // `returning ... into v_ends`. Um usuário logado sem linha em public.users
-    // fazia o UPDATE casar zero linhas, v_ends ficava nulo, a defesa somava
-    // sobre v_started também nulo, e `now() < null` caía no ramo do else
-    // devolvendo 'expired' — teste negado a quem nunca teve teste.
-    expect(ACESSO).not.toMatch(/returning\s+futebol_trial_ends_at\s+into/i);
-    // Até `end if;`, e não até o primeiro `;`: o bloco tem três comandos, e
-    // cortar no primeiro deixaria de fora justamente a linha do fim.
-    const largada = comando(ACESSO ?? '', /if v_started is null then/i, 'end if;');
-    expect(largada).toMatch(/v_started\s*:=\s*now\(\)/i);
-    expect(largada).toMatch(/v_ends\s*:=\s*v_started\s*\+\s*public\.futebol_trial_duracao\(\)/i);
+  // Roda nas DUAS cópias. A correção deste bug entrou só na migration e o
+  // shape file ficou com a versão quebrada, porque nenhuma guarda comparava
+  // corpos — só nomes de função. Quem provisionasse ambiente novo receberia o
+  // bug já corrigido.
+  it.each(AS_DUAS_COPIAS)(
+    '%s não depende de a linha do usuário existir para liberar o teste',
+    (_onde, copia) => {
+      // O bug que isto trava: a primeira versão lia o fim de volta com
+      // `returning ... into v_ends`. Um usuário logado sem linha em
+      // public.users fazia o UPDATE casar zero linhas, v_ends ficava nulo, a
+      // defesa somava sobre v_started também nulo, e `now() < null` caía no
+      // ramo do else devolvendo 'expired' — teste negado a quem nunca teve.
+      expect(copia).not.toBeNull();
+      expect(copia).not.toMatch(/returning\s+futebol_trial_ends_at\s+into/i);
+      // Até `end if;`, e não até o primeiro `;`: o bloco tem três comandos, e
+      // cortar no primeiro deixaria de fora justamente a linha do fim.
+      const largada = comando(copia ?? '', /if v_started is null then/i, 'end if;');
+      expect(largada).toMatch(/v_started\s*:=\s*now\(\)/i);
+      expect(largada).toMatch(/v_ends\s*:=\s*v_started\s*\+\s*public\.futebol_trial_duracao\(\)/i);
+    },
+  );
+
+  it.each(AS_DUAS_COPIAS)('%s devolve as horas e lê a coluna do fim', (_onde, copia) => {
+    // As duas cópias precisam concordar também no contrato, não só na largada.
+    expect(copia).toMatch(/'hours_left'/);
+    expect(copia).toMatch(/futebol_trial_ends_at/i);
+    expect(copia).not.toMatch(/v_trial_days|interval '7 days'/i);
   });
 
   it('devolve as horas que faltam, não só os dias', () => {
@@ -129,8 +180,10 @@ describe('get_futebol_access', () => {
   });
 
   it('mantém days_left no contrato', () => {
-    // A tela ainda lê days_left. Tirar agora quebraria o gate antes da fatia
-    // que ensina a tela a falar em horas.
+    // Não porque a tela leia — depois deste PR nenhuma lê. O banco sobe antes
+    // do bundle, e quem está com a página aberta ou com o JS antigo em cache
+    // continua pedindo `days_left`. Removido do contrato, vira `undefined` lá e
+    // o contador zera na tela de quem tem acesso.
     expect(ACESSO).toMatch(/'days_left'/);
   });
 

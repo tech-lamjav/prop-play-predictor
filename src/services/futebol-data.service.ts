@@ -425,9 +425,11 @@ export interface FutebolAccess {
   state: FutebolAccessState;
   unlocked: boolean;
   /**
-   * Dias arredondados para cima. Continua no contrato porque a coorte que
-   * começou o teste antes do corte de 12/09/2026 tem até 7 dias, e para ela
-   * dia ainda é a unidade que informa.
+   * Dias arredondados para cima. Nenhuma tela lê mais — `tempo-de-teste.ts`
+   * decide a unidade a partir das horas. Continua no contrato porque o banco
+   * sobe antes do bundle: até o deploy do frontend, e depois dele para quem
+   * está com a página aberta ou com o JS antigo em cache, existe navegador
+   * pedindo este campo.
    */
   days_left: number | null;
   /**

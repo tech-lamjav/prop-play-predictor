@@ -80,9 +80,14 @@ update public.users
 -- ── A RPC de acesso ─────────────────────────────────────────────────────────
 -- Além de passar a ler a coluna, ela ganha `hours_left`. Com 48 horas, o
 -- arredondamento em dias só consegue dizer "2 dias" e depois "1 dia", que é o
--- oposto da urgência que motivou encurtar. O `days_left` fica no contrato
--- porque a tela ainda lê: tirar agora quebraria o gate antes de a tela
--- aprender a falar em horas.
+-- oposto da urgência que motivou encurtar.
+--
+-- O `days_left` fica no contrato, e não porque a tela leia — depois deste PR
+-- nenhuma lê. Fica porque o banco sobe antes do bundle: entre a migration
+-- aplicada e o deploy do frontend, e depois dele para quem está com a página
+-- aberta ou com o JS antigo em cache, existe navegador pedindo `days_left`. Um
+-- campo removido do contrato vira `undefined` lá, e o contador zera na tela de
+-- quem tem acesso.
 create or replace function public.get_futebol_access()
  returns jsonb
  language plpgsql
@@ -116,6 +121,15 @@ begin
   -- teste de duração indefinida — e é justamente essa linha que não pode
   -- existir. O `returning` lê de volta o que foi gravado, em vez de repetir a
   -- conta aqui.
+  --
+  -- ⚠️ Sem `if not found`, de propósito: se a linha não existe, o UPDATE não
+  -- grava nada e a função devolve um teste que ela não persistiu, então a
+  -- chamada seguinte cunha outras 48 horas — teste perpétuo. É o comportamento
+  -- que já existia antes desta migration, com 7 dias, pela mesma razão
+  -- (`v_started := now()` solto depois de um UPDATE que podia casar zero
+  -- linhas). Mantido aqui porque mudar semântica de ACESSO numa migration sobre
+  -- DURAÇÃO trocaria um teste perpétuo raro por um bloqueio possível durante a
+  -- corrida entre criar a conta e criar a linha. Decisão à parte.
   if v_started is null then
     v_started := now();
     v_ends := v_started + public.futebol_trial_duracao();

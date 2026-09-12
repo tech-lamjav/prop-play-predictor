@@ -821,8 +821,15 @@ begin
 
   -- 1º acesso: o relógio larga agora, e o fim é gravado na MESMA escrita — uma
   -- linha com início e sem fim seria um teste de duração indefinida.
+  --
+  -- Os dois valores são decididos ANTES da escrita, e não lidos de volta com
+  -- `returning`: um usuário logado sem linha em public.users faria o UPDATE
+  -- casar zero linhas, o fim ficaria nulo, a defesa somaria sobre início também
+  -- nulo, e `now() < null` cairia no else devolvendo 'expired'.
   if v_started is null then
-    update public.users set futebol_trial_started_at = now(), futebol_trial_ends_at = now() + public.futebol_trial_duracao() where id = v_uid returning futebol_trial_ends_at into v_ends;
+    v_started := now();
+    v_ends := v_started + public.futebol_trial_duracao();
+    update public.users set futebol_trial_started_at = v_started, futebol_trial_ends_at = v_ends where id = v_uid;
   end if;
 
   -- Defesa para a linha que não deveria existir: conta do início DESTA pessoa,
