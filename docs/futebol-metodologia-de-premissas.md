@@ -478,136 +478,326 @@ desligou. Mas a causa do desligamento foi diagnosticada e é preço, não premis
 — o board publicava com vantagem média de −2,74%. A capacidade de ordenar jogo
 nunca foi o problema dele.
 
-### Quando o Teste 2 fica possível
+### A varredura: todo insumo da base contra escanteio
 
-No ritmo atual — 61 jogos encerrados por semana nas 13 competições — a régua de
-400 jogos precificados leva **cerca de sete semanas** depois que as odds de
-escanteio entrarem no mart, se a cobertura de escanteio nas casas for parecida
-com a de gols. Sendo quatro casas, é razoável esperar mais.
+Isto é a fase 3 aplicada aos insumos, antes de aplicá-la às premissas. Dezesseis
+colunas de `fact_fixture_stats`, todas point-in-time sobre os dez jogos
+anteriores, contra 5.980 jogos.
 
-Isso define o calendário: catálogo e Teste 1 podem sair agora; peso, não antes
-de novembro.
+| insumo | persistência | prevê o total | prevê o saldo |
+|---|---:|---:|---:|
+| passes certos | 0,900 | −0,029 | 0,256 |
+| passes | 0,894 | −0,031 | 0,257 |
+| posse de bola | 0,825 | −0,007 | **0,271** |
+| gols esperados | 0,781 | 0,014 | **0,280** |
+| chutes de fora | 0,779 | 0,071 | 0,108 |
+| finalização na área | 0,766 | 0,005 | 0,259 |
+| finalizações | 0,752 | 0,045 | 0,242 |
+| chutes ao gol | 0,724 | 0,030 | 0,247 |
+| faltas | 0,710 | −0,012 | −0,061 |
+| chutes para fora | 0,672 | 0,044 | 0,147 |
+| cartões amarelos | 0,651 | 0,013 | −0,074 |
+| bloqueios | 0,618 | 0,033 | 0,178 |
+| **escanteios** | 0,589 | 0,051 | 0,221 |
+| defesas do goleiro | 0,473 | 0,063 | −0,149 |
+| impedimentos | 0,281 | 0,000 | 0,018 |
+
+Duas colunas contam histórias opostas.
+
+**A do total é toda zero.** O melhor preditor do total de escanteios de um jogo é
+chute de fora da área, com 0,071 — menos de 1% da variação explicada. Não é
+escolha ruim de insumo: é que nenhum insumo que temos sabe quantos escanteios um
+jogo vai ter.
+
+**A do saldo funciona, e o escanteio é o oitavo colocado.** Gols esperados e
+posse preveem a supremacia de escanteio melhor do que o próprio histórico de
+escanteio.
+
+Também medido e descartado: **árbitro**. A persistência do árbitro entre a
+primeira e a segunda metade dos jogos dele é 0,128, e o poder preditivo 0,033.
+Não existe árbitro de muito escanteio.
+
+### O que o próprio mercado sabe
+
+Antes de concluir qualquer coisa sobre o total, vale saber contra quem estamos
+competindo.
+
+| | correlação com o resultado | desvio da previsão | desvio do real |
+|---|---:|---:|---:|
+| nossa previsão de escanteios | 0,097 | 0,90 | 3,43 |
+| **a linha do mercado de escanteios** | **0,163** | 0,57 | 3,56 |
+| régua: a linha de gols prevendo gols | 0,266 | 0,36 | 1,69 |
+
+As casas, com tudo que elas têm, chegam a 0,163 — e mexem a linha de escanteio
+entre jogos com desvio de 0,57 contra um resultado que varia 3,56. O mercado
+também trata o total de escanteio como quase constante.
+
+Ou seja, a distância entre nós e o melhor previsor disponível é pequena porque o
+previsível é pouco, para todo mundo. Isso muda o que "faltam dados" significa: não
+é volume do que já temos.
+
+### O que existe e ainda não foi testado
+
+Uma correção de registro: **a coleta de eventos existe.** O
+`fixture_events_extractor` bate no `/fixtures/events`, guarda um registro por
+evento com minuto, time, jogador e tipo, e vira `fact_fixture_events` no
+BigQuery. Não está sincronizado no Postgres.
+
+Escanteio não é evento na API — os tipos são gol, cartão, substituição e VAR —,
+então isso não dá o minuto do escanteio. Mas dá **placar minuto a minuto**, e daí
+sai uma premissa pré-jogo que ninguém testou: **time que costuma estar atrás no
+fim do jogo empurra e força escanteio**. É estrutural, é calculável do histórico,
+e é a única hipótese viva para o mercado de mais e menos.
+
+O que realmente não existe, conferido no `stg_futebol_fixture_statistics`: o
+modelo pivota dezoito tipos, e são exatamente os dezoito que o endpoint devolve.
+Não há descarte como houve nas odds. Cruzamento, entrada no terço final e ataque
+pelo lado não estão nessa fonte.
 
 ---
 
-## 6. A recomendação, e o catálogo inicial
+## 6. A simulação de ROI
 
-### A ordem
+As odds de escanteio também estão no Postgres, sincronizadas, com histórico de
+16/06 em diante. Isto é a fase 6 antecipada — Teste 3 e Teste 4 com um catálogo
+provisório, feito para descobrir a forma do problema, não para fixar peso.
 
-| Ordem | Mercado | Por quê |
-|---|---|---|
-| 1º | **Handicap de escanteios** (56) | melhor insumo (0,619) e melhor separação (29,2pp) da família |
-| 2º | **Total do jogo** (45) | separação fraca, mas é o mercado que o assinante reconhece |
-| 3º | **Escanteios do mandante** (57) | 0,588, e reaproveita o catálogo do total |
-| — | **Escanteios do visitante** (58) | 0,435 raspa o piso da fase 1; entra só se o 57 medir bem |
-| — | **Primeiro tempo** (77) | sem insumo na base; coletar sim, publicar não |
+### A armadilha da ótica, de novo
 
-### Os limiares medidos
+No mercado 56 as casas cotam **"Home −4,5" e "Away −4,5" como par**, com odds
+complementares. A linha é sempre na ótica do mandante, igual ao handicap de gols.
+Liquidar pela leitura literal do rótulo inverte um dos lados e produz número
+plausível e errado.
 
-Tudo abaixo sai da base, não do olho. Times com 15 jogos ou mais no lado.
+A validação que fecha: casa e fora têm que somar exatamente 100% em cada linha.
 
-| Grandeza | Mandante | Visitante |
+| linha | casa cobre | fora cobre |
+|---:|---:|---:|
+| −3,5 | 36,9% | 63,1% |
+| −2,5 | 44,5% | 55,5% |
+| −1,5 | 52,5% | 47,5% |
+| −0,5 | 55,5% | 44,5% |
+| +0,5 | 54,7% | 45,3% |
+| +1,5 | 65,8% | 34,2% |
+
+### O universo
+
+1.464 linhas, 373 jogos liquidados. Meia linha, melhor odd, mínimo de três casas,
+janela t24h, aposta de uma unidade.
+
+### ROI geral e por lado
+
+| | linhas | ROI | erro-padrão |
+|---|---:|---:|---:|
+| mercado inteiro | 1.464 | −3,77% | 0,45 |
+| lado casa | 732 | **+1,09%** | 4,91 |
+| lado fora | 732 | **−8,64%** | 4,71 |
+
+E o corte que carrega o sinal **é o mando, não o favoritismo**:
+
+| | ROI |
+|---|---:|
+| casa favorito | +1,14% |
+| casa azarão | +0,88% |
+| fora favorito | −5,81% |
+| fora azarão | −9,24% |
+
+Dentro de casa, favorito e azarão dão a mesma coisa. É diferente do handicap de
+gols, onde o eixo é o favoritismo, e muda o desenho do catálogo.
+
+### ROI por premissa, dentro do lado
+
+Medir a premissa sem controlar o lado dá tudo positivo em casa e tudo negativo
+fora — é o viés de lado se disfarçando de efeito de premissa, o mesmo que já
+enganou no handicap de gols. Controlado:
+
+| premissa | casa | fora | veredito |
+|---|---:|---:|---|
+| escanteio | **+10,80** | **+11,08** | fica nos dois lados |
+| posse | +15,26 | −10,74 | só casa |
+| gols esperados | +14,84 | −13,75 | só casa |
+| finalização na área | +7,44 | −13,55 | só casa |
+| adversário cede escanteio | −1,58 | −5,47 | sai |
+| decisão (mata-mata) | −1,59 | +7,01 | só fora |
+
+**Histórico de escanteio é a única que sobrevive nos dois lados.** Posse, gols
+esperados e finalização na área rendem forte quando é o mandante que domina e
+viram contra quando é o visitante.
+
+Isto é a diferença entre Teste 1 e Teste 2 em estado puro: na varredura acima,
+posse e gols esperados preveem o saldo melhor que escanteio. Contra o preço, é o
+contrário.
+
+### ROI por faixa de odd
+
+| faixa | linhas | ROI | erro-padrão |
+|---|---:|---:|---:|
+| até 1,60 | 172 | −9,66% | 5,79 |
+| 1,60 a 1,90 | 442 | −7,43% | 4,12 |
+| **1,90 a 2,10** | 474 | **+3,85%** | 4,43 |
+| 2,10 a 2,50 | 290 | −9,82% | 6,64 |
+| 2,50 ou mais | 86 | +5,19% | 14,10 |
+
+Só a faixa de linha equilibrada sobrevive.
+
+### O Score, na régua de produção
+
+A conta é a mesma dos cinco mercados: soma do peso das premissas acesas, dividida
+pelo teto, normalizada em 0 a 100, com faixas em 30 e 60. O que muda entre as duas
+versões abaixo é **de onde vem o peso**.
+
+**Versão A — peso do Teste 1.** A força preditiva medida em 5.980 jogos, sem
+olhar odd nem resultado financeiro. Mesmas quatro premissas nos dois lados: gols
+esperados 14, posse 14, área 13, escanteio 11. Teto 52.
+
+| faixa | linhas | % do board | ROI | erro-padrão |
+|---|---:|---:|---:|---:|
+| Alta | 250 | 17,1% | +1,09% | 9,00 |
+| Média | 179 | 12,2% | −7,07% | 9,76 |
+| Baixa | 1.035 | 70,7% | −4,38% | 3,64 |
+
+Não ordena. E por lado se vê o motivo: casa Alta **+19,02%**, fora Alta
+**−18,34%**. Peso simétrico num mercado assimétrico.
+
+**Versão B — premissas e pesos por lado.** Casa com posse 15, gols esperados 15,
+escanteio 11, área 7, teto 48. Fora só com escanteio 11 e decisão 7, teto 18.
+
+| faixa | linhas | % do board | ROI | erro-padrão |
+|---|---:|---:|---:|---:|
+| Alta | 314 | 21,4% | +7,69% | 7,64 |
+| Média | 242 | 16,5% | +1,24% | 8,27 |
+| Baixa | 908 | 62,0% | −9,07% | 3,99 |
+
+Ordena, e nos dois lados. **Mas é circular**: os pesos saíram desta amostra e o
+ROI foi medido nela. O +7,69% é teto, não estimativa — a medição do próprio time
+já mostrou o tamanho desse viés, com um filtro que rende +8,3% definido na mesma
+amostra e −6,2% definido só na primeira metade.
+
+O que a versão B estabelece com honestidade não é o número, é a **forma**: o
+catálogo tem que ser diferente por lado. A versão A prova isso pelo avesso, ao
+falhar exatamente por ser simétrica — e esse motivo não depende da circularidade.
+
+### A armadilha do teto, que é o defeito mais grave
+
+Na versão B o teto de casa é 48 e o de fora é 18. Para ser faixa Alta basta 60%
+do teto.
+
+| lado | pontos para ser Alta | o que basta |
+|---|---:|---|
+| casa | 28,8 de 48 | duas premissas |
+| fora | 10,8 de 18 | **a de escanteio sozinha, que vale 11** |
+
+O resultado é que **o lado com metade das premissas produz mais faixa Alta que o
+outro**:
+
+| lado | linhas Alta | % do lado | ROI da Alta |
+|---|---:|---:|---:|
+| casa | 142 | 19,4% | **+17,21%** |
+| fora | 172 | 23,5% | **−0,16%** |
+
+São 160 linhas de fora que viram Alta com uma única premissa acesa, e elas dão
+−2,42%.
+
+Cruzando com favorito e azarão, a faixa Alta de fora ainda mistura duas coisas
+opostas:
+
+| | linhas Alta | ROI |
 |---|---:|---:|
-| escanteios a favor, mediana | 5,33 | 4,15 |
-| escanteios sofridos, p75 | 4,90 | 5,94 |
-| saldo de escanteios, p25 | −0,13 | −2,11 |
-| saldo de escanteios, p75 | +2,06 | −0,41 |
+| casa favorito | 142 | +17,21% |
+| fora favorito | 78 | −10,51% |
+| fora azarão | 94 | +8,43% |
 
-Por jogo, sobre 8.125 partidas: finalizações somadas com mediana 25 e p75 29;
-diferença de posse com mediana 16 pontos e p75 28.
+É o mesmo defeito que o handicap de gols já tem — azarão com teto 13 contra 35 do
+favorito — e que a task [A] corrigiu subindo o teto do azarão para 30. Aqui a
+correção é pré-requisito de qualquer publicação: **o teto não pode premiar o lado
+por ter menos premissa.**
 
-### Catálogo do handicap de escanteios (56)
+E o eixo do catálogo provavelmente não é mando sozinho, é mando cruzado com
+favoritismo, em quatro grupos. Casa favorito é o único que anda bem.
 
-**Lado favorito** — o que dá o handicap.
+### A ressalva que vale para tudo nesta seção
 
-| Premissa | Regra | Grupo | Por que este limiar |
-|---|---|---|---|
-| Domina o jogo pelo lado | saldo médio de escanteios ≥ +2,0 | decide | p75 do mandante (+2,06); é o quartil superior de supremacia |
-| Encurrala o adversário | diferença de posse média ≥ 28 pontos | decide | p75 medido da diferença por jogo; a mediana (16) pegaria metade dos jogos |
-| Chuta muito mais | diferença de finalizações médias ≥ 6 | decide | metade do p75 de finalizações somadas, aplicada à diferença; a medir |
-| Adversário cede escanteio fora | escanteios sofridos do visitante ≥ 5,9 | decide | p75 medido de sofridos fora |
-| Joga melhor pelo lado em casa | saldo em casa especificamente ≥ +2,0 | decide | mesmo corte, mas com o histórico recortado pelo mando — o mando persiste 0,588 em casa |
+Todos os erros-padrão acima estão entre 4 e 25 pontos, sobre números de 1 a 19.
+São 373 jogos, e depois de partir por lado e faixa sobram de 30 a 170 linhas por
+célula. **Nada aqui é significativo isoladamente.**
 
-**Lado azarão** — o que recebe o handicap.
+O que sustenta a leitura é a coerência do padrão — a inversão por lado aparece em
+quatro premissas independentes, no score e na faixa, sempre na mesma direção — e
+não o tamanho de nenhum número.
 
-| Premissa | Regra | Grupo | Por que este limiar |
-|---|---|---|---|
-| Segura o jogo fora | saldo médio fora ≥ −0,4 | decide | p75 medido do saldo fora; é o visitante do quartil superior |
-| Não se encolhe fora | posse média fora ≥ 45% | decide | chute, a medir; é o ponto em que o time deixa de ser o encurralado |
-| O favorito não domina pelo lado | saldo médio do adversário ≤ +1,0 | decide | metade do p75; premissa de negação, espelha `favorito_irregular` do handicap de gols |
-
-O lado azarão nasce com três premissas e a porta de contexto pede duas. Isso é
-proposital, e é a correção do defeito conhecido do handicap de gols, onde o
-azarão tem exatamente duas premissas de peso e por aritmética só publica quando
-as duas acendem.
-
-### Catálogo do total de escanteios (45)
-
-**Lado Mais**
-
-| Premissa | Regra | Grupo | Por que este limiar |
-|---|---|---|---|
-| Os dois forçam escanteio | soma das médias a favor ≥ linha + 0,5 | decide | espelha `ataque_combinado` do Gols; margem 0,5 e não zero por causa do encolhimento da seção 5 |
-| Os dois cedem escanteio | soma das médias sofridas ≥ linha + 0,5 | decide | mesma margem, pelo mesmo motivo |
-| Jogo de muita finalização | soma das médias de finalizações ≥ 29 | decide | p75 medido; finalização persiste 0,756, bem mais que escanteio |
-| Assimetria de posse | diferença de posse média ≥ 28 pontos | decide | p75 medido; time encurralado cede escanteio |
-| Mandante que pressiona | escanteios a favor do mandante em casa ≥ 5,3 | decide | mediana medida do mandante; a vantagem de mando em escanteio é 25%, maior que em gols |
-
-**Lado Menos**
-
-| Premissa | Regra | Grupo | Por que este limiar |
-|---|---|---|---|
-| Os dois forçam pouco escanteio | soma das médias a favor ≤ linha − 0,5 | decide | espelho |
-| Os dois cedem pouco escanteio | soma das médias sofridas ≤ linha − 0,5 | decide | espelho |
-| Jogo de pouca finalização | soma das médias de finalizações ≤ 25 | decide | mediana medida |
-| Equilíbrio de posse | diferença de posse média ≤ 5 pontos | decide | chute, a medir; jogo equilibrado tende a menos pressão prolongada |
-
-### Catálogo dos escanteios de um time (57 e 58)
-
-As mesmas quatro, com o histórico recortado pelo mando do time apostado:
-ataque próprio contra a linha, defesa do adversário contra a linha, finalizações
-do time, e posse do time. O corte usa a mediana do lado — 5,33 em casa, 4,15
-fora — em vez da soma dos dois.
-
-Vale registrar que o 58 entra com expectativa pior que todo o resto: a
-persistência do visitante é 0,435, e 0,4 é o piso.
-
-### O que fica deliberadamente fora
-
-**Histórico recente, por R2.** Nada de "três dos últimos cinco acima da linha".
-O achado transversal diz que não ajuda em nenhum mercado, e não há motivo para
-escanteio ser exceção. Se alguém quiser, que entre como controle — para
-confirmar o achado, não para publicar.
-
-**Escanteios por finalização, medido e cortado na fase 3.** A ideia era capturar
-estilo: time que ataca pelo lado converte mais finalização em escanteio. O dado
-diz que a razão quase não varia — p10 0,339, mediana 0,379, p90 0,431, desvio
-0,036. É praticamente uma constante do futebol, não um traço de time. Custaria
-uma linha de dbt para acender quase igual em todo mundo.
-
-Este é o primeiro uso prático da fase 3: a premissa morreu antes de custar
-código, e o motivo ficou escrito.
+Não dá para escrever peso com isto. Dá para escrever hipótese.
 
 ---
 
-## 7. O que este documento não resolve
+## 7. A recomendação
+
+### Por mercado
+
+| id | mercado | decisão |
+|---:|---|---|
+| 56 | Corners Asian Handicap | **primeiro**, e é o único com sinal estrutural |
+| 45 | Corners Over/Under (mais e menos) | **espera um teste**: a premissa de placar no fim |
+| 57 | Home Corners O/U | depois do 56, reaproveita o catálogo |
+| 58 | Away Corners O/U | só se o 57 medir bem — persistência 0,435 raspa o piso |
+| 77 | Total 1º tempo | fora: sem insumo por tempo na base |
+
+O mais e menos não sai por ser ruim de mercado; sai porque nenhum insumo que
+temos prevê o total, e a única hipótese não testada é a de placar minuto a minuto,
+vinda de `fact_fixture_events`. Se ela falhar, o mercado sai de vez. Se acertar,
+ele volta com catálogo próprio.
+
+### O catálogo do handicap, revisado pelo ROI
+
+Quatro grupos, não dois: mando cruzado com favoritismo. O teto tem que ser
+igualado entre os grupos antes de qualquer publicação.
+
+**Casa** — as quatro de domínio mais escanteio:
+
+| premissa | regra | por que este limiar |
+|---|---|---|
+| Domina a posse | diferença de posse média ≥ 5,8 pontos | p75 da distribuição simétrica |
+| Cria mais chance | diferença de gols esperados ≥ 0,34 | p75 |
+| Força mais escanteio | diferença de média de escanteios ≥ 1,0 | p75 |
+| Ataca mais dentro da área | diferença de finalizações na área ≥ 1,6 | p75 |
+
+**Fora** — só o que sobrevive ao controle de lado:
+
+| premissa | regra | por que este limiar |
+|---|---|---|
+| Força mais escanteio | diferença de média de escanteios ≥ 1,0 | p75, e é a única positiva nos dois lados |
+| Decisão | mata-mata | saldo do mandante em mata-mata é +1,95 contra +1,13 |
+
+**Fora do catálogo, medido:** "adversário cede escanteio" dá −1,58 em casa e
+−5,47 fora. Sai antes de custar uma linha de dbt.
+
+**A medir, ainda sem número:** must win de liga — reta final com posição em jogo.
+Precisa de um seed por campeonato dizendo quais posições importam, porque
+`fact_standings_snapshot` traz rank, pontos e jogos mas não traz a fronteira.
+
+---
+
+## 8. O que este documento não resolve
+
 
 **Não recupera o porquê dos 39 limiares originais.** Os dois documentos de origem
 não existem, e não estão no git. O que dá para fazer é o que a seção 4 faz:
 exigir o campo daqui para frente.
 
-**Não mede escanteio contra preço.** Tudo na seção 5 é Teste 1. A conclusão de
-que escanteio é metade do mercado de gols vale para "prever a linha", e pode se
-inverter em "bater o preço" — mercado com quatro casas é outro bicho. Só a fase 5
-responde.
+**Não fixa peso nenhum.** A seção 6 mede, e mede com erro-padrão maior que o
+efeito. Tudo ali é hipótese nomeada, não calibragem. O peso precisa de amostra
+maior e de controle fora da amostra (R5), e nenhuma das duas coisas existe hoje.
 
-**Não decide se escanteio entra.** A decisão de investir nele contra outra
-frente é de produto. O que este documento acrescenta é a ordem: se entrar, entra
-pelo handicap, e o total vem depois com expectativa calibrada para baixo.
+**Não testa a premissa de placar no fim.** É a única hipótese viva para o mercado
+de mais e menos, depende de `fact_fixture_events`, que está no BigQuery e não no
+Postgres. Não foi medida aqui.
 
-**Não confere os limiares contra o preço.** Os cortes da seção 6 saem da
-distribuição da nossa base — p75, mediana, quartil. Isso decide quantas vezes a
-premissa acende, não se ela vale. O que ela vale é a fase 5.
+**Não resolve o must win de liga.** O mata-mata está medido; a reta final com
+posição em jogo precisa de um seed por campeonato com as fronteiras da tabela, e
+esse seed não existe.
+
+**Não iguala os tetos.** A seção 6 mostra que o teto por lado distorce a faixa, e
+diz que precisa ser corrigido. Não diz em quanto — isso é decisão de produto, como
+foi no handicap de gols.
 
 **Não reabre a task [B].** A limpeza do catálogo dos cinco mercados continua
 bloqueada pelos cinco termos declarados nela. Este documento não altera nenhum.
@@ -625,3 +815,5 @@ bloqueada pelos cinco termos declarados nela. Este documento não altera nenhum.
 - `dbt_futebol/docs/adr/0001`, `0004`, `0008`, `0010` — as decisões de método citadas
 - `supabase/migrations/093_futebol_mapa_premissas.sql` — a virada de 01/08
 - `futebol.fact_fixture_stats` e `futebol.fact_fixtures` — as medições da seção 5
+- `futebol.fact_odds_snapshot` no Postgres — as odds de escanteio da simulação da seção 6
+- `scripts/futebol-escanteios-retrato.mjs` — reproduz as medições da seção 5
