@@ -39,7 +39,7 @@ describe('horasRestantes', () => {
 
   it('cai para a data de término quando o servidor não mandou as horas', () => {
     // Acontece de verdade em duas situações: resposta antiga guardada em cache
-    // pelo react-query, e ambiente onde a migration 134 ainda não subiu.
+    // pelo react-query, e ambiente onde a migration 136 ainda não subiu.
     const semHoras = emTeste(30, { hours_left: null });
     expect(horasRestantes(semHoras, AGORA)).toBe(30);
   });

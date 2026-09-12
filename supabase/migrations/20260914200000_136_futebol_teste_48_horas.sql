@@ -1,6 +1,6 @@
--- ============================================================================
--- 134_futebol_teste_48_horas — o teste grátis do futebol passa de 7d para 48h
--- ============================================================================
+-- 20260914200000_136_futebol_teste_48_horas
+--
+-- O teste grátis do futebol passa de 7 dias para 48 horas.
 -- A duração era um número escrito na mão em cinco lugares do servidor, e cada
 -- cópia decidia sozinha quem ainda tinha acesso: a RPC de acesso, a lista do
 -- daily de oportunidades, as duas da fila de alerta em tempo real, e a função
@@ -43,6 +43,24 @@ grant execute on function public.futebol_trial_duracao() to anon, authenticated,
 
 comment on function public.futebol_trial_duracao() is
   'Quanto dura o teste grátis do futebol para quem começa agora. Quem já tinha o relógio correndo não passa por aqui: o fim dessa pessoa já está gravado.';
+
+-- ── O acesso vigente, num lugar só ──────────────────────────────────────────
+-- Três funções deste arquivo faziam a mesma pergunta com o mesmo par de linhas
+-- copiado. STABLE, e não IMMUTABLE, porque a resposta depende de now().
+create or replace function public.futebol_acesso_vigente(
+  p_status text,
+  p_fim timestamptz
+)
+ returns boolean
+ language sql
+ stable
+as $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$;
+
+comment on function public.futebol_acesso_vigente(text, timestamptz) is
+  'Se o acesso ao futebol está de pé agora: assinante, ou teste cujo fim ainda não chegou. Não sabe quanto o teste dura — quem larga o relógio já gravou o fim.';
+
+revoke execute on function public.futebol_acesso_vigente(text, timestamptz) from public;
+grant execute on function public.futebol_acesso_vigente(text, timestamptz) to anon, authenticated, service_role;
 
 -- ── A coluna do fim ─────────────────────────────────────────────────────────
 alter table public.users
@@ -99,7 +117,9 @@ begin
   -- existir. O `returning` lê de volta o que foi gravado, em vez de repetir a
   -- conta aqui.
   if v_started is null then
-    update public.users set futebol_trial_started_at = now(), futebol_trial_ends_at = now() + public.futebol_trial_duracao() where id = v_uid returning futebol_trial_ends_at into v_ends;
+    v_started := now();
+    v_ends := v_started + public.futebol_trial_duracao();
+    update public.users set futebol_trial_started_at = v_started, futebol_trial_ends_at = v_ends where id = v_uid;
   end if;
 
   -- Defesa para uma linha que não deveria existir: relógio correndo com fim
@@ -131,8 +151,7 @@ language sql stable security definer set search_path to 'public'
 as $function$
   with base as (
     select u.id, u.telegram_chat_id, u.name,
-           (coalesce(u.futebol_subscription_status,'free') = 'premium'
-             or u.futebol_trial_ends_at > now()) as futebol_ativo,
+           public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at) as futebol_ativo,
            (select max(b.bet_date) from bets b where b.user_id = u.id) as ultima_aposta
     from users u
     where u.telegram_chat_id is not null
@@ -163,10 +182,7 @@ as $function$
   from public.users u
   where u.telegram_chat_id is not null
     and coalesce(u.futebol_publication_alerts_enabled, true) = true
-    and (
-      coalesce(u.futebol_subscription_status, 'free') = 'premium'
-      or u.futebol_trial_ends_at > now()
-    );
+    and public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at);
 $function$;
 
 revoke execute on function public.get_futebol_publication_alert_recipients() from public;
@@ -204,10 +220,7 @@ begin
         select 1 from public.futebol_publication_alerts a
         where a.batch_id = d.batch_id and a.kickoff_utc > now()
       )
-      and (
-        coalesce(u.futebol_subscription_status, 'free') = 'premium'
-        or u.futebol_trial_ends_at > now()
-      )
+      and public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at)
     returning d.batch_id, d.user_id, u.telegram_chat_id::text, d.attempt_id
   )
   select c.batch_id,

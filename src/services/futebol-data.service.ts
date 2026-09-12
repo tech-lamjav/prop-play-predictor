@@ -432,7 +432,7 @@ export interface FutebolAccess {
   days_left: number | null;
   /**
    * Horas arredondadas para cima. É a unidade do teste de 48 horas, e chega
-   * nula de resposta antiga em cache ou de ambiente sem a migration 134 —
+   * nula de resposta antiga em cache ou de ambiente sem a migration 136 —
    * `tempo-de-teste.ts` cai para `trial_ends_at` nesse caso.
    */
   hours_left: number | null;

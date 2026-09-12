@@ -10,7 +10,7 @@
  *
  * A duração do teste NÃO aparece aqui, e é o ponto. O fim do teste é gravado em
  * `futebol_trial_ends_at` no instante em que o relógio larga (ver a migration
- * 134), então quem lê não precisa saber quanto ele dura — e continua certo para
+ * 136), então quem lê não precisa saber quanto ele dura — e continua certo para
  * as duas coortes vivas: quem começou antes do corte tem 7 dias gravados, quem
  * começou depois tem 48 horas, e esta função não distingue.
  */

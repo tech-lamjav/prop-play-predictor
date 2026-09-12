@@ -25,7 +25,15 @@ import { resolve } from 'node:path';
 
 const RAIZ = resolve(__dirname, '../..');
 
-/** Toda tela que fala da duração do teste grátis para o usuário. */
+/**
+ * Toda tela que fala da duração do teste grátis para o usuário.
+ *
+ * `src/seo/public-routes.json` entra aqui porque é a promessa que sai ANTES da
+ * tela: `scripts/gen-route-heads.mjs` o transforma no `<head>` servido, e é dele
+ * que saem o snippet do Google e o texto de compartilhamento de /futebol/comecar
+ * e /planos. Ele foi o único esquecido na primeira varredura, justamente por não
+ * parecer tela.
+ */
 const TELAS = [
   'src/components/lp/LpOferta.tsx',
   'src/components/futebol/FutebolGate.tsx',
@@ -34,6 +42,7 @@ const TELAS = [
   'src/pages/Planos.tsx',
   'src/pages/lp/LpVariant.tsx',
   'src/pages/lp/variants.ts',
+  'src/seo/public-routes.json',
 ];
 
 /**
@@ -67,6 +76,7 @@ describe('a promessa do teste grátis', () => {
       'src/pages/FutebolLP.tsx',
       'src/pages/Planos.tsx',
       'src/pages/lp/variants.ts',
+      'src/seo/public-routes.json',
     ];
     for (const tela of vendem) {
       const conteudo = readFileSync(resolve(RAIZ, tela), 'utf8');

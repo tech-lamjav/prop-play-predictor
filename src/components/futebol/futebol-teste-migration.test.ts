@@ -102,7 +102,24 @@ describe('get_futebol_access', () => {
     // indefinida, e é justamente essa a linha que não pode existir.
     const largada = comando(ACESSO ?? '', /update public\.users set futebol_trial_started_at/i);
     expect(largada).toMatch(/futebol_trial_ends_at\s*=/i);
-    expect(largada).toMatch(/public\.futebol_trial_duracao\(\)/i);
+  });
+
+  it('usa a duração do produto para calcular a largada', () => {
+    expect(ACESSO).toMatch(/public\.futebol_trial_duracao\(\)/i);
+  });
+
+  it('não depende de a linha do usuário existir para liberar o teste', () => {
+    // O bug que isto trava: a primeira versão lia o fim de volta com
+    // `returning ... into v_ends`. Um usuário logado sem linha em public.users
+    // fazia o UPDATE casar zero linhas, v_ends ficava nulo, a defesa somava
+    // sobre v_started também nulo, e `now() < null` caía no ramo do else
+    // devolvendo 'expired' — teste negado a quem nunca teve teste.
+    expect(ACESSO).not.toMatch(/returning\s+futebol_trial_ends_at\s+into/i);
+    // Até `end if;`, e não até o primeiro `;`: o bloco tem três comandos, e
+    // cortar no primeiro deixaria de fora justamente a linha do fim.
+    const largada = comando(ACESSO ?? '', /if v_started is null then/i, 'end if;');
+    expect(largada).toMatch(/v_started\s*:=\s*now\(\)/i);
+    expect(largada).toMatch(/v_ends\s*:=\s*v_started\s*\+\s*public\.futebol_trial_duracao\(\)/i);
   });
 
   it('devolve as horas que faltam, não só os dias', () => {
@@ -123,6 +140,43 @@ describe('get_futebol_access', () => {
   });
 });
 
+describe('o predicado do acesso vigente', () => {
+  const VIGENTE = comando(
+    MIGRATION,
+    /create or replace function public\.futebol_acesso_vigente/i,
+    '$function$;',
+  );
+
+  it('existe, para as três consultas não copiarem a mesma pergunta', () => {
+    expect(VIGENTE).not.toBeNull();
+  });
+
+  it('responde pelas duas portas: assinatura e teste de pé', () => {
+    expect(VIGENTE).toMatch(/= 'premium'/);
+    expect(VIGENTE).toMatch(/p_fim > now\(\)/i);
+  });
+
+  it('é stable, e não immutable, porque depende de now()', () => {
+    expect(VIGENTE).toMatch(/stable/i);
+    expect(VIGENTE).not.toMatch(/immutable/i);
+  });
+
+  it('não sabe quanto o teste dura', () => {
+    // Se a duração entrasse aqui, a coorte de 7 dias voltaria a ser recalculada
+    // e o fim gravado perderia a autoridade.
+    expect(VIGENTE).not.toMatch(/futebol_trial_duracao|interval/i);
+  });
+
+  it('devolve falso, e nunca nulo, para quem não tem fim gravado', () => {
+    // Medido num Postgres de verdade: sem o coalesce de fora, fim nulo dava
+    // `false or null` = NULL. Dentro de um `where` isso se comporta como falso
+    // e ninguém nota, mas o primeiro chamador que escrever `if not vigente(...)`
+    // recebe NULL e o ramo não executa — acesso negado virando acesso liberado.
+    expect(VIGENTE).toMatch(/coalesce\(\s*coalesce\(p_status/i);
+    expect(VIGENTE).toMatch(/,\s*false\s*\)/i);
+  });
+});
+
 describe('as consultas que decidem quem recebe alerta', () => {
   const NOMES = [
     'get_opportunity_recipients',
@@ -133,14 +187,22 @@ describe('as consultas que decidem quem recebe alerta', () => {
   const corpo = (nome: string) =>
     comando(MIGRATION, new RegExp(`create or replace function public\\.${nome}`, 'i'), '$function$;');
 
-  it.each(NOMES)('%s passa a ler o fim do teste', (nome) => {
+  it.each(NOMES)('%s pergunta pelo predicado, em vez de copiá-lo', (nome) => {
     const fn = corpo(nome);
     expect(fn).not.toBeNull();
-    expect(fn).toMatch(/futebol_trial_ends_at > now\(\)/i);
+    expect(fn).toMatch(
+      /public\.futebol_acesso_vigente\(\s*u\.futebol_subscription_status,\s*u\.futebol_trial_ends_at\s*\)/i,
+    );
   });
 
   it.each(NOMES)('%s não deixa sobrar a conta antiga', (nome) => {
     expect(corpo(nome)).not.toMatch(/futebol_trial_started_at \+ interval '7 days'/i);
+  });
+
+  it.each(NOMES)('%s não remonta o predicado na mão', (nome) => {
+    // A cópia que esta migration veio apagar. Se ela voltar aqui, volta em três
+    // lugares de uma vez, que é como ela chegou.
+    expect(corpo(nome)).not.toMatch(/= 'premium'/);
   });
 
   it.each(NOMES)('%s continua fora do alcance de quem está logado', (nome) => {

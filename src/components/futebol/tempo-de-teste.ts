@@ -37,7 +37,7 @@ export type TempoDeTeste = {
  * deixar a tela calcular a partir do horário do aparelho faria a pílula
  * discordar do gate num celular com a hora errada. A data de término é a
  * reserva, e cobre dois casos reais — resposta antiga guardada em cache pelo
- * react-query, e ambiente onde a migration 134 ainda não subiu.
+ * react-query, e ambiente onde a migration 136 ainda não subiu.
  */
 export function horasRestantes(
   access: FutebolAccess | undefined | null,

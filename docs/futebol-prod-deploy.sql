@@ -766,7 +766,7 @@ end; $function$
 ;
 
 -- ── 5. RPCs public.get_futebol_* (security definer; leem futebol.*) ───────────
--- Quanto dura o teste grátis para quem começa agora (migration 134). Quem já
+-- Quanto dura o teste grátis para quem começa agora (migration 136). Quem já
 -- tinha relógio correndo não passa por aqui: o fim dessa pessoa está gravado em
 -- `futebol_trial_ends_at`, e é por isso que encurtar o teste não encurta o de
 -- ninguém que já estava dentro.
@@ -775,6 +775,19 @@ CREATE OR REPLACE FUNCTION public.futebol_trial_duracao()
  LANGUAGE sql
  IMMUTABLE
 AS $function$ select interval '48 hours' $function$
+
+;
+
+-- O acesso vigente, num lugar só: três consultas faziam a mesma pergunta com
+-- o mesmo par de linhas copiado. STABLE, e não IMMUTABLE, porque depende de now().
+CREATE OR REPLACE FUNCTION public.futebol_acesso_vigente(
+  p_status text,
+  p_fim timestamptz
+)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+AS $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$
 
 ;
 
@@ -2587,10 +2600,7 @@ AS $function$
   FROM public.users u
   WHERE u.telegram_chat_id IS NOT NULL
     AND coalesce(u.futebol_publication_alerts_enabled, true) = true
-    AND (
-      coalesce(u.futebol_subscription_status, 'free') = 'premium'
-      OR u.futebol_trial_ends_at > now()
-    );
+    AND public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at);
 $function$;
 
 CREATE OR REPLACE FUNCTION public.claim_futebol_publication_alert_deliveries()
@@ -2620,10 +2630,7 @@ BEGIN
         SELECT 1 FROM public.futebol_publication_alerts a
         WHERE a.batch_id = d.batch_id AND a.kickoff_utc > now()
       )
-      AND (
-        coalesce(u.futebol_subscription_status, 'free') = 'premium'
-        OR u.futebol_trial_ends_at > now()
-      )
+      AND public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at)
     RETURNING d.batch_id, d.user_id, u.telegram_chat_id::text, d.attempt_id
   )
   SELECT c.batch_id, c.user_id, c.telegram_chat_id, c.attempt_id,
@@ -2644,6 +2651,7 @@ $function$;
 
 -- ── 6. Grants de execução (anon / authenticated / service_role) ──────────────
 grant execute on function public._futebol_team_form(p_team_id bigint, p_competition text, p_season bigint, p_before date) to anon, authenticated, service_role;
+grant execute on function public.futebol_acesso_vigente(p_status text, p_fim timestamptz) to anon, authenticated, service_role;
 grant execute on function public.futebol_trial_duracao() to anon, authenticated, service_role;
 grant execute on function public.get_futebol_access() to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_detail(p_fixture_id bigint) to anon, authenticated, service_role;
@@ -2855,7 +2863,7 @@ on conflict (market) do nothing;
 
 -- ── 7. Reverse trial (48 horas, sem cartão) — colunas no public.users ────────
 -- São DUAS colunas, e o fim não é derivado do início: é gravado junto com ele
--- (migration 134). Quem começou o teste antes do corte de 12/09/2026 tem 7 dias
+-- (migration 136). Quem começou o teste antes do corte de 12/09/2026 tem 7 dias
 -- gravados ali, porque foi isso que a página prometeu; quem começa agora tem 48
 -- horas. Quem lê nunca precisa saber qual é o caso.
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
