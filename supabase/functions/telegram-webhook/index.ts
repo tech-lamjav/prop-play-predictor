@@ -10,6 +10,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { maskPhone } from "../shared/phone.ts";
+import { temAcessoAoFutebol } from "../shared/acesso-ao-futebol.ts";
 import {
   generateTraceId,
   identifyUser,
@@ -480,11 +481,9 @@ serve(async (req) => {
     if (command === "/mensagens") {
       const { data: pref } = await supabase
         .from("users").select(
-          "settlement_reminders_muted, weekly_summary_muted, futebol_publication_alerts_enabled, futebol_subscription_status, futebol_trial_started_at",
+          "settlement_reminders_muted, weekly_summary_muted, futebol_publication_alerts_enabled, futebol_subscription_status, futebol_trial_ends_at",
         ).eq("id", user.id).maybeSingle();
-      const accessActive = pref?.futebol_subscription_status === "premium" ||
-        (!!pref?.futebol_trial_started_at &&
-          new Date(pref.futebol_trial_started_at).getTime() + 7 * 86400000 > Date.now());
+      const accessActive = temAcessoAoFutebol(pref);
       const p = {
         settlementMuted: pref?.settlement_reminders_muted ?? false,
         weeklyMuted: pref?.weekly_summary_muted ?? false,
