@@ -16,10 +16,13 @@ export function CabecalhoDoPlacar({ resumo }: { resumo: string }) {
           Uso interno
         </span>
         <p className="text-[13px] text-ink-2">{resumo}</p>
+      </div>
 
-        <div className="ml-auto">
-          <AbasDaArea />
-        </div>
+      {/* Em linha própria e à esquerda, igual à faixa do CRM: no canto direito
+          da linha de cima as abas ficavam embaixo do menu de perfil, que abre
+          por cima delas. */}
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3">
+        <AbasDaArea />
       </div>
     </div>
   );

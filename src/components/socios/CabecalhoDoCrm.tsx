@@ -47,18 +47,19 @@ export function CabecalhoDoCrm({ resumo }: { resumo: string }) {
         </span>
         <p className="text-[13px] text-ink-2">{resumo}</p>
 
-        {/* Os dois andares da área vêm ANTES das seções, e em linha própria: a
-            hierarquia é área e depois seção, e duas navegações lado a lado na
-            mesma linha fariam parecer que são seis seções do mesmo lugar. */}
-        <div className="ml-auto">
-          <AbasDaArea />
-        </div>
       </div>
 
+      {/* Os dois andares da área vêm à ESQUERDA, na frente das seções, e não no
+          canto direito da linha de cima: ali eles ficavam exatamente embaixo do
+          menu de perfil, que abre por cima — o primeiro sócio a procurar o
+          placar não achou a aba. A hierarquia é área e depois seção, e é o
+          contraste de estilo entre as duas navegações que diz isso. */}
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3">
+        <AbasDaArea />
+
         {/* As seções internas ficam aqui, e não no header de cima: a navegação
             do painel não se mistura com a que o assinante vê. */}
-        <nav aria-label="Seções do CRM" className="flex flex-wrap gap-1">
+        <nav aria-label="Seções do CRM" className="ml-auto flex flex-wrap gap-1">
           <Link to={ROTA_DO_CRM} className={aparencia(nosLeads)}>
             Leads
           </Link>

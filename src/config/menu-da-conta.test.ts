@@ -5,6 +5,7 @@ import { itensDaConta } from './menu-da-conta';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from './como-usar';
 import { WHATSAPP_FALAR_COM_O_TIME } from './contato';
 import { ROTA_DO_CRM } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_PLACAR } from '@/components/placar/placar-vocabulario';
 
 // ============================================================================
 // O menu da conta é o mesmo no computador e no celular
@@ -104,12 +105,24 @@ describe('a entrada do CRM', () => {
     expect(item?.href).toBe(ROTA_DO_CRM);
   });
 
-  it('vem por último, e marcado como interno', () => {
-    // Último porque não disputa espaço com o que o assinante usa, e marcado
-    // porque as duas telas desenham ele separado do resto.
+  it('os dois andares da área aparecem, e o placar entre eles', () => {
+    // O placar nasceu alcançável só por uma aba dentro da faixa do CRM, e o
+    // primeiro sócio a procurar abriu este menu, viu CRM e concluiu que não
+    // havia mais nada. Porta que existe e não se acha é porta fechada.
+    const item = doSocio(true).find((i) => i.label === 'Metodologia');
+    expect(item?.href).toBe(ROTA_DO_PLACAR);
+  });
+
+  it('e o placar também é só para sócio', () => {
+    expect(itensDaConta(() => {}).some((i) => i.label === 'Metodologia')).toBe(false);
+  });
+
+  it('os internos vêm por último, e marcados', () => {
+    // Por último porque não disputam espaço com o que o assinante usa, e
+    // marcados porque as duas telas desenham o grupo separado do resto.
     const itens = doSocio(true);
-    expect(itens[itens.length - 1].label).toBe('CRM');
-    expect(itens[itens.length - 1].interno).toBe(true);
+    expect(itens.slice(-2).map((i) => i.label)).toEqual(['CRM', 'Metodologia']);
+    expect(itens.slice(-2).every((i) => i.interno)).toBe(true);
   });
 
   it('nenhum outro item é interno', () => {
@@ -119,6 +132,6 @@ describe('a entrada do CRM', () => {
       doSocio(true)
         .filter((i) => i.interno)
         .map((i) => i.label),
-    ).toEqual(['CRM']);
+    ).toEqual(['CRM', 'Metodologia']);
   });
 });

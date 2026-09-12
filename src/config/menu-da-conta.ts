@@ -1,7 +1,16 @@
-import { Settings, CreditCard, Gift, BookOpen, MessageCircle, Users } from 'lucide-react';
+import {
+  Settings,
+  CreditCard,
+  Gift,
+  BookOpen,
+  MessageCircle,
+  Users,
+  Target,
+} from 'lucide-react';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from './como-usar';
 import { WHATSAPP_FALAR_COM_O_TIME } from './contato';
 import { ROTA_DO_CRM } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_PLACAR } from '@/components/placar/placar-vocabulario';
 
 /**
  * Os itens do menu da conta — a mesma lista no computador e no celular.
@@ -53,10 +62,20 @@ export function itensDaConta(indicarUmAmigo: () => void, ehSocio = false): ItemD
       ? [{ label: 'Como usar', icon: BookOpen, href: '/como-usar' }]
       : []),
     { label: 'Falar com o time', icon: MessageCircle, href: WHATSAPP_FALAR_COM_O_TIME },
-    // Por último, e só para sócio. Quem protege o painel continua sendo a
-    // política de linha do banco — este item governa o que a tela desenha, e
-    // o caminho da rota está no bundle, que é público. O que ele evita é
+    // Por último, e só para sócio. Quem protege a área continua sendo a
+    // política de linha do banco — estes itens governam o que a tela desenha, e
+    // o caminho da rota está no bundle, que é público. O que eles evitam é
     // anunciar a porta para quem não pode entrar.
-    ...(ehSocio ? [{ label: 'CRM', icon: Users, href: ROTA_DO_CRM, interno: true }] : []),
+    //
+    // Os DOIS andares aparecem aqui, e não só o CRM. O placar nasceu alcançável
+    // apenas por uma aba dentro da faixa do CRM, e o primeiro sócio a procurar
+    // não achou: abriu este menu, viu CRM e concluiu que não havia mais nada.
+    // Porta que existe e não se acha é porta fechada.
+    ...(ehSocio
+      ? [
+          { label: 'CRM', icon: Users, href: ROTA_DO_CRM, interno: true },
+          { label: 'Metodologia', icon: Target, href: ROTA_DO_PLACAR, interno: true },
+        ]
+      : []),
   ];
 }
