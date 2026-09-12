@@ -766,6 +766,31 @@ end; $function$
 ;
 
 -- ── 5. RPCs public.get_futebol_* (security definer; leem futebol.*) ───────────
+-- Quanto dura o teste grátis para quem começa agora (migration 136). Quem já
+-- tinha relógio correndo não passa por aqui: o fim dessa pessoa está gravado em
+-- `futebol_trial_ends_at`, e é por isso que encurtar o teste não encurta o de
+-- ninguém que já estava dentro.
+CREATE OR REPLACE FUNCTION public.futebol_trial_duracao()
+ RETURNS interval
+ LANGUAGE sql
+ IMMUTABLE
+AS $function$ select interval '48 hours' $function$
+
+;
+
+-- O acesso vigente, num lugar só: três consultas faziam a mesma pergunta com
+-- o mesmo par de linhas copiado. STABLE, e não IMMUTABLE, porque depende de now().
+CREATE OR REPLACE FUNCTION public.futebol_acesso_vigente(
+  p_status text,
+  p_fim timestamptz
+)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+AS $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$
+
+;
+
 CREATE OR REPLACE FUNCTION public.get_futebol_access()
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -775,38 +800,51 @@ AS $function$
 declare
   v_uid uuid := auth.uid();
   v_started timestamptz;
-  v_status text;
-  v_trial_days int := 7;
   v_ends timestamptz;
+  v_status text;
   v_days_left int;
+  v_hours_left int;
 begin
   -- Deslogado: bloqueado, CTA pra criar conta
   if v_uid is null then
-    return jsonb_build_object('state','anon','unlocked',false,'days_left',null,'trial_ends_at',null);
+    return jsonb_build_object('state','anon','unlocked',false,'days_left',null,'hours_left',null,'trial_ends_at',null);
   end if;
 
-  select u.futebol_trial_started_at, coalesce(u.futebol_subscription_status,'free')
-    into v_started, v_status
+  select u.futebol_trial_started_at, u.futebol_trial_ends_at, coalesce(u.futebol_subscription_status,'free')
+    into v_started, v_ends, v_status
   from public.users u where u.id = v_uid;
 
   -- Assinante do Futebol: liberado
   if v_status = 'premium' then
-    return jsonb_build_object('state','subscribed','unlocked',true,'days_left',null,'trial_ends_at',null);
+    return jsonb_build_object('state','subscribed','unlocked',true,'days_left',null,'hours_left',null,'trial_ends_at',null);
   end if;
 
-  -- 1º acesso: começa o relógio agora (idempotente)
+  -- 1º acesso: o relógio larga agora, e o fim é gravado na MESMA escrita — uma
+  -- linha com início e sem fim seria um teste de duração indefinida.
+  --
+  -- Os dois valores são decididos ANTES da escrita, e não lidos de volta com
+  -- `returning`: um usuário logado sem linha em public.users faria o UPDATE
+  -- casar zero linhas, o fim ficaria nulo, a defesa somaria sobre início também
+  -- nulo, e `now() < null` cairia no else devolvendo 'expired'.
   if v_started is null then
-    update public.users set futebol_trial_started_at = now() where id = v_uid;
     v_started := now();
+    v_ends := v_started + public.futebol_trial_duracao();
+    update public.users set futebol_trial_started_at = v_started, futebol_trial_ends_at = v_ends where id = v_uid;
   end if;
 
-  v_ends := v_started + make_interval(days => v_trial_days);
+  -- Defesa para a linha que não deveria existir: conta do início DESTA pessoa,
+  -- e não de agora, senão um teste vencido ganharia 48 horas de presente.
+  if v_ends is null then
+    v_ends := v_started + public.futebol_trial_duracao();
+  end if;
+
   v_days_left := greatest(0, ceil(extract(epoch from (v_ends - now())) / 86400.0)::int);
+  v_hours_left := greatest(0, ceil(extract(epoch from (v_ends - now())) / 3600.0)::int);
 
   if now() < v_ends then
-    return jsonb_build_object('state','trial','unlocked',true,'days_left',v_days_left,'trial_ends_at',v_ends);
+    return jsonb_build_object('state','trial','unlocked',true,'days_left',v_days_left,'hours_left',v_hours_left,'trial_ends_at',v_ends);
   else
-    return jsonb_build_object('state','expired','unlocked',false,'days_left',0,'trial_ends_at',v_ends);
+    return jsonb_build_object('state','expired','unlocked',false,'days_left',0,'hours_left',0,'trial_ends_at',v_ends);
   end if;
 end $function$
 
@@ -2549,6 +2587,7 @@ END;
 $function$;
 
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
+alter table public.users add column if not exists futebol_trial_ends_at timestamptz;
 alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
 -- ⚠️ DÍVIDA: as tabelas da migration 111 (futebol_publication_alerts,
 -- _batches, _deliveries e _pick_refs) nunca entraram neste arquivo, embora as
@@ -2568,13 +2607,7 @@ AS $function$
   FROM public.users u
   WHERE u.telegram_chat_id IS NOT NULL
     AND coalesce(u.futebol_publication_alerts_enabled, true) = true
-    AND (
-      coalesce(u.futebol_subscription_status, 'free') = 'premium'
-      OR (
-        u.futebol_trial_started_at IS NOT NULL
-        AND u.futebol_trial_started_at + interval '7 days' > now()
-      )
-    );
+    AND public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at);
 $function$;
 
 CREATE OR REPLACE FUNCTION public.claim_futebol_publication_alert_deliveries()
@@ -2604,11 +2637,7 @@ BEGIN
         SELECT 1 FROM public.futebol_publication_alerts a
         WHERE a.batch_id = d.batch_id AND a.kickoff_utc > now()
       )
-      AND (
-        coalesce(u.futebol_subscription_status, 'free') = 'premium'
-        OR (u.futebol_trial_started_at IS NOT NULL
-          AND u.futebol_trial_started_at + interval '7 days' > now())
-      )
+      AND public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at)
     RETURNING d.batch_id, d.user_id, u.telegram_chat_id::text, d.attempt_id
   )
   SELECT c.batch_id, c.user_id, c.telegram_chat_id, c.attempt_id,
@@ -2629,6 +2658,8 @@ $function$;
 
 -- ── 6. Grants de execução (anon / authenticated / service_role) ──────────────
 grant execute on function public._futebol_team_form(p_team_id bigint, p_competition text, p_season bigint, p_before date) to anon, authenticated, service_role;
+grant execute on function public.futebol_acesso_vigente(p_status text, p_fim timestamptz) to anon, authenticated, service_role;
+grant execute on function public.futebol_trial_duracao() to anon, authenticated, service_role;
 grant execute on function public.get_futebol_access() to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_detail(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_extras(p_fixture_id bigint) to anon, authenticated, service_role;
@@ -2837,8 +2868,13 @@ values (
 )
 on conflict (market) do nothing;
 
--- ── 7. Reverse trial (7 dias, sem cartão) — colunas no public.users ──────────
+-- ── 7. Reverse trial (48 horas, sem cartão) — colunas no public.users ────────
+-- São DUAS colunas, e o fim não é derivado do início: é gravado junto com ele
+-- (migration 136). Quem começou o teste antes do corte de 12/09/2026 tem 7 dias
+-- gravados ali, porque foi isso que a página prometeu; quem começa agora tem 48
+-- horas. Quem lê nunca precisa saber qual é o caso.
 alter table public.users add column if not exists futebol_trial_started_at timestamptz;
+alter table public.users add column if not exists futebol_trial_ends_at timestamptz;
 alter table public.users add column if not exists futebol_subscription_status text not null default 'free';
 
 

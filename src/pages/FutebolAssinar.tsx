@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Loader2, Lock, MessageCircle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
+import { tempoDeTeste } from '@/components/futebol/tempo-de-teste';
 import { Button } from '@/components/ui/button';
 import { whatsappDoTime } from '@/config/contato';
 import { useAuth } from '@/hooks/use-auth';
@@ -134,7 +135,7 @@ export default function FutebolAssinar() {
 
   const expirou = access?.state === 'expired';
   const noTeste = access?.state === 'trial';
-  const diasRestantes = access?.days_left ?? 0;
+  const tempo = tempoDeTeste(access);
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
@@ -153,8 +154,8 @@ export default function FutebolAssinar() {
             <p className="text-[15px] text-ink-2">
               {expirou
                 ? 'A análise continua livre pra você. Só o pick de valor de cada oportunidade é que fica com assinante.'
-                : noTeste
-                  ? `Você ainda tem ${diasRestantes} ${diasRestantes === 1 ? 'dia' : 'dias'} de teste. Assinando agora, não perde o acesso quando acabar.`
+                : noTeste && tempo
+                  ? `Ainda ${tempo.longo} de teste. Assinando agora, você não perde o acesso quando acabar.`
                   : 'O pick de valor de cada jogo, com o porquê do lado.'}
             </p>
           </div>

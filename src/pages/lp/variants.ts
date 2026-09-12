@@ -67,8 +67,8 @@ export interface LpVariant {
 const PRECO = { valor: "39,90", de: "49,90" };
 
 /**
- * CTA do teste grátis de 7 dias, que é o que o produto entrega hoje: o reverse
- * trial do Futebol libera tudo por 7 dias, sem cartão.
+ * CTA do teste grátis de 48 horas, que é o que o produto entrega hoje: o reverse
+ * trial do Futebol libera tudo por 48 horas, sem cartão.
  *
  * O documento de copy fecha em "QUERO ACESSAR A SMARTBET" com acesso após o
  * pagamento, mas o gateway não existe (/planos mostra "Pagamento em breve" para
@@ -76,7 +76,7 @@ const PRECO = { valor: "39,90", de: "49,90" };
  * e o trial é verdade e converte melhor em tráfego frio.
  */
 const CTA = {
-  label: "Quero testar 7 dias grátis",
+  label: "Quero testar 48 horas grátis",
   microcopy: "Sem cartão para testar. Depois, R$ 39,90 por mês, e cancela quando quiser.",
 };
 
@@ -99,7 +99,7 @@ export const LP_VARIANTS: LpVariant[] = [
     seo: {
       title: "Mais razões para acreditar na sua aposta | Smart Betting",
       description:
-        "A Inteligência Artificial testa cada cenário do jogo em 10 filtros e mede quantos dados apontam para o mesmo lado. Teste 7 dias grátis, sem cartão.",
+        "A Inteligência Artificial testa cada cenário do jogo em 10 filtros e mede quantos dados apontam para o mesmo lado. Teste 48 horas grátis, sem cartão.",
     },
     hero: {
       titulo:
@@ -121,7 +121,7 @@ export const LP_VARIANTS: LpVariant[] = [
     seo: {
       title: "Uma estatística sozinha conta a história errada | Smart Betting",
       description:
-        "Dado isolado justifica quase qualquer aposta. Uma oportunidade só ganha força quando diferentes sinais apontam para o mesmo lado. Teste 7 dias grátis.",
+        "Dado isolado justifica quase qualquer aposta. Uma oportunidade só ganha força quando diferentes sinais apontam para o mesmo lado. Teste 48 horas grátis.",
     },
     hero: {
       titulo: "Uma boa estatística, sozinha, pode contar a história errada.",
@@ -142,7 +142,7 @@ export const LP_VARIANTS: LpVariant[] = [
     seo: {
       title: "Analisar sem método resulta em RED | Smart Betting",
       description:
-        "Em vez de abrir vários sites antes de apostar, a Inteligência Artificial aplica 10 filtros no jogo e entrega a leitura pronta. Teste 7 dias grátis.",
+        "Em vez de abrir vários sites antes de apostar, a Inteligência Artificial aplica 10 filtros no jogo e entrega a leitura pronta. Teste 48 horas grátis.",
     },
     hero: {
       titulo: "Analisar sem método resulta em !!RED!!. A Smart Betting dá método baseado em fato.",
@@ -165,7 +165,7 @@ export const LP_VARIANTS: LpVariant[] = [
     seo: {
       title: "Mais clareza para analisar, mais segurança para decidir | Smart Betting",
       description:
-        "Sem depender apenas de palpite, de opinião ou de uma estatística isolada. Veja quantos dos 10 filtros apontam para o mesmo lado. Teste 7 dias grátis.",
+        "Sem depender apenas de palpite, de opinião ou de uma estatística isolada. Veja quantos dos 10 filtros apontam para o mesmo lado. Teste 48 horas grátis.",
     },
     hero: {
       titulo: "Mais clareza para analisar. Mais segurança para decidir.",

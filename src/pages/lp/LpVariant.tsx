@@ -60,7 +60,7 @@ function LpConteudo({ variant }: { variant: LpVariantConfig }) {
   }, [posthog, variant.slug]);
 
   /**
-   * Cadastro e o reverse trial do Futebol libera os 7 dias no primeiro acesso.
+   * Cadastro e o reverse trial do Futebol libera as 48 horas no primeiro acesso.
    * O destino é o próprio produto, não a página de assinatura: quem clicou num
    * CTA de teste grátis não pode cair num botão de pagamento desabilitado.
    */
