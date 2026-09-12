@@ -91,7 +91,11 @@ describe('a página do placar', () => {
     montar();
 
     expect(screen.getByRole('heading', { name: 'Metodologia', level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('Série comparável')).toBeInTheDocument();
+    // O seletor mostra a janela no próprio botão: a série comparável começa em
+    // 04/09, e os atalhos vivem dentro do popover, que abre fechado.
+    expect(screen.getByText(/^04\/09 a /)).toBeInTheDocument();
+    expect(screen.getByText('Por apito')).toBeInTheDocument();
+    expect(screen.getByText('Board inteiro')).toBeInTheDocument();
     expect(screen.getByText('Por mercado')).toBeInTheDocument();
     expect(screen.getByText(/2 oportunidades publicadas no período/)).toBeInTheDocument();
   });

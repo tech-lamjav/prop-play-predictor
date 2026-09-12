@@ -2,7 +2,7 @@ import { useState } from 'react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { CabecalhoDoPlacar } from '@/components/placar/CabecalhoDoPlacar';
-import { FiltroDoPlacar } from '@/components/placar/FiltroDoPlacar';
+import { BarraDeFiltros } from '@/components/placar/BarraDeFiltros';
 import { Placar } from '@/components/placar/Placar';
 import {
   avisosDoPeriodo,
@@ -34,7 +34,6 @@ import { brtToday } from '@/utils/futebol-datas';
  */
 export default function PlacarDaMetodologia() {
   const hoje = brtToday();
-  const [atalho, setAtalho] = useState('serie');
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoPadrao(hoje));
   const [eixo, setEixo] = useState<Eixo>('jogo');
   // O padrão é o board inteiro, ao contrário do script de terminal: a decisão
@@ -89,26 +88,25 @@ export default function PlacarDaMetodologia() {
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
         <CabecalhoDoPlacar resumo={resumo} />
 
-        <div className="mx-auto max-w-6xl px-4 pt-6">
-          <FiltroDoPlacar
-            atalho={atalho}
-            periodo={periodo}
-            eixo={eixo}
-            aoMudarPeriodo={(id, novo) => {
-              setAtalho(id);
-              setPeriodo(novo);
-            }}
-            aoMudarEixo={setEixo}
-            soVitrine={soVitrine}
-            aoMudarVitrine={setSoVitrine}
-            periodoB={periodoB}
-            aoMudarComparacao={setPeriodoB}
-          />
-        </div>
+        <BarraDeFiltros
+          periodo={periodo}
+          periodoB={periodoB}
+          hoje={hoje}
+          eixo={eixo}
+          soVitrine={soVitrine}
+          aoAplicarPeriodo={(novo, novoB) => {
+            setPeriodo(novo);
+            setPeriodoB(novoB);
+          }}
+          aoMudarEixo={setEixo}
+          aoMudarVitrine={setSoVitrine}
+        />
 
         {estado.tipo === 'pronto' ? (
           <Placar
             publicadas={a.publicadas}
+            periodo={periodo}
+            eixo={eixo}
             avisos={avisosDoPeriodo(periodo, eixo)}
             ocultos={vitrine}
             foraDaVitrine={a.foraDaVitrine}

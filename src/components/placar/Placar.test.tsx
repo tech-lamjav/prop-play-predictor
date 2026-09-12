@@ -15,6 +15,9 @@ import type { LinhaPublicada } from './placar-agregacao';
 //     aqui — as duas frases que impedem uma conclusão errada sobre o corte.
 // ============================================================================
 
+/** A janela que o gráfico usa para escolher a granularidade. */
+const PERIODO = { de: '2026-09-04', ate: '2026-09-16' };
+
 const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada => ({
   opportunity_key: Math.random().toString(36).slice(2),
   fixture_id: 1,
@@ -49,21 +52,21 @@ const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada => ({
 
 describe('o placar diz o que está medindo', () => {
   it('avisa que mede a foto de nascimento, e não o estado no apito', () => {
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.getByText(/foto de nascimento/i)).toBeInTheDocument();
   });
 
   it('avisa que a candidata recusada pelo funil não está aqui', () => {
     // Sem esta frase, o sócio olha a tabela e conclui que o corte está certo —
     // e a tela nunca teve como saber.
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.getByText(/recusou/i)).toBeInTheDocument();
   });
 });
 
 describe('o placar mostra o denominador', () => {
   it('junto do ROI e junto da taxa de acerto', () => {
-    render(<Placar publicadas={[linha(), linha({ outcome: 'Away' })]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha(), linha({ outcome: 'Away' })]} />);
     // Duas apostas liquidadas, nenhuma anulada: os dois denominadores são 2.
     expect(screen.getAllByText('em 2').length).toBeGreaterThanOrEqual(2);
   });
@@ -72,7 +75,7 @@ describe('o placar mostra o denominador', () => {
 describe('o placar conta o que não liquidou', () => {
   it('diz quantas estão pendentes, e que elas ficam fora da conta', () => {
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[linha(), linha({ status_short: 'NS', goals_home: null, goals_away: null })]}
       />,
     );
@@ -80,19 +83,21 @@ describe('o placar conta o que não liquidou', () => {
   });
 
   it('e não fala de pendente quando não há nenhuma', () => {
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.queryByText(/ainda não liquid/i)).not.toBeInTheDocument();
   });
 });
 
 describe('a tabela por mercado', () => {
   it('usa o nome que o produto dá ao mercado', () => {
-    render(<Placar publicadas={[linha({ market: 'goals_over_under', outcome: 'Over', line_value: 2.5 })]} />);
-    expect(screen.getByText('Gols (mais ou menos)')).toBeInTheDocument();
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha({ market: 'goals_over_under', outcome: 'Over', line_value: 2.5 })]} />);
+    // Escopado à tabela: o mesmo nome aparece no seletor de mercado do gráfico.
+    const tabela = screen.getByText('Por mercado').closest('section');
+    expect(tabela).toHaveTextContent('Gols (mais ou menos)');
   });
 
   it('sem nada liquidado, não mostra tabela vazia fingindo resultado', () => {
-    render(<Placar publicadas={[linha({ status_short: '2H' })]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha({ status_short: '2H' })]} />);
     const tabela = screen.getByText('Por mercado').closest('section');
     expect(tabela).toHaveTextContent(/nenhuma oportunidade liquidada/i);
     expect(tabela?.querySelector('tbody')).toBeNull();
@@ -101,7 +106,7 @@ describe('a tabela por mercado', () => {
 
 describe('as outras quebras', () => {
   it('mostra as quatro tabelas, e cada uma diz o que responde', () => {
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.getByText('Por mercado')).toBeInTheDocument();
     expect(screen.getByText('Por faixa de Score')).toBeInTheDocument();
     expect(screen.getByText('Por faixa de odd')).toBeInTheDocument();
@@ -113,7 +118,7 @@ describe('as outras quebras', () => {
     // depois de qualquer jeito. O caso que pega o erro é a Baixa vir primeiro
     // mesmo sendo a maior — então o teste usa a ordem inversa de tamanho.
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[
           linha({ score: 85 }),
           linha({ score: 85 }),
@@ -130,14 +135,14 @@ describe('as outras quebras', () => {
   });
 
   it('o campeonato sem nome não some da conta', () => {
-    render(<Placar publicadas={[linha({ competition: null })]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha({ competition: null })]} />);
     expect(screen.getByText('Sem campeonato')).toBeInTheDocument();
   });
 });
 
 describe('os avisos do período', () => {
   it('aparecem acima dos números, porque aviso embaixo chega depois da conclusão', () => {
-    render(<Placar publicadas={[linha()]} avisos={['a nota está em outra escala']} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} avisos={['a nota está em outra escala']} />);
     const aviso = screen.getByText(/outra escala/i);
     const liquidadas = screen.getByText('Liquidadas');
     // compareDocumentPosition: 4 = o aviso vem ANTES do bloco de números.
@@ -147,7 +152,7 @@ describe('os avisos do período', () => {
   });
 
   it('sem aviso, não sobra moldura de aviso vazia', () => {
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.queryByText(/atenção:/i)).not.toBeInTheDocument();
   });
 });
@@ -157,7 +162,7 @@ describe('o mercado fora da vitrine', () => {
 
   it('aparece na tabela com selo dizendo que está fora', () => {
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[linha({ market: 'asian_handicap', outcome: 'Home', line_value: -1 })]}
         ocultos={OCULTOS}
       />,
@@ -166,17 +171,17 @@ describe('o mercado fora da vitrine', () => {
   });
 
   it('e o mercado que está na tela não ganha selo', () => {
-    render(<Placar publicadas={[linha()]} ocultos={OCULTOS} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} ocultos={OCULTOS} />);
     expect(screen.queryByText('fora da vitrine')).not.toBeInTheDocument();
   });
 
   it('quando a conta é restrita à vitrine, a tela diz quantas ficaram de fora', () => {
-    render(<Placar publicadas={[linha()]} ocultos={OCULTOS} foraDaVitrine={3} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} ocultos={OCULTOS} foraDaVitrine={3} />);
     expect(screen.getByText(/3 oportunidades ficaram de fora/i)).toBeInTheDocument();
   });
 
   it('e não fala disso quando a conta é do board inteiro', () => {
-    render(<Placar publicadas={[linha()]} ocultos={OCULTOS} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} ocultos={OCULTOS} />);
     expect(screen.queryByText(/ficaram de fora/i)).not.toBeInTheDocument();
   });
 });
@@ -187,7 +192,7 @@ describe('a seção de ROI por premissa', () => {
     // inteiro em vez de contra o próprio lado. Em Gols, isso inflava a
     // diferença de uma premissa de Over com o buraco do Under.
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[
           linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5 }),
           linha({ market: 'goals_over_under', outcome: 'Under', line_value: 1.5 }),
@@ -202,7 +207,7 @@ describe('a seção de ROI por premissa', () => {
 
   it('lista as premissas do lado, com a que acendeu primeiro', () => {
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[
           linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, premissas_acesas: ['ritmo_alto'] }),
           linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, premissas_acesas: ['ritmo_alto'] }),
@@ -219,13 +224,13 @@ describe('a seção de ROI por premissa', () => {
   it('diz que a flag vem recalculada e que o insumo ainda não chega', () => {
     // É o limite honesto da medição: mudar o critério de uma premissa reescreve
     // o passado, e sem o insumo não se separa 'acendeu raspando' de 'com folga'.
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.getByText(/recalculada do mart/i)).toBeInTheDocument();
     expect(screen.getByText(/insumo, ainda não/i)).toBeInTheDocument();
   });
 
   it('e os cortes do dado continuam, em seção própria', () => {
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.getByText('O dado por trás da linha')).toBeInTheDocument();
     expect(screen.getByText('Por penalidade aplicada')).toBeInTheDocument();
     expect(screen.queryByText('Por pontos de premissa')).not.toBeInTheDocument();
@@ -240,7 +245,7 @@ describe('comparando dois períodos', () => {
   });
 
   it('mostra os dois períodos como colunas, com o nome de cada um', () => {
-    render(<Placar publicadas={[linha()]} comparacao={comparacao([linha()])} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} comparacao={comparacao([linha()])} />);
     expect(screen.getAllByText('06/09 a 12/09').length).toBeGreaterThan(0);
     expect(screen.getAllByText('30/08 a 05/09').length).toBeGreaterThan(0);
   });
@@ -249,7 +254,7 @@ describe('comparando dois períodos', () => {
     // Um green de um lado e um red do outro: a diferença é enorme e não
     // sustenta nada. Mostrar o número puro convidaria à conclusão.
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[linha(), linha({ outcome: 'Away' })]}
         comparacao={comparacao([linha({ outcome: 'Away' }), linha()])}
       />,
@@ -259,7 +264,7 @@ describe('comparando dois períodos', () => {
 
   it('o grupo que só existe num dos lados não ganha diferença', () => {
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[linha({ market: 'btts', outcome: 'Yes' })]}
         comparacao={comparacao([])}
       />,
@@ -271,7 +276,7 @@ describe('comparando dois períodos', () => {
   it('sem comparação, a tabela de mercado volta a ter uma coluna de números', () => {
     // Escopado à tabela de mercado: a seção de premissa tem coluna de diferença
     // sempre, porque lá a diferença é entre acesa e apagada, não entre períodos.
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     const tabela = screen.getByText('Por mercado').closest('section');
     expect(tabela).not.toHaveTextContent('Diferença');
   });
@@ -282,7 +287,7 @@ describe('o total do período', () => {
     // São eles que explicam por que a taxa e o ROI têm denominadores
     // diferentes: sem o número de anuladas, a diferença parece erro de conta.
     render(
-      <Placar
+      <Placar periodo={PERIODO} eixo="jogo"
         publicadas={[
           linha(),
           linha({ outcome: 'Away' }),
@@ -295,12 +300,50 @@ describe('o total do período', () => {
   });
 
   it('diz quantas saíram por estarem na escala antiga do Score', () => {
-    render(<Placar publicadas={[linha()]} foraDaEscala={2} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} foraDaEscala={2} />);
     expect(screen.getByText(/escala antiga do Score/i)).toBeInTheDocument();
   });
 
   it('e não fala de escala quando não cortou ninguém', () => {
-    render(<Placar publicadas={[linha()]} />);
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
     expect(screen.queryByText(/escala antiga/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('o gráfico de evolução', () => {
+  it('vem antes das tabelas, porque a primeira pergunta é se está melhorando', () => {
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
+    const grafico = screen.getByText('Evolução do ROI');
+    const tabela = screen.getByText('Por mercado');
+    expect(grafico.compareDocumentPosition(tabela) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('oferece os mercados presentes para escolher', () => {
+    render(
+      <Placar
+        periodo={PERIODO}
+        eixo="jogo"
+        publicadas={[linha(), linha({ market: 'btts', outcome: 'Yes' })]}
+      />,
+    );
+    const grafico = screen.getByText('Evolução do ROI').closest('section');
+    expect(grafico).toHaveTextContent('Resultado');
+    expect(grafico).toHaveTextContent('Ambos marcam');
+  });
+
+  it('e convida a abrir o degrau de baixo', () => {
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
+    expect(screen.getByText(/clique numa barra para abrir por dia/i)).toBeInTheDocument();
+  });
+
+  it('o texto de contexto fica atrás de um resumo, e não em cima dos números', () => {
+    // A queixa era de tela que parecia relatório. As frases continuam lá, uma
+    // linha de distância: quem lê todo dia já leu, quem chega hoje abre.
+    render(<Placar periodo={PERIODO} eixo="jogo" publicadas={[linha()]} />);
+    const resumo = screen.getByText('Como este número é medido');
+    expect(resumo.tagName).toBe('SUMMARY');
+    expect(resumo.closest('details')).not.toHaveAttribute('open');
   });
 });

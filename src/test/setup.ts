@@ -53,3 +53,23 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
 afterEach(() => {
   cleanup();
 });
+
+/**
+ * `ResizeObserver`, que o jsdom também não implementa.
+ *
+ * O recharts mede o contêiner para desenhar dentro dele, e sem o stub qualquer
+ * teste que monte um gráfico morre com "ResizeObserver is not defined" — de
+ * novo um erro que fala de ambiente e não do que o teste queria dizer.
+ *
+ * O dublê não observa nada, e é o suficiente: o que o gráfico precisa provar em
+ * teste é que ele recebeu os pontos certos e reagiu ao clique, não que ele
+ * calculou pixel. Tamanho de gráfico se confere no navegador.
+ */
+if (typeof globalThis !== 'undefined' && !('ResizeObserver' in globalThis)) {
+  class ResizeObserverDuble {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverDuble;
+}

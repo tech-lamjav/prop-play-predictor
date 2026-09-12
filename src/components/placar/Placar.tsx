@@ -1,8 +1,10 @@
 import { liquidarTudo, totalDe, type LinhaPublicada } from './placar-agregacao';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
+import { EvolucaoDoRoi } from './EvolucaoDoRoi';
 import { porLadoDoMercado } from './placar-por-premissa';
 import { PremissasDoLado } from './PremissasDoLado';
 import { QUEBRAS, QUEBRAS_DO_DADO, celulasDa, type Quebra } from './placar-quebras';
+import type { Eixo, Periodo } from './placar-periodo';
 import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaComparada } from './TabelaComparada';
 import { TabelaDoPlacar } from './TabelaDoPlacar';
@@ -39,6 +41,8 @@ export function Placar({
   ocultos = [],
   foraDaVitrine = 0,
   foraDaEscala = 0,
+  periodo,
+  eixo,
   comparacao,
 }: {
   publicadas: LinhaPublicada[];
@@ -68,6 +72,9 @@ export function Placar({
    * números de propósito: um aviso embaixo da tabela chega depois da conclusão.
    */
   avisos?: string[];
+  /** A janela e o eixo, que o gráfico precisa para escolher a granularidade. */
+  periodo: Periodo;
+  eixo: Eixo;
   /** O segundo período, quando o sócio está comparando. */
   comparacao?: {
     publicadas: LinhaPublicada[];
@@ -107,16 +114,29 @@ export function Placar({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      <p className="mb-4 max-w-3xl text-[14px] text-ink-2">
-        Cada oportunidade vale <strong className="text-ink">uma unidade</strong>, medida pela odd,
-        pela nota e pela faixa com que ela foi publicada — a foto de nascimento, e não o estado dela
-        no apito, que é o que o assinante vê no histórico dele.
-      </p>
-      <p className="mb-6 max-w-3xl text-[14px] text-ink-2">
-        Só entra aqui o que foi <strong className="text-ink">publicado</strong>. A candidata que o
-        funil recusou vive no BigQuery e o site não a alcança, então esta tela não responde se o
-        corte está apertado demais nem se falta premissa.
-      </p>
+      {/* Três frases que a tela não pode deixar de dizer, e que também não podem
+          ocupar meia tela antes do primeiro número: elas moram atrás de um
+          resumo, fechado por padrão. Quem lê o painel todo dia leu uma vez;
+          quem chega hoje abre. */}
+      <details className="mb-5 max-w-3xl text-[13px] text-ink-2">
+        <summary className="cursor-pointer font-bold text-ink-2 hover:text-ink">
+          Como este número é medido
+        </summary>
+        <p className="mt-2">
+          Cada oportunidade vale <strong className="text-ink">uma unidade</strong>, medida pela odd,
+          pela nota e pela faixa com que ela foi publicada — a foto de nascimento, e não o estado
+          dela no apito, que é o que o assinante vê no histórico dele.
+        </p>
+        <p className="mt-2">
+          Só entra aqui o que foi <strong className="text-ink">publicado</strong>. A candidata que o
+          funil recusou vive no BigQuery e o site não a alcança, então esta tela não responde se o
+          corte está apertado demais nem se falta premissa.
+        </p>
+        <p className="mt-2">
+          Taxa de acerto não conta anulada no denominador; o ROI conta, com lucro zero. É por isso
+          que os dois números têm bases diferentes.
+        </p>
+      </details>
 
       {avisos.map((aviso) => (
         <p
@@ -178,6 +198,12 @@ export function Placar({
           Mantê-las faria a série comparável misturar duas réguas.
         </p>
       )}
+
+      {/* O gráfico vem antes das tabelas: a primeira pergunta é se está
+          melhorando, e só depois onde. Do macro para o micro. */}
+      <div className="mb-5">
+        <EvolucaoDoRoi liquidadas={liquidadas} periodo={periodo} eixo={eixo} />
+      </div>
 
       <div className="grid gap-5">{QUEBRAS.map(tabela)}</div>
 
