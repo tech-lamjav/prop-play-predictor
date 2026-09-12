@@ -128,6 +128,7 @@ export function Ficha({
   comportamento,
   edicaoDeAcesso,
   assinatura,
+  receita,
   testeDoFutebol,
 }: {
   estado: EstadoDaFicha;
@@ -151,6 +152,14 @@ export function Ficha({
    * a venda e os remendos, e empilhadas deixavam metade da largura vazia.
    */
   assinatura: ReactNode;
+  /**
+   * O histórico de pagamento e o que a pessoa está devendo.
+   *
+   * Separado da assinatura porque responde outra pergunta: a assinatura é o
+   * acordo, e a receita é o que aconteceu com ele. Quem olha uma não está
+   * olhando a outra.
+   */
+  receita: ReactNode;
   /**
    * O teste gratuito, em cartão próprio.
    *
@@ -184,6 +193,7 @@ export function Ficha({
       comportamento={comportamento}
       edicaoDeAcesso={edicaoDeAcesso}
       assinatura={assinatura}
+      receita={receita}
       testeDoFutebol={testeDoFutebol}
     />
   );
@@ -200,6 +210,7 @@ function Conteudo({
   comportamento,
   edicaoDeAcesso,
   assinatura,
+  receita,
   testeDoFutebol,
 }: {
   pessoa: Pessoa;
@@ -214,6 +225,7 @@ function Conteudo({
   comportamento: ReactNode;
   edicaoDeAcesso: ReactNode;
   assinatura: ReactNode;
+  receita: ReactNode;
   testeDoFutebol: ReactNode;
 }) {
   const plano = nomeDoPlano(pessoa.subscription_product_type);
@@ -395,13 +407,21 @@ function Conteudo({
             aqui na maior parte das vezes.
           */}
           <div className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-[1.15fr_1fr]">
-            <Bloco titulo="Assinatura">
-              <Campo
-                rotulo="Plano"
-                valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)}
-              />
-              {assinatura}
-            </Bloco>
+            {/* A venda e o dinheiro dela na mesma coluna: são a mesma
+                conversa lida de cima para baixo, o acordo e o que entrou
+                dele. Soltos no grid, o segundo cairia na coluna dos
+                remendos e empurraria os avulsos para baixo. */}
+            <div className="space-y-3.5">
+              <Bloco titulo="Assinatura">
+                <Campo
+                  rotulo="Plano"
+                  valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)}
+                />
+                {assinatura}
+              </Bloco>
+
+              <Bloco titulo="Receita">{receita}</Bloco>
+            </div>
 
             <div className="space-y-3.5">
               <Bloco titulo="Acessos avulsos">{edicaoDeAcesso}</Bloco>

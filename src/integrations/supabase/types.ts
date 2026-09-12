@@ -346,6 +346,56 @@ export type Database = {
           },
         ]
       }
+      crm_pagamento: {
+        Row: {
+          assinatura_id: string
+          competencia: string
+          criada_em: string
+          criada_por: string | null
+          estornado_em: string | null
+          estornado_por: string | null
+          id: string
+          motivo_do_estorno: string | null
+          origem: string
+          pago_em: string
+          valor: number
+        }
+        Insert: {
+          assinatura_id: string
+          competencia: string
+          criada_em?: string
+          criada_por?: string | null
+          estornado_em?: string | null
+          estornado_por?: string | null
+          id?: string
+          motivo_do_estorno?: string | null
+          origem: string
+          pago_em?: string
+          valor: number
+        }
+        Update: {
+          assinatura_id?: string
+          competencia?: string
+          criada_em?: string
+          criada_por?: string | null
+          estornado_em?: string | null
+          estornado_por?: string | null
+          id?: string
+          motivo_do_estorno?: string | null
+          origem?: string
+          pago_em?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pagamento_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "crm_assinatura_manual"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_etapa: {
         Row: {
           atualizada_em: string
@@ -1205,6 +1255,20 @@ export type Database = {
       }
       crm_encerrar_assinatura_manual: {
         Args: { p_id: string }
+        Returns: undefined
+      }
+      crm_registrar_pagamento: {
+        Args: {
+          p_assinatura_id: string
+          p_competencia: string
+          p_valor: number
+          p_origem: string
+          p_pago_em?: string
+        }
+        Returns: string
+      }
+      crm_estornar_pagamento: {
+        Args: { p_id: string; p_motivo: string }
         Returns: undefined
       }
       crm_anotar: {

@@ -187,6 +187,13 @@ que ninguém consegue auditar. Estornar exige motivo e não recua o acesso — a
 pessoa já usou, e tirar por erro de lançamento castiga quem não errou.
 _Avoid_: Cobrança, fatura, recebimento, entrada
 
+**Recebido na mão**:
+O total de pagamentos não estornados de uma pessoa. É o que ela já gerou FORA
+do Stripe, e a tela diz isso com essas palavras: quem paga pelo gateway já tem
+registro lá, e um total que parece ser "tudo que a pessoa pagou" leva a
+conclusão errada sobre quanto ela vale.
+_Avoid_: Receita total, faturamento, LTV, valor do cliente
+
 **Mês de competência**:
 O mês a que um pagamento se refere, e não o dia em que o dinheiro caiu. Um Pix
 que chega em 2 de outubro pagando setembro tem competência em setembro. Os dois

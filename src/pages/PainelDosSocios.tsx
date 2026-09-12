@@ -10,6 +10,7 @@ import {
   type EstadoDaEscrita,
 } from '@/components/socios/EditorDeAcesso';
 import { DarAssinatura, type EstadoDaConcessao } from '@/components/socios/DarAssinatura';
+import { Receita, type EstadoDaReceita } from '@/components/socios/Receita';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
@@ -22,9 +23,14 @@ import { useMovimento } from '@/hooks/use-painel-do-crm';
 import { useComportamento } from '@/hooks/use-comportamento';
 import { useDefinirAcesso, useDefinirTeste } from '@/hooks/use-acesso';
 import { useAssinaturas, useDarAssinatura, useEncerrarAssinatura } from '@/hooks/use-assinaturas';
+import {
+  useEstornarPagamento,
+  usePagamentos,
+  useRegistrarPagamento,
+} from '@/hooks/use-pagamentos';
 import { useNomeDoSocio } from '@/hooks/use-nome-do-socio';
 import { usePessoa } from '@/hooks/use-pessoa';
-import { brtToday } from '@/utils/futebol-datas';
+import { brtDayOf, brtToday } from '@/utils/futebol-datas';
 
 /**
  * O painel dos sócios, e a ficha por cima dele.
@@ -123,6 +129,27 @@ function FichaDoModal({ id }: { id: string }) {
       ? (assinaturas.assinaturas.find((a) => a.userId === id) ?? null)
       : null;
 
+  const pagamentos = usePagamentos(assinaturaAberta?.id);
+  const registrarPagamento = useRegistrarPagamento(assinaturaAberta?.id, id);
+  const estornarPagamento = useEstornarPagamento(assinaturaAberta?.id, id);
+
+  /**
+   * Um estado para as duas escritas de dinheiro.
+   *
+   * Lançar e estornar nunca acontecem ao mesmo tempo — as duas travam a mesma
+   * lista enquanto gravam — e separá-los só faria a tela ter dois jeitos de
+   * dizer a mesma coisa.
+   */
+  const escritaDaReceita: EstadoDaReceita =
+    registrarPagamento.isPending || estornarPagamento.isPending
+      ? { tipo: 'salvando' }
+      : registrarPagamento.isError || estornarPagamento.isError
+        ? {
+            tipo: 'erro',
+            recado: mensagemDoErro(registrarPagamento.error ?? estornarPagamento.error),
+          }
+        : { tipo: 'parado' };
+
   const concessao: EstadoDaConcessao =
     darAssinatura.isPending || encerrarAssinatura.isPending
       ? { tipo: 'salvando' }
@@ -185,6 +212,28 @@ function FichaDoModal({ id }: { id: string }) {
             aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
           />
         ) : null
+      }
+      receita={
+        <Receita
+          hoje={hoje}
+          assinatura={
+            assinaturaAberta
+              ? {
+                  // O dia em BRT, e não o carimbo cru: uma assinatura criada às
+                  // 22h de 31 de agosto é de agosto para quem deu, e de setembro
+                  // para o UTC. O mês de competência sairia errado por uma hora.
+                  comecouEm: brtDayOf(assinaturaAberta.criadaEm) ?? hoje,
+                  valorMensal: assinaturaAberta.valorMensal,
+                }
+              : null
+          }
+          estado={pagamentos}
+          escrita={escritaDaReceita}
+          aoLancar={(pagamento) => registrarPagamento.mutate(pagamento)}
+          aoEstornar={(idDoPagamento, motivo) =>
+            estornarPagamento.mutate({ id: idDoPagamento, motivo })
+          }
+        />
       }
       comportamento={
         <BlocoDeComportamento
