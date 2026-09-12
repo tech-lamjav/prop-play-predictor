@@ -56,13 +56,24 @@ export function EvolucaoDoRoi({
   liquidadas,
   periodo,
   eixo,
+  granularidade,
+  aoMudarGranularidade,
 }: {
   liquidadas: LinhaLiquidada[];
   periodo: Periodo;
   eixo: Eixo;
+  /**
+   * O degrau do tempo, que vale para a tela toda.
+   *
+   * Controlado de fora de propósito: as matrizes usam as mesmas colunas, e dois
+   * controles de granularidade na mesma tela — um aqui, outro nas tabelas — é
+   * exatamente o tipo de ruído que o painel estava acumulando.
+   */
+  granularidade: Granularidade;
+  aoMudarGranularidade: (g: Granularidade) => void;
 }) {
   const disponiveis = granularidadesDe(periodo);
-  const [granularidade, setGranularidade] = useState<Granularidade>(disponiveis[0]);
+  const setGranularidade = aoMudarGranularidade;
   /** A gaveta aberta por clique, com o caminho de volta. */
   const [zoom, setZoom] = useState<{ janela: Periodo; rotulo: string; volta: Granularidade } | null>(
     null,

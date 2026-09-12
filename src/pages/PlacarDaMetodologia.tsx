@@ -13,6 +13,7 @@ import {
   type Eixo,
   type Periodo,
 } from '@/components/placar/placar-periodo';
+import { granularidadesDe, type Granularidade } from '@/components/placar/placar-evolucao';
 import { soAVitrine } from '@/components/placar/placar-vitrine';
 import type { LinhaPublicada } from '@/components/placar/placar-agregacao';
 import { useOportunidadesPublicadas } from '@/hooks/use-oportunidades-publicadas';
@@ -40,6 +41,17 @@ export default function PlacarDaMetodologia() {
   // sobre um mercado oculto é uma das que esta tela sustenta.
   const [soVitrine, setSoVitrine] = useState(false);
   const [periodoB, setPeriodoB] = useState<Periodo | null>(null);
+  /**
+   * O degrau do tempo, um para a tela toda.
+   *
+   * Nasce no mais largo que o período sustenta — mês quando há dois meses,
+   * senão semana — porque a leitura começa no macro. O clique numa barra do
+   * gráfico desce este degrau, e as colunas das matrizes descem com ele: a tela
+   * inteira dá um passo para dentro, em vez de cada bloco ter o seu.
+   */
+  const [granularidade, setGranularidade] = useState<Granularidade>(
+    () => granularidadesDe(periodoPadrao(hoje))[0],
+  );
   const { vitrine } = useVitrine();
 
   /**
@@ -107,6 +119,8 @@ export default function PlacarDaMetodologia() {
             publicadas={a.publicadas}
             periodo={periodo}
             eixo={eixo}
+            granularidade={granularidade}
+            aoMudarGranularidade={setGranularidade}
             avisos={avisosDoPeriodo(periodo, eixo)}
             ocultos={vitrine}
             foraDaVitrine={a.foraDaVitrine}

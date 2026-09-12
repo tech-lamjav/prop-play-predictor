@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
-import { DayPicker, type DateRange } from 'react-day-picker';
+import type { DateRange } from 'react-day-picker';
 import { ptBR } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ATALHOS, periodoAnterior, rotuloDoPeriodo, type Periodo } from './placar-periodo';
 
@@ -86,9 +87,13 @@ export function SeletorDePeriodo({
         </button>
       </PopoverTrigger>
 
-      <PopoverContent align="start" className="w-auto max-w-[95vw] p-0">
+      {/* ⚠️ `theme-bolao` aqui, e não só na página: o popover do Radix renderiza
+          num PORTAL, no fim do body, então ele sai de dentro do wrapper de tema
+          e os tokens caem no tema padrão do app — que é escuro. Sem esta classe
+          o calendário aparece preto no meio de uma tela clara. */}
+      <PopoverContent align="start" className="theme-bolao w-auto max-w-[95vw] border-line-2 bg-white p-0 text-ink">
         <div className="flex flex-col sm:flex-row">
-          <div className="flex flex-col gap-1 border-b border-line-2 p-3 sm:border-b-0 sm:border-r">
+          <div className="flex flex-col gap-1 border-b border-line-2 bg-canvas p-3 sm:border-b-0 sm:border-r">
             <span className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
               Atalhos
             </span>
@@ -115,7 +120,9 @@ export function SeletorDePeriodo({
           </div>
 
           <div className="p-3">
-            <DayPicker
+            {/* O Calendar do design system, e não o DayPicker cru: ele já carrega a
+                paleta, o espaçamento e os dois meses lado a lado. */}
+            <Calendar
               mode="range"
               locale={ptBR}
               numberOfMonths={2}
@@ -123,7 +130,7 @@ export function SeletorDePeriodo({
               selected={{ from: comoData(rascunho.de), to: comoData(rascunho.ate) }}
               onSelect={selecionar}
               disabled={{ after: comoData(hoje) }}
-              className="text-[13px]"
+              className="p-0"
             />
 
             <label className="mt-2 flex items-center gap-2 border-t border-line-2 pt-3 text-[13px] text-ink">

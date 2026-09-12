@@ -1,6 +1,8 @@
 import { liquidarTudo, totalDe, type LinhaPublicada } from './placar-agregacao';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import { EvolucaoDoRoi } from './EvolucaoDoRoi';
+import { MatrizDoPlacar } from './MatrizDoPlacar';
+import type { Granularidade } from './placar-evolucao';
 import { porLadoDoMercado } from './placar-por-premissa';
 import { PremissasDoLado } from './PremissasDoLado';
 import { QUEBRAS, QUEBRAS_DO_DADO, celulasDa, type Quebra } from './placar-quebras';
@@ -43,6 +45,8 @@ export function Placar({
   foraDaEscala = 0,
   periodo,
   eixo,
+  granularidade,
+  aoMudarGranularidade,
   comparacao,
 }: {
   publicadas: LinhaPublicada[];
@@ -75,6 +79,9 @@ export function Placar({
   /** A janela e o eixo, que o gráfico precisa para escolher a granularidade. */
   periodo: Periodo;
   eixo: Eixo;
+  /** O degrau do tempo: as colunas das matrizes e as barras do gráfico. */
+  granularidade: Granularidade;
+  aoMudarGranularidade: (g: Granularidade) => void;
   /** O segundo período, quando o sócio está comparando. */
   comparacao?: {
     publicadas: LinhaPublicada[];
@@ -103,10 +110,16 @@ export function Placar({
         rotuloDeB={comparacao.rotuloDeB}
       />
     ) : (
-      <TabelaDoPlacar
+      // Sem comparação, o tempo vai para as colunas: a linha inteira conta se
+      // caiu sempre ou caiu num dia, e a célula abre o que estava dentro dela.
+      // Comparando, quem ocupa as colunas são os dois períodos, e aí a matriz
+      // não cabe — duas matrizes lado a lado não se leem.
+      <MatrizDoPlacar
         key={quebra.titulo}
         quebra={quebra}
-        celulas={celulasDa(quebra, liquidadas)}
+        liquidadas={liquidadas}
+        granularidade={granularidade}
+        eixo={eixo}
         selo={selo}
       />
     );
@@ -202,7 +215,13 @@ export function Placar({
       {/* O gráfico vem antes das tabelas: a primeira pergunta é se está
           melhorando, e só depois onde. Do macro para o micro. */}
       <div className="mb-5">
-        <EvolucaoDoRoi liquidadas={liquidadas} periodo={periodo} eixo={eixo} />
+        <EvolucaoDoRoi
+          liquidadas={liquidadas}
+          periodo={periodo}
+          eixo={eixo}
+          granularidade={granularidade}
+          aoMudarGranularidade={aoMudarGranularidade}
+        />
       </div>
 
       <div className="grid gap-5">{QUEBRAS.map(tabela)}</div>

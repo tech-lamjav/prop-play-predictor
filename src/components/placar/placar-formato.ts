@@ -15,7 +15,8 @@ const virgula = (n: number, casas: number) => n.toFixed(casas).replace('.', ',')
  * Travessão e não "0%": taxa de zero aposta decidida é ausência de resposta, e
  * 0% afirmaria que a metodologia errou tudo.
  */
-export const taxaPct = (taxa: number | null) => (taxa == null ? '—' : `${virgula(taxa * 100, 1)}%`);
+export const taxaPct = (taxa: number | null, casas = 1) =>
+  taxa == null ? '—' : `${virgula(taxa * 100, casas)}%`;
 
 /**
  * O ROI em porcentagem, sempre com sinal.
