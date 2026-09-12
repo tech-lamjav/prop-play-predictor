@@ -145,23 +145,27 @@ function FichaDoModal({ id }: { id: string }) {
             escrita={escrita}
             aoSalvar={(mudanca) => acesso.mutate(mudanca)}
             aoDefinirTeste={(ligado) => teste.mutate(ligado)}
-            assinatura={
-              <DarAssinatura
-                hoje={hoje}
-                atual={
-                  assinaturaAberta
-                    ? {
-                        id: assinaturaAberta.id,
-                        plano: assinaturaAberta.plano,
-                        venceEm: assinaturaAberta.venceEm,
-                      }
-                    : null
-                }
-                estado={concessao}
-                aoConceder={(plano, venceEm) => darAssinatura.mutate({ plano, venceEm })}
-                aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
-              />
+          />
+        ) : null
+      }
+      // Separada dos acessos avulsos: na aba de planos as duas ficam em
+      // colunas diferentes, porque são a venda e os remendos.
+      assinatura={
+        estado.tipo === 'pronta' ? (
+          <DarAssinatura
+            hoje={hoje}
+            atual={
+              assinaturaAberta
+                ? {
+                    id: assinaturaAberta.id,
+                    plano: assinaturaAberta.plano,
+                    venceEm: assinaturaAberta.venceEm,
+                  }
+                : null
             }
+            estado={concessao}
+            aoConceder={(plano, venceEm) => darAssinatura.mutate({ plano, venceEm })}
+            aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
           />
         ) : null
       }

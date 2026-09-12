@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { acessoAtual, estadoDoTeste, PRODUTOS_EDITAVEIS, type ProdutoEditavel } from './crm-acesso';
@@ -190,7 +190,10 @@ function Teste({
  * daqui a três meses alguém vai perguntar por que essa pessoa tem o Completo
  * sem nunca ter pago, e a resposta precisa estar junto do resto da conversa.
  *
- * Não desenha bloco próprio: entra DENTRO de "Planos e acessos", na ficha.
+ * Não desenha bloco próprio: entra DENTRO do cartão "Acessos avulsos" da aba
+ * de planos. O formulário de assinatura saiu daqui e virou o cartão vizinho:
+ * são a venda e os remendos, e empilhados deixavam metade da largura do modal
+ * vazia.
  * Havia uma lista só de leitura logo acima dele mostrando exatamente a mesma
  * coisa, e dois lugares dizendo o mesmo é um convite a discordarem — quando
  * discordassem, ninguém saberia qual acreditar.
@@ -200,26 +203,14 @@ export function EditorDeAcesso({
   escrita,
   aoSalvar,
   aoDefinirTeste,
-  assinatura,
 }: {
   pessoa: Pessoa;
   escrita: EstadoDaEscrita;
   aoSalvar: (mudanca: MudancaDeAcesso) => void;
   aoDefinirTeste: (ligado: boolean) => void;
-  /**
-   * O formulário de assinatura, por fora.
-   *
-   * Vem PRIMEIRO na tela, e os interruptores depois, porque é assim que a venda
-   * acontece: combina-se um plano e um prazo, e não três produtos avulsos. Os
-   * interruptores continuam servindo a outra coisa — consertar UM acesso, ou
-   * dar os Relatórios, que não pertencem a plano nenhum.
-   */
-  assinatura: ReactNode;
 }) {
   return (
     <div className="border-t border-line-2 pt-3">
-      {assinatura}
-
       <p className="mb-3 mt-3 flex gap-2 rounded-rebrand-sm bg-amber-400/10 p-2.5 text-[12px] text-ink">
         <AlertTriangle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <span>

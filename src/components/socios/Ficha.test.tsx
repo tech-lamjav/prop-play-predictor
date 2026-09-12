@@ -47,6 +47,7 @@ const montar = (
         linhaDoTempo={extras.linhaDoTempo ?? null}
         comportamento={<p>o comportamento</p>}
         edicaoDeAcesso={<p>o editor de acesso</p>}
+        assinatura={<p>o formulário de assinatura</p>}
       />
     </MemoryRouter>,
   );
@@ -146,6 +147,7 @@ describe('Ficha', () => {
           linhaDoTempo={null}
           comportamento={null}
           edicaoDeAcesso={null}
+          assinatura={null}
         />
       </MemoryRouter>,
     );
@@ -235,6 +237,7 @@ describe('Ficha · a linha do tempo entra na página', () => {
           linhaDoTempo={<p>a linha do tempo</p>}
           comportamento={null}
           edicaoDeAcesso={null}
+          assinatura={null}
         />
       </MemoryRouter>,
     );

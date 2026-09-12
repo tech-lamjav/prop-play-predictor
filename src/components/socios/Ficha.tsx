@@ -82,9 +82,17 @@ function Contato({ rotulo, valor }: { rotulo: string; valor: string | null }) {
  *
  * Sublinhado resolve os dois: cada aba ocupa a largura do próprio texto, e a
  * linha de baixo é o que o olho já reconhece como "você está aqui".
+ *
+ * ⚠️ Os três `data-[state=active]` que ANULAM coisa são obrigatórios, e faltar
+ * qualquer um deles estraga a aba. A base do componente traz
+ * `data-[state=active]:bg-background` e `:shadow-sm`, e dentro de
+ * `.theme-bolao` o `background` é escuro: sem anular o fundo, a aba ativa
+ * virava um retângulo escuro com o texto escuro em cima, ilegível. E o
+ * `rounded-none` tira o `rounded-sm` da base, que desenhava um canto
+ * arredondado no meio de um sublinhado reto.
  */
 const ABA =
-  'relative -mb-px border-b-2 border-transparent px-1 pb-2.5 text-[13.5px] font-bold text-ink-2 transition hover:text-ink data-[state=active]:border-forest data-[state=active]:text-ink';
+  'relative -mb-px rounded-none border-b-2 border-transparent bg-transparent px-1 pb-2.5 text-[13.5px] font-bold text-ink-2 shadow-none transition hover:text-ink data-[state=active]:border-forest data-[state=active]:bg-transparent data-[state=active]:text-ink data-[state=active]:shadow-none';
 
 /**
  * O painel de uma aba.
@@ -119,6 +127,7 @@ export function Ficha({
   linhaDoTempo,
   comportamento,
   edicaoDeAcesso,
+  assinatura,
 }: {
   estado: EstadoDaFicha;
   /**
@@ -133,6 +142,14 @@ export function Ficha({
   /** O editor de acesso entra por fora: ele tem escrita própria, e a ficha
    *  continua sendo só desenho. */
   edicaoDeAcesso: ReactNode;
+  /**
+   * O formulário de assinatura, separado dos acessos avulsos.
+   *
+   * Eram uma prop só, com a assinatura renderizada DENTRO do editor de acesso.
+   * Separei para a aba de planos poder pôr as duas em colunas diferentes: são
+   * a venda e os remendos, e empilhadas deixavam metade da largura vazia.
+   */
+  assinatura: ReactNode;
   /** A linha do tempo entra por fora: ela tem consulta e escrita próprias, e a
    *  ficha continua sendo só desenho. */
   linhaDoTempo: ReactNode;
@@ -157,6 +174,7 @@ export function Ficha({
       linhaDoTempo={linhaDoTempo}
       comportamento={comportamento}
       edicaoDeAcesso={edicaoDeAcesso}
+      assinatura={assinatura}
     />
   );
 }
@@ -171,6 +189,7 @@ function Conteudo({
   linhaDoTempo,
   comportamento,
   edicaoDeAcesso,
+  assinatura,
 }: {
   pessoa: Pessoa;
   apostas: ResumoDeApostas | null;
@@ -183,6 +202,7 @@ function Conteudo({
    *  quando o modal abre. */
   comportamento: ReactNode;
   edicaoDeAcesso: ReactNode;
+  assinatura: ReactNode;
 }) {
   const plano = nomeDoPlano(pessoa.subscription_product_type);
   const bruto = (pessoa.subscription_product_type ?? '').trim();
@@ -301,7 +321,10 @@ function Conteudo({
             baixo com ele. Antes ela flutuava sobre o creme, e a aba ativa
             parecia um botão solto no meio do nada: o sublinhado precisa de uma
             linha para interromper, senão não há o que sublinhar. */}
-        <TabsList className="h-auto shrink-0 justify-start gap-6 rounded-none border-b border-line-2 bg-white px-6 p-0">
+        {/* ⚠️ `p-0` vem ANTES de `px-6`, e a ordem importa: o merge de classes
+            resolve conflito pelo último que aparece, então `px-6 p-0` zerava o
+            respiro lateral e as abas encostavam na borda do modal. */}
+        <TabsList className="h-auto shrink-0 justify-start gap-6 rounded-none border-b border-line-2 bg-white p-0 px-6">
           <TabsTrigger value="conversa" className={ABA}>
             Conversa
           </TabsTrigger>
@@ -349,10 +372,27 @@ function Conteudo({
         </TabsContent>
 
         <TabsContent value="planos" className={PAINEL}>
-          <Bloco titulo="Planos e acessos">
-            <Campo rotulo="Plano" valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)} />
-            {edicaoDeAcesso}
-          </Bloco>
+          {/*
+            Duas colunas, porque o conteúdo são duas coisas de naturezas
+            diferentes empilhadas: a VENDA (qual plano, até quando) e os
+            REMENDOS (ligar um produto solto, dar os Relatórios, mexer no
+            teste). Em coluna única o modal ficava com metade da largura vazia e
+            a venda enterrada no topo de uma pilha.
+
+            A venda ocupa a coluna maior e vem primeiro, porque é o que se faz
+            aqui na maior parte das vezes.
+          */}
+          <div className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-[1.15fr_1fr]">
+            <Bloco titulo="Assinatura">
+              <Campo
+                rotulo="Plano"
+                valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)}
+              />
+              {assinatura}
+            </Bloco>
+
+            <Bloco titulo="Acessos avulsos">{edicaoDeAcesso}</Bloco>
+          </div>
         </TabsContent>
 
         <TabsContent value="comportamento" className={PAINEL}>
