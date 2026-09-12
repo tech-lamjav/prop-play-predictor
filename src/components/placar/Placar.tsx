@@ -11,6 +11,16 @@ import {
 } from './placar-agregacao';
 import { emN, epPct, roiPct, taxaPct } from './placar-formato';
 import { rotuloDoMercado } from './placar-vocabulario';
+import {
+  FAIXAS_DE_PONTOS,
+  FAIXAS_SEM_DADO,
+  GRUPOS_DE_CORROBORACAO,
+  GRUPOS_DE_PENALIDADE,
+  faixaDePontos,
+  faixaSemDado,
+  grupoDeCorroboracao,
+  grupoDePenalidade,
+} from './placar-premissas';
 import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaDoPlacar } from './TabelaDoPlacar';
 
@@ -82,6 +92,10 @@ export function Placar({
     FAIXAS_DE_ODD,
   );
   const porCampeonato = quebrar(liquidadas, (l) => l.competition ?? 'Sem campeonato');
+  const porPontos = quebrarNaOrdem(liquidadas, (l) => faixaDePontos(l.pts_premissas), FAIXAS_DE_PONTOS);
+  const porSemDado = quebrarNaOrdem(liquidadas, (l) => faixaSemDado(l.premissas_sem_dado), FAIXAS_SEM_DADO);
+  const porCorroboracao = quebrarNaOrdem(liquidadas, grupoDeCorroboracao, GRUPOS_DE_CORROBORACAO);
+  const porPenalidade = quebrarNaOrdem(liquidadas, grupoDePenalidade, GRUPOS_DE_PENALIDADE);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -166,6 +180,47 @@ export function Placar({
           explicacao="Da base maior para a menor, porque é o tamanho da base que diz se vale comparar. Campeonato de mata-mata degrada as premissas, e esta é a tabela onde isso aparece."
           celulas={porCampeonato}
         />
+      </div>
+
+      <div className="mt-8 border-t border-line-2 pt-6">
+        <h2 className="font-display text-xl font-black text-ink">O que dá para dizer de premissa</h2>
+        <p className="mt-2 max-w-3xl text-[14px] text-ink-2">
+          <strong className="text-ink">Isto não é ROI por premissa.</strong> Quais premissas
+          acenderam em cada linha não está guardado: o histórico tem a soma dos pesos, não a lista.
+          A evidência que a tela do jogo mostra para uma linha antiga é reconstruída com as flags de
+          HOJE, então ela não serve para medir o passado. Responder &quot;quando a premissa X
+          acendeu, qual foi o ROI&quot; exige guardar as premissas acesas no momento da publicação,
+          e isso é trabalho no mart.
+        </p>
+        <p className="mt-2 max-w-3xl text-[14px] text-ink-2">
+          O que está abaixo são as aproximações que existem com fidelidade histórica.
+        </p>
+
+        <div className="mt-5 grid gap-5">
+          <TabelaDoPlacar
+            titulo="Por pontos de premissa"
+            explicacao="A soma dos pesos que acenderam. Serve para ver se mais evidência rende mais — mas o teto de pontos é diferente por mercado (30 no Resultado, 40 em Gols), então a mesma faixa não significa a mesma coisa nos dois."
+            celulas={porPontos}
+          />
+
+          <TabelaDoPlacar
+            titulo="Por premissas sem dado"
+            explicacao="Quantas premissas não puderam ser avaliadas por falta de dado. Se publicar com evidência faltando sai caro, é aqui que aparece."
+            celulas={porSemDado}
+          />
+
+          <TabelaDoPlacar
+            titulo="Por corroboração de preço"
+            explicacao="Os dois sinais que falam do preço, em grupos que não se sobrepõem: cada aposta entra em um só. O modelo da API vale zero ponto na nota desde a recalibragem, e esta tabela é onde isso se confirma ou não."
+            celulas={porCorroboracao}
+          />
+
+          <TabelaDoPlacar
+            titulo="Por penalidade aplicada"
+            explicacao="A penalidade protege ou só corta aposta boa? Grupos exclusivos: aposta com duas flags entra em &quot;mais de uma&quot;, e não nas duas."
+            celulas={porPenalidade}
+          />
+        </div>
       </div>
     </div>
   );

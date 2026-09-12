@@ -179,3 +179,32 @@ describe('o mercado fora da vitrine', () => {
     expect(screen.queryByText(/ficaram de fora/i)).not.toBeInTheDocument();
   });
 });
+
+describe('o que dá para dizer de premissa', () => {
+  it('diz, antes das tabelas, que isto não é ROI por premissa', () => {
+    // É a frase que impede a confusão entre "mais pontos rende mais" e "a
+    // premissa X rende mais", que foi o pedido original.
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.getByText(/não é ROI por premissa/i)).toBeInTheDocument();
+  });
+
+  it('explica por que não dá: a evidência do histórico é reconstruída de hoje', () => {
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.getByText(/flags de HOJE/i)).toBeInTheDocument();
+  });
+
+  it('mostra as quatro aproximações que existem de verdade', () => {
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.getByText('Por pontos de premissa')).toBeInTheDocument();
+    expect(screen.getByText('Por premissas sem dado')).toBeInTheDocument();
+    expect(screen.getByText('Por corroboração de preço')).toBeInTheDocument();
+    expect(screen.getByText('Por penalidade aplicada')).toBeInTheDocument();
+  });
+
+  it('e avisa que o teto de pontos é diferente por mercado', () => {
+    // Sem esse aviso, a faixa "30 ou mais" parece a mesma coisa em Gols e no
+    // Resultado, e ela não é: os tetos são 40 e 30.
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.getByText(/teto de pontos é diferente por mercado/i)).toBeInTheDocument();
+  });
+});
