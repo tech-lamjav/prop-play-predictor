@@ -1,4 +1,4 @@
-import { parseUtc } from '@/utils/futebol-datas';
+import { mercadoOcultoNaData, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
 import type { LinhaPublicada } from './placar-agregacao';
 
 // ============================================================================
@@ -14,45 +14,37 @@ import type { LinhaPublicada } from './placar-agregacao';
 // assinante usou", e o placar responde "como está a metodologia" — e decidir se
 // o handicap volta é exatamente uma das decisões que o placar sustenta.
 //
-// O recorte "só a vitrine" responde a pergunta do script, e é onde a DATA
-// importa: a linha publicada ANTES de o mercado ser escondido esteve na tela e
-// foi vista. Excluir o mercado inteiro apagaria também o que o assinante viu.
+// ⚠️ A REGRA não mora aqui. Ela mora em `futebol-mercados-ocultos.ts`, que é a
+// casa dela desde a issue #324 e já trata o caso que este arquivo tinha errado:
+// vitrine sem data, que acontece quando a leitura falha e o fallback entra. Este
+// módulo só escolhe o EIXO — a detecção — e conta quantas linhas saíram.
 // ============================================================================
 
-/** Um mercado fora da vitrine, com a data em que saiu. */
-export type MercadoOculto = { market: string; oculto_desde: string };
+export type { MercadoOculto };
 
 /**
  * A linha esteve na vitrine?
  *
- * Vale pela DETECÇÃO, e não pelo jogo: o que decide é quando ela foi publicada,
- * porque é aí que ela apareceu (ou não) na tela do assinante.
- *
- * ⚠️ A comparação é entre INSTANTES, e não entre dias de Brasília. O corte é um
- * instante — o `oculto_desde` da vitrine —, e arredondar os dois para o dia BRT
- * move o corte um dia para trás quando ele cai à meia-noite em UTC, que é
- * justamente como ele foi gravado.
+ * Vale pela DETECÇÃO, e não pelo apito: o que decide é quando ela foi publicada,
+ * porque é aí que ela apareceu (ou não) na tela do assinante. É a diferença que
+ * importa numa linha publicada em 31/08, para um jogo de 02/09, com o mercado
+ * saindo da vitrine em 01/09 — ela esteve na tela.
  */
 export function esteveNaVitrine(
   linha: LinhaPublicada,
   ocultos: readonly MercadoOculto[],
+  agoraMs: number = Date.now(),
 ): boolean {
-  const oculto = ocultos.find((o) => o.market === linha.market);
-  if (!oculto) return true;
-
-  const corte = parseUtc(oculto.oculto_desde);
-  const publicada = parseUtc(linha.detectada_em);
-  if (!corte || !publicada) return true;
-
-  return publicada.getTime() < corte.getTime();
+  return !mercadoOcultoNaData(linha.market, linha.detectada_em, ocultos, agoraMs);
 }
 
 /** Só o que o assinante viu. O resto é board, e continua medido em outra leitura. */
 export function soAVitrine(
   linhas: readonly LinhaPublicada[],
   ocultos: readonly MercadoOculto[],
+  agoraMs: number = Date.now(),
 ): LinhaPublicada[] {
-  return linhas.filter((l) => esteveNaVitrine(l, ocultos));
+  return linhas.filter((l) => esteveNaVitrine(l, ocultos, agoraMs));
 }
 
 /**

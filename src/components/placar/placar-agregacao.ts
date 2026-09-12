@@ -232,7 +232,9 @@ export const FAIXAS_DO_SCORE = [
   'Alta (80+)',
 ] as const;
 
-export function faixaDoScore(score: number): string {
+export type FaixaDoScore = (typeof FAIXAS_DO_SCORE)[number];
+
+export function faixaDoScore(score: number): FaixaDoScore {
   if (score < 30) return FAIXAS_DO_SCORE[0];
   if (score < 60) return FAIXAS_DO_SCORE[1];
   if (score < 80) return FAIXAS_DO_SCORE[2];
@@ -247,7 +249,9 @@ export function faixaDoScore(score: number): string {
  */
 export const FAIXAS_DE_ODD = ['1.25–1.59', '1.60–1.99', '2.00–2.59', '2.60–4.00'] as const;
 
-export function faixaDeOdd(odd: number): string {
+export type FaixaDeOdd = (typeof FAIXAS_DE_ODD)[number];
+
+export function faixaDeOdd(odd: number): FaixaDeOdd {
   if (odd < 1.6) return FAIXAS_DE_ODD[0];
   if (odd < 2.0) return FAIXAS_DE_ODD[1];
   if (odd < 2.6) return FAIXAS_DE_ODD[2];
@@ -261,11 +265,25 @@ export type Total = Celula & {
   pendentes: number;
 };
 
-export function totalDoPeriodo(publicadas: readonly LinhaPublicada[]): Total {
-  const { liquidadas, pendentes } = liquidarTudo(publicadas);
+/**
+ * O total a partir de uma liquidação que JÁ foi feita.
+ *
+ * Existe porque a tela precisa das liquidadas para as tabelas e do total para o
+ * topo, e `totalDoPeriodo` liquidaria tudo de novo — a mesma conta duas vezes
+ * em cima da mesma lista, a cada render.
+ */
+export function totalDe(
+  liquidadas: readonly LinhaLiquidada[],
+  pendentes: readonly LinhaPublicada[],
+): Total {
   return {
     ...celulaDe('Total', liquidadas),
-    publicadas: publicadas.length,
+    publicadas: liquidadas.length + pendentes.length,
     pendentes: pendentes.length,
   };
+}
+
+export function totalDoPeriodo(publicadas: readonly LinhaPublicada[]): Total {
+  const { liquidadas, pendentes } = liquidarTudo(publicadas);
+  return totalDe(liquidadas, pendentes);
 }

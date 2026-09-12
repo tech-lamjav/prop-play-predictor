@@ -1,8 +1,10 @@
 import type { Celula } from './placar-agregacao';
-import { emN, epPct, roiPct, taxaPct } from './placar-formato';
+import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
+import type { Quebra } from './placar-quebras';
+import { CelulaDoGrupo } from './CelulaDoGrupo';
 
 /**
- * Uma tabela de quebra do placar.
+ * Uma tabela de quebra do placar, num período só.
  *
  * Sempre as mesmas colunas, em toda quebra: o grupo, o tamanho da base, a taxa
  * de acerto, o ROI e o erro-padrão dele. A repetição é de propósito — o sócio
@@ -16,31 +18,28 @@ import { emN, epPct, roiPct, taxaPct } from './placar-formato';
  * semana de amostra, quase toda diferença entre duas linhas cabe dentro dele.
  */
 export function TabelaDoPlacar({
-  titulo,
-  explicacao,
+  quebra,
   celulas,
-  rotulo = (chave) => chave,
-  marca,
-  vazio = 'Nenhuma oportunidade liquidada no período.',
+  selo,
 }: {
-  titulo: string;
-  explicacao?: string;
+  quebra: Quebra;
   celulas: Celula[];
-  /** Como o nome do grupo aparece na tela. O padrão é a própria chave. */
-  rotulo?: (chave: string) => string;
-  /** Um selo ao lado do nome do grupo, quando ele precisa de aviso. */
-  marca?: (chave: string) => string | null;
-  vazio?: string;
+  /** O selo de cada grupo, quando a quebra pede um. */
+  selo?: (chave: string) => string | null;
 }) {
+  const rotulo = quebra.rotulo ?? ((chave: string) => chave);
+
   return (
     <section className="rounded-rebrand-md border border-line-2 bg-white">
       <header className="border-b border-line-2 px-5 py-3">
-        <h2 className="font-display text-[17px] font-black text-ink">{titulo}</h2>
-        {explicacao && <p className="mt-1 text-[13px] text-ink-2">{explicacao}</p>}
+        <h2 className="font-display text-[17px] font-black text-ink">{quebra.titulo}</h2>
+        <p className="mt-1 text-[13px] text-ink-2">{quebra.explicacao}</p>
       </header>
 
       {celulas.length === 0 ? (
-        <p className="px-5 py-8 text-[14px] text-ink-2">{vazio}</p>
+        <p className="px-5 py-8 text-[14px] text-ink-2">
+          Nenhuma oportunidade liquidada no período.
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
@@ -54,47 +53,32 @@ export function TabelaDoPlacar({
               </tr>
             </thead>
             <tbody>
-              {celulas.map((c) => {
-                const selo = marca?.(c.chave) ?? null;
-
-                return (
-                  <tr key={c.chave} className="border-b border-line-2 last:border-b-0">
-                    <td className="px-5 py-3 text-[14px] font-bold text-ink">
-                      {rotulo(c.chave)}
-                      {selo && (
-                        <span className="ml-2 rounded-full bg-forest/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-forest">
-                          {selo}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right text-[14px] tabular-nums text-ink">
-                      {c.n}
-                      {c.anuladas > 0 && (
-                        <span className="ml-1 text-[12px] text-ink-dim">
-                          ({c.anuladas} anulada{c.anuladas > 1 ? 's' : ''})
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right text-[14px] tabular-nums text-ink">
-                      {taxaPct(c.taxa)}
+              {celulas.map((c) => (
+                <tr key={c.chave} className="border-b border-line-2 last:border-b-0">
+                  <CelulaDoGrupo nome={rotulo(c.chave)} selo={selo?.(c.chave) ?? null} />
+                  <td className="px-5 py-3 text-right text-[14px] tabular-nums text-ink">
+                    {c.n}
+                    {c.anuladas > 0 && (
                       <span className="ml-1 text-[12px] text-ink-dim">
-                        {emN(c.n - c.anuladas)}
+                        ({c.anuladas} anulada{c.anuladas > 1 ? 's' : ''})
                       </span>
-                    </td>
-                    <td
-                      className={`px-5 py-3 text-right text-[14px] font-bold tabular-nums ${
-                        c.roi > 0 ? 'text-forest' : c.roi < 0 ? 'text-red-600' : 'text-ink'
-                      }`}
-                    >
-                      {roiPct(c.roi)}
-                      <span className="ml-1 font-normal text-[12px] text-ink-dim">{emN(c.n)}</span>
-                    </td>
-                    <td className="px-5 py-3 text-right text-[13px] tabular-nums text-ink-2">
-                      ± {epPct(c.ep)}
-                    </td>
-                  </tr>
-                );
-              })}
+                    )}
+                  </td>
+                  <td className="px-5 py-3 text-right text-[14px] tabular-nums text-ink">
+                    {taxaPct(c.taxa)}
+                    <span className="ml-1 text-[12px] text-ink-dim">{emN(c.n - c.anuladas)}</span>
+                  </td>
+                  <td
+                    className={`px-5 py-3 text-right text-[14px] font-bold tabular-nums ${tomDoRoi(c.roi)}`}
+                  >
+                    {roiPct(c.roi)}
+                    <span className="ml-1 text-[12px] font-normal text-ink-dim">{emN(c.n)}</span>
+                  </td>
+                  <td className="px-5 py-3 text-right text-[13px] tabular-nums text-ink-2">
+                    ± {epPct(c.ep)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

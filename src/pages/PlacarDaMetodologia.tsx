@@ -8,11 +8,13 @@ import {
   avisosDoPeriodo,
   filtrarPeloEixo,
   periodoPadrao,
+  recorteDaSerieComparavel,
   rotuloDoPeriodo,
   type Eixo,
   type Periodo,
 } from '@/components/placar/placar-periodo';
 import { soAVitrine } from '@/components/placar/placar-vitrine';
+import type { LinhaPublicada } from '@/components/placar/placar-agregacao';
 import { useOportunidadesPublicadas } from '@/hooks/use-oportunidades-publicadas';
 import { useVitrine } from '@/hooks/use-futebol-data';
 import { brtToday } from '@/utils/futebol-datas';
@@ -41,10 +43,25 @@ export default function PlacarDaMetodologia() {
   const [periodoB, setPeriodoB] = useState<Periodo | null>(null);
   const { vitrine } = useVitrine();
 
+  /**
+   * O que a RPC devolveu, recortado pelas três escolhas da tela.
+   *
+   * A ordem importa e é sempre esta: o EIXO primeiro, porque a RPC devolve o que
+   * toca a janela pelos dois; depois a ESCALA, que tira o que nasceu antes da
+   * virada quando a janela é a comparável; depois a VITRINE, se o sócio pediu a
+   * leitura do produto. Escrito uma vez porque os dois períodos passam pelo
+   * mesmo funil — e um deles tomar um caminho diferente seria uma comparação
+   * entre coisas diferentes.
+   */
+  const recortar = (linhas: LinhaPublicada[], janela: Periodo) => {
+    const noEixo = filtrarPeloEixo(linhas, eixo, janela);
+    const { linhas: naEscala, foraDaEscala } = recorteDaSerieComparavel(noEixo, janela);
+    const publicadas = soVitrine ? soAVitrine(naEscala, vitrine) : naEscala;
+    return { publicadas, foraDaEscala, foraDaVitrine: naEscala.length - publicadas.length };
+  };
+
   const estado = useOportunidadesPublicadas(periodo.de, periodo.ate);
-  const noPeriodo =
-    estado.tipo === 'pronto' ? filtrarPeloEixo(estado.publicadas, eixo, periodo) : [];
-  const publicadas = soVitrine ? soAVitrine(noPeriodo, vitrine) : noPeriodo;
+  const a = recortar(estado.tipo === 'pronto' ? estado.publicadas : [], periodo);
 
   // A segunda consulta só sai quando há comparação. As datas iguais fazem dela
   // uma chamada vazia e barata quando não há, sem um hook condicional.
@@ -52,16 +69,13 @@ export default function PlacarDaMetodologia() {
     periodoB?.de ?? periodo.de,
     periodoB?.ate ?? periodo.de,
   );
-  const publicadasB = (() => {
-    if (!periodoB || estadoB.tipo !== 'pronto') return [];
-    const noPeriodoB = filtrarPeloEixo(estadoB.publicadas, eixo, periodoB);
-    return soVitrine ? soAVitrine(noPeriodoB, vitrine) : noPeriodoB;
-  })();
+  const publicadasB =
+    periodoB && estadoB.tipo === 'pronto' ? recortar(estadoB.publicadas, periodoB).publicadas : [];
 
   const resumo =
     estado.tipo === 'pronto'
-      ? `${publicadas.length} ${
-          publicadas.length === 1 ? 'oportunidade publicada' : 'oportunidades publicadas'
+      ? `${a.publicadas.length} ${
+          a.publicadas.length === 1 ? 'oportunidade publicada' : 'oportunidades publicadas'
         } no período`
       : estado.tipo === 'erro'
         ? 'placar indisponível'
@@ -94,10 +108,11 @@ export default function PlacarDaMetodologia() {
 
         {estado.tipo === 'pronto' ? (
           <Placar
-            publicadas={publicadas}
+            publicadas={a.publicadas}
             avisos={avisosDoPeriodo(periodo, eixo)}
             ocultos={vitrine}
-            foraDaVitrine={noPeriodo.length - publicadas.length}
+            foraDaVitrine={a.foraDaVitrine}
+            foraDaEscala={a.foraDaEscala}
             comparacao={
               periodoB
                 ? {

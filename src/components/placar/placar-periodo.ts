@@ -1,6 +1,10 @@
-import { addDays, brtDayOf } from '@/utils/futebol-datas';
+import { addDays, brtDayOf, parseUtc } from '@/utils/futebol-datas';
 import type { LinhaPublicada } from './placar-agregacao';
-import { DIA_DO_SNAPSHOT_INICIAL, INICIO_DA_SERIE_COMPARAVEL } from './placar-vocabulario';
+import {
+  DIA_EM_QUE_O_HISTORICO_COMECOU,
+  INICIO_DA_SERIE_COMPARAVEL,
+  INSTANTE_DA_VIRADA,
+} from './placar-vocabulario';
 
 // ============================================================================
 // placar-periodo.ts — a janela que o placar está olhando, e por qual data
@@ -79,13 +83,13 @@ export function avisosDoPeriodo(periodo: Periodo, eixo: Eixo): string[] {
 
   if (periodo.de < INICIO_DA_SERIE_COMPARAVEL) {
     avisos.push(
-      'O período começa antes de 04/09/2026, quando o denominador do Score trocou do p95 para o teto de pontos. A nota das linhas anteriores está em OUTRA escala, então as faixas de Score misturam duas réguas — e o histórico é append-only, não existe recálculo que conserte isso.',
+      'O período começa antes de 04/09/2026, quando o denominador do Score trocou do p95 para o teto de pontos. A nota das linhas anteriores está em OUTRA escala, então as faixas de Score misturam duas réguas — e o histórico é append-only, não existe recálculo que conserte isso. Mais cedo ainda, a linha do método antigo (score_versao legacy) não entra nesta conta em momento nenhum: ela é outro modelo, e não outra escala do mesmo.',
     );
   }
 
-  if (eixo === 'deteccao' && periodo.de <= DIA_DO_SNAPSHOT_INICIAL && periodo.ate >= DIA_DO_SNAPSHOT_INICIAL) {
+  if (eixo === 'deteccao' && periodo.de <= DIA_EM_QUE_O_HISTORICO_COMECOU && periodo.ate >= DIA_EM_QUE_O_HISTORICO_COMECOU) {
     avisos.push(
-      'Contando por detecção, o dia 03/09/2026 concentra o board inteiro num snapshot só: centenas de linhas nasceram no mesmo instante. Aquele dia é uma pilha, e não um dia de operação.',
+      'Contando por detecção, o dia 03/09/2026 é o dia em que o histórico começou: o board inteiro entrou de uma vez, e centenas de linhas nasceram no mesmo instante. Aquele dia é uma pilha, e não um dia de operação.',
     );
   }
 
@@ -113,4 +117,34 @@ export function periodoAnterior(periodo: Periodo): Periodo {
 export function rotuloDoPeriodo(periodo: Periodo): string {
   const curto = (dia: string) => dia.slice(8, 10) + '/' + dia.slice(5, 7);
   return periodo.de === periodo.ate ? curto(periodo.de) : `${curto(periodo.de)} a ${curto(periodo.ate)}`;
+}
+
+/**
+ * Tira da conta o que nasceu antes da virada, quando a janela é a comparável.
+ *
+ * A virada do denominador entrou às 14h35 UTC de 04/09, e o período abre no dia
+ * 04/09 inteiro: as linhas da madrugada daquele dia têm nota na escala antiga.
+ * Elas saem, e a tela diz quantas saíram — série comparável que mistura duas
+ * réguas não é comparável, e o nome mentiria.
+ *
+ * ⚠️ Só recorta quando o sócio pediu a série comparável (a janela começa em
+ * 04/09 ou depois). Se ele pediu uma janela ANTERIOR, ele quer o período antigo
+ * inteiro, e aí quem avisa é `avisosDoPeriodo` em vez de o filtro apagar dado
+ * que ele foi buscar.
+ */
+export function recorteDaSerieComparavel(
+  linhas: readonly LinhaPublicada[],
+  periodo: Periodo,
+): { linhas: LinhaPublicada[]; foraDaEscala: number } {
+  if (periodo.de < INICIO_DA_SERIE_COMPARAVEL) {
+    return { linhas: [...linhas], foraDaEscala: 0 };
+  }
+
+  const corte = Date.parse(INSTANTE_DA_VIRADA);
+  const dentro = linhas.filter((l) => {
+    const nasceu = parseUtc(l.detectada_em)?.getTime();
+    return nasceu == null || nasceu >= corte;
+  });
+
+  return { linhas: dentro, foraDaEscala: linhas.length - dentro.length };
 }

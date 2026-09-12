@@ -31,16 +31,26 @@ export const ROTA_DO_PLACAR = `${ROTA_DOS_SOCIOS}/metodologia`;
 export const INICIO_DA_SERIE_COMPARAVEL = '2026-09-04';
 
 /**
- * O dia em que o snapshot capturou o board inteiro de uma vez.
+ * O dia em que o histórico começou, capturando o board inteiro de uma vez.
  *
  * 03/09/2026 concentra centenas de linhas detectadas no mesmo instante, então
  * qualquer leitura por DIA DE DETECÇÃO que inclua esse dia lê uma pilha, não um
  * dia de operação. Por apito ele não incomoda, porque os jogos continuam
  * espalhados.
  */
-export const DIA_DO_SNAPSHOT_INICIAL = '2026-09-03';
+export const DIA_EM_QUE_O_HISTORICO_COMECOU = '2026-09-03';
 
 /** O nome do mercado como o produto o chama. */
 export function rotuloDoMercado(slug: string): string {
   return MERCADOS.find((m) => m.slug === slug)?.label ?? slug;
 }
+
+/**
+ * O INSTANTE em que o denominador do Score trocou.
+ *
+ * A data sozinha não basta, e é uma armadilha fina: a troca entrou em produção
+ * às 14h35 UTC de 04/09, então as linhas nascidas na madrugada daquele mesmo dia
+ * têm nota na escala antiga. Abrir a série comparável no dia 04/09 inteiro
+ * misturaria as duas réguas justamente no período que se chama comparável.
+ */
+export const INSTANTE_DA_VIRADA = '2026-09-04T14:35:00Z';

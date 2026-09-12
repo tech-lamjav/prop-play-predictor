@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { LinhaPublicada } from './placar-agregacao';
 import { esteveNaVitrine, seloDeOculto, soAVitrine } from './placar-vitrine';
 
-const OCULTOS = [{ market: 'asian_handicap', oculto_desde: '2026-09-01T00:00:00' }];
+const OCULTOS = [{ market: 'asian_handicap', ocultoDesde: '2026-09-01T00:00:00Z' }];
 
 const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada =>
   ({
@@ -103,5 +103,34 @@ describe('o selo', () => {
 
   it('e não marca o que está na tela — selo em toda linha não marca nada', () => {
     expect(seloDeOculto('match_winner', OCULTOS)).toBeNull();
+  });
+});
+
+describe('a vitrine sem data', () => {
+  // Acontece quando a leitura da vitrine falha e o fallback entra: a lista vem
+  // com o nome do mercado e sem o corte. A regra compartilhada trata esse caso,
+  // e é por isso que ela mora lá e não aqui — esta versão do arquivo tinha
+  // reimplementado a comparação e perdido justamente ele.
+  const SEM_DATA = [{ market: 'asian_handicap', ocultoDesde: null }];
+  const agora = Date.parse('2026-09-12T12:00:00Z');
+
+  it('esconde do presente para a frente', () => {
+    expect(
+      esteveNaVitrine(
+        linha({ market: 'asian_handicap', detectada_em: '2026-09-12T13:00:00' }),
+        SEM_DATA,
+        agora,
+      ),
+    ).toBe(false);
+  });
+
+  it('e não toca no passado, que é o comportamento de antes', () => {
+    expect(
+      esteveNaVitrine(
+        linha({ market: 'asian_handicap', detectada_em: '2026-09-01T13:00:00' }),
+        SEM_DATA,
+        agora,
+      ),
+    ).toBe(true);
   });
 });

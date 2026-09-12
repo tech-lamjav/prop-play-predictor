@@ -152,7 +152,7 @@ describe('os avisos do período', () => {
 });
 
 describe('o mercado fora da vitrine', () => {
-  const OCULTOS = [{ market: 'asian_handicap', oculto_desde: '2026-09-01T00:00:00' }];
+  const OCULTOS = [{ market: 'asian_handicap', ocultoDesde: '2026-09-01T00:00:00Z' }];
 
   it('aparece na tabela com selo dizendo que está fora', () => {
     render(
@@ -249,5 +249,33 @@ describe('comparando dois períodos', () => {
     render(<Placar publicadas={[linha()]} />);
     expect(screen.queryByText(/dentro do ruído/i)).not.toBeInTheDocument();
     expect(screen.queryByText('Diferença')).not.toBeInTheDocument();
+  });
+});
+
+describe('o total do período', () => {
+  it('mostra acertos e anuladas em número, e não só dentro da taxa', () => {
+    // São eles que explicam por que a taxa e o ROI têm denominadores
+    // diferentes: sem o número de anuladas, a diferença parece erro de conta.
+    render(
+      <Placar
+        publicadas={[
+          linha(),
+          linha({ outcome: 'Away' }),
+          linha({ market: 'asian_handicap', line_value: 0, goals_home: 1, goals_away: 1 }),
+        ]}
+      />,
+    );
+    expect(screen.getByText('Anuladas')).toBeInTheDocument();
+    expect(screen.getByText(/Acerto: 1 em 2/)).toBeInTheDocument();
+  });
+
+  it('diz quantas saíram por estarem na escala antiga do Score', () => {
+    render(<Placar publicadas={[linha()]} foraDaEscala={2} />);
+    expect(screen.getByText(/escala antiga do Score/i)).toBeInTheDocument();
+  });
+
+  it('e não fala de escala quando não cortou ninguém', () => {
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.queryByText(/escala antiga/i)).not.toBeInTheDocument();
   });
 });

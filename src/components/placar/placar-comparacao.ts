@@ -44,6 +44,16 @@ export function erroDaDiferenca(a: Celula, b: Celula): number {
 }
 
 /**
+ * Quantas apostas um lado precisa ter para a diferença poder ser afirmada.
+ *
+ * Duas, e o motivo é aritmético: o erro-padrão de UMA aposta é zero, porque não
+ * existe variância com uma observação. Sem esta trava, um green de um lado
+ * contra um red do outro produz diferença enorme com erro zero — e a tabela
+ * mostraria em negrito a conclusão mais frágil que ela pode ter.
+ */
+export const MINIMO_PARA_AFIRMAR = 2;
+
+/**
  * Junta as duas tabelas pelo nome do grupo.
  *
  * `ordem` força a sequência da escala quando a quebra é ordinal (faixa de Score,
@@ -73,6 +83,7 @@ export function comparar(
 
     const diferencaRoi = ca.roi - cb.roi;
     const erro = erroDaDiferenca(ca, cb);
+    const baseCurta = ca.n < MINIMO_PARA_AFIRMAR || cb.n < MINIMO_PARA_AFIRMAR;
 
     return {
       chave,
@@ -80,7 +91,7 @@ export function comparar(
       b: cb,
       diferencaRoi,
       erroDaDiferenca: erro,
-      dentroDoRuido: Math.abs(diferencaRoi) <= erro,
+      dentroDoRuido: baseCurta || Math.abs(diferencaRoi) <= erro,
     };
   });
 }

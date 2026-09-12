@@ -1,41 +1,14 @@
-import {
-  FAIXAS_DE_ODD,
-  FAIXAS_DO_SCORE,
-  faixaDeOdd,
-  faixaDoScore,
-  liquidarTudo,
-  quebrar,
-  quebrarNaOrdem,
-  totalDoPeriodo,
-  type Celula,
-  type LinhaLiquidada,
-  type LinhaPublicada,
-} from './placar-agregacao';
-import { emN, epPct, roiPct, taxaPct } from './placar-formato';
-import {
-  FAIXAS_DE_PONTOS,
-  FAIXAS_SEM_DADO,
-  GRUPOS_DE_CORROBORACAO,
-  GRUPOS_DE_PENALIDADE,
-  faixaDePontos,
-  faixaSemDado,
-  grupoDeCorroboracao,
-  grupoDePenalidade,
-} from './placar-premissas';
-import { rotuloDoMercado } from './placar-vocabulario';
+import { liquidarTudo, totalDe, type LinhaPublicada } from './placar-agregacao';
+import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
+import { QUEBRAS, QUEBRAS_DE_PREMISSA, celulasDa, type Quebra } from './placar-quebras';
 import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaComparada } from './TabelaComparada';
 import { TabelaDoPlacar } from './TabelaDoPlacar';
-
 /** Um número do topo, com o que ele significa embaixo. */
-function Numero({ valor, rotulo, tom }: { valor: string; rotulo: string; tom?: 'bom' | 'ruim' }) {
+function Numero({ valor, rotulo, tom }: { valor: string; rotulo: string; tom?: string }) {
   return (
     <div className="rounded-rebrand-md border border-line-2 bg-white px-4 py-3">
-      <p
-        className={`font-display text-2xl font-black tabular-nums ${
-          tom === 'bom' ? 'text-forest' : tom === 'ruim' ? 'text-red-600' : 'text-ink'
-        }`}
-      >
+      <p className={`font-display text-2xl font-black tabular-nums ${tom ?? 'text-ink'}`}>
         {valor}
       </p>
       <p className="mt-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
@@ -44,92 +17,6 @@ function Numero({ valor, rotulo, tom }: { valor: string; rotulo: string; tom?: '
     </div>
   );
 }
-
-/**
- * Uma quebra: o que a tabela agrupa, e o que ela responde.
- *
- * Declaradas em lista e não escritas uma por uma porque toda quebra desenha a
- * mesma tabela, e a comparação de dois períodos tem de valer para todas. Com o
- * JSX repetido, acrescentar um período de comparação significaria duplicar cada
- * tabela — e a primeira que alguém esquecesse ficaria mostrando um período só,
- * sem avisar.
- */
-type Quebra = {
-  titulo: string;
-  explicacao: string;
-  chaveDe: (linha: LinhaPublicada) => string;
-  /** A ordem da escala, quando a quebra é ordinal. */
-  ordem?: readonly string[];
-  rotulo?: (chave: string) => string;
-};
-
-const QUEBRAS: Quebra[] = [
-  {
-    titulo: 'Por mercado',
-    explicacao:
-      'Onde a metodologia está ganhando e onde está perdendo. Acerto alto com ROI negativo é mercado de odd curta; o contrário é mercado que paga bem e erra muito.',
-    chaveDe: (l) => l.market,
-    rotulo: rotuloDoMercado,
-  },
-  {
-    titulo: 'Por faixa de Score',
-    explicacao:
-      'A promessa central do método: nota maior deveria render mais. Se a coluna de ROI não sobe com a faixa, a nota não está ordenando o resultado — e é a diferença entre faixas, não o número de uma delas, que responde isso.',
-    chaveDe: (l) => faixaDoScore(l.score),
-    ordem: FAIXAS_DO_SCORE,
-  },
-  {
-    titulo: 'Por faixa de odd',
-    explicacao:
-      'Odd curta e odd longa não se comportam igual, e a porta de odd por mercado foi desenhada supondo isso. Aqui é onde a suposição aparece medida.',
-    // A odd da publicação; a linha sem odd nunca chega aqui, porque sem preço
-    // ela não liquida.
-    chaveDe: (l) => faixaDeOdd(l.best_odd ?? 0),
-    ordem: FAIXAS_DE_ODD,
-  },
-  {
-    titulo: 'Por campeonato',
-    explicacao:
-      'Da base maior para a menor, porque é o tamanho da base que diz se vale comparar. Campeonato de mata-mata degrada as premissas, e esta é a tabela onde isso aparece.',
-    chaveDe: (l) => l.competition ?? 'Sem campeonato',
-  },
-];
-
-const QUEBRAS_DE_PREMISSA: Quebra[] = [
-  {
-    titulo: 'Por pontos de premissa',
-    explicacao:
-      'A soma dos pesos que acenderam. Serve para ver se mais evidência rende mais — mas o teto de pontos é diferente por mercado (30 no Resultado, 40 em Gols), então a mesma faixa não significa a mesma coisa nos dois.',
-    chaveDe: (l) => faixaDePontos(l.pts_premissas),
-    ordem: FAIXAS_DE_PONTOS,
-  },
-  {
-    titulo: 'Por premissas sem dado',
-    explicacao:
-      'Quantas premissas não puderam ser avaliadas por falta de dado. Se publicar com evidência faltando sai caro, é aqui que aparece.',
-    chaveDe: (l) => faixaSemDado(l.premissas_sem_dado),
-    ordem: FAIXAS_SEM_DADO,
-  },
-  {
-    titulo: 'Por corroboração de preço',
-    explicacao:
-      'Os dois sinais que falam do preço, em grupos que não se sobrepõem: cada aposta entra em um só. O modelo da API vale zero ponto na nota desde a recalibragem, e esta tabela é onde isso se confirma ou não.',
-    chaveDe: grupoDeCorroboracao,
-    ordem: GRUPOS_DE_CORROBORACAO,
-  },
-  {
-    titulo: 'Por penalidade aplicada',
-    explicacao:
-      'A penalidade protege ou só corta aposta boa? Grupos exclusivos: aposta com duas flags entra em "mais de uma", e não nas duas.',
-    chaveDe: grupoDePenalidade,
-    ordem: GRUPOS_DE_PENALIDADE,
-  },
-];
-
-const celulasDa = (quebra: Quebra, liquidadas: LinhaLiquidada[]): Celula[] =>
-  quebra.ordem
-    ? quebrarNaOrdem(liquidadas, quebra.chaveDe, quebra.ordem)
-    : quebrar(liquidadas, quebra.chaveDe);
 
 /**
  * O placar da metodologia.
@@ -149,6 +36,7 @@ export function Placar({
   avisos = [],
   ocultos = [],
   foraDaVitrine = 0,
+  foraDaEscala = 0,
   comparacao,
 }: {
   publicadas: LinhaPublicada[];
@@ -163,6 +51,15 @@ export function Placar({
    */
   foraDaVitrine?: number;
   /**
+   * Quantas oportunidades saíram por estarem na escala antiga do Score.
+   *
+   * Acontece no primeiro dia da série comparável: a virada do denominador entrou
+   * às 14h35 UTC de 04/09, e as linhas da madrugada daquele dia têm nota na
+   * régua velha. Elas saem para a série continuar comparável, e o número é dito
+   * porque um recorte silencioso é o mesmo defeito de um denominador escondido.
+   */
+  foraDaEscala?: number;
+  /**
    * O que o período escolhido exige dizer antes de o sócio ler a tabela.
    *
    * Vem de fora porque quem sabe o período é quem o escolheu. Fica acima dos
@@ -176,35 +73,34 @@ export function Placar({
     rotuloDeB: string;
   };
 }) {
-  const total = totalDoPeriodo(publicadas);
-  const { liquidadas } = liquidarTudo(publicadas);
+  const { liquidadas, pendentes } = liquidarTudo(publicadas);
+  const total = totalDe(liquidadas, pendentes);
   const liquidadasB = comparacao ? liquidarTudo(comparacao.publicadas).liquidadas : [];
-  const marca = (slug: string) => seloDeOculto(slug, ocultos);
 
-  const tabela = (quebra: Quebra) =>
-    comparacao ? (
+  const tabela = (quebra: Quebra) => {
+    const selo = quebra.marcaOculto
+      ? (chave: string) => seloDeOculto(chave, ocultos)
+      : undefined;
+
+    return comparacao ? (
       <TabelaComparada
         key={quebra.titulo}
-        titulo={quebra.titulo}
-        explicacao={quebra.explicacao}
+        quebra={quebra}
         a={celulasDa(quebra, liquidadas)}
         b={celulasDa(quebra, liquidadasB)}
-        ordem={quebra.ordem}
-        rotulo={quebra.rotulo}
-        marca={quebra.titulo === 'Por mercado' ? marca : undefined}
+        selo={selo}
         rotuloDeA={comparacao.rotuloDeA}
         rotuloDeB={comparacao.rotuloDeB}
       />
     ) : (
       <TabelaDoPlacar
         key={quebra.titulo}
-        titulo={quebra.titulo}
-        explicacao={quebra.explicacao}
+        quebra={quebra}
         celulas={celulasDa(quebra, liquidadas)}
-        rotulo={quebra.rotulo}
-        marca={quebra.titulo === 'Por mercado' ? marca : undefined}
+        selo={selo}
       />
     );
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -229,16 +125,24 @@ export function Placar({
       ))}
 
       {/* Os números do topo são sempre do período principal. Dois totais lado a
-          lado brigariam com a tabela comparada, que é onde a comparação mora. */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          lado brigariam com a tabela comparada, que é onde a comparação mora.
+
+          Acertos e anuladas aparecem em número absoluto, e não só dentro da
+          taxa: são eles que explicam por que a taxa e o ROI têm denominadores
+          diferentes. */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Numero valor={String(total.publicadas)} rotulo="Publicadas" />
         <Numero valor={String(total.n)} rotulo="Liquidadas" />
         <Numero valor={String(total.pendentes)} rotulo="Pendentes" />
-        <Numero valor={taxaPct(total.taxa)} rotulo={`Acerto ${emN(total.n - total.anuladas)}`} />
+        <Numero valor={String(total.anuladas)} rotulo="Anuladas" />
+        <Numero
+          valor={taxaPct(total.taxa)}
+          rotulo={`Acerto: ${total.acertos} ${emN(total.n - total.anuladas)}`}
+        />
         <Numero
           valor={roiPct(total.roi)}
           rotulo={`ROI ± ${epPct(total.ep)} ${emN(total.n)}`}
-          tom={total.roi > 0 ? 'bom' : total.roi < 0 ? 'ruim' : undefined}
+          tom={tomDoRoi(total.roi)}
         />
       </div>
 
@@ -259,6 +163,16 @@ export function Placar({
             ? 'uma oportunidade ficou de fora'
             : `${foraDaVitrine} oportunidades ficaram de fora`}{' '}
           porque o assinante não as viu. Esta é a leitura do produto; a do board inteiro é a outra.
+        </p>
+      )}
+
+      {foraDaEscala > 0 && (
+        <p className="mb-6 text-[13px] text-ink-2">
+          {foraDaEscala === 1
+            ? 'Uma oportunidade ficou de fora'
+            : `${foraDaEscala} oportunidades ficaram de fora`}{' '}
+          por terem nascido antes das 14h35 UTC de 04/09, com a nota na escala antiga do Score.
+          Mantê-las faria a série comparável misturar duas réguas.
         </p>
       )}
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   celulaDe,
   liquidarTudo,
+  type Celula,
   faixaDeOdd as nossaFaixaDeOdd,
   faixaDoScore as nossaFaixaDoScore,
   lucroDaAposta as nossoLucro,
@@ -16,6 +17,7 @@ import {
  * tem de ser verificada em EXECUÇÃO, célula por célula, como está abaixo.
  */
 import {
+  ehAcerto,
   estatistica,
   faixaDeOdd,
   faixaDoScore,
@@ -111,7 +113,14 @@ for (const { market, outcome, linhas } of SAIDAS) {
   }
 }
 
-/** A mesma conta, pelo caminho do script. */
+/**
+ * A mesma conta, pelo caminho do script.
+ *
+ * O `estatistica` do script devolve n, ROI, erro-padrão e taxa. Acertos e
+ * anuladas saem do MESMO array de medidas, com as funções dele — `ehAcerto` e a
+ * comparação com `push` —, para a comparação cobrir os seis números da célula e
+ * não só os quatro que ele já resume.
+ */
 function pelaMaoDoScript(linhas: LinhaPublicada[]) {
   const medidas = linhas
     .map((l) => {
@@ -119,7 +128,22 @@ function pelaMaoDoScript(linhas: LinhaPublicada[]) {
       return resultado ? { resultado, lucro: lucroDaAposta(resultado, l.best_odd) } : null;
     })
     .filter((x): x is { resultado: string; lucro: number } => x !== null);
-  return estatistica(medidas);
+
+  return {
+    ...estatistica(medidas),
+    acertos: medidas.filter((m) => ehAcerto(m.resultado)).length,
+    anuladas: medidas.filter((m) => m.resultado === 'push').length,
+  };
+}
+
+/** Os seis números da célula, comparados um por um. */
+function exigirAcordo(nossa: Celula, dele: ReturnType<typeof pelaMaoDoScript>) {
+  expect(nossa.n).toBe(dele.n);
+  expect(nossa.acertos).toBe(dele.acertos);
+  expect(nossa.anuladas).toBe(dele.anuladas);
+  expect(nossa.roi).toBeCloseTo(dele.roi, 12);
+  expect(nossa.ep).toBeCloseTo(dele.ep, 12);
+  expect(nossa.taxa).toBeCloseTo(dele.taxa, 12);
 }
 
 describe('o placar e o script medem igual', () => {
@@ -130,13 +154,7 @@ describe('o placar e o script medem igual', () => {
 
   it('na amostra inteira', () => {
     const { liquidadas } = liquidarTudo(amostra);
-    const nossa = celulaDe('tudo', liquidadas);
-    const dele = pelaMaoDoScript(amostra);
-
-    expect(nossa.n).toBe(dele.n);
-    expect(nossa.roi).toBeCloseTo(dele.roi, 12);
-    expect(nossa.ep).toBeCloseTo(dele.ep, 12);
-    expect(nossa.taxa).toBeCloseTo(dele.taxa, 12);
+    exigirAcordo(celulaDe('tudo', liquidadas), pelaMaoDoScript(amostra));
   });
 
   for (const { market } of SAIDAS.filter(
@@ -145,13 +163,7 @@ describe('o placar e o script medem igual', () => {
     it(`no mercado ${market}`, () => {
       const doMercado = amostra.filter((l) => l.market === market);
       const { liquidadas } = liquidarTudo(doMercado);
-      const nossa = celulaDe(market, liquidadas);
-      const dele = pelaMaoDoScript(doMercado);
-
-      expect(nossa.n).toBe(dele.n);
-      expect(nossa.roi).toBeCloseTo(dele.roi, 12);
-      expect(nossa.ep).toBeCloseTo(dele.ep, 12);
-      expect(nossa.taxa).toBeCloseTo(dele.taxa, 12);
+      exigirAcordo(celulaDe(market, liquidadas), pelaMaoDoScript(doMercado));
     });
   }
 
@@ -181,4 +193,26 @@ describe('as faixas são as mesmas dos dois lados', () => {
       expect(nossaFaixaDeOdd(odd)).toBe(faixaDeOdd(odd));
     }
   });
+});
+
+describe('e concorda nas quebras que o script também produz', () => {
+  // O script quebra por mercado, faixa de Score, faixa de odd, campeonato e
+  // dia. As três primeiras já estão cobertas acima e nos testes de fronteira;
+  // esta fecha campeonato, que é a única em que os dois lados leem o nome de
+  // FONTES diferentes — a RPC pega `competition` de fact_fixtures e o script
+  // pega do histórico. Se as duas divergirem, é aqui que aparece.
+  const campeonatos = ['Brasileirão', 'Série B', 'Libertadores'];
+
+  const porCampeonato = amostra.map((l, i) => ({
+    ...l,
+    competition: campeonatos[i % campeonatos.length],
+  }));
+
+  for (const campeonato of campeonatos) {
+    it(`no campeonato ${campeonato}`, () => {
+      const doCampeonato = porCampeonato.filter((l) => l.competition === campeonato);
+      const { liquidadas } = liquidarTudo(doCampeonato);
+      exigirAcordo(celulaDe(campeonato, liquidadas), pelaMaoDoScript(doCampeonato));
+    });
+  }
 });

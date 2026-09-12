@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/integrations/supabase/client';
+import { futebolDataService } from '@/services/futebol-data.service';
 import type { LinhaPublicada } from '@/components/placar/placar-agregacao';
 
 export type EstadoDoPlacar =
@@ -23,14 +23,10 @@ export type EstadoDoPlacar =
 export function useOportunidadesPublicadas(de: string, ate: string): EstadoDoPlacar {
   const consulta = useQuery({
     queryKey: ['socios', 'placar', de, ate],
-    queryFn: async () => {
-      const { data, error } = await createClient().rpc('get_futebol_oportunidades_publicadas', {
-        p_de: de,
-        p_ate: ate,
-      });
-      if (error) throw error;
-      return (data ?? []) as LinhaPublicada[];
-    },
+    // A chamada vive no service de futebol, com as outras RPCs do módulo: é
+    // lá que mora o escape de tipo da RPC que os tipos gerados não conhecem, e
+    // ter uma segunda casa para isso multiplicaria o `as any`.
+    queryFn: () => futebolDataService.getOportunidadesPublicadas(de, ate),
     // O histórico de um período passado não muda a cada minuto: o que muda é o
     // jogo de hoje liquidando. Cinco minutos é o suficiente para o sócio ver a
     // conta andar sem a tela consultar a cada clique de filtro.

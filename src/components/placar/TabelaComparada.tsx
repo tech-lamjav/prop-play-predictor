@@ -1,6 +1,8 @@
 import type { Celula } from './placar-agregacao';
 import { comparar, type Comparacao } from './placar-comparacao';
-import { emN, epPct, roiPct, taxaPct } from './placar-formato';
+import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
+import type { Quebra } from './placar-quebras';
+import { CelulaDoGrupo } from './CelulaDoGrupo';
 
 /** O par de números de um lado, empilhado para caber no celular. */
 function Lado({ celula }: { celula: Celula | null }) {
@@ -10,15 +12,12 @@ function Lado({ celula }: { celula: Celula | null }) {
 
   return (
     <span className="flex flex-col">
-      <span
-        className={`text-[14px] font-bold tabular-nums ${
-          celula.roi > 0 ? 'text-forest' : celula.roi < 0 ? 'text-red-600' : 'text-ink'
-        }`}
-      >
+      <span className={`text-[14px] font-bold tabular-nums ${tomDoRoi(celula.roi)}`}>
         {roiPct(celula.roi)}
       </span>
       <span className="text-[12px] text-ink-dim">
         {taxaPct(celula.taxa)} · {emN(celula.n)} · ± {epPct(celula.ep)}
+        {celula.anuladas > 0 && ` · ${celula.anuladas} anulada${celula.anuladas > 1 ? 's' : ''}`}
       </span>
     </span>
   );
@@ -34,7 +33,7 @@ function Diferenca({ c }: { c: Comparacao }) {
     return (
       <span className="flex flex-col">
         <span className="text-[13px] text-ink-2">dentro do ruído</span>
-        <span className="text-[12px] text-ink-dim tabular-nums">
+        <span className="text-[12px] tabular-nums text-ink-dim">
           {roiPct(c.diferencaRoi)} ± {epPct(c.erroDaDiferenca ?? 0)}
         </span>
       </span>
@@ -43,14 +42,10 @@ function Diferenca({ c }: { c: Comparacao }) {
 
   return (
     <span className="flex flex-col">
-      <span
-        className={`text-[14px] font-bold tabular-nums ${
-          c.diferencaRoi > 0 ? 'text-forest' : 'text-red-600'
-        }`}
-      >
+      <span className={`text-[14px] font-bold tabular-nums ${tomDoRoi(c.diferencaRoi)}`}>
         {roiPct(c.diferencaRoi)}
       </span>
-      <span className="text-[12px] text-ink-dim tabular-nums">
+      <span className="text-[12px] tabular-nums text-ink-dim">
         ± {epPct(c.erroDaDiferenca ?? 0)}
       </span>
     </span>
@@ -60,43 +55,38 @@ function Diferenca({ c }: { c: Comparacao }) {
 /**
  * Uma quebra do placar com dois períodos lado a lado.
  *
- * Cada lado mostra ROI, taxa e denominador, porque comparar dois números sem os
- * dois denominadores é como a comparação engana: "subiu de -30% para +10%" com
- * quatro apostas de cada lado não é notícia.
+ * Cada lado mostra ROI, taxa, denominador, erro-padrão e anuladas, porque
+ * comparar dois números sem os dois denominadores é como a comparação engana:
+ * "subiu de -30% para +10%" com quatro apostas de cada lado não é notícia.
  *
- * A coluna da diferença só mostra número quando ele passa do próprio erro. Não
- * passando, ela diz DENTRO DO RUÍDO — e o número fica pequeno, embaixo, para
- * quem quiser olhar. Essa é a única forma de a tabela não convidar à conclusão
- * que ela mesma não sustenta.
+ * A coluna da diferença só mostra número quando ele passa do próprio erro e os
+ * dois lados têm base para sustentá-lo. Fora disso ela diz DENTRO DO RUÍDO — e o
+ * número fica pequeno, embaixo, para quem quiser olhar. Essa é a única forma de
+ * a tabela não convidar à conclusão que ela mesma não sustenta.
  */
 export function TabelaComparada({
-  titulo,
-  explicacao,
+  quebra,
   a,
   b,
-  ordem,
-  rotulo = (chave) => chave,
-  marca,
+  selo,
   rotuloDeA,
   rotuloDeB,
 }: {
-  titulo: string;
-  explicacao?: string;
+  quebra: Quebra;
   a: Celula[];
   b: Celula[];
-  ordem?: readonly string[];
-  rotulo?: (chave: string) => string;
-  marca?: (chave: string) => string | null;
+  selo?: (chave: string) => string | null;
   rotuloDeA: string;
   rotuloDeB: string;
 }) {
-  const linhas = comparar(a, b, ordem);
+  const linhas = comparar(a, b, quebra.ordem);
+  const rotulo = quebra.rotulo ?? ((chave: string) => chave);
 
   return (
     <section className="rounded-rebrand-md border border-line-2 bg-white">
       <header className="border-b border-line-2 px-5 py-3">
-        <h2 className="font-display text-[17px] font-black text-ink">{titulo}</h2>
-        {explicacao && <p className="mt-1 text-[13px] text-ink-2">{explicacao}</p>}
+        <h2 className="font-display text-[17px] font-black text-ink">{quebra.titulo}</h2>
+        <p className="mt-1 text-[13px] text-ink-2">{quebra.explicacao}</p>
       </header>
 
       {linhas.length === 0 ? (
@@ -115,31 +105,20 @@ export function TabelaComparada({
               </tr>
             </thead>
             <tbody>
-              {linhas.map((c) => {
-                const selo = marca?.(c.chave) ?? null;
-
-                return (
-                  <tr key={c.chave} className="border-b border-line-2 last:border-b-0">
-                    <td className="px-5 py-3 text-[14px] font-bold text-ink">
-                      {rotulo(c.chave)}
-                      {selo && (
-                        <span className="ml-2 rounded-full bg-forest/10 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-forest">
-                          {selo}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <Lado celula={c.a} />
-                    </td>
-                    <td className="px-5 py-3">
-                      <Lado celula={c.b} />
-                    </td>
-                    <td className="px-5 py-3">
-                      <Diferenca c={c} />
-                    </td>
-                  </tr>
-                );
-              })}
+              {linhas.map((c) => (
+                <tr key={c.chave} className="border-b border-line-2 last:border-b-0">
+                  <CelulaDoGrupo nome={rotulo(c.chave)} selo={selo?.(c.chave) ?? null} />
+                  <td className="px-5 py-3">
+                    <Lado celula={c.a} />
+                  </td>
+                  <td className="px-5 py-3">
+                    <Lado celula={c.b} />
+                  </td>
+                  <td className="px-5 py-3">
+                    <Diferenca c={c} />
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

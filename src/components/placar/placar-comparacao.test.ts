@@ -83,3 +83,25 @@ describe('comparar', () => {
     expect(r.map((c) => c.chave)).toEqual(['Gols', 'Resultado', 'Handicap']);
   });
 });
+
+describe('a base de uma aposta só', () => {
+  it('nunca afirma a diferença, mesmo com erro-padrão zero dos dois lados', () => {
+    // O erro-padrão de uma aposta é zero por falta de variância, não por
+    // precisão. Sem a trava, um green contra um red virava conclusão em
+    // negrito — a leitura mais frágil que a tabela consegue produzir.
+    const r = comparar(
+      [celula({ chave: 'Gols', n: 1, roi: 1, ep: 0 })],
+      [celula({ chave: 'Gols', n: 1, roi: -1, ep: 0 })],
+    );
+    expect(r[0].diferencaRoi).toBeCloseTo(2);
+    expect(r[0].dentroDoRuido).toBe(true);
+  });
+
+  it('e basta um dos lados ser curto para não afirmar', () => {
+    const r = comparar(
+      [celula({ chave: 'Gols', n: 40, roi: 0.2, ep: 0.01 })],
+      [celula({ chave: 'Gols', n: 1, roi: -1, ep: 0 })],
+    );
+    expect(r[0].dentroDoRuido).toBe(true);
+  });
+});

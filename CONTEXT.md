@@ -130,8 +130,10 @@ _Avoid_: Resultado, fechado, settled, apurado
 
 **Quebra**:
 A dimensão pela qual o placar agrupa as oportunidades liquidadas: mercado, faixa
-de Score, faixa de odd, campeonato, dia. Nunca chame isso de **corte** — corte é
-o limiar de uma premissa, e a palavra já está ocupada.
+de Score, faixa de odd e campeonato, mais as quatro que aproximam premissa —
+pontos de premissa, premissas sem dado, corroboração de preço e penalidade
+aplicada. Nunca chame isso de **corte**: corte é o limiar de uma premissa, e a
+palavra já está ocupada.
 _Avoid_: Corte, recorte, dimensão, filtro
 
 **Taxa de acerto**:
