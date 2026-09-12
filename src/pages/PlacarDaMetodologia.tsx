@@ -11,7 +11,9 @@ import {
   type Eixo,
   type Periodo,
 } from '@/components/placar/placar-periodo';
+import { soAVitrine } from '@/components/placar/placar-vitrine';
 import { useOportunidadesPublicadas } from '@/hooks/use-oportunidades-publicadas';
+import { useVitrine } from '@/hooks/use-futebol-data';
 import { brtToday } from '@/utils/futebol-datas';
 
 /**
@@ -32,10 +34,15 @@ export default function PlacarDaMetodologia() {
   const [atalho, setAtalho] = useState('serie');
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoPadrao(hoje));
   const [eixo, setEixo] = useState<Eixo>('jogo');
+  // O padrão é o board inteiro, ao contrário do script de terminal: a decisão
+  // sobre um mercado oculto é uma das que esta tela sustenta.
+  const [soVitrine, setSoVitrine] = useState(false);
+  const { vitrine } = useVitrine();
 
   const estado = useOportunidadesPublicadas(periodo.de, periodo.ate);
-  const publicadas =
+  const noPeriodo =
     estado.tipo === 'pronto' ? filtrarPeloEixo(estado.publicadas, eixo, periodo) : [];
+  const publicadas = soVitrine ? soAVitrine(noPeriodo, vitrine) : noPeriodo;
 
   const resumo =
     estado.tipo === 'pronto'
@@ -64,11 +71,18 @@ export default function PlacarDaMetodologia() {
               setPeriodo(novo);
             }}
             aoMudarEixo={setEixo}
+            soVitrine={soVitrine}
+            aoMudarVitrine={setSoVitrine}
           />
         </div>
 
         {estado.tipo === 'pronto' ? (
-          <Placar publicadas={publicadas} avisos={avisosDoPeriodo(periodo, eixo)} />
+          <Placar
+            publicadas={publicadas}
+            avisos={avisosDoPeriodo(periodo, eixo)}
+            ocultos={vitrine}
+            foraDaVitrine={noPeriodo.length - publicadas.length}
+          />
         ) : (
           <div className="mx-auto max-w-6xl px-4 pb-10">
             <p className="text-[14px] text-ink-2">

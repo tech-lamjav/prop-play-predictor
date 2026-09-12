@@ -11,6 +11,7 @@ import {
 } from './placar-agregacao';
 import { emN, epPct, roiPct, taxaPct } from './placar-formato';
 import { rotuloDoMercado } from './placar-vocabulario';
+import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaDoPlacar } from './TabelaDoPlacar';
 
 /** Um número do topo, com o que ele significa embaixo. */
@@ -47,8 +48,20 @@ function Numero({ valor, rotulo, tom }: { valor: string; rotulo: string; tom?: '
 export function Placar({
   publicadas,
   avisos = [],
+  ocultos = [],
+  foraDaVitrine = 0,
 }: {
   publicadas: LinhaPublicada[];
+  /** Os mercados fora da vitrine hoje, para a tabela marcar quais são. */
+  ocultos?: MercadoOculto[];
+  /**
+   * Quantas oportunidades ficaram de fora porque a conta foi restrita à vitrine.
+   *
+   * Zero quando a conta é do board inteiro, que é o padrão. Dizer o número é o
+   * que impede a tela virar duas telas diferentes sem o sócio perceber qual
+   * delas está lendo.
+   */
+  foraDaVitrine?: number;
   /**
    * O que o período escolhido exige dizer antes de o sócio ler a tabela.
    *
@@ -117,12 +130,23 @@ export function Placar({
         </p>
       )}
 
+      {foraDaVitrine > 0 && (
+        <p className="mb-6 text-[13px] text-ink-2">
+          A conta está restrita à <strong className="text-ink">vitrine</strong>:{' '}
+          {foraDaVitrine === 1
+            ? 'uma oportunidade ficou de fora'
+            : `${foraDaVitrine} oportunidades ficaram de fora`}{' '}
+          porque o assinante não as viu. Esta é a leitura do produto; a do board inteiro é a outra.
+        </p>
+      )}
+
       <div className="grid gap-5">
         <TabelaDoPlacar
           titulo="Por mercado"
           explicacao="Onde a metodologia está ganhando e onde está perdendo. Acerto alto com ROI negativo é mercado de odd curta; o contrário é mercado que paga bem e erra muito."
           celulas={porMercado}
           rotulo={rotuloDoMercado}
+          marca={(slug) => seloDeOculto(slug, ocultos)}
         />
 
         <TabelaDoPlacar

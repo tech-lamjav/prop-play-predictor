@@ -18,14 +18,18 @@ export function FiltroDoPlacar({
   atalho,
   periodo,
   eixo,
+  soVitrine,
   aoMudarPeriodo,
   aoMudarEixo,
+  aoMudarVitrine,
 }: {
   atalho: string;
   periodo: Periodo;
   eixo: Eixo;
+  soVitrine: boolean;
   aoMudarPeriodo: (atalho: string, periodo: Periodo) => void;
   aoMudarEixo: (eixo: Eixo) => void;
+  aoMudarVitrine: (soVitrine: boolean) => void;
 }) {
   const botao = (ativo: boolean) =>
     `rounded-rebrand-sm border px-3 py-1.5 text-[13px] font-bold transition ${
@@ -90,6 +94,36 @@ export function FiltroDoPlacar({
           </button>
         ))}
         <span className="text-[13px] text-ink-2">{EXPLICACAO_DO_EIXO[eixo]}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+          Mercados
+        </span>
+        {/* O padrão é o board inteiro, e essa é a diferença deliberada em
+            relação ao script de terminal: decidir se um mercado oculto volta é
+            uma das decisões que esta tela existe para sustentar. */}
+        <button
+          type="button"
+          className={botao(!soVitrine)}
+          onClick={() => aoMudarVitrine(false)}
+          title="Inclui o mercado que saiu da vitrine. Responde como está a metodologia."
+        >
+          Board inteiro
+        </button>
+        <button
+          type="button"
+          className={botao(soVitrine)}
+          onClick={() => aoMudarVitrine(true)}
+          title="Só o que o assinante viu. Responde como foi o produto."
+        >
+          Só a vitrine
+        </button>
+        <span className="text-[13px] text-ink-2">
+          {soVitrine
+            ? 'Só o que o assinante viu: responde como foi o produto.'
+            : 'Inclui o mercado fora da vitrine: responde como está a metodologia.'}
+        </span>
       </div>
     </div>
   );

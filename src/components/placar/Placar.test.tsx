@@ -150,3 +150,32 @@ describe('os avisos do período', () => {
     expect(screen.queryByText(/atenção:/i)).not.toBeInTheDocument();
   });
 });
+
+describe('o mercado fora da vitrine', () => {
+  const OCULTOS = [{ market: 'asian_handicap', oculto_desde: '2026-09-01T00:00:00' }];
+
+  it('aparece na tabela com selo dizendo que está fora', () => {
+    render(
+      <Placar
+        publicadas={[linha({ market: 'asian_handicap', outcome: 'Home', line_value: -1 })]}
+        ocultos={OCULTOS}
+      />,
+    );
+    expect(screen.getByText('fora da vitrine')).toBeInTheDocument();
+  });
+
+  it('e o mercado que está na tela não ganha selo', () => {
+    render(<Placar publicadas={[linha()]} ocultos={OCULTOS} />);
+    expect(screen.queryByText('fora da vitrine')).not.toBeInTheDocument();
+  });
+
+  it('quando a conta é restrita à vitrine, a tela diz quantas ficaram de fora', () => {
+    render(<Placar publicadas={[linha()]} ocultos={OCULTOS} foraDaVitrine={3} />);
+    expect(screen.getByText(/3 oportunidades ficaram de fora/i)).toBeInTheDocument();
+  });
+
+  it('e não fala disso quando a conta é do board inteiro', () => {
+    render(<Placar publicadas={[linha()]} ocultos={OCULTOS} />);
+    expect(screen.queryByText(/ficaram de fora/i)).not.toBeInTheDocument();
+  });
+});
