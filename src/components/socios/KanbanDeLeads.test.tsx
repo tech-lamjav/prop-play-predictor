@@ -34,10 +34,10 @@ const montar = (lista: Lead[]) =>
   );
 
 describe('KanbanDeLeads', () => {
-  it('desenha as oito colunas, inclusive as vazias', () => {
+  it('desenha as sete posições, inclusive as vazias', () => {
     // Coluna que some esconde onde está o gargalo.
     montar(leads(1));
-    expect(screen.getAllByRole('region')).toHaveLength(8);
+    expect(screen.getAllByRole('region')).toHaveLength(7);
     expect(
       within(screen.getByRole('region', { name: 'Boletada' })).getByText('vazia'),
     ).toBeInTheDocument();
@@ -64,10 +64,12 @@ describe('KanbanDeLeads', () => {
     expect(screen.queryByText(/não cabem aqui/)).not.toBeInTheDocument();
   });
 
-  it('marca as duas colunas que o banco responde', () => {
-    // O formato promete arrastar, e para essas duas não dá.
+  it('marca a posição que o banco responde', () => {
+    // O formato promete arrastar, e para "assinante" não dá: quem move é o
+    // caixa. Eram DUAS antes, porque "em teste" também estava no funil. Ele
+    // saiu e virou etiqueta, justamente porque não é etapa de conversa.
     montar(leads(1));
-    expect(screen.getAllByText(/o banco responde/i)).toHaveLength(2);
+    expect(screen.getAllByText(/o banco responde/i)).toHaveLength(1);
   });
 
   it('cada cartão leva para a ficha da pessoa', () => {

@@ -71,3 +71,51 @@ export function mensagemDeCobranca(
     'Queria saber se você quer seguir com a gente pra eu já deixar tudo acertado antes de vencer.'
   );
 }
+
+// ============================================================================
+// Converter quem está no teste gratuito
+// ============================================================================
+// Conversa diferente da cobrança de assinatura manual, e por isso texto
+// diferente. Lá a pessoa já decidiu pagar e o assunto é renovar; aqui ela está
+// experimentando e o assunto é o que ela achou.
+//
+// O prazo muda o texto porque muda a conversa. Na véspera, o acesso ainda está
+// de pé e a proposta é seguir sem interrupção. Depois de vencer, ela já perdeu
+// o acesso, e insistir em "seu teste acaba amanhã" é a mensagem chegando tarde.
+// ============================================================================
+
+/**
+ * A mensagem para converter quem está no teste do futebol.
+ *
+ * `diasRestantes` conta hoje: zero é "acaba hoje", um é "acaba amanhã",
+ * negativo é "já acabou". Vem em número em vez de data porque é assim que a
+ * pessoa pensa no próprio prazo.
+ *
+ * Não inventa preço nem link: quem sabe o que foi combinado é o sócio, e um
+ * número errado numa proposta é pior que nenhum.
+ */
+export function mensagemDeConversao(nome: string | null, diasRestantes: number): string {
+  const primeiro = primeiroNome(nome);
+  const saudacao = primeiro ? `Oi, ${primeiro}!` : 'Oi!';
+
+  if (diasRestantes < 0) {
+    return (
+      `${saudacao} Seu teste do futebol acabou. Queria saber o que você achou das análises ` +
+      'enquanto testou, e se faz sentido continuar. Se quiser, eu já deixo seu acesso de volta.'
+    );
+  }
+
+  if (diasRestantes === 0) {
+    return (
+      `${saudacao} Hoje é o último dia do seu teste do futebol. Queria saber se as análises ` +
+      'te ajudaram, e se você quer seguir com a gente. Me avisa que eu resolvo agora e você ' +
+      'não fica sem nada amanhã.'
+    );
+  }
+
+  const quando = diasRestantes === 1 ? 'amanhã' : `em ${diasRestantes} dias`;
+  return (
+    `${saudacao} Seu teste do futebol acaba ${quando}. Queria saber o que você achou das ` +
+    'análises até aqui, e se você quer continuar sem interrupção.'
+  );
+}

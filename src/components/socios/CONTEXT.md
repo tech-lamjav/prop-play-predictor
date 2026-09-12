@@ -26,6 +26,11 @@ nutrindo, boletada, interesse, sem resposta. `Nutrindo` é mandar conteúdo sem
 pedir nada; `boletada` é ter mandado um bilhete para o lead. `Sem resposta` é o
 fim da linha do outro lado, e não um degrau anterior ao fechamento.
 
+A escada é: novo, primeiro contato, nutrindo, boletada, interesse, assinante,
+com sem resposta como saída lateral. "Primeiro contato" e não "contatado":
+"contatado" não diz se foi a primeira vez ou a quinta, e o funil precisa do
+primeiro toque como marco.
+
 Etapa é sempre MANUAL: alguém move. O que o banco responde sozinho não é etapa,
 é **posição calculada**.
 _Avoid_: Status, estágio, fase, coluna
@@ -123,3 +128,28 @@ sozinha: sem a fila, o acesso some um dia e a conversa acontece tarde, com a
 pessoa já sem o produto. É a terceira seção do CRM, ao lado de Leads e
 Feedbacks, e responde uma terceira pergunta: "quem eu preciso cobrar".
 _Avoid_: Renovações, vencimentos, inadimplentes
+
+**Etiqueta**:
+O que o produto diz sobre a pessoa, num eixo SEPARADO da etapa. Hoje só existem
+as três do teste gratuito do futebol: teste vencendo, em teste, teste vencido.
+As duas coisas valem ao mesmo tempo — alguém pode estar em teste E em nutrição,
+e são informações diferentes sobre a mesma pessoa.
+
+Quem nunca testou não tem etiqueta, e não existe etiqueta "nunca testou": seria
+a maior de todas e não distinguiria nada. Quem já assina também não tem: a
+pessoa converteu, e lembrar que ela um dia testou não muda conversa nenhuma.
+
+⚠️ "Em teste" já foi POSIÇÃO do funil, e era errado. Como posição calculada ela
+vencia a etapa manual na tela, então quem estava em teste aparecia como "Em
+teste" e a etapa ficava invisível. Em produção isso escondia a conversa de 59
+pessoas de uma vez, justamente as mais quentes. O Victor apontou olhando a
+tela: "não me parece que são as mesmas coisas ou estamos misturando duas coisas
+diferentes".
+_Avoid_: Tag, status, situação, estágio
+
+**Teste vencendo**:
+A etiqueta de quem perde o acesso hoje ou amanhã. Um dia de antecedência, a
+pedido: a conversa acontece na véspera, com o acesso ainda de pé. Dois dias
+antes a pessoa esquece; no dia seguinte ela já perdeu o acesso, e aí a conversa
+é de retomada, bem mais difícil.
+_Avoid_: Expirando, a expirar, trial ending

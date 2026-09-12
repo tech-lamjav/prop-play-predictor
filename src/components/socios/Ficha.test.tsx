@@ -168,8 +168,11 @@ describe('Ficha · etapa', () => {
   it('escolher outra etapa avisa quem cuida de gravar', async () => {
     const aoMudarEtapa = vi.fn();
     montarComEtapa({ etapa: 'novo', aoMudarEtapa });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'contatado');
-    expect(aoMudarEtapa).toHaveBeenCalledWith('contatado');
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /etapa/i }),
+      'primeiro_contato',
+    );
+    expect(aoMudarEtapa).toHaveBeenCalledWith('primeiro_contato');
   });
 
   it('enquanto grava, o seletor não aceita outra escolha', () => {

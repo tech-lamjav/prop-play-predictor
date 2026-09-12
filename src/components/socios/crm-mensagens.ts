@@ -75,7 +75,7 @@ const POR_PAR: Partial<Record<Etapa, Partial<Record<TipoDeGancho, string>>>> = {
       'Queria saber o que você achou do raciocínio por trás dele.',
   },
 
-  contatado: {
+  primeiro_contato: {
     betinho:
       '{saudacao} Passando de novo pra saber se você chegou a ver o resumo semanal da banca no ' +
       'Betinho. Se quiser, eu te mostro num print como fica depois de umas semanas registrando.',
@@ -106,7 +106,7 @@ const POR_ETAPA: Record<Etapa, string> = {
   novo:
     '{saudacao} Aqui é da Smart Betting. Vi que você se cadastrou e queria entender o que te ' +
     'trouxe até aqui, pra te mostrar a parte da plataforma que mais faz sentido pro seu caso.',
-  contatado:
+  primeiro_contato:
     '{saudacao} Passando pra saber se você chegou a explorar a plataforma depois da nossa ' +
     'última conversa. Qualquer dúvida, pode me chamar por aqui.',
   nutrindo:

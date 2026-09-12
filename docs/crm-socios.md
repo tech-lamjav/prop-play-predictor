@@ -71,22 +71,54 @@ inteira.
 **Cadastro é linha na tabela de usuários**, agrupada pelo dia de criação. A
 lista de espera fica de fora desta primeira volta.
 
-**O funil tem seis etapas manuais e duas posições calculadas.** As manuais
-descrevem a conversa: novo, contatado, nutrindo, boletada, interesse, sem
-resposta. Elas vieram do CRM que o Victor já tinha escrito no repositório
-privado `crm-smart` (migration 012), porque as genéricas de manual não falavam
-de nutrição nem de boletada — e é justamente isso que o processo daqui tem de
-próprio.
+**O funil tem seis etapas manuais e um destino calculado.** ⚠️ Esta seção foi
+reescrita em 2026-09-12, olhando a tela em produção. A versão anterior tinha
+DUAS posições calculadas, "em teste" e "assinante", e o Victor perguntou por que
+o seletor da ficha tinha seis opções e a faixa do funil tinha oito, e se não
+estávamos misturando duas coisas. Estávamos.
 
-As duas calculadas são **em teste** e **assinante**, e o banco responde as duas.
-Etapa manual para o que o banco sabe nasce desatualizada: alguém esquece de
-mover quando a assinatura cai, e a tela passa a mentir. No CRM antigo elas eram
-colunas arrastadas na mão porque lá o lead podia nem ter conta; aqui todo lead
-já tem cadastro no produto. A posição calculada vence a manual na tela, senão o
-funil somaria duas vezes a mesma pessoa.
+A escada que ele fechou é:
+
+    Novo → Primeiro contato → Nutrindo → Boletada → Interesse → Assinante
+                                                             ↘ Sem resposta
+
+"Assinante" É o destino do funil, e continua sendo o banco quem responde:
+ninguém arrasta alguém para lá, a pessoa chega pagando.
+
+"Em teste" SAIU do funil e virou **etiqueta**, num eixo separado com filtro
+próprio. Ele nunca foi etapa de conversa: estar em teste é fato do produto e não
+diz nada sobre até onde a conversa chegou. Pior: como posição calculada, ele
+vencia a etapa manual na tela, então as 59 pessoas em teste em produção
+apareciam como "Em teste" e a etapa delas ficava invisível — justamente os leads
+mais quentes, que estão usando o produto agora. Era ali que a conversa se
+perdia. Renomear "contatado" para "primeiro contato" veio junto: "contatado" não
+diz se foi a primeira vez ou a quinta, e o funil precisa do primeiro toque como
+marco. Migration 133.
+
+As etiquetas do teste são três, e a ordem é a da urgência: **teste vencendo**
+(perde o acesso hoje ou amanhã), **em teste**, **teste vencido**. A de vencendo
+tem um dia de antecedência a pedido, porque a conversa precisa acontecer com o
+acesso ainda de pé, e ela tem mensagem pronta própria — converter quem está
+testando é outra conversa que cobrar quem já decidiu pagar.
+
+O filtro da etiqueta SOMA com o do funil em vez de substituí-lo: "quem está em
+teste e ainda está em nutrindo" é pergunta legítima, e era exatamente ela que
+não dava para fazer quando os dois eixos eram um só.
+
+As etapas vieram do CRM que o Victor já tinha escrito no repositório privado
+`crm-smart` (migration 012), porque as genéricas de manual não falavam de
+nutrição nem de boletada, e é justamente isso que o processo daqui tem de
+próprio. `nutrindo` é mandar conteúdo sem pedir nada; `boletada` é ter mandado
+um bilhete.
 
 A etapa muda na mão, e cada mudança fica registrada — para depois dar para medir
 quanto tempo cada lead ficou parado onde.
+
+A regra que sobrevive da versão anterior é a que impede o funil de somar duas
+vezes a mesma pessoa: assinar VENCE a etapa manual, porque quem paga não está
+mais sendo convencido. A etapa continua guardada no banco, para quando a
+assinatura cair e a conversa precisar ser retomada de onde parou. Estar em teste
+não vence nada, e é isso que diferencia um eixo do outro.
 
 **O gancho sai do banco, e pode ser corrigido na mão.** Sem PostHog, o que dá
 para inferir é: qual plano tem, se sincronizou o Telegram, se registrou aposta,

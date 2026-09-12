@@ -65,7 +65,7 @@ const posicaoNoFunil = (nome: RegExp) => within(funil()).getByRole('button', { n
 describe('PainelCrm · os números do topo', () => {
   it('mostra cadastros do mês, conversão e abordados', () => {
     montar({
-      etapas: { b: 'contatado' },
+      etapas: { b: 'primeiro_contato' },
       cadastros: [...base, cadastro({ id: 'c', futebol_subscription_status: 'premium' })],
     });
     const topo = screen.getByRole('region', { name: 'Números da operação' });
@@ -84,16 +84,17 @@ describe('PainelCrm · os números do topo', () => {
 });
 
 describe('PainelCrm · o funil', () => {
-  it('desenha as oito posições, inclusive as vazias', () => {
+  it('desenha as sete posições, inclusive as vazias', () => {
     // Degrau com zero precisa aparecer: a faixa mostra a FORMA do funil, e um
     // posição que some esconde justamente onde está o gargalo.
     montar();
-    expect(within(funil()).getAllByRole('button')).toHaveLength(8);
+    expect(within(funil()).getAllByRole('button')).toHaveLength(7);
   });
 
-  it('marca as duas posições que o banco responde', () => {
+  it('marca a posição que o banco responde', () => {
+    // Só "assinante". "Em teste" saiu do funil e virou etiqueta.
     montar();
-    expect(within(funil()).getAllByText(/o banco responde/i)).toHaveLength(2);
+    expect(within(funil()).getAllByText(/o banco responde/i)).toHaveLength(1);
   });
 
   it('quem assina aparece como assinante, e não na etapa manual', () => {
@@ -108,19 +109,19 @@ describe('PainelCrm · o funil', () => {
   });
 
   it('clicar numa posição filtra a lista', async () => {
-    montar({ etapas: { b: 'contatado' } });
+    montar({ etapas: { b: 'primeiro_contato' } });
     await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
-    await userEvent.click(posicaoNoFunil(/Contatado/));
+    await userEvent.click(posicaoNoFunil(/Primeiro contato/));
     expect(screen.getByText('João Souza')).toBeInTheDocument();
     expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument();
   });
 
   it('clicar de novo na mesma posição limpa o filtro', async () => {
     // Sem isso, sair do filtro exige achar um botão em outro canto da tela.
-    montar({ etapas: { b: 'contatado' } });
+    montar({ etapas: { b: 'primeiro_contato' } });
     await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
-    await userEvent.click(posicaoNoFunil(/Contatado/));
-    await userEvent.click(posicaoNoFunil(/Contatado/));
+    await userEvent.click(posicaoNoFunil(/Primeiro contato/));
+    await userEvent.click(posicaoNoFunil(/Primeiro contato/));
     expect(screen.getByText('Maria Silva')).toBeInTheDocument();
   });
 
@@ -145,12 +146,12 @@ describe('PainelCrm · a lista', () => {
   it('é UMA tabela, e não uma pilha de listas', () => {
     // A primeira versão tinha três recortes, e o primeiro ainda se dividia em duas
     // tabelas por dentro: cinco listas para uma base só.
-    montar({ etapas: { b: 'contatado' }, toques: { b: '2026-08-01T12:00:00Z' } });
+    montar({ etapas: { b: 'primeiro_contato' }, toques: { b: '2026-08-01T12:00:00Z' } });
     expect(screen.getAllByRole('table')).toHaveLength(1);
   });
 
   it('conversa esfriando aparece antes de lead nunca abordado', () => {
-    montar({ etapas: { b: 'contatado' }, toques: { b: '2026-08-01T12:00:00Z' } });
+    montar({ etapas: { b: 'primeiro_contato' }, toques: { b: '2026-08-01T12:00:00Z' } });
     const linhas = screen.getAllByRole('row').slice(1);
     expect(linhas[0]).toHaveTextContent('João Souza');
   });
@@ -258,10 +259,10 @@ describe('PainelCrm · o que a busca NÃO pode mexer', () => {
   });
 
   it('e o funil também', async () => {
-    montar({ etapas: { b: 'contatado' } });
+    montar({ etapas: { b: 'primeiro_contato' } });
     expect(posicaoNoFunil(/Novo/)).toHaveTextContent('1');
     await userEvent.type(screen.getByRole('searchbox'), 'maria');
-    expect(posicaoNoFunil(/Contatado/)).toHaveTextContent('1');
+    expect(posicaoNoFunil(/Primeiro contato/)).toHaveTextContent('1');
   });
 });
 
@@ -293,7 +294,7 @@ describe('PainelCrm · tabela e kanban', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
-  it('trocar para kanban desenha as oito colunas', async () => {
+  it('trocar para kanban desenha as sete posições', async () => {
     montar();
     await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
@@ -304,7 +305,7 @@ describe('PainelCrm · tabela e kanban', () => {
   it('os dois desenham o MESMO recorte', async () => {
     // Trocar de vista muda a disposição, e nunca o conteúdo. Se o kanban
     // ignorasse a busca, o sócio veria gente que a tabela tinha escondido.
-    montar({ etapas: { b: 'contatado' } });
+    montar({ etapas: { b: 'primeiro_contato' } });
     await userEvent.type(screen.getByRole('searchbox'), 'maria');
     await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
     expect(screen.getByText('Maria Silva')).toBeInTheDocument();
@@ -417,5 +418,65 @@ describe('PainelCrm · o recorte diz quanta gente ele esconde', () => {
     // vazia parece defeito.
     montar({ cadastros: [cadastro({ id: 'ass', betinho_subscription_status: 'premium' })] });
     expect(screen.getByRole('radio', { name: /^Precisa de atenção 0$/ })).toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · o teste gratuito é eixo separado do funil', () => {
+  // `HOJE` é 2026-09-11. Sete dias a partir do dia 6 terminam no dia 12, então
+  // sobram hoje e amanhã: é o corte de "vencendo".
+  const emTeste = cadastro({
+    id: 'teste',
+    name: 'Está Testando',
+    futebol_trial_started_at: '2026-09-06T15:00:00Z',
+  });
+  const semTeste = cadastro({ id: 'seco', name: 'Nunca Testou' });
+
+  it('quem está em teste mostra a etapa da conversa no funil', () => {
+    // O ponto de toda a mudança. Antes "Em teste" era posição e vencia a
+    // etapa, então a conversa dessas pessoas ficava invisível — e são as mais
+    // quentes que existem.
+    montar({ cadastros: [emTeste], etapas: { teste: 'nutrindo' } });
+    expect(posicaoNoFunil(/Nutrindo/)).toHaveTextContent('1');
+  });
+
+  it('o funil não tem mais posição de teste', () => {
+    montar({ cadastros: [emTeste] });
+    expect(within(funil()).queryByText(/Em teste/)).not.toBeInTheDocument();
+  });
+
+  it('a faixa do teste conta quem está nele', () => {
+    montar({ cadastros: [emTeste, semTeste] });
+    const faixa = screen.getByRole('region', { name: 'Teste gratuito' });
+    expect(within(faixa).getByRole('button', { name: /Teste vencendo/ })).toHaveTextContent('1');
+  });
+
+  it('a faixa some quando ninguém está em teste', () => {
+    // Três zeros lado a lado seriam três perguntas sem assunto.
+    montar({ cadastros: [semTeste] });
+    expect(screen.queryByRole('region', { name: 'Teste gratuito' })).not.toBeInTheDocument();
+  });
+
+  it('o filtro da etiqueta SOMA com o do funil, em vez de trocar', async () => {
+    // "Quem está em teste e ainda está em nutrindo" é a pergunta que não dava
+    // para fazer quando os dois eixos eram um só.
+    const outroEmTeste = cadastro({
+      id: 'outro',
+      name: 'Outro Testando',
+      futebol_trial_started_at: '2026-09-06T15:00:00Z',
+    });
+    montar({
+      cadastros: [emTeste, outroEmTeste],
+      etapas: { teste: 'nutrindo', outro: 'interesse' },
+    });
+
+    // "Todos" porque a fila de atenção esconde quem já tem etapa e foi tocado,
+    // e aqui o assunto é o cruzamento dos filtros, não a fila.
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
+    const faixa = screen.getByRole('region', { name: 'Teste gratuito' });
+    await userEvent.click(within(faixa).getByRole('button', { name: /Teste vencendo/ }));
+    await userEvent.click(posicaoNoFunil(/Nutrindo/));
+
+    expect(screen.getByRole('link', { name: 'Está Testando' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Outro Testando' })).not.toBeInTheDocument();
   });
 });
