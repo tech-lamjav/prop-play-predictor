@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   celulaDe,
+  FAIXAS_DO_SCORE,
+  faixaDeOdd,
+  faixaDoScore,
   liquidarTudo,
   quebrar,
+  quebrarNaOrdem,
   totalDoPeriodo,
   type LinhaPublicada,
 } from './placar-agregacao';
@@ -213,5 +217,57 @@ describe('totalDoPeriodo', () => {
     const t = totalDoPeriodo([]);
     expect(t).toMatchObject({ publicadas: 0, n: 0, pendentes: 0, roi: 0 });
     expect(t.taxa).toBeNull();
+  });
+});
+
+describe('as faixas', () => {
+  it('o Score muda de faixa exatamente nos limites', () => {
+    // Fronteira dos dois lados: a nota 30 é Média, e 29 ainda é Baixa. Um `<=`
+    // no lugar errado move uma faixa inteira de lugar sem quebrar nada.
+    expect(faixaDoScore(0)).toBe('Baixa (<30)');
+    expect(faixaDoScore(29)).toBe('Baixa (<30)');
+    expect(faixaDoScore(30)).toBe('Média (30–59)');
+    expect(faixaDoScore(59)).toBe('Média (30–59)');
+    expect(faixaDoScore(60)).toBe('Alta (60–79)');
+    expect(faixaDoScore(79)).toBe('Alta (60–79)');
+    expect(faixaDoScore(80)).toBe('Alta (80+)');
+    expect(faixaDoScore(100)).toBe('Alta (80+)');
+  });
+
+  it('a odd muda de faixa exatamente nos limites', () => {
+    expect(faixaDeOdd(1.25)).toBe('1.25–1.59');
+    expect(faixaDeOdd(1.59)).toBe('1.25–1.59');
+    expect(faixaDeOdd(1.6)).toBe('1.60–1.99');
+    expect(faixaDeOdd(1.99)).toBe('1.60–1.99');
+    expect(faixaDeOdd(2.0)).toBe('2.00–2.59');
+    expect(faixaDeOdd(2.59)).toBe('2.00–2.59');
+    expect(faixaDeOdd(2.6)).toBe('2.60–4.00');
+    expect(faixaDeOdd(4)).toBe('2.60–4.00');
+  });
+});
+
+describe('quebrarNaOrdem', () => {
+  it('mantém a ordem da escala, e não a da base', () => {
+    // A pergunta da tabela de faixas é se o resultado sobe ao subir o degrau.
+    // Ordenada pela base, a resposta desaparece.
+    const { liquidadas } = liquidarTudo([
+      green(2, { score: 85 }),
+      green(2, { score: 20 }),
+      green(2, { score: 20 }),
+      green(2, { score: 20 }),
+    ]);
+    const celulas = quebrarNaOrdem(
+      liquidadas,
+      (l) => faixaDoScore(l.score),
+      FAIXAS_DO_SCORE,
+    );
+    expect(celulas.map((c) => c.chave)).toEqual(['Baixa (<30)', 'Alta (80+)']);
+  });
+
+  it('não cria linha para faixa sem aposta liquidada', () => {
+    const { liquidadas } = liquidarTudo([green(2, { score: 65 })]);
+    const celulas = quebrarNaOrdem(liquidadas, (l) => faixaDoScore(l.score), FAIXAS_DO_SCORE);
+    expect(celulas).toHaveLength(1);
+    expect(celulas[0].chave).toBe('Alta (60–79)');
   });
 });

@@ -92,6 +92,44 @@ describe('a tabela por mercado', () => {
 
   it('sem nada liquidado, não mostra tabela vazia fingindo resultado', () => {
     render(<Placar publicadas={[linha({ status_short: '2H' })]} />);
-    expect(screen.getByText(/nenhuma oportunidade liquidada/i)).toBeInTheDocument();
+    const tabela = screen.getByText('Por mercado').closest('section');
+    expect(tabela).toHaveTextContent(/nenhuma oportunidade liquidada/i);
+    expect(tabela?.querySelector('tbody')).toBeNull();
+  });
+});
+
+describe('as outras quebras', () => {
+  it('mostra as quatro tabelas, e cada uma diz o que responde', () => {
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.getByText('Por mercado')).toBeInTheDocument();
+    expect(screen.getByText('Por faixa de Score')).toBeInTheDocument();
+    expect(screen.getByText('Por faixa de odd')).toBeInTheDocument();
+    expect(screen.getByText('Por campeonato')).toBeInTheDocument();
+  });
+
+  it('a faixa de Score sai na ordem da escala, não na do tamanho da base', () => {
+    // Três apostas na Baixa e uma na Alta: ordenada pela base, a Alta viria
+    // depois de qualquer jeito. O caso que pega o erro é a Baixa vir primeiro
+    // mesmo sendo a maior — então o teste usa a ordem inversa de tamanho.
+    render(
+      <Placar
+        publicadas={[
+          linha({ score: 85 }),
+          linha({ score: 85 }),
+          linha({ score: 85 }),
+          linha({ score: 20 }),
+        ]}
+      />,
+    );
+    const tabela = screen.getByText('Por faixa de Score').closest('section');
+    const grupos = [...(tabela?.querySelectorAll('tbody tr td:first-child') ?? [])].map(
+      (td) => td.textContent,
+    );
+    expect(grupos).toEqual(['Baixa (<30)', 'Alta (80+)']);
+  });
+
+  it('o campeonato sem nome não some da conta', () => {
+    render(<Placar publicadas={[linha({ competition: null })]} />);
+    expect(screen.getByText('Sem campeonato')).toBeInTheDocument();
   });
 });

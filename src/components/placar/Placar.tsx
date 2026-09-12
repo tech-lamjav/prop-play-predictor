@@ -1,4 +1,14 @@
-import { quebrar, liquidarTudo, totalDoPeriodo, type LinhaPublicada } from './placar-agregacao';
+import {
+  FAIXAS_DE_ODD,
+  FAIXAS_DO_SCORE,
+  faixaDeOdd,
+  faixaDoScore,
+  liquidarTudo,
+  quebrar,
+  quebrarNaOrdem,
+  totalDoPeriodo,
+  type LinhaPublicada,
+} from './placar-agregacao';
 import { emN, epPct, roiPct, taxaPct } from './placar-formato';
 import { rotuloDoMercado } from './placar-vocabulario';
 import { TabelaDoPlacar } from './TabelaDoPlacar';
@@ -38,6 +48,15 @@ export function Placar({ publicadas }: { publicadas: LinhaPublicada[] }) {
   const total = totalDoPeriodo(publicadas);
   const { liquidadas } = liquidarTudo(publicadas);
   const porMercado = quebrar(liquidadas, (l) => l.market);
+  const porFaixaDeScore = quebrarNaOrdem(liquidadas, (l) => faixaDoScore(l.score), FAIXAS_DO_SCORE);
+  const porFaixaDeOdd = quebrarNaOrdem(
+    liquidadas,
+    // A odd da publicação; a linha sem odd nunca chega aqui, porque sem preço
+    // ela não liquida.
+    (l) => faixaDeOdd(l.best_odd ?? 0),
+    FAIXAS_DE_ODD,
+  );
+  const porCampeonato = quebrar(liquidadas, (l) => l.competition ?? 'Sem campeonato');
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -77,12 +96,32 @@ export function Placar({ publicadas }: { publicadas: LinhaPublicada[] }) {
         </p>
       )}
 
-      <TabelaDoPlacar
-        titulo="Por mercado"
-        explicacao="Onde a metodologia está ganhando e onde está perdendo. Acerto alto com ROI negativo é mercado de odd curta; o contrário é mercado que paga bem e erra muito."
-        celulas={porMercado}
-        rotulo={rotuloDoMercado}
-      />
+      <div className="grid gap-5">
+        <TabelaDoPlacar
+          titulo="Por mercado"
+          explicacao="Onde a metodologia está ganhando e onde está perdendo. Acerto alto com ROI negativo é mercado de odd curta; o contrário é mercado que paga bem e erra muito."
+          celulas={porMercado}
+          rotulo={rotuloDoMercado}
+        />
+
+        <TabelaDoPlacar
+          titulo="Por faixa de Score"
+          explicacao="A promessa central do método: nota maior deveria render mais. Se a coluna de ROI não sobe com a faixa, a nota não está ordenando o resultado — e é a diferença entre faixas, não o número de uma delas, que responde isso."
+          celulas={porFaixaDeScore}
+        />
+
+        <TabelaDoPlacar
+          titulo="Por faixa de odd"
+          explicacao="Odd curta e odd longa não se comportam igual, e a porta de odd por mercado foi desenhada supondo isso. Aqui é onde a suposição aparece medida."
+          celulas={porFaixaDeOdd}
+        />
+
+        <TabelaDoPlacar
+          titulo="Por campeonato"
+          explicacao="Da base maior para a menor, porque é o tamanho da base que diz se vale comparar. Campeonato de mata-mata degrada as premissas, e esta é a tabela onde isso aparece."
+          celulas={porCampeonato}
+        />
+      </div>
     </div>
   );
 }

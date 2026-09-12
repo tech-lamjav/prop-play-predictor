@@ -196,6 +196,64 @@ export function quebrar(
     .sort((a, b) => b.n - a.n || a.chave.localeCompare(b.chave));
 }
 
+/**
+ * Uma tabela de escala ORDINAL: a ordem é a da escala, não a da base.
+ *
+ * Faixa de Score e faixa de odd são degraus, e a pergunta que a tabela responde
+ * é se o resultado sobe ou desce ao subir o degrau. Ordenada pela base, a mesma
+ * tabela vira uma lista de grupos soltos e a resposta desaparece.
+ *
+ * Grupo sem nenhuma aposta liquidada não vira linha: linha com zero apostas e
+ * traço em toda coluna só ocupa espaço.
+ */
+export function quebrarNaOrdem(
+  liquidadas: readonly LinhaLiquidada[],
+  chaveDe: (linha: LinhaPublicada) => string,
+  ordem: readonly string[],
+): Celula[] {
+  const porChave = new Map(quebrar(liquidadas, chaveDe).map((c) => [c.chave, c]));
+  return ordem.map((chave) => porChave.get(chave)).filter((c): c is Celula => c !== undefined);
+}
+
+/**
+ * As quatro faixas de Score, no vocabulário que o assinante vê.
+ *
+ * A Alta vem partida em duas: eram duas tabelas — "por faixa" e "por corte de
+ * Score" — e a segunda era a primeira com um corte a mais, que é a mesma
+ * informação escrita duas vezes. O corte extra em 80 vive dentro da faixa.
+ *
+ * ⚠️ Os limites são os mesmos de `scripts/futebol-roi.mjs`, e a paridade tem
+ * teste: divergir daria duas verdades para a mesma semana.
+ */
+export const FAIXAS_DO_SCORE = [
+  'Baixa (<30)',
+  'Média (30–59)',
+  'Alta (60–79)',
+  'Alta (80+)',
+] as const;
+
+export function faixaDoScore(score: number): string {
+  if (score < 30) return FAIXAS_DO_SCORE[0];
+  if (score < 60) return FAIXAS_DO_SCORE[1];
+  if (score < 80) return FAIXAS_DO_SCORE[2];
+  return FAIXAS_DO_SCORE[3];
+}
+
+/**
+ * As quatro faixas de odd.
+ *
+ * Começam em 1,25 e param em 4,00 porque é a porta de odd que o produto publica
+ * — fora dela não existe oportunidade para medir.
+ */
+export const FAIXAS_DE_ODD = ['1.25–1.59', '1.60–1.99', '2.00–2.59', '2.60–4.00'] as const;
+
+export function faixaDeOdd(odd: number): string {
+  if (odd < 1.6) return FAIXAS_DE_ODD[0];
+  if (odd < 2.0) return FAIXAS_DE_ODD[1];
+  if (odd < 2.6) return FAIXAS_DE_ODD[2];
+  return FAIXAS_DE_ODD[3];
+}
+
 /** O total do período: a célula de tudo junto, com o que não liquidou à parte. */
 export type Total = Celula & {
   /** Oportunidades publicadas no período, liquidadas ou não. */

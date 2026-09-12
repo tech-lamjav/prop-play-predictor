@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   celulaDe,
   liquidarTudo,
+  faixaDeOdd as nossaFaixaDeOdd,
+  faixaDoScore as nossaFaixaDoScore,
   lucroDaAposta as nossoLucro,
   type LinhaPublicada,
 } from './placar-agregacao';
@@ -13,7 +15,13 @@ import {
  * `allowJs`, e o compilador não confere nada aqui. É por isso que a paridade
  * tem de ser verificada em EXECUÇÃO, célula por célula, como está abaixo.
  */
-import { estatistica, liquidar, lucroDaAposta } from '../../../scripts/futebol-roi.mjs';
+import {
+  estatistica,
+  faixaDeOdd,
+  faixaDoScore,
+  liquidar,
+  lucroDaAposta,
+} from '../../../scripts/futebol-roi.mjs';
 
 // ============================================================================
 // A tela e o terminal dão o mesmo número
@@ -154,6 +162,23 @@ describe('o placar e o script medem igual', () => {
       for (const veredito of ['won', 'half_won', 'push', 'half_lost', 'lost'] as const) {
         expect(nossoLucro(veredito, odd)).toBeCloseTo(lucroDaAposta(veredito, odd), 12);
       }
+    }
+  });
+});
+
+describe('as faixas são as mesmas dos dois lados', () => {
+  it('faixa de Score, nota por nota', () => {
+    // Divergir aqui daria duas verdades para a mesma semana: a tela diria que a
+    // faixa Alta rende X e o terminal diria Y, com as mesmas apostas dentro.
+    for (let s = 0; s <= 100; s++) {
+      expect(nossaFaixaDoScore(s)).toBe(faixaDoScore(s));
+    }
+  });
+
+  it('faixa de odd, centavo por centavo', () => {
+    for (let o = 100; o <= 400; o++) {
+      const odd = o / 100;
+      expect(nossaFaixaDeOdd(odd)).toBe(faixaDeOdd(odd));
     }
   });
 });
