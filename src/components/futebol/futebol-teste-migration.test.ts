@@ -19,7 +19,7 @@ import { comando, lerMigration } from '../socios/crm-migration-de-teste';
 // as duas coortes sem saber que existem duas.
 // ============================================================================
 
-const MIGRATION = lerMigration('20260914140000_134_futebol_teste_48_horas.sql');
+const MIGRATION = lerMigration('20260914200000_136_futebol_teste_48_horas.sql');
 
 const ACESSO = comando(
   MIGRATION,
@@ -148,7 +148,7 @@ describe('as consultas que decidem quem recebe alerta', () => {
     // literal `\(\)` perde a barra e `()` vira grupo vazio, então o guarda
     // passaria a exigir o grant SEM os parênteses e ficaria vermelho com o
     // SQL certo.
-    expect(MIGRATION).toMatch(new RegExp(`(revoke all|revoke execute) on function public\\.${nome}`, 'i'));
+    expect(MIGRATION).toMatch(new RegExp(`revoke execute on function public\\.${nome}`, 'i'));
     expect(MIGRATION.toLowerCase()).toContain(
       `grant execute on function public.${nome}() to service_role`,
     );

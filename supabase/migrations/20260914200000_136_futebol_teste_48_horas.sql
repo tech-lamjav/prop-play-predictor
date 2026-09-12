@@ -38,6 +38,9 @@ create or replace function public.futebol_trial_duracao()
  immutable
 as $function$ select interval '48 hours' $function$;
 
+revoke execute on function public.futebol_trial_duracao() from public;
+grant execute on function public.futebol_trial_duracao() to anon, authenticated, service_role;
+
 comment on function public.futebol_trial_duracao() is
   'Quanto dura o teste grátis do futebol para quem começa agora. Quem já tinha o relógio correndo não passa por aqui: o fim dessa pessoa já está gravado.';
 
@@ -116,8 +119,8 @@ begin
   end if;
 end $function$;
 
-revoke all on function public.get_futebol_access() from public, anon;
-grant execute on function public.get_futebol_access() to authenticated;
+revoke execute on function public.get_futebol_access() from public;
+grant execute on function public.get_futebol_access() to anon, authenticated, service_role;
 
 -- ── O daily de oportunidades (ver 081 e 090) ────────────────────────────────
 -- Só muda como o segmento A é medido. O teto de 5 envios do segmento B segue
@@ -148,7 +151,7 @@ as $function$
      );
 $function$;
 
-revoke all on function public.get_opportunity_recipients() from public, anon, authenticated;
+revoke execute on function public.get_opportunity_recipients() from public;
 grant execute on function public.get_opportunity_recipients() to service_role;
 
 -- ── A fila do alerta em tempo real (ver 111 e a preferência de 28/08) ───────
@@ -166,7 +169,7 @@ as $function$
     );
 $function$;
 
-revoke all on function public.get_futebol_publication_alert_recipients() from public, anon, authenticated;
+revoke execute on function public.get_futebol_publication_alert_recipients() from public;
 grant execute on function public.get_futebol_publication_alert_recipients() to service_role;
 
 -- Reconfere a preferência quando a entrega é reservada. Pausar no site ou no
@@ -235,7 +238,7 @@ begin
 end;
 $function$;
 
-revoke all on function public.claim_futebol_publication_alert_deliveries() from public, anon, authenticated;
+revoke execute on function public.claim_futebol_publication_alert_deliveries() from public;
 grant execute on function public.claim_futebol_publication_alert_deliveries() to service_role;
 
 -- ── O teste que o sócio liga na ficha (ver 129) ─────────────────────────────
