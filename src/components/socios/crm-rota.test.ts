@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
+import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from './crm-vocabulario';
 
 // ============================================================================
 // A rota não pode ser anunciada
@@ -18,6 +18,27 @@ import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
 
 const raiz = (caminho: string) =>
   readFileSync(resolve(__dirname, '../../..', caminho), 'utf8').replace(/\r\n/g, '\n');
+
+/**
+ * As rotas da área dos sócios, como linhas do App.
+ *
+ * Procura as duas CONSTANTES, e não a string do endereço: depois que o CRM
+ * desceu um andar (ADR 0001), a área tem rotas escritas com `ROTA_DOS_SOCIOS` —
+ * a raiz e o endereço antigo da ficha — e rotas escritas com `ROTA_DO_CRM`.
+ * Filtrar por uma só deixaria metade da área sem guarda.
+ */
+const rotasDaArea = () =>
+  raiz('src/App.tsx')
+    .split('\n')
+    .filter((l) => l.includes('<Route') && /ROTA_DO(S_SOCIOS|_CRM)\b/.test(l));
+
+/**
+ * As rotas que só redirecionam, e por isso não desenham página.
+ *
+ * Escrito à mão porque é curto e porque escrever o nome aqui é o momento em que
+ * alguém lembra de que um redirecionamento também precisa do portão.
+ */
+const SO_REDIRECIONAM = ['FichaAntiga'];
 
 describe('o painel não é anunciado', () => {
   it('não entra no sitemap', () => {
@@ -51,10 +72,9 @@ describe('o painel não é anunciado', () => {
     // Sem isto, uma quarta seção nasceria sem noindex e o laço de cima ficaria
     // verde ignorando ela. A conta sai do App: cada rota do painel monta uma
     // página, e são essas que precisam estar aqui.
-    const montadas = raiz('src/App.tsx')
-      .split('\n')
-      .filter((l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'))
-      .flatMap((l) => [...l.matchAll(/<(\w+) \/>/g)].map((m) => m[1]));
+    const montadas = rotasDaArea()
+      .flatMap((l) => [...l.matchAll(/<(\w+) \/>/g)].map((m) => m[1]))
+      .filter((nome) => !SO_REDIRECIONAM.includes(nome));
     expect(montadas.length).toBeGreaterThan(0);
     expect(new Set(montadas)).toEqual(new Set(PAGINAS));
   });
@@ -71,9 +91,11 @@ describe('a rota nasce com o portão', () => {
     // O filtro procura a CONSTANTE, e não a string do endereço. Assim ele pega
     // também a segunda rota do painel, que vai nascer como `${ROTA}/:id` e não
     // conteria o endereço literal.
-    const rotas = APP.split('\n').filter(
-      (l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'),
-    );
+    //
+    // Vale para os redirecionamentos também, e é a parte que surpreende: mandar
+    // quem não é sócio de `/socios` para `/socios/crm` seria anunciar o andar de
+    // baixo. O portão vem primeiro, o redirecionamento depois.
+    const rotas = rotasDaArea();
     expect(rotas.length).toBeGreaterThan(0);
     for (const rota of rotas) expect(rota).toContain('PortaoDoSocio');
   });
@@ -97,16 +119,13 @@ describe('o painel usa o cabeçalho do site', () => {
     // A rota da lista e a da ficha apontam para PainelDosSocios: a segunda é a
     // primeira com o modal aberto por cima. É isso que mantém o endereço
     // compartilhável sem tirar ninguém da lista.
-    const rotas = raiz('src/App.tsx')
-      .split('\n')
-      .filter((l) => l.includes('ROTA_DOS_SOCIOS') && l.includes('<Route'))
-      // As outras duas seções têm página própria porque respondem outras
-      // perguntas: a de feedbacks lista o que a gente ouviu, e a de assinaturas
-      // lista quem precisa ser cobrado. Nenhuma das duas lista gente para
-      // abordar, que é o que o painel faz.
-      .filter((l) => !l.includes('feedbacks') && !l.includes('assinaturas'));
+    //
+    // As outras duas seções têm página própria porque respondem outras
+    // perguntas: a de feedbacks lista o que a gente ouviu, e a de assinaturas
+    // lista quem precisa ser cobrado. Nenhuma das duas lista gente para
+    // abordar, que é o que o painel faz.
+    const rotas = rotasDaArea().filter((l) => l.includes('PainelDosSocios'));
     expect(rotas).toHaveLength(2);
-    for (const rota of rotas) expect(rota).toContain('PainelDosSocios');
   });
 
   it('a seção de feedbacks vem antes da rota com parâmetro', () => {
@@ -136,5 +155,55 @@ describe('a seção de feedbacks', () => {
   it('não entra no sitemap nem no robots', () => {
     expect(raiz('src/seo/public-routes.json')).not.toContain('feedbacks');
     expect(raiz('public/robots.txt')).not.toContain('feedbacks');
+  });
+});
+
+// ============================================================================
+// Os dois andares da área (ADR 0001)
+// ============================================================================
+// O CRM morava na raiz `/socios`. Com o placar da metodologia nascendo ao lado,
+// ele desceu para `/socios/crm` e a raiz virou a porta que manda para o andar
+// certo. O que estes guardas protegem é o que quebra silenciosamente: o link
+// antigo deixar de ser atendido, e o coringa da ficha voltar para a raiz.
+// ============================================================================
+
+describe('os dois andares da área', () => {
+  const APP = raiz('src/App.tsx');
+
+  it('o CRM é um andar da área, e não outro lugar', () => {
+    // Se o endereço do CRM deixar de começar pelo da área, os guardas do
+    // sitemap e do robots — que perguntam pelo endereço da área — param de
+    // cobri-lo sem ninguém perceber.
+    expect(ROTA_DO_CRM.startsWith(`${ROTA_DOS_SOCIOS}/`)).toBe(true);
+  });
+
+  it('a raiz da área só redireciona para o CRM', () => {
+    const raizDaArea = rotasDaArea().filter((l) => l.includes('path={ROTA_DOS_SOCIOS}'));
+    expect(raizDaArea).toHaveLength(1);
+    expect(raizDaArea[0]).toContain('Navigate');
+    expect(raizDaArea[0]).toContain('ROTA_DO_CRM');
+  });
+
+  it('o endereço antigo da ficha continua atendido', () => {
+    // Sem esta rota, o link que circula em conversa e favorito cai na página de
+    // não encontrado — e quem clicou conclui que o lead sumiu.
+    const antiga = rotasDaArea().filter((l) => l.includes('${ROTA_DOS_SOCIOS}/:id'));
+    expect(antiga).toHaveLength(1);
+    expect(antiga[0]).toContain('FichaAntiga');
+  });
+
+  it('o coringa da ficha não mora mais na raiz da área', () => {
+    // Enquanto `/socios/<id>` era a ficha DO CRM, toda tela nova da área tinha
+    // de ser declarada antes dela para não ser lida como um lead. Agora o
+    // coringa que serve o CRM está um andar abaixo, e a raiz está livre.
+    expect(APP).toContain('path={`${ROTA_DO_CRM}/:id`}');
+  });
+
+  it('as seções do CRM ficam abaixo do CRM, não da raiz da área', () => {
+    for (const secao of ['feedbacks', 'assinaturas']) {
+      const rota = rotasDaArea().filter((l) => l.includes(`/${secao}\``));
+      expect(rota).toHaveLength(1);
+      expect(rota[0]).toContain('ROTA_DO_CRM');
+    }
   });
 });

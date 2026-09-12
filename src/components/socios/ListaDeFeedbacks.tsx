@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
-import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
+import { ROTA_DO_CRM } from './crm-vocabulario';
 import type { EstadoDosFeedbacks } from '@/hooks/use-feedbacks';
 
 /**
@@ -48,7 +48,7 @@ export function ListaDeFeedbacks({
             </p>
             <p className="mt-1 whitespace-pre-wrap text-[15px] text-ink">{f.texto}</p>
             <Link
-              to={`${ROTA_DOS_SOCIOS}/${f.userId}`}
+              to={`${ROTA_DO_CRM}/${f.userId}`}
               className="mt-1.5 inline-block text-[13px] font-bold text-forest hover:underline"
             >
               {f.pessoa}

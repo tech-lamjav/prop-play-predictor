@@ -1,7 +1,7 @@
 import { Settings, CreditCard, Gift, BookOpen, MessageCircle, Users } from 'lucide-react';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from './como-usar';
 import { WHATSAPP_FALAR_COM_O_TIME } from './contato';
-import { ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_CRM } from '@/components/socios/crm-vocabulario';
 
 /**
  * Os itens do menu da conta — a mesma lista no computador e no celular.
@@ -57,6 +57,6 @@ export function itensDaConta(indicarUmAmigo: () => void, ehSocio = false): ItemD
     // política de linha do banco — este item governa o que a tela desenha, e
     // o caminho da rota está no bundle, que é público. O que ele evita é
     // anunciar a porta para quem não pode entrar.
-    ...(ehSocio ? [{ label: 'CRM', icon: Users, href: ROTA_DOS_SOCIOS, interno: true }] : []),
+    ...(ehSocio ? [{ label: 'CRM', icon: Users, href: ROTA_DO_CRM, interno: true }] : []),
   ];
 }

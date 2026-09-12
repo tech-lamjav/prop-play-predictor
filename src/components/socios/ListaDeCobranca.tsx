@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Clock } from 'lucide-react';
 import { mensagemDeCobranca, prazoDe, type Prazo } from './crm-cobranca';
 import { formatarDia } from './crm-lista';
-import { ROTA_DOS_SOCIOS, ROTULO_DO_PLANO } from './crm-vocabulario';
+import { ROTA_DO_CRM, ROTULO_DO_PLANO } from './crm-vocabulario';
 import type { Assinatura } from './crm-assinatura';
 import { MensagemPronta } from './MensagemPronta';
 import type { EstadoDasAssinaturas } from '@/hooks/use-assinaturas';
@@ -29,7 +29,7 @@ function Cobranca({ assinatura, hoje }: { assinatura: Assinatura; hoje: string }
     <div className="border-t border-line-2 p-5 first:border-t-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <Link
-          to={`${ROTA_DOS_SOCIOS}/${assinatura.userId}`}
+          to={`${ROTA_DO_CRM}/${assinatura.userId}`}
           className="text-[15px] font-bold text-ink hover:text-forest"
         >
           {assinatura.pessoa}

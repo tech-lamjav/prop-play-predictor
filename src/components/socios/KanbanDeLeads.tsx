@@ -8,7 +8,7 @@ import {
   type Lead,
 } from './crm-painel';
 import { NOME_DO_GANCHO } from './crm-ficha';
-import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
+import { ROTA_DO_CRM } from './crm-vocabulario';
 
 /**
  * Quantos cartões uma coluna desenha antes de dizer quantos sobraram.
@@ -26,7 +26,7 @@ function Cartao({ lead }: { lead: Lead }) {
 
   return (
     <Link
-      to={`${ROTA_DOS_SOCIOS}/${lead.id}`}
+      to={`${ROTA_DO_CRM}/${lead.id}`}
       className="block rounded-rebrand-sm border border-line-2 bg-white p-2.5 hover:border-forest"
     >
       <p className="truncate text-[13px] font-bold text-ink">{lead.nome}</p>

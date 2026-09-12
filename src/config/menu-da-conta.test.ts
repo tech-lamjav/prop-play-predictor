@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { itensDaConta } from './menu-da-conta';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from './como-usar';
 import { WHATSAPP_FALAR_COM_O_TIME } from './contato';
-import { ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_CRM } from '@/components/socios/crm-vocabulario';
 
 // ============================================================================
 // O menu da conta é o mesmo no computador e no celular
@@ -97,9 +97,11 @@ describe('a entrada do CRM', () => {
     expect(itensDaConta(() => {}).some((i) => i.label === 'CRM')).toBe(false);
   });
 
-  it('leva para a rota dos sócios, e não para um endereço escrito à mão', () => {
+  it('leva para a rota do CRM, e não para um endereço escrito à mão', () => {
+    // O CRM desceu um andar (ADR 0001): o item aponta para o andar, e não para
+    // a raiz da área, que só redireciona.
     const item = doSocio(true).find((i) => i.label === 'CRM');
-    expect(item?.href).toBe(ROTA_DOS_SOCIOS);
+    expect(item?.href).toBe(ROTA_DO_CRM);
   });
 
   it('vem por último, e marcado como interno', () => {
