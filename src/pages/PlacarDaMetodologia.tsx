@@ -8,6 +8,7 @@ import {
   avisosDoPeriodo,
   filtrarPeloEixo,
   periodoPadrao,
+  rotuloDoPeriodo,
   type Eixo,
   type Periodo,
 } from '@/components/placar/placar-periodo';
@@ -37,12 +38,25 @@ export default function PlacarDaMetodologia() {
   // O padrão é o board inteiro, ao contrário do script de terminal: a decisão
   // sobre um mercado oculto é uma das que esta tela sustenta.
   const [soVitrine, setSoVitrine] = useState(false);
+  const [periodoB, setPeriodoB] = useState<Periodo | null>(null);
   const { vitrine } = useVitrine();
 
   const estado = useOportunidadesPublicadas(periodo.de, periodo.ate);
   const noPeriodo =
     estado.tipo === 'pronto' ? filtrarPeloEixo(estado.publicadas, eixo, periodo) : [];
   const publicadas = soVitrine ? soAVitrine(noPeriodo, vitrine) : noPeriodo;
+
+  // A segunda consulta só sai quando há comparação. As datas iguais fazem dela
+  // uma chamada vazia e barata quando não há, sem um hook condicional.
+  const estadoB = useOportunidadesPublicadas(
+    periodoB?.de ?? periodo.de,
+    periodoB?.ate ?? periodo.de,
+  );
+  const publicadasB = (() => {
+    if (!periodoB || estadoB.tipo !== 'pronto') return [];
+    const noPeriodoB = filtrarPeloEixo(estadoB.publicadas, eixo, periodoB);
+    return soVitrine ? soAVitrine(noPeriodoB, vitrine) : noPeriodoB;
+  })();
 
   const resumo =
     estado.tipo === 'pronto'
@@ -73,6 +87,8 @@ export default function PlacarDaMetodologia() {
             aoMudarEixo={setEixo}
             soVitrine={soVitrine}
             aoMudarVitrine={setSoVitrine}
+            periodoB={periodoB}
+            aoMudarComparacao={setPeriodoB}
           />
         </div>
 
@@ -82,6 +98,15 @@ export default function PlacarDaMetodologia() {
             avisos={avisosDoPeriodo(periodo, eixo)}
             ocultos={vitrine}
             foraDaVitrine={noPeriodo.length - publicadas.length}
+            comparacao={
+              periodoB
+                ? {
+                    publicadas: publicadasB,
+                    rotuloDeA: rotuloDoPeriodo(periodo),
+                    rotuloDeB: rotuloDoPeriodo(periodoB),
+                  }
+                : undefined
+            }
           />
         ) : (
           <div className="mx-auto max-w-6xl px-4 pb-10">

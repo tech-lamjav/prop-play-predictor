@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { LinhaPublicada } from './placar-agregacao';
-import { ATALHOS, avisosDoPeriodo, diaDaLinha, filtrarPeloEixo } from './placar-periodo';
+import {
+  ATALHOS,
+  avisosDoPeriodo,
+  diaDaLinha,
+  filtrarPeloEixo,
+  periodoAnterior,
+  rotuloDoPeriodo,
+} from './placar-periodo';
 
 const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada =>
   ({
@@ -115,5 +122,33 @@ describe('os atalhos', () => {
   it('os últimos 7 dias incluem hoje', () => {
     // Sete dias contando hoje: de 06 a 12 são sete, e não oito.
     expect(ATALHOS[1].periodo('2026-09-12')).toEqual({ de: '2026-09-06', ate: '2026-09-12' });
+  });
+});
+
+describe('o período anterior', () => {
+  it('tem o mesmo tamanho e termina um dia antes', () => {
+    // Comparar uma semana contra um mês compara também dois tamanhos de
+    // amostra, e aí não se sabe o que mudou.
+    expect(periodoAnterior({ de: '2026-09-06', ate: '2026-09-12' })).toEqual({
+      de: '2026-08-30',
+      ate: '2026-09-05',
+    });
+  });
+
+  it('de um dia só, é o dia anterior', () => {
+    expect(periodoAnterior({ de: '2026-09-12', ate: '2026-09-12' })).toEqual({
+      de: '2026-09-11',
+      ate: '2026-09-11',
+    });
+  });
+});
+
+describe('o rótulo do período', () => {
+  it('é curto, porque ele vive num cabeçalho de coluna', () => {
+    expect(rotuloDoPeriodo({ de: '2026-09-04', ate: '2026-09-12' })).toBe('04/09 a 12/09');
+  });
+
+  it('de um dia só, não repete a data', () => {
+    expect(rotuloDoPeriodo({ de: '2026-09-12', ate: '2026-09-12' })).toBe('12/09');
   });
 });

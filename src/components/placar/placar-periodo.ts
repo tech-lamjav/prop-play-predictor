@@ -91,3 +91,26 @@ export function avisosDoPeriodo(periodo: Periodo, eixo: Eixo): string[] {
 
   return avisos;
 }
+
+/**
+ * A janela de mesmo tamanho imediatamente anterior.
+ *
+ * É o padrão da comparação porque é a pergunta que se faz primeiro: mudou algo
+ * em relação ao período de antes? Mesmo tamanho de propósito — comparar uma
+ * semana contra um mês compara também dois tamanhos de amostra.
+ */
+export function periodoAnterior(periodo: Periodo): Periodo {
+  const dias = Math.round(
+    (new Date(`${periodo.ate}T12:00:00Z`).getTime() -
+      new Date(`${periodo.de}T12:00:00Z`).getTime()) /
+      86_400_000,
+  );
+  const ate = addDays(periodo.de, -1);
+  return { de: addDays(ate, -dias), ate };
+}
+
+/** O período como rótulo de coluna: `04/09 a 12/09`. */
+export function rotuloDoPeriodo(periodo: Periodo): string {
+  const curto = (dia: string) => dia.slice(8, 10) + '/' + dia.slice(5, 7);
+  return periodo.de === periodo.ate ? curto(periodo.de) : `${curto(periodo.de)} a ${curto(periodo.ate)}`;
+}

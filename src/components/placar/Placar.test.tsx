@@ -208,3 +208,46 @@ describe('o que dá para dizer de premissa', () => {
     expect(screen.getByText(/teto de pontos é diferente por mercado/i)).toBeInTheDocument();
   });
 });
+
+describe('comparando dois períodos', () => {
+  const comparacao = (publicadas: LinhaPublicada[]) => ({
+    publicadas,
+    rotuloDeA: '06/09 a 12/09',
+    rotuloDeB: '30/08 a 05/09',
+  });
+
+  it('mostra os dois períodos como colunas, com o nome de cada um', () => {
+    render(<Placar publicadas={[linha()]} comparacao={comparacao([linha()])} />);
+    expect(screen.getAllByText('06/09 a 12/09').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('30/08 a 05/09').length).toBeGreaterThan(0);
+  });
+
+  it('com base pequena dos dois lados, diz que a diferença é ruído', () => {
+    // Um green de um lado e um red do outro: a diferença é enorme e não
+    // sustenta nada. Mostrar o número puro convidaria à conclusão.
+    render(
+      <Placar
+        publicadas={[linha(), linha({ outcome: 'Away' })]}
+        comparacao={comparacao([linha({ outcome: 'Away' }), linha()])}
+      />,
+    );
+    expect(screen.getAllByText(/dentro do ruído/i).length).toBeGreaterThan(0);
+  });
+
+  it('o grupo que só existe num dos lados não ganha diferença', () => {
+    render(
+      <Placar
+        publicadas={[linha({ market: 'btts', outcome: 'Yes' })]}
+        comparacao={comparacao([])}
+      />,
+    );
+    const tabela = screen.getByText('Por mercado').closest('section');
+    expect(tabela).toHaveTextContent(/sem aposta/i);
+  });
+
+  it('sem comparação, a tabela volta a ter uma coluna de números', () => {
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.queryByText(/dentro do ruído/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Diferença')).not.toBeInTheDocument();
+  });
+});

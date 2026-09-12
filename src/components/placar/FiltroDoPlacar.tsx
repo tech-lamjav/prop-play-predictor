@@ -2,6 +2,7 @@ import {
   ATALHOS,
   EXPLICACAO_DO_EIXO,
   ROTULO_DO_EIXO,
+  periodoAnterior,
   type Eixo,
   type Periodo,
 } from './placar-periodo';
@@ -19,17 +20,22 @@ export function FiltroDoPlacar({
   periodo,
   eixo,
   soVitrine,
+  periodoB,
   aoMudarPeriodo,
   aoMudarEixo,
   aoMudarVitrine,
+  aoMudarComparacao,
 }: {
   atalho: string;
   periodo: Periodo;
   eixo: Eixo;
   soVitrine: boolean;
+  /** O segundo período, ou `null` quando não se está comparando. */
+  periodoB: Periodo | null;
   aoMudarPeriodo: (atalho: string, periodo: Periodo) => void;
   aoMudarEixo: (eixo: Eixo) => void;
   aoMudarVitrine: (soVitrine: boolean) => void;
+  aoMudarComparacao: (periodoB: Periodo | null) => void;
 }) {
   const botao = (ativo: boolean) =>
     `rounded-rebrand-sm border px-3 py-1.5 text-[13px] font-bold transition ${
@@ -124,6 +130,50 @@ export function FiltroDoPlacar({
             ? 'Só o que o assinante viu: responde como foi o produto.'
             : 'Inclui o mercado fora da vitrine: responde como está a metodologia.'}
         </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+          Comparar
+        </span>
+        {/* O padrão da comparação é a janela anterior de mesmo tamanho: comparar
+            uma semana contra um mês compara também dois tamanhos de amostra. */}
+        <button
+          type="button"
+          className={botao(periodoB === null)}
+          onClick={() => aoMudarComparacao(null)}
+        >
+          Um período só
+        </button>
+        <button
+          type="button"
+          className={botao(periodoB !== null)}
+          onClick={() => aoMudarComparacao(periodoB ?? periodoAnterior(periodo))}
+        >
+          Com o período anterior
+        </button>
+
+        {periodoB && (
+          <span className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              aria-label="Início do período de comparação"
+              value={periodoB.de}
+              max={periodoB.ate}
+              onChange={(e) => aoMudarComparacao({ ...periodoB, de: e.target.value })}
+              className="rounded-rebrand-sm border border-line-2 px-2 py-1 text-[13px] text-ink"
+            />
+            <span className="text-[13px] text-ink-dim">até</span>
+            <input
+              type="date"
+              aria-label="Fim do período de comparação"
+              value={periodoB.ate}
+              min={periodoB.de}
+              onChange={(e) => aoMudarComparacao({ ...periodoB, ate: e.target.value })}
+              className="rounded-rebrand-sm border border-line-2 px-2 py-1 text-[13px] text-ink"
+            />
+          </span>
+        )}
       </div>
     </div>
   );
