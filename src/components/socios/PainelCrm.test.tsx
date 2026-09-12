@@ -109,7 +109,7 @@ describe('PainelCrm · o funil', () => {
 
   it('clicar numa posição filtra a lista', async () => {
     montar({ etapas: { b: 'contatado' } });
-    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
     await userEvent.click(posicaoNoFunil(/Contatado/));
     expect(screen.getByText('João Souza')).toBeInTheDocument();
     expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('PainelCrm · o funil', () => {
   it('clicar de novo na mesma posição limpa o filtro', async () => {
     // Sem isso, sair do filtro exige achar um botão em outro canto da tela.
     montar({ etapas: { b: 'contatado' } });
-    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
     await userEvent.click(posicaoNoFunil(/Contatado/));
     await userEvent.click(posicaoNoFunil(/Contatado/));
     expect(screen.getByText('Maria Silva')).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe('PainelCrm · a lista', () => {
     // A lista é a resposta para "com quem eu falo agora". Abrir na base
     // inteira faria a tela voltar a ser um registro do que aconteceu.
     montar();
-    expect(screen.getByRole('radio', { name: 'Precisa de atenção' })).toHaveAttribute(
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção/ })).toHaveAttribute(
       'aria-checked',
       'true',
     );
@@ -158,7 +158,7 @@ describe('PainelCrm · a lista', () => {
   it('trocar para Todos mostra a base inteira', async () => {
     montar({ etapas: { b: 'interesse' }, toques: { b: '2026-09-11T12:00:00Z' } });
     expect(screen.queryByText('João Souza')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
     expect(screen.getByText('João Souza')).toBeInTheDocument();
   });
 
@@ -190,7 +190,7 @@ describe('PainelCrm · a base', () => {
     // É a razão de o CRM existir: um assinante do Essencial cujo olho brilhou
     // no Betinho precisa ser abordado por Betinho.
     montar({ apostas: { a: 12 } });
-    await userEvent.click(screen.getByRole('radio', { name: 'Todos' }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
     expect(screen.getByText('Betinho')).toBeInTheDocument();
   });
 
@@ -382,5 +382,40 @@ describe('PainelCrm · o filtro de data', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Kanban' }));
     expect(screen.getByText('Recente')).toBeInTheDocument();
     expect(screen.queryByText('Antigo')).not.toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · o recorte diz quanta gente ele esconde', () => {
+  // Um assinante e um lead novo. O recorte padrão mostra só o segundo, e sem
+  // número no botão do recorte o primeiro simplesmente não existe para quem olha.
+  const base2 = [
+    cadastro({ id: 'novo', name: 'Lead Novo' }),
+    cadastro({ id: 'ass', name: 'Já Assina', betinho_subscription_status: 'premium' }),
+  ];
+
+  it('cada recorte mostra quantos tem', () => {
+    // O pedido veio de uma confusão real: o sócio abordou gente, ela saiu da
+    // fila justamente por ter sido abordada, e ele leu isso como "sumiram
+    // usuários". Com o número ao lado, a fila encolher é visivelmente o
+    // trabalho andando, e não gente desaparecendo.
+    montar({ cadastros: base2 });
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 1$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Todos 2$/ })).toBeInTheDocument();
+  });
+
+  it('o número segue os outros filtros, e não a base crua', async () => {
+    // Ele responde "quantos eu veria se clicasse aqui". Contar a base inteira
+    // com a busca ligada prometeria gente que o clique não traria.
+    montar({ cadastros: base2 });
+    await userEvent.type(screen.getByLabelText('Buscar cadastro'), 'Já Assina');
+    expect(screen.getByRole('radio', { name: /^Todos 1$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 0$/ })).toBeInTheDocument();
+  });
+
+  it('zero na fila é dito, e não escondido', () => {
+    // "Precisa de atenção 0" é uma boa notícia legível. Sem o número, a lista
+    // vazia parece defeito.
+    montar({ cadastros: [cadastro({ id: 'ass', betinho_subscription_status: 'premium' })] });
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 0$/ })).toBeInTheDocument();
   });
 });

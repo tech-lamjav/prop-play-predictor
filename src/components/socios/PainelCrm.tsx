@@ -178,6 +178,24 @@ export function PainelCrm({
     return [...noRecorte].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
   }, [noRecorte, recorte]);
 
+  /**
+   * Quanta gente cada recorte mostraria, com os filtros de agora.
+   *
+   * Existe por causa de uma confusão real: o Victor abordou algumas pessoas, e
+   * no dia seguinte elas tinham sumido da tela. Sumiram porque o recorte padrão
+   * é a FILA, e quem recebe toque sai da fila — que é o comportamento certo.
+   * Sem número ao lado, "a fila encolheu porque você trabalhou" é
+   * indistinguível de "a base encolheu".
+   *
+   * Conta sobre `noRecorte`, e não sobre a base: o número responde "quantos eu
+   * veria se clicasse aqui". Contar a base inteira com a busca ligada
+   * prometeria gente que o clique não traria.
+   */
+  const quantos = useMemo<Record<Recorte, number> | null>(() => {
+    if (!noRecorte) return null;
+    return { atencao: precisamDeAtencao(noRecorte).length, todos: noRecorte.length };
+  }, [noRecorte]);
+
   const porDia = useMemo(
     () => (lista && agrupado ? agruparPorDia(lista, (l) => l.cadastradoEm) : null),
     [lista, agrupado],
@@ -287,6 +305,23 @@ export function PainelCrm({
                       }`}
                     >
                       {rotulo}
+                      {/* O número entra mesmo zerado: "Precisa de atenção 0" é
+                          uma boa notícia legível, e sem ele a lista vazia
+                          parece defeito. Só some enquanto não se sabe.
+
+                          O espaço é literal porque o JSX come o que existe
+                          entre a chave e o comentário, e sem ele o leitor de
+                          tela anuncia "Precisa de atenção1". */}
+                      {quantos != null && ' '}
+                      {quantos && (
+                        <span
+                          className={`ml-1.5 tabular-nums font-normal ${
+                            recorte === id ? 'text-white/70' : 'text-ink-dim'
+                          }`}
+                        >
+                          {quantos[id]}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
