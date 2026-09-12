@@ -13,7 +13,9 @@ import {
   type Eixo,
   type Periodo,
 } from '@/components/placar/placar-periodo';
+import { PESO_MEDIDO, type PesoPorFaixa } from '@/components/placar/placar-agregacao';
 import { granularidadesDe, type Granularidade } from '@/components/placar/placar-evolucao';
+import { aplicarRecorte, SEM_RECORTE, type Recorte } from '@/components/placar/placar-filtros';
 import { soAVitrine } from '@/components/placar/placar-vitrine';
 import type { LinhaPublicada } from '@/components/placar/placar-agregacao';
 import { useOportunidadesPublicadas } from '@/hooks/use-oportunidades-publicadas';
@@ -52,6 +54,8 @@ export default function PlacarDaMetodologia() {
   const [granularidade, setGranularidade] = useState<Granularidade>(
     () => granularidadesDe(periodoPadrao(hoje))[0],
   );
+  const [recorte, setRecorte] = useState<Recorte>(SEM_RECORTE);
+  const [pesos, setPesos] = useState<PesoPorFaixa>(PESO_MEDIDO);
   const { vitrine } = useVitrine();
 
   /**
@@ -65,7 +69,7 @@ export default function PlacarDaMetodologia() {
    * entre coisas diferentes.
    */
   const recortar = (linhas: LinhaPublicada[], janela: Periodo) => {
-    const noEixo = filtrarPeloEixo(linhas, eixo, janela);
+    const noEixo = aplicarRecorte(filtrarPeloEixo(linhas, eixo, janela), recorte);
     const { linhas: naEscala, foraDaEscala } = recorteDaSerieComparavel(noEixo, janela);
     const publicadas = soVitrine ? soAVitrine(naEscala, vitrine) : naEscala;
     return { publicadas, foraDaEscala, foraDaVitrine: naEscala.length - publicadas.length };
@@ -112,6 +116,10 @@ export default function PlacarDaMetodologia() {
           }}
           aoMudarEixo={setEixo}
           aoMudarVitrine={setSoVitrine}
+          recorte={recorte}
+          pesos={pesos}
+          aoMudarRecorte={setRecorte}
+          aoMudarPesos={setPesos}
         />
 
         {estado.tipo === 'pronto' ? (
@@ -121,6 +129,7 @@ export default function PlacarDaMetodologia() {
             eixo={eixo}
             granularidade={granularidade}
             aoMudarGranularidade={setGranularidade}
+            pesos={pesos}
             avisos={avisosDoPeriodo(periodo, eixo)}
             ocultos={vitrine}
             foraDaVitrine={a.foraDaVitrine}

@@ -1,4 +1,11 @@
-import { liquidarTudo, totalDe, type LinhaPublicada } from './placar-agregacao';
+import {
+  ehSimulacao,
+  liquidarTudo,
+  PESO_MEDIDO,
+  totalDe,
+  type LinhaPublicada,
+  type PesoPorFaixa,
+} from './placar-agregacao';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import { EvolucaoDoRoi } from './EvolucaoDoRoi';
 import { MatrizDoPlacar } from './MatrizDoPlacar';
@@ -47,6 +54,7 @@ export function Placar({
   eixo,
   granularidade,
   aoMudarGranularidade,
+  pesos = PESO_MEDIDO,
   comparacao,
 }: {
   publicadas: LinhaPublicada[];
@@ -82,6 +90,8 @@ export function Placar({
   /** O degrau do tempo: as colunas das matrizes e as barras do gráfico. */
   granularidade: Granularidade;
   aoMudarGranularidade: (g: Granularidade) => void;
+  /** Quanto apostar por faixa. Diferente de um em qualquer faixa vira simulação. */
+  pesos?: PesoPorFaixa;
   /** O segundo período, quando o sócio está comparando. */
   comparacao?: {
     publicadas: LinhaPublicada[];
@@ -89,9 +99,10 @@ export function Placar({
     rotuloDeB: string;
   };
 }) {
-  const { liquidadas, pendentes } = liquidarTudo(publicadas);
-  const total = totalDe(liquidadas, pendentes);
-  const liquidadasB = comparacao ? liquidarTudo(comparacao.publicadas).liquidadas : [];
+  const { liquidadas, pendentes, foraDaSimulacao } = liquidarTudo(publicadas, pesos);
+  const total = totalDe(liquidadas, pendentes, foraDaSimulacao);
+  const liquidadasB = comparacao ? liquidarTudo(comparacao.publicadas, pesos).liquidadas : [];
+  const simulando = ehSimulacao(pesos);
   const porPremissa = porLadoDoMercado(liquidadas);
 
   const tabela = (quebra: Quebra) => {
@@ -160,6 +171,19 @@ export function Placar({
         </p>
       ))}
 
+      {simulando && (
+        <p className="mb-4 max-w-3xl rounded-rebrand-md border border-forest bg-forest/[0.06] px-4 py-3 text-[13px] text-ink">
+          <strong>Simulação ligada.</strong> As unidades por faixa não são as medidas:{' '}
+          {Object.entries(pesos)
+            .map(([faixa, peso]) => `${faixa} ${String(peso).replace('.', ',')}u`)
+            .join(' · ')}
+          . O ROI abaixo é o que teria acontecido com esses tamanhos, sobre as mesmas apostas — e o
+          erro-padrão passa a ser aproximado, porque ele é calculado por unidade e não ponderado.
+          {total.foraDaSimulacao > 0 &&
+            ` ${total.foraDaSimulacao} oportunidade(s) ficaram fora por peso zero.`}
+        </p>
+      )}
+
       {/* Os números do topo são sempre do período principal. Dois totais lado a
           lado brigariam com a tabela comparada, que é onde a comparação mora.
 
@@ -177,7 +201,7 @@ export function Placar({
         />
         <Numero
           valor={roiPct(total.roi)}
-          rotulo={`ROI ± ${epPct(total.ep)} ${emN(total.n)}`}
+          rotulo={`ROI ± ${epPct(total.ep)} ${simulando ? `em ${String(total.unidades).replace('.', ',')}u` : emN(total.n)}`}
           tom={tomDoRoi(total.roi)}
         />
       </div>

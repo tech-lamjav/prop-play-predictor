@@ -4,6 +4,7 @@ import { comparar, erroDaDiferenca } from './placar-comparacao';
 
 const celula = (p: Partial<Celula> & { chave: string }): Celula => ({
   n: 10,
+  unidades: 10,
   acertos: 5,
   anuladas: 0,
   taxa: 0.5,

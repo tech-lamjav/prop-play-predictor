@@ -37,11 +37,17 @@ describe('o glossário manda, no placar também', () => {
   });
 
   it('o agrupamento da tabela não se chama "corte"', () => {
-    // CORTE é o limiar de uma premissa, e a palavra está ocupada desde o
-    // glossário do futebol. O agrupamento é QUEBRA. Um `corteDaTabela` faria a
-    // tela discordar do método usando a mesma palavra para as duas coisas.
+    // CORTE é o limiar contra o qual um insumo é comparado, e a palavra está
+    // ocupada desde o glossário do futebol. O agrupamento é QUEBRA.
+    //
+    // ⚠️ O guarda olha as formas que significariam AGRUPAMENTO, e não a palavra
+    // solta: CORTES_DE_VALOR é limiar de preço, que é o sentido legítimo do
+    // termo, e a primeira versão deste teste reprovava justamente ele. Guarda
+    // que reprova código correto é guarda que alguém apaga.
     const culpados = codigo
-      .filter(([, texto]) => /\b(corteDa|CORTE_DA|corteDe|CORTES_)\w*/.test(texto))
+      .filter(([, texto]) =>
+        /\b(corteDaTabela|CORTE_DA_TABELA|corteDaQuebra|cortesDaTela|corteDeGrupo)\b/.test(texto),
+      )
       .map(([nome]) => nome);
     expect(culpados).toEqual([]);
   });

@@ -77,12 +77,39 @@ export const STATUS_ENCERRADOS = ['FT', 'AET', 'PEN'] as const;
 export const jogoEncerrado = (status: string | null | undefined) =>
   !!status && (STATUS_ENCERRADOS as readonly string[]).includes(status);
 
-/** Uma oportunidade com veredito e o lucro que ela deu em unidades. */
+/** Uma oportunidade com veredito e o lucro que ela deu POR UNIDADE apostada. */
 export type LinhaLiquidada = {
   linha: LinhaPublicada;
   veredito: BetResult;
+  /** Lucro de UMA unidade. O peso entra na conta da célula, não aqui. */
   lucro: number;
+  /** Quantas unidades foram apostadas nela, pela simulação vigente. */
+  unidades: number;
 };
+
+/**
+ * Quanto apostar em cada faixa de Score.
+ *
+ * O padrão é uma unidade em tudo, e esse é o número MEDIDO — o que de fato
+ * aconteceria apostando igual em toda oportunidade publicada. Mexer aqui vira
+ * SIMULAÇÃO, e a tela tem de dizer isso: a decisão da spec foi unidade fixa
+ * justamente porque tamanho variável de aposta mistura "a metodologia acerta?" com "o
+ * critério de tamanho é bom?".
+ *
+ * Peso zero não é aposta de zero unidade: é não apostar. A linha sai da conta
+ * inteira, denominador incluído, e é contada à parte.
+ */
+export type PesoPorFaixa = Record<string, number>;
+
+export const PESO_MEDIDO: PesoPorFaixa = {
+  'Baixa (<30)': 1,
+  'Média (30–59)': 1,
+  'Alta (60–79)': 1,
+  'Alta (80+)': 1,
+};
+
+export const ehSimulacao = (pesos: PesoPorFaixa) =>
+  Object.values(pesos).some((p) => p !== 1);
 
 /** O lucro de uma aposta de UMA unidade. Espelha `lucroDaAposta` do script. */
 export function lucroDaAposta(veredito: BetResult, odd: number): number {
@@ -108,12 +135,18 @@ export function lucroDaAposta(veredito: BetResult, odd: number): number {
  * ficam de fora de toda conta e são contados à parte — a tela precisa dizer
  * quantos são, porque é o número que explica por que a conta vai mudar amanhã.
  */
-export function liquidarTudo(publicadas: readonly LinhaPublicada[]): {
+export function liquidarTudo(
+  publicadas: readonly LinhaPublicada[],
+  pesos: PesoPorFaixa = PESO_MEDIDO,
+): {
   liquidadas: LinhaLiquidada[];
   pendentes: LinhaPublicada[];
+  /** Liquidadas que a simulação mandou não apostar (peso zero). */
+  foraDaSimulacao: LinhaPublicada[];
 } {
   const liquidadas: LinhaLiquidada[] = [];
   const pendentes: LinhaPublicada[] = [];
+  const foraDaSimulacao: LinhaPublicada[] = [];
 
   for (const linha of publicadas) {
     const veredito = jogoEncerrado(linha.status_short)
@@ -129,17 +162,36 @@ export function liquidarTudo(publicadas: readonly LinhaPublicada[]): {
       continue;
     }
 
-    liquidadas.push({ linha, veredito, lucro: lucroDaAposta(veredito, linha.best_odd) });
+    const unidades = pesos[faixaDoScore(linha.score)] ?? 1;
+    if (unidades <= 0) {
+      foraDaSimulacao.push(linha);
+      continue;
+    }
+
+    liquidadas.push({
+      linha,
+      veredito,
+      lucro: lucroDaAposta(veredito, linha.best_odd),
+      unidades,
+    });
   }
 
-  return { liquidadas, pendentes };
+  return { liquidadas, pendentes, foraDaSimulacao };
 }
 
 /** Uma linha de tabela: o grupo, o tamanho dele e o que ele diz. */
 export type Celula = {
   chave: string;
-  /** Apostas liquidadas no grupo. É o denominador do ROI. */
+  /** Apostas liquidadas no grupo que entraram na conta. */
   n: number;
+  /**
+   * Unidades apostadas, somadas. É o DENOMINADOR do ROI.
+   *
+   * Igual a `n` no modo medido, porque ali cada aposta vale uma unidade. Em
+   * simulação os dois se separam, e é a diferença entre eles que explica por que
+   * o ROI mudou sem a taxa de acerto mudar.
+   */
+  unidades: number;
   acertos: number;
   anuladas: number;
   /**
@@ -163,12 +215,22 @@ export type Celula = {
 
 export function celulaDe(chave: string, liquidadas: readonly LinhaLiquidada[]): Celula {
   const n = liquidadas.length;
-  if (n === 0) return { chave, n: 0, acertos: 0, anuladas: 0, taxa: null, roi: 0, ep: 0 };
+  if (n === 0)
+    return { chave, n: 0, unidades: 0, acertos: 0, anuladas: 0, taxa: null, roi: 0, ep: 0 };
 
+  const unidades = liquidadas.reduce((a, l) => a + l.unidades, 0);
+  // ROI em unidades: lucro total sobre unidades apostadas. Com peso 1 em tudo
+  // isto é exatamente a média dos lucros, que é o número medido.
+  const media = liquidadas.reduce((a, l) => a + l.lucro * l.unidades, 0) / unidades;
+
+  // O erro-padrão é calculado sobre o lucro POR UNIDADE, sem o peso. Com peso 1
+  // em tudo ele é o de sempre; em simulação ele é aproximado, e a tela diz que
+  // está simulando — inventar um erro ponderado aqui seria estatística de
+  // fachada em cima de uma amostra que já é pequena.
   const lucros = liquidadas.map((l) => l.lucro);
-  const media = lucros.reduce((a, b) => a + b, 0) / n;
+  const mediaSimples = lucros.reduce((a, b) => a + b, 0) / n;
   const variancia =
-    n > 1 ? lucros.reduce((a, b) => a + (b - media) ** 2, 0) / (n - 1) : 0;
+    n > 1 ? lucros.reduce((a, b) => a + (b - mediaSimples) ** 2, 0) / (n - 1) : 0;
 
   const anuladas = liquidadas.filter((l) => l.veredito === 'push').length;
   const acertos = liquidadas.filter((l) => isHit(l.veredito)).length;
@@ -177,6 +239,7 @@ export function celulaDe(chave: string, liquidadas: readonly LinhaLiquidada[]): 
   return {
     chave,
     n,
+    unidades,
     acertos,
     anuladas,
     taxa: decididas ? acertos / decididas : null,
@@ -277,6 +340,8 @@ export type Total = Celula & {
   /** Oportunidades publicadas no período, liquidadas ou não. */
   publicadas: number;
   pendentes: number;
+  /** Liquidadas que a simulação mandou não apostar. Zero no modo medido. */
+  foraDaSimulacao: number;
 };
 
 /**
@@ -289,15 +354,20 @@ export type Total = Celula & {
 export function totalDe(
   liquidadas: readonly LinhaLiquidada[],
   pendentes: readonly LinhaPublicada[],
+  foraDaSimulacao: readonly LinhaPublicada[] = [],
 ): Total {
   return {
     ...celulaDe('Total', liquidadas),
-    publicadas: liquidadas.length + pendentes.length,
+    publicadas: liquidadas.length + pendentes.length + foraDaSimulacao.length,
     pendentes: pendentes.length,
+    foraDaSimulacao: foraDaSimulacao.length,
   };
 }
 
-export function totalDoPeriodo(publicadas: readonly LinhaPublicada[]): Total {
-  const { liquidadas, pendentes } = liquidarTudo(publicadas);
-  return totalDe(liquidadas, pendentes);
+export function totalDoPeriodo(
+  publicadas: readonly LinhaPublicada[],
+  pesos: PesoPorFaixa = PESO_MEDIDO,
+): Total {
+  const { liquidadas, pendentes, foraDaSimulacao } = liquidarTudo(publicadas, pesos);
+  return totalDe(liquidadas, pendentes, foraDaSimulacao);
 }

@@ -5,6 +5,8 @@ import {
   faixaDeOdd,
   faixaDoScore,
   liquidarTudo,
+  PESO_MEDIDO,
+  ehSimulacao,
   quebrar,
   quebrarNaOrdem,
   totalDoPeriodo,
@@ -270,5 +272,56 @@ describe('quebrarNaOrdem', () => {
     const celulas = quebrarNaOrdem(liquidadas, (l) => faixaDoScore(l.score), FAIXAS_DO_SCORE);
     expect(celulas).toHaveLength(1);
     expect(celulas[0].chave).toBe('Alta (60–79)');
+  });
+});
+
+describe('o peso por faixa de Score', () => {
+  const MEIO = { 'Baixa (<30)': 0, 'Média (30–59)': 0.5, 'Alta (60–79)': 1, 'Alta (80+)': 1 };
+
+  it('peso zero não é aposta de zero: a linha sai da conta e é contada à parte', () => {
+    const { liquidadas, foraDaSimulacao } = liquidarTudo([green(2, { score: 20 })], MEIO);
+    expect(liquidadas).toHaveLength(0);
+    expect(foraDaSimulacao).toHaveLength(1);
+  });
+
+  it('meia unidade paga metade e pesa metade no denominador', () => {
+    // Uma aposta de meia unidade com green de odd 2: lucro 1 por unidade, meia
+    // unidade apostada. ROI = 0,5/0,5 = 1 — o mesmo ROI, com metade do risco.
+    const { liquidadas } = liquidarTudo([green(2, { score: 40 })], MEIO);
+    const c = celulaDe('Gols', liquidadas);
+    expect(c.n).toBe(1);
+    expect(c.unidades).toBeCloseTo(0.5);
+    expect(c.roi).toBeCloseTo(1);
+  });
+
+  it('e o ROI muda quando os pesos mudam o mix', () => {
+    // Green de meia unidade na Média, red de uma unidade na Alta:
+    // lucro = 0,5·1 + 1·(−1) = −0,5 sobre 1,5 unidades = −33,3%.
+    const { liquidadas } = liquidarTudo(
+      [green(2, { score: 40 }), red(2, { score: 65 })],
+      MEIO,
+    );
+    const c = celulaDe('tudo', liquidadas);
+    expect(c.unidades).toBeCloseTo(1.5);
+    expect(c.roi).toBeCloseTo(-1 / 3, 5);
+  });
+
+  it('no modo medido, unidades e apostas são o mesmo número', () => {
+    const { liquidadas } = liquidarTudo([green(2), red(2)]);
+    const c = celulaDe('tudo', liquidadas);
+    expect(c.n).toBe(2);
+    expect(c.unidades).toBe(2);
+    expect(c.roi).toBeCloseTo(0);
+  });
+
+  it('o total conta as três coisas: liquidadas, pendentes e fora da simulação', () => {
+    const t = totalDoPeriodo(
+      [green(2, { score: 20 }), green(2, { score: 65 }), linha({ status_short: 'NS' })],
+      MEIO,
+    );
+    expect(t.publicadas).toBe(3);
+    expect(t.n).toBe(1);
+    expect(t.pendentes).toBe(1);
+    expect(t.foraDaSimulacao).toBe(1);
   });
 });

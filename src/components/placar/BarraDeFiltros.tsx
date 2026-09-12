@@ -1,4 +1,7 @@
-import { EXPLICACAO_DO_EIXO, ROTULO_DO_EIXO, type Eixo, type Periodo } from './placar-periodo';
+import type { PesoPorFaixa } from './placar-agregacao';
+import type { Recorte } from './placar-filtros';
+import { EXPLICACAO_DO_EIXO, type Eixo, type Periodo } from './placar-periodo';
+import { RecorteESimulacao } from './RecorteESimulacao';
 import { SeletorDePeriodo } from './SeletorDePeriodo';
 
 /** Um par de botões que escolhe entre duas leituras. */
@@ -55,18 +58,26 @@ export function BarraDeFiltros({
   hoje,
   eixo,
   soVitrine,
+  recorte,
+  pesos,
   aoAplicarPeriodo,
   aoMudarEixo,
   aoMudarVitrine,
+  aoMudarRecorte,
+  aoMudarPesos,
 }: {
   periodo: Periodo;
   periodoB: Periodo | null;
   hoje: string;
   eixo: Eixo;
   soVitrine: boolean;
+  recorte: Recorte;
+  pesos: PesoPorFaixa;
   aoAplicarPeriodo: (periodo: Periodo, periodoB: Periodo | null) => void;
   aoMudarEixo: (eixo: Eixo) => void;
   aoMudarVitrine: (soVitrine: boolean) => void;
+  aoMudarRecorte: (r: Recorte) => void;
+  aoMudarPesos: (p: PesoPorFaixa) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-2 bg-white px-4 py-3">
@@ -105,7 +116,14 @@ export function BarraDeFiltros({
         aoMudar={(v) => aoMudarVitrine(v === 'vitrine')}
       />
 
-      <span className="ml-auto text-[12px] text-ink-dim">{ROTULO_DO_EIXO[eixo]}</span>
+      <span className="ml-auto">
+        <RecorteESimulacao
+          recorte={recorte}
+          pesos={pesos}
+          aoMudarRecorte={aoMudarRecorte}
+          aoMudarPesos={aoMudarPesos}
+        />
+      </span>
     </div>
   );
 }
