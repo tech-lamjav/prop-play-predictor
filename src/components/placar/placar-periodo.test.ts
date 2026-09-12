@@ -39,6 +39,7 @@ const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada =>
     pen_poucas_casas: false,
     pen_odd_longshot: false,
     pen_odd_juice: false,
+    premissas_acesas: [],
     ...p,
   }) satisfies LinhaPublicada;
 

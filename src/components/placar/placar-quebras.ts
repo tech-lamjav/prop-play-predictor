@@ -10,11 +10,9 @@ import {
   type LinhaPublicada,
 } from './placar-agregacao';
 import {
-  FAIXAS_DE_PONTOS,
   FAIXAS_SEM_DADO,
   GRUPOS_DE_CORROBORACAO,
   GRUPOS_DE_PENALIDADE,
-  faixaDePontos,
   faixaSemDado,
   grupoDeCorroboracao,
   grupoDePenalidade,
@@ -83,14 +81,15 @@ export const QUEBRAS: Quebra[] = [
   },
 ];
 
-export const QUEBRAS_DE_PREMISSA: Quebra[] = [
-  {
-    titulo: 'Por pontos de premissa',
-    explicacao:
-      'A soma dos pesos que acenderam. Serve para ver se mais evidência rende mais — mas o teto de pontos é diferente por mercado (30 no Resultado, 40 em Gols), então a mesma faixa não significa a mesma coisa nos dois.',
-    chaveDe: (l) => faixaDePontos(l.pts_premissas),
-    ordem: FAIXAS_DE_PONTOS,
-  },
+/**
+ * As quebras que falam do dado por trás da linha.
+ *
+ * Ficam na mesma lista das outras porque são cortes do board como qualquer
+ * outro. A que media "pontos de premissa" saiu: ela era a aproximação de ROI por
+ * premissa, e agora a pergunta é respondida de verdade, premissa por premissa,
+ * na seção própria.
+ */
+export const QUEBRAS_DO_DADO: Quebra[] = [
   {
     titulo: 'Por premissas sem dado',
     explicacao:

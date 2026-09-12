@@ -49,6 +49,20 @@ export type LinhaPublicada = {
   pen_poucas_casas: boolean | null;
   pen_odd_longshot: boolean | null;
   pen_odd_juice: boolean | null;
+  /**
+   * As premissas que ACENDERAM nesta linha, pelos slugs do catálogo.
+   *
+   * ⚠️ Recalculadas todo dia pelo mart, a partir de janelas anteriores ao apito.
+   * Para jogo passado o valor é estável, porque os insumos estão congelados —
+   * mas mudar o critério de uma premissa reescreve o passado. Não é registro
+   * point-in-time do que foi publicado.
+   *
+   * As APAGADAS não viajam: o conjunto de cada lado é fixo no catálogo do
+   * produto, e a ausência de um slug aqui significa "não atingiu o corte" OU
+   * "sem dado" — as tabelas do mart não têm nulo, e é por isso que
+   * `premissas_sem_dado` continua vindo à parte.
+   */
+  premissas_acesas: string[] | null;
 };
 
 /**

@@ -1,44 +1,22 @@
 import type { LinhaPublicada } from './placar-agregacao';
 
 // ============================================================================
-// placar-premissas.ts — o que o Postgres sabe de premissa, e o que não sabe
+// placar-premissas.ts — os cortes do dado que acompanha a linha
 // ============================================================================
-// NÃO EXISTE ROI POR PREMISSA aqui, e não é escolha: quais premissas acenderam
-// em cada linha não está no histórico. A RPC que devolve os slugs acesos lê
-// tabelas do mart recriadas por inteiro todo dia, sem histórico, e atende um
-// jogo por chamada. Pior: os arrays de evidência que a RPC histórica devolve são
-// montados com as flags DE HOJE contra a linha do passado — a evidência que
-// aparece no histórico é a de agora, não a da publicação.
+// ROI por premissa NÃO mora aqui: ele tem módulo próprio, `placar-por-premissa`,
+// e é medido de verdade, premissa por premissa, dentro do lado do mercado.
 //
-// O que existe com fidelidade histórica, por linha publicada, é isto:
+// Aqui ficam os três cortes que falam do dado que acompanha a linha e não de uma
+// premissa específica: quantas premissas ficaram sem dado, quais sinais de preço
+// corroboraram, e qual penalidade foi aplicada. Os dois últimos em grupos que
+// não se sobrepõem, porque linha solta por sinal contaria a mesma aposta duas
+// vezes e a soma dos denominadores passaria do total.
 //
-//   · `pts_premissas`: a SOMA dos pesos que acenderam, sem dizer quais;
-//   · `premissas_sem_dado`: quantas não puderam ser avaliadas;
-//   · `modelo_api_concorda` e `linha_sharp_confirma`: os dois sinais de preço;
-//   · `penalidades` e as quatro flags `pen_*`.
-//
-// São aproximações, e cada quebra aqui diz qual pergunta ela responde de fato.
-// A pergunta que o sócio fez — "quando a premissa X acendeu, qual foi o ROI" —
-// exige guardar as premissas acesas no momento da publicação, e isso é trabalho
-// no mart.
+// ⚠️ Este arquivo já afirmou, no topo, que ROI por premissa era impossível. Era
+// engano meu: as tabelas de premissa do mart existem neste banco e casam com o
+// board publicado em 100% das linhas liquidadas. O que ainda falta é o INSUMO —
+// por quanto a premissa acendeu.
 // ============================================================================
-
-/**
- * As faixas de pontos de premissa.
- *
- * ⚠️ O teto de pontos é DIFERENTE por mercado (30 no Resultado, 40 em Gols),
- * então a mesma faixa não significa a mesma coisa nos dois. A tabela serve para
- * ver se mais evidência rende mais DENTRO de um mercado, e a tela diz isso.
- */
-export const FAIXAS_DE_PONTOS = ['0 a 9', '10 a 19', '20 a 29', '30 ou mais'] as const;
-
-export function faixaDePontos(pts: number): string {
-  if (pts < 10) return FAIXAS_DE_PONTOS[0];
-  if (pts < 20) return FAIXAS_DE_PONTOS[1];
-  if (pts < 30) return FAIXAS_DE_PONTOS[2];
-  return FAIXAS_DE_PONTOS[3];
-}
-
 export const FAIXAS_SEM_DADO = ['Nenhuma', 'Uma', 'Duas', 'Três ou mais'] as const;
 
 export function faixaSemDado(quantas: number): string {

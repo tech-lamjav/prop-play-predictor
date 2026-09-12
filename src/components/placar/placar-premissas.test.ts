@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LinhaPublicada } from './placar-agregacao';
 import {
-  faixaDePontos,
   faixaSemDado,
   grupoDeCorroboracao,
   grupoDePenalidade,
@@ -36,19 +35,9 @@ const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada =>
     pen_poucas_casas: false,
     pen_odd_longshot: false,
     pen_odd_juice: false,
+    premissas_acesas: [],
     ...p,
   }) satisfies LinhaPublicada;
-
-describe('faixa de pontos de premissa', () => {
-  it('muda nos limites', () => {
-    expect(faixaDePontos(0)).toBe('0 a 9');
-    expect(faixaDePontos(9)).toBe('0 a 9');
-    expect(faixaDePontos(10)).toBe('10 a 19');
-    expect(faixaDePontos(29)).toBe('20 a 29');
-    expect(faixaDePontos(30)).toBe('30 ou mais');
-    expect(faixaDePontos(40)).toBe('30 ou mais');
-  });
-});
 
 describe('faixa de premissas sem dado', () => {
   it('separa nenhuma, uma, duas e o resto', () => {

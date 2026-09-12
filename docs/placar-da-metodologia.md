@@ -53,22 +53,31 @@ a odd da publicação, `score`, `faixa`, `score_versao`, `pts_premissas`,
 (`dbt_valid_from` / `dbt_valid_to`). O placar final vem de
 `futebol.fact_fixtures`.
 
-**Não sabe quais premissas acenderam.** Não há coluna de evidência nem array de
-premissas no histórico. A RPC `get_futebol_fixture_premissas` devolve os slugs
-acesos e apagados, mas lê tabelas do mart que são recriadas por inteiro todo dia,
-sem histórico, e só atende um jogo por chamada. Pior: os arrays `evidencias` que
-a RPC histórica devolve são montados a partir das flags **de hoje** contra a
-linha do passado — a evidência que aparece no histórico é a de agora, não a da
-publicação. Qualquer ROI por premissa tirado dali seria uma frase com cara de
-número.
+**Sabe quais premissas acenderam** — e esta parte da spec estava errada na
+primeira versão. As cinco tabelas de premissa do mart existem neste banco, uma
+linha por candidata com uma coluna booleana por premissa, e casam com o board
+publicado em **100% das 1.683 linhas liquidadas** desde 04/09, nos cinco
+mercados. O que me enganou foi a RPC da migration 093, que atende um jogo por
+chamada; a tabela por trás dela é consultável em lote, e a migration 134 fez
+isso com uma view.
 
-Consequência direta, e é a única parte do pedido original que não é atendida: **o
-corte por premissa — "quando a premissa X acendeu, qual foi o ROI" — não entra
-nesta volta.** O que entra são os proxies fiéis: pontos de premissa, premissas
-sem dado, corroboração do modelo, confirmação da linha sharp e as penalidades.
-Tornar a pergunta respondível exige guardar as premissas acesas no momento da
-publicação, e isso é trabalho do Mateus no mart, não nosso — vira o pedido que
-sai desta spec.
+O limite que sobra, e a tela diz: a flag é recalculada todo dia, a partir de
+janelas anteriores ao apito. Para jogo passado o valor é estável, porque os
+insumos estão congelados — mas mudar o critério de uma premissa reescreve o
+passado. Não é registro point-in-time.
+
+**Não sabe por QUANTO a premissa acendeu.** O insumo e a janela de cada premissa
+existem no mart desde as entregas de 08 e 10/09/2026 e não vieram no sync. Sem
+eles dá para separar acesa de apagada, e não dá para separar "acendeu raspando"
+de "acendeu com folga". É o pedido que sai desta spec: colunas numa tabela que já
+é sincronizada, não pipeline nova.
+
+⚠️ E a medição só significa algo DENTRO DO LADO do mercado. Medido em 12/09 em
+Gols: "defesas vazáveis acesa rende 33,5% contra −13,4% apagada" — e quase toda
+essa diferença era o lado. O Over rendia +15,7% em 259 apostas e o Under −24,1%
+em 263. Dentro do Over a premissa informa de verdade (+33,5% em 101 contra +4,3%
+em 158); dentro do Under, defesas firmes acesa dá −24,3% contra −24,0% apagada,
+ou seja, nada.
 
 ## Histórias de usuário
 
@@ -124,9 +133,8 @@ sai desta spec.
     para saber que a conta vai mudar quando os jogos terminarem.
 24. Como sócio, quero ver a contagem de anuladas separada, para entender por que
     taxa de acerto e ROI têm denominadores diferentes.
-25. Como sócio, quero ver a quebra por pontos de premissa, para ter a
-    aproximação de "mais evidência rende mais" enquanto o corte por premissa não
-    existe.
+25. Como sócio, quero ver, para cada lado de cada mercado, o ROI de cada premissa
+    quando ela acendeu e quando não acendeu, para decidir peso e catálogo.
 26. Como sócio, quero ver a quebra por premissas sem dado, para saber se publicar
     com evidência faltando sai caro.
 27. Como sócio, quero ver a quebra por corroboração do modelo e por confirmação
@@ -208,8 +216,8 @@ montar a tela para conferir aritmética.
 
 ## Fora de escopo
 
-- **O corte por premissa** — "quando a premissa X acendeu, qual foi o ROI".
-  Impossível com fidelidade hoje; sai como pedido ao Mateus.
+- **O insumo e a janela de cada premissa** — por quanto ela acendeu. Existe no
+  mart, não veio no sync; sai como pedido ao Mateus.
 - **A candidata recusada.** O funil vive no BigQuery e o app não o alcança. Sem
   ela, o placar não responde "o corte está apertado demais" nem "falta
   premissa", e a tela precisa dizer isso.

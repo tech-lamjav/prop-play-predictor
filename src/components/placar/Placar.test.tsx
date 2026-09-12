@@ -43,6 +43,7 @@ const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada => ({
   pen_poucas_casas: false,
   pen_odd_longshot: false,
   pen_odd_juice: false,
+    premissas_acesas: [],
   ...p,
 });
 
@@ -180,32 +181,54 @@ describe('o mercado fora da vitrine', () => {
   });
 });
 
-describe('o que dá para dizer de premissa', () => {
-  it('diz, antes das tabelas, que isto não é ROI por premissa', () => {
-    // É a frase que impede a confusão entre "mais pontos rende mais" e "a
-    // premissa X rende mais", que foi o pedido original.
-    render(<Placar publicadas={[linha()]} />);
-    expect(screen.getByText(/não é ROI por premissa/i)).toBeInTheDocument();
+describe('a seção de ROI por premissa', () => {
+  it('mede dentro do lado do mercado, e diz isso', () => {
+    // O erro que quase foi para a tela: medir a premissa contra o mercado
+    // inteiro em vez de contra o próprio lado. Em Gols, isso inflava a
+    // diferença de uma premissa de Over com o buraco do Under.
+    render(
+      <Placar
+        publicadas={[
+          linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5 }),
+          linha({ market: 'goals_over_under', outcome: 'Under', line_value: 1.5 }),
+        ]}
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'ROI por premissa' })).toBeInTheDocument();
+    expect(screen.getByText(/dentro do lado do mercado/i)).toBeInTheDocument();
+    expect(screen.getByText('Gols (mais ou menos) · Mais gols')).toBeInTheDocument();
+    expect(screen.getByText('Gols (mais ou menos) · Menos gols')).toBeInTheDocument();
   });
 
-  it('explica por que não dá: a evidência do histórico é reconstruída de hoje', () => {
-    render(<Placar publicadas={[linha()]} />);
-    expect(screen.getByText(/flags de HOJE/i)).toBeInTheDocument();
+  it('lista as premissas do lado, com a que acendeu primeiro', () => {
+    render(
+      <Placar
+        publicadas={[
+          linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, premissas_acesas: ['ritmo_alto'] }),
+          linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, premissas_acesas: ['ritmo_alto'] }),
+          linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, goals_home: 0, goals_away: 0 }),
+          linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, goals_home: 0, goals_away: 0 }),
+        ]}
+      />,
+    );
+    const secao = screen.getByText('Gols (mais ou menos) · Mais gols').closest('section');
+    const primeira = secao?.querySelector('tbody tr td:first-child');
+    expect(primeira?.textContent).toBe('Jogo de ritmo alto');
   });
 
-  it('mostra as quatro aproximações que existem de verdade', () => {
+  it('diz que a flag vem recalculada e que o insumo ainda não chega', () => {
+    // É o limite honesto da medição: mudar o critério de uma premissa reescreve
+    // o passado, e sem o insumo não se separa 'acendeu raspando' de 'com folga'.
     render(<Placar publicadas={[linha()]} />);
-    expect(screen.getByText('Por pontos de premissa')).toBeInTheDocument();
-    expect(screen.getByText('Por premissas sem dado')).toBeInTheDocument();
-    expect(screen.getByText('Por corroboração de preço')).toBeInTheDocument();
+    expect(screen.getByText(/recalculada do mart/i)).toBeInTheDocument();
+    expect(screen.getByText(/insumo, ainda não/i)).toBeInTheDocument();
+  });
+
+  it('e os cortes do dado continuam, em seção própria', () => {
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.getByText('O dado por trás da linha')).toBeInTheDocument();
     expect(screen.getByText('Por penalidade aplicada')).toBeInTheDocument();
-  });
-
-  it('e avisa que o teto de pontos é diferente por mercado', () => {
-    // Sem esse aviso, a faixa "30 ou mais" parece a mesma coisa em Gols e no
-    // Resultado, e ela não é: os tetos são 40 e 30.
-    render(<Placar publicadas={[linha()]} />);
-    expect(screen.getByText(/teto de pontos é diferente por mercado/i)).toBeInTheDocument();
+    expect(screen.queryByText('Por pontos de premissa')).not.toBeInTheDocument();
   });
 });
 
@@ -245,10 +268,12 @@ describe('comparando dois períodos', () => {
     expect(tabela).toHaveTextContent(/sem aposta/i);
   });
 
-  it('sem comparação, a tabela volta a ter uma coluna de números', () => {
+  it('sem comparação, a tabela de mercado volta a ter uma coluna de números', () => {
+    // Escopado à tabela de mercado: a seção de premissa tem coluna de diferença
+    // sempre, porque lá a diferença é entre acesa e apagada, não entre períodos.
     render(<Placar publicadas={[linha()]} />);
-    expect(screen.queryByText(/dentro do ruído/i)).not.toBeInTheDocument();
-    expect(screen.queryByText('Diferença')).not.toBeInTheDocument();
+    const tabela = screen.getByText('Por mercado').closest('section');
+    expect(tabela).not.toHaveTextContent('Diferença');
   });
 });
 

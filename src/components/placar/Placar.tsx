@@ -1,6 +1,8 @@
 import { liquidarTudo, totalDe, type LinhaPublicada } from './placar-agregacao';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
-import { QUEBRAS, QUEBRAS_DE_PREMISSA, celulasDa, type Quebra } from './placar-quebras';
+import { porLadoDoMercado } from './placar-por-premissa';
+import { PremissasDoLado } from './PremissasDoLado';
+import { QUEBRAS, QUEBRAS_DO_DADO, celulasDa, type Quebra } from './placar-quebras';
 import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaComparada } from './TabelaComparada';
 import { TabelaDoPlacar } from './TabelaDoPlacar';
@@ -76,6 +78,7 @@ export function Placar({
   const { liquidadas, pendentes } = liquidarTudo(publicadas);
   const total = totalDe(liquidadas, pendentes);
   const liquidadasB = comparacao ? liquidarTudo(comparacao.publicadas).liquidadas : [];
+  const porPremissa = porLadoDoMercado(liquidadas);
 
   const tabela = (quebra: Quebra) => {
     const selo = quebra.marcaOculto
@@ -179,20 +182,33 @@ export function Placar({
       <div className="grid gap-5">{QUEBRAS.map(tabela)}</div>
 
       <div className="mt-8 border-t border-line-2 pt-6">
-        <h2 className="font-display text-xl font-black text-ink">O que dá para dizer de premissa</h2>
-        <p className="mt-2 max-w-3xl text-[14px] text-ink-2">
-          <strong className="text-ink">Isto não é ROI por premissa.</strong> Quais premissas
-          acenderam em cada linha não está guardado: o histórico tem a soma dos pesos, não a lista. A
-          evidência que a tela do jogo mostra para uma linha antiga é reconstruída com as flags de
-          HOJE, então ela não serve para medir o passado. Responder &quot;quando a premissa X
-          acendeu, qual foi o ROI&quot; exige guardar as premissas acesas no momento da publicação, e
-          isso é trabalho no mart.
-        </p>
-        <p className="mt-2 max-w-3xl text-[14px] text-ink-2">
-          O que está abaixo são as aproximações que existem com fidelidade histórica.
+        <h2 className="font-display text-xl font-black text-ink">ROI por premissa</h2>
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-2">
+          Sempre dentro do lado do mercado, porque o ROI do lado é a linha de base. A coluna que
+          decide é a diferença entre acesa e apagada. A flag vem recalculada do mart, então mudar o
+          critério de uma premissa reescreve o passado — e o quanto ela acendeu, o insumo, ainda não
+          chega neste banco.
         </p>
 
-        <div className="mt-5 grid gap-5">{QUEBRAS_DE_PREMISSA.map(tabela)}</div>
+        <div className="mt-5 grid gap-5">
+          {porPremissa.map((lado) => (
+            <PremissasDoLado key={lado.chave} lado={lado} />
+          ))}
+          {porPremissa.length === 0 && (
+            <p className="rounded-rebrand-md border border-line-2 bg-white px-5 py-8 text-[14px] text-ink-2">
+              Nenhuma oportunidade liquidada no período.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-8 border-t border-line-2 pt-6">
+        <h2 className="font-display text-xl font-black text-ink">O dado por trás da linha</h2>
+        <p className="mt-1 max-w-3xl text-[13px] text-ink-2">
+          Não é premissa: é o que acompanha a linha quando ela é publicada.
+        </p>
+
+        <div className="mt-5 grid gap-5">{QUEBRAS_DO_DADO.map(tabela)}</div>
       </div>
     </div>
   );

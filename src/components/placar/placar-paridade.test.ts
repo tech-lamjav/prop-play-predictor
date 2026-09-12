@@ -70,6 +70,7 @@ const base: LinhaPublicada = {
   pen_poucas_casas: false,
   pen_odd_longshot: false,
   pen_odd_juice: false,
+    premissas_acesas: [],
 };
 
 const PLACARES: [number, number][] = [
