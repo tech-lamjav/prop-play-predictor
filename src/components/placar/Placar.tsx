@@ -44,7 +44,19 @@ function Numero({ valor, rotulo, tom }: { valor: string; rotulo: string; tom?: '
  * candidata recusada pelo funil não está aqui — sem ela, o sócio olha a tabela e
  * conclui que o corte está certo, quando a tela nunca teve como saber.
  */
-export function Placar({ publicadas }: { publicadas: LinhaPublicada[] }) {
+export function Placar({
+  publicadas,
+  avisos = [],
+}: {
+  publicadas: LinhaPublicada[];
+  /**
+   * O que o período escolhido exige dizer antes de o sócio ler a tabela.
+   *
+   * Vem de fora porque quem sabe o período é quem o escolheu. Fica acima dos
+   * números de propósito: um aviso embaixo da tabela chega depois da conclusão.
+   */
+  avisos?: string[];
+}) {
   const total = totalDoPeriodo(publicadas);
   const { liquidadas } = liquidarTudo(publicadas);
   const porMercado = quebrar(liquidadas, (l) => l.market);
@@ -70,6 +82,15 @@ export function Placar({ publicadas }: { publicadas: LinhaPublicada[] }) {
         funil recusou vive no BigQuery e o site não a alcança, então esta tela não responde se o
         corte está apertado demais nem se falta premissa.
       </p>
+
+      {avisos.map((aviso) => (
+        <p
+          key={aviso.slice(0, 40)}
+          className="mb-4 max-w-3xl rounded-rebrand-md border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"
+        >
+          <strong>Atenção:</strong> {aviso}
+        </p>
+      ))}
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Numero valor={String(total.publicadas)} rotulo="Publicadas" />

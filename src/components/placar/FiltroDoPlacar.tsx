@@ -1,0 +1,96 @@
+import {
+  ATALHOS,
+  EXPLICACAO_DO_EIXO,
+  ROTULO_DO_EIXO,
+  type Eixo,
+  type Periodo,
+} from './placar-periodo';
+
+/**
+ * A janela que o placar está olhando, e por qual data ela conta.
+ *
+ * O eixo fica ao lado do período, e não escondido num menu, porque ele muda a
+ * PERGUNTA e não a apresentação: por apito o número é o resultado da semana, por
+ * detecção é a régua que publicou naquela semana. Ver os dois rótulos lado a
+ * lado é o que impede alguém ler um número respondendo a outra pergunta.
+ */
+export function FiltroDoPlacar({
+  atalho,
+  periodo,
+  eixo,
+  aoMudarPeriodo,
+  aoMudarEixo,
+}: {
+  atalho: string;
+  periodo: Periodo;
+  eixo: Eixo;
+  aoMudarPeriodo: (atalho: string, periodo: Periodo) => void;
+  aoMudarEixo: (eixo: Eixo) => void;
+}) {
+  const botao = (ativo: boolean) =>
+    `rounded-rebrand-sm border px-3 py-1.5 text-[13px] font-bold transition ${
+      ativo
+        ? 'border-ink bg-ink text-white'
+        : 'border-line-2 bg-white text-ink-2 hover:border-ink hover:text-ink'
+    }`;
+
+  return (
+    <div className="mb-6 flex flex-col gap-3 rounded-rebrand-md border border-line-2 bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+          Período
+        </span>
+        {ATALHOS.map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            className={botao(atalho === a.id)}
+            onClick={() => aoMudarPeriodo(a.id, a.periodo(periodo.ate))}
+          >
+            {a.rotulo}
+          </button>
+        ))}
+
+        {atalho === 'personalizado' && (
+          <span className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              aria-label="Início do período"
+              value={periodo.de}
+              max={periodo.ate}
+              onChange={(e) => aoMudarPeriodo(atalho, { ...periodo, de: e.target.value })}
+              className="rounded-rebrand-sm border border-line-2 px-2 py-1 text-[13px] text-ink"
+            />
+            <span className="text-[13px] text-ink-dim">até</span>
+            <input
+              type="date"
+              aria-label="Fim do período"
+              value={periodo.ate}
+              min={periodo.de}
+              onChange={(e) => aoMudarPeriodo(atalho, { ...periodo, ate: e.target.value })}
+              className="rounded-rebrand-sm border border-line-2 px-2 py-1 text-[13px] text-ink"
+            />
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+          Conta
+        </span>
+        {(['jogo', 'deteccao'] as Eixo[]).map((e) => (
+          <button
+            key={e}
+            type="button"
+            className={botao(eixo === e)}
+            onClick={() => aoMudarEixo(e)}
+            title={EXPLICACAO_DO_EIXO[e]}
+          >
+            {ROTULO_DO_EIXO[e]}
+          </button>
+        ))}
+        <span className="text-[13px] text-ink-2">{EXPLICACAO_DO_EIXO[eixo]}</span>
+      </div>
+    </div>
+  );
+}

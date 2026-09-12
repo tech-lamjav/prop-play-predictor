@@ -133,3 +133,20 @@ describe('as outras quebras', () => {
     expect(screen.getByText('Sem campeonato')).toBeInTheDocument();
   });
 });
+
+describe('os avisos do período', () => {
+  it('aparecem acima dos números, porque aviso embaixo chega depois da conclusão', () => {
+    render(<Placar publicadas={[linha()]} avisos={['a nota está em outra escala']} />);
+    const aviso = screen.getByText(/outra escala/i);
+    const liquidadas = screen.getByText('Liquidadas');
+    // compareDocumentPosition: 4 = o aviso vem ANTES do bloco de números.
+    expect(aviso.compareDocumentPosition(liquidadas) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('sem aviso, não sobra moldura de aviso vazia', () => {
+    render(<Placar publicadas={[linha()]} />);
+    expect(screen.queryByText(/atenção:/i)).not.toBeInTheDocument();
+  });
+});
