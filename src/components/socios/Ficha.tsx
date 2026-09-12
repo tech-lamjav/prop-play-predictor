@@ -128,6 +128,7 @@ export function Ficha({
   comportamento,
   edicaoDeAcesso,
   assinatura,
+  testeDoFutebol,
 }: {
   estado: EstadoDaFicha;
   /**
@@ -150,6 +151,14 @@ export function Ficha({
    * a venda e os remendos, e empilhadas deixavam metade da largura vazia.
    */
   assinatura: ReactNode;
+  /**
+   * O teste gratuito, em cartão próprio.
+   *
+   * A pedido do Victor: ele morava no fim da lista de acessos avulsos, e não é
+   * um avulso — é a única coisa daquela aba com PRAZO correndo, e quem está em
+   * teste é o lead mais quente que existe.
+   */
+  testeDoFutebol: ReactNode;
   /** A linha do tempo entra por fora: ela tem consulta e escrita próprias, e a
    *  ficha continua sendo só desenho. */
   linhaDoTempo: ReactNode;
@@ -175,6 +184,7 @@ export function Ficha({
       comportamento={comportamento}
       edicaoDeAcesso={edicaoDeAcesso}
       assinatura={assinatura}
+      testeDoFutebol={testeDoFutebol}
     />
   );
 }
@@ -190,6 +200,7 @@ function Conteudo({
   comportamento,
   edicaoDeAcesso,
   assinatura,
+  testeDoFutebol,
 }: {
   pessoa: Pessoa;
   apostas: ResumoDeApostas | null;
@@ -203,6 +214,7 @@ function Conteudo({
   comportamento: ReactNode;
   edicaoDeAcesso: ReactNode;
   assinatura: ReactNode;
+  testeDoFutebol: ReactNode;
 }) {
   const plano = nomeDoPlano(pessoa.subscription_product_type);
   const bruto = (pessoa.subscription_product_type ?? '').trim();
@@ -391,7 +403,10 @@ function Conteudo({
               {assinatura}
             </Bloco>
 
-            <Bloco titulo="Acessos avulsos">{edicaoDeAcesso}</Bloco>
+            <div className="space-y-3.5">
+              <Bloco titulo="Acessos avulsos">{edicaoDeAcesso}</Bloco>
+              <Bloco titulo="Teste do futebol">{testeDoFutebol}</Bloco>
+            </div>
           </div>
         </TabsContent>
 

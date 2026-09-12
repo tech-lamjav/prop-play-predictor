@@ -60,11 +60,22 @@ function LinhaDoProduto({
   // e a linha encheria de "Betinho: liberou" repetido.
   const mudou = ativo !== atual.ativo || (!produto.semPrazoPorque && ate !== atual.ate);
 
+  /*
+   * Uma LINHA por produto, e não um bloco de quatro.
+   *
+   * A versão anterior empilhava nome, interruptor, campo de data e um botão
+   * "Salvar Betinho" de largura própria, para cada um dos quatro produtos:
+   * dezesseis linhas de altura para dizer quatro sim-ou-não. O Victor apontou
+   * que estava mal otimizado, e estava.
+   *
+   * O que encolheu: o botão só existe quando há mudança para gravar — antes ele
+   * ficava sempre lá, apagado, ocupando linha. E o campo de data foi para a
+   * mesma linha do interruptor, estreito, porque data é curta.
+   */
   return (
-    <div className="border-t border-line-2 py-3 first:border-t-0 first:pt-0">
-      <label className="flex items-center justify-between gap-3">
-        <span className="text-[14px] font-bold text-ink">{produto.nome}</span>
-        <span className="flex items-center gap-2 text-[13px] text-ink-2">
+    <div className="border-t border-line-2 py-2.5 first:border-t-0 first:pt-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <label className="flex min-w-0 flex-1 items-center gap-2">
           <input
             type="checkbox"
             checked={ativo}
@@ -72,43 +83,50 @@ function LinhaDoProduto({
             onChange={(e) => setAtivo(e.target.checked)}
             aria-label={`Acesso ao ${produto.nome}`}
           />
-          {ativo ? 'Liberado' : 'Sem acesso'}
-        </span>
-      </label>
+          <span className="truncate text-[13.5px] font-bold text-ink">{produto.nome}</span>
+        </label>
 
-      {produto.semPrazoPorque ? (
-        /* O motivo fica ONDE o sócio escolhe: depois de digitar uma data que
-           seria descartada já é tarde. E vem do produto, porque os dois que não
-           têm prazo não têm pelo mesmo motivo. */
-        <p className="mt-2 text-[12px] text-ink-2">{produto.semPrazoPorque}</p>
-      ) : (
-        <label className="mt-2 flex items-center gap-2 text-[12px] text-ink-2">
-          até
+        {!produto.semPrazoPorque && (
           <input
             type="date"
             value={ate}
             disabled={salvando || !ativo}
             onChange={(e) => setAte(e.target.value)}
             aria-label={`Acesso ao ${produto.nome} até`}
-            className="h-9 flex-1 rounded-rebrand-sm border border-line-2 bg-white px-2 text-[13px] text-ink disabled:opacity-50"
+            className="h-8 w-[132px] shrink-0 rounded-rebrand-sm border border-line-2 bg-white px-2 text-[12.5px] text-ink disabled:opacity-40"
           />
-        </label>
+        )}
+
+        {/* O botão aparece só quando existe o que gravar. Sempre visível e
+            apagado, ele ocupava uma linha por produto para não fazer nada. */}
+        {mudou || salvando ? (
+          <button
+            type="button"
+            disabled={salvando}
+            onClick={() => aoSalvar({ produto: produto.id, ativo, ate: ativo && ate ? ate : null })}
+            className="h-8 shrink-0 rounded-rebrand-sm bg-forest px-3 text-[12.5px] font-bold text-white disabled:opacity-50"
+          >
+            {salvando ? 'Gravando…' : 'Salvar'}
+          </button>
+        ) : (
+          <span className="shrink-0 text-[12.5px] text-ink-dim">
+            {ativo ? 'liberado' : 'sem acesso'}
+          </span>
+        )}
+      </div>
+
+      {/* O motivo de não ter prazo fica ONDE o sócio escolhe: depois de digitar
+          uma data que seria descartada já é tarde. E vem do produto, porque os
+          dois que não têm prazo não têm pelo mesmo motivo. */}
+      {produto.semPrazoPorque && (
+        <p className="mt-1 pl-6 text-[11.5px] text-ink-dim">{produto.semPrazoPorque}</p>
       )}
 
       {falhou && (
-        <p className="mt-2 text-[13px] font-bold text-ink">
+        <p className="mt-1.5 pl-6 text-[12.5px] font-bold text-ink">
           {escrita.tipo === 'erro' ? escrita.recado : ''} O acesso continua como estava.
         </p>
       )}
-
-      <button
-        type="button"
-        disabled={!mudou || salvando}
-        onClick={() => aoSalvar({ produto: produto.id, ativo, ate: ativo && ate ? ate : null })}
-        className="mt-2 h-9 rounded-rebrand-sm bg-forest px-3 text-[13px] font-bold text-white disabled:opacity-40"
-      >
-        {salvando ? 'Gravando…' : `Salvar ${produto.nome}`}
-      </button>
     </div>
   );
 }
@@ -124,7 +142,7 @@ function LinhaDoProduto({
  * Três estados, e não dois: nunca testou, está correndo, já venceu. O terceiro
  * é justamente o que o sócio precisa saber antes de dar outro.
  */
-function Teste({
+export function TesteDoFutebol({
   pessoa,
   escrita,
   aoDefinir,
@@ -149,9 +167,8 @@ function Teste({
   const ligado = estado.tipo === 'correndo';
 
   return (
-    <div className="border-t border-line-2 pt-3">
-      <p className="text-[14px] font-bold text-ink">Teste do futebol</p>
-      <p className="mt-1 text-[12px] text-ink-2">{situacao}</p>
+    <div>
+      <p className="text-[13px] text-ink">{situacao}</p>
 
       {falhou && (
         <p className="mt-2 text-[13px] font-bold text-ink">
@@ -202,12 +219,10 @@ export function EditorDeAcesso({
   pessoa,
   escrita,
   aoSalvar,
-  aoDefinirTeste,
 }: {
   pessoa: Pessoa;
   escrita: EstadoDaEscrita;
   aoSalvar: (mudanca: MudancaDeAcesso) => void;
-  aoDefinirTeste: (ligado: boolean) => void;
 }) {
   return (
     <div className="border-t border-line-2 pt-3">
@@ -232,8 +247,6 @@ export function EditorDeAcesso({
           aoSalvar={aoSalvar}
         />
       ))}
-
-      <Teste pessoa={pessoa} escrita={escrita} aoDefinir={aoDefinirTeste} />
     </div>
   );
 }

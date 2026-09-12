@@ -48,6 +48,7 @@ const montar = (
         comportamento={<p>o comportamento</p>}
         edicaoDeAcesso={<p>o editor de acesso</p>}
         assinatura={<p>o formulário de assinatura</p>}
+        testeDoFutebol={<p>o teste do futebol</p>}
       />
     </MemoryRouter>,
   );
@@ -148,6 +149,7 @@ describe('Ficha', () => {
           comportamento={null}
           edicaoDeAcesso={null}
           assinatura={null}
+          testeDoFutebol={null}
         />
       </MemoryRouter>,
     );
@@ -238,6 +240,7 @@ describe('Ficha · a linha do tempo entra na página', () => {
           comportamento={null}
           edicaoDeAcesso={null}
           assinatura={null}
+          testeDoFutebol={null}
         />
       </MemoryRouter>,
     );

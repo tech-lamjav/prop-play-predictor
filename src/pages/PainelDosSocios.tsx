@@ -4,7 +4,11 @@ import { Seo } from '@/components/Seo';
 import { Ficha } from '@/components/socios/Ficha';
 import { FichaEmModal } from '@/components/socios/FichaEmModal';
 import { BlocoDeComportamento } from '@/components/socios/BlocoDeComportamento';
-import { EditorDeAcesso, type EstadoDaEscrita } from '@/components/socios/EditorDeAcesso';
+import {
+  EditorDeAcesso,
+  TesteDoFutebol,
+  type EstadoDaEscrita,
+} from '@/components/socios/EditorDeAcesso';
 import { DarAssinatura, type EstadoDaConcessao } from '@/components/socios/DarAssinatura';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
@@ -144,7 +148,17 @@ function FichaDoModal({ id }: { id: string }) {
             pessoa={estado.pessoa}
             escrita={escrita}
             aoSalvar={(mudanca) => acesso.mutate(mudanca)}
-            aoDefinirTeste={(ligado) => teste.mutate(ligado)}
+          />
+        ) : null
+      }
+      // O teste em cartão próprio: ele não é um avulso, é a única coisa da aba
+      // com prazo correndo.
+      testeDoFutebol={
+        estado.tipo === 'pronta' ? (
+          <TesteDoFutebol
+            pessoa={estado.pessoa}
+            escrita={escrita}
+            aoDefinir={(ligado) => teste.mutate(ligado)}
           />
         ) : null
       }
