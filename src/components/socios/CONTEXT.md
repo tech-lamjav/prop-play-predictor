@@ -153,3 +153,41 @@ pedido: a conversa acontece na véspera, com o acesso ainda de pé. Dois dias
 antes a pessoa esquece; no dia seguinte ela já perdeu o acesso, e aí a conversa
 é de retomada, bem mais difícil.
 _Avoid_: Expirando, a expirar, trial ending
+
+**Pagamento**:
+Dinheiro recebido de uma assinatura manual, referente a um mês de competência.
+Guarda a origem — Pix, dinheiro, transferência — porque o Stripe não vende por
+Pix e boa parte dos clientes paga assim: essa receita acontece fora do gateway
+e não tinha registro em lugar nenhum.
+
+Só o que entra FORA do Stripe. Quem paga por lá já tem registro lá, e duas
+fontes para o mesmo dinheiro discordam. A tela diz isso com essas palavras:
+"recebido na mão".
+
+Estorna, nunca apaga: um registro de dinheiro que alguém apaga é um registro
+que ninguém consegue auditar. Estornar exige motivo e não recua o acesso — a
+pessoa já usou, e tirar por erro de lançamento castiga quem não errou.
+_Avoid_: Cobrança, fatura, recebimento, entrada
+
+**Mês de competência**:
+O mês a que um pagamento se refere, e não o dia em que o dinheiro caiu. Um Pix
+que chega em 2 de outubro pagando setembro tem competência em setembro. Os dois
+são campos diferentes porque é a competência que responde qual mês está em
+aberto.
+_Avoid_: Mês de referência, período, data do pagamento
+
+**Mês em aberto**:
+Mês de competência que já começou e não tem pagamento. É DERIVADO, e não uma
+linha criada de antemão: todo mês desde o começo da assinatura, menos os que têm
+pagamento. Gerar linha por mês exigiria um cron, e cron que falha em silêncio
+deixa de gerar a cobrança — o sistema esqueceria de cobrar sem ninguém
+descobrir.
+
+O mês corrente conta como em aberto, porque a cobrança é no começo dele.
+_Avoid_: Pendência, atraso, débito, inadimplência (essa é a situação, não o mês)
+
+**Sem cobrança**:
+Assinatura manual sem valor mensal combinado. Não é inadimplência e não entra em
+nenhuma fila: quem não combinou pagar não deve nada. É o estado das assinaturas
+que existiam antes de o valor existir.
+_Avoid_: Cortesia, grátis, brinde, interna
