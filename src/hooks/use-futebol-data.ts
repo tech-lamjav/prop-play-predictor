@@ -37,7 +37,7 @@ import {
 } from '@/services/futebol-data.service';
 
 /**
- * Acesso ao módulo Futebol (reverse trial 7 dias, sem cartão).
+ * Acesso ao módulo Futebol (reverse trial 48 horas, sem cartão).
  * O RPC inicia o relógio no 1º acesso logado e devolve o estado atual.
  * Key por usuário pra refazer ao logar/deslogar.
  */

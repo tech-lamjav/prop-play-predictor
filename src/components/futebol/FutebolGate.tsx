@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Sparkles } from 'lucide-react';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import type { FutebolAccess } from '@/services/futebol-data.service';
+import { tempoDeTeste } from './tempo-de-teste';
 
 /**
- * Reverse trial do Futebol (7 dias, sem cartão). A camada de VALOR (o pick em si)
- * fica borrada pra quem não tem acesso; o resto (Score, análise) é livre.
+ * Reverse trial do Futebol (48 horas, sem cartão). A camada de VALOR (o pick em
+ * si) fica borrada pra quem não tem acesso; o resto (Score, análise) é livre.
  */
 
 /** Borra o conteúdo (FOMO) quando `active`. Mantém o layout/espaço. */
@@ -28,16 +29,12 @@ export function LockPill({ className = '' }: { className?: string }) {
   );
 }
 
-function dayWord(n: number | null): string {
-  return n === 1 ? 'dia' : 'dias';
-}
-
 /**
  * Chip discreto de status do trial pro cabeçalho (padrão de mercado).
  * Busca o acesso sozinho — só renderizar nas rotas de Futebol.
- * - trial: pílula neutra "Teste · Nd" (vira âmbar nos últimos 2 dias)
+ * - trial: pílula neutra "Teste · 31h" (vira âmbar nas últimas 12 horas)
  * - expirado: "Assinar Futebol" (forest)
- * - deslogado: "7 dias grátis" (forest)
+ * - deslogado: "48 horas grátis" (forest)
  * - assinante: nada
  */
 export function FutebolTrialChip() {
@@ -46,17 +43,19 @@ export function FutebolTrialChip() {
   if (!access || access.state === 'subscribed') return null;
 
   if (access.state === 'trial') {
-    const d = access.days_left ?? 0;
-    const ending = d <= 2;
+    const tempo = tempoDeTeste(access);
+    // Sem tempo não há pílula: uma pílula de teste sem número restante não
+    // informa nada e ainda ocupa o lugar de quem informa.
+    if (!tempo) return null;
     return (
       <button
         onClick={() => navigate('/futebol/assinar')}
-        title={`Teste grátis · ${d} ${dayWord(d)} restantes`}
+        title={`Teste grátis · ${tempo.longo}`}
         className={`hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[11px] font-semibold border transition ${
-          ending ? 'border-amber/50 bg-amber/15 text-amber-2 hover:bg-amber/25' : 'border-line bg-canvas-2 text-ink-2 hover:bg-canvas'
+          tempo.acabando ? 'border-amber/50 bg-amber/15 text-amber-2 hover:bg-amber/25' : 'border-line bg-canvas-2 text-ink-2 hover:bg-canvas'
         }`}
       >
-        <Sparkles className="w-3 h-3" /> Teste · {d}d
+        <Sparkles className="w-3 h-3" /> Teste · {tempo.curto}
       </button>
     );
   }
@@ -68,16 +67,16 @@ export function FutebolTrialChip() {
       className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-bold bg-forest text-canvas hover:bg-forest-2 transition"
     >
       {expired ? <Lock className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-      {expired ? 'Assinar Futebol' : '7 dias grátis'}
+      {expired ? 'Assinar Futebol' : '48 horas grátis'}
     </button>
   );
 }
 
 /**
  * Faixa de estado do acesso, pra colocar no topo das telas de valor:
- * - trial: contador "X dias restantes"
+ * - trial: nada (o chip do cabeçalho é quem conta o tempo)
  * - expired: CTA pra assinar
- * - anon: CTA pra criar conta (libera 7 dias)
+ * - anon: CTA pra criar conta (libera 48 horas)
  * - subscribed: nada
  */
 export function FutebolAccessBanner({ access, className = '' }: { access?: FutebolAccess; className?: string }) {
@@ -92,11 +91,11 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
       <div className="flex items-start gap-2.5 flex-1 min-w-0">
         <span className="w-8 h-8 rounded-full bg-forest text-canvas grid place-items-center shrink-0"><Lock className="w-4 h-4" /></span>
         <div className="min-w-0">
-          <div className="text-[13px] font-bold text-ink">{expired ? 'Seu teste grátis acabou' : 'Veja as oportunidades — 7 dias grátis'}</div>
+          <div className="text-[13px] font-bold text-ink">{expired ? 'Seu teste grátis acabou' : 'Veja as oportunidades — 48 horas grátis'}</div>
           <p className="text-[12px] text-ink-2 leading-snug">
             {expired
               ? 'As oportunidades do dia estão bloqueadas. Assine o Futebol pra continuar vendo os picks.'
-              : 'Crie sua conta e libere os picks do dia por 7 dias, sem cartão.'}
+              : 'Crie sua conta e libere os picks do dia por 48 horas, sem cartão.'}
           </p>
         </div>
       </div>

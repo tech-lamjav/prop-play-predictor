@@ -140,7 +140,7 @@ const FutebolLP = () => {
     },
     {
       q: "É grátis pra testar?",
-      a: "São 7 dias de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times — só o pick de valor de cada oportunidade fica bloqueado.",
+      a: "São 48 horas de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times — só o pick de valor de cada oportunidade fica bloqueado.",
     },
     {
       q: "Preciso entender de estatística?",
@@ -208,7 +208,7 @@ const FutebolLP = () => {
               className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
             >
               <PlayCircle className="h-5 w-5 shrink-0" />
-              Criar conta — 7 dias grátis
+              Criar conta — 48 horas grátis
             </button>
             <button
               type="button"
@@ -219,7 +219,7 @@ const FutebolLP = () => {
             </button>
           </div>
           <p className="text-[12px] text-white/55 mt-4">
-            7 dias de Premium, sem cartão · Depois segue free com a análise toda · Sem promessa de lucro, a decisão é sua
+            48 horas de Premium, sem cartão · Depois segue free com a análise toda · Sem promessa de lucro, a decisão é sua
           </p>
         </div>
       </section>
@@ -385,7 +385,7 @@ const FutebolLP = () => {
             Ver as oportunidades de verdade
           </button>
           <p className="text-sm text-ink-3 mt-3">
-            Sem login pra olhar · 7 dias de Premium ao criar a conta
+            Sem login pra olhar · 48 horas de Premium ao criar a conta
           </p>
         </div>
       </section>
@@ -529,7 +529,7 @@ const FutebolLP = () => {
         <div className="border-t border-line py-14 sm:py-20 grid md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-center">
           <div>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-ink leading-tight mb-3">
-              Testa 7 dias grátis.
+              Testa 48 horas grátis.
             </h2>
             <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg">
               Premium completo, sem cartão. Depois segue free com a análise toda —

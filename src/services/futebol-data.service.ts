@@ -419,12 +419,23 @@ export const FUTEBOL_ZONE_LABEL: Record<Exclude<FutebolZone, null>, string> = {
   rebaixamento: 'Rebaixamento',
 };
 
-/** Estado de acesso ao módulo Futebol (reverse trial 7 dias, sem cartão). */
+/** Estado de acesso ao módulo Futebol (reverse trial 48 horas, sem cartão). */
 export type FutebolAccessState = 'anon' | 'trial' | 'expired' | 'subscribed';
 export interface FutebolAccess {
   state: FutebolAccessState;
   unlocked: boolean;
+  /**
+   * Dias arredondados para cima. Continua no contrato porque a coorte que
+   * começou o teste antes do corte de 12/09/2026 tem até 7 dias, e para ela
+   * dia ainda é a unidade que informa.
+   */
   days_left: number | null;
+  /**
+   * Horas arredondadas para cima. É a unidade do teste de 48 horas, e chega
+   * nula de resposta antiga em cache ou de ambiente sem a migration 134 —
+   * `tempo-de-teste.ts` cai para `trial_ends_at` nesse caso.
+   */
+  hours_left: number | null;
   trial_ends_at: string | null;
 }
 
@@ -830,7 +841,7 @@ export const futebolDataService = {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_access');
       if (error) throw error;
-      return (data || { state: 'anon', unlocked: false, days_left: null, trial_ends_at: null }) as FutebolAccess;
+      return (data || { state: 'anon', unlocked: false, days_left: null, hours_left: null, trial_ends_at: null }) as FutebolAccess;
     });
   },
 
