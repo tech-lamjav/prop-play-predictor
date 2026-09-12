@@ -36,7 +36,7 @@ export function useAssinaturas(cadastros: Cadastro[]): EstadoDasAssinaturas {
     queryFn: async (): Promise<AssinaturaDoBanco[]> => {
       const { data, error } = await createClient()
         .from('crm_assinatura_manual')
-        .select('id, user_id, plano, vence_em, criada_em, criada_por')
+        .select('id, user_id, plano, vence_em, valor_mensal, criada_em, criada_por')
         .is('encerrada_em', null)
         .order('vence_em', { ascending: true });
       if (error) throw error;
@@ -56,16 +56,29 @@ export function useAssinaturas(cadastros: Cadastro[]): EstadoDasAssinaturas {
  * Passa por função do banco pelo mesmo motivo do resto: a política do sócio
  * sobre `public.users` é de leitura, e dar `update` a ela abriria a tabela
  * inteira. A função segue a escada cumulativa, que é a mesma que o Stripe usa.
+ *
+ * ⚠️ `venceEm` nulo é VITALÍCIA e `valorMensal` nulo é SEM COBRANÇA. São dois
+ * nulos com significados diferentes, e nenhum dos dois é ausência de resposta:
+ * os dois são escolhas que o sócio faz no formulário.
  */
 export function useDarAssinatura(userId: string | undefined) {
   const fila = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ plano, venceEm }: { plano: PlanoAVender; venceEm: string }) => {
+    mutationFn: async ({
+      plano,
+      venceEm,
+      valorMensal,
+    }: {
+      plano: PlanoAVender;
+      venceEm: string | null;
+      valorMensal: number | null;
+    }) => {
       const { error } = await createClient().rpc('crm_dar_assinatura_manual', {
         p_user_id: userId!,
         p_plano: plano,
         p_vence_em: venceEm,
+        p_valor_mensal: valorMensal,
       });
       if (error) throw error;
     },

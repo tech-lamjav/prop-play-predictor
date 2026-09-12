@@ -311,7 +311,8 @@ export type Database = {
           id: string
           plano: string
           user_id: string
-          vence_em: string
+          valor_mensal: number | null
+          vence_em: string | null
         }
         Insert: {
           criada_em?: string
@@ -321,7 +322,8 @@ export type Database = {
           id?: string
           plano: string
           user_id: string
-          vence_em: string
+          valor_mensal?: number | null
+          vence_em?: string | null
         }
         Update: {
           criada_em?: string
@@ -331,7 +333,8 @@ export type Database = {
           id?: string
           plano?: string
           user_id?: string
-          vence_em?: string
+          valor_mensal?: number | null
+          vence_em?: string | null
         }
         Relationships: [
           {
@@ -1192,7 +1195,12 @@ export type Database = {
         Returns: string | null
       }
       crm_dar_assinatura_manual: {
-        Args: { p_user_id: string; p_plano: string; p_vence_em: string }
+        Args: {
+          p_user_id: string
+          p_plano: string
+          p_vence_em: string | null
+          p_valor_mensal?: number | null
+        }
         Returns: string
       }
       crm_encerrar_assinatura_manual: {

@@ -157,6 +157,35 @@ export function situacaoDaReceita(
   return { tipo: 'devendo', meses: abertos.length, total: abertos.length * valorMensal };
 }
 
+/**
+ * O que o sócio digitou no campo de valor, virando número.
+ *
+ * Três respostas, e não um número com zero para o resto: em branco quer dizer
+ * SEM COBRANÇA, que é uma escolha válida, e um texto que não é número quer
+ * dizer que a tela tem que reclamar em vez de gravar. Devolver zero para os dois
+ * casos gravaria "sem cobrança" para quem digitou "trinta e nove" errado.
+ *
+ * Aceita vírgula e ponto porque as duas são digitadas. Com vírgula presente, ela
+ * é o decimal e o ponto é separador de milhar: é como `1.500,00` é escrito aqui.
+ * Sem vírgula, o ponto é o decimal, porque é o que sai de teclado numérico.
+ */
+export function lerValorDigitado(texto: string): number | null | 'invalido' {
+  const limpo = texto.trim();
+  if (limpo === '') return null;
+
+  const normalizado = limpo.includes(',')
+    ? limpo.replace(/\./g, '').replace(',', '.')
+    : limpo;
+
+  const numero = Number(normalizado.replace(/\s|R\$/g, ''));
+  if (!Number.isFinite(numero) || numero <= 0) return 'invalido';
+
+  // Duas casas, pela mesma razão do `numeric(10, 2)` do banco: um valor com
+  // três casas viraria outro número na gravação, e a tela mostraria um e o
+  // banco guardaria outro.
+  return Math.round(numero * 100) / 100;
+}
+
 /** `2026-09` → `09/2026`. O mês como quem lê escreve. */
 export function formatarMes(mes: string): string {
   const [ano, m] = mes.split('-');

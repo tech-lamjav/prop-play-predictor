@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   emReais,
   formatarMes,
+  lerValorDigitado,
   mesesEmAberto,
   montarPagamentos,
   receitaRecebida,
@@ -164,6 +165,54 @@ describe('situacaoDaReceita', () => {
   });
 });
 
+describe('lerValorDigitado', () => {
+  it('vírgula é o decimal, que é como se digita aqui', () => {
+    expect(lerValorDigitado('39,90')).toBe(39.9);
+  });
+
+  it('ponto também, que é o que sai de teclado numérico', () => {
+    expect(lerValorDigitado('39.90')).toBe(39.9);
+  });
+
+  it('com vírgula presente, o ponto é separador de milhar', () => {
+    // "1.500,00" é mil e quinhentos, e "1.500" sozinho é mil e quinhentos
+    // também para quem digitou. A regra segue a vírgula: ela é quem decide.
+    expect(lerValorDigitado('1.500,00')).toBe(1500);
+  });
+
+  it('em branco é nulo, que quer dizer sem cobrança', () => {
+    // Nulo é uma escolha, e não ausência de resposta: existe assinatura dada
+    // sem valor combinado, e ela não tem o que cobrar.
+    expect(lerValorDigitado('')).toBeNull();
+    expect(lerValorDigitado('   ')).toBeNull();
+  });
+
+  it('texto que não é número é inválido, e NÃO nulo', () => {
+    // ⚠️ O erro que este retorno existe para impedir: devolver nulo aqui
+    // gravaria "sem cobrança" para quem digitou o preço errado, e essa pessoa
+    // nunca mais apareceria numa fila de cobrança.
+    expect(lerValorDigitado('trinta e nove')).toBe('invalido');
+    expect(lerValorDigitado('39,90,10')).toBe('invalido');
+  });
+
+  it('zero e negativo são inválidos', () => {
+    // Zero não é sem cobrança: seria receita de R$ 0,00 somada num total, e
+    // meses em aberto de valor nenhum numa fila de inadimplente.
+    expect(lerValorDigitado('0')).toBe('invalido');
+    expect(lerValorDigitado('-39,90')).toBe('invalido');
+  });
+
+  it('arredonda para duas casas, como o banco', () => {
+    // `numeric(10, 2)` guardaria outro número, e a tela mostraria um valor e o
+    // banco outro.
+    expect(lerValorDigitado('39,999')).toBe(40);
+  });
+
+  it('aguenta o R$ colado, que é como se copia de um recado', () => {
+    expect(lerValorDigitado('R$ 39,90')).toBe(39.9);
+  });
+});
+
 describe('como os números aparecem', () => {
   it('o mês em português', () => {
     expect(formatarMes('2026-09')).toBe('09/2026');
@@ -172,7 +221,7 @@ describe('como os números aparecem', () => {
   it('o valor em reais, com centavos', () => {
     // Centavo faltando num número de dinheiro é o tipo de coisa que faz o
     // sócio desconfiar de todos os outros.
-    expect(emReais(39.9).replace(/ /g, ' ')).toBe('R$ 39,90');
-    expect(emReais(0).replace(/ /g, ' ')).toBe('R$ 0,00');
+    expect(emReais(39.9).replace(/\u00a0/g, ' ')).toBe('R$ 39,90');
+    expect(emReais(0).replace(/\u00a0/g, ' ')).toBe('R$ 0,00');
   });
 });

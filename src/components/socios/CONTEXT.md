@@ -114,12 +114,30 @@ porque o terceiro é o que decide se dar outro faz sentido.
 _Avoid_: Trial, free trial, degustação, período de teste
 
 **Assinatura manual**:
-Um plano inteiro concedido por um sócio, fora do Stripe, com prazo. Segue a
-escada cumulativa: Entrada é o Betinho, Essencial é futebol mais Betinho,
-Completo é os três. É coisa diferente de um acesso avulso, que liga UM produto
-sem plano nem prazo. Toda concessão vira linha em `crm_assinatura_manual`, e é
-dessa tabela que sai a fila de cobrança.
+Um plano inteiro concedido por um sócio, fora do Stripe. Segue a escada
+cumulativa: Entrada é o Betinho, Essencial é futebol mais Betinho, Completo é os
+três. É coisa diferente de um acesso avulso, que liga UM produto sem plano nem
+prazo. Toda concessão vira linha em `crm_assinatura_manual`, e é dessa tabela que
+sai a fila de cobrança.
+
+Combina duas coisas INDEPENDENTES: até quando vale e quanto custa por mês. As
+quatro combinações existem, e é por isso que são duas perguntas na tela e duas
+colunas no banco — não um campo "tipo" com quatro opções, que esconderia que são
+duas decisões.
 _Avoid_: Cortesia paga, plano de teste, assinatura interna
+
+**Vitalícia**:
+Assinatura manual que não vence. Sócio, parceiro, quem ajudou a construir a
+coisa. No banco é `vence_em` nulo, e nulo é a resposta certa: a alternativa era
+digitar uma data de 2099, um número falso que o resto do sistema trataria como
+verdade e que um dia chegaria.
+
+Não entra na fila de vencimento, porque não tem o que vencer. ⚠️ Pode ter
+cobrança mensal: quem é vitalício e paga todo mês fica devendo como qualquer
+outro, só não perde o acesso por atraso. Vitalícia e sem cobrança são coisas
+diferentes, e confundir as duas faz um cliente pagante desaparecer da conta de
+receita.
+_Avoid_: Permanente, eterna, para sempre, ilimitada, lifetime
 
 **Fila de cobrança**:
 Quem tem assinatura manual vencendo nos próximos sete dias, ou já vencida, na
@@ -190,4 +208,9 @@ _Avoid_: Pendência, atraso, débito, inadimplência (essa é a situação, não
 Assinatura manual sem valor mensal combinado. Não é inadimplência e não entra em
 nenhuma fila: quem não combinou pagar não deve nada. É o estado das assinaturas
 que existiam antes de o valor existir.
+
+⚠️ Não é o mesmo que vitalícia. Sem cobrança responde "quanto custa"; vitalícia
+responde "até quando vale". Zero também não é sem cobrança: sem cobrança é nulo,
+e um zero gravado viraria receita de R$ 0,00 num total e dívida de nada numa
+fila.
 _Avoid_: Cortesia, grátis, brinde, interna

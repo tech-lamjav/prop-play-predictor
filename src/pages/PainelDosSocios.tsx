@@ -174,11 +174,14 @@ function FichaDoModal({ id }: { id: string }) {
                     id: assinaturaAberta.id,
                     plano: assinaturaAberta.plano,
                     venceEm: assinaturaAberta.venceEm,
+                    valorMensal: assinaturaAberta.valorMensal,
                   }
                 : null
             }
             estado={concessao}
-            aoConceder={(plano, venceEm) => darAssinatura.mutate({ plano, venceEm })}
+            aoConceder={(plano, venceEm, valorMensal) =>
+              darAssinatura.mutate({ plano, venceEm, valorMensal })
+            }
             aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
           />
         ) : null

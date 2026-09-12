@@ -39,6 +39,11 @@ describe('a tabela', () => {
   it('guarda o plano e a data de fim', () => {
     // Sem os dois não há cobrança possível: a tela nova existe para dizer
     // "fulano está no Essencial e vence sexta".
+    //
+    // ⚠️ A 137 solta o `not null` do `vence_em` para caber VITALÍCIA, e este
+    // guarda continua verde porque lê o arquivo da 131, que é história. Quem
+    // for mexer nisto olha `crm-assinatura-vitalicia-migration.test.ts`, que
+    // guarda o estado vigente.
     expect(MIGRATION).toMatch(/plano text not null/);
     expect(MIGRATION).toMatch(/vence_em date not null/);
   });
@@ -140,10 +145,21 @@ describe('a escada de planos não pode divergir do Stripe', () => {
    * escrita duas vezes por necessidade — exatamente o caso que este guarda
    * existe para vigiar. Se as duas divergirem, um assinante manual do Essencial
    * ganha um acesso a menos que um assinante pagante do mesmo plano.
+   *
+   * ⚠️ Lê a versão VIGENTE da função, que é a da 137, e não a da 131 guardada
+   * acima. A 137 recria a função com um parâmetro novo, então é ela que está no
+   * banco: um guarda apontado para a 131 aqui vigiaria código morto, e a
+   * divergência que ele existe para pegar passaria batida.
    */
   const CONCESSOES = readFileSync(
     resolve(__dirname, '../../../supabase/functions/shared/concessoes.ts'),
     'utf8',
+  );
+
+  const DAR_VIGENTE = comando(
+    lerMigration('20260915140000_137_crm_assinatura_vitalicia.sql'),
+    /create or replace function public\.crm_dar_assinatura_manual/,
+    '$function$;',
   );
 
   /** As colunas que `concessoes.ts` dá a um plano. */
@@ -155,7 +171,7 @@ describe('a escada de planos não pode divergir do Stripe', () => {
 
   /** As colunas que o ramo do plano na migration escreve. */
   function naMigration(plano: string): string[] {
-    const ramo = DAR?.slice(DAR.indexOf(`p_plano = '${plano}'`)) ?? '';
+    const ramo = DAR_VIGENTE?.slice(DAR_VIGENTE.indexOf(`p_plano = '${plano}'`)) ?? '';
     const ate = ramo.indexOf('where id = p_user_id');
     return [...ramo.slice(0, ate).matchAll(/([a-z_]+_subscription_status)/g)]
       .map((m) => m[1])

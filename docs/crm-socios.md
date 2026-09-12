@@ -295,8 +295,33 @@ que manda para o produto; esta tabela é o que manda para a cobrança. Uma pesso
 não tem duas abertas, e o índice único parcial garante isso: com duas, a fila
 mostraria a mesma pessoa duas vezes com datas diferentes.
 
-**A data é obrigatória**, e é o ponto de tudo. Uma cortesia sem data nunca é
-cobrada, porque ninguém sabe quando ela deveria acabar.
+**A concessão combina duas coisas independentes**: até quando vale e quanto
+custa por mês. Parecem uma pergunta e são duas, e as quatro combinações existem
+na prática — venda normal (data e valor), vitalícia que paga por mês, acesso
+dado por um tempo sem cobrança, acesso para sempre de graça. São duas colunas e
+duas perguntas na tela, e não um campo "tipo" com quatro opções que esconderia
+que são duas decisões.
+
+**Vitalícia é `vence_em` nulo**, e nulo é a resposta certa. A alternativa era
+digitar uma data de 2099: um número falso que o resto do sistema trataria como
+verdade, ordenando a fila por ele, e que um dia chegaria. Quem não tem data não
+entra na fila de vencimento, porque não tem o que vencer.
+
+⚠️ **Vitalícia e sem cobrança são coisas diferentes.** `vence_em` nulo é
+vitalícia; `valor_mensal` nulo é sem cobrança. Quem é vitalício e paga todo mês
+fica devendo como qualquer outro, só não perde o acesso por atraso. Confundir as
+duas faz um cliente pagante desaparecer da conta de receita.
+
+**Zero não é sem cobrança.** Sem cobrança é nulo. Um zero gravado viraria
+receita de R$ 0,00 somada num total, e meses em aberto de valor nenhum numa fila
+de inadimplente — por isso a função recusa valor menor ou igual a zero, e aceita
+nulo.
+
+**Quem não paga não perde o acesso sozinho.** Deixando de pagar, `vence_em` para
+de andar para frente e um dia fica no passado; a tela mostra isso e o sócio
+decide encerrar. Não existe cron cortando acesso: cortar o de um cliente por
+engano custa mais caro que deixá-lo um mês a mais, e corte automático erra em
+silêncio.
 
 **A escada é cumulativa**, a mesma do Stripe: Entrada é o Betinho, Essencial é
 futebol mais Betinho, Completo é os três. Ela está escrita duas vezes por
@@ -313,8 +338,8 @@ análises que tinham vindo de outro lugar. Corrigido na migration 132.
 
 **Encerrar é marcar, e não apagar.** O histórico é o que responde "quantas a
 gente deu este mês" e "esta pessoa já teve uma antes". E quem passou a pagar de
-verdade no meio do caminho mantém o acesso: encerrar a cortesia não pode
-derrubar uma assinatura do Stripe, que é outra coisa.
+verdade no meio do caminho mantém o acesso: encerrar a assinatura dada na mão
+não pode derrubar uma do Stripe, que é outra coisa.
 
 **A mensagem de cobrança já vem escrita**, aberta na tela e não atrás de um
 botão: o trabalho é copiar e colar num WhatsApp, e cada clique a mais entre ver

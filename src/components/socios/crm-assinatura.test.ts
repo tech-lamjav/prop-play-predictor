@@ -14,6 +14,7 @@ const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
   user_id: 'u1',
   plano: 'essencial',
   vence_em: '2026-09-20',
+  valor_mensal: '39.90',
   criada_em: '2026-09-01T12:00:00Z',
   criada_por: 's1',
   ...over,
@@ -28,6 +29,24 @@ describe('montarAssinaturas', () => {
     expect(a.whatsapp).toBe('5511998877665');
     expect(a.plano).toBe('essencial');
     expect(a.venceEm).toBe('2026-09-20');
+  });
+
+  it('o valor vira número, mesmo vindo como texto do banco', () => {
+    // `numeric` chega como string no PostgREST. Somar string concatena, e o
+    // total da receita apareceria como "39.9039.90".
+    expect(montarAssinaturas([linha({ valor_mensal: '39.90' })], base)[0].valorMensal).toBe(39.9);
+  });
+
+  it('valor nulo continua nulo, e não vira zero', () => {
+    // Nulo é SEM COBRANÇA, que é uma escolha. Zero seria uma cobrança de R$
+    // 0,00, e ela entraria na conta de meses em aberto como dívida de nada.
+    expect(montarAssinaturas([linha({ valor_mensal: null })], base)[0].valorMensal).toBeNull();
+  });
+
+  it('data nula é vitalícia, e chega nula', () => {
+    // Nulo, e não uma data de 2099: uma data inventada o resto do sistema
+    // trataria como verdade, ordenando a fila por ela e um dia chegando nela.
+    expect(montarAssinaturas([linha({ vence_em: null })], base)[0].venceEm).toBeNull();
   });
 
   it('sem nome, a linha se identifica pelo e-mail', () => {
@@ -113,5 +132,25 @@ describe('aCobrar', () => {
   it('a janela dá para abrir', () => {
     expect(aCobrar(fila('2026-10-10'), HOJE)).toHaveLength(0);
     expect(aCobrar(fila('2026-10-10'), HOJE, 60)).toHaveLength(1);
+  });
+
+  it('vitalícia nunca entra na fila, nem com a janela escancarada', () => {
+    // Não é esquecimento: esta fila é a de VENCIMENTO, e quem não vence não tem
+    // o que vencer. Quem é vitalício e paga por mês pode ficar devendo, e essa
+    // cobrança sai dos meses em aberto, que é outra fila.
+    const vitalicia = montarAssinaturas([linha({ vence_em: null })], base);
+    expect(aCobrar(vitalicia, HOJE)).toHaveLength(0);
+    expect(aCobrar(vitalicia, HOJE, 3650)).toHaveLength(0);
+  });
+
+  it('vitalícia fica no fim da lista, e não na frente de quem vence amanhã', () => {
+    const ordem = montarAssinaturas(
+      [
+        linha({ id: 'a1', user_id: 'u1', vence_em: null }),
+        linha({ id: 'a2', user_id: 'u2', vence_em: '2026-09-13' }),
+      ],
+      [cadastro({ id: 'u1', name: 'Vitalicia' }), cadastro({ id: 'u2', name: 'Vence amanha' })],
+    );
+    expect(ordem.map((a) => a.pessoa)).toEqual(['Vence amanha', 'Vitalicia']);
   });
 });

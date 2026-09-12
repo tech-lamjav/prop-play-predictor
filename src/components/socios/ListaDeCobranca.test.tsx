@@ -13,6 +13,7 @@ const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
   user_id: 'u1',
   plano: 'essencial',
   vence_em: '2026-09-20',
+  valor_mensal: '39.90',
   criada_em: '2026-09-01T12:00:00Z',
   criada_por: 's1',
   ...over,
@@ -46,6 +47,35 @@ describe('ListaDeCobranca', () => {
   it('quem já venceu fala no passado', () => {
     montar(pronto([linha({ vence_em: '2026-09-05' })]));
     expect(screen.getByText(/venceu faz 7 dias/)).toBeInTheDocument();
+  });
+
+  it('diz quanto a pessoa paga por mês', () => {
+    // A fila é lida antes de ligar para alguém, e "quanto ele paga" é metade da
+    // conversa. Sem isso o sócio abre a ficha só para ver o número.
+    montar(pronto([linha()]));
+    expect(screen.getByText(/R\$ 39,90 por mês/)).toBeInTheDocument();
+  });
+
+  it('sem valor combinado, diz sem cobrança em vez de R$ 0,00', () => {
+    montar(pronto([linha({ valor_mensal: null })]));
+    expect(screen.getByText(/sem cobrança/i)).toBeInTheDocument();
+  });
+
+  it('a vitalícia diz que não vence, e não mostra data nenhuma', () => {
+    // Ela só aparece no recorte "Todas", porque a fila a cobrar a exclui. Mas
+    // aparece, e uma data vazia ali leria como dado faltando.
+    montar(pronto([linha({ vence_em: null })]));
+    expect(screen.getByText(/não vence/)).toBeInTheDocument();
+    expect(screen.getByText(/Essencial na mão, vitalícia/)).toBeInTheDocument();
+  });
+
+  it('a vitalícia não vem com mensagem de cobrança', () => {
+    // ⚠️ Toda mensagem de cobrança fala de uma data que está chegando, e para
+    // quem não tem data nenhuma dessas frases é verdade. Uma mensagem dizendo
+    // "seu acesso vai até " com o final vazio é o que o sócio colaria no
+    // WhatsApp do cliente.
+    montar(pronto([linha({ vence_em: null })]));
+    expect(screen.queryByRole('button', { name: /Copiar/i })).not.toBeInTheDocument();
   });
 
   it('quem vence hoje tem frase própria', () => {
