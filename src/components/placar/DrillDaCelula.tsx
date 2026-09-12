@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { resultBadge } from '@/utils/futebol-settlement';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
+import { margemEmPalavras, placarFinal } from './placar-margem';
 import { ordenadoPeloEstrago, type CelulaDaMatriz } from './placar-matriz';
 import { rotuloDoMercado } from './placar-vocabulario';
 import { brtDayOf } from '@/utils/futebol-datas';
@@ -58,6 +59,7 @@ export function DrillDaCelula({
                     <th className="px-3 py-2 font-bold">Saída</th>
                     <th className="px-3 py-2 text-right font-bold">Odd</th>
                     <th className="px-3 py-2 text-right font-bold">Score</th>
+                    <th className="px-3 py-2 font-bold">Placar</th>
                     <th className="px-3 py-2 font-bold">Resultado</th>
                     <th className="px-5 py-2 text-right font-bold">Lucro</th>
                   </tr>
@@ -86,16 +88,38 @@ export function DrillDaCelula({
                         <td className="px-3 py-2.5 text-right text-[13px] tabular-nums text-ink-2">
                           {l.linha.score}
                         </td>
+                        {/* O placar e a distância até a linha: sem eles, "Red"
+                            não diz se faltou um gol ou quatro — e essa é a
+                            diferença entre azar e leitura errada do jogo. */}
+                        <td className="px-3 py-2.5 text-[13px] text-ink">
+                          <span className="font-bold tabular-nums">
+                            {placarFinal(l.linha) ?? '—'}
+                          </span>
+                          {margemEmPalavras(l.linha) && (
+                            <span className="ml-1 text-[11px] text-ink-dim">
+                              {margemEmPalavras(l.linha)}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-3 py-2.5 text-[12px] font-bold text-ink-2">
                           {selo?.label ?? '—'}
                         </td>
+                        {/* O lucro EFETIVO: o de uma unidade multiplicado pelo
+                            tamanho que a simulação deu àquela faixa. Mostrar o
+                            de uma unidade faria a coluna não fechar com o ROI da
+                            célula quando a simulação está ligada. */}
                         <td
                           className={`px-5 py-2.5 text-right text-[13px] font-bold tabular-nums ${
                             l.lucro > 0 ? 'text-forest' : l.lucro < 0 ? 'text-red-600' : 'text-ink-2'
                           }`}
                         >
-                          {l.lucro > 0 ? '+' : ''}
-                          {l.lucro.toFixed(2).replace('.', ',')}u
+                          {l.lucro * l.unidades > 0 ? '+' : ''}
+                          {(l.lucro * l.unidades).toFixed(2).replace('.', ',')}u
+                          {l.unidades !== 1 && (
+                            <span className="ml-1 block text-[10px] font-normal text-ink-dim">
+                              {String(l.unidades).replace('.', ',')}u apostada
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -105,7 +129,8 @@ export function DrillDaCelula({
             </div>
 
             <p className="border-t border-line-2 px-5 py-3 text-[12px] text-ink-dim">
-              Do pior para o melhor. O lucro é em unidades, com uma unidade por oportunidade.
+              Do pior para o melhor. O placar é do jogo, e a distância é até a linha da aposta —
+              nos mercados que têm linha. O lucro é em unidades apostadas.
             </p>
           </>
         )}

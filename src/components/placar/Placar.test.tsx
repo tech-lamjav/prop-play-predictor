@@ -414,3 +414,37 @@ describe('a matriz das quebras', () => {
     expect(tabela).not.toHaveTextContent(/clique para ver o que está dentro/i);
   });
 });
+
+describe('o drill mostra o placar e a distância até a linha', () => {
+  const abrirPrimeiraCelula = async (publicadas: LinhaPublicada[]) => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    render(<Placar {...BASE} publicadas={publicadas} />);
+    const tabela = screen.getByText('Por mercado').closest('section');
+    await userEvent.click(tabela?.querySelector('tbody tr td:nth-child(2)') as Element);
+    return screen.findByRole('dialog');
+  };
+
+  it('em Gols, diz o placar e quanto faltou para bater', async () => {
+    // 2–1 são três gols numa linha de Over 3,5: faltou meio gol. Sem isso, "Red"
+    // não distingue azar de leitura errada.
+    const dialogo = await abrirPrimeiraCelula([
+      linha({
+        market: 'goals_over_under',
+        outcome: 'Over',
+        line_value: 3.5,
+        goals_home: 2,
+        goals_away: 1,
+      }),
+    ]);
+    expect(dialogo).toHaveTextContent('2–1');
+    expect(dialogo).toHaveTextContent('faltou 0,5');
+  });
+
+  it('e em mercado sem linha mostra o placar, sem inventar margem', async () => {
+    const dialogo = await abrirPrimeiraCelula([
+      linha({ market: 'match_winner', outcome: 'Home', line_value: null, goals_home: 3, goals_away: 0 }),
+    ]);
+    expect(dialogo).toHaveTextContent('3–0');
+    expect(dialogo).not.toHaveTextContent(/faltou|sobrou/);
+  });
+});

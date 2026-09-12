@@ -72,6 +72,36 @@ export function settleFutebol(
   }
 }
 
+/**
+ * Quanto a aposta ficou À FRENTE da linha, em gols. Negativo é o quanto faltou.
+ *
+ * É o `d` que a liquidação já calcula, exposto: sem ele, "red" não diz se faltou
+ * um gol ou quatro, e essa diferença é o que separa metodologia ruim de azar. O
+ * placar dos sócios mostra isso ao lado do resultado.
+ *
+ * Vive AQUI, junto de `settleFutebol`, e não no painel, porque é a mesma
+ * expressão do saldo — duas cópias dela divergiriam no dia em que a convenção da
+ * linha mudasse.
+ *
+ * `null` nos mercados sem linha: em Resultado, Ambos marcam e Dupla chance não
+ * existe "perto de bater", o placar já é a resposta inteira.
+ */
+export function margemDaSaida(
+  s: Saida,
+  goalsHome: number | null | undefined,
+  goalsAway: number | null | undefined,
+): number | null {
+  const { market, outcome, line_value: line } = s;
+  if (goalsHome == null || goalsAway == null || line == null) return null;
+
+  const diff = goalsHome - goalsAway; // ótica do mandante
+  const total = goalsHome + goalsAway;
+
+  if (market === 'goals_over_under') return outcome === 'Over' ? total - line : line - total;
+  if (market === 'asian_handicap') return outcome === 'Home' ? diff + line : -diff - line;
+  return null;
+}
+
 /** Rótulo + tom pro selo de resultado. */
 export function resultBadge(r: BetResult): { label: string; tone: 'won' | 'lost' | 'push' } {
   switch (r) {
