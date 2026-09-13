@@ -3,7 +3,9 @@
 > **Status:** medição concluída em 2026-09-13 · **Branch:** `analise/futebol-handicap`
 > **Escopo:** mais e menos de escanteios no jogo inteiro. Não cobre handicap de
 > escanteio (56), escanteios por time (57 e 58) nem primeiro tempo (77).
-> **Amostra:** 406 jogos com odd e histórico completo, de 16/06/2026 a 12/09/2026.
+> **Amostra:** 406 jogos com odd e histórico completo, até 12/09/2026.
+> **Reprodução:** `SUPABASE_ACCESS_TOKEN=... node scripts/futebol-escanteios-total.mjs`
+> (lê dado vivo, então os números crescem com a base — ver seção 9)
 
 ---
 
@@ -140,7 +142,7 @@ O catálogo é **diferente por lado**. Só três premissas servem nos dois:
 
 | premissa | lado Mais | lado Menos | por quê |
 |---|---:|---:|---|
-| `escanteio_previsto` | −2,76 | −0,16 | a premissa mais óbvia do mercado não funciona em nenhum dos dois lados |
+| `escanteio_previsto` | −2,76 | −0,16 | não funcionava em nenhum dos dois lados nesta amostra, mas **vira positiva no Menos com 29 jogos a mais** — é a mais instável do catálogo, ver seção 9 |
 | `chance_de_gol` | −2,88 | −2,18 | redundante com volume de finalização e pior que ele |
 | `visitante_que_cede` | −1,42 | −6,34 | histórico recente por mando não sustenta |
 | `mata_mata` | −3,74 | −2,89 | ver seção 9, não foi possível testar direito |
@@ -169,6 +171,14 @@ seleção num caso análogo. Peso proporcional a ele é peso proporcional ao ru�
 
 A regra é grossa de propósito: **três níveis pelo tamanho do ganho, multiplicados
 por três se a premissa ganha nas duas metades do período.**
+
+> **As tabelas de peso abaixo são um retrato de 12/09/2026, não uma constante.**
+> Rodando o script de reprodução um dia depois, com 435 jogos em vez de 406, os
+> pesos se mexeram bastante — `finalizacao_de_fora` foi de 1 para 6 no Mais,
+> `volume_de_finalizacao` caiu de 9 para 3 no Menos, os tetos foram de 38 e 48
+> para 41 e 45. O que vai para produção é **a regra**, e o peso precisa ser
+> recalculado com a janela mais longa disponível no dia da implementação.
+> A seção 9 tem o tamanho do problema.
 
 | | ganho grande | ganho médio | ganho pequeno |
 |---|---:|---:|---:|
@@ -353,8 +363,30 @@ período, então `must_win` colapsou em `mata_mata`, com 56 jogos, e deu negativ
 dois lados. A premissa fica no catálogo **sem peso**, esperando dado. Refazer a
 medição quando houver pelo menos uma reta final completa.
 
-**O tamanho da amostra.** 406 jogos em dois meses. A faixa Alta do lado Menos tem
-53 jogos fora da amostra. Tudo aqui é direcional.
+**O tamanho da amostra, e o quanto isso dói.** 406 jogos em dois meses. Isso não é
+uma ressalva de rodapé: rodando o script de reprodução com **29 jogos a mais**
+(7% da amostra), um dia depois, mudou o seguinte:
+
+| | 406 jogos | 435 jogos |
+|---|---:|---:|
+| porta score ≥ 30 e odd ≤ 2,20, fora da amostra | +3,28% | +10,64% |
+| teto do lado Mais | 38 | 41 |
+| teto do lado Menos | 48 | 45 |
+| `finalizacao_de_fora` no Mais | peso 1 | peso 6 |
+| `volume_de_finalizacao` no Menos | peso 9 | peso 3 |
+| `escanteio_previsto` no Menos | não ajuda | resiste |
+
+O que **não** se mexeu: os cortes da seção 3 (são idênticos, porque saem de 6 mil
+jogos e não de 400); as premissas fortes dos dois lados; `previsao_x_linha`
+continuar perdendo 11 pontos no Mais; `chance_de_gol`, `visitante_que_cede` e
+`mata_mata` continuarem não ajudando; a faixa Baixa continuar em torno de −13%;
+e odd acima de 2,20 continuar em torno de −32%.
+
+A leitura: **o catálogo e os cortes são sólidos, os pesos e o nível de ROI não
+são.** Quem implementar não deve copiar a tabela de pesos deste documento — deve
+rodar a regra da seção 4 contra a janela mais longa disponível. E a diferença
+entre +3,28% e +10,64% na mesma porta é o tamanho real da barra de erro aqui,
+maior que os erros padrão da seção 8 sugerem.
 
 **Seleção residual.** As 9 premissas de cada lado foram escolhidas olhando a
 amostra inteira, então mesmo o teste fora da amostra carrega um resto de viés.
@@ -390,6 +422,11 @@ o que mais faria sentido para escanteio, não é implementável hoje.
 6. **Fora da amostra.** Antes de reescrever qualquer peso desta tabela a partir de
    ganho medido, a ADR 0001 exige controle fora da amostra. Peso reescrito com
    ganho medido dentro da amostra não vale.
+7. **Peso recalculado, não copiado.** Rodar a regra da seção 4 contra a janela
+   mais longa disponível no dia, e comparar com a tabela deste documento. Se um
+   peso mudar de nível, é a amostra falando — vale investigar antes de ligar.
+8. **Recalcular todo mês.** Enquanto a amostra estiver abaixo de mil jogos por
+   lado, o peso é provisório por definição.
 
 ---
 
