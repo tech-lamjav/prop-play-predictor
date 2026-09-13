@@ -8,7 +8,6 @@ import {
   avisosDoPeriodo,
   filtrarPeloEixo,
   periodoPadrao,
-  recorteDaSerieComparavel,
   rotuloDoPeriodo,
   type Eixo,
   type Periodo,
@@ -70,9 +69,8 @@ export default function PlacarDaMetodologia() {
    */
   const recortar = (linhas: LinhaPublicada[], janela: Periodo) => {
     const noEixo = aplicarRecorte(filtrarPeloEixo(linhas, eixo, janela), recorte);
-    const { linhas: naEscala, foraDaEscala } = recorteDaSerieComparavel(noEixo, janela);
-    const publicadas = soVitrine ? soAVitrine(naEscala, vitrine) : naEscala;
-    return { publicadas, foraDaEscala, foraDaVitrine: naEscala.length - publicadas.length };
+    const publicadas = soVitrine ? soAVitrine(noEixo, vitrine) : noEixo;
+    return { publicadas, foraDaVitrine: noEixo.length - publicadas.length };
   };
 
   const estado = useOportunidadesPublicadas(periodo.de, periodo.ate);
@@ -133,7 +131,6 @@ export default function PlacarDaMetodologia() {
             avisos={avisosDoPeriodo(periodo, eixo)}
             ocultos={vitrine}
             foraDaVitrine={a.foraDaVitrine}
-            foraDaEscala={a.foraDaEscala}
             comparacao={
               periodoB
                 ? {

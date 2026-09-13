@@ -49,7 +49,6 @@ export function Placar({
   avisos = [],
   ocultos = [],
   foraDaVitrine = 0,
-  foraDaEscala = 0,
   periodo,
   eixo,
   granularidade,
@@ -68,15 +67,6 @@ export function Placar({
    * delas está lendo.
    */
   foraDaVitrine?: number;
-  /**
-   * Quantas oportunidades saíram por estarem na escala antiga do Score.
-   *
-   * Acontece no primeiro dia da série comparável: a virada do denominador entrou
-   * às 14h35 UTC de 04/09, e as linhas da madrugada daquele dia têm nota na
-   * régua velha. Elas saem para a série continuar comparável, e o número é dito
-   * porque um recorte silencioso é o mesmo defeito de um denominador escondido.
-   */
-  foraDaEscala?: number;
   /**
    * O que o período escolhido exige dizer antes de o sócio ler a tabela.
    *
@@ -223,16 +213,6 @@ export function Placar({
             ? 'uma oportunidade ficou de fora'
             : `${foraDaVitrine} oportunidades ficaram de fora`}{' '}
           porque o assinante não as viu. Esta é a leitura do produto; a do board inteiro é a outra.
-        </p>
-      )}
-
-      {foraDaEscala > 0 && (
-        <p className="mb-6 text-[13px] text-ink-2">
-          {foraDaEscala === 1
-            ? 'Uma oportunidade ficou de fora'
-            : `${foraDaEscala} oportunidades ficaram de fora`}{' '}
-          por terem nascido antes das 14h35 UTC de 04/09, com a nota na escala antiga do Score.
-          Mantê-las faria a série comparável misturar duas réguas.
         </p>
       )}
 

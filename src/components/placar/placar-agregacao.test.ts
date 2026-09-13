@@ -7,6 +7,9 @@ import {
   liquidarTudo,
   PESO_MEDIDO,
   ehSimulacao,
+  naEscalaAntiga,
+  faixaDaLinha,
+  FAIXA_ESCALA_ANTIGA,
   quebrar,
   quebrarNaOrdem,
   totalDoPeriodo,
@@ -323,5 +326,44 @@ describe('o peso por faixa de Score', () => {
     expect(t.n).toBe(1);
     expect(t.pendentes).toBe(1);
     expect(t.foraDaSimulacao).toBe(1);
+  });
+});
+
+describe('a régua velha do Score', () => {
+  // A virada do denominador entrou às 14h35 UTC de 04/09. Linha nascida antes
+  // tem nota em outra escala — e a primeira versão desta tela JOGAVA FORA todas
+  // elas, em nome da série comparável. No período padrão isso era 930 de 1.919
+  // apostas liquidadas, quase metade da amostra, e 121 das 174 de nota alta.
+  const velha = { detectada_em: '2026-09-04T03:00:00' };
+  const nova = { detectada_em: '2026-09-04T18:00:00' };
+
+  it('reconhece de que lado da virada a linha nasceu', () => {
+    expect(naEscalaAntiga(linha(velha))).toBe(true);
+    expect(naEscalaAntiga(linha(nova))).toBe(false);
+  });
+
+  it('a linha velha tem faixa própria, e não entra na faixa da nota', () => {
+    expect(faixaDaLinha(linha({ ...velha, score: 85 }))).toBe(FAIXA_ESCALA_ANTIGA);
+    expect(faixaDaLinha(linha({ ...nova, score: 85 }))).toBe('Alta (80+)');
+  });
+
+  it('e ela CONTA: some da tabela de faixa, não da amostra', () => {
+    // O ROI por mercado, por campeonato e por premissa não dependem da escala da
+    // nota. Descartar a linha inteira por causa da faixa era jogar fora medição
+    // boa.
+    const { liquidadas } = liquidarTudo([green(2, { ...velha, score: 85 }), green(2, nova)]);
+    expect(liquidadas).toHaveLength(2);
+    expect(celulaDe('tudo', liquidadas).n).toBe(2);
+  });
+
+  it('o peso da régua velha é próprio, e nasce em uma unidade', () => {
+    // Simular "não apostar na Baixa" não pode decidir calado o que fazer com uma
+    // nota que não é comparável com a Baixa.
+    expect(PESO_MEDIDO[FAIXA_ESCALA_ANTIGA]).toBe(1);
+    const { liquidadas } = liquidarTudo([green(2, { ...velha, score: 20 })], {
+      ...PESO_MEDIDO,
+      'Baixa (<30)': 0,
+    });
+    expect(liquidadas).toHaveLength(1);
   });
 });

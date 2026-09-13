@@ -1,4 +1,6 @@
+import { parseUtc } from '@/utils/futebol-datas';
 import { isHit, settleFutebol, type BetResult } from '@/utils/futebol-settlement';
+import { INSTANTE_DA_VIRADA } from './placar-vocabulario';
 
 // ============================================================================
 // placar-agregacao.ts — a aritmética do placar da metodologia
@@ -87,29 +89,6 @@ export type LinhaLiquidada = {
   unidades: number;
 };
 
-/**
- * Quanto apostar em cada faixa de Score.
- *
- * O padrão é uma unidade em tudo, e esse é o número MEDIDO — o que de fato
- * aconteceria apostando igual em toda oportunidade publicada. Mexer aqui vira
- * SIMULAÇÃO, e a tela tem de dizer isso: a decisão da spec foi unidade fixa
- * justamente porque tamanho variável de aposta mistura "a metodologia acerta?" com "o
- * critério de tamanho é bom?".
- *
- * Peso zero não é aposta de zero unidade: é não apostar. A linha sai da conta
- * inteira, denominador incluído, e é contada à parte.
- */
-export type PesoPorFaixa = Record<string, number>;
-
-export const PESO_MEDIDO: PesoPorFaixa = {
-  'Baixa (<30)': 1,
-  'Média (30–59)': 1,
-  'Alta (60–79)': 1,
-  'Alta (80+)': 1,
-};
-
-export const ehSimulacao = (pesos: PesoPorFaixa) =>
-  Object.values(pesos).some((p) => p !== 1);
 
 /** O lucro de uma aposta de UMA unidade. Espelha `lucroDaAposta` do script. */
 export function lucroDaAposta(veredito: BetResult, odd: number): number {
@@ -162,7 +141,7 @@ export function liquidarTudo(
       continue;
     }
 
-    const unidades = pesos[faixaDoScore(linha.score)] ?? 1;
+    const unidades = pesos[faixaDaLinha(linha)] ?? 1;
     if (unidades <= 0) {
       foraDaSimulacao.push(linha);
       continue;
@@ -327,6 +306,65 @@ export function faixaDoScore(score: number): FaixaDoScore {
 export const FAIXAS_DE_ODD = ['1.25–1.59', '1.60–1.99', '2.00–2.59', '2.60–4.00'] as const;
 
 export type FaixaDeOdd = (typeof FAIXAS_DE_ODD)[number];
+
+/**
+ * A faixa das linhas cuja nota está na régua velha.
+ *
+ * ⚠️ Elas NÃO saem da conta, e essa foi a correção mais cara desta tela. A
+ * primeira versão descartava tudo que nasceu antes da virada do denominador, em
+ * nome da "série comparável" — e isso jogava fora 930 de 1.919 apostas
+ * liquidadas no período padrão, quase metade da amostra, incluindo 121 das 174
+ * de nota alta. O ROI por mercado, por campeonato e por premissa não dependem da
+ * escala da nota; só a leitura POR FAIXA depende.
+ *
+ * Então a linha antiga fica, e a escala vira uma faixa própria: ela aparece na
+ * última linha da tabela de Score, separada, em vez de contaminar Baixa e Alta.
+ */
+export const FAIXA_ESCALA_ANTIGA = 'Escala antiga (antes de 04/09)';
+
+export const naEscalaAntiga = (linha: LinhaPublicada) => {
+  const nasceu = parseUtc(linha.detectada_em)?.getTime();
+  return nasceu != null && nasceu < Date.parse(INSTANTE_DA_VIRADA);
+};
+
+/**
+ * A faixa de uma LINHA, que é a da nota — a menos que a nota seja de outra régua.
+ *
+ * É esta que a tela usa em toda quebra, filtro e peso. `faixaDoScore` continua
+ * pura, olhando só o número, porque é ela que o script de terminal espelha.
+ */
+export const faixaDaLinha = (linha: LinhaPublicada): string =>
+  naEscalaAntiga(linha) ? FAIXA_ESCALA_ANTIGA : faixaDoScore(linha.score);
+
+/** As faixas na ordem da escala, com a régua velha no fim. */
+export const FAIXAS_COM_ESCALA_ANTIGA = [...FAIXAS_DO_SCORE, FAIXA_ESCALA_ANTIGA] as const;
+
+/**
+ * Quanto apostar em cada faixa de Score.
+ *
+ * O padrão é uma unidade em tudo, e esse é o número MEDIDO — o que de fato
+ * aconteceria apostando igual em toda oportunidade publicada. Mexer aqui vira
+ * SIMULAÇÃO, e a tela tem de dizer isso: a decisão da spec foi unidade fixa
+ * justamente porque tamanho variável de aposta mistura "a metodologia acerta?" com "o
+ * critério de tamanho é bom?".
+ *
+ * Peso zero não é aposta de zero unidade: é não apostar. A linha sai da conta
+ * inteira, denominador incluído, e é contada à parte.
+ */
+export type PesoPorFaixa = Record<string, number>;
+
+export const PESO_MEDIDO: PesoPorFaixa = {
+  'Baixa (<30)': 1,
+  'Média (30–59)': 1,
+  'Alta (60–79)': 1,
+  'Alta (80+)': 1,
+  // A régua velha tem peso próprio: simular "não apostar na Baixa" não pode
+  // decidir calado o que fazer com uma nota que não é comparável com a Baixa.
+  [FAIXA_ESCALA_ANTIGA]: 1,
+};
+
+export const ehSimulacao = (pesos: PesoPorFaixa) =>
+  Object.values(pesos).some((p) => p !== 1);
 
 export function faixaDeOdd(odd: number): FaixaDeOdd {
   if (odd < 1.6) return FAIXAS_DE_ODD[0];

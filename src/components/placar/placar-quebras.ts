@@ -1,8 +1,8 @@
 import {
+  FAIXAS_COM_ESCALA_ANTIGA,
   FAIXAS_DE_ODD,
-  FAIXAS_DO_SCORE,
+  faixaDaLinha,
   faixaDeOdd,
-  faixaDoScore,
   quebrar,
   quebrarNaOrdem,
   type Celula,
@@ -60,9 +60,9 @@ export const QUEBRAS: Quebra[] = [
   {
     titulo: 'Por faixa de Score',
     explicacao:
-      'A promessa central do método: nota maior deveria render mais. Se a coluna de ROI não sobe com a faixa, a nota não está ordenando o resultado — e é a diferença entre faixas, não o número de uma delas, que responde isso.',
-    chaveDe: (l) => faixaDoScore(l.score),
-    ordem: FAIXAS_DO_SCORE,
+      'A promessa central do método: nota maior deveria render mais. Se a coluna de ROI não sobe com a faixa, a nota não está ordenando o resultado — e é a diferença entre faixas, não o número de uma delas, que responde isso. A última linha é a régua velha, de antes da virada do denominador: ela conta em todas as outras tabelas, e aqui fica separada porque a nota dela não é comparável.',
+    chaveDe: faixaDaLinha,
+    ordem: FAIXAS_COM_ESCALA_ANTIGA,
   },
   {
     titulo: 'Por faixa de odd',

@@ -306,16 +306,6 @@ describe('o total do período', () => {
     expect(screen.getByText('Anuladas')).toBeInTheDocument();
     expect(screen.getByText(/Acerto: 1 em 2/)).toBeInTheDocument();
   });
-
-  it('diz quantas saíram por estarem na escala antiga do Score', () => {
-    render(<Placar {...BASE} publicadas={[linha()]} foraDaEscala={2} />);
-    expect(screen.getByText(/escala antiga do Score/i)).toBeInTheDocument();
-  });
-
-  it('e não fala de escala quando não cortou ninguém', () => {
-    render(<Placar {...BASE} publicadas={[linha()]} />);
-    expect(screen.queryByText(/escala antiga/i)).not.toBeInTheDocument();
-  });
 });
 
 describe('o gráfico de evolução', () => {

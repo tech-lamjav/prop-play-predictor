@@ -6,7 +6,6 @@ import {
   diaDaLinha,
   filtrarPeloEixo,
   periodoAnterior,
-  recorteDaSerieComparavel,
   rotuloDoPeriodo,
 } from './placar-periodo';
 
@@ -152,37 +151,5 @@ describe('o rótulo do período', () => {
 
   it('de um dia só, não repete a data', () => {
     expect(rotuloDoPeriodo({ de: '2026-09-12', ate: '2026-09-12' })).toBe('12/09');
-  });
-});
-
-describe('o recorte da série comparável', () => {
-  // A virada entrou às 14h35 UTC de 04/09. As duas linhas abaixo são do MESMO
-  // dia, uma de cada lado do corte.
-  const antesDaVirada = linha({ detectada_em: '2026-09-04T03:00:00' });
-  const depoisDaVirada = linha({ detectada_em: '2026-09-04T18:00:00' });
-
-  it('tira a linha de escala antiga quando a janela é a comparável', () => {
-    const r = recorteDaSerieComparavel([antesDaVirada, depoisDaVirada], {
-      de: '2026-09-04',
-      ate: '2026-09-12',
-    });
-    expect(r.linhas).toEqual([depoisDaVirada]);
-    expect(r.foraDaEscala).toBe(1);
-  });
-
-  it('não recorta nada quando o sócio pediu uma janela anterior', () => {
-    // Ele foi buscar o período antigo; apagar o que ele pediu seria pior que
-    // avisar, e é o aviso que cobre esse caso.
-    const r = recorteDaSerieComparavel([antesDaVirada, depoisDaVirada], {
-      de: '2026-08-20',
-      ate: '2026-09-12',
-    });
-    expect(r.linhas).toHaveLength(2);
-    expect(r.foraDaEscala).toBe(0);
-  });
-
-  it('janela depois da virada não perde ninguém', () => {
-    const r = recorteDaSerieComparavel([depoisDaVirada], { de: '2026-09-06', ate: '2026-09-12' });
-    expect(r.foraDaEscala).toBe(0);
   });
 });
