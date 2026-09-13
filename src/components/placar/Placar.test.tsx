@@ -224,7 +224,8 @@ describe('a seção de ROI por premissa', () => {
         ]}
       />,
     );
-    const secao = screen.getByText('Gols (mais ou menos) · Mais gols').closest('section');
+    // O card de premissa é um <details> desde que ficou recolhível.
+    const secao = screen.getByText('Gols (mais ou menos) · Mais gols').closest('details');
     const primeira = secao?.querySelector('tbody tr td:first-child');
     expect(primeira?.textContent).toBe('Jogo de ritmo alto');
   });
@@ -237,11 +238,19 @@ describe('a seção de ROI por premissa', () => {
     expect(screen.getByText(/insumo, ainda não/i)).toBeInTheDocument();
   });
 
-  it('e os cortes do dado continuam, em seção própria', () => {
+  it('e o bloco de cortes do dado saiu da tela, a pedido', () => {
+    // Premissas sem dado, corroboração e penalidade eram três tabelas que
+    // ninguém usava para decidir. Saíram inteiras, com o módulo delas.
     render(<Placar {...BASE} publicadas={[linha()]} />);
-    expect(screen.getByText('O dado por trás da linha')).toBeInTheDocument();
-    expect(screen.getByText('Por penalidade aplicada')).toBeInTheDocument();
-    expect(screen.queryByText('Por pontos de premissa')).not.toBeInTheDocument();
+    expect(screen.queryByText('O dado por trás da linha')).not.toBeInTheDocument();
+    expect(screen.queryByText('Por penalidade aplicada')).not.toBeInTheDocument();
+  });
+
+  it('e o card do lado recolhe', () => {
+    render(<Placar {...BASE} publicadas={[linha()]} />);
+    const card = screen.getByText('Resultado', { selector: 'h3' }).closest('details');
+    expect(card).toHaveAttribute('open');
+    expect(card?.querySelector('summary')).toBeInTheDocument();
   });
 });
 

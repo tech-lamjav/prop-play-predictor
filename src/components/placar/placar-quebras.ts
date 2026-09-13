@@ -10,14 +10,6 @@ import {
   type LinhaLiquidada,
   type LinhaPublicada,
 } from './placar-agregacao';
-import {
-  FAIXAS_SEM_DADO,
-  GRUPOS_DE_CORROBORACAO,
-  GRUPOS_DE_PENALIDADE,
-  faixaSemDado,
-  grupoDeCorroboracao,
-  grupoDePenalidade,
-} from './placar-premissas';
 import { rotuloDoMercado } from './placar-vocabulario';
 
 // ============================================================================
@@ -96,39 +88,6 @@ export const QUEBRAS: Quebra[] = [
   },
 ];
 
-/**
- * As quebras que falam do dado por trás da linha.
- *
- * Ficam na mesma lista das outras porque são cortes do board como qualquer
- * outro. A que media "pontos de premissa" saiu: ela era a aproximação de ROI por
- * premissa, e agora a pergunta é respondida de verdade, premissa por premissa,
- * na seção própria.
- */
-export const QUEBRAS_DO_DADO: Quebra[] = [
-  {
-    titulo: 'Por premissas sem dado',
-    explicacao:
-      'Quantas premissas não puderam ser avaliadas por falta de dado. Se publicar com evidência faltando sai caro, é aqui que aparece.',
-    chaveDe: (l) => faixaSemDado(l.premissas_sem_dado),
-    ordem: FAIXAS_SEM_DADO,
-  },
-  {
-    titulo: 'Por corroboração de preço',
-    explicacao:
-      'Os dois sinais que falam do preço, em grupos que não se sobrepõem: cada aposta entra em um só. O modelo da API vale zero ponto na nota desde a recalibragem, e esta tabela é onde isso se confirma ou não.',
-    chaveDe: grupoDeCorroboracao,
-    ordem: GRUPOS_DE_CORROBORACAO,
-  },
-  {
-    titulo: 'Por penalidade aplicada',
-    explicacao:
-      'A penalidade protege ou só corta aposta boa? Grupos exclusivos: aposta com duas flags entra em "mais de uma", e não nas duas.',
-    chaveDe: grupoDePenalidade,
-    ordem: GRUPOS_DE_PENALIDADE,
-  },
-];
-
-/** As células de uma quebra, na ordem que ela pede. */
 /** As linhas que a quebra aceita. */
 export const linhasDa = (quebra: Quebra, liquidadas: readonly LinhaLiquidada[]) =>
   quebra.entra ? liquidadas.filter((l) => quebra.entra!(l.linha)) : liquidadas;

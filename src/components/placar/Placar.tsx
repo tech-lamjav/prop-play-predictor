@@ -12,7 +12,7 @@ import { MatrizDoPlacar } from './MatrizDoPlacar';
 import type { Granularidade } from './placar-evolucao';
 import { porLadoDoMercado } from './placar-por-premissa';
 import { PremissasDoLado } from './PremissasDoLado';
-import { QUEBRAS, QUEBRAS_DO_DADO, celulasDa, type Quebra } from './placar-quebras';
+import { QUEBRAS, celulasDa, type Quebra } from './placar-quebras';
 import type { Eixo, Periodo } from './placar-periodo';
 import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaComparada } from './TabelaComparada';
@@ -251,14 +251,6 @@ export function Placar({
         </div>
       </div>
 
-      <div className="mt-8 border-t border-line-2 pt-6">
-        <h2 className="font-display text-xl font-black text-ink">O dado por trás da linha</h2>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-2">
-          Não é premissa: é o que acompanha a linha quando ela é publicada.
-        </p>
-
-        <div className="mt-5 grid gap-5">{QUEBRAS_DO_DADO.map(tabela)}</div>
-      </div>
     </div>
   );
 }

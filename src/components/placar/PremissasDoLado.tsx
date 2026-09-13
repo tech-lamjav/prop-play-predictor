@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import type { LadoMedido } from './placar-por-premissa';
 
@@ -38,9 +39,14 @@ function Diferenca({ valor, erro, ruido }: { valor: number | null; erro: number 
  */
 export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
   return (
-    <section className="rounded-rebrand-md border border-line-2 bg-white">
-      <header className="border-b border-line-2 px-5 py-3">
+    // <details> e não um botão com estado: o navegador já sabe abrir e fechar,
+    // já responde ao teclado, e o conteúdo fechado não some do Ctrl+F. Nasce
+    // aberto porque a leitura é de cima para baixo — recolher é para o que já
+    // foi lido, e com oito lados na tela isso é o que falta.
+    <details open className="group rounded-rebrand-md border border-line-2 bg-white">
+      <summary className="cursor-pointer list-none border-b border-line-2 px-5 py-3 marker:content-none">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <ChevronDown className="h-4 w-4 shrink-0 self-center text-ink-dim transition group-open:rotate-180" />
           <h3 className="font-display text-[16px] font-black text-ink">{lado.rotulo}</h3>
           <span className={`text-[15px] font-black tabular-nums ${tomDoRoi(lado.total.roi)}`}>
             {roiPct(lado.total.roi)}
@@ -56,7 +62,7 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
           Linha de base: apostar em <strong className="text-ink">todas</strong> as oportunidades
           publicadas deste lado. Cada premissa abaixo divide essas mesmas apostas em duas.
         </p>
-      </header>
+      </summary>
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left">
@@ -117,8 +123,10 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
         A coluna da direita é a diferença entre as duas do meio: quanto o ROI muda quando aquela
         premissa acende. Em destaque, a diferença passa do próprio erro e a amostra a sustenta; como{' '}
         <strong className="font-bold">ruído</strong>, não passa — o número aparece pequeno, para ser
-        olhado e não decidido.
+        olhado e não decidido. Peso zero não é erro: são as premissas que a
+        recalibragem de agosto mediu como verdadeiras sobre o jogo e sem efeito na previsão — se uma
+        delas separar aqui, ela é candidata a voltar a pesar.
       </p>
-    </section>
+    </details>
   );
 }
