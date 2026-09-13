@@ -648,6 +648,7 @@ export type Database = {
           futebol_publication_alerts_ack_at: string | null
           futebol_publication_alerts_enabled: boolean
           futebol_subscription_status: string
+          futebol_trial_ends_at: string | null
           futebol_trial_started_at: string | null
           has_report_access: boolean | null
           id: string
@@ -692,6 +693,7 @@ export type Database = {
           futebol_publication_alerts_ack_at?: string | null
           futebol_publication_alerts_enabled?: boolean
           futebol_subscription_status?: string
+          futebol_trial_ends_at?: string | null
           futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
@@ -736,6 +738,7 @@ export type Database = {
           futebol_publication_alerts_ack_at?: string | null
           futebol_publication_alerts_enabled?: boolean
           futebol_subscription_status?: string
+          futebol_trial_ends_at?: string | null
           futebol_trial_started_at?: string | null
           has_report_access?: boolean | null
           id?: string
