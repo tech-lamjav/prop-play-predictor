@@ -120,9 +120,27 @@ export function SeletorDePeriodo({
           </div>
 
           <div className="p-3">
-            {/* O Calendar do design system, e não o DayPicker cru: ele já carrega a
-                paleta, o espaçamento e os dois meses lado a lado. */}
+            {/* O Calendar do design system, e não o DayPicker cru: ele já traz o
+                espaçamento e os dois meses lado a lado.
+
+                ⚠️ As classes do intervalo vêm sobrescritas porque os padrões
+                dele falam em `bg-primary` e `bg-accent`, e esses dois tokens o
+                tema claro não redefine — eles caem no tema padrão do app, que é
+                escuro. O resultado era um bloco azul-marinho no meio de um
+                calendário branco. */}
             <Calendar
+              classNames={{
+                cell: 'h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-forest/5 [&:has([aria-selected])]:bg-forest/10 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+                day_selected:
+                  'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
+                day_range_middle: 'aria-selected:bg-forest/10 aria-selected:text-ink',
+                day_today: 'border border-forest text-forest font-bold',
+                day_outside: 'day-outside text-ink-dim opacity-50 aria-selected:bg-forest/5 aria-selected:text-ink-dim aria-selected:opacity-40',
+                day_disabled: 'text-ink-dim opacity-40',
+                head_cell: 'text-ink-dim rounded-md w-9 font-normal text-[0.8rem]',
+                caption_label: 'text-sm font-bold text-ink',
+                nav_button: 'h-7 w-7 rounded-rebrand-sm border border-line-2 bg-white p-0 text-ink-2 opacity-70 transition hover:opacity-100',
+              }}
               mode="range"
               locale={ptBR}
               numberOfMonths={2}
