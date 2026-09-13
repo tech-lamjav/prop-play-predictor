@@ -39,14 +39,23 @@ function Diferenca({ valor, erro, ruido }: { valor: number | null; erro: number 
 export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
   return (
     <section className="rounded-rebrand-md border border-line-2 bg-white">
-      <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line-2 px-5 py-3">
-        <h3 className="font-display text-[16px] font-black text-ink">{lado.rotulo}</h3>
-        <span className={`text-[15px] font-black tabular-nums ${tomDoRoi(lado.total.roi)}`}>
-          {roiPct(lado.total.roi)}
-        </span>
-        <span className="text-[12px] text-ink-dim">
-          {taxaPct(lado.total.taxa)} de acerto · {emN(lado.total.n)} · ± {epPct(lado.total.ep)}
-        </span>
+      <header className="border-b border-line-2 px-5 py-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="font-display text-[16px] font-black text-ink">{lado.rotulo}</h3>
+          <span className={`text-[15px] font-black tabular-nums ${tomDoRoi(lado.total.roi)}`}>
+            {roiPct(lado.total.roi)}
+          </span>
+          <span className="text-[12px] text-ink-dim">
+            {taxaPct(lado.total.taxa)} de acerto · {emN(lado.total.n)} · ± {epPct(lado.total.ep)}
+          </span>
+        </div>
+        {/* Sem esta frase o número do cabeçalho parece só mais um: ele é a LINHA
+            DE BASE, o que teria acontecido apostando em tudo deste lado. Cada
+            premissa abaixo é lida contra ele. */}
+        <p className="mt-1 text-[12px] text-ink-2">
+          Linha de base: apostar em <strong className="text-ink">todas</strong> as oportunidades
+          publicadas deste lado. Cada premissa abaixo divide essas mesmas apostas em duas.
+        </p>
       </header>
 
       <div className="overflow-x-auto">
@@ -54,10 +63,10 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
           <thead>
             <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
               <th className="px-5 py-2 font-bold">Premissa</th>
-              <th className="px-3 py-2 text-right font-bold">Peso</th>
-              <th className="px-3 py-2 text-right font-bold">Acesa</th>
-              <th className="px-3 py-2 text-right font-bold">Apagada</th>
-              <th className="px-5 py-2 text-right font-bold">Diferença</th>
+              <th className="px-3 py-2 text-right font-bold">Peso na nota</th>
+              <th className="px-3 py-2 text-right font-bold">ROI quando acendeu</th>
+              <th className="px-3 py-2 text-right font-bold">ROI quando não</th>
+              <th className="px-5 py-2 text-right font-bold">Quanto ela separa</th>
             </tr>
           </thead>
           <tbody>
@@ -100,6 +109,16 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
           </tbody>
         </table>
       </div>
+
+      {/* A legenda explica as duas leituras que a tabela pede, e existe porque
+          a primeira pessoa a ver esta tabela perguntou o que ela estava
+          medindo. */}
+      <p className="border-t border-line-2 px-5 py-2 text-[11px] text-ink-dim">
+        A coluna da direita é a diferença entre as duas do meio: quanto o ROI muda quando aquela
+        premissa acende. Em destaque, a diferença passa do próprio erro e a amostra a sustenta; como{' '}
+        <strong className="font-bold">ruído</strong>, não passa — o número aparece pequeno, para ser
+        olhado e não decidido.
+      </p>
     </section>
   );
 }
