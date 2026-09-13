@@ -50,6 +50,17 @@ export type Quebra = {
   entra?: (linha: LinhaPublicada) => boolean;
   /** O que dizer sobre quem ficou de fora, quando `entra` recusa alguém. */
   notaDosFora?: string;
+  /**
+   * A quebra que abre DENTRO de cada linha desta.
+   *
+   * É o degrau seguinte do macro para o micro: a linha de Gols abre em como
+   * Gols foi em cada faixa de Score; a linha da faixa Alta abre em como a faixa
+   * Alta foi em cada mercado. As colunas continuam as mesmas — o que muda é o
+   * corte de dentro.
+   *
+   * Preenchida depois da lista, porque as quebras se referenciam entre si.
+   */
+  desdobraEm?: Quebra;
 };
 
 export const QUEBRAS: Quebra[] = [
@@ -87,6 +98,22 @@ export const QUEBRAS: Quebra[] = [
     chaveDe: (l) => l.competition ?? 'Sem campeonato',
   },
 ];
+
+/**
+ * O desdobramento de cada tabela, ligado depois que todas existem.
+ *
+ * Mercado abre por faixa e faixa abre por mercado, que é o mesmo cruzamento
+ * pelos dois lados — e é de propósito: quem está olhando o mercado quer saber
+ * se a culpa é de uma faixa, e quem está olhando a faixa quer saber se é de um
+ * mercado. Odd e campeonato abrem por mercado, que é a leitura que se pede
+ * depois delas.
+ */
+const porTitulo = (titulo: string) => QUEBRAS.find((q) => q.titulo === titulo)!;
+
+QUEBRAS[0].desdobraEm = porTitulo('Por faixa de Score');
+QUEBRAS[1].desdobraEm = porTitulo('Por mercado');
+QUEBRAS[2].desdobraEm = porTitulo('Por mercado');
+QUEBRAS[3].desdobraEm = porTitulo('Por mercado');
 
 /** As linhas que a quebra aceita. */
 export const linhasDa = (quebra: Quebra, liquidadas: readonly LinhaLiquidada[]) =>

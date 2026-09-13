@@ -134,7 +134,11 @@ export function SeletorDePeriodo({
                 day_selected:
                   'bg-forest text-white hover:bg-forest hover:text-white focus:bg-forest focus:text-white',
                 day_range_middle: 'aria-selected:bg-forest/10 aria-selected:text-ink',
-                day_today: 'border border-forest text-forest font-bold',
+                // ⚠️ `aria-selected:text-white` junto: hoje quase sempre É a ponta do
+                // intervalo, e aí o verde do texto caía em cima do verde do fundo —
+                // o número sumia. O contorno some quando selecionado pelo mesmo motivo.
+                day_today:
+                  'font-bold text-forest ring-1 ring-inset ring-forest aria-selected:text-white aria-selected:ring-0',
                 day_outside: 'day-outside text-ink-dim opacity-50 aria-selected:bg-forest/5 aria-selected:text-ink-dim aria-selected:opacity-40',
                 day_disabled: 'text-ink-dim opacity-40',
                 head_cell: 'text-ink-dim rounded-md w-9 font-normal text-[0.8rem]',

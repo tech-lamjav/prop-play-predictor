@@ -100,13 +100,13 @@ describe('a tabela por mercado', () => {
   it('usa o nome que o produto dá ao mercado', () => {
     render(<Placar {...BASE} publicadas={[linha({ market: 'goals_over_under', outcome: 'Over', line_value: 2.5 })]} />);
     // Escopado à tabela: o mesmo nome aparece no seletor de mercado do gráfico.
-    const tabela = screen.getByText('Por mercado').closest('section');
+    const tabela = screen.getByText('Por mercado').closest('details');
     expect(tabela).toHaveTextContent('Gols (mais ou menos)');
   });
 
   it('sem nada liquidado, não mostra tabela vazia fingindo resultado', () => {
     render(<Placar {...BASE} publicadas={[linha({ status_short: '2H' })]} />);
-    const tabela = screen.getByText('Por mercado').closest('section');
+    const tabela = screen.getByText('Por mercado').closest('details');
     expect(tabela).toHaveTextContent(/nenhuma oportunidade liquidada/i);
     expect(tabela?.querySelector('tbody')).toBeNull();
   });
@@ -135,7 +135,7 @@ describe('as outras quebras', () => {
         ]}
       />,
     );
-    const tabela = screen.getByText('Por faixa de Score').closest('section');
+    const tabela = screen.getByText('Por faixa de Score').closest('details');
     const grupos = [...(tabela?.querySelectorAll('tbody tr td:first-child') ?? [])].map(
       (td) => td.textContent,
     );
@@ -286,6 +286,7 @@ describe('comparando dois períodos', () => {
         comparacao={comparacao([])}
       />,
     );
+    // Comparando, a tabela é a TabelaComparada, que continua uma <section>.
     const tabela = screen.getByText('Por mercado').closest('section');
     expect(tabela).toHaveTextContent(/sem aposta/i);
   });
@@ -294,7 +295,7 @@ describe('comparando dois períodos', () => {
     // Escopado à tabela de mercado: a seção de premissa tem coluna de diferença
     // sempre, porque lá a diferença é entre acesa e apagada, não entre períodos.
     render(<Placar {...BASE} publicadas={[linha()]} />);
-    const tabela = screen.getByText('Por mercado').closest('section');
+    const tabela = screen.getByText('Por mercado').closest('details');
     expect(tabela).not.toHaveTextContent('Diferença');
   });
 });
@@ -362,7 +363,7 @@ describe('a matriz das quebras', () => {
         ]}
       />,
     );
-    const tabela = screen.getByText('Por mercado').closest('section');
+    const tabela = screen.getByText('Por mercado').closest('details');
     const colunas = [...(tabela?.querySelectorAll('thead th') ?? [])].map((th) => th.textContent);
     expect(colunas[0]).toBe('Grupo');
     expect(colunas[colunas.length - 1]).toBe('Total');
@@ -370,10 +371,11 @@ describe('a matriz das quebras', () => {
     expect(colunas).toContain('14/09');
   });
 
-  it('e cada célula convida a abrir o que está dentro', () => {
+  it('e o rodapé ensina os dois cliques: a seta abre a linha, a célula abre as apostas', () => {
     render(<Placar {...BASE} publicadas={[linha()]} />);
-    const tabela = screen.getByText('Por mercado').closest('section');
-    expect(tabela).toHaveTextContent(/clique para ver o que está dentro/i);
+    const tabela = screen.getByText('Por mercado').closest('details');
+    expect(tabela).toHaveTextContent(/a seta abre a linha por faixa de score/i);
+    expect(tabela).toHaveTextContent(/a célula abre as apostas dela/i);
   });
 
   it('clicar numa célula abre o drill, do pior para o melhor', async () => {
@@ -387,7 +389,7 @@ describe('a matriz das quebras', () => {
         ]}
       />,
     );
-    const tabela = screen.getByText('Por mercado').closest('section');
+    const tabela = screen.getByText('Por mercado').closest('details');
     const celula = tabela?.querySelector('tbody tr td:nth-child(2)');
     await userEvent.click(celula as Element);
 
@@ -410,7 +412,7 @@ describe('a matriz das quebras', () => {
     );
     const tabela = screen.getByText('Por mercado').closest('section');
     expect(tabela).toHaveTextContent('Diferença');
-    expect(tabela).not.toHaveTextContent(/clique para ver o que está dentro/i);
+    expect(tabela).not.toHaveTextContent(/abre as apostas dela/i);
   });
 });
 
@@ -418,7 +420,7 @@ describe('o drill mostra o placar e a distância até a linha', () => {
   const abrirPrimeiraCelula = async (publicadas: LinhaPublicada[]) => {
     const { default: userEvent } = await import('@testing-library/user-event');
     render(<Placar {...BASE} publicadas={publicadas} />);
-    const tabela = screen.getByText('Por mercado').closest('section');
+    const tabela = screen.getByText('Por mercado').closest('details');
     await userEvent.click(tabela?.querySelector('tbody tr td:nth-child(2)') as Element);
     return screen.findByRole('dialog');
   };
@@ -460,13 +462,13 @@ describe('a régua anterior do Score', () => {
 
   it('não vira uma faixa na tabela de Score', () => {
     render(<Placar {...BASE} publicadas={[velha(), nova()]} />);
-    const tabela = screen.getByText('Por faixa de Score').closest('section');
+    const tabela = screen.getByText('Por faixa de Score').closest('details');
     expect(tabela).not.toHaveTextContent(/escala antiga/i);
   });
 
   it('mas a tabela diz quantas ficaram de fora, e por quê', () => {
     render(<Placar {...BASE} publicadas={[velha(), nova()]} />);
-    const tabela = screen.getByText('Por faixa de Score').closest('section');
+    const tabela = screen.getByText('Por faixa de Score').closest('details');
     expect(tabela).toHaveTextContent('1 aposta fora desta tabela');
     expect(tabela).toHaveTextContent(/outra régua/i);
     expect(tabela).toHaveTextContent(/não é recorte de data/i);
@@ -474,7 +476,7 @@ describe('a régua anterior do Score', () => {
 
   it('e ela conta normalmente nas outras tabelas', () => {
     render(<Placar {...BASE} publicadas={[velha(), nova()]} />);
-    const porMercado = screen.getByText('Por mercado').closest('section');
+    const porMercado = screen.getByText('Por mercado').closest('details');
     const total = porMercado?.querySelector('tbody tr td:last-child');
     expect(total?.textContent).toContain('2');
   });
@@ -492,7 +494,7 @@ describe('a ordenação dentro do drill', () => {
         ]}
       />,
     );
-    const tabela = screen.getByText('Por mercado').closest('section');
+    const tabela = screen.getByText('Por mercado').closest('details');
     await userEvent.click(tabela?.querySelector('tbody tr td:nth-child(2)') as Element);
     return { dialogo: await screen.findByRole('dialog'), userEvent };
   };
@@ -512,5 +514,55 @@ describe('a ordenação dentro do drill', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /score/i }));
     expect(nomes(dialogo)[0]).toContain('Nota alta');
+  });
+});
+
+describe('o desdobramento dentro da linha', () => {
+  const publicadas = () => [
+    linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, score: 85 }),
+    linha({ market: 'goals_over_under', outcome: 'Over', line_value: 1.5, score: 20 }),
+  ];
+
+  it('a linha do mercado abre por faixa de Score', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    render(<Placar {...BASE} publicadas={publicadas()} />);
+    const tabela = screen.getByText('Por mercado').closest('details');
+
+    // Fechada, a tabela tem só a linha do mercado.
+    expect(tabela).not.toHaveTextContent('Alta (80+)');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /abrir gols .* por faixa de score/i }),
+    );
+    expect(tabela).toHaveTextContent('Alta (80+)');
+    expect(tabela).toHaveTextContent('Baixa (<30)');
+  });
+
+  it('e a linha da faixa abre por mercado — o mesmo cruzamento pelo outro lado', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    render(<Placar {...BASE} publicadas={publicadas()} />);
+    const tabela = screen.getByText('Por faixa de Score').closest('details');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /abrir alta \(80\+\) por mercado/i }),
+    );
+    expect(tabela).toHaveTextContent('Gols (mais ou menos)');
+  });
+
+  it('e a célula do desdobramento também abre as apostas', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    render(<Placar {...BASE} publicadas={publicadas()} />);
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /abrir gols .* por faixa de score/i }),
+    );
+    const tabela = screen.getByText('Por mercado').closest('details');
+    const subLinha = [...(tabela?.querySelectorAll('tbody tr') ?? [])].find((tr) =>
+      tr.textContent?.includes('Alta (80+)'),
+    );
+    await userEvent.click(subLinha?.querySelector('td:last-child') as Element);
+
+    const dialogo = await screen.findByRole('dialog');
+    expect(dialogo).toHaveTextContent('Alta (80+)');
   });
 });
