@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import type { LadoMedido } from './placar-por-premissa';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 /** A diferença entre acesa e apagada, com o veredito. */
 function Diferenca({ valor, erro, ruido }: { valor: number | null; erro: number | null; ruido: boolean }) {
@@ -38,13 +39,15 @@ function Diferenca({ valor, erro, ruido }: { valor: number | null; erro: number 
  * meio estão lá para mostrar de onde ela veio e sobre quantas apostas.
  */
 export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
+  const noCelular = useIsMobile();
+
   return (
     // <details> e não um botão com estado: o navegador já sabe abrir e fechar,
     // já responde ao teclado, e o conteúdo fechado não some do Ctrl+F. Nasce
     // aberto porque a leitura é de cima para baixo — recolher é para o que já
     // foi lido, e com oito lados na tela isso é o que falta.
     <details open className="group rounded-rebrand-md border border-line-2 bg-white">
-      <summary className="cursor-pointer list-none border-b border-line-2 px-5 py-3 marker:content-none">
+      <summary className="cursor-pointer list-none border-b border-line-2 px-4 py-3 marker:content-none sm:px-5">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <ChevronDown className="h-4 w-4 shrink-0 self-center text-ink-dim transition group-open:rotate-180" />
           <h3 className="font-display text-[16px] font-black text-ink">{lado.rotulo}</h3>
@@ -68,11 +71,15 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-              <th className="px-5 py-2 font-bold">Premissa</th>
-              <th className="px-3 py-2 text-right font-bold">Peso na nota</th>
+              <th className="sticky left-0 z-10 border-r border-line-2 bg-white px-4 py-2 font-bold sm:border-r-0 sm:px-5">
+                Premissa
+              </th>
+              {/* O peso é contexto, não conclusão: no celular ele desce para
+                  baixo do nome da premissa e libera uma coluna. */}
+              {!noCelular && <th className="px-3 py-2 text-right font-bold">Peso na nota</th>}
               <th className="px-3 py-2 text-right font-bold">ROI quando acendeu</th>
               <th className="px-3 py-2 text-right font-bold">ROI quando não</th>
-              <th className="px-5 py-2 text-right font-bold">Quanto ela separa</th>
+              <th className="px-4 py-2 text-right font-bold sm:px-5">Quanto ela separa</th>
             </tr>
           </thead>
           <tbody>
@@ -83,11 +90,20 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
                   p.acesa.n === 0 ? 'opacity-60' : ''
                 }`}
               >
-                <td className="px-5 py-2.5 text-[13px] font-bold text-ink">{p.label}</td>
-                <td className="px-3 py-2.5 text-right text-[12px] tabular-nums text-ink-2">
-                  {p.peso == null ? '—' : p.peso}
+                <td className="sticky left-0 z-10 border-r border-line-2 bg-white px-4 py-2.5 align-top text-[13px] font-bold text-ink sm:border-r-0 sm:px-5 sm:align-middle">
+                  {p.label}
+                  {noCelular && (
+                    <span className="block text-[11px] font-normal tabular-nums text-ink-dim">
+                      peso {p.peso == null ? '—' : p.peso}
+                    </span>
+                  )}
                 </td>
-                <td className="px-3 py-2.5 text-right text-[13px] tabular-nums">
+                {!noCelular && (
+                  <td className="px-3 py-2.5 text-right text-[12px] tabular-nums text-ink-2">
+                    {p.peso == null ? '—' : p.peso}
+                  </td>
+                )}
+                <td className="whitespace-nowrap px-3 py-2.5 text-right text-[13px] tabular-nums">
                   {p.acesa.n === 0 ? (
                     <span className="text-[12px] text-ink-dim">nunca acendeu</span>
                   ) : (
@@ -97,7 +113,7 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
                     </>
                   )}
                 </td>
-                <td className="px-3 py-2.5 text-right text-[13px] tabular-nums">
+                <td className="whitespace-nowrap px-3 py-2.5 text-right text-[13px] tabular-nums">
                   {p.apagada.n === 0 ? (
                     <span className="text-[12px] text-ink-dim">—</span>
                   ) : (
@@ -107,7 +123,7 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
                     </>
                   )}
                 </td>
-                <td className="px-5 py-2.5 text-right">
+                <td className="whitespace-nowrap px-4 py-2.5 text-right sm:px-5">
                   <Diferenca valor={p.diferenca} erro={p.erro} ruido={p.dentroDoRuido} />
                 </td>
               </tr>
@@ -119,7 +135,7 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
       {/* A legenda explica as duas leituras que a tabela pede, e existe porque
           a primeira pessoa a ver esta tabela perguntou o que ela estava
           medindo. */}
-      <p className="border-t border-line-2 px-5 py-2 text-[11px] text-ink-dim">
+      <p className="border-t border-line-2 px-4 py-2 text-[11px] text-ink-dim sm:px-5">
         A coluna da direita é a diferença entre as duas do meio: quanto o ROI muda quando aquela
         premissa acende. Em destaque, a diferença passa do próprio erro e a amostra a sustenta; como{' '}
         <strong className="font-bold">ruído</strong>, não passa — o número aparece pequeno, para ser

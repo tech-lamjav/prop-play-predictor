@@ -17,8 +17,8 @@ function Escolha<T extends string>({
   aoMudar: (v: T) => void;
 }) {
   return (
-    <span className="flex items-center gap-1">
-      <span className="mr-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+    <span className="flex shrink-0 items-center gap-1">
+      <span className="mr-1 whitespace-nowrap font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
         {rotulo}
       </span>
       <span className="flex overflow-hidden rounded-rebrand-sm border border-line-2">
@@ -28,7 +28,7 @@ function Escolha<T extends string>({
             type="button"
             title={o.ajuda}
             onClick={() => aoMudar(o.id)}
-            className={`px-3 py-2 text-[13px] font-bold transition ${
+            className={`whitespace-nowrap px-3 py-2 text-[13px] font-bold transition ${
               valor === o.id ? 'bg-forest text-white' : 'bg-white text-ink-2 hover:text-ink'
             }`}
           >
@@ -82,7 +82,12 @@ export function BarraDeFiltros({
   return (
     // Mesma faixa branca do título, só que embaixo: a barra é parte do
     // cabeçalho da página, e não um cartão à parte no meio do conteúdo.
-    <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3">
+    //
+    // No celular ela não quebra em quatro linhas — vira um TRILHO que rola na
+    // horizontal, igual ao rail de seções do cabeçalho verde logo acima. Quatro
+    // controles empilhados empurram o primeiro número para baixo da dobra, que é
+    // exatamente o que o painel não pode fazer num aparelho pequeno.
+    <div className="mx-auto flex max-w-6xl items-center gap-2 overflow-x-auto px-4 pb-3 no-scrollbar md:flex-wrap md:gap-x-4 md:gap-y-2 md:overflow-visible">
       <SeletorDePeriodo
         periodo={periodo}
         periodoB={periodoB}
@@ -118,7 +123,7 @@ export function BarraDeFiltros({
         aoMudar={(v) => aoMudarVitrine(v === 'vitrine')}
       />
 
-      <span className="ml-auto">
+      <span className="shrink-0 md:ml-auto">
         <RecorteESimulacao
           recorte={recorte}
           pesos={pesos}

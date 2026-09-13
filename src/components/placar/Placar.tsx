@@ -16,11 +16,27 @@ import { QUEBRAS, celulasDa, type Quebra } from './placar-quebras';
 import type { Eixo, Periodo } from './placar-periodo';
 import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaComparada } from './TabelaComparada';
-import { TabelaDoPlacar } from './TabelaDoPlacar';
-/** Um número do topo, com o que ele significa embaixo. */
-function Numero({ valor, rotulo, tom }: { valor: string; rotulo: string; tom?: string }) {
+/**
+ * Um número do topo, com o que ele significa embaixo.
+ *
+ * `ordem` existe por causa do celular: em duas colunas, os seis cartões viram
+ * três fileiras, e ROI e acerto — que são a resposta — caíam na terceira. As
+ * classes trocam a ORDEM VISUAL sem mexer na leitura do documento, que continua
+ * indo do que foi publicado ao que ele rendeu.
+ */
+function Numero({
+  valor,
+  rotulo,
+  tom,
+  ordem,
+}: {
+  valor: string;
+  rotulo: string;
+  tom?: string;
+  ordem?: string;
+}) {
   return (
-    <div className="rounded-rebrand-md border border-line-2 bg-white px-4 py-3">
+    <div className={`rounded-rebrand-md border border-line-2 bg-white px-4 py-3 ${ordem ?? ''}`}>
       <p className={`font-display text-2xl font-black tabular-nums ${tom ?? 'text-ink'}`}>
         {valor}
       </p>
@@ -188,11 +204,13 @@ export function Placar({
         <Numero
           valor={taxaPct(total.taxa)}
           rotulo={`Acerto: ${total.acertos} ${emN(total.n - total.anuladas)}`}
+          ordem="order-[-1] sm:order-none"
         />
         <Numero
           valor={roiPct(total.roi)}
           rotulo={`ROI ± ${epPct(total.ep)} ${simulando ? `em ${String(total.unidades).replace('.', ',')}u` : emN(total.n)}`}
           tom={tomDoRoi(total.roi)}
+          ordem="order-[-2] sm:order-none"
         />
       </div>
 

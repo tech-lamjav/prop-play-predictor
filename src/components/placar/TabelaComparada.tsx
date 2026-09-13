@@ -84,13 +84,13 @@ export function TabelaComparada({
 
   return (
     <section className="rounded-rebrand-md border border-line-2 bg-white">
-      <header className="border-b border-line-2 px-5 py-3">
+      <header className="border-b border-line-2 px-4 py-3 sm:px-5">
         <h2 className="font-display text-[17px] font-black text-ink">{quebra.titulo}</h2>
         <p className="mt-1 text-[13px] text-ink-2">{quebra.explicacao}</p>
       </header>
 
       {linhas.length === 0 ? (
-        <p className="px-5 py-8 text-[14px] text-ink-2">
+        <p className="px-4 py-8 text-[14px] text-ink-2 sm:px-5">
           Nenhuma oportunidade liquidada em nenhum dos dois períodos.
         </p>
       ) : (
@@ -98,23 +98,23 @@ export function TabelaComparada({
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                <th className="px-5 py-2.5 font-bold">Grupo</th>
-                <th className="px-5 py-2.5 font-bold">{rotuloDeA}</th>
-                <th className="px-5 py-2.5 font-bold">{rotuloDeB}</th>
-                <th className="px-5 py-2.5 font-bold">Diferença</th>
+                <th className="sticky left-0 z-10 border-r border-line-2 bg-white px-4 py-2.5 font-bold sm:border-r-0 sm:px-5">Grupo</th>
+                <th className="whitespace-nowrap px-4 py-2.5 font-bold sm:px-5">{rotuloDeA}</th>
+                <th className="whitespace-nowrap px-4 py-2.5 font-bold sm:px-5">{rotuloDeB}</th>
+                <th className="whitespace-nowrap px-4 py-2.5 font-bold sm:px-5">Diferença</th>
               </tr>
             </thead>
             <tbody>
               {linhas.map((c) => (
                 <tr key={c.chave} className="border-b border-line-2 last:border-b-0">
                   <CelulaDoGrupo nome={rotulo(c.chave)} selo={selo?.(c.chave) ?? null} />
-                  <td className="px-5 py-3">
+                  <td className="whitespace-nowrap px-4 py-3 sm:px-5">
                     <Lado celula={c.a} />
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="whitespace-nowrap px-4 py-3 sm:px-5">
                     <Lado celula={c.b} />
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="whitespace-nowrap px-4 py-3 sm:px-5">
                     <Diferenca c={c} />
                   </td>
                 </tr>

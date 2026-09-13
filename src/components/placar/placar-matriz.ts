@@ -120,7 +120,8 @@ export function ordenadoPeloEstrago(linhas: readonly LinhaLiquidada[]): LinhaLiq
 export type ColunaDoDrill = 'jogo' | 'saida' | 'odd' | 'score' | 'margem' | 'lucro';
 
 /** O lucro efetivo: o de uma unidade vezes o tamanho apostado. */
-const lucroEfetivo = (l: LinhaLiquidada) => l.lucro * l.unidades;
+/** O lucro que a célula soma: o de uma unidade vezes o tamanho da aposta. */
+export const lucroEfetivo = (l: LinhaLiquidada) => l.lucro * l.unidades;
 
 const valorDa = (l: LinhaLiquidada, coluna: ColunaDoDrill): number | string => {
   switch (coluna) {

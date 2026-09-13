@@ -4,6 +4,7 @@ import type { DateRange } from 'react-day-picker';
 import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ATALHOS, periodoAnterior, rotuloDoPeriodo, type Periodo } from './placar-periodo';
 
 /**
@@ -34,6 +35,7 @@ export function SeletorDePeriodo({
   aoAplicar: (periodo: Periodo, periodoB: Periodo | null) => void;
 }) {
   const [aberto, setAberto] = useState(false);
+  const noCelular = useIsMobile();
 
   // O rascunho existe para o "Cancelar" ter o que descartar. Sem ele, mexer no
   // calendário já teria mudado o que a tela mostra.
@@ -74,7 +76,7 @@ export function SeletorDePeriodo({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-rebrand-sm border border-line-2 bg-white px-3 py-2 text-[13px] font-bold text-ink transition hover:border-ink"
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-rebrand-sm border border-line-2 bg-white px-3 py-2 text-[13px] font-bold text-ink transition hover:border-ink"
         >
           <CalendarDays className="h-4 w-4 text-ink-dim" />
           <span>{rotuloDoPeriodo(periodo)}</span>
@@ -93,8 +95,11 @@ export function SeletorDePeriodo({
           o calendário aparece preto no meio de uma tela clara. */}
       <PopoverContent align="start" className="theme-bolao w-auto max-w-[95vw] border-line-2 bg-white p-0 text-ink">
         <div className="flex flex-col sm:flex-row">
-          <div className="flex flex-col gap-1 border-b border-line-2 bg-canvas p-3 sm:border-b-0 sm:border-r">
-            <span className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+          {/* No celular os atalhos são uma fileira de chips, e não uma coluna:
+              empilhados, eles empurravam o calendário inteiro para fora da tela
+              antes de a pessoa chegar nele. */}
+          <div className="flex flex-row flex-wrap gap-1 border-b border-line-2 bg-canvas p-3 sm:flex-col sm:border-b-0 sm:border-r">
+            <span className="mb-1 hidden font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim sm:block">
               Atalhos
             </span>
             {ATALHOS.filter((a) => a.id !== 'personalizado').map((a, i) => {
@@ -109,8 +114,10 @@ export function SeletorDePeriodo({
                     setRascunho(janela);
                     if (comparando) setRascunhoB(periodoAnterior(janela));
                   }}
-                  className={`rounded-rebrand-sm px-3 py-1.5 text-left text-[13px] transition ${
-                    ativo ? 'bg-forest font-bold text-white' : 'text-ink-2 hover:bg-canvas'
+                  className={`whitespace-nowrap rounded-rebrand-sm border px-3 py-1.5 text-[13px] transition sm:border-transparent sm:text-left ${
+                    ativo
+                      ? 'border-forest bg-forest font-bold text-white'
+                      : 'border-line-2 text-ink-2 hover:bg-canvas sm:border-transparent'
                   }`}
                 >
                   {a.rotulo}
@@ -147,7 +154,10 @@ export function SeletorDePeriodo({
               }}
               mode="range"
               locale={ptBR}
-              numberOfMonths={2}
+              // Dois meses é o que faz o seletor servir para um período que
+              // cruza a virada do mês. No celular não cabem dois — e insistir
+              // neles espremia cada dia a ponto de o dedo não acertar um.
+              numberOfMonths={noCelular ? 1 : 2}
               defaultMonth={comoData(rascunho.de)}
               selected={{ from: comoData(rascunho.de), to: comoData(rascunho.ate) }}
               onSelect={selecionar}

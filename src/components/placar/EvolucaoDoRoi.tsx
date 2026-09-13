@@ -15,6 +15,7 @@ import {
   type Ponto,
 } from './placar-evolucao';
 import { noPeriodo, type Eixo, type Periodo } from './placar-periodo';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { rotuloDoMercado } from './placar-vocabulario';
 
 /** O que a barra diz quando o ponteiro para nela. */
@@ -72,6 +73,7 @@ export function EvolucaoDoRoi({
   granularidade: Granularidade;
   aoMudarGranularidade: (g: Granularidade) => void;
 }) {
+  const noCelular = useIsMobile();
   const disponiveis = granularidadesDe(periodo);
   const setGranularidade = aoMudarGranularidade;
   /** A gaveta aberta por clique, com o caminho de volta. */
@@ -110,7 +112,7 @@ export function EvolucaoDoRoi({
 
   return (
     <section className="rounded-rebrand-md border border-line-2 bg-white">
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-2 px-5 py-3">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-2 px-4 py-3 sm:px-5">
         <h2 className="font-display text-[17px] font-black text-ink">Evolução do ROI</h2>
 
         {zoom && (
@@ -141,7 +143,10 @@ export function EvolucaoDoRoi({
           </span>
         )}
 
-        <span className="ml-auto flex flex-wrap gap-1">
+        {/* No celular os mercados ganham a linha inteira: espremidos à direita
+            de um título que já ocupa a largura toda, eles viravam uma coluna de
+            chips de um em um. */}
+        <span className="flex w-full flex-wrap gap-1 sm:ml-auto sm:w-auto">
           {presentes.map((slug) => {
             const ativo = mercados.length === 0 || mercados.includes(slug);
             return (
@@ -163,26 +168,30 @@ export function EvolucaoDoRoi({
       </header>
 
       {pontos.length === 0 ? (
-        <p className="px-5 py-8 text-[14px] text-ink-2">
+        <p className="px-4 py-8 text-[14px] text-ink-2 sm:px-5">
           Nenhuma oportunidade liquidada no período com os mercados escolhidos.
         </p>
       ) : (
         <div className="px-2 py-4">
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={pontos} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+          <ResponsiveContainer width="100%" height={noCelular ? 200 : 240}>
+            <BarChart data={pontos} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e0" />
               <XAxis
                 dataKey="rotulo"
-                tick={{ fontSize: 11, fill: '#6b6b6b' }}
+                tick={{ fontSize: noCelular ? 10 : 11, fill: '#6b6b6b' }}
                 tickLine={false}
                 axisLine={{ stroke: '#e7e5e0' }}
+                // Sem isto, num mês por dia os rótulos se sobrepõem na largura
+                // de um celular até virarem uma mancha.
+                interval="preserveStartEnd"
+                minTickGap={noCelular ? 12 : 5}
               />
               <YAxis
                 tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-                tick={{ fontSize: 11, fill: '#6b6b6b' }}
+                tick={{ fontSize: noCelular ? 10 : 11, fill: '#6b6b6b' }}
                 tickLine={false}
                 axisLine={false}
-                width={46}
+                width={noCelular ? 38 : 46}
               />
               <ReferenceLine y={0} stroke="#9a9a9a" />
               <Tooltip
