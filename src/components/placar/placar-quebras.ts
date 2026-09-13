@@ -1,8 +1,9 @@
 import {
-  FAIXAS_COM_ESCALA_ANTIGA,
   FAIXAS_DE_ODD,
+  FAIXAS_DO_SCORE,
   faixaDaLinha,
   faixaDeOdd,
+  naEscalaAntiga,
   quebrar,
   quebrarNaOrdem,
   type Celula,
@@ -46,6 +47,17 @@ export type Quebra = {
    * texto de tela quebra calado no dia em que alguém melhora a copy.
    */
   marcaOculto?: boolean;
+  /**
+   * Quem entra nesta quebra. O padrão é todo mundo.
+   *
+   * Existe por causa de uma quebra só: a de faixa de Score não pode misturar
+   * duas réguas de nota. Em vez de inventar uma faixa "régua anterior" — que
+   * numa tabela de colunas por data lê como recorte de calendário, e não é —,
+   * a linha antiga simplesmente não entra AQUI, e a tela diz quantas são.
+   */
+  entra?: (linha: LinhaPublicada) => boolean;
+  /** O que dizer sobre quem ficou de fora, quando `entra` recusa alguém. */
+  notaDosFora?: string;
 };
 
 export const QUEBRAS: Quebra[] = [
@@ -60,9 +72,12 @@ export const QUEBRAS: Quebra[] = [
   {
     titulo: 'Por faixa de Score',
     explicacao:
-      'A promessa central do método: nota maior deveria render mais. Se a coluna de ROI não sobe com a faixa, a nota não está ordenando o resultado — e é a diferença entre faixas, não o número de uma delas, que responde isso. A última linha é a régua velha, de antes da virada do denominador: ela conta em todas as outras tabelas, e aqui fica separada porque a nota dela não é comparável.',
-    chaveDe: faixaDaLinha,
-    ordem: FAIXAS_COM_ESCALA_ANTIGA,
+      'A promessa central do método: nota maior deveria render mais. Se a coluna de ROI não sobe com a faixa, a nota não está ordenando o resultado — e é a diferença entre faixas, não o número de uma delas, que responde isso.',
+    chaveDe: (l) => faixaDaLinha(l) ?? '',
+    ordem: FAIXAS_DO_SCORE,
+    entra: (l) => !naEscalaAntiga(l),
+    notaDosFora:
+      'foram publicadas antes da virada do denominador, em 04/09 às 14h35 UTC, e têm nota em outra régua. Não é recorte de data: elas têm jogo dentro do período e contam em todas as outras tabelas — só a comparação por faixa exigiria a mesma régua.',
   },
   {
     titulo: 'Por faixa de odd',
@@ -114,7 +129,13 @@ export const QUEBRAS_DO_DADO: Quebra[] = [
 ];
 
 /** As células de uma quebra, na ordem que ela pede. */
-export const celulasDa = (quebra: Quebra, liquidadas: readonly LinhaLiquidada[]): Celula[] =>
-  quebra.ordem
-    ? quebrarNaOrdem(liquidadas, quebra.chaveDe, quebra.ordem)
-    : quebrar(liquidadas, quebra.chaveDe);
+/** As linhas que a quebra aceita. */
+export const linhasDa = (quebra: Quebra, liquidadas: readonly LinhaLiquidada[]) =>
+  quebra.entra ? liquidadas.filter((l) => quebra.entra!(l.linha)) : liquidadas;
+
+export const celulasDa = (quebra: Quebra, liquidadas: readonly LinhaLiquidada[]): Celula[] => {
+  const dela = linhasDa(quebra, liquidadas);
+  return quebra.ordem
+    ? quebrarNaOrdem(dela, quebra.chaveDe, quebra.ordem)
+    : quebrar(dela, quebra.chaveDe);
+};

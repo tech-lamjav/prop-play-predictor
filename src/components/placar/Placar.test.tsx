@@ -438,3 +438,35 @@ describe('o drill mostra o placar e a distância até a linha', () => {
     expect(dialogo).not.toHaveTextContent(/faltou|sobrou/);
   });
 });
+
+describe('a régua anterior do Score', () => {
+  // Publicada em 03/09, jogo em 08/09: nota na régua velha, jogo dentro do
+  // período. Ela conta em toda tabela, menos na de faixa — e a tela diz isso,
+  // em vez de oferecer uma faixa chamada "antes de 04/09", que numa tabela de
+  // colunas por data lê como recorte de calendário.
+  const velha = () =>
+    linha({ detectada_em: '2026-09-03T03:00:00', kickoff_utc: '2026-09-08T23:00:00', score: 85 });
+  const nova = () =>
+    linha({ detectada_em: '2026-09-08T03:00:00', kickoff_utc: '2026-09-08T23:00:00', score: 85 });
+
+  it('não vira uma faixa na tabela de Score', () => {
+    render(<Placar {...BASE} publicadas={[velha(), nova()]} />);
+    const tabela = screen.getByText('Por faixa de Score').closest('section');
+    expect(tabela).not.toHaveTextContent(/escala antiga/i);
+  });
+
+  it('mas a tabela diz quantas ficaram de fora, e por quê', () => {
+    render(<Placar {...BASE} publicadas={[velha(), nova()]} />);
+    const tabela = screen.getByText('Por faixa de Score').closest('section');
+    expect(tabela).toHaveTextContent('1 aposta fora desta tabela');
+    expect(tabela).toHaveTextContent(/outra régua/i);
+    expect(tabela).toHaveTextContent(/não é recorte de data/i);
+  });
+
+  it('e ela conta normalmente nas outras tabelas', () => {
+    render(<Placar {...BASE} publicadas={[velha(), nova()]} />);
+    const porMercado = screen.getByText('Por mercado').closest('section');
+    const total = porMercado?.querySelector('tbody tr td:last-child');
+    expect(total?.textContent).toContain('2');
+  });
+});

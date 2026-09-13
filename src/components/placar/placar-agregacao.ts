@@ -141,7 +141,12 @@ export function liquidarTudo(
       continue;
     }
 
-    const unidades = pesos[faixaDaLinha(linha)] ?? 1;
+    // Linha de régua anterior não tem faixa comparável, então a simulação por
+    // faixa não a toca: ela entra com uma unidade. Mandar "não apostar na
+    // Baixa" não pode decidir calado o que fazer com uma nota que não é
+    // comparável com a Baixa.
+    const faixa = faixaDaLinha(linha);
+    const unidades = (faixa == null ? 1 : pesos[faixa]) ?? 1;
     if (unidades <= 0) {
       foraDaSimulacao.push(linha);
       continue;
@@ -308,36 +313,37 @@ export const FAIXAS_DE_ODD = ['1.25–1.59', '1.60–1.99', '2.00–2.59', '2.60
 export type FaixaDeOdd = (typeof FAIXAS_DE_ODD)[number];
 
 /**
- * A faixa das linhas cuja nota está na régua velha.
+ * A nota desta linha foi calculada na RÉGUA ANTERIOR?
  *
- * ⚠️ Elas NÃO saem da conta, e essa foi a correção mais cara desta tela. A
- * primeira versão descartava tudo que nasceu antes da virada do denominador, em
- * nome da "série comparável" — e isso jogava fora 930 de 1.919 apostas
- * liquidadas no período padrão, quase metade da amostra, incluindo 121 das 174
- * de nota alta. O ROI por mercado, por campeonato e por premissa não dependem da
- * escala da nota; só a leitura POR FAIXA depende.
+ * A virada do denominador entrou em 04/09/2026 às 14h35 UTC, e linha publicada
+ * antes disso tem nota em outra escala — a média caiu de 41,1 para 33,5 e a nota
+ * 100 deixou de ser 9,2% do board para ser 4,1%. Um 80 de antes não é um 80 de
+ * agora.
  *
- * Então a linha antiga fica, e a escala vira uma faixa própria: ela aparece na
- * última linha da tabela de Score, separada, em vez de contaminar Baixa e Alta.
+ * ⚠️ Isso NÃO é recorte de data e não tem nada a ver com o período escolhido: a
+ * linha publicada em 03/09 para um jogo de 08/09 tem régua anterior e jogo
+ * dentro de qualquer janela de setembro. Quem confunde as duas coisas lê a
+ * régua como se fosse uma coluna do calendário.
+ *
+ * ⚠️ E elas NÃO saem da amostra. A primeira versão desta tela descartava todas,
+ * em nome da "série comparável", e isso jogava fora 930 de 1.919 apostas
+ * liquidadas no período padrão. ROI por mercado, campeonato, odd ou premissa não
+ * depende da escala da nota; só a leitura POR FAIXA depende, e é só de lá que
+ * elas ficam de fora.
  */
-export const FAIXA_ESCALA_ANTIGA = 'Escala antiga (antes de 04/09)';
-
 export const naEscalaAntiga = (linha: LinhaPublicada) => {
   const nasceu = parseUtc(linha.detectada_em)?.getTime();
   return nasceu != null && nasceu < Date.parse(INSTANTE_DA_VIRADA);
 };
 
 /**
- * A faixa de uma LINHA, que é a da nota — a menos que a nota seja de outra régua.
+ * A faixa de uma LINHA. `null` quando a nota não é comparável.
  *
- * É esta que a tela usa em toda quebra, filtro e peso. `faixaDoScore` continua
- * pura, olhando só o número, porque é ela que o script de terminal espelha.
+ * É esta que a tela usa onde a faixa importa. `faixaDoScore` continua pura,
+ * olhando só o número, porque é ela que o script de terminal espelha.
  */
-export const faixaDaLinha = (linha: LinhaPublicada): string =>
-  naEscalaAntiga(linha) ? FAIXA_ESCALA_ANTIGA : faixaDoScore(linha.score);
-
-/** As faixas na ordem da escala, com a régua velha no fim. */
-export const FAIXAS_COM_ESCALA_ANTIGA = [...FAIXAS_DO_SCORE, FAIXA_ESCALA_ANTIGA] as const;
+export const faixaDaLinha = (linha: LinhaPublicada): string | null =>
+  naEscalaAntiga(linha) ? null : faixaDoScore(linha.score);
 
 /**
  * Quanto apostar em cada faixa de Score.
@@ -358,9 +364,6 @@ export const PESO_MEDIDO: PesoPorFaixa = {
   'Média (30–59)': 1,
   'Alta (60–79)': 1,
   'Alta (80+)': 1,
-  // A régua velha tem peso próprio: simular "não apostar na Baixa" não pode
-  // decidir calado o que fazer com uma nota que não é comparável com a Baixa.
-  [FAIXA_ESCALA_ANTIGA]: 1,
 };
 
 export const ehSimulacao = (pesos: PesoPorFaixa) =>

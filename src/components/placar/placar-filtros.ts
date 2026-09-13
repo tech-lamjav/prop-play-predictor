@@ -1,8 +1,4 @@
-import {
-  FAIXAS_COM_ESCALA_ANTIGA,
-  faixaDaLinha,
-  type LinhaPublicada,
-} from './placar-agregacao';
+import { FAIXAS_DO_SCORE, faixaDaLinha, type LinhaPublicada } from './placar-agregacao';
 
 // ============================================================================
 // placar-filtros.ts — o que entra na conta, antes de qualquer agregação
@@ -37,8 +33,11 @@ export const temRecorte = (r: Recorte) => r.faixas.length > 0 || r.valorMinimo !
 
 /** A linha passa pelo recorte? */
 export function passaNoRecorte(linha: LinhaPublicada, recorte: Recorte): boolean {
-  if (recorte.faixas.length > 0 && !recorte.faixas.includes(faixaDaLinha(linha))) {
-    return false;
+  if (recorte.faixas.length > 0) {
+    // Nota de régua anterior não tem faixa comparável: filtrar por faixa é
+    // pedir uma nota na régua de hoje, e ela não tem.
+    const faixa = faixaDaLinha(linha);
+    if (faixa == null || !recorte.faixas.includes(faixa)) return false;
   }
   if (recorte.valorMinimo != null) {
     // Linha sem valor gravado não passa num corte de valor: incluí-la seria
@@ -58,14 +57,7 @@ export function aplicarRecorte(
 }
 
 /** As faixas na ordem da escala, para a tela desenhar os botões. */
-/**
- * As faixas do filtro, com a régua velha inclusa.
- *
- * Ela precisa estar aqui: sem a opção, filtrar por "Alta (80+)" tiraria em
- * silêncio 121 apostas cuja nota alta foi medida na régua anterior — e quem
- * filtrou não teria como saber que elas existiram.
- */
-export const FAIXAS_PARA_FILTRAR = FAIXAS_COM_ESCALA_ANTIGA;
+export const FAIXAS_PARA_FILTRAR = FAIXAS_DO_SCORE;
 
 /**
  * Os cortes de valor que a operação usa de verdade.

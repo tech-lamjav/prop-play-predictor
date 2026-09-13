@@ -9,7 +9,6 @@ import {
   ehSimulacao,
   naEscalaAntiga,
   faixaDaLinha,
-  FAIXA_ESCALA_ANTIGA,
   quebrar,
   quebrarNaOrdem,
   totalDoPeriodo,
@@ -342,8 +341,11 @@ describe('a régua velha do Score', () => {
     expect(naEscalaAntiga(linha(nova))).toBe(false);
   });
 
-  it('a linha velha tem faixa própria, e não entra na faixa da nota', () => {
-    expect(faixaDaLinha(linha({ ...velha, score: 85 }))).toBe(FAIXA_ESCALA_ANTIGA);
+  it('a linha velha não tem faixa comparável', () => {
+    // `null`, e não uma faixa inventada de nome "escala antiga": numa tabela
+    // com colunas por data, uma faixa chamada "antes de 04/09" lê como recorte
+    // de calendário — e não é, a linha tem jogo dentro do período.
+    expect(faixaDaLinha(linha({ ...velha, score: 85 }))).toBeNull();
     expect(faixaDaLinha(linha({ ...nova, score: 85 }))).toBe('Alta (80+)');
   });
 
@@ -356,14 +358,14 @@ describe('a régua velha do Score', () => {
     expect(celulaDe('tudo', liquidadas).n).toBe(2);
   });
 
-  it('o peso da régua velha é próprio, e nasce em uma unidade', () => {
-    // Simular "não apostar na Baixa" não pode decidir calado o que fazer com uma
-    // nota que não é comparável com a Baixa.
-    expect(PESO_MEDIDO[FAIXA_ESCALA_ANTIGA]).toBe(1);
+  it('a simulação por faixa não a toca: ela entra com uma unidade', () => {
+    // Mandar "não apostar na Baixa" não pode decidir calado o que fazer com uma
+    // nota de 20 que foi medida noutra régua.
     const { liquidadas } = liquidarTudo([green(2, { ...velha, score: 20 })], {
       ...PESO_MEDIDO,
       'Baixa (<30)': 0,
     });
     expect(liquidadas).toHaveLength(1);
+    expect(liquidadas[0].unidades).toBe(1);
   });
 });

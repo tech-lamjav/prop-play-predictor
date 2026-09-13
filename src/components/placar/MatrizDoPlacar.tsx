@@ -5,6 +5,7 @@ import { DrillDaCelula } from './DrillDaCelula';
 import { epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import type { Granularidade } from './placar-evolucao';
 import { matriz, type CelulaDaMatriz } from './placar-matriz';
+import { linhasDa } from './placar-quebras';
 import type { Eixo } from './placar-periodo';
 import type { Quebra } from './placar-quebras';
 
@@ -50,6 +51,7 @@ export function MatrizDoPlacar({
 }) {
   const [aberta, setAberta] = useState<{ titulo: string; celula: CelulaDaMatriz } | null>(null);
   const { gavetas, linhas } = matriz(liquidadas, quebra, granularidade, eixo);
+  const fora = liquidadas.length - linhasDa(quebra, liquidadas).length;
 
   const abrir = (titulo: string, celula: CelulaDaMatriz | undefined) => {
     if (!celula || celula.linhas.length === 0) return;
@@ -126,6 +128,15 @@ export function MatrizDoPlacar({
 
       <p className="border-t border-line-2 px-5 py-2 text-[11px] text-ink-dim">
         Cada célula traz ROI, apostas e acerto. Clique para ver o que está dentro dela.
+        {fora > 0 && quebra.notaDosFora && (
+          <>
+            {' '}
+            <strong className="font-bold text-ink-2">
+              {fora} aposta{fora > 1 ? 's' : ''} fora desta tabela:
+            </strong>{' '}
+            {quebra.notaDosFora}
+          </>
+        )}
       </p>
 
       <DrillDaCelula

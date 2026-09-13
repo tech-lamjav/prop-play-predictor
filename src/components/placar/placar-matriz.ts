@@ -1,7 +1,7 @@
 import { celulaDe, type Celula, type LinhaLiquidada } from './placar-agregacao';
 import { gavetaDe, rotuloDaGaveta, type Granularidade } from './placar-evolucao';
 import { diaDaLinha, type Eixo } from './placar-periodo';
-import type { Quebra } from './placar-quebras';
+import { linhasDa, type Quebra } from './placar-quebras';
 
 // ============================================================================
 // placar-matriz.ts — a mesma quebra, agora com o tempo nas colunas
@@ -57,7 +57,7 @@ export function matriz(
   const porLinha = new Map<string, Map<string, LinhaLiquidada[]>>();
   const todasDaLinha = new Map<string, LinhaLiquidada[]>();
 
-  for (const l of liquidadas) {
+  for (const l of linhasDa(quebra, liquidadas)) {
     const dia = diaDaLinha(l.linha, eixo);
     if (dia == null) continue;
     const gaveta = gavetaDe(dia, granularidade);
