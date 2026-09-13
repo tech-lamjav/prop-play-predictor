@@ -187,6 +187,25 @@ que ninguém consegue auditar. Estornar exige motivo e não recua o acesso — a
 pessoa já usou, e tirar por erro de lançamento castiga quem não errou.
 _Avoid_: Cobrança, fatura, recebimento, entrada
 
+**ROI dele**:
+O retorno das apostas DA PESSOA, e não nosso. Lucro sobre o que ela apostou,
+contando só o que já liquidou. Nas palavras do Victor: "não temos culpa da
+performance dele, na verdade é até uma forma de a gente abordar o cara" — quem
+está perdendo é uma conversa sobre gestão de banca, não um problema.
+
+Por isso a tela não pinta verde e vermelho: prejuízo colorido na ficha de um
+cliente vira julgamento, e quem abre a ficha está prestes a falar com essa
+pessoa. Nulo quando nada liquidou, porque zero por cento é uma afirmação que
+quem só tem aposta em aberto não fez.
+_Avoid_: Nosso ROI, performance, resultado da conta, retorno
+
+**Recorte de aposta**:
+Como as apostas de uma pessoa se distribuem por mercado, esporte ou faixa de
+odd. Todo recorte anda com o N junto: "aposta mais em Over/Under" é uma frase
+que mente quando a pessoa tem três apostas, e "2 de 3" se explica sozinho.
+Abaixo de cinco apostas a tela mostra o número mas não chama de perfil.
+_Avoid_: Segmento, cluster, padrão, comportamento de aposta
+
 **Recebido na mão**:
 O total de pagamentos não estornados de uma pessoa. É o que ela já gerou FORA
 do Stripe, e a tela diz isso com essas palavras: quem paga pelo gateway já tem

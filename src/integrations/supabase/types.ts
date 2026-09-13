@@ -1271,6 +1271,20 @@ export type Database = {
         Args: { p_id: string; p_motivo: string }
         Returns: undefined
       }
+      crm_perfil_de_aposta: {
+        Args: { p_user_id: string }
+        Returns: {
+          total: number
+          liquidadas: number
+          primeira: string | null
+          ultima: string | null
+          apostado: number
+          lucro: number
+          por_esporte: Json
+          por_mercado: Json
+          por_faixa_de_odd: Json
+        }[]
+      }
       crm_anotar: {
         Args: { p_user_id: string; p_tipo: string; p_texto: string }
         Returns: string

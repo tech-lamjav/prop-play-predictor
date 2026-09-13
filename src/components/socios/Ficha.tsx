@@ -126,6 +126,7 @@ export function Ficha({
   erroAoMudarEtapa,
   linhaDoTempo,
   comportamento,
+  perfilDeAposta,
   edicaoDeAcesso,
   assinatura,
   receita,
@@ -141,6 +142,14 @@ export function Ficha({
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
   comportamento: ReactNode;
+  /**
+   * Como a pessoa aposta.
+   *
+   * Na mesma aba que o comportamento porque respondem a mesma pergunta por
+   * caminhos diferentes: o PostHog diz se ela aparece, e este diz o que ela faz
+   * quando aparece.
+   */
+  perfilDeAposta: ReactNode;
   /** O editor de acesso entra por fora: ele tem escrita própria, e a ficha
    *  continua sendo só desenho. */
   edicaoDeAcesso: ReactNode;
@@ -191,6 +200,7 @@ export function Ficha({
       erroAoMudarEtapa={erroAoMudarEtapa}
       linhaDoTempo={linhaDoTempo}
       comportamento={comportamento}
+      perfilDeAposta={perfilDeAposta}
       edicaoDeAcesso={edicaoDeAcesso}
       assinatura={assinatura}
       receita={receita}
@@ -208,6 +218,7 @@ function Conteudo({
   erroAoMudarEtapa,
   linhaDoTempo,
   comportamento,
+  perfilDeAposta,
   edicaoDeAcesso,
   assinatura,
   receita,
@@ -223,6 +234,7 @@ function Conteudo({
   /** Entra por fora, como a linha do tempo: tem consulta própria, e só sai
    *  quando o modal abre. */
   comportamento: ReactNode;
+  perfilDeAposta: ReactNode;
   edicaoDeAcesso: ReactNode;
   assinatura: ReactNode;
   receita: ReactNode;
@@ -432,6 +444,7 @@ function Conteudo({
 
         <TabsContent value="comportamento" className={PAINEL}>
           {comportamento}
+          {perfilDeAposta}
         </TabsContent>
       </Tabs>
     </div>

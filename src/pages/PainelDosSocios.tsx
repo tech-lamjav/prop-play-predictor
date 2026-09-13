@@ -11,6 +11,7 @@ import {
 } from '@/components/socios/EditorDeAcesso';
 import { DarAssinatura, type EstadoDaConcessao } from '@/components/socios/DarAssinatura';
 import { Receita, type EstadoDaReceita } from '@/components/socios/Receita';
+import { PerfilDeAposta } from '@/components/socios/PerfilDeAposta';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
@@ -29,6 +30,7 @@ import {
   useRegistrarPagamento,
 } from '@/hooks/use-pagamentos';
 import { useNomeDoSocio } from '@/hooks/use-nome-do-socio';
+import { usePerfilDeAposta } from '@/hooks/use-perfil-de-aposta';
 import { usePessoa } from '@/hooks/use-pessoa';
 import { brtDayOf, brtToday } from '@/utils/futebol-datas';
 
@@ -92,6 +94,7 @@ function FichaDoModal({ id }: { id: string }) {
   const assinaturas = useAssinaturas(cadastros.tipo === 'pronto' ? cadastros.cadastros : []);
   const darAssinatura = useDarAssinatura(id);
   const encerrarAssinatura = useEncerrarAssinatura();
+  const perfil = usePerfilDeAposta(id);
   const comportamento = useComportamento(
     id,
     estado.tipo === 'pronta' ? estado.pessoa.email : undefined,
@@ -235,6 +238,7 @@ function FichaDoModal({ id }: { id: string }) {
           }
         />
       }
+      perfilDeAposta={<PerfilDeAposta estado={perfil} />}
       comportamento={
         <BlocoDeComportamento
           estado={comportamento}
