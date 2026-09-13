@@ -470,3 +470,38 @@ describe('a régua anterior do Score', () => {
     expect(total?.textContent).toContain('2');
   });
 });
+
+describe('a ordenação dentro do drill', () => {
+  const abrir = async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    render(
+      <Placar
+        {...BASE}
+        publicadas={[
+          linha({ home_team_name: 'Nota alta', score: 76, outcome: 'Away' }),
+          linha({ home_team_name: 'Nota baixa', score: 20 }),
+        ]}
+      />,
+    );
+    const tabela = screen.getByText('Por mercado').closest('section');
+    await userEvent.click(tabela?.querySelector('tbody tr td:nth-child(2)') as Element);
+    return { dialogo: await screen.findByRole('dialog'), userEvent };
+  };
+
+  const nomes = (dialogo: HTMLElement) =>
+    [...dialogo.querySelectorAll('tbody tr td:first-child')].map((td) => td.textContent?.trim());
+
+  it('abre no pior primeiro, que é a pergunta de quem clicou numa célula vermelha', async () => {
+    const { dialogo } = await abrir();
+    expect(nomes(dialogo)[0]).toContain('Nota alta');
+  });
+
+  it('e o cabeçalho do Score reordena', async () => {
+    const { dialogo, userEvent } = await abrir();
+    await userEvent.click(screen.getByRole('button', { name: /score/i }));
+    expect(nomes(dialogo)[0]).toContain('Nota baixa');
+
+    await userEvent.click(screen.getByRole('button', { name: /score/i }));
+    expect(nomes(dialogo)[0]).toContain('Nota alta');
+  });
+});

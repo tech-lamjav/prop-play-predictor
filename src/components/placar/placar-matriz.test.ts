@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { liquidarTudo, type LinhaPublicada } from './placar-agregacao';
-import { matriz, ordenadoPeloEstrago } from './placar-matriz';
+import { matriz, ordenadoPeloEstrago, ordenarPor } from './placar-matriz';
 import { QUEBRAS } from './placar-quebras';
 import { FAIXAS_DO_SCORE } from './placar-agregacao';
 
@@ -136,5 +136,40 @@ describe('o que puxou a célula', () => {
     const ordenado = ordenadoPeloEstrago(liquidadas);
     expect(ordenado.map((l) => l.lucro)).toEqual([-1, -1, 1]);
     expect(ordenado[0].linha.best_odd).toBe(3);
+  });
+});
+
+describe('a ordenação do drill', () => {
+  const amostra = montar([
+    linha({ score: 76, best_odd: 1.57, goals_home: 1, goals_away: 0, outcome: 'Away' }),
+    linha({ score: 44, best_odd: 2.45, goals_home: 2, goals_away: 0 }),
+    linha({ score: 52, best_odd: 1.55, goals_home: 2, goals_away: 0, outcome: 'Away' }),
+  ]);
+
+  it('por Score, do menor para o maior', () => {
+    expect(ordenarPor(amostra, 'score', false).map((l) => l.linha.score)).toEqual([44, 52, 76]);
+  });
+
+  it('e do maior para o menor quando se clica de novo', () => {
+    expect(ordenarPor(amostra, 'score', true).map((l) => l.linha.score)).toEqual([76, 52, 44]);
+  });
+
+  it('por odd', () => {
+    expect(ordenarPor(amostra, 'odd', false).map((l) => l.linha.best_odd)).toEqual([
+      1.55, 1.57, 2.45,
+    ]);
+  });
+
+  it('por lucro, que é o padrão: o pior primeiro', () => {
+    const lucros = ordenarPor(amostra, 'lucro', false).map((l) => l.lucro);
+    expect(lucros[0]).toBeLessThanOrEqual(lucros[1]);
+  });
+
+  it('o desempate é sempre o lucro, para a pior da faixa vir na frente', () => {
+    const mesmaNota = montar([
+      linha({ score: 50, best_odd: 2, goals_home: 2, goals_away: 0 }),
+      linha({ score: 50, best_odd: 2, goals_home: 2, goals_away: 0, outcome: 'Away' }),
+    ]);
+    expect(ordenarPor(mesmaNota, 'score', false)[0].lucro).toBeLessThan(0);
   });
 });
