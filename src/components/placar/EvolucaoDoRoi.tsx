@@ -132,7 +132,7 @@ export function EvolucaoDoRoi({
                 type="button"
                 onClick={() => setGranularidade(g)}
                 className={`px-2.5 py-1 text-[12px] font-bold transition ${
-                  granularidade === g ? 'bg-ink text-white' : 'bg-white text-ink-2 hover:text-ink'
+                  granularidade === g ? 'bg-forest text-white' : 'bg-white text-ink-2 hover:text-ink'
                 }`}
               >
                 {ROTULO_DA_GRANULARIDADE[g]}

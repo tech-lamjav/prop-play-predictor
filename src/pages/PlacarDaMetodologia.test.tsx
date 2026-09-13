@@ -100,12 +100,9 @@ describe('a página do placar', () => {
     expect(screen.getByText(/2 oportunidades publicadas no período/)).toBeInTheDocument();
   });
 
-  it('dá para chegar no CRM pela aba da área', () => {
-    // A porta de volta: sem ela o sócio entra no placar e fica preso nele.
-    estado.publicadas = [linha()];
-    montar();
-    expect(screen.getByRole('link', { name: 'CRM' })).toHaveAttribute('href', '/socios/crm');
-  });
+  // A porta de volta para o CRM saiu daqui: ela agora é uma pílula da faixa 2 do
+  // cabeçalho do site, como Futebol e NBA. Quem guarda isso é crm-rota.test.ts,
+  // que lê o AnalyticsNav — aqui o header é um dublê.
 
   it('sem nada publicado, não finge resultado', () => {
     estado.publicadas = [];

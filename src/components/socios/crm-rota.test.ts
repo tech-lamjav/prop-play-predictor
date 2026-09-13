@@ -228,3 +228,37 @@ describe('os dois andares da área', () => {
     }
   });
 });
+
+// ============================================================================
+// A área navega como o resto do site
+// ============================================================================
+// Os dois andares trocam por pílula na faixa 2 do cabeçalho verde, no mesmo
+// lugar em que Futebol e NBA se alternam. Antes eram dois botões no meio do
+// conteúdo, e era isso que fazia a área parecer outro produto.
+//
+// O guarda lê o AnalyticsNav porque a porta de volta mora lá: sem ela, quem
+// entra no placar fica preso nele.
+// ============================================================================
+
+describe('os dois andares na faixa do cabeçalho', () => {
+  const NAV = raiz('src/components/AnalyticsNav.tsx');
+
+  it('o cabeçalho conhece os dois andares, pelas constantes', () => {
+    expect(NAV).toContain('SOCIOS_ITEMS');
+    expect(NAV).toContain('ROTA_DO_CRM');
+    expect(NAV).toContain('ROTA_DO_PLACAR');
+  });
+
+  it('e eles só aparecem dentro da área', () => {
+    // A rota é gated e não se anuncia: a faixa não pode aparecer para quem está
+    // em /planos ou /settings.
+    expect(NAV).toContain('path.startsWith(ROTA_DOS_SOCIOS)');
+  });
+
+  it('a faixa de identidade da página não navega mais entre andares', () => {
+    // Duas navegações para a mesma coisa, uma no verde e outra no branco, é o
+    // tipo de coisa que diverge sozinha.
+    expect(raiz('src/components/socios/CabecalhoDoCrm.tsx')).not.toContain('AbasDaArea');
+    expect(raiz('src/components/placar/CabecalhoDoPlacar.tsx')).not.toContain('AbasDaArea');
+  });
+});

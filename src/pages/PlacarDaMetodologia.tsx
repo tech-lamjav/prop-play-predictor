@@ -100,9 +100,8 @@ export default function PlacarDaMetodologia() {
       <AnalyticsNav />
 
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
-        <CabecalhoDoPlacar resumo={resumo} />
-
-        <BarraDeFiltros
+        <CabecalhoDoPlacar resumo={resumo}>
+          <BarraDeFiltros
           periodo={periodo}
           periodoB={periodoB}
           hoje={hoje}
@@ -116,9 +115,10 @@ export default function PlacarDaMetodologia() {
           aoMudarVitrine={setSoVitrine}
           recorte={recorte}
           pesos={pesos}
-          aoMudarRecorte={setRecorte}
-          aoMudarPesos={setPesos}
-        />
+            aoMudarRecorte={setRecorte}
+            aoMudarPesos={setPesos}
+          />
+        </CabecalhoDoPlacar>
 
         {estado.tipo === 'pronto' ? (
           <Placar

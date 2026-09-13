@@ -29,7 +29,7 @@ function Escolha<T extends string>({
             title={o.ajuda}
             onClick={() => aoMudar(o.id)}
             className={`px-3 py-2 text-[13px] font-bold transition ${
-              valor === o.id ? 'bg-ink text-white' : 'bg-white text-ink-2 hover:text-ink'
+              valor === o.id ? 'bg-forest text-white' : 'bg-white text-ink-2 hover:text-ink'
             }`}
           >
             {o.label}
@@ -80,7 +80,9 @@ export function BarraDeFiltros({
   aoMudarPesos: (p: PesoPorFaixa) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-2 bg-white px-4 py-3">
+    // Mesma faixa branca do título, só que embaixo: a barra é parte do
+    // cabeçalho da página, e não um cartão à parte no meio do conteúdo.
+    <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3">
       <SeletorDePeriodo
         periodo={periodo}
         periodoB={periodoB}

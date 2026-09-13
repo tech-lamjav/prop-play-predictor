@@ -15,6 +15,7 @@ import {
   Trophy,
   Bot,
   CircleUser,
+  Users,
 } from 'lucide-react';
 import { IconSoccer, IconBasketball } from './icons/sports';
 import { useAuth } from '../hooks/use-auth';
@@ -22,6 +23,8 @@ import { useSubscription } from '@/hooks/use-subscription';
 import UserNav from './UserNav';
 import { FutebolTrialChip } from './futebol/FutebolGate';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
+import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_PLACAR } from '@/components/placar/placar-vocabulario';
 
 /**
  * Header global de duas faixas (handoff "Header, Footer e cor secundária Areia",
@@ -63,6 +66,18 @@ const FUTEBOL_ITEMS: SubItem[] = [
   // "Jogos" é a agenda por dia (todas as ligas); "Campeonatos" é a navegação por
   // liga, com rodada, tabela e artilheiros.
   { name: 'Campeonatos', href: '/futebol/campeonatos', icon: Trophy },
+];
+
+/**
+ * Os dois andares da área dos sócios (ADR 0001).
+ *
+ * Ficam na mesma faixa das sub-seções dos produtos porque são a mesma coisa do
+ * ponto de vista de quem navega: uma área com duas telas. O que os diferencia é
+ * que a rota é gated — quem não é sócio nunca chega numa URL que os mostre.
+ */
+const SOCIOS_ITEMS: SubItem[] = [
+  { name: 'CRM', href: ROTA_DO_CRM, icon: Users },
+  { name: 'Metodologia', href: ROTA_DO_PLACAR, icon: Target },
 ];
 
 const BETINHO_ITEMS: SubItem[] = [
@@ -130,6 +145,17 @@ export default function AnalyticsNav({
   const betinhoActive = BETINHO_ITEMS.some((i) => daSecao(i.href));
   const bolaoActive = path.startsWith('/bolao');
   const analisesActive = futebolActive || nbaActive;
+  /**
+   * A área dos sócios tem dois andares, e eles navegam como Futebol e NBA.
+   *
+   * Vivem aqui, e não numa faixa própria dentro da página, porque era isso que
+   * fazia a área parecer outro produto: o resto do site troca de seção por
+   * pílula no cabeçalho verde, e só ela trocava por um par de botões no meio do
+   * conteúdo.
+   *
+   * Só aparecem quando já se está lá dentro — a rota é gated e não é anunciada.
+   */
+  const naAreaDosSocios = path.startsWith(ROTA_DOS_SOCIOS);
 
   // Sub-seções da faixa 2: seguem o produto ativo. Sem produto ativo (ex.:
   // /planos, /settings) a faixa 2 não aparece — não há o que contextualizar.
@@ -139,8 +165,12 @@ export default function AnalyticsNav({
       ? NBA_ITEMS
       : betinhoActive
         ? BETINHO_ITEMS
-        : [];
+        : naAreaDosSocios
+          ? SOCIOS_ITEMS
+          : [];
   const showBand2 = subItems.length > 0;
+  // Na área dos sócios a faixa 2 é só o par de andares, que entra pelo mesmo
+  // caminho das sub-seções — sem pílulas de esporte à esquerda.
 
   const go = (href: string) => navigate(href);
 

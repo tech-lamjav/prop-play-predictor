@@ -110,7 +110,7 @@ export function SeletorDePeriodo({
                     if (comparando) setRascunhoB(periodoAnterior(janela));
                   }}
                   className={`rounded-rebrand-sm px-3 py-1.5 text-left text-[13px] transition ${
-                    ativo ? 'bg-ink font-bold text-white' : 'text-ink-2 hover:bg-canvas'
+                    ativo ? 'bg-forest font-bold text-white' : 'text-ink-2 hover:bg-canvas'
                   }`}
                 >
                   {a.rotulo}

@@ -123,7 +123,7 @@ export function RecorteESimulacao({
                   onClick={() => aoMudarRecorte({ ...recorte, valorMinimo: c.valor })}
                   className={`rounded-rebrand-sm border px-2.5 py-1 text-[12px] font-bold transition ${
                     recorte.valorMinimo === c.valor
-                      ? 'border-ink bg-ink text-white'
+                      ? 'border-forest bg-forest text-white'
                       : 'border-line-2 text-ink-2 hover:text-ink'
                   }`}
                 >
@@ -164,7 +164,7 @@ export function RecorteESimulacao({
                         onClick={() => aoMudarPesos({ ...pesos, [f]: peso })}
                         className={`rounded-rebrand-sm border px-1.5 py-0.5 text-[11px] font-bold transition ${
                           (pesos[f] ?? 1) === peso
-                            ? 'border-ink bg-ink text-white'
+                            ? 'border-forest bg-forest text-white'
                             : 'border-line-2 text-ink-dim hover:text-ink'
                         }`}
                       >
