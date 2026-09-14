@@ -94,7 +94,7 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       placement: 'bottom',
       title: 'O raio-x do dia',
       content:
-        'Um resumo rápido: quantos jogos na agenda, quantas oportunidades pagam acima da chance real e quantas estão na faixa Alta, as de maior confiança pelo nosso método.',
+        'Um resumo rápido: quantos jogos na agenda, quantas oportunidades pagam acima da chance real e quantas estão na faixa Alta, as de cenário melhor sustentado pelas premissas.',
     },
     {
       id: 'futebol-oportunidades',
@@ -104,7 +104,7 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       spotlightPadding: 14,
       title: 'As oportunidades do dia',
       content:
-        'Aqui ficam as principais leituras do dia, ordenadas pelo Score de Confiabilidade. Quanto maior o Score, mais o histórico apoia aquela linha. Toque numa pra abrir a análise completa do jogo.',
+        'Aqui ficam as principais leituras do dia, ordenadas pelo Score. Quanto maior o Score, mais o cenário do jogo sustenta aquela linha — o preço não entra nessa nota: a odd e o valor aparecem ao lado, separados. Toque numa pra abrir a análise completa do jogo.',
     },
     {
       id: 'futebol-jogos',
@@ -119,9 +119,9 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       id: 'futebol-metodologia',
       target: '[data-tour="futebol-metodologia"]',
       placement: 'top',
-      title: 'Confiabilidade, não garantia',
+      title: 'Leitura, não garantia',
       content:
-        'Importante: o Score e a faixa medem a confiabilidade da aposta, não uma garantia de acerto. A gente aponta onde a odd paga mais do que o risco real, mas a decisão final é sempre sua.',
+        'Importante: o Score e a faixa medem o quanto o cenário do jogo sustenta a linha — não são chance de acerto nem garantia. Quem mostra se o preço compensa é o valor, ao lado. A decisão final é sempre sua.',
     },
   );
 
@@ -167,7 +167,7 @@ export function makeFutebolOportunidadesSteps({
     placement: 'bottom',
     title: 'Filtre do seu jeito',
     content:
-      'Ajuste por mercado (resultado, gols, handicap e mais), por faixa de confiança e por competição pra chegar no que te interessa.',
+      'Ajuste por mercado (resultado, gols, handicap e mais), por faixa do cenário e por competição pra chegar no que te interessa.',
   });
 
   if (hasBoard) {
@@ -177,7 +177,7 @@ export function makeFutebolOportunidadesSteps({
       placement: 'top',
       title: 'Como ler cada linha',
       content:
-        'Cada linha é uma aposta: o Score e a faixa de confiança, a aposta em si, a chance estimada, a melhor odd e o valor (o quanto a odd paga acima da chance). Uma régua separa o que tem valor claro do resto. Toque pra abrir a análise do jogo.',
+        'Cada linha é uma aposta: o Score e a faixa, a aposta em si, a chance estimada, a melhor odd e o valor (o quanto a odd paga acima da chance). Uma régua separa o que tem valor claro do resto. Toque pra abrir a análise do jogo.',
     });
   }
 

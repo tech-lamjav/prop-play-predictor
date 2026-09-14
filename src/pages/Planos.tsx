@@ -54,8 +54,8 @@ const annualTotal = (billed: string) => {
 };
 const PLAN_JSONLD_DESC: Record<PaidTier, string> = {
   entrada: 'Betinho ilimitado no Telegram: registra e liquida suas apostas e manda o resumo semanal da banca. Sem as análises de futebol e NBA.',
-  essencial: 'Futebol completo (Brasileirão e Copa) + Betinho ilimitado. Teste grátis de 7 dias.',
-  completo: 'Tudo do Essencial + análise NBA completa (prop bets e Análise 360). Teste grátis de 7 dias.',
+  essencial: 'Futebol completo (Brasileirão e Copa) + Betinho ilimitado. Teste grátis de 48 horas.',
+  completo: 'Tudo do Essencial + análise NBA completa (prop bets e Análise 360). Teste grátis de 48 horas.',
 };
 
 const PLANS_JSONLD = {
@@ -205,7 +205,7 @@ export default function Planos() {
             escolhe até onde quer ir — e sobe de nível quando quiser.
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 text-[13.5px] text-ink-3">
-            {['7 dias grátis pra testar', 'Cancele quando quiser', 'Pix ou cartão'].map((t) => (
+            {['48 horas grátis pra testar', 'Cancele quando quiser', 'Pix ou cartão'].map((t) => (
               <span key={t} className="inline-flex items-center gap-1.5">
                 <Check className="w-[15px] h-[15px] text-status-success" /> {t}
               </span>
@@ -261,7 +261,7 @@ export default function Planos() {
                 {freeCta.label}
               </button>
               <ul className="mt-5 pt-5 border-t border-line flex flex-col gap-2.5 text-sm">
-                <Feat>Futebol: <b className="text-ink font-semibold">7 dias grátis</b> de acesso completo</Feat>
+                <Feat>Futebol: <b className="text-ink font-semibold">48 horas grátis</b> de acesso completo</Feat>
                 <Feat>NBA: <b className="text-ink font-semibold">2 picks do dia</b> liberados</Feat>
                 <Feat>Betinho: até <b className="text-ink font-semibold">3 apostas por dia</b></Feat>
               </ul>
@@ -347,7 +347,7 @@ export default function Planos() {
           </div>
 
           <p className="text-center text-[13px] text-ink-3 mt-4">
-            Todos os planos pagos incluem o Betinho ilimitado e o teste grátis de 7 dias.
+            Todos os planos pagos incluem o Betinho ilimitado e o teste grátis de 48 horas.
           </p>
         </section>
 
@@ -386,7 +386,7 @@ export default function Planos() {
                 </tr>
                 <tr>
                   <th className="text-left px-4 text-sm font-semibold text-ink">Análise de futebol</th>
-                  <td>7 dias grátis</td>
+                  <td>48 horas grátis</td>
                   <td className="text-ink-3">Não inclui</td>
                   <td>Completa</td>
                   <td className="bg-forest-tint !text-forest font-semibold">Completa</td>
@@ -426,7 +426,7 @@ export default function Planos() {
                 a: (<>O NBA é a nossa análise <b className="text-ink">mais robusta</b> — prop bets, Análise 360 e o que temos de mais avançado. O Essencial já entrega o futebol completo pro seu dia a dia; o Completo é pra quem quer <b className="text-ink">tudo</b> junto. Você não paga por esporte solto: paga por até onde quer ir.</>),
               },
               { q: 'Posso trocar de plano depois?', a: <>Pode, quando quiser. Se subir de plano, o valor é ajustado proporcionalmente; se descer, a troca vale no fim do ciclo. Sem multa, sem burocracia.</> },
-              { q: 'Como funciona o teste grátis?', a: <>Você cria a conta e tem <b className="text-ink">7 dias</b> de acesso completo pra experimentar de verdade. Só cobra depois — e você decide se continua.</> },
+              { q: 'Como funciona o teste grátis?', a: <>Você cria a conta e tem <b className="text-ink">48 horas</b> de acesso completo pra experimentar de verdade. Só cobra depois — e você decide se continua.</> },
               { q: 'Consigo pagar com Pix?', a: <>Sim. Aceitamos <b className="text-ink">Pix</b> e cartão. No anual, o Pix sai à vista com o desconto de lançamento aplicado.</> },
               { q: 'Como eu cancelo?', a: <>Em dois cliques, na sua conta. O acesso continua até o fim do período que você já pagou — nada de corte no meio.</> },
             ].map(({ q, a, open }) => (
@@ -446,7 +446,7 @@ export default function Planos() {
           <div className="rounded-[20px] bg-forest text-white text-center px-8 py-12">
             <h2 className="text-[26px] md:text-[38px] font-extrabold tracking-tight">Comece grátis hoje</h2>
             <p className="mt-3 mb-7 mx-auto max-w-[46ch]" style={{ color: '#a9c4b7' }}>
-              Cria a conta, testa 7 dias e só depois decide. Se não for pra você, é só cancelar.
+              Cria a conta, testa 48 horas e só depois decide. Se não for pra você, é só cancelar.
             </p>
             <button onClick={freeCta.onClick} className="inline-block h-12 px-8 rounded-rebrand-sm text-base font-bold transition hover:brightness-95" style={{ background: '#d4a017', color: '#2a1f00' }}>
               {freeCta.label}

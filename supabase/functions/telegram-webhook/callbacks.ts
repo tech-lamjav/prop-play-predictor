@@ -3,6 +3,7 @@
 // ============================================================
 // Extraído de index.ts na Onda 6b da revisão (split mecânico, move-only).
 import { BETS_DASHBOARD_URL } from "./config.ts";
+import { temAcessoAoFutebol } from "../shared/acesso-ao-futebol.ts";
 import type { TelegramCallbackQuery } from "./types.ts";
 import {
   answerCallbackQuery,
@@ -124,11 +125,9 @@ async function handleCallbackQuery(
   // Alterna a preferência e REESCREVE a própria mensagem com o estado novo.
   if (data === "prefliq" || data === "prefres" || data === "prefpub") {
     const { data: cur } = await supabase
-      .from("users").select("settlement_reminders_muted, weekly_summary_muted, futebol_publication_alerts_enabled, futebol_subscription_status, futebol_trial_started_at")
+      .from("users").select("settlement_reminders_muted, weekly_summary_muted, futebol_publication_alerts_enabled, futebol_subscription_status, futebol_trial_ends_at")
       .eq("id", user.id).maybeSingle();
-    const publicationAvailable = cur?.futebol_subscription_status === "premium" ||
-      (!!cur?.futebol_trial_started_at &&
-        new Date(cur.futebol_trial_started_at).getTime() + 7 * 86400000 > Date.now());
+    const publicationAvailable = temAcessoAoFutebol(cur);
     const p = {
       settlementMuted: cur?.settlement_reminders_muted ?? false,
       weeklyMuted: cur?.weekly_summary_muted ?? false,
