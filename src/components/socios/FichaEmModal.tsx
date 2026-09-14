@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
  * a ficha em página separada, cada lead custava sair da lista e voltar, e o fio
  * se perdia no caminho.
  *
- * ⚠️ O endereço continua sendo `/socios/<id>`, e isso é de propósito: a ficha
- * precisa ser compartilhável entre os sócios — um "olha esse aqui" no WhatsApp
+ * ⚠️ A ficha continua tendo endereço próprio, hoje `/socios/crm/<id>`, e isso é
+ * de propósito: ela precisa ser compartilhável entre os sócios — um "olha esse
+ * aqui" no WhatsApp
  * só funciona com link. O que mudou foi o que a rota DESENHA: o painel com o
- * modal aberto por cima, em vez de outra tela. Fechar volta para `/socios`, e o
+ * modal aberto por cima, em vez de outra tela. Fechar volta para a lista, e o
  * botão voltar do navegador funciona sozinho.
  */
 export function FichaEmModal({

@@ -686,7 +686,7 @@ export default function FutebolHoje() {
         <div data-tour="futebol-metodologia" className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
-            <span className="font-semibold">Não é recomendação.</span> Mostramos onde a odd paga acima da chance estimada (valor). Score e faixa medem confiabilidade, não garantia.
+            <span className="font-semibold">Não é recomendação.</span> Mostramos onde a odd paga acima da chance estimada (valor). Score e faixa medem o quanto o cenário sustenta a linha, não garantia de acerto.
           </div>
         </div>
       </div>

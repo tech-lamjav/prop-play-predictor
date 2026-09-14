@@ -255,7 +255,7 @@ function tabela(titulo, linhas, chave, ordem) {
   }
 }
 
-const faixaDeOdd = (o) => {
+export const faixaDeOdd = (o) => {
   const x = Number(o);
   if (x < 1.6) return '1.25–1.59';
   if (x < 2.0) return '1.60–1.99';
@@ -271,7 +271,7 @@ const faixaDeOdd = (o) => {
  * Ficou uma, no vocabulário que o assinante vê, e o corte extra em 80 vive
  * dentro dela: é onde a amostra desta semana mostrou a diferença maior.
  */
-const faixaDoScore = (s) => {
+export const faixaDoScore = (s) => {
   const n = Number(s);
   if (n < 30) return 'Baixa (<30)';
   if (n < 60) return 'Média (30–59)';

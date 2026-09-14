@@ -30,7 +30,7 @@
 // ============================================================================
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -62,13 +62,54 @@ function arquivosDoProjeto(projeto) {
   return ts.parseJsonConfigFileContent(lido.config, ts.sys, dirname(caminho)).fileNames;
 }
 
+/**
+ * O tsc, ou a morte.
+ *
+ * ⚠️ ARMADILHA DO WORKTREE, irmã da armadilha da raiz: um worktree de
+ * `.claude/worktrees/` não tem `node_modules` próprio, então este caminho não
+ * existe lá. O `spawnSync` não falha — ele roda o node com um arquivo
+ * inexistente, devolve "Cannot find module" no stderr, e nenhuma linha bate com
+ * a regex de erro. Resultado: ZERO erros contados e um "✓ nenhum erro de tipo
+ * novo" em cima de um tsc que nunca rodou.
+ *
+ * Aconteceu de verdade: um erro de tipo real — dois tipos `MercadoOculto`
+ * diferentes, um deles com o campo em snake_case — passou por sete commits com
+ * a catraca verde, e quem achou foi o code review.
+ *
+ * Por isso a checagem é do BINÁRIO e do RESULTADO: se o tsc não está no lugar,
+ * ou se ele saiu com código diferente de 0 e 2 (2 é "achei erro de tipo"), o
+ * script morre em vez de declarar vitória.
+ */
 function rodarTsc(projeto) {
   const tsc = resolve(RAIZ, 'node_modules/typescript/bin/tsc');
+  if (!existsSync(tsc)) {
+    console.error(
+      `\n✗ não achei o tsc em ${tsc}\n` +
+        `  Sem ele este script contaria ZERO erros e passaria — exatamente o\n` +
+        `  defeito da #343, com outra causa. Em worktree, rode o npm install\n` +
+        `  dele ou use o node_modules do checkout principal.\n`,
+    );
+    process.exit(2);
+  }
+
   const r = spawnSync(process.execPath, [tsc, '--noEmit', '-p', projeto], {
     cwd: RAIZ,
     encoding: 'utf8',
   });
-  return `${r.stdout || ''}${r.stderr || ''}`;
+  const saida = `${r.stdout || ''}${r.stderr || ''}`;
+
+  // 0 = limpo, 2 = compilou e achou erro de tipo. Qualquer outro é o tsc não
+  // tendo rodado (opção inválida, projeto ilegível, crash), e aí a saída vazia
+  // não é boa notícia.
+  if (r.status !== 0 && r.status !== 2) {
+    console.error(
+      `\n✗ o tsc saiu com código ${r.status} em ${projeto}, que não é nem limpo (0)\n` +
+        `  nem "achei erro de tipo" (2). A saída dele:\n\n${saida.trim() || '(vazia)'}\n`,
+    );
+    process.exit(2);
+  }
+
+  return saida;
 }
 
 const errosPorArquivo = new Map();

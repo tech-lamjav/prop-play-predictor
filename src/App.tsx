@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
 import { ReferralProvider } from "@/components/ReferralProvider";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import Landing from "./pages/Landing";
@@ -15,7 +15,9 @@ import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PortaoDoSocio } from "./components/socios/PortaoDoSocio";
-import { ROTA_DOS_SOCIOS } from "./components/socios/crm-vocabulario";
+import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from "./components/socios/crm-vocabulario";
+import { FichaAntiga } from "./components/socios/FichaAntiga";
+import { ROTA_DO_PLACAR } from "./components/placar/placar-vocabulario";
 import { PostHogPageView } from "./components/PostHogPageView";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
@@ -52,6 +54,8 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const PainelDosSocios = lazyWithRetry(() => import("./pages/PainelDosSocios"));
 const FeedbacksDoCrm = lazyWithRetry(() => import("./pages/FeedbacksDoCrm"));
 const AssinaturasDoCrm = lazyWithRetry(() => import("./pages/AssinaturasDoCrm"));
+// O segundo andar da área: o placar da metodologia.
+const PlacarDaMetodologia = lazyWithRetry(() => import("./pages/PlacarDaMetodologia"));
 const ComoUsar = lazyWithRetry(() => import("./pages/ComoUsar"));
 const Games = lazyWithRetry(() => import("./pages/Games"));
 const GameDetail = lazyWithRetry(() => import("./pages/GameDetail"));
@@ -189,19 +193,27 @@ const App = () => (
             <Route path="/planos" element={<Planos />} />
             <Route path="/lp/:slug" element={<LpVariant />} />
             <Route path="/como-usar" element={<ComoUsar />} />
-            {/* Painel dos sócios. Sem ProtectedRoute de propósito: aquele
+            {/* Área dos sócios. Sem ProtectedRoute de propósito: aquele
                 REDIRECIONA para o login, e um redirecionamento denuncia que
-                existe algo ali. O portão devolve a página de não encontrado. */}
-            <Route path={ROTA_DOS_SOCIOS} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
+                existe algo ali. O portão devolve a página de não encontrado.
+                Ele embrulha até os redirecionamentos: mandar um curioso para o
+                andar de baixo seria anunciar o andar de baixo. */}
+            <Route path={ROTA_DOS_SOCIOS} element={<PortaoDoSocio><Navigate to={ROTA_DO_CRM} replace /></PortaoDoSocio>} />
+            {/* O CRM, um andar abaixo da raiz da área (ADR 0001). */}
+            <Route path={ROTA_DO_CRM} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
             {/* Antes da rota com parametro: o React Router ja prioriza
                 segmento fixo, e a ordem aqui torna isso visivel para quem le. */}
-            <Route path={`${ROTA_DOS_SOCIOS}/feedbacks`} element={<PortaoDoSocio><FeedbacksDoCrm /></PortaoDoSocio>} />
+            <Route path={`${ROTA_DO_CRM}/feedbacks`} element={<PortaoDoSocio><FeedbacksDoCrm /></PortaoDoSocio>} />
             {/* A fila de cobranca das assinaturas dadas na mao. */}
-            <Route path={`${ROTA_DOS_SOCIOS}/assinaturas`} element={<PortaoDoSocio><AssinaturasDoCrm /></PortaoDoSocio>} />
+            <Route path={`${ROTA_DO_CRM}/assinaturas`} element={<PortaoDoSocio><AssinaturasDoCrm /></PortaoDoSocio>} />
             {/* A ficha desenha o MESMO painel com o modal aberto por cima:
                 o endereço continua compartilhável, e abrir um lead não tira
                 ninguém da lista. */}
-            <Route path={`${ROTA_DOS_SOCIOS}/:id`} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
+            <Route path={`${ROTA_DO_CRM}/:id`} element={<PortaoDoSocio><PainelDosSocios /></PortaoDoSocio>} />
+            {/* O placar da metodologia, o outro andar da área (ADR 0001). */}
+            <Route path={ROTA_DO_PLACAR} element={<PortaoDoSocio><PlacarDaMetodologia /></PortaoDoSocio>} />
+            {/* O endereço antigo da ficha, de quando o CRM morava na raiz. */}
+            <Route path={`${ROTA_DOS_SOCIOS}/:id`} element={<PortaoDoSocio><FichaAntiga /></PortaoDoSocio>} />
             <Route path="/report" element={
               <ProtectedRoute>
                 <Report />

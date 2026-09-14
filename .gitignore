@@ -48,3 +48,6 @@ CLAUDE.md
 
 # Worktrees do Claude Code — repositórios à parte, não conteúdo deste
 .claude/worktrees/
+
+# O apontamento de ambiente guarda uma cópia antes de trocar.
+.env.local.backup
