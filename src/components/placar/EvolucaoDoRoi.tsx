@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { LinhaLiquidada } from './placar-agregacao';
-import { emN, epPct, roiPct, taxaPct } from './placar-formato';
+import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import {
   granularidadeAbaixo,
   granularidadesDe,
@@ -81,16 +81,21 @@ export function EvolucaoDoRoi({
     null,
   );
   const [mercados, setMercados] = useState<string[]>([]);
+  /** No celular, a barra tocada: o toque mostra o número, e descer vira um botão. */
+  const [tocada, setTocada] = useState<string | null>(null);
 
   const presentes = mercadosPresentes(liquidadas);
   const emFoco = zoom
     ? liquidadas.filter((l) => noPeriodo(l.linha, eixo, zoom.janela))
     : liquidadas;
   const pontos = serie(emFoco, granularidade, eixo, mercados);
+  const pontoTocado = pontos.find((p) => p.chave === tocada) ?? null;
+  const degrauAbaixo = granularidadeAbaixo(granularidade);
 
   const abrir = (chave: string) => {
     const abaixo = granularidadeAbaixo(granularidade);
     if (!abaixo) return;
+    setTocada(null);
     setZoom({
       janela: janelaDaGaveta(chave, granularidade),
       rotulo: rotuloDaGaveta(chave, granularidade),
@@ -101,6 +106,7 @@ export function EvolucaoDoRoi({
 
   const voltar = () => {
     if (!zoom) return;
+    setTocada(null);
     setGranularidade(zoom.volta);
     setZoom(null);
   };
@@ -132,7 +138,10 @@ export function EvolucaoDoRoi({
               <button
                 key={g}
                 type="button"
-                onClick={() => setGranularidade(g)}
+                onClick={() => {
+                  setTocada(null);
+                  setGranularidade(g);
+                }}
                 className={`px-2.5 py-1 text-[12px] font-bold transition ${
                   granularidade === g ? 'bg-forest text-white' : 'bg-white text-ink-2 hover:text-ink'
                 }`}
@@ -194,25 +203,73 @@ export function EvolucaoDoRoi({
                 width={noCelular ? 38 : 46}
               />
               <ReferenceLine y={0} stroke="#9a9a9a" />
-              <Tooltip
-                content={({ payload }) => <Balao ponto={payload?.[0]?.payload as Ponto} />}
-                cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-              />
+              {/* No celular não há ponteiro parado em cima da barra: o balão
+                  piscava e sumia no mesmo toque. O número vai para o painel
+                  embaixo do gráfico. */}
+              {!noCelular && (
+                <Tooltip
+                  content={({ payload }) => <Balao ponto={payload?.[0]?.payload as Ponto} />}
+                  cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                />
+              )}
               <Bar
                 dataKey="total.roi"
                 radius={[2, 2, 0, 0]}
-                onClick={(d: { chave?: string }) => d?.chave && abrir(d.chave)}
+                onClick={(d: { chave?: string }) => {
+                  if (!d?.chave) return;
+                  // No celular o toque é leitura, não navegação: descer direto
+                  // escondia o número da barra antes de ele ser lido.
+                  if (noCelular) setTocada(d.chave);
+                  else abrir(d.chave);
+                }}
                 cursor={granularidadeAbaixo(granularidade) ? 'pointer' : 'default'}
               >
                 {pontos.map((p) => (
-                  <Cell key={p.chave} fill={p.total.roi >= 0 ? '#1f6f4a' : '#c0392b'} />
+                  <Cell
+                    key={p.chave}
+                    fill={p.total.roi >= 0 ? '#1f6f4a' : '#c0392b'}
+                    fillOpacity={noCelular && tocada && tocada !== p.chave ? 0.35 : 1}
+                  />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
 
+          {noCelular && pontoTocado && (
+            <div className="mx-3 mt-2 flex items-center justify-between gap-3 rounded-rebrand-sm border border-line-2 px-3 py-2">
+              <span className="min-w-0">
+                <span className="block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+                  {pontoTocado.rotulo}
+                </span>
+                <span
+                  className={`block text-[16px] font-black tabular-nums ${tomDoRoi(pontoTocado.total.roi)}`}
+                >
+                  {roiPct(pontoTocado.total.roi)}{' '}
+                  <span className="text-[12px] font-normal text-ink-dim">
+                    ± {epPct(pontoTocado.total.ep)}
+                  </span>
+                </span>
+                <span className="block text-[12px] text-ink-2">
+                  {taxaPct(pontoTocado.total.taxa)} de acerto · {emN(pontoTocado.total.n)}
+                </span>
+              </span>
+              {degrauAbaixo && (
+                <button
+                  type="button"
+                  onClick={() => abrir(pontoTocado.chave)}
+                  className="flex shrink-0 items-center gap-1 rounded-rebrand-sm bg-forest px-3 py-2 text-[12px] font-bold text-white"
+                >
+                  Abrir por {ROTULO_DA_GRANULARIDADE[degrauAbaixo].toLowerCase()}
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+
           <p className="px-3 pt-1 text-[11px] text-ink-dim">
-            {granularidadeAbaixo(granularidade)
+            {noCelular
+              ? 'Toque numa barra para ver o número dela.'
+              : granularidadeAbaixo(granularidade)
               ? `Clique numa barra para abrir por ${ROTULO_DA_GRANULARIDADE[
                   granularidadeAbaixo(granularidade)!
                 ].toLowerCase()}.`

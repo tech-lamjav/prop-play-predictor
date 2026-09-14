@@ -171,3 +171,20 @@ export function ordenarPor(
     return cmp !== 0 ? cmp * sinal : lucroEfetivo(a) - lucroEfetivo(b);
   });
 }
+
+/**
+ * A régua da tirinha: o maior ROI, em módulo, entre as células que vão lado a lado.
+ *
+ * Uma régua só para a lista inteira, e não uma por cartão: com régua própria, uma
+ * semana de +5% num grupo e outra de +80% em outro desenhariam barras do mesmo
+ * tamanho. O teto de 100% existe porque uma célula de duas apostas a odd 3 chega a
+ * +200% e achataria todo o resto; o piso de 10% impede que uma lista de números
+ * pequenos vire barras gigantes.
+ */
+export function escalaDaTirinha(linhas: readonly LinhaDaMatriz[]): number {
+  let maior = 0;
+  for (const l of linhas) {
+    for (const c of Object.values(l.porGaveta)) maior = Math.max(maior, Math.abs(c.celula.roi));
+  }
+  return Math.min(1, Math.max(0.1, maior));
+}

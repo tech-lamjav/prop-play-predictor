@@ -27,6 +27,8 @@ import { rotuloDoMercado } from './placar-vocabulario';
 /** Uma quebra: o que a tabela agrupa, e o que ela responde. */
 export type Quebra = {
   titulo: string;
+  /** O nome curto, para o seletor do celular — onde quatro títulos inteiros não cabem numa linha. */
+  curto: string;
   explicacao: string;
   chaveDe: (linha: LinhaPublicada) => string;
   /** A ordem da escala, quando a quebra é ordinal. */
@@ -66,6 +68,7 @@ export type Quebra = {
 export const QUEBRAS: Quebra[] = [
   {
     titulo: 'Por mercado',
+    curto: 'Mercado',
     explicacao:
       'Onde a metodologia está ganhando e onde está perdendo. Acerto alto com ROI negativo é mercado de odd curta; o contrário é mercado que paga bem e erra muito.',
     chaveDe: (l) => l.market,
@@ -74,6 +77,7 @@ export const QUEBRAS: Quebra[] = [
   },
   {
     titulo: 'Por faixa de Score',
+    curto: 'Score',
     explicacao:
       'A promessa central do método: nota maior deveria render mais. Se a coluna de ROI não sobe com a faixa, a nota não está ordenando o resultado — e é a diferença entre faixas, não o número de uma delas, que responde isso.',
     chaveDe: (l) => faixaDaLinha(l) ?? '',
@@ -84,6 +88,7 @@ export const QUEBRAS: Quebra[] = [
   },
   {
     titulo: 'Por faixa de odd',
+    curto: 'Odd',
     explicacao:
       'Odd curta e odd longa não se comportam igual, e a porta de odd por mercado foi desenhada supondo isso. Aqui é onde a suposição aparece medida.',
     // A odd da publicação; a linha sem odd nunca chega aqui, porque sem preço
@@ -93,6 +98,7 @@ export const QUEBRAS: Quebra[] = [
   },
   {
     titulo: 'Por campeonato',
+    curto: 'Campeonato',
     explicacao:
       'Da base maior para a menor, porque é o tamanho da base que diz se vale comparar. Campeonato de mata-mata degrada as premissas, e esta é a tabela onde isso aparece.',
     chaveDe: (l) => l.competition ?? 'Sem campeonato',

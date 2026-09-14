@@ -58,3 +58,6 @@ export function parseNumero(texto: string): number | null {
   const n = Number(limpo);
   return Number.isFinite(n) ? n : null;
 }
+
+/** "1 aposta", "12 apostas": a base por extenso, onde não há coluna que a nomeie. */
+export const apostasEmPalavras = (n: number) => `${n} aposta${n === 1 ? '' : 's'}`;

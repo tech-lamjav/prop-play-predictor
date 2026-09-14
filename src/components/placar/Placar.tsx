@@ -16,27 +16,12 @@ import { QUEBRAS, celulasDa, type Quebra } from './placar-quebras';
 import type { Eixo, Periodo } from './placar-periodo';
 import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 import { TabelaComparada } from './TabelaComparada';
-/**
- * Um número do topo, com o que ele significa embaixo.
- *
- * `ordem` existe por causa do celular: em duas colunas, os seis cartões viram
- * três fileiras, e ROI e acerto — que são a resposta — caíam na terceira. As
- * classes trocam a ORDEM VISUAL sem mexer na leitura do documento, que continua
- * indo do que foi publicado ao que ele rendeu.
- */
-function Numero({
-  valor,
-  rotulo,
-  tom,
-  ordem,
-}: {
-  valor: string;
-  rotulo: string;
-  tom?: string;
-  ordem?: string;
-}) {
+import { QuebrasNoCelular } from './QuebrasNoCelular';
+import { useIsMobile } from '@/hooks/use-mobile';
+/** Um número do topo, com o que ele significa embaixo. */
+function Numero({ valor, rotulo, tom }: { valor: string; rotulo: string; tom?: string }) {
   return (
-    <div className={`rounded-rebrand-md border border-line-2 bg-white px-4 py-3 ${ordem ?? ''}`}>
+    <div className="rounded-rebrand-md border border-line-2 bg-white px-4 py-3">
       <p className={`font-display text-2xl font-black tabular-nums ${tom ?? 'text-ink'}`}>
         {valor}
       </p>
@@ -46,6 +31,53 @@ function Numero({
     </div>
   );
 }
+
+/**
+ * O topo no celular: um número em destaque, e o resto numa frase.
+ *
+ * Em duas colunas, os seis cartões do desktop viravam três fileiras e o ROI caía
+ * na terceira. Aqui ele é O número da tela; o acerto vem logo embaixo, e
+ * publicadas, liquidadas, pendentes e anuladas — que são contexto, não resposta —
+ * viram uma linha.
+ */
+function NumerosNoCelular({
+  total,
+  simulando,
+}: {
+  total: ReturnType<typeof totalDe>;
+  simulando: boolean;
+}) {
+  return (
+    <div className="mb-6 rounded-rebrand-md border border-line-2 bg-white px-4 py-4">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
+        ROI do período
+      </p>
+      <p className={`mt-1 font-display text-[48px] font-black leading-none ${tomDoRoi(total.roi)}`}>
+        {roiPct(total.roi)}
+      </p>
+      <p className="mt-1.5 text-[12px] text-ink-dim">
+        ± {epPct(total.ep)}{' '}
+        {simulando ? `em ${String(total.unidades).replace('.', ',')}u` : emN(total.n)}
+      </p>
+      <p className="mt-3 flex flex-wrap items-baseline gap-x-2 border-t border-line-2 pt-3">
+        <span className="font-display text-[22px] font-black leading-none text-ink">
+          {taxaPct(total.taxa)}
+        </span>
+        <span className="text-[12px] text-ink-dim">
+          de acerto · {total.acertos} {emN(total.n - total.anuladas)}
+        </span>
+      </p>
+      <p className="mt-2 text-[12px] text-ink-2">
+        {total.publicadas} publicadas · {total.n} liquidadas · {total.pendentes} pendentes ·{' '}
+        {total.anuladas} anuladas
+      </p>
+    </div>
+  );
+}
+
+/** O que a seção de premissas precisa dizer antes da primeira lista. */
+const COMO_LER_AS_PREMISSAS =
+  'Sempre dentro do lado do mercado, porque o ROI do lado é a linha de base. A coluna que decide é a diferença entre acesa e apagada. A flag vem recalculada do mart, então mudar o critério de uma premissa reescreve o passado — e o quanto ela acendeu, o insumo, ainda não chega neste banco.';
 
 /**
  * O placar da metodologia.
@@ -110,6 +142,7 @@ export function Placar({
   const liquidadasB = comparacao ? liquidarTudo(comparacao.publicadas, pesos).liquidadas : [];
   const simulando = ehSimulacao(pesos);
   const porPremissa = porLadoDoMercado(liquidadas);
+  const noCelular = useIsMobile();
 
   const tabela = (quebra: Quebra) => {
     const selo = quebra.marcaOculto
@@ -196,23 +229,25 @@ export function Placar({
           Acertos e anuladas aparecem em número absoluto, e não só dentro da
           taxa: são eles que explicam por que a taxa e o ROI têm denominadores
           diferentes. */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Numero valor={String(total.publicadas)} rotulo="Publicadas" />
-        <Numero valor={String(total.n)} rotulo="Liquidadas" />
-        <Numero valor={String(total.pendentes)} rotulo="Pendentes" />
-        <Numero valor={String(total.anuladas)} rotulo="Anuladas" />
-        <Numero
-          valor={taxaPct(total.taxa)}
-          rotulo={`Acerto: ${total.acertos} ${emN(total.n - total.anuladas)}`}
-          ordem="order-[-1] sm:order-none"
-        />
-        <Numero
-          valor={roiPct(total.roi)}
-          rotulo={`ROI ± ${epPct(total.ep)} ${simulando ? `em ${String(total.unidades).replace('.', ',')}u` : emN(total.n)}`}
-          tom={tomDoRoi(total.roi)}
-          ordem="order-[-2] sm:order-none"
-        />
-      </div>
+      {noCelular ? (
+        <NumerosNoCelular total={total} simulando={simulando} />
+      ) : (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Numero valor={String(total.publicadas)} rotulo="Publicadas" />
+          <Numero valor={String(total.n)} rotulo="Liquidadas" />
+          <Numero valor={String(total.pendentes)} rotulo="Pendentes" />
+          <Numero valor={String(total.anuladas)} rotulo="Anuladas" />
+          <Numero
+            valor={taxaPct(total.taxa)}
+            rotulo={`Acerto: ${total.acertos} ${emN(total.n - total.anuladas)}`}
+          />
+          <Numero
+            valor={roiPct(total.roi)}
+            rotulo={`ROI ± ${epPct(total.ep)} ${simulando ? `em ${String(total.unidades).replace('.', ',')}u` : emN(total.n)}`}
+            tom={tomDoRoi(total.roi)}
+          />
+        </div>
+      )}
 
       {total.pendentes > 0 && (
         <p className="mb-6 text-[13px] text-ink-2">
@@ -246,16 +281,36 @@ export function Placar({
         />
       </div>
 
-      <div className="grid gap-5">{QUEBRAS.map(tabela)}</div>
+      {noCelular ? (
+        <QuebrasNoCelular
+          liquidadas={liquidadas}
+          granularidade={granularidade}
+          eixo={eixo}
+          ocultos={ocultos}
+          comparacao={
+            comparacao
+              ? {
+                  liquidadasB,
+                  rotuloDeA: comparacao.rotuloDeA,
+                  rotuloDeB: comparacao.rotuloDeB,
+                }
+              : undefined
+          }
+        />
+      ) : (
+        <div className="grid gap-5">{QUEBRAS.map(tabela)}</div>
+      )}
 
       <div className="mt-8 border-t border-line-2 pt-6">
         <h2 className="font-display text-xl font-black text-ink">ROI por premissa</h2>
-        <p className="mt-1 max-w-3xl text-[13px] text-ink-2">
-          Sempre dentro do lado do mercado, porque o ROI do lado é a linha de base. A coluna que
-          decide é a diferença entre acesa e apagada. A flag vem recalculada do mart, então mudar o
-          critério de uma premissa reescreve o passado — e o quanto ela acendeu, o insumo, ainda não
-          chega neste banco.
-        </p>
+        {noCelular ? (
+          <details className="mt-1 text-[13px] text-ink-2">
+            <summary className="cursor-pointer font-bold text-ink-dim">Como ler</summary>
+            <p className="mt-1">{COMO_LER_AS_PREMISSAS}</p>
+          </details>
+        ) : (
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-2">{COMO_LER_AS_PREMISSAS}</p>
+        )}
 
         <div className="mt-5 grid gap-5">
           {porPremissa.map((lado) => (
