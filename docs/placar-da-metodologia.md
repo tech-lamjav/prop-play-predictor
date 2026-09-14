@@ -64,7 +64,7 @@ isso com uma view.
 O limite que sobra, e a tela diz: a flag é recalculada todo dia, a partir de
 janelas anteriores ao apito. Para jogo passado o valor é estável, porque os
 insumos estão congelados — mas mudar o critério de uma premissa reescreve o
-passado. Não é registro point-in-time.
+passado. Não é o registro de como ela estava na publicação.
 
 **Não sabe por QUANTO a premissa acendeu.** O insumo e a janela de cada premissa
 existem no mart desde as entregas de 08 e 10/09/2026 e não vieram no sync. Sem
@@ -136,11 +136,13 @@ ou seja, nada.
 25. Como sócio, quero ver, para cada lado de cada mercado, o ROI de cada premissa
     quando ela acendeu e quando não acendeu, para decidir peso e catálogo.
 26. Como sócio, quero ver a quebra por premissas sem dado, para saber se publicar
-    com evidência faltando sai caro.
+    com evidência faltando sai caro. *(Retirada em 13/09/2026.)*
 27. Como sócio, quero ver a quebra por corroboração do modelo e por confirmação
     da linha sharp, para saber se esses dois sinais valem o que a gente supõe.
+    *(Retirada em 13/09/2026.)*
 28. Como sócio, quero ver a quebra por penalidade aplicada, para saber se a
-    penalidade está protegendo ou só cortando aposta boa.
+    penalidade está protegendo ou só cortando aposta boa. *(Retirada em
+    13/09/2026.)*
 29. Como sócio, quero ler na tela que o corte por premissa não está aqui e por
     que, para não confundir a quebra por pontos com a pergunta que eu fiz.
 30. Como sócio, quero que o placar diga que mede a foto de nascimento da
@@ -219,6 +221,26 @@ montar a tela para conferir aritmética.
   período atravessa a virada, e mostra a marca de oculto.
 - Serviço e hook não ganham teste unitário, seguindo a convenção do repositório.
 
+## O que mudou depois desta spec
+
+Decisões tomadas com o sócio durante a construção, entre 12 e 14/09/2026. Onde
+elas discordam do que está escrito acima, valem elas.
+
+- **As quebras viraram matrizes.** O tempo vai para as colunas (mês, semana ou
+  dia), e cada célula abre as apostas dela, com o placar do jogo e a distância
+  até a linha.
+- **Cada linha abre um degrau.** Mercado abre por faixa de Score; faixa, odd e
+  campeonato abrem por mercado.
+- **Entrou o gráfico de evolução do ROI**, com degraus de mês, semana e dia.
+- **Entraram o recorte por faixa de Score e por valor mínimo, e a simulação de
+  unidades por faixa.** A tela abre simulando (ver "A tela abre simulando").
+- **O ROI por premissa ficou possível** (migration 134) e tomou o lugar das
+  histórias 26 a 28, cujas tabelas saíram da tela a pedido do sócio.
+- **A linha de régua anterior a 04/09 conta em toda tabela**, menos na de faixa
+  de Score, que diz quantas ficaram de fora.
+- **No celular não existe tabela.** Uma quebra por vez, cartões com a tirinha do
+  tempo e uma ficha por linha em tela cheia.
+
 ## Fora de escopo
 
 - **O insumo e a janela de cada premissa** — por quanto ela acendeu. Existe no
@@ -229,7 +251,6 @@ montar a tela para conferir aritmética.
 - **Gravar a liquidação** em tabela.
 - **Editar peso** pela tela.
 - **Exportar** para planilha.
-- **Gráfico de evolução.** Tabela primeiro; curva quando houver série para ela.
 - **O caderno de apostas do assinante.** Outro assunto, outro número.
 
 ## Notas
@@ -239,5 +260,5 @@ placar precisam concordar, e o teste de paridade é o que garante isso — quand
 dos dois mudar de conta, o teste quebra e alguém decide qual está certo.
 
 Duas armadilhas herdadas, ambas já escritas no cabeçalho do script: o dia
-03/09/2026 concentra o board inteiro num snapshot só, e por isso distorce
+03/09/2026 concentra o board inteiro numa detecção só, e por isso distorce
 qualquer leitura por dia de detecção; e a data de detecção não é a data do jogo.

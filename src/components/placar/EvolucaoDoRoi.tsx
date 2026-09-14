@@ -184,12 +184,12 @@ export function EvolucaoDoRoi({
         <div className="px-2 py-4">
           <ResponsiveContainer width="100%" height={noCelular ? 200 : 240}>
             <BarChart data={pontos} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e0" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--line)" />
               <XAxis
                 dataKey="rotulo"
-                tick={{ fontSize: noCelular ? 10 : 11, fill: '#6b6b6b' }}
+                tick={{ fontSize: noCelular ? 10 : 11, fill: 'var(--ink-2)' }}
                 tickLine={false}
-                axisLine={{ stroke: '#e7e5e0' }}
+                axisLine={{ stroke: 'var(--line)' }}
                 // Sem isto, num mês por dia os rótulos se sobrepõem na largura
                 // de um celular até virarem uma mancha.
                 interval="preserveStartEnd"
@@ -197,12 +197,12 @@ export function EvolucaoDoRoi({
               />
               <YAxis
                 tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
-                tick={{ fontSize: noCelular ? 10 : 11, fill: '#6b6b6b' }}
+                tick={{ fontSize: noCelular ? 10 : 11, fill: 'var(--ink-2)' }}
                 tickLine={false}
                 axisLine={false}
                 width={noCelular ? 38 : 46}
               />
-              <ReferenceLine y={0} stroke="#9a9a9a" />
+              <ReferenceLine y={0} stroke="var(--line-2)" />
               {/* No celular não há ponteiro parado em cima da barra: o balão
                   piscava e sumia no mesmo toque. O número vai para o painel
                   embaixo do gráfico. */}
@@ -227,7 +227,7 @@ export function EvolucaoDoRoi({
                 {pontos.map((p) => (
                   <Cell
                     key={p.chave}
-                    fill={p.total.roi >= 0 ? '#1f6f4a' : '#c0392b'}
+                    fill={p.total.roi >= 0 ? 'var(--forest)' : 'var(--status-danger)'}
                     fillOpacity={noCelular && tocada && tocada !== p.chave ? 0.35 : 1}
                   />
                 ))}

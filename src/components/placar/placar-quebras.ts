@@ -57,8 +57,8 @@ export type Quebra = {
    *
    * É o degrau seguinte do macro para o micro: a linha de Gols abre em como
    * Gols foi em cada faixa de Score; a linha da faixa Alta abre em como a faixa
-   * Alta foi em cada mercado. As colunas continuam as mesmas — o que muda é o
-   * corte de dentro.
+   * Alta foi em cada mercado. As colunas continuam as mesmas — o que muda é a
+   * quebra de dentro.
    *
    * Preenchida depois da lista, porque as quebras se referenciam entre si.
    */
@@ -114,12 +114,18 @@ export const QUEBRAS: Quebra[] = [
  * mercado. Odd e campeonato abrem por mercado, que é a leitura que se pede
  * depois delas.
  */
-const porTitulo = (titulo: string) => QUEBRAS.find((q) => q.titulo === titulo)!;
+const porTitulo = (titulo: string): Quebra => {
+  const quebra = QUEBRAS.find((q) => q.titulo === titulo);
+  // Alto, e na carga do módulo: um título reescrito sem ajustar aqui deixaria a
+  // linha sem degrau, calada. Assim a tela nem sobe, e o teste quebra na hora.
+  if (!quebra) throw new Error(`Nenhuma quebra com o título "${titulo}".`);
+  return quebra;
+};
 
-QUEBRAS[0].desdobraEm = porTitulo('Por faixa de Score');
-QUEBRAS[1].desdobraEm = porTitulo('Por mercado');
-QUEBRAS[2].desdobraEm = porTitulo('Por mercado');
-QUEBRAS[3].desdobraEm = porTitulo('Por mercado');
+porTitulo('Por mercado').desdobraEm = porTitulo('Por faixa de Score');
+porTitulo('Por faixa de Score').desdobraEm = porTitulo('Por mercado');
+porTitulo('Por faixa de odd').desdobraEm = porTitulo('Por mercado');
+porTitulo('Por campeonato').desdobraEm = porTitulo('Por mercado');
 
 /** As linhas que a quebra aceita. */
 export const linhasDa = (quebra: Quebra, liquidadas: readonly LinhaLiquidada[]) =>

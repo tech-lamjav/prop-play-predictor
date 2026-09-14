@@ -37,7 +37,7 @@ export const epPct = (ep: number) => `${virgula(ep * 100, 1)}`;
  * do topo e as duas tabelas —, e cor de número é leitura, não aritmética.
  */
 export const tomDoRoi = (roi: number) =>
-  roi > 0 ? 'text-forest' : roi < 0 ? 'text-red-600' : 'text-ink';
+  roi > 0 ? 'text-forest' : roi < 0 ? 'text-status-danger' : 'text-ink';
 
 /** O denominador, do jeito que ele aparece ao lado do número: "em 37". */
 export const emN = (n: number) => `em ${n}`;

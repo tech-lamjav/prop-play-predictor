@@ -83,7 +83,7 @@ export function avisosDoPeriodo(periodo: Periodo, eixo: Eixo): string[] {
 
   if (periodo.de < INICIO_DA_SERIE_COMPARAVEL) {
     avisos.push(
-      'Parte do período é anterior à virada do denominador, em 04/09/2026 às 14h35 UTC. A nota dessas linhas está em outra escala, e elas aparecem na ÚLTIMA LINHA da tabela por faixa de Score, separadas — no resto das tabelas elas contam normalmente, porque ROI por mercado, campeonato ou premissa não depende da escala da nota. A linha do método antigo (score_versao legacy) é outra coisa e não entra em conta nenhuma.',
+      'Parte do período é anterior à virada do denominador, em 04/09/2026 às 14h35 UTC. A nota dessas linhas está em outra escala, e por isso elas ficam fora da tabela por faixa de Score, que diz quantas são — no resto das tabelas elas contam normalmente, porque ROI por mercado, campeonato ou premissa não depende da escala da nota. A linha do método antigo (score_versao legacy) é outra coisa e não entra em conta nenhuma.',
     );
   }
 

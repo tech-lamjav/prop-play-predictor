@@ -566,3 +566,20 @@ describe('o desdobramento dentro da linha', () => {
     expect(dialogo).toHaveTextContent('Alta (80+)');
   });
 });
+
+describe('a contagem de liquidadas com a simulação ligada', () => {
+  it('conta também a que a simulação mandou não apostar: liquidar é o jogo, não a aposta', () => {
+    // A tela abre simulando, com peso zero na Baixa. Se a contagem seguisse o
+    // número de apostas feitas, "Liquidadas" encolheria calado no primeiro
+    // carregamento — e só o aviso de simulação diria por quê.
+    render(
+      <Placar
+        {...BASE}
+        pesos={{ 'Baixa (<30)': 0, 'Média (30–59)': 0.5, 'Alta (60–79)': 1, 'Alta (80+)': 1 }}
+        publicadas={[linha({ score: 20 }), linha({ score: 85 })]}
+      />,
+    );
+
+    expect(screen.getByText('Liquidadas').previousElementSibling?.textContent).toBe('2');
+  });
+});

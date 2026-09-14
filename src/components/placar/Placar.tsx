@@ -68,7 +68,7 @@ function NumerosNoCelular({
         </span>
       </p>
       <p className="mt-2 text-[12px] text-ink-2">
-        {total.publicadas} publicadas · {total.n} liquidadas · {total.pendentes} pendentes ·{' '}
+        {total.publicadas} publicadas · {total.n + total.foraDaSimulacao} liquidadas · {total.pendentes} pendentes ·{' '}
         {total.anuladas} anuladas
       </p>
     </div>
@@ -234,7 +234,10 @@ export function Placar({
       ) : (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Numero valor={String(total.publicadas)} rotulo="Publicadas" />
-          <Numero valor={String(total.n)} rotulo="Liquidadas" />
+          {/* Liquidar é o jogo, não a aposta: a linha que a simulação mandou não
+            apostar também liquidou. Sem somá-la, abrir a tela simulando
+            encolhia este número calado. */}
+        <Numero valor={String(total.n + total.foraDaSimulacao)} rotulo="Liquidadas" />
           <Numero valor={String(total.pendentes)} rotulo="Pendentes" />
           <Numero valor={String(total.anuladas)} rotulo="Anuladas" />
           <Numero

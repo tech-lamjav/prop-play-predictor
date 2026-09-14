@@ -26,9 +26,6 @@ function diaCurto(kickoff: string): string {
   return dia ? `${dia.slice(8, 10)}/${dia.slice(5, 7)}` : '—';
 }
 
-const tomDoLucro = (lucro: number) =>
-  lucro > 0 ? 'text-forest' : lucro < 0 ? 'text-red-600' : 'text-ink-2';
-
 const emUnidades = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2).replace('.', ',')}u`;
 
 /** As colunas pelas quais a lista se deixa ordenar, na ordem em que se pergunta. */
@@ -185,7 +182,7 @@ export function DrillDaCelula({
                           {l.linha.home_team_name} x {l.linha.away_team_name}
                         </span>
                         <span
-                          className={`shrink-0 text-[14px] font-bold tabular-nums ${tomDoLucro(l.lucro)}`}
+                          className={`shrink-0 text-[14px] font-bold tabular-nums ${tomDoRoi(l.lucro)}`}
                         >
                           {emUnidades(lucro)}
                         </span>
@@ -294,7 +291,7 @@ export function DrillDaCelula({
                               de uma unidade faria a coluna não fechar com o ROI da
                               célula quando a simulação está ligada. */}
                           <td
-                            className={`whitespace-nowrap px-5 py-2.5 text-right text-[13px] font-bold tabular-nums ${tomDoLucro(
+                            className={`whitespace-nowrap px-5 py-2.5 text-right text-[13px] font-bold tabular-nums ${tomDoRoi(
                               l.lucro,
                             )}`}
                           >

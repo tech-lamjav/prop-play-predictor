@@ -13,10 +13,11 @@ const METADE = 14;
  * o número — para isso existe a ficha — e sim o FORMATO: caiu sempre, caiu numa
  * semana, está subindo.
  *
- * ⚠️ O sinal vai pela DIREÇÃO da barra, e a cor só reforça. O verde e o vermelho
- * do produto ficam perto demais para quem tem daltonismo vermelho-verde (o
- * validador de paleta mede 5,9 de distância, abaixo do piso), então uma tira que
- * dependesse só da cor seria ilegível para uma parte dos sócios.
+ * ⚠️ O sinal vai pela DIREÇÃO da barra, e a cor só reforça. As cores são os
+ * tokens do design system (forest e status-danger), que o validador de paleta
+ * separa com folga para daltonismo vermelho-verde: 11,1 de distância. O verde e
+ * o vermelho soltos que o gráfico usava antes ficavam em 5,9, abaixo do piso — e
+ * é por isso que a direção vem primeiro: a cor nunca é o único canal.
  *
  * Gaveta sem aposta fica vazia, e não com uma barra de zero: zero é resultado,
  * vazio é ausência.
@@ -61,7 +62,7 @@ export function TirinhaDoTempo({
             <span key={g.chave} className="relative flex-1">
               <span
                 className={`absolute left-1/2 w-full max-w-[24px] -translate-x-1/2 ${
-                  ganhou ? 'rounded-t-[4px] bg-forest' : 'rounded-b-[4px] bg-red-600'
+                  ganhou ? 'rounded-t-[4px] bg-forest' : 'rounded-b-[4px] bg-status-danger'
                 }`}
                 style={ganhou ? { bottom: METADE, height: altura } : { top: METADE, height: altura }}
               />

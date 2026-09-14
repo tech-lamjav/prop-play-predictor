@@ -8,6 +8,7 @@ import {
   Zap,
   ChevronLeft,
   Target,
+  Gauge,
   FileText,
   LayoutGrid,
   Wallet,
@@ -77,7 +78,7 @@ const FUTEBOL_ITEMS: SubItem[] = [
  */
 const SOCIOS_ITEMS: SubItem[] = [
   { name: 'CRM', href: ROTA_DO_CRM, icon: Users },
-  { name: 'Metodologia', href: ROTA_DO_PLACAR, icon: Target },
+  { name: 'Metodologia', href: ROTA_DO_PLACAR, icon: Gauge },
 ];
 
 const BETINHO_ITEMS: SubItem[] = [

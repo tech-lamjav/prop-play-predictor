@@ -110,10 +110,17 @@ do caderno de apostas do assinante e não tem relação com isto.
 _Avoid_: Painel de performance, dashboard, ROI da banca, performance semanal
 
 **Unidade**:
-A aposta que o placar supõe: toda oportunidade publicada vale uma, sempre a
-mesma. Não existe stake proporcional ao valor, porque tamanho de aposta é outra
-pergunta e misturar as duas faz o número responder as duas pela metade.
+A aposta com que o placar MEDE: toda oportunidade publicada vale uma, sempre a
+mesma. É a medida da metodologia, e não depende de valor nem de nota, porque
+tamanho de aposta é outra pergunta e misturar as duas faz o número responder as
+duas pela metade.
 _Avoid_: Stake, entrada, aposta do usuário, banca
+
+**Simulação**:
+A leitura do placar com um número de unidades diferente por faixa de Score — por
+exemplo nenhuma na Baixa e meia na Média. Responde "como teria ido apostando
+assim", e nunca é a medida da metodologia: quando ela está ligada, a tela diz.
+_Avoid_: Stake, gestão de banca, placar real
 
 **Foto de nascimento**:
 O primeiro registro de uma oportunidade no histórico — a odd, a nota e a faixa
@@ -130,10 +137,8 @@ _Avoid_: Resultado, fechado, settled, apurado
 
 **Quebra**:
 A dimensão pela qual o placar agrupa as oportunidades liquidadas: mercado, faixa
-de Score, faixa de odd e campeonato, mais as quatro que aproximam premissa —
-pontos de premissa, premissas sem dado, corroboração de preço e penalidade
-aplicada. Nunca chame isso de **corte**: corte é o limiar de uma premissa, e a
-palavra já está ocupada.
+de Score, faixa de odd e campeonato. Nunca chame isso de **corte**: corte é o
+limiar de uma premissa, e a palavra já está ocupada.
 _Avoid_: Corte, recorte, dimensão, filtro
 
 **Taxa de acerto**:

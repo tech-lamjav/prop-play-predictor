@@ -5,7 +5,7 @@ import {
   BookOpen,
   MessageCircle,
   Users,
-  Target,
+  Gauge,
 } from 'lucide-react';
 import { SHOW_COMO_USAR_ENTRY_POINTS } from './como-usar';
 import { WHATSAPP_FALAR_COM_O_TIME } from './contato';
@@ -74,7 +74,7 @@ export function itensDaConta(indicarUmAmigo: () => void, ehSocio = false): ItemD
     ...(ehSocio
       ? [
           { label: 'CRM', icon: Users, href: ROTA_DO_CRM, interno: true },
-          { label: 'Metodologia', icon: Target, href: ROTA_DO_PLACAR, interno: true },
+          { label: 'Metodologia', icon: Gauge, href: ROTA_DO_PLACAR, interno: true },
         ]
       : []),
   ];

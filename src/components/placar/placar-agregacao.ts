@@ -56,8 +56,8 @@ export type LinhaPublicada = {
    *
    * ⚠️ Recalculadas todo dia pelo mart, a partir de janelas anteriores ao apito.
    * Para jogo passado o valor é estável, porque os insumos estão congelados —
-   * mas mudar o critério de uma premissa reescreve o passado. Não é registro
-   * point-in-time do que foi publicado.
+   * mas mudar o critério de uma premissa reescreve o passado. Não é o registro
+   * de como ela estava na publicação.
    *
    * As APAGADAS não viajam: o conjunto de cada lado é fixo no catálogo do
    * produto, e a ausência de um slug aqui significa "não atingiu o corte" OU

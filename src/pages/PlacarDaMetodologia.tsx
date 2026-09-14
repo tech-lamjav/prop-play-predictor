@@ -61,8 +61,8 @@ export default function PlacarDaMetodologia() {
    * O que a RPC devolveu, recortado pelas três escolhas da tela.
    *
    * A ordem importa e é sempre esta: o EIXO primeiro, porque a RPC devolve o que
-   * toca a janela pelos dois; depois a ESCALA, que tira o que nasceu antes da
-   * virada quando a janela é a comparável; depois a VITRINE, se o sócio pediu a
+   * toca a janela pelos dois; depois o RECORTE de faixa e de valor que o sócio
+   * escolheu; depois a VITRINE, se o sócio pediu a
    * leitura do produto. Escrito uma vez porque os dois períodos passam pelo
    * mesmo funil — e um deles tomar um caminho diferente seria uma comparação
    * entre coisas diferentes.
