@@ -100,6 +100,19 @@ describe('a página do placar', () => {
     expect(screen.getByText(/2 oportunidades publicadas no período/)).toBeInTheDocument();
   });
 
+  it('abre simulando com as unidades que os sócios usam, e diz que é simulação', () => {
+    // Zero na Baixa, meia na Média, uma nas Altas: pedido como padrão para a
+    // primeira leitura já responder "como a gente teria ido". Como não é o
+    // número medido em unidade fixa, o aviso tem de estar lá desde o começo.
+    estado.tipo = 'pronto';
+    estado.publicadas = [linha()];
+    montar();
+
+    expect(screen.getByText('Simulação ligada.')).toBeInTheDocument();
+    expect(screen.getByText(/Baixa \(<30\) 0u · Média \(30–59\) 0,5u · Alta \(60–79\) 1u · Alta \(80\+\) 1u/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /simulando/i })).toBeInTheDocument();
+  });
+
   // A porta de volta para o CRM saiu daqui: ela agora é uma pílula da faixa 2 do
   // cabeçalho do site, como Futebol e NBA. Quem guarda isso é crm-rota.test.ts,
   // que lê o AnalyticsNav — aqui o header é um dublê.

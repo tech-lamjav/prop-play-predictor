@@ -12,7 +12,7 @@ import {
   type Eixo,
   type Periodo,
 } from '@/components/placar/placar-periodo';
-import { PESO_MEDIDO, type PesoPorFaixa } from '@/components/placar/placar-agregacao';
+import { PESO_DE_ABERTURA, type PesoPorFaixa } from '@/components/placar/placar-agregacao';
 import { granularidadesDe, type Granularidade } from '@/components/placar/placar-evolucao';
 import { aplicarRecorte, SEM_RECORTE, type Recorte } from '@/components/placar/placar-filtros';
 import { soAVitrine } from '@/components/placar/placar-vitrine';
@@ -54,7 +54,7 @@ export default function PlacarDaMetodologia() {
     () => granularidadesDe(periodoPadrao(hoje))[0],
   );
   const [recorte, setRecorte] = useState<Recorte>(SEM_RECORTE);
-  const [pesos, setPesos] = useState<PesoPorFaixa>(PESO_MEDIDO);
+  const [pesos, setPesos] = useState<PesoPorFaixa>(PESO_DE_ABERTURA);
   const { vitrine } = useVitrine();
 
   /**

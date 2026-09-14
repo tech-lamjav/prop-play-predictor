@@ -366,6 +366,21 @@ export const PESO_MEDIDO: PesoPorFaixa = {
   'Alta (80+)': 1,
 };
 
+/**
+ * Com que unidades a tela ABRE: nada na Baixa, meia na Média, uma nas duas Altas.
+ *
+ * É o tamanho de aposta que os sócios usam de fato, e foi pedido como padrão
+ * para a primeira leitura já responder "como a gente teria ido". Continua sendo
+ * SIMULAÇÃO, e a tela diz isso desde o primeiro carregamento: o número medido,
+ * em unidade fixa, é o de PESO_MEDIDO, e volta com todas as faixas em 1.
+ */
+export const PESO_DE_ABERTURA: PesoPorFaixa = {
+  'Baixa (<30)': 0,
+  'Média (30–59)': 0.5,
+  'Alta (60–79)': 1,
+  'Alta (80+)': 1,
+};
+
 export const ehSimulacao = (pesos: PesoPorFaixa) =>
   Object.values(pesos).some((p) => p !== 1);
 

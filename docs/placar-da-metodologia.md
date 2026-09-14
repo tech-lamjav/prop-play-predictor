@@ -172,6 +172,11 @@ ou seja, nada.
   erro-padrão. Toda a aritmética do placar vive aí, sem tela e sem rede.
 - **Unidade fixa.** Toda oportunidade vale 1. Green paga a odd menos 1, meio
   green paga metade disso, anulada paga 0, meio red custa 0,5, red custa 1.
+- **A tela abre simulando.** Decisão de 14/09/2026, depois da primeira leitura
+  no celular: o padrão é zero unidade na faixa Baixa, meia na Média e uma nas
+  duas Altas, que é o tamanho de aposta que os sócios usam. A tela avisa que é
+  simulação desde o primeiro carregamento, e o número em unidade fixa continua
+  sendo o medido — ele volta com todas as faixas em 1.
 - **Taxa de acerto exclui anulada do denominador; ROI não.** São denominadores
   diferentes de propósito, e a tela mostra os dois lados.
 - **Faixas iguais às do script.** Score em Baixa, Média, Alta e Alta 80+; odd em
