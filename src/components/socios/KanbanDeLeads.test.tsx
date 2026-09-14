@@ -72,7 +72,7 @@ describe('KanbanDeLeads', () => {
 
   it('cada cartão leva para a ficha da pessoa', () => {
     montar(leads(1));
-    expect(screen.getByRole('link', { name: /Pessoa 0/ })).toHaveAttribute('href', '/socios/0');
+    expect(screen.getByRole('link', { name: /Pessoa 0/ })).toHaveAttribute('href', '/socios/crm/0');
   });
 
   it('põe cada lead na coluna da sua posição', () => {

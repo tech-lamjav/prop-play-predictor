@@ -10,7 +10,7 @@ import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
 import { mensagemDoErro } from '@/components/socios/crm-linha-do-tempo';
-import { ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_CRM } from '@/components/socios/crm-vocabulario';
 import { useCadastros } from '@/hooks/use-cadastros';
 import { useEtapas, useMudarEtapa } from '@/hooks/use-etapas';
 import { useLinhaDoTempo, useAnotar } from '@/hooks/use-linha-do-tempo';
@@ -25,8 +25,8 @@ import { brtToday } from '@/utils/futebol-datas';
 /**
  * O painel dos sócios, e a ficha por cima dele.
  *
- * Duas rotas, uma página: `/socios` desenha a lista, e `/socios/<id>` desenha a
- * MESMA lista com o modal da ficha aberto. Antes eram duas telas, e abrir um
+ * Duas rotas, uma página: `/socios/crm` desenha a lista, e `/socios/crm/<id>`
+ * desenha a MESMA lista com o modal aberto. Antes eram duas telas, e abrir um
  * lead tirava você da lista — o que quebrava o ritmo do trabalho, que é abrir,
  * registrar, fechar, abrir o próximo.
  *
@@ -53,7 +53,7 @@ export default function PainelDosSocios() {
           meia-noite dentro de um teste. */}
       <PainelCrm estado={estado} etapas={etapas} movimento={movimento} hoje={brtToday()} />
 
-      <FichaEmModal aberta={!!id} aoFechar={() => navegar(ROTA_DOS_SOCIOS)}>
+      <FichaEmModal aberta={!!id} aoFechar={() => navegar(ROTA_DO_CRM)}>
         {/* Montado só com identificador na rota: as consultas da ficha não
             devem sair enquanto ninguém abriu ninguém. */}
         {id && <FichaDoModal id={id} />}

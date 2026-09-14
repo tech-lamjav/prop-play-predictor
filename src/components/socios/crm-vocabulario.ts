@@ -77,6 +77,20 @@ export type TipoNaLinhaDoTempo = (typeof TIPOS_NA_LINHA_DO_TEMPO)[number];
 export const ROTA_DOS_SOCIOS = '/socios';
 
 /**
+ * O endereço do CRM, um andar abaixo da raiz da área.
+ *
+ * A área de sócios deixou de ser uma tela e virou um lugar com andares quando o
+ * placar da metodologia nasceu ao lado. O CRM desceu inteiro para cá, levando as
+ * três seções e a ficha, e `/socios` virou a porta que manda para o andar certo.
+ *
+ * Os dois motivos estão no ADR 0001, e o segundo é o que decidiu: enquanto a
+ * ficha de um lead morava em `/socios/<id>`, esse segmento era um coringa, e
+ * toda tela nova da área precisava ser declarada antes dele para não ser
+ * confundida com um lead.
+ */
+export const ROTA_DO_CRM = `${ROTA_DOS_SOCIOS}/crm`;
+
+/**
  * Os planos que se vende, e como cada um se chama na tela.
  *
  * Aqui estão só os TRÊS atuais, porque é o que se pode dar na mão hoje. Os

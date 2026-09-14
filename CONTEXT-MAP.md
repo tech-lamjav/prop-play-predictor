@@ -10,3 +10,8 @@ significa a mesma coisa dentro do seu contexto.
 
 Um aviso que vale para os dois: **oportunidade** é palavra do futebol e não tem
 sentido comercial nenhum. No CRM, quem está por abordar é **lead**.
+
+A área de sócios abriga os dois contextos, um em cada andar: o CRM em
+`/socios/crm` e o **placar da metodologia** em `/socios/metodologia`. Estar na
+mesma área não junta os vocabulários — o placar fala futebol, e **sócio** é a
+única palavra que os dois compartilham. Ela está definida no glossário do CRM.

@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { LinhaPublicada } from '@/components/placar/placar-agregacao';
 import {
   normalizeFutebolScoreRows,
   type FutebolScoreVersion,
@@ -1080,6 +1081,33 @@ export const futebolDataService = {
         normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
         ocultos,
       );
+    });
+  },
+
+  /**
+   * A FOTO DE NASCIMENTO das oportunidades publicadas num período, para o placar
+   * da metodologia dos sócios (migration 133).
+   *
+   * ⚠️ Devolve o BOARD, e não a vitrine: mercado oculto vem junto, de propósito,
+   * porque decidir se ele volta é uma das decisões que o placar sustenta. Quem
+   * quiser a leitura do produto recorta depois — o contrário do que
+   * `getFixtureValue` faz, e por isso este método NÃO chama
+   * `filtrarMercadosOcultos`.
+   *
+   * ⚠️ Restrita a sócio no banco: para quem não é, a RPC levanta exceção. A tela
+   * já está atrás do portão, então o erro aqui é sinal de rota exposta.
+   *
+   * A RPC devolve o que TOCA o período pelos dois eixos — jogo dentro da janela
+   * ou detecção dentro dela. Escolher o eixo é da tela.
+   */
+  async getOportunidadesPublicadas(de: string, ate: string): Promise<LinhaPublicada[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_oportunidades_publicadas', {
+        p_de: de,
+        p_ate: ate,
+      });
+      if (error) throw error;
+      return (data || []) as LinhaPublicada[];
     });
   },
 
