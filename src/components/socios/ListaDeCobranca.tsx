@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Clock, Infinity as SemFim } from 'lucide-react';
 import { mensagemDeCobranca, prazoDe, type Prazo } from './crm-cobranca';
 import { formatarDia } from './crm-lista';
 import { ROTA_DO_CRM, ROTULO_DO_PLANO } from './crm-vocabulario';
 import type { Assinatura } from './crm-assinatura';
+import { emReais } from './crm-receita';
 import { MensagemPronta } from './MensagemPronta';
 import type { EstadoDasAssinaturas } from '@/hooks/use-assinaturas';
 
@@ -20,10 +21,16 @@ function comoDizer(prazo: Prazo): string {
  * A mensagem fica ABERTA, e não atrás de um botão "gerar": o trabalho aqui é
  * copiar e colar num WhatsApp, e cada clique a mais entre ver a pessoa e ter o
  * texto na mão é um motivo a mais para deixar para depois.
+ *
+ * ⚠️ A vitalícia aparece no recorte "Todas" e não tem mensagem. Não é
+ * esquecimento: toda mensagem de cobrança fala de uma data que está chegando, e
+ * para quem não tem data nenhuma dessas frases é verdade. Quem é vitalício e
+ * paga por mês pode ficar devendo, e essa cobrança sai dos meses em aberto, que
+ * é outra conversa e outro texto.
  */
 function Cobranca({ assinatura, hoje }: { assinatura: Assinatura; hoje: string }) {
-  const prazo = prazoDe(assinatura.venceEm, hoje);
-  const vencida = prazo.tipo === 'vencida';
+  const prazo = assinatura.venceEm === null ? null : prazoDe(assinatura.venceEm, hoje);
+  const vencida = prazo?.tipo === 'vencida';
 
   return (
     <div className="border-t border-line-2 p-5 first:border-t-0">
@@ -40,30 +47,42 @@ function Cobranca({ assinatura, hoje }: { assinatura: Assinatura; hoje: string }
             vencida ? 'bg-amber-400/20 text-ink' : 'bg-canvas text-ink-2'
           }`}
         >
-          {vencida ? (
+          {prazo === null ? (
+            <SemFim aria-hidden className="h-3 w-3" />
+          ) : vencida ? (
             <AlertTriangle aria-hidden className="h-3 w-3" />
           ) : (
             <Clock aria-hidden className="h-3 w-3" />
           )}
-          {comoDizer(prazo)}
+          {prazo === null ? 'não vence' : comoDizer(prazo)}
         </span>
       </div>
 
       <p className="mt-0.5 text-[13px] text-ink-2">
-        {ROTULO_DO_PLANO[assinatura.plano]} na mão, até {formatarDia(assinatura.venceEm)}
+        {ROTULO_DO_PLANO[assinatura.plano]} na mão,{' '}
+        {assinatura.venceEm === null ? 'vitalícia' : `até ${formatarDia(assinatura.venceEm)}`}
+        {' · '}
+        {assinatura.valorMensal === null
+          ? 'sem cobrança'
+          : `${emReais(assinatura.valorMensal)} por mês`}
       </p>
 
-      <div className="mt-3">
-        <MensagemPronta
-          modelo={mensagemDeCobranca(
-            assinatura.pessoa,
-            ROTULO_DO_PLANO[assinatura.plano],
-            assinatura.venceEm,
-            prazo,
-          )}
-          numero={assinatura.whatsapp}
-        />
-      </div>
+      {/* `assinatura.venceEm` está aqui em vez de `prazo`: o compilador sabe
+          que ele não é nulo por causa da checagem do prazo, e repetir a
+          condição faria a tela ter duas verdades sobre a mesma coisa. */}
+      {prazo !== null && assinatura.venceEm !== null ? (
+        <div className="mt-3">
+          <MensagemPronta
+            modelo={mensagemDeCobranca(
+              assinatura.pessoa,
+              ROTULO_DO_PLANO[assinatura.plano],
+              assinatura.venceEm,
+              prazo,
+            )}
+            numero={assinatura.whatsapp}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

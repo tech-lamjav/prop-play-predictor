@@ -3,7 +3,7 @@ import { ehAssinante, type Cadastro } from './crm-lista';
 import { ganchoDe, type Gancho } from './crm-ficha';
 import { etapaDe, type EtapasGravadas } from './crm-funil';
 import { ETAPAS, ETAPA_PADRAO, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
-import { temAcessoAoFutebol } from '@/utils/futebol-acesso';
+import { etiquetaDe, ETIQUETAS, type Etiqueta } from './crm-etiquetas';
 
 // ============================================================================
 // As contas do painel
@@ -24,25 +24,36 @@ export type Apostas = Record<string, number | undefined>;
 /**
  * Onde o lead aparece no funil.
  *
- * As seis primeiras são a etapa MANUAL, movida por um sócio. As duas últimas o
- * banco responde sozinho, e por isso não estão no vocabulário de etapas: etapa
- * manual para o que o banco sabe nasce desatualizada — alguém esquece de mover
- * quando a assinatura cai, e a tela passa a mentir.
+ * As seis são a etapa MANUAL, movida por um sócio, e `assinante` é o DESTINO,
+ * que o banco responde sozinho. A escada é esta:
  *
- * A ordem é a da progressão, com `sem_resposta` fechando do outro lado.
+ *   Novo → Primeiro contato → Nutrindo → Boletada → Interesse → Assinante
+ *                                                            ↘ Sem resposta
+ *
+ * "Assinante" não é etapa manual porque ninguém arrasta alguém para lá: a
+ * pessoa chega pagando. Etapa manual para o que o banco sabe nasce
+ * desatualizada — alguém esquece de mover quando a assinatura cai, e a tela
+ * passa a mentir.
+ *
+ * ⚠️ "Em teste" SAIU daqui, e virou etiqueta em `crm-etiquetas.ts`. Ele nunca
+ * foi etapa de conversa: estar em teste é fato do produto e não diz nada sobre
+ * até onde a conversa chegou. Enquanto era posição, ele VENCIA a etapa manual
+ * na tela, então quem estava em teste aparecia como "Em teste" e a etapa ficava
+ * invisível — e quem está em teste é o lead mais quente que existe. Era
+ * justamente ali que a conversa se perdia.
  */
-/** As duas que o banco responde sozinho. */
-const CALCULADAS = ['em_teste', 'assinante'] as const;
+/** A única que o banco responde sozinho, e é o fim da escada. */
+const CALCULADAS = ['assinante'] as const;
 
 export type Posicao = Etapa | (typeof CALCULADAS)[number];
 
 /**
  * As posições derivam das ETAPAS em vez de redigitá-las: com duas listas, somar
- * uma etapa exigiria lembrar da segunda, e esquecer não quebraria nada — o
+ * uma etapa exigiria lembrar da segunda, e esquecer não quebraria nada — a
  * posição simplesmente não apareceria no funil.
  *
- * "Sem resposta" sai do meio e volta para o fim: as calculadas acontecem ANTES
- * de alguém desistir, e o funil desenha a ordem em que as coisas acontecem.
+ * "Sem resposta" sai do meio e volta para o fim: assinar acontece ANTES de
+ * alguém desistir, e o funil desenha a ordem em que as coisas acontecem.
  */
 export const POSICOES: readonly Posicao[] = [
   ...ETAPAS.filter((e) => e !== 'sem_resposta'),
@@ -52,11 +63,10 @@ export const POSICOES: readonly Posicao[] = [
 
 export const ROTULO_DA_POSICAO: Record<Posicao, string> = {
   ...ROTULO_DA_ETAPA,
-  em_teste: 'Em teste',
   assinante: 'Assinante',
 };
 
-/** As duas que o banco responde. A tela marca essas como calculadas. */
+/** A que o banco responde. A tela marca essa como calculada. */
 export const POSICOES_CALCULADAS: readonly Posicao[] = CALCULADAS;
 
 /**
@@ -74,11 +84,10 @@ export const POSICOES_CALCULADAS: readonly Posicao[] = CALCULADAS;
  */
 export const TOM_DA_POSICAO: Record<Posicao, string> = {
   novo: 'bg-forest/20',
-  contatado: 'bg-forest/40',
+  primeiro_contato: 'bg-forest/40',
   nutrindo: 'bg-forest/55',
   boletada: 'bg-forest/70',
   interesse: 'bg-forest/85',
-  em_teste: 'bg-forest',
   assinante: 'bg-amber-400',
   sem_resposta: 'bg-ink-dim',
 };
@@ -93,14 +102,26 @@ export interface Lead {
   etapa: Etapa;
   gancho: Gancho;
   /**
-   * Onde ele aparece no funil.
+   * Onde ele aparece no funil: a etapa, ou `assinante` se já chegou lá.
    *
-   * O estado calculado VENCE a etapa manual: quem já assina não está sentado em
-   * "interesse", e mostrar ele lá faria o funil somar duas vezes a mesma
-   * pessoa. A etapa manual continua guardada no banco, para quando a
-   * assinatura cair e a conversa precisar ser retomada de onde parou.
+   * Assinar VENCE a etapa manual: quem já paga não está sentado em "interesse",
+   * e mostrá-lo nos dois faria o funil somar duas vezes a mesma pessoa. A etapa
+   * continua guardada no banco, para quando a assinatura cair e a conversa
+   * precisar ser retomada de onde parou.
+   *
+   * Estar em teste NÃO vence nada: é etiqueta, e a etapa de quem está em teste
+   * é justamente a que mais importa.
    */
   posicao: Posicao;
+  /**
+   * O que o produto diz sobre a pessoa, num eixo SEPARADO da etapa.
+   *
+   * Nula para quem nunca testou, que é a maior parte da base. As duas valem ao
+   * mesmo tempo de propósito: alguém pode estar em teste E em nutrição, e essas
+   * são duas informações diferentes sobre a mesma pessoa. Enquanto "em teste"
+   * era posição do funil, ele vencia a etapa e a escondia.
+   */
+  etiqueta: Etiqueta | null;
   assinante: boolean;
   /** Último toque registrado, ou nulo para quem nunca recebeu nada. */
   ultimoToque: string | null;
@@ -116,16 +137,15 @@ export interface Lead {
 }
 
 /**
- * O estado que o banco responde, se houver.
+ * O destino, se a pessoa já chegou nele; senão, a etapa da conversa.
  *
- * Assinante ganha de em teste: quem virou premium durante o teste é assinante,
- * e continuar mostrando "em teste" seria a tela atrasada em relação ao caixa.
+ * Só assinante ganha da etapa manual, e ele ganha porque é o fim da escada:
+ * quem paga não está mais sendo convencido. O teste gratuito NÃO entra nesta
+ * conta — ele é etiqueta, e quem está em teste continua tendo a etapa que tem,
+ * porque a conversa com essa pessoa é a mais importante de todas.
  */
-function posicaoDe(c: Cadastro, etapa: Etapa, agora: number): Posicao {
-  if (ehAssinante(c)) return 'assinante';
-  if (temAcessoAoFutebol(c.futebol_subscription_status, c.futebol_trial_started_at, agora))
-    return 'em_teste';
-  return etapa;
+function posicaoDe(c: Cadastro, etapa: Etapa): Posicao {
+  return ehAssinante(c) ? 'assinante' : etapa;
 }
 
 export function montarLeads(
@@ -136,9 +156,6 @@ export function montarLeads(
   apostas: Apostas | null,
   hoje: string,
 ): Lead[] {
-  // O relógio do teste gratuito conta em horas, e o dia BRT não basta para
-  // dizer se ele ainda está de pé.
-  const agora = Date.parse(`${hoje}T23:59:59Z`);
   return cadastros.map((c) => {
     const ultimoToque = toques[c.id] ?? null;
     const referencia = brtDayOf(ultimoToque) ?? brtDayOf(c.created_at);
@@ -150,10 +167,11 @@ export function montarLeads(
       whatsapp: c.whatsapp_number,
       cadastradoEm: c.created_at,
       etapa: etapaDe(etapas, c.id),
-      posicao: posicaoDe(c, etapaDe(etapas, c.id), agora),
+      posicao: posicaoDe(c, etapaDe(etapas, c.id)),
       // Mapa nulo é consulta que falhou, e o gancho precisa saber disso: sem
       // esta distinção, uma falha da RPC vira "conferi, não apostou" na tela.
       gancho: ganchoDe(c, apostas ? { total: apostas[c.id] ?? 0, ultima: null } : null),
+      etiqueta: etiquetaDe(c, hoje),
       assinante: ehAssinante(c),
       ultimoToque,
       diasParado: referencia ? diasEntre(referencia, hoje) : null,
@@ -324,4 +342,28 @@ export function filtrarPorPeriodo(leads: Lead[], periodo: Periodo): Lead[] {
     if (periodo.ate && dia > periodo.ate) return false;
     return true;
   });
+}
+
+/**
+ * Quantos leads em cada etiqueta.
+ *
+ * Quem não tem etiqueta não entra em nenhuma contagem, e não existe contagem de
+ * "sem etiqueta": ela seria a maior de todas e não diria nada. O que a faixa de
+ * etiquetas responde é quantos estão em cada situação de teste, e o silêncio é
+ * o normal da base.
+ */
+export function contarPorEtiqueta(leads: Lead[]): Record<Etiqueta, number> {
+  const contagem = Object.fromEntries(ETIQUETAS.map((e) => [e, 0])) as Record<Etiqueta, number>;
+  for (const lead of leads) if (lead.etiqueta) contagem[lead.etiqueta] += 1;
+  return contagem;
+}
+
+/**
+ * Os leads de uma etiqueta.
+ *
+ * Nulo devolve todos, e não nenhum: o filtro nasce desligado, e desligado tem
+ * de ser "tudo". A mesma regra do filtro de período.
+ */
+export function filtrarPorEtiqueta(leads: Lead[], etiqueta: Etiqueta | null): Lead[] {
+  return etiqueta ? leads.filter((l) => l.etiqueta === etiqueta) : leads;
 }

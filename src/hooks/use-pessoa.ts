@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/integrations/supabase/client';
 import type { EstadoDaFicha } from '@/components/socios/Ficha';
 import type { Pessoa, ResumoDeApostas } from '@/components/socios/crm-ficha';
+import { CHAVES } from './crm-chaves';
 
 /**
  * Os campos da ficha, e só eles.
@@ -31,6 +32,7 @@ const MAPA_DE_CAMPOS: Record<keyof Pessoa, true> = {
   analytics_subscription_period_end: true,
   futebol_trial_started_at: true,
   futebol_publication_alerts_ack_at: true,
+  futebol_trial_ends_at: true,
   has_report_access: true,
 };
 
@@ -54,7 +56,7 @@ const NAO_ENCONTRADO = 'PGRST116';
  */
 export function usePessoa(id: string | undefined): EstadoDaFicha {
   const consulta = useQuery({
-    queryKey: ['socios', 'pessoa', id ?? ''],
+    queryKey: CHAVES.pessoa(id ?? ''),
     enabled: !!id,
     queryFn: async () => {
       const cliente = createClient();

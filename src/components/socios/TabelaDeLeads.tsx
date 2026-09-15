@@ -3,6 +3,7 @@ import { Clock } from 'lucide-react';
 import { DIAS_PARA_ESTAR_PARADO, ROTULO_DA_POSICAO, TOM_DA_POSICAO, type Lead } from './crm-painel';
 import { NOME_DO_GANCHO } from './crm-ficha';
 import { ROTA_DO_CRM } from './crm-vocabulario';
+import { EtiquetaDoLead } from './EtiquetaDoLead';
 
 /**
  * As iniciais de quem está na linha.
@@ -67,12 +68,17 @@ export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }
                           nome acessível do link vira "Maria Silva 5511…", e
                           quem navega por leitor de tela ouve o telefone inteiro
                           a cada linha da lista. */}
-                      <Link
-                        to={`${ROTA_DO_CRM}/${lead.id}`}
-                        className="block truncate text-[14px] font-bold text-ink group-hover:text-forest"
-                      >
-                        {lead.nome}
-                      </Link>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Link
+                          to={`${ROTA_DO_CRM}/${lead.id}`}
+                          className="truncate text-[14px] font-bold text-ink group-hover:text-forest"
+                        >
+                          {lead.nome}
+                        </Link>
+                        {/* A etiqueta fica FORA do link, pelo mesmo motivo do
+                            contato: dentro, ela entraria no nome acessível. */}
+                        <EtiquetaDoLead etiqueta={lead.etiqueta} />
+                      </div>
                       <p className="truncate text-[12px] text-ink-2">
                         {lead.whatsapp ?? lead.email}
                       </p>

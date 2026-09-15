@@ -1,5 +1,6 @@
-import type { TipoDeGancho } from './crm-ficha';
-import { type Etapa } from './crm-vocabulario';
+import { mensagemDeCobranca, mensagemDeConversao, prazoDe } from './crm-cobranca';
+import { primeiroNome as primeiroNomeDe, saudacao, type TipoDeGancho } from './crm-ficha';
+import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 
 // ============================================================================
 // As mensagens prontas
@@ -22,16 +23,6 @@ import { type Etapa } from './crm-vocabulario';
 // você entrou nas análises de futebol" soa como fato e pode estar errado — o
 // mesmo gancho nasce de quem só leu a explicação dos alertas.
 // ============================================================================
-
-/**
- * "Oi, Maria!" ou "Oi!".
- *
- * A saudação inteira muda, e não só a lacuna. Trocar a lacuna por vazio deixa
- * "Oi, !" — o defeito clássico do modelo com buraco.
- */
-function saudacao(primeiroNome: string | null): string {
-  return primeiroNome ? `Oi, ${primeiroNome}!` : 'Oi!';
-}
 
 /**
  * Nenhum modelo usa travessão.
@@ -75,7 +66,7 @@ const POR_PAR: Partial<Record<Etapa, Partial<Record<TipoDeGancho, string>>>> = {
       'Queria saber o que você achou do raciocínio por trás dele.',
   },
 
-  contatado: {
+  primeiro_contato: {
     betinho:
       '{saudacao} Passando de novo pra saber se você chegou a ver o resumo semanal da banca no ' +
       'Betinho. Se quiser, eu te mostro num print como fica depois de umas semanas registrando.',
@@ -91,7 +82,7 @@ const POR_PAR: Partial<Record<Etapa, Partial<Record<TipoDeGancho, string>>>> = {
       'retomar, é só me chamar.',
     futebol:
       `{saudacao} ${NAO_INSISTIR} Deixo só uma coisa: as análises de futebol saem todo dia antes ` +
-      'dos jogos, e o teste de sete dias não custa nada. Se quiser retomar, é só me chamar.',
+      'dos jogos, e o teste de 48 horas não custa nada. Se quiser retomar, é só me chamar.',
   },
 };
 
@@ -106,7 +97,7 @@ const POR_ETAPA: Record<Etapa, string> = {
   novo:
     '{saudacao} Aqui é da Smart Betting. Vi que você se cadastrou e queria entender o que te ' +
     'trouxe até aqui, pra te mostrar a parte da plataforma que mais faz sentido pro seu caso.',
-  contatado:
+  primeiro_contato:
     '{saudacao} Passando pra saber se você chegou a explorar a plataforma depois da nossa ' +
     'última conversa. Qualquer dúvida, pode me chamar por aqui.',
   nutrindo:
@@ -136,6 +127,155 @@ export function mensagemPara(
 ): string {
   const modelo = POR_PAR[etapa]?.[gancho] ?? POR_ETAPA[etapa];
   return modelo.replace('{saudacao}', saudacao(primeiroNome));
+}
+
+/**
+ * Um modelo do catálogo, para o sócio escolher outro que não o sugerido.
+ */
+export interface ModeloDeMensagem {
+  /** `novo` para o texto da etapa, `novo:betinho` para o do par. */
+  id: string;
+  /** A etapa a que o texto pertence. É o que agrupa as opções na tela. */
+  grupo: string;
+  rotulo: string;
+  texto: string;
+}
+
+/** Como cada gancho aparece como opção no seletor. */
+const ROTULO_DO_GANCHO: Record<TipoDeGancho, string> = {
+  betinho: 'Betinho',
+  futebol: 'Futebol',
+  nba: 'NBA',
+  indefinido: 'Geral',
+};
+
+/**
+ * O identificador do modelo que `mensagemPara` escolheria.
+ *
+ * A mesma escada de dois degraus, escrita de novo para devolver o NOME do
+ * modelo em vez do texto. Há teste cobrando que os dois apontem para o mesmo
+ * texto em todos os pares: se divergirem, a tela marca como sugerida uma
+ * mensagem diferente da que está na caixa.
+ */
+export function idDaSugerida(gancho: TipoDeGancho, etapa: Etapa): string {
+  return POR_PAR[etapa]?.[gancho] ? `${etapa}:${gancho}` : etapa;
+}
+
+/**
+ * O catálogo inteiro de abordagem, para o sócio trocar de mensagem.
+ *
+ * A sugerida acerta na maior parte das vezes, mas quem conhece a pessoa sabe o
+ * que o banco não sabe: o lead que o gancho diz ser do futebol e que na conversa
+ * só falou de Betinho. Travar a mensagem no palpite obrigaria o sócio a
+ * reescrever do zero um texto que já existe aqui.
+ *
+ * Na ordem do funil, e dentro de cada etapa o texto geral antes dos pares.
+ */
+export function modelosDeAbordagem(primeiroNome: string | null): ModeloDeMensagem[] {
+  const comNome = (modelo: string) => modelo.replace('{saudacao}', saudacao(primeiroNome));
+
+  return ETAPAS.flatMap((etapa) => {
+    const grupo = ROTULO_DA_ETAPA[etapa];
+    const pares = Object.entries(POR_PAR[etapa] ?? {}) as [TipoDeGancho, string][];
+    return [
+      { id: etapa, grupo, rotulo: 'Geral', texto: comNome(POR_ETAPA[etapa]) },
+      ...pares.map(([gancho, modelo]) => ({
+        id: `${etapa}:${gancho}`,
+        grupo,
+        rotulo: ROTULO_DO_GANCHO[gancho],
+        texto: comNome(modelo),
+      })),
+    ];
+  });
+}
+
+/** O que, além do gancho e da etapa, muda as mensagens que a ficha oferece. */
+export interface ContextoDaMensagem {
+  /**
+   * Dias de teste que restam contando hoje: zero acaba hoje, negativo já
+   * acabou. Nulo para quem não tem etiqueta de teste, inclusive quem já assina.
+   */
+  diasDeTeste: number | null;
+  /** A assinatura manual com data de fim, para a mensagem de cobrança. */
+  cobranca: { plano: string; venceEm: string; hoje: string } | null;
+}
+
+/** O identificador da mensagem de conversão para quem tem `dias` de teste. */
+function idDoTeste(dias: number): string {
+  if (dias < 0) return 'teste:acabou';
+  if (dias === 0) return 'teste:hoje';
+  if (dias === 1) return 'teste:amanha';
+  return 'teste:em-dias';
+}
+
+/**
+ * Tudo que a ficha oferece no seletor: a abordagem, a conversão do teste e,
+ * quando há assinatura com data, a cobrança.
+ *
+ * As três de conversão estão sempre lá, e não só para quem está em teste: o
+ * sócio pode estar falando de um teste que ele mesmo vai dar, ou de um que
+ * acabou antes de a etiqueta existir. A de "acaba em N dias" só existe quando
+ * há um N de verdade, porque sem ele o número seria inventado.
+ *
+ * A de cobrança só existe com assinatura que vence: ela fala de uma data, e sem
+ * data nenhuma daquelas frases é verdade.
+ */
+export function modelosDaFicha(
+  nome: string | null,
+  contexto: ContextoDaMensagem,
+): ModeloDeMensagem[] {
+  const deTeste = (id: string, rotulo: string, dias: number): ModeloDeMensagem => ({
+    id,
+    grupo: 'Teste gratuito',
+    rotulo,
+    texto: mensagemDeConversao(nome, dias),
+  });
+
+  const conversao = [
+    deTeste('teste:amanha', 'Acaba amanhã', 1),
+    deTeste('teste:hoje', 'Acaba hoje', 0),
+    deTeste('teste:acabou', 'Já acabou', -1),
+  ];
+  const { diasDeTeste, cobranca } = contexto;
+  if (diasDeTeste !== null && diasDeTeste > 1) {
+    conversao.unshift(deTeste('teste:em-dias', `Acaba em ${diasDeTeste} dias`, diasDeTeste));
+  }
+
+  const deCobranca: ModeloDeMensagem[] = cobranca
+    ? [
+        {
+          id: 'cobranca',
+          grupo: 'Cobrança',
+          rotulo: 'Vencimento da assinatura',
+          texto: mensagemDeCobranca(
+            nome,
+            cobranca.plano,
+            cobranca.venceEm,
+            prazoDe(cobranca.venceEm, cobranca.hoje),
+          ),
+        },
+      ]
+    : [];
+
+  return [...modelosDeAbordagem(primeiroNomeDe(nome)), ...conversao, ...deCobranca];
+}
+
+/**
+ * A mensagem que a ficha sugere.
+ *
+ * Quem tem etiqueta de teste recebe a de conversão, com o prazo dela. É o
+ * contato da véspera que motivou a etiqueta: a conversa com quem está testando
+ * é sobre o teste, e não sobre a etapa em que a conversa parou. Para o resto,
+ * vale o par de gancho e etapa.
+ */
+export function idSugeridoNaFicha(
+  gancho: TipoDeGancho,
+  etapa: Etapa,
+  contexto: ContextoDaMensagem,
+): string {
+  return contexto.diasDeTeste === null
+    ? idDaSugerida(gancho, etapa)
+    : idDoTeste(contexto.diasDeTeste);
 }
 
 /**

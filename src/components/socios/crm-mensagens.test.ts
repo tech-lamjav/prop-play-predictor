@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { linkDoWhatsApp, mensagemPara } from './crm-mensagens';
-import { ETAPAS } from './crm-vocabulario';
+import {
+  idDaSugerida,
+  idSugeridoNaFicha,
+  linkDoWhatsApp,
+  mensagemPara,
+  modelosDaFicha,
+  modelosDeAbordagem,
+  type ContextoDaMensagem,
+} from './crm-mensagens';
+import { ETAPAS, ROTULO_DA_ETAPA } from './crm-vocabulario';
 import type { TipoDeGancho } from './crm-ficha';
 
 const GANCHOS: TipoDeGancho[] = ['betinho', 'futebol', 'nba', 'indefinido'];
@@ -64,12 +72,22 @@ describe('mensagemPara', () => {
   });
 
   it('nenhum texto de futebol promete acesso livre a um produto pago', () => {
-    // O futebol é pago, com sete dias de teste. Prometer "sem compromisso
+    // O futebol é pago, com 48 horas de teste. Prometer "sem compromisso
     // nenhum" fecha a conversa mal no dia em que a pessoa esbarra no paywall.
     for (const etapa of ETAPAS) {
       expect(mensagemPara('futebol', etapa, 'Maria')).not.toMatch(
         /sem compromisso|de graça|gratuito para sempre/i,
       );
+    }
+  });
+
+  it('nenhuma mensagem do catálogo promete teste de sete dias', () => {
+    // ⚠️ O teste grátis passou de 7 dias para 48 horas (#410), e uma mensagem
+    // continuou dizendo "o teste de sete dias não custa nada". Com o seletor, o
+    // sócio escolhe qualquer texto do catálogo, e esse chegaria ao cliente
+    // prometendo cinco dias que o produto não dá.
+    for (const m of modelosDeAbordagem('Maria')) {
+      expect(m.texto, m.id).not.toMatch(/\b(7|sete)\s+dias\b/i);
     }
   });
 
@@ -145,6 +163,139 @@ describe('nenhuma mensagem usa travessão', () => {
           expect(texto, `${gancho} + ${etapa}`).not.toMatch(/[\u2013\u2014]/);
         }
       }
+    }
+  });
+});
+
+describe('o catálogo para trocar de mensagem', () => {
+  it('toda mensagem que a sugestão pode escolher está no catálogo', () => {
+    // Senão existiria mensagem que a caixa mostra sozinha e que o sócio nunca
+    // consegue escolher de volta depois de trocar para outra.
+    const textos = modelosDeAbordagem('Maria').map((m) => m.texto);
+    for (const gancho of GANCHOS) {
+      for (const etapa of ETAPAS) {
+        expect(textos, `${gancho} + ${etapa}`).toContain(mensagemPara(gancho, etapa, 'Maria'));
+      }
+    }
+  });
+
+  it('a marcada como sugerida é a mesma que está na caixa, em todo par', () => {
+    // ⚠️ `idDaSugerida` repete a escada de `mensagemPara`. Se as duas
+    // divergirem, a tela marca "(sugerida)" numa opção e mostra outro texto.
+    const porId = new Map(modelosDeAbordagem('Maria').map((m) => [m.id, m.texto]));
+    for (const gancho of GANCHOS) {
+      for (const etapa of ETAPAS) {
+        expect(porId.get(idDaSugerida(gancho, etapa)), `${gancho} + ${etapa}`).toBe(
+          mensagemPara(gancho, etapa, 'Maria'),
+        );
+      }
+    }
+  });
+
+  it('nenhum identificador se repete', () => {
+    // O seletor usa o identificador como valor. Repetido, escolher um marca o
+    // outro, e a caixa mostra o texto errado.
+    const ids = modelosDeAbordagem('Maria').map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('as opções seguem a ordem do funil', () => {
+    const grupos = modelosDeAbordagem('Maria')
+      .map((m) => m.grupo)
+      .filter((g, i, todos) => todos.indexOf(g) === i);
+    expect(grupos).toEqual(ETAPAS.map((e) => ROTULO_DA_ETAPA[e]));
+  });
+
+  it('usa o nome, e sem nome não deixa vírgula solta', () => {
+    expect(modelosDeAbordagem('Maria').every((m) => m.texto.includes('Maria'))).toBe(true);
+    for (const m of modelosDeAbordagem(null)) {
+      expect(m.texto, m.id).not.toMatch(/,\s*[!?.]/);
+    }
+  });
+
+  it('nenhum modelo do catálogo deixa lacuna nem usa travessão', () => {
+    for (const nome of ['Maria', null]) {
+      for (const m of modelosDeAbordagem(nome)) {
+        expect(m.texto, m.id).not.toMatch(/\{|\}/);
+        expect(m.texto, m.id).not.toMatch(/[–—]/);
+      }
+    }
+  });
+});
+
+describe('as mensagens da ficha: abordagem, teste e cobrança', () => {
+  const SEM: ContextoDaMensagem = { diasDeTeste: null, cobranca: null };
+  const emTeste = (dias: number): ContextoDaMensagem => ({ diasDeTeste: dias, cobranca: null });
+  const sugeridaPara = (contexto: ContextoDaMensagem) =>
+    modelosDaFicha('Maria Silva', contexto).find(
+      (m) => m.id === idSugeridoNaFicha('betinho', 'nutrindo', contexto),
+    )?.texto;
+
+  it('sem teste, a sugerida continua sendo a de abordagem', () => {
+    expect(idSugeridoNaFicha('betinho', 'novo', SEM)).toBe(idDaSugerida('betinho', 'novo'));
+  });
+
+  it('quem está em teste recebe a de conversão, com o prazo dela', () => {
+    // É o contato da véspera que motivou a etiqueta: a conversa com quem está
+    // testando é sobre o teste, e não sobre a etapa em que a conversa parou.
+    const texto = sugeridaPara(emTeste(1));
+    expect(texto).toMatch(/acaba amanhã/);
+    expect(texto).toContain('Maria');
+  });
+
+  it('cada prazo do teste aponta para a mensagem certa', () => {
+    expect(sugeridaPara(emTeste(0))).toMatch(/último dia/);
+    expect(sugeridaPara(emTeste(-3))).toMatch(/acabou/);
+    expect(sugeridaPara(emTeste(4))).toMatch(/em 4 dias/);
+  });
+
+  it('a de "acaba em N dias" só existe quando há um N de verdade', () => {
+    // Sem um número real, a mensagem prometeria um prazo inventado.
+    expect(modelosDaFicha(null, SEM).some((m) => m.id === 'teste:em-dias')).toBe(false);
+    expect(modelosDaFicha(null, emTeste(1)).some((m) => m.id === 'teste:em-dias')).toBe(false);
+  });
+
+  it('a de cobrança só aparece com assinatura que vence', () => {
+    // Toda mensagem de cobrança fala de uma data. Sem data, nenhuma daquelas
+    // frases é verdade.
+    expect(modelosDaFicha(null, SEM).some((m) => m.grupo === 'Cobrança')).toBe(false);
+    const comData = modelosDaFicha('Maria', {
+      diasDeTeste: null,
+      cobranca: { plano: 'Essencial', venceEm: '2026-09-20', hoje: '2026-09-12' },
+    });
+    expect(comData.find((m) => m.id === 'cobranca')?.texto).toMatch(/Essencial/);
+  });
+
+  it('toda sugerida existe no catálogo, em qualquer contexto', () => {
+    // Uma sugerida fora do catálogo deixaria a caixa com texto vazio e o
+    // seletor sem opção marcada.
+    for (const dias of [null, -5, 0, 1, 4]) {
+      const contexto: ContextoDaMensagem = { diasDeTeste: dias, cobranca: null };
+      for (const etapa of ETAPAS) {
+        for (const gancho of GANCHOS) {
+          const id = idSugeridoNaFicha(gancho, etapa, contexto);
+          expect(modelosDaFicha(null, contexto).some((m) => m.id === id), `${dias} ${id}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('com teste e cobrança juntos, nenhum identificador se repete', () => {
+    const todos = modelosDaFicha('Maria', {
+      diasDeTeste: 3,
+      cobranca: { plano: 'Completo', venceEm: '2026-09-01', hoje: '2026-09-12' },
+    });
+    expect(new Set(todos.map((m) => m.id)).size).toBe(todos.length);
+  });
+
+  it('nenhuma mensagem nova usa travessão nem promete sete dias', () => {
+    const todos = modelosDaFicha('Maria', {
+      diasDeTeste: 3,
+      cobranca: { plano: 'Completo', venceEm: '2026-09-01', hoje: '2026-09-12' },
+    });
+    for (const m of todos) {
+      expect(m.texto, m.id).not.toMatch(/[–—]/);
+      expect(m.texto, m.id).not.toMatch(/\b(7|sete)\s+dias\b/i);
     }
   });
 });

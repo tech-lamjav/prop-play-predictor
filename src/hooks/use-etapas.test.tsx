@@ -40,7 +40,7 @@ function ambiente() {
 
 beforeEach(() => {
   resposta.linhas = { data: [], error: null };
-  resposta.rpc = { data: 'contatado', error: null };
+  resposta.rpc = { data: 'primeiro_contato', error: null };
   resposta.chamadaDoRpc = null;
 });
 
@@ -83,11 +83,11 @@ describe('useMudarEtapa', () => {
   it('chama a função do banco com o lead e a etapa', async () => {
     const { wrapper } = ambiente();
     const { result } = renderHook(() => useMudarEtapa('u1'), { wrapper });
-    result.current.mutate('contatado');
+    result.current.mutate('primeiro_contato');
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(resposta.chamadaDoRpc).toEqual({
       nome: 'crm_mudar_etapa',
-      args: { p_user_id: 'u1', p_etapa: 'contatado' },
+      args: { p_user_id: 'u1', p_etapa: 'primeiro_contato' },
     });
   });
 
@@ -98,7 +98,7 @@ describe('useMudarEtapa', () => {
     resposta.rpc = { data: null, error: { message: 'apenas socios' } };
     const { wrapper } = ambiente();
     const { result } = renderHook(() => useMudarEtapa('u1'), { wrapper });
-    result.current.mutate('contatado');
+    result.current.mutate('primeiro_contato');
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
@@ -108,7 +108,7 @@ describe('useMudarEtapa', () => {
     const { cliente, wrapper } = ambiente();
     const invalidar = vi.spyOn(cliente, 'invalidateQueries');
     const { result } = renderHook(() => useMudarEtapa('u1'), { wrapper });
-    result.current.mutate('contatado');
+    result.current.mutate('primeiro_contato');
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidar).toHaveBeenCalledWith({ queryKey: ['socios', 'etapas'] });
   });
@@ -118,7 +118,7 @@ describe('useMudarEtapa', () => {
     const { cliente, wrapper } = ambiente();
     const invalidar = vi.spyOn(cliente, 'invalidateQueries');
     const { result } = renderHook(() => useMudarEtapa('u1'), { wrapper });
-    result.current.mutate('contatado');
+    result.current.mutate('primeiro_contato');
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(invalidar).not.toHaveBeenCalled();
   });

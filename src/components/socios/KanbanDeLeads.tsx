@@ -9,6 +9,7 @@ import {
 } from './crm-painel';
 import { NOME_DO_GANCHO } from './crm-ficha';
 import { ROTA_DO_CRM } from './crm-vocabulario';
+import { EtiquetaDoLead } from './EtiquetaDoLead';
 
 /**
  * Quantos cartões uma coluna desenha antes de dizer quantos sobraram.
@@ -30,6 +31,14 @@ function Cartao({ lead }: { lead: Lead }) {
       className="block rounded-rebrand-sm border border-line-2 bg-white p-2.5 hover:border-forest"
     >
       <p className="truncate text-[13px] font-bold text-ink">{lead.nome}</p>
+      {/* Dentro do cartão, porque o cartão inteiro é o link. O nome acessível
+          ganha a etiqueta junto, e aqui isso ajuda: quem ouve a coluna sabe
+          quem está com o teste vencendo sem abrir a ficha. */}
+      {lead.etiqueta ? (
+        <div className="mt-1">
+          <EtiquetaDoLead etiqueta={lead.etiqueta} />
+        </div>
+      ) : null}
       <p className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px]">
         <span className="truncate text-ink-2">{NOME_DO_GANCHO[lead.gancho.tipo]}</span>
         {parado !== null && (

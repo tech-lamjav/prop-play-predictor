@@ -36,6 +36,13 @@ export interface Cadastro {
   subscription_product_type: string | null;
   futebol_trial_started_at: string | null;
   futebol_publication_alerts_ack_at: string | null;
+  /**
+   * Quando o teste do futebol termina. É esta, e não o início, que diz se a
+   * pessoa ainda tem acesso: o teste passou de 7 dias para 48 horas, e quem
+   * começou antes da troca continua com os 7 dias que a página prometeu. O fim
+   * é gravado junto com o início, então cada coorte já traz a sua duração.
+   */
+  futebol_trial_ends_at: string | null;
 }
 
 export interface DiaDe<T> {

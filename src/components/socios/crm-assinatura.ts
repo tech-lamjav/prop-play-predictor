@@ -1,4 +1,6 @@
+import { brtDayOf } from '@/utils/futebol-datas';
 import type { Cadastro } from './crm-lista';
+import { mesesEmAberto, type Pagamento } from './crm-receita';
 import { PLANOS_A_VENDER, type PlanoAVender } from './crm-vocabulario';
 
 // ============================================================================
@@ -9,8 +11,8 @@ import { PLANOS_A_VENDER, type PlanoAVender } from './crm-vocabulario';
 // ela já está sem o produto e sem motivo nenhum para voltar.
 //
 // Este módulo transforma as linhas de `crm_assinatura_manual` na fila de quem
-// precisa ser cobrado, na ordem em que vence. Tudo puro; quem desenha não faz
-// conta nenhuma.
+// precisa ser cobrado, na ordem em que vence, e na fila de quem está devendo.
+// Tudo puro; quem desenha não faz conta nenhuma.
 // ============================================================================
 
 /** Uma linha de `crm_assinatura_manual`, como o banco devolve. */
@@ -18,7 +20,9 @@ export interface AssinaturaDoBanco {
   id: string;
   user_id: string;
   plano: string;
-  vence_em: string;
+  vence_em: string | null;
+  /** `numeric` chega como texto no PostgREST. */
+  valor_mensal: string | number | null;
   criada_em: string;
   criada_por: string | null;
 }
@@ -30,8 +34,22 @@ export interface Assinatura {
   pessoa: string;
   whatsapp: string | null;
   plano: PlanoAVender;
-  /** `YYYY-MM-DD`. */
-  venceEm: string;
+  /**
+   * `YYYY-MM-DD`, ou nulo quando é VITALÍCIA.
+   *
+   * Nulo é a resposta certa, e não uma data de 2099: uma data inventada o resto
+   * do sistema trataria como verdade, ordenando a fila por ela e um dia
+   * chegando nela.
+   */
+  venceEm: string | null;
+  /**
+   * Quanto a pessoa paga por mês, ou nulo quando NÃO HÁ COBRANÇA.
+   *
+   * ⚠️ Outra pergunta, e não a mesma de `venceEm`. Vitalícia com valor é quem
+   * paga todo mês e nunca vence; com data e sem valor é acesso dado na mão por
+   * um tempo. As quatro combinações existem.
+   */
+  valorMensal: number | null;
   criadaEm: string;
   criadaPor: string | null;
 }
@@ -59,6 +77,10 @@ function planoConhecido(bruto: string): PlanoAVender | null {
  * Ordena por quem vence primeiro. Essa ordem É o produto desta tela: a fila de
  * cobrança lida de cima para baixo tem que começar por quem está mais perto de
  * perder o acesso.
+ *
+ * As vitalícias vão para o fim. Elas não vencem, então não competem por
+ * urgência com ninguém, e ordenar nulo junto com datas colocaria quem nunca
+ * perde o acesso na frente de quem perde amanhã.
  */
 export function montarAssinaturas(
   linhas: AssinaturaDoBanco[],
@@ -79,14 +101,29 @@ export function montarAssinaturas(
           whatsapp: pessoa.whatsapp_number,
           plano,
           venceEm: linha.vence_em,
+          valorMensal: linha.valor_mensal === null ? null : Number(linha.valor_mensal),
           criadaEm: linha.criada_em,
           criadaPor: linha.criada_por,
         },
       ];
     })
-    .sort((a, b) =>
-      a.venceEm === b.venceEm ? a.id.localeCompare(b.id) : a.venceEm.localeCompare(b.venceEm),
-    );
+    .sort((a, b) => {
+      /*
+       * A vitalícia vai para o fim.
+       *
+       * Ela não vence, então não disputa urgência com ninguém: ordenar nulo
+       * junto com as datas colocaria quem nunca perde o acesso na frente de
+       * quem perde amanhã. Entre duas vitalícias o desempate continua sendo o
+       * identificador, como entre duas datas iguais.
+       */
+      if (a.venceEm === null || b.venceEm === null) {
+        if (a.venceEm === b.venceEm) return a.id.localeCompare(b.id);
+        return a.venceEm === null ? 1 : -1;
+      }
+      return a.venceEm === b.venceEm
+        ? a.id.localeCompare(b.id)
+        : a.venceEm.localeCompare(b.venceEm);
+    });
 }
 
 /**
@@ -98,19 +135,95 @@ export function montarAssinaturas(
 export const DIAS_PARA_COBRAR = 7;
 
 /**
+ * Uma assinatura que tem data de fim.
+ *
+ * O tipo existe para a tela de cobrança não ter que checar de novo se a data
+ * está lá: quem sai de `aCobrar` sempre tem, porque quem não tem não é cobrado
+ * por vencimento.
+ */
+export type AssinaturaQueVence = Assinatura & { venceEm: string };
+
+/**
  * Quem precisa ser cobrado agora.
  *
  * Inclui as que JÁ venceram, e é o ponto principal: quem perdeu o acesso ontem
  * é mais urgente que quem perde daqui a seis dias, e uma fila que só mostra o
  * futuro deixa essa pessoa invisível justamente no dia em que ela some.
+ *
+ * ⚠️ Vitalícia nunca entra. Não é esquecimento: esta fila é a de VENCIMENTO, e
+ * quem não vence não tem o que vencer. Quem é vitalício e paga por mês pode
+ * ficar devendo, e essa é a fila de INADIMPLENTES, que sai dos meses em aberto
+ * e não de uma data.
  */
 export function aCobrar(
   assinaturas: Assinatura[],
   hoje: string,
   dias = DIAS_PARA_COBRAR,
-): Assinatura[] {
+): AssinaturaQueVence[] {
   const limite = new Date(Date.parse(`${hoje}T12:00:00Z`) + dias * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  return assinaturas.filter((a) => a.venceEm <= limite);
+  /*
+   * O `!== null` é escrito, e não deixado por conta da comparação.
+   *
+   * `null <= '2026-09-19'` já dá falso em JavaScript, porque os dois viram
+   * número e a data vira `NaN` — então a vitalícia ficaria de fora de qualquer
+   * jeito. Mas ficaria de fora por acidente de conversão, e não por uma regra:
+   * quem trocasse a comparação por uma de datas de verdade veria a vitalícia
+   * aparecer na fila sem nenhum aviso. Escrito, ele também é o que estreita o
+   * tipo para `AssinaturaQueVence`.
+   */
+  return assinaturas.filter(
+    (a): a is AssinaturaQueVence => a.venceEm !== null && a.venceEm <= limite,
+  );
+}
+
+/** Uma assinatura com o que ela deve. */
+export interface Inadimplente {
+  assinatura: Assinatura;
+  /** Os meses em aberto, `YYYY-MM`, do mais antigo para o mais novo. */
+  meses: string[];
+  total: number;
+}
+
+/**
+ * Quem está devendo, do que deve mais para o que deve menos.
+ *
+ * Sai dos MESES EM ABERTO, e não da data de vencimento, e é por isso que é uma
+ * fila diferente da de cobrança: vitalícia com cobrança mensal entra aqui
+ * quando deixa de pagar, mesmo sem nunca vencer. Sem cobrança nunca entra,
+ * porque quem não combinou pagar não deve nada.
+ *
+ * Não encerra ninguém. A fila é o lugar de decidir: cortar o acesso de um
+ * cliente por engano custa mais caro que deixá-lo um mês a mais, e um corte
+ * automático erra em silêncio.
+ *
+ * O total ordena antes do número de meses porque é o total que decide se vale
+ * insistir ou encerrar.
+ */
+export function inadimplentes(
+  assinaturas: Assinatura[],
+  pagamentosPorAssinatura: ReadonlyMap<string, Pagamento[]>,
+  hoje: string,
+): Inadimplente[] {
+  return assinaturas
+    .flatMap((assinatura) => {
+      if (assinatura.valorMensal === null) return [];
+      // O mês de começo é o de Brasília, pela mesma razão da receita na ficha:
+      // uma assinatura dada às 22h de 31 de agosto é de agosto para quem deu.
+      const comecouEm = brtDayOf(assinatura.criadaEm) ?? hoje;
+      const meses = mesesEmAberto(
+        comecouEm,
+        assinatura.valorMensal,
+        pagamentosPorAssinatura.get(assinatura.id) ?? [],
+        hoje,
+      );
+      if (meses.length === 0) return [];
+      return [{ assinatura, meses, total: meses.length * assinatura.valorMensal }];
+    })
+    .sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      if (b.meses.length !== a.meses.length) return b.meses.length - a.meses.length;
+      return a.assinatura.pessoa.localeCompare(b.assinatura.pessoa, 'pt-BR');
+    });
 }

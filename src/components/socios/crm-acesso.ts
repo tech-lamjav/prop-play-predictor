@@ -1,5 +1,5 @@
 import type { Pessoa } from './crm-ficha';
-import { temAcessoAoFutebol } from '@/utils/futebol-acesso';
+import { ultimoDiaDoTeste } from './crm-etiquetas';
 import { brtDayOf } from '@/utils/futebol-datas';
 
 // ============================================================================
@@ -59,9 +59,6 @@ export const PRODUTOS_EDITAVEIS: readonly ProdutoEditavel[] = [
     semPrazoPorque: 'É uma marca de sim ou não, sem prazo. Vale até alguém tirar.',
   },
 ];
-
-/** Quantos dias dura o teste gratuito do futebol. O mesmo de `futebol-acesso`. */
-export const DIAS_DE_TESTE = 7;
 
 /**
  * O estado atual de um produto, do jeito que o formulário precisa.
@@ -125,27 +122,20 @@ export type EstadoDoTeste =
 const UM_DIA = 24 * 60 * 60 * 1000;
 
 export function estadoDoTeste(p: Pessoa, agora = Date.now()): EstadoDoTeste {
-  if (!p.futebol_trial_started_at) return { tipo: 'nunca' };
+  // Pelo FIM gravado, e não pelo início mais uma duração. O teste passou de 7
+  // dias para 48 horas, e as duas coortes vivem juntas: quem começou antes da
+  // troca continua com os 7 dias que a página prometeu. Só o fim sabe qual é
+  // qual, porque ele é gravado no mesmo instante que o início.
+  if (!p.futebol_trial_ends_at) return { tipo: 'nunca' };
 
-  const inicio = new Date(p.futebol_trial_started_at).getTime();
-  if (Number.isNaN(inicio)) return { tipo: 'nunca' };
+  const fim = new Date(p.futebol_trial_ends_at).getTime();
+  if (Number.isNaN(fim)) return { tipo: 'nunca' };
 
-  const fim = inicio + DIAS_DE_TESTE * UM_DIA;
-  // Dia de Brasília aqui também: um teste que vence às 22h do dia 17 daqui
-  // cairia no dia 18 por `toISOString`, e a tela prometeria um dia a mais.
-  const dia = brtDayOf(new Date(fim).toISOString()) ?? '';
+  // O dia vem da mesma regra das etiquetas, e não de uma conta aqui: as duas
+  // telas precisam concordar sobre qual é o último dia de acesso, e é na
+  // virada da meia-noite que duas contas divergiriam.
+  const dia = ultimoDiaDoTeste(p.futebol_trial_ends_at) ?? '';
 
   if (fim <= agora) return { tipo: 'vencido', terminouEm: dia };
   return { tipo: 'correndo', terminaEm: dia, diasRestantes: Math.ceil((fim - agora) / UM_DIA) };
-}
-
-/**
- * A pessoa entra no futebol agora?
- *
- * Reexportado daqui porque a tela de edição precisa responder isso DEPOIS de
- * mexer, e a regra é a mesma que a ficha já usa. Duas contas do mesmo acesso
- * divergiriam no dia em que o prazo mudasse.
- */
-export function entraNoFutebol(p: Pessoa, agora = Date.now()): boolean {
-  return temAcessoAoFutebol(p.futebol_subscription_status, p.futebol_trial_started_at, agora);
 }

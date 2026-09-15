@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/integrations/supabase/client';
 import type { EstadoDoPainel } from '@/components/socios/PainelCrm';
 import type { Cadastro } from '@/components/socios/crm-lista';
+import { CHAVES } from './crm-chaves';
 
 /**
  * Os campos que a lista usa, e só eles.
@@ -37,6 +38,9 @@ const MAPA_DE_CAMPOS: Record<keyof Cadastro, true> = {
   subscription_product_type: true,
   futebol_trial_started_at: true,
   futebol_publication_alerts_ack_at: true,
+  // O fim do teste, para a etiqueta. O início sozinho mede errado desde que o
+  // teste passou para 48 horas.
+  futebol_trial_ends_at: true,
 };
 
 const CAMPOS = Object.keys(MAPA_DE_CAMPOS) as (keyof Cadastro)[];
@@ -64,7 +68,7 @@ const TETO = 5000;
  */
 export function useCadastros(): EstadoDoPainel {
   const consulta = useQuery({
-    queryKey: ['socios', 'cadastros'],
+    queryKey: CHAVES.cadastros,
     queryFn: async () => {
       const { data, count, error } = await createClient()
         .from('users')
