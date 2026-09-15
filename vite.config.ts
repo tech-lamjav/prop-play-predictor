@@ -8,6 +8,16 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    watch: {
+      // As worktrees têm um `node_modules` e um `dist` cada uma, e o vigia do
+      // Vite entrava nelas: cada recompilação de uma worktree virava centenas
+      // de "page reload" aqui, e a memória subia até o sistema derrubar o
+      // servidor. Aconteceu duas vezes numa tarde.
+      //
+      // `dist/` também fica de fora: é saída de build, e vigiar o que a gente
+      // mesmo gera é recarregar a página por causa do próprio build.
+      ignored: ["**/worktrees/**", "**/dist/**"],
+    },
   },
   plugins: [
     react(),
