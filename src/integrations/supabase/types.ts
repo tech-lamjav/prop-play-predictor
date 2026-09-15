@@ -311,7 +311,8 @@ export type Database = {
           id: string
           plano: string
           user_id: string
-          vence_em: string
+          valor_mensal: number | null
+          vence_em: string | null
         }
         Insert: {
           criada_em?: string
@@ -321,7 +322,8 @@ export type Database = {
           id?: string
           plano: string
           user_id: string
-          vence_em: string
+          valor_mensal?: number | null
+          vence_em?: string | null
         }
         Update: {
           criada_em?: string
@@ -331,7 +333,8 @@ export type Database = {
           id?: string
           plano?: string
           user_id?: string
-          vence_em?: string
+          valor_mensal?: number | null
+          vence_em?: string | null
         }
         Relationships: [
           {
@@ -339,6 +342,56 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_pagamento: {
+        Row: {
+          assinatura_id: string
+          competencia: string
+          criada_em: string
+          criada_por: string | null
+          estornado_em: string | null
+          estornado_por: string | null
+          id: string
+          motivo_do_estorno: string | null
+          origem: string
+          pago_em: string
+          valor: number
+        }
+        Insert: {
+          assinatura_id: string
+          competencia: string
+          criada_em?: string
+          criada_por?: string | null
+          estornado_em?: string | null
+          estornado_por?: string | null
+          id?: string
+          motivo_do_estorno?: string | null
+          origem: string
+          pago_em?: string
+          valor: number
+        }
+        Update: {
+          assinatura_id?: string
+          competencia?: string
+          criada_em?: string
+          criada_por?: string | null
+          estornado_em?: string | null
+          estornado_por?: string | null
+          id?: string
+          motivo_do_estorno?: string | null
+          origem?: string
+          pago_em?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pagamento_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "crm_assinatura_manual"
             referencedColumns: ["id"]
           },
         ]
@@ -1195,12 +1248,45 @@ export type Database = {
         Returns: string | null
       }
       crm_dar_assinatura_manual: {
-        Args: { p_user_id: string; p_plano: string; p_vence_em: string }
+        Args: {
+          p_user_id: string
+          p_plano: string
+          p_vence_em: string | null
+          p_valor_mensal?: number | null
+        }
         Returns: string
       }
       crm_encerrar_assinatura_manual: {
         Args: { p_id: string }
         Returns: undefined
+      }
+      crm_registrar_pagamento: {
+        Args: {
+          p_assinatura_id: string
+          p_competencia: string
+          p_valor: number
+          p_origem: string
+          p_pago_em?: string
+        }
+        Returns: string
+      }
+      crm_estornar_pagamento: {
+        Args: { p_id: string; p_motivo: string }
+        Returns: undefined
+      }
+      crm_perfil_de_aposta: {
+        Args: { p_user_id: string }
+        Returns: {
+          total: number
+          liquidadas: number
+          primeira: string | null
+          ultima: string | null
+          apostado: number
+          lucro: number
+          por_esporte: Json
+          por_mercado: Json
+          por_faixa_de_odd: Json
+        }[]
       }
       crm_anotar: {
         Args: { p_user_id: string; p_tipo: string; p_texto: string }

@@ -34,6 +34,8 @@ const montar = (
     mudandoEtapa?: boolean;
     erroAoMudarEtapa?: boolean;
     linhaDoTempo?: React.ReactNode;
+    hoje?: string;
+    cobranca?: { plano: string; venceEm: string } | null;
   } = {},
 ) =>
   render(
@@ -45,8 +47,14 @@ const montar = (
         mudandoEtapa={extras.mudandoEtapa ?? false}
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
         linhaDoTempo={extras.linhaDoTempo ?? null}
+        hoje={extras.hoje ?? '2026-09-12'}
+        cobranca={extras.cobranca ?? null}
+        perfilDeAposta={null}
+        receita={null}
         comportamento={<p>o comportamento</p>}
         edicaoDeAcesso={<p>o editor de acesso</p>}
+        assinatura={<p>o formulário de assinatura</p>}
+        testeDoFutebol={<p>o teste do futebol</p>}
       />
     </MemoryRouter>,
   );
@@ -71,12 +79,16 @@ describe('Ficha', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'maria@exemplo.com' }),
     ).toBeInTheDocument();
-    const contatos = screen.getByRole('region', { name: 'Contatos' });
-    expect(within(contatos).getAllByText(/não informado/i).length).toBeGreaterThan(0);
+    // Os contatos moraram num bloco da coluna esquerda; agora vivem no
+    // cabeçalho, que é onde se olha uma vez.
+    const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
+    expect(within(cabecalho).getAllByText(/não informado/i).length).toBeGreaterThan(0);
   });
 
-  it('plano desconhecido não vira nome inventado: mostra o valor bruto', () => {
+  it('plano desconhecido não vira nome inventado: mostra o valor bruto', async () => {
     montar(pessoa({ subscription_product_type: 'combo-novo' }));
+    // O plano vive na aba de planos, e a que abre é a da conversa.
+    await userEvent.click(screen.getByRole('tab', { name: /Planos/ }));
     expect(screen.getByText(/não identificado/i)).toBeInTheDocument();
     expect(screen.getByText(/combo-novo/)).toBeInTheDocument();
   });
@@ -140,8 +152,14 @@ describe('Ficha', () => {
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
           linhaDoTempo={null}
+          hoje="2026-09-12"
+          cobranca={null}
+          perfilDeAposta={null}
+          receita={null}
           comportamento={null}
           edicaoDeAcesso={null}
+          assinatura={null}
+          testeDoFutebol={null}
         />
       </MemoryRouter>,
     );
@@ -168,8 +186,11 @@ describe('Ficha · etapa', () => {
   it('escolher outra etapa avisa quem cuida de gravar', async () => {
     const aoMudarEtapa = vi.fn();
     montarComEtapa({ etapa: 'novo', aoMudarEtapa });
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /etapa/i }), 'contatado');
-    expect(aoMudarEtapa).toHaveBeenCalledWith('contatado');
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: /etapa/i }),
+      'primeiro_contato',
+    );
+    expect(aoMudarEtapa).toHaveBeenCalledWith('primeiro_contato');
   });
 
   it('enquanto grava, o seletor não aceita outra escolha', () => {
@@ -192,7 +213,10 @@ describe('Ficha · quando a etapa não grava', () => {
     // sozinho para a etapa antiga. Sem aviso isso parece um clique que não
     // pegou, e o rodapé ainda promete que a mudança ficou registrada.
     montar(pessoa(), { total: 0, ultima: null }, { erroAoMudarEtapa: true });
-    expect(screen.getByText(/não deu para gravar a etapa/i)).toBeInTheDocument();
+    expect(screen.getByText(/não gravou. continua como estava/i)).toBeInTheDocument();
+    // A promessa permanente saiu: uma frase que está sempre embaixo do
+    // seletor não é lida, só ocupa a linha. O recado agora aparece só
+    // enquanto grava ou quando falha.
     expect(screen.queryByText(/fica registrada/i)).not.toBeInTheDocument();
   });
 
@@ -223,8 +247,14 @@ describe('Ficha · a linha do tempo entra na página', () => {
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
           linhaDoTempo={<p>a linha do tempo</p>}
+          hoje="2026-09-12"
+          cobranca={null}
+          perfilDeAposta={null}
+          receita={null}
           comportamento={null}
           edicaoDeAcesso={null}
+          assinatura={null}
+          testeDoFutebol={null}
         />
       </MemoryRouter>,
     );
@@ -262,5 +292,93 @@ describe('Ficha · a mensagem pronta', () => {
     // desatualizado sem o sócio perceber.
     montar(pessoa(), { total: 0, ultima: null }, { etapa: null });
     expect(screen.queryByRole('region', { name: 'Mensagem pronta' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Ficha · o cabeçalho e as abas', () => {
+  it('etapa e contatos ficam no cabeçalho, fora das abas', () => {
+    // O que se olha uma vez — quem é, como falar, em que pé está — cabe numa
+    // faixa. A coluna de 360px gastava a largura da ficha para mostrar três
+    // linhas de contato, e a largura é o que a aba de comportamento precisa.
+    montar();
+    const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
+    expect(within(cabecalho).getByLabelText('Etapa do lead')).toBeInTheDocument();
+    expect(within(cabecalho).getByText('maria@exemplo.com')).toBeInTheDocument();
+  });
+
+  it('abre na aba da conversa, porque é o trabalho', () => {
+    montar();
+    expect(screen.getByRole('tab', { name: /Conversa/ })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('a conversa traz gancho, mensagem pronta e linha do tempo', () => {
+    montar(pessoa(), { total: 0, ultima: null }, { linhaDoTempo: <p>a linha do tempo</p> });
+    expect(screen.getByRole('region', { name: 'Gancho' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Mensagem pronta' })).toBeInTheDocument();
+    expect(screen.getByText('a linha do tempo')).toBeInTheDocument();
+  });
+
+  it('planos e acessos viram aba, e não coluna', async () => {
+    montar();
+    // Fora da aba aberta, o conteúdo não está na tela.
+    expect(screen.queryByText('o editor de acesso')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /Planos/ }));
+    expect(screen.getByText('o editor de acesso')).toBeInTheDocument();
+  });
+
+  it('comportamento vira aba também', async () => {
+    montar();
+    expect(screen.queryByText('o comportamento')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /Comportamento/ }));
+    expect(screen.getByText('o comportamento')).toBeInTheDocument();
+  });
+
+  it('a etapa continua visível em qualquer aba', async () => {
+    // Era o que a coluna garantia, e é o que não pode se perder: o sócio muda
+    // de etapa enquanto olha o que a pessoa faz.
+    montar();
+    await userEvent.click(screen.getByRole('tab', { name: /Comportamento/ }));
+    expect(screen.getByLabelText('Etapa do lead')).toBeInTheDocument();
+  });
+});
+
+describe('Ficha · o teste gratuito e a cobrança', () => {
+  // `hoje` é 12/09 e o teste termina no dia 13: sobram hoje e amanhã.
+  const emTeste = pessoa({
+    betinho_subscription_status: 'free',
+    futebol_subscription_status: 'free',
+    futebol_trial_ends_at: '2026-09-13T15:00:00Z',
+  });
+
+  it('a etiqueta de teste aparece no cabeçalho', () => {
+    montar(emTeste);
+    const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
+    expect(within(cabecalho).getByText('Teste vencendo')).toBeInTheDocument();
+  });
+
+  it('quem está em teste recebe a mensagem de conversão como sugerida', () => {
+    // É o contato da véspera com mensagem pronta, que foi o pedido. A de
+    // abordagem continua no seletor.
+    montar(emTeste, { total: 0, ultima: null }, { etapa: 'nutrindo' });
+    const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
+    expect((within(bloco).getByRole('textbox') as HTMLTextAreaElement).value).toMatch(
+      /teste do futebol acaba amanhã/,
+    );
+  });
+
+  it('quem já assina não recebe etiqueta nem conversão', () => {
+    montar(pessoa({ futebol_trial_ends_at: '2026-09-13T15:00:00Z' }));
+    expect(screen.queryByText('Teste vencendo')).not.toBeInTheDocument();
+    const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
+    expect((within(bloco).getByRole('textbox') as HTMLTextAreaElement).value).not.toMatch(
+      /teste do futebol/,
+    );
+  });
+
+  it('com assinatura que vence, a mensagem de cobrança fica à escolha', () => {
+    montar(pessoa(), { total: 0, ultima: null }, {
+      cobranca: { plano: 'Essencial', venceEm: '2026-09-20' },
+    });
+    expect(screen.getByRole('option', { name: /Vencimento da assinatura/ })).toBeInTheDocument();
   });
 });

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   aCobrar,
+  inadimplentes,
   montarAssinaturas,
   type Assinatura,
   type AssinaturaDoBanco,
 } from './crm-assinatura';
+import { montarPagamentos, type PagamentoDoBanco } from './crm-receita';
 import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 const HOJE = '2026-09-12';
@@ -14,6 +16,7 @@ const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
   user_id: 'u1',
   plano: 'essencial',
   vence_em: '2026-09-20',
+  valor_mensal: '39.90',
   criada_em: '2026-09-01T12:00:00Z',
   criada_por: 's1',
   ...over,
@@ -28,6 +31,24 @@ describe('montarAssinaturas', () => {
     expect(a.whatsapp).toBe('5511998877665');
     expect(a.plano).toBe('essencial');
     expect(a.venceEm).toBe('2026-09-20');
+  });
+
+  it('o valor vira número, mesmo vindo como texto do banco', () => {
+    // `numeric` chega como string no PostgREST. Somar string concatena, e o
+    // total da receita apareceria como "39.9039.90".
+    expect(montarAssinaturas([linha({ valor_mensal: '39.90' })], base)[0].valorMensal).toBe(39.9);
+  });
+
+  it('valor nulo continua nulo, e não vira zero', () => {
+    // Nulo é SEM COBRANÇA, que é uma escolha. Zero seria uma cobrança de R$
+    // 0,00, e ela entraria na conta de meses em aberto como dívida de nada.
+    expect(montarAssinaturas([linha({ valor_mensal: null })], base)[0].valorMensal).toBeNull();
+  });
+
+  it('data nula é vitalícia, e chega nula', () => {
+    // Nulo, e não uma data de 2099: uma data inventada o resto do sistema
+    // trataria como verdade, ordenando a fila por ela e um dia chegando nela.
+    expect(montarAssinaturas([linha({ vence_em: null })], base)[0].venceEm).toBeNull();
   });
 
   it('sem nome, a linha se identifica pelo e-mail', () => {
@@ -113,5 +134,106 @@ describe('aCobrar', () => {
   it('a janela dá para abrir', () => {
     expect(aCobrar(fila('2026-10-10'), HOJE)).toHaveLength(0);
     expect(aCobrar(fila('2026-10-10'), HOJE, 60)).toHaveLength(1);
+  });
+
+  it('vitalícia nunca entra na fila, nem com a janela escancarada', () => {
+    // Não é esquecimento: esta fila é a de VENCIMENTO, e quem não vence não tem
+    // o que vencer. Quem é vitalício e paga por mês pode ficar devendo, e essa
+    // cobrança sai dos meses em aberto, que é outra fila.
+    const vitalicia = montarAssinaturas([linha({ vence_em: null })], base);
+    expect(aCobrar(vitalicia, HOJE)).toHaveLength(0);
+    expect(aCobrar(vitalicia, HOJE, 3650)).toHaveLength(0);
+  });
+
+  it('vitalícia fica no fim da lista, e não na frente de quem vence amanhã', () => {
+    const ordem = montarAssinaturas(
+      [
+        linha({ id: 'a1', user_id: 'u1', vence_em: null }),
+        linha({ id: 'a2', user_id: 'u2', vence_em: '2026-09-13' }),
+      ],
+      [cadastro({ id: 'u1', name: 'Vitalicia' }), cadastro({ id: 'u2', name: 'Vence amanha' })],
+    );
+    expect(ordem.map((a) => a.pessoa)).toEqual(['Vence amanha', 'Vitalicia']);
+  });
+});
+
+describe('inadimplentes', () => {
+  const HOJE_I = '2026-09-15';
+
+  const pagamento = (over: Partial<PagamentoDoBanco>): PagamentoDoBanco => ({
+    id: `p-${over.competencia}`,
+    competencia: '2026-09-01',
+    valor: '39.90',
+    origem: 'pix',
+    pago_em: '2026-09-03',
+    estornado_em: null,
+    motivo_do_estorno: null,
+    ...over,
+  });
+
+  const assinaturas = (...linhas: AssinaturaDoBanco[]) =>
+    montarAssinaturas(linhas, [
+      cadastro({ id: 'u1', name: 'Maria' }),
+      cadastro({ id: 'u2', name: 'João' }),
+    ]);
+
+  it('quem tem cobrança e mês em aberto entra, com os meses e o total', () => {
+    const [i] = inadimplentes(
+      assinaturas(linha({ criada_em: '2026-07-10T15:00:00Z' })),
+      new Map(),
+      HOJE_I,
+    );
+    expect(i.meses).toEqual(['2026-07', '2026-08', '2026-09']);
+    expect(i.total).toBeCloseTo(119.7);
+  });
+
+  it('quem pagou todos os meses não entra', () => {
+    const pagos = montarPagamentos([
+      pagamento({ competencia: '2026-07-01' }),
+      pagamento({ competencia: '2026-08-01' }),
+      pagamento({ competencia: '2026-09-01' }),
+    ]);
+    const lista = assinaturas(linha({ criada_em: '2026-07-10T15:00:00Z' }));
+    expect(inadimplentes(lista, new Map([['a1', pagos]]), HOJE_I)).toEqual([]);
+  });
+
+  it('sem cobrança nunca entra', () => {
+    // Quem não combinou pagar não deve nada.
+    const lista = assinaturas(linha({ valor_mensal: null, criada_em: '2026-01-10T15:00:00Z' }));
+    expect(inadimplentes(lista, new Map(), HOJE_I)).toEqual([]);
+  });
+
+  it('vitalícia com cobrança entra quando deixa de pagar', () => {
+    // ⚠️ É o que separa esta fila da de cobrança: a vitalícia nunca vence, mas
+    // quem combinou pagar e parou está devendo como qualquer outro.
+    const lista = assinaturas(linha({ vence_em: null, criada_em: '2026-08-10T15:00:00Z' }));
+    const [i] = inadimplentes(lista, new Map(), HOJE_I);
+    expect(i.meses).toEqual(['2026-08', '2026-09']);
+  });
+
+  it('do que deve mais para o que deve menos', () => {
+    // O total é o que decide se vale insistir ou encerrar.
+    const lista = assinaturas(
+      linha({ id: 'a1', user_id: 'u1', criada_em: '2026-09-02T15:00:00Z' }),
+      linha({ id: 'a2', user_id: 'u2', criada_em: '2026-06-02T15:00:00Z' }),
+    );
+    expect(inadimplentes(lista, new Map(), HOJE_I).map((i) => i.assinatura.pessoa)).toEqual([
+      'João',
+      'Maria',
+    ]);
+  });
+
+  it('o mês de começo é o de Brasília', () => {
+    // 01:00Z do dia 1º de agosto ainda é 31 de julho aqui.
+    const lista = assinaturas(linha({ criada_em: '2026-08-01T01:00:00Z' }));
+    expect(inadimplentes(lista, new Map(), HOJE_I)[0].meses[0]).toBe('2026-07');
+  });
+
+  it('um pagamento estornado volta a contar como devido', () => {
+    const estornado = montarPagamentos([
+      pagamento({ competencia: '2026-09-01', estornado_em: '2026-09-04T12:00:00Z' }),
+    ]);
+    const lista = assinaturas(linha({ criada_em: '2026-09-02T15:00:00Z' }));
+    expect(inadimplentes(lista, new Map([['a1', estornado]]), HOJE_I)).toHaveLength(1);
   });
 });

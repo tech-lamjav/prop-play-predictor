@@ -23,7 +23,7 @@
  */
 export const ETAPAS = [
   'novo',
-  'contatado',
+  'primeiro_contato',
   'nutrindo',
   'boletada',
   'interesse',
@@ -35,7 +35,7 @@ export type Etapa = (typeof ETAPAS)[number];
 /** Como cada etapa se chama na tela. */
 export const ROTULO_DA_ETAPA: Record<Etapa, string> = {
   novo: 'Novo',
-  contatado: 'Contatado',
+  primeiro_contato: 'Primeiro contato',
   nutrindo: 'Nutrindo',
   boletada: 'Boletada',
   interesse: 'Interesse',

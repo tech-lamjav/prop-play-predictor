@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EditorDeAcesso, type EstadoDaEscrita } from './EditorDeAcesso';
+import { EditorDeAcesso, TesteDoFutebol, type EstadoDaEscrita } from './EditorDeAcesso';
 import type { Pessoa } from './crm-ficha';
 
 function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
@@ -18,6 +18,7 @@ function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
     subscription_product_type: null,
     futebol_trial_started_at: null,
     futebol_publication_alerts_ack_at: null,
+    futebol_trial_ends_at: null,
     telegram_username: null,
     betinho_subscription_period_end: null,
     analytics_subscription_period_end: null,
@@ -30,20 +31,8 @@ const PARADO: EstadoDaEscrita = { tipo: 'parado' };
 
 function montar(props: Partial<Parameters<typeof EditorDeAcesso>[0]> = {}) {
   const aoSalvar = vi.fn();
-  const aoDefinirTeste = vi.fn();
-  render(
-    <EditorDeAcesso
-      pessoa={pessoa()}
-      escrita={PARADO}
-      aoSalvar={aoSalvar}
-      aoDefinirTeste={aoDefinirTeste}
-      // O formulário de assinatura tem testes próprios. Aqui ele é um marcador,
-      // porque o que estes testes guardam é o comportamento dos interruptores.
-      assinatura={<p>o formulário de assinatura</p>}
-      {...props}
-    />,
-  );
-  return { aoSalvar, aoDefinirTeste };
+  render(<EditorDeAcesso pessoa={pessoa()} escrita={PARADO} aoSalvar={aoSalvar} {...props} />);
+  return { aoSalvar };
 }
 
 describe('EditorDeAcesso', () => {
@@ -67,17 +56,20 @@ describe('EditorDeAcesso', () => {
     expect(screen.getByLabelText('Acesso ao Análises')).not.toBeChecked();
   });
 
-  it('sem mudança, não dá para salvar', () => {
-    // Cada gravação escreve um registro na linha do tempo. Um botão sempre
-    // aceso encheria a linha de "Betinho: liberou" repetido.
+  it('sem mudança, o botão de salvar não existe', () => {
+    // Antes ele ficava lá desabilitado, ocupando uma linha por produto para
+    // não fazer nada — quatro linhas mortas. Cada gravação também escreve na
+    // linha do tempo, então um botão sempre aceso encheria a linha de
+    // "Betinho: liberou" repetido.
     montar();
-    expect(screen.getByRole('button', { name: 'Salvar Betinho' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Salvar' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('sem acesso').length).toBeGreaterThan(0);
   });
 
   it('mudar o interruptor libera o botão e manda o produto certo', async () => {
     const { aoSalvar } = montar();
     await userEvent.click(screen.getByLabelText('Acesso ao Betinho'));
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar Betinho' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(aoSalvar).toHaveBeenCalledWith({ produto: 'betinho', ativo: true, ate: null });
   });
 
@@ -85,7 +77,7 @@ describe('EditorDeAcesso', () => {
     const { aoSalvar } = montar();
     await userEvent.click(screen.getByLabelText('Acesso ao Análises'));
     await userEvent.type(screen.getByLabelText('Acesso ao Análises até'), '2026-12-31');
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar Análises' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(aoSalvar).toHaveBeenCalledWith({
       produto: 'analises',
       ativo: true,
@@ -103,7 +95,7 @@ describe('EditorDeAcesso', () => {
       }),
     });
     await userEvent.click(screen.getByLabelText('Acesso ao Betinho'));
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar Betinho' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(aoSalvar).toHaveBeenCalledWith({ produto: 'betinho', ativo: false, ate: null });
   });
 
@@ -133,22 +125,33 @@ describe('EditorDeAcesso', () => {
   });
 });
 
-describe('o teste do futebol', () => {
+describe('o teste do futebol, agora em componente próprio', () => {
+  // Ele saiu da lista de acessos avulsos a pedido do Victor: não é um avulso,
+  // é a única coisa daquela aba com prazo correndo.
+  function montarTeste(props: Partial<Parameters<typeof TesteDoFutebol>[0]> = {}) {
+    const aoDefinir = vi.fn();
+    render(<TesteDoFutebol pessoa={pessoa()} escrita={PARADO} aoDefinir={aoDefinir} {...props} />);
+    return { aoDefinir };
+  }
+
   it('quem nunca testou ganha o botão de começar', async () => {
-    const { aoDefinirTeste } = montar();
+    const { aoDefinir } = montarTeste();
     expect(screen.getByText('Nunca usou o teste.')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /Começar sete dias/ }));
-    expect(aoDefinirTeste).toHaveBeenCalledWith(true);
+    await userEvent.click(screen.getByRole('button', { name: /Começar o teste/ }));
+    expect(aoDefinir).toHaveBeenCalledWith(true);
   });
 
   it('teste correndo diz quando termina, e o botão encerra', async () => {
     vi.setSystemTime(new Date('2026-09-12T12:00:00Z'));
-    const { aoDefinirTeste } = montar({
-      pessoa: pessoa({ futebol_trial_started_at: '2026-09-10T12:00:00Z' }),
+    const { aoDefinir } = montarTeste({
+      pessoa: pessoa({
+        futebol_trial_started_at: '2026-09-10T12:00:00Z',
+        futebol_trial_ends_at: '2026-09-17T12:00:00Z',
+      }),
     });
     expect(screen.getByText('Correndo, termina em 17/09/2026 (5 dias).')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Encerrar o teste/ }));
-    expect(aoDefinirTeste).toHaveBeenCalledWith(false);
+    expect(aoDefinir).toHaveBeenCalledWith(false);
     vi.useRealTimers();
   });
 
@@ -156,19 +159,26 @@ describe('o teste do futebol', () => {
     // É o estado que decide se dar outro teste faz sentido. Tratar vencido
     // como "nunca" esconderia que esta pessoa já usou o dela.
     vi.setSystemTime(new Date('2026-09-12T12:00:00Z'));
-    montar({ pessoa: pessoa({ futebol_trial_started_at: '2026-08-01T12:00:00Z' }) });
+    montarTeste({
+      pessoa: pessoa({
+        futebol_trial_started_at: '2026-08-01T12:00:00Z',
+        futebol_trial_ends_at: '2026-08-08T12:00:00Z',
+      }),
+    });
     expect(screen.getByText(/Já usou/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Dar mais sete dias/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Dar outro teste/ })).toBeInTheDocument();
     vi.useRealTimers();
   });
 
   it('o interruptor do futebol não mexe no teste', async () => {
-    // São decisões diferentes. Um interruptor só faria desligar o premium
-    // apagar o teste da pessoa sem ninguém ter pedido.
-    const { aoSalvar, aoDefinirTeste } = montar();
+    // São decisões diferentes, e agora moram em componentes diferentes — que é
+    // a forma mais forte de garantir isso. Um interruptor só faria desligar o
+    // premium apagar o teste da pessoa sem ninguém ter pedido.
+    const { aoSalvar } = montar();
     await userEvent.click(screen.getByLabelText('Acesso ao Futebol'));
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar Futebol' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     expect(aoSalvar).toHaveBeenCalledWith({ produto: 'futebol', ativo: true, ate: null });
-    expect(aoDefinirTeste).not.toHaveBeenCalled();
+    // O editor de acessos não desenha mais nada do teste.
+    expect(screen.queryByText(/usou o teste/)).not.toBeInTheDocument();
   });
 });

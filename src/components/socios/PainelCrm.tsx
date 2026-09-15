@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { agruparPorDia, buscar, formatarDia, type Cadastro } from './crm-lista';
 import {
   contarPorPosicao,
+  contarPorEtiqueta,
+  filtrarPorEtiqueta,
   filtrarPorPeriodo,
   type Periodo,
   metricasDeNegocio,
@@ -10,10 +12,12 @@ import {
   type Lead,
   type Posicao,
 } from './crm-painel';
+import type { Etiqueta } from './crm-etiquetas';
 import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
 import { CabecalhoDoCrm } from './CabecalhoDoCrm';
 import { FaixaDoFunil } from './FaixaDoFunil';
+import { FaixaDeEtiquetas } from './FaixaDeEtiquetas';
 import { ATALHO_PADRAO, FiltroDePeriodo } from './FiltroDePeriodo';
 import { MetricasDoTopo } from './MetricasDoTopo';
 import { KanbanDeLeads } from './KanbanDeLeads';
@@ -98,6 +102,14 @@ export function PainelCrm({
 }) {
   const [busca, setBusca] = useState('');
   const [posicao, setPosicao] = useState<Posicao | null>(null);
+  /**
+   * O filtro do teste gratuito, num eixo à parte do funil.
+   *
+   * Estado próprio, e não uma sétima posição: os dois se SOMAM. "Quem está em
+   * teste e ainda está em nutrindo" é pergunta legítima, e era justamente ela
+   * que não dava para fazer quando "em teste" morava dentro do funil.
+   */
+  const [etiqueta, setEtiqueta] = useState<Etiqueta | null>(null);
   const [recorte, setRecorte] = useState<Recorte>('atencao');
   /**
    * O recorte por data de cadastro, e qual atalho o produziu.
@@ -145,6 +157,7 @@ export function PainelCrm({
   const faltouAlgo = etapas.tipo === 'erro' || movimento.tipo === 'erro';
 
   const contagem = useMemo(() => (todos ? contarPorPosicao(todos) : null), [todos]);
+  const porEtiqueta = useMemo(() => (todos ? contarPorEtiqueta(todos) : null), [todos]);
   const metricas = useMemo(() => (todos ? metricasDeNegocio(todos, hoje) : null), [todos, hoje]);
 
   // A busca roda sobre os cadastros porque é lá que ela já existe e está
@@ -161,9 +174,9 @@ export function PainelCrm({
       (l) => achados.has(l.id) && (posicao === null || l.posicao === posicao),
     );
     // O período entra por último porque é o único filtro que olha uma coluna
-    // que os outros dois ignoram, e assim ele fica testável sozinho.
-    return filtrarPorPeriodo(porFiltros, periodo);
-  }, [todos, achados, posicao, periodo]);
+    // que os outros ignoram, e assim ele fica testável sozinho.
+    return filtrarPorPeriodo(filtrarPorEtiqueta(porFiltros, etiqueta), periodo);
+  }, [todos, achados, posicao, etiqueta, periodo]);
 
   /**
    * A lista que a tela desenha, já no recorte e na ordem certa.
@@ -252,6 +265,20 @@ export function PainelCrm({
                 </p>
               )}
             </div>
+
+            {/* O teste gratuito vem DEPOIS do funil e em cartão próprio: é
+                outro eixo, e colar os dois numa fileira só foi exatamente o
+                que fez a tela parecer que misturava duas coisas. Some quando
+                não há ninguém em teste nenhum. */}
+            {porEtiqueta && (
+              <div className="mt-3">
+                <FaixaDeEtiquetas
+                  contagem={porEtiqueta}
+                  selecionada={etiqueta}
+                  aoSelecionar={setEtiqueta}
+                />
+              </div>
+            )}
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <input
