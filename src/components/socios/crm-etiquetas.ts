@@ -1,4 +1,4 @@
-import { temAcessoAoFutebol } from '@/utils/futebol-acesso';
+import { temAcessoAoFutebolPeloFim } from '@/utils/futebol-acesso';
 import { diasEntre } from '@/utils/futebol-datas';
 import type { Cadastro } from './crm-lista';
 
@@ -26,6 +26,10 @@ import type { Cadastro } from './crm-lista';
  * Um, a pedido: a conversa acontece na véspera, com o acesso ainda de pé. Dois
  * dias antes soa cedo e a pessoa esquece; no dia seguinte ela já perdeu o
  * acesso, e aí a conversa é outra, bem mais difícil.
+ *
+ * Com o teste de 48 horas, a véspera é quase o teste inteiro: quem começa hoje
+ * termina depois de amanhã e já entra em "vencendo" amanhã. É o que se quer,
+ * porque a janela para converter encolheu junto.
  */
 export const DIAS_PARA_VENCER = 1;
 
@@ -58,9 +62,6 @@ export const EXPLICACAO_DA_ETIQUETA: Record<Etiqueta, string> = {
   trial_vencido: 'testou e o acesso caiu; a conversa aqui é de retomada',
 };
 
-/** Quantos dias dura o teste gratuito. O mesmo de `utils/futebol-acesso`. */
-const DIAS_DE_TESTE = 7;
-
 /**
  * A etiqueta de teste de uma pessoa, se houver.
  *
@@ -77,14 +78,11 @@ const DIAS_DE_TESTE = 7;
  * e a etiqueta na tela pediria uma cobrança que não faz sentido.
  */
 export function etiquetaDe(c: Cadastro, hoje: string): Etiqueta | null {
-  if (!c.futebol_trial_started_at) return null;
   if (ehAssinanteDeQualquerCoisa(c)) return null;
 
-  const inicio = brtDia(c.futebol_trial_started_at);
-  if (!inicio) return null;
+  const fim = ultimoDiaDoTeste(c);
+  if (!fim) return null;
 
-  // O fim é o último dia em que a pessoa ainda entra.
-  const fim = somarDias(inicio, DIAS_DE_TESTE - 1);
   const faltam = diasEntre(hoje, fim);
 
   if (faltam < 0) return 'trial_vencido';
@@ -99,20 +97,19 @@ export function etiquetaDe(c: Cadastro, hoje: string): Etiqueta | null {
  * vez de um número que quem lê tem de converter em dia da semana.
  */
 export function diasDeTesteRestantes(c: Cadastro, hoje: string): number | null {
-  const inicio = brtDia(c.futebol_trial_started_at);
-  if (!inicio) return null;
-  return diasEntre(hoje, somarDias(inicio, DIAS_DE_TESTE - 1));
+  const fim = ultimoDiaDoTeste(c);
+  return fim ? diasEntre(hoje, fim) : null;
 }
 
 /**
  * A pessoa entra no futebol agora, por teste ou por assinatura?
  *
- * Reexportado para a ficha não precisar conhecer a regra dos sete dias. Ela
- * mora em `utils/futebol-acesso`, e as edge functions do Telegram têm a própria
- * cópia em Deno — está avisado lá.
+ * Reexportado para a ficha não precisar conhecer a regra do teste. Ela mora em
+ * `utils/futebol-acesso`, e as edge functions do Telegram têm a própria cópia
+ * em Deno — está avisado lá.
  */
 export function entraNoFutebol(c: Cadastro, agora = Date.now()): boolean {
-  return temAcessoAoFutebol(c.futebol_subscription_status, c.futebol_trial_started_at, agora);
+  return temAcessoAoFutebolPeloFim(c.futebol_subscription_status, c.futebol_trial_ends_at, agora);
 }
 
 function ehAssinanteDeQualquerCoisa(c: Cadastro): boolean {
@@ -123,16 +120,21 @@ function ehAssinanteDeQualquerCoisa(c: Cadastro): boolean {
   );
 }
 
-/** `2026-09-13T02:00:00Z` → `2026-09-12`, que é o dia daqui. */
-function brtDia(carimbo: string | null): string | null {
-  if (!carimbo) return null;
-  const ms = Date.parse(carimbo);
+/**
+ * O último dia, em Brasília, em que a pessoa ainda entra no futebol pelo teste.
+ *
+ * Pelo FIM gravado, e não pelo início mais uma duração: o teste passou de 7
+ * dias para 48 horas, e quem começou antes da troca continua com os 7 dias que
+ * a página prometeu. O fim é gravado junto com o início, então cada coorte já
+ * traz a sua duração, e esta função nunca precisa saber qual é.
+ *
+ * O último instante com acesso é o anterior ao fim. Um teste que termina à
+ * meia-noite daqui não dá aquele dia a ninguém, e sem o milissegundo a etiqueta
+ * diria que dá.
+ */
+function ultimoDiaDoTeste(c: Cadastro): string | null {
+  if (!c.futebol_trial_ends_at) return null;
+  const ms = Date.parse(c.futebol_trial_ends_at);
   if (Number.isNaN(ms)) return null;
-  return new Date(ms - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
-
-function somarDias(dia: string, quantos: number): string {
-  const d = new Date(`${dia}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + quantos);
-  return d.toISOString().slice(0, 10);
+  return new Date(ms - 1 - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }

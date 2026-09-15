@@ -31,6 +31,7 @@ const MAPA_DE_CAMPOS: Record<keyof Pessoa, true> = {
   analytics_subscription_period_end: true,
   futebol_trial_started_at: true,
   futebol_publication_alerts_ack_at: true,
+  futebol_trial_ends_at: true,
   has_report_access: true,
 };
 

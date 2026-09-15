@@ -341,9 +341,10 @@ describe('filtrarPorPeriodo', () => {
 
 describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
   const HOJE_T = '2026-09-12';
-  const comecouHa = (dias: number) => {
+  /** Teste cujo último dia de acesso é daqui a `dias` dias. Zero é hoje. */
+  const terminaEm = (dias: number) => {
     const d = new Date(`${HOJE_T}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - dias);
+    d.setUTCDate(d.getUTCDate() + dias);
     return `${d.toISOString().slice(0, 10)}T15:00:00Z`;
   };
   const montaT = (cadastros: Parameters<typeof montarLeads>[0], etapas: EtapasGravadas = {}) =>
@@ -352,7 +353,7 @@ describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
   it('o lead carrega etapa E etiqueta ao mesmo tempo', () => {
     // É o ponto de toda a mudança: as duas coisas valem juntas. Antes a
     // etiqueta virava posição e engolia a etapa.
-    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_started_at: comecouHa(2) })], {
+    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_ends_at: terminaEm(4) })], {
       a: 'nutrindo',
     });
     expect(lead.etapa).toBe('nutrindo');
@@ -360,16 +361,16 @@ describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
   });
 
   it('quem não testou tem etiqueta nula, e etapa normal', () => {
-    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_started_at: null })]);
+    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_ends_at: null })]);
     expect(lead.etiqueta).toBeNull();
     expect(lead.etapa).toBe('novo');
   });
 
   it('contar por etiqueta ignora quem não tem', () => {
     const leads = montaT([
-      cadastro({ id: 'a', futebol_trial_started_at: comecouHa(6) }),
-      cadastro({ id: 'b', futebol_trial_started_at: comecouHa(2) }),
-      cadastro({ id: 'c', futebol_trial_started_at: null }),
+      cadastro({ id: 'a', futebol_trial_ends_at: terminaEm(0) }),
+      cadastro({ id: 'b', futebol_trial_ends_at: terminaEm(4) }),
+      cadastro({ id: 'c', futebol_trial_ends_at: null }),
     ]);
     const contagem = contarPorEtiqueta(leads);
     expect(contagem.trial_vencendo).toBe(1);
@@ -379,8 +380,8 @@ describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
 
   it('filtrar por etiqueta devolve só quem a tem', () => {
     const leads = montaT([
-      cadastro({ id: 'vencendo', futebol_trial_started_at: comecouHa(6) }),
-      cadastro({ id: 'ativo', futebol_trial_started_at: comecouHa(1) }),
+      cadastro({ id: 'vencendo', futebol_trial_ends_at: terminaEm(0) }),
+      cadastro({ id: 'ativo', futebol_trial_ends_at: terminaEm(5) }),
     ]);
     expect(filtrarPorEtiqueta(leads, 'trial_vencendo').map((l) => l.id)).toEqual(['vencendo']);
   });

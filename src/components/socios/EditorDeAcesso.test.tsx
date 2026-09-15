@@ -18,6 +18,7 @@ function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
     subscription_product_type: null,
     futebol_trial_started_at: null,
     futebol_publication_alerts_ack_at: null,
+    futebol_trial_ends_at: null,
     telegram_username: null,
     betinho_subscription_period_end: null,
     analytics_subscription_period_end: null,
@@ -136,14 +137,17 @@ describe('o teste do futebol, agora em componente próprio', () => {
   it('quem nunca testou ganha o botão de começar', async () => {
     const { aoDefinir } = montarTeste();
     expect(screen.getByText('Nunca usou o teste.')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /Começar sete dias/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Começar o teste/ }));
     expect(aoDefinir).toHaveBeenCalledWith(true);
   });
 
   it('teste correndo diz quando termina, e o botão encerra', async () => {
     vi.setSystemTime(new Date('2026-09-12T12:00:00Z'));
     const { aoDefinir } = montarTeste({
-      pessoa: pessoa({ futebol_trial_started_at: '2026-09-10T12:00:00Z' }),
+      pessoa: pessoa({
+        futebol_trial_started_at: '2026-09-10T12:00:00Z',
+        futebol_trial_ends_at: '2026-09-17T12:00:00Z',
+      }),
     });
     expect(screen.getByText('Correndo, termina em 17/09/2026 (5 dias).')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Encerrar o teste/ }));
@@ -155,9 +159,14 @@ describe('o teste do futebol, agora em componente próprio', () => {
     // É o estado que decide se dar outro teste faz sentido. Tratar vencido
     // como "nunca" esconderia que esta pessoa já usou o dela.
     vi.setSystemTime(new Date('2026-09-12T12:00:00Z'));
-    montarTeste({ pessoa: pessoa({ futebol_trial_started_at: '2026-08-01T12:00:00Z' }) });
+    montarTeste({
+      pessoa: pessoa({
+        futebol_trial_started_at: '2026-08-01T12:00:00Z',
+        futebol_trial_ends_at: '2026-08-08T12:00:00Z',
+      }),
+    });
     expect(screen.getByText(/Já usou/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Dar mais sete dias/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Dar outro teste/ })).toBeInTheDocument();
     vi.useRealTimers();
   });
 

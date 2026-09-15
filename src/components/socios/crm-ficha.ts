@@ -1,4 +1,3 @@
-import { temAcessoAoFutebol } from '@/utils/futebol-acesso';
 import type { Cadastro } from './crm-lista';
 
 // ============================================================================

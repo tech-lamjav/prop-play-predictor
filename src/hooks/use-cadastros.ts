@@ -37,6 +37,9 @@ const MAPA_DE_CAMPOS: Record<keyof Cadastro, true> = {
   subscription_product_type: true,
   futebol_trial_started_at: true,
   futebol_publication_alerts_ack_at: true,
+  // O fim do teste, para a etiqueta. O início sozinho mede errado desde que o
+  // teste passou para 48 horas.
+  futebol_trial_ends_at: true,
 };
 
 const CAMPOS = Object.keys(MAPA_DE_CAMPOS) as (keyof Cadastro)[];

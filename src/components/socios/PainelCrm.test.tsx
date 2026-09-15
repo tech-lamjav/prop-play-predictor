@@ -422,12 +422,13 @@ describe('PainelCrm · o recorte diz quanta gente ele esconde', () => {
 });
 
 describe('PainelCrm · o teste gratuito é eixo separado do funil', () => {
-  // `HOJE` é 2026-09-11. Sete dias a partir do dia 6 terminam no dia 12, então
-  // sobram hoje e amanhã: é o corte de "vencendo".
+  // `HOJE` é 2026-09-11 e o teste termina no dia 12: sobram hoje e amanhã, que
+  // é o corte de "vencendo".
   const emTeste = cadastro({
     id: 'teste',
     name: 'Está Testando',
     futebol_trial_started_at: '2026-09-06T15:00:00Z',
+    futebol_trial_ends_at: '2026-09-12T15:00:00Z',
   });
   const semTeste = cadastro({ id: 'seco', name: 'Nunca Testou' });
 
@@ -463,6 +464,7 @@ describe('PainelCrm · o teste gratuito é eixo separado do funil', () => {
       id: 'outro',
       name: 'Outro Testando',
       futebol_trial_started_at: '2026-09-06T15:00:00Z',
+      futebol_trial_ends_at: '2026-09-12T15:00:00Z',
     });
     montar({
       cadastros: [emTeste, outroEmTeste],

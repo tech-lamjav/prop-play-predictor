@@ -132,15 +132,20 @@ function LinhaDoProduto({
 }
 
 /**
- * O teste gratuito de sete dias.
+ * O teste gratuito do futebol.
  *
  * Controle separado dos produtos de cima, e é de propósito: o teste NÃO é
- * status de assinatura, é um carimbo de início de onde se contam sete dias.
+ * status de assinatura, são o início e o fim gravados juntos no banco.
  * Junto com os outros, ele viraria um quarto interruptor, e desligar o premium
  * do futebol apagaria o teste da pessoa sem ninguém pedir.
  *
  * Três estados, e não dois: nunca testou, está correndo, já venceu. O terceiro
  * é justamente o que o sócio precisa saber antes de dar outro.
+ *
+ * ⚠️ O botão não diz quanto o teste dura. Quem decide é o banco, na função
+ * `futebol_trial_duracao`, e a duração já mudou uma vez: o botão dizia "sete
+ * dias" e passou a dar 48 horas sem que ninguém lembrasse dele. A duração
+ * aparece depois, no "termina em", que vem do fim gravado.
  */
 export function TesteDoFutebol({
   pessoa,
@@ -187,8 +192,8 @@ export function TesteDoFutebol({
           : ligado
             ? 'Encerrar o teste agora'
             : estado.tipo === 'vencido'
-              ? 'Dar mais sete dias'
-              : 'Começar sete dias agora'}
+              ? 'Dar outro teste'
+              : 'Começar o teste agora'}
       </button>
     </div>
   );

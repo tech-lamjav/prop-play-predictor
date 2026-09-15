@@ -120,7 +120,7 @@ describe('crm_definir_teste_do_futebol', () => {
   });
 
   it('mexe no carimbo de início, e não no status da assinatura', () => {
-    // O teste gratuito é uma janela de sete dias contada a partir do carimbo.
+    // O teste gratuito é uma janela com início e fim gravados no banco.
     // Escrever `futebol_subscription_status = 'premium'` daria acesso PARA
     // SEMPRE com cara de teste, e ninguém descobriria pela tela.
     const escrita = comando(TESTE ?? '', /update public\.users/, 'where');

@@ -18,6 +18,7 @@ function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
     subscription_product_type: null,
     futebol_trial_started_at: null,
     futebol_publication_alerts_ack_at: null,
+    futebol_trial_ends_at: null,
     telegram_username: null,
     betinho_subscription_period_end: null,
     analytics_subscription_period_end: null,
@@ -67,6 +68,7 @@ describe('acessoAtual', () => {
     const p = pessoa({
       futebol_subscription_status: 'free',
       futebol_trial_started_at: '2026-09-11T12:00:00Z',
+      futebol_trial_ends_at: '2026-09-13T12:00:00Z',
     });
     expect(acessoAtual(p, 'futebol').ativo).toBe(false);
   });
@@ -101,7 +103,10 @@ describe('estadoDoTeste', () => {
   });
 
   it('teste correndo diz quando termina e quanto falta', () => {
-    const p = pessoa({ futebol_trial_started_at: '2026-09-10T12:00:00Z' });
+    const p = pessoa({
+      futebol_trial_started_at: '2026-09-10T12:00:00Z',
+      futebol_trial_ends_at: '2026-09-17T12:00:00Z',
+    });
     expect(estadoDoTeste(p, AGORA)).toEqual({
       tipo: 'correndo',
       terminaEm: '2026-09-17',
@@ -109,39 +114,81 @@ describe('estadoDoTeste', () => {
     });
   });
 
+  it('vale o fim gravado, e não o início mais sete dias', () => {
+    // ⚠️ O teste passou para 48 horas. Começado ontem, termina amanhã. Somar
+    // sete dias ao início diria que sobram seis, e o sócio abriria a conversa
+    // de conversão depois de a pessoa ter perdido o acesso.
+    const p = pessoa({
+      futebol_trial_started_at: '2026-09-11T12:00:00Z',
+      futebol_trial_ends_at: '2026-09-13T12:00:00Z',
+    });
+    expect(estadoDoTeste(p, AGORA)).toEqual({
+      tipo: 'correndo',
+      terminaEm: '2026-09-13',
+      diasRestantes: 1,
+    });
+  });
+
+  it('quem começou antes da troca continua com os sete dias', () => {
+    const p = pessoa({
+      futebol_trial_started_at: '2026-09-08T12:00:00Z',
+      futebol_trial_ends_at: '2026-09-15T12:00:00Z',
+    });
+    expect(estadoDoTeste(p, AGORA)).toMatchObject({ tipo: 'correndo', terminaEm: '2026-09-15' });
+  });
+
   it('teste vencido é estado próprio, e não "desligado"', () => {
     // Juntar vencido com nunca esconderia justamente o que o sócio precisa
     // saber antes de dar outro teste: que esta pessoa já usou o dela.
-    const p = pessoa({ futebol_trial_started_at: '2026-08-01T12:00:00Z' });
+    const p = pessoa({
+      futebol_trial_started_at: '2026-08-01T12:00:00Z',
+      futebol_trial_ends_at: '2026-08-08T12:00:00Z',
+    });
     expect(estadoDoTeste(p, AGORA)).toEqual({ tipo: 'vencido', terminouEm: '2026-08-08' });
   });
 
-  it('o último instante ainda conta como correndo', () => {
-    const p = pessoa({ futebol_trial_started_at: '2026-09-05T12:00:01Z' });
+  it('o último instante antes do fim ainda conta como correndo', () => {
+    const p = pessoa({ futebol_trial_ends_at: '2026-09-12T12:00:01Z' });
     expect(estadoDoTeste(p, AGORA).tipo).toBe('correndo');
   });
 
-  it('o instante seguinte já venceu', () => {
-    const p = pessoa({ futebol_trial_started_at: '2026-09-05T11:59:59Z' });
+  it('no instante do fim, já venceu', () => {
+    const p = pessoa({ futebol_trial_ends_at: '2026-09-12T12:00:00Z' });
     expect(estadoDoTeste(p, AGORA).tipo).toBe('vencido');
   });
 
+  it('fim à meia-noite daqui não promete aquele dia', () => {
+    // 03:00Z do dia 20 é meia-noite do dia 20 em Brasília: o acesso acabou no
+    // fim do dia 19. Pelo dia do carimbo, a tela prometeria o dia 20 inteiro.
+    const p = pessoa({ futebol_trial_ends_at: '2026-09-20T03:00:00Z' });
+    expect(estadoDoTeste(p, AGORA)).toMatchObject({ terminaEm: '2026-09-19' });
+  });
+
   it('carimbo ilegível não vira teste eterno', () => {
-    const p = pessoa({ futebol_trial_started_at: 'sei lá' });
+    const p = pessoa({ futebol_trial_ends_at: 'sei lá' });
     expect(estadoDoTeste(p, AGORA)).toEqual({ tipo: 'nunca' });
   });
 });
 
 describe('entraNoFutebol', () => {
   it('vale pelo teste, mesmo sem assinatura', () => {
-    const p = pessoa({ futebol_trial_started_at: '2026-09-10T12:00:00Z' });
+    const p = pessoa({ futebol_trial_ends_at: '2026-09-13T12:00:00Z' });
     expect(entraNoFutebol(p, AGORA)).toBe(true);
+  });
+
+  it('teste de 48 horas começado há três dias não dá acesso', () => {
+    // A regra antiga somava sete dias ao início e diria que sim.
+    const p = pessoa({
+      futebol_trial_started_at: '2026-09-09T12:00:00Z',
+      futebol_trial_ends_at: '2026-09-11T12:00:00Z',
+    });
+    expect(entraNoFutebol(p, AGORA)).toBe(false);
   });
 
   it('vale pela assinatura, mesmo com o teste vencido', () => {
     const p = pessoa({
       futebol_subscription_status: 'premium',
-      futebol_trial_started_at: '2026-01-01T12:00:00Z',
+      futebol_trial_ends_at: '2026-01-08T12:00:00Z',
     });
     expect(entraNoFutebol(p, AGORA)).toBe(true);
   });
@@ -150,7 +197,6 @@ describe('entraNoFutebol', () => {
     expect(entraNoFutebol(pessoa(), AGORA)).toBe(false);
   });
 });
-
 describe('a lista de produtos', () => {
   it('só o Betinho e as Análises têm prazo', () => {
     // Os outros dois não têm coluna de data no banco. A tela precisa avisar

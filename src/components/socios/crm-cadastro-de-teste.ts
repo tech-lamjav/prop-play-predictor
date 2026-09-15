@@ -20,5 +20,6 @@ export const cadastroDeTeste = (over: Partial<Cadastro> = {}): Cadastro => ({
   subscription_product_type: null,
   futebol_trial_started_at: null,
   futebol_publication_alerts_ack_at: null,
+  futebol_trial_ends_at: null,
   ...over,
 });

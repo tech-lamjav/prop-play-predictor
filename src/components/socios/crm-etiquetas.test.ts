@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   diasDeTesteRestantes,
   DIAS_PARA_VENCER,
+  entraNoFutebol,
   etiquetaDe,
   ETIQUETAS,
   EXPLICACAO_DA_ETIQUETA,
@@ -11,10 +12,13 @@ import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 const HOJE = '2026-09-12';
 
-/** Teste começado há `dias` dias, contando hoje como dia 1. */
-const comecouHa = (dias: number) => {
+/**
+ * Teste cujo ÚLTIMO DIA de acesso é daqui a `dias` dias. Zero é hoje, negativo
+ * é passado. O fim fica no meio do dia daqui, longe da virada.
+ */
+const terminaEm = (dias: number) => {
   const d = new Date(`${HOJE}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - dias);
+  d.setUTCDate(d.getUTCDate() + dias);
   return `${d.toISOString().slice(0, 10)}T15:00:00Z`;
 };
 
@@ -22,19 +26,19 @@ describe('etiquetaDe', () => {
   it('quem nunca testou não tem etiqueta', () => {
     // A ausência é informação. Não existe etiqueta "nunca testou" porque isso é
     // o normal da base, e etiqueta para o normal não distingue nada.
-    expect(etiquetaDe(cadastro({ futebol_trial_started_at: null }), HOJE)).toBeNull();
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: null }), HOJE)).toBeNull();
   });
 
-  it('teste no começo é "em teste"', () => {
-    expect(etiquetaDe(cadastro({ futebol_trial_started_at: comecouHa(0) }), HOJE)).toBe(
+  it('teste com folga é "em teste"', () => {
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: terminaEm(2) }), HOJE)).toBe(
       'trial_ativo',
     );
   });
 
-  it('o penúltimo dia já é "vencendo"', () => {
-    // Sete dias de teste, começado há cinco: sobram hoje e amanhã. É a véspera,
-    // e é quando a conversa tem que acontecer.
-    expect(etiquetaDe(cadastro({ futebol_trial_started_at: comecouHa(5) }), HOJE)).toBe(
+  it('a véspera já é "vencendo"', () => {
+    // Sobram hoje e amanhã. É a véspera, e é quando a conversa tem que
+    // acontecer.
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: terminaEm(1) }), HOJE)).toBe(
       'trial_vencendo',
     );
   });
@@ -42,13 +46,13 @@ describe('etiquetaDe', () => {
   it('o último dia também é "vencendo", e não vencido', () => {
     // Hoje a pessoa ainda entra. Chamar de vencido mandaria a mensagem de
     // retomada para quem ainda está com o acesso na mão.
-    expect(etiquetaDe(cadastro({ futebol_trial_started_at: comecouHa(6) }), HOJE)).toBe(
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: terminaEm(0) }), HOJE)).toBe(
       'trial_vencendo',
     );
   });
 
   it('o dia seguinte é "vencido"', () => {
-    expect(etiquetaDe(cadastro({ futebol_trial_started_at: comecouHa(7) }), HOJE)).toBe(
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: terminaEm(-1) }), HOJE)).toBe(
       'trial_vencido',
     );
   });
@@ -56,61 +60,108 @@ describe('etiquetaDe', () => {
   it('teste velho continua vencido, e não some', () => {
     // A etiqueta de vencido é o que permite a conversa de retomada. Sumir com
     // ela apagaria da tela todo mundo que já testou.
-    expect(etiquetaDe(cadastro({ futebol_trial_started_at: comecouHa(90) }), HOJE)).toBe(
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: terminaEm(-90) }), HOJE)).toBe(
       'trial_vencido',
     );
+  });
+
+  it('vale o fim gravado, e não o início mais sete dias', () => {
+    // ⚠️ O teste passou para 48 horas. Começado ontem, ele termina hoje. A regra
+    // antiga somava sete dias ao início e diria "em teste" por mais cinco dias,
+    // e a conversa de conversão chegaria depois de a pessoa ter perdido o
+    // acesso.
+    const quarentaEOito = cadastro({
+      futebol_trial_started_at: terminaEm(-1),
+      futebol_trial_ends_at: terminaEm(0),
+    });
+    expect(etiquetaDe(quarentaEOito, HOJE)).toBe('trial_vencendo');
+  });
+
+  it('quem começou antes da troca continua com os sete dias', () => {
+    // A página prometeu sete dias a essa pessoa, e o fim gravado guarda a
+    // promessa. Começado há três dias, ainda sobram quatro.
+    const seteDias = cadastro({
+      futebol_trial_started_at: terminaEm(-3),
+      futebol_trial_ends_at: terminaEm(4),
+    });
+    expect(etiquetaDe(seteDias, HOJE)).toBe('trial_ativo');
   });
 
   it('"vencendo" ganha de "em teste" quando os dois caberiam', () => {
     // Quem vence amanhã também está ativo. Mostrar a menos urgente das duas é
     // perder o motivo da etiqueta existir.
-    const vencendo = etiquetaDe(cadastro({ futebol_trial_started_at: comecouHa(6) }), HOJE);
-    expect(vencendo).toBe('trial_vencendo');
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: terminaEm(0) }), HOJE)).toBe(
+      'trial_vencendo',
+    );
   });
 
   it('quem já assina não recebe etiqueta de teste', () => {
     // A pessoa converteu. Lembrar que ela um dia testou não muda conversa
     // nenhuma, e a etiqueta pediria uma cobrança que não faz sentido.
     const assinante = cadastro({
-      futebol_trial_started_at: comecouHa(6),
+      futebol_trial_ends_at: terminaEm(0),
       betinho_subscription_status: 'premium',
     });
     expect(etiquetaDe(assinante, HOJE)).toBeNull();
   });
 
   it('carimbo ilegível não vira etiqueta', () => {
-    expect(etiquetaDe(cadastro({ futebol_trial_started_at: 'sei lá' }), HOJE)).toBeNull();
+    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: 'sei lá' }), HOJE)).toBeNull();
   });
 
-  it('a madrugada conta pelo dia de Brasília', () => {
-    // 02:00Z do dia 13 ainda é o dia 12 aqui. Com a data crua, o teste começado
-    // na madrugada vence um dia antes do que deveria.
-    const madrugada = cadastro({ futebol_trial_started_at: '2026-09-06T02:00:00Z' });
-    // Dia 5 aqui, então o sétimo dia é 11: já venceu.
-    expect(etiquetaDe(madrugada, HOJE)).toBe('trial_vencido');
+  it('fim à meia-noite daqui não dá aquele dia', () => {
+    // 03:00Z do dia 12 é meia-noite do dia 12 em Brasília: o acesso acabou no
+    // fim do dia 11. Pelo dia do carimbo, a etiqueta diria que hoje ainda vale.
+    const meiaNoite = cadastro({ futebol_trial_ends_at: '2026-09-12T03:00:00Z' });
+    expect(etiquetaDe(meiaNoite, HOJE)).toBe('trial_vencido');
+  });
+
+  it('fim às 22h daqui ainda é o mesmo dia, embora já seja o seguinte em Greenwich', () => {
+    // 01:00Z do dia 13 é 22h do dia 12 aqui. Pelo dia UTC, o último dia seria
+    // amanhã, e a pessoa apareceria com um dia a mais.
+    const noite = cadastro({ futebol_trial_ends_at: '2026-09-13T01:00:00Z' });
+    expect(diasDeTesteRestantes(noite, HOJE)).toBe(0);
   });
 });
 
 describe('diasDeTesteRestantes', () => {
   it('conta hoje como dia que ainda vale', () => {
-    expect(diasDeTesteRestantes(cadastro({ futebol_trial_started_at: comecouHa(6) }), HOJE)).toBe(
-      0,
-    );
-    expect(diasDeTesteRestantes(cadastro({ futebol_trial_started_at: comecouHa(5) }), HOJE)).toBe(
-      1,
-    );
+    expect(diasDeTesteRestantes(cadastro({ futebol_trial_ends_at: terminaEm(0) }), HOJE)).toBe(0);
+    expect(diasDeTesteRestantes(cadastro({ futebol_trial_ends_at: terminaEm(1) }), HOJE)).toBe(1);
   });
 
   it('negativo para quem já venceu, e não zero', () => {
     // Zero significa "acaba hoje", que é outra conversa. Empatar os dois faria
     // a mensagem dizer "acaba hoje" para quem perdeu o acesso na semana passada.
     expect(
-      diasDeTesteRestantes(cadastro({ futebol_trial_started_at: comecouHa(10) }), HOJE),
+      diasDeTesteRestantes(cadastro({ futebol_trial_ends_at: terminaEm(-4) }), HOJE),
     ).toBeLessThan(0);
   });
 
-  it('sem carimbo, não inventa número', () => {
-    expect(diasDeTesteRestantes(cadastro({ futebol_trial_started_at: null }), HOJE)).toBeNull();
+  it('sem fim gravado, não inventa número', () => {
+    expect(diasDeTesteRestantes(cadastro({ futebol_trial_ends_at: null }), HOJE)).toBeNull();
+  });
+});
+
+describe('entraNoFutebol', () => {
+  const AGORA = Date.parse(`${HOJE}T12:00:00Z`);
+
+  it('entra enquanto o fim não chegou', () => {
+    expect(entraNoFutebol(cadastro({ futebol_trial_ends_at: terminaEm(1) }), AGORA)).toBe(true);
+  });
+
+  it('teste de 48 horas começado há três dias não dá acesso', () => {
+    // A regra antiga somava sete dias ao início e diria que sim. O servidor
+    // corta, e a ficha mostraria acesso que a pessoa não tem.
+    const vencido = cadastro({
+      futebol_trial_started_at: terminaEm(-3),
+      futebol_trial_ends_at: terminaEm(-1),
+    });
+    expect(entraNoFutebol(vencido, AGORA)).toBe(false);
+  });
+
+  it('assinatura vale mesmo sem teste', () => {
+    expect(entraNoFutebol(cadastro({ futebol_subscription_status: 'premium' }), AGORA)).toBe(true);
   });
 });
 
