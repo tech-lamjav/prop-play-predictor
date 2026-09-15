@@ -2868,6 +2868,53 @@ values (
 )
 on conflict (market) do nothing;
 
+-- ── Corte de valor por mercado (migration 137) ──────────────────────────────
+-- Irmão da vitrine, no grão da LINHA: a linha cuja vantagem sobre a referência
+-- sharp é igual ou pior que o limiar do mercado sai do painel e das DMs. O board
+-- continua publicando. Primeiro caso: asian_handicap, -2%.
+--
+-- vigente_desde faz aqui o que oculto_desde faz na vitrine: separa a linha que
+-- esteve na tela da que nunca esteve, para o histórico não devolver amanhã a
+-- linha cortada hoje (a lição da migration 119).
+create table if not exists public.futebol_limiar_valor (
+  market text primary key,
+  -- Fração, na escala do edge do board: -0,02 é -2%.
+  limiar numeric not null check (limiar > -1 and limiar < 1),
+  vigente_desde timestamptz not null default now(),
+  motivo text not null
+);
+
+alter table public.futebol_limiar_valor enable row level security;
+
+comment on table public.futebol_limiar_valor is
+  'Limiar de vantagem por mercado. Linha com edge <= limiar sai da vitrine (painel e DM). Não é gate: o board continua publicando.';
+
+create or replace function public.get_futebol_limiar_valor()
+returns table (market text, limiar numeric, vigente_desde timestamptz)
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select l.market, l.limiar, l.vigente_desde
+    from public.futebol_limiar_valor l
+   order by l.market;
+$function$;
+
+comment on function public.get_futebol_limiar_valor() is
+  'O corte de valor por mercado, com a data em que passou a valer. A data separa a linha que esteve na tela da que nunca esteve.';
+
+revoke execute on function public.get_futebol_limiar_valor() from public;
+grant execute on function public.get_futebol_limiar_valor() to anon, authenticated, service_role;
+
+insert into public.futebol_limiar_valor (market, limiar, motivo)
+values (
+  'asian_handicap',
+  -0.02,
+  'Desde 01/09: edge > -2% ROI +7,9 em 122 linhas (EP 9,0); edge <= -2% ROI -17,4 em 232 (EP 7,5). Remedicao na analytics-engineering#156. Decisao do PM em 12/09/2026, ClickUp wdx6zf1gpn.'
+)
+on conflict (market) do nothing;
+
 -- ── Insumo do placar da metodologia (migration 133) ───────────────────
 -- A FOTO DE NASCIMENTO de cada oportunidade publicada, com o placar do jogo:
 -- o primeiro registro de cada linha no historico, que e a odd, a nota e a faixa

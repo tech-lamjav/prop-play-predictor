@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
 import type { MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import type { LimiarDeValor } from '@/utils/futebol-corte-de-valor';
 import type { FixtureScope } from '@/utils/futebol-competitions';
 import {
   futebolDataService,
@@ -438,6 +439,22 @@ export function useFutebolMercadosOcultos() {
 }
 
 /**
+ * O corte de valor por mercado (migration 137), com a data de vigência.
+ *
+ * O board e o detalhe do jogo já chegam cortados do serviço. Quem precisa disto
+ * na tela é o HISTÓRICO e o placar, que mostram o passado e decidem por data.
+ */
+export function useFutebolLimiaresDeValor() {
+  return useQuery<LimiarDeValor[]>({
+    queryKey: ['futebol', 'limiares-de-valor'],
+    queryFn: () => futebolDataService.getLimiaresDeValor(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
  * A vitrine, do jeito que a tela precisa dela: a lista E se ela já chegou.
  *
  * Existe porque as três telas que a consomem repetiam o mesmo par — o hook, o
@@ -448,14 +465,20 @@ export function useFutebolMercadosOcultos() {
 export function useVitrine(): {
   vitrine: MercadoOculto[];
   ocultos: string[];
+  limiares: LimiarDeValor[];
   isLoading: boolean;
 } {
   const { data, isLoading } = useFutebolMercadosOcultos();
+  // O corte de valor faz parte da vitrine: é outra forma de uma linha não estar
+  // na tela. O `isLoading` soma os dois pelo mesmo motivo de sempre — renderizar
+  // antes de o corte chegar mostraria a linha cortada por um instante.
+  const { data: dadosDoCorte, isLoading: carregandoCorte } = useFutebolLimiaresDeValor();
   // Memoizados: o fallback e o .map criam array novo a cada render e
   // envenenariam as dependencias de todo useMemo que os recebe.
   const vitrine = useMemo(() => data ?? [], [data]);
   // Só os nomes, para quem decide sobre o presente e não precisa da data.
   const ocultos = useMemo(() => vitrine.map((m) => m.market), [vitrine]);
-  return { vitrine, ocultos, isLoading };
+  const limiares = useMemo(() => dadosDoCorte ?? [], [dadosDoCorte]);
+  return { vitrine, ocultos, limiares, isLoading: isLoading || carregandoCorte };
 }
 

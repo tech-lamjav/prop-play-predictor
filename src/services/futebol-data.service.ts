@@ -9,6 +9,11 @@ import {
   type MercadoOculto,
   VITRINE_FALLBACK,
 } from '@/utils/futebol-mercados-ocultos';
+import {
+  CORTE_FALLBACK,
+  filtrarCorteDeValor,
+  type LimiarDeValor,
+} from '@/utils/futebol-corte-de-valor';
 
 // A vitrine muda por UPDATE no banco, não por release, então a lista não pode
 // ser lida uma vez e congelada pela vida da aba. Cinco minutos é curto o
@@ -16,6 +21,9 @@ import {
 // não somar uma chamada a cada carga do board.
 const MERCADOS_OCULTOS_TTL_MS = 5 * 60 * 1000;
 let mercadosOcultosCache: { valor: MercadoOculto[]; expiraEm: number } | null = null;
+// O corte de valor muda pelo mesmo caminho (UPDATE, migration 137), então vale o
+// mesmo prazo.
+let limiaresCache: { valor: LimiarDeValor[]; expiraEm: number } | null = null;
 
 // As RPCs de futebol ainda não estão nos tipos gerados do Supabase (existem
 // só no dev, lendo BigQuery via FDW no schema bq_futebol). Cast pra any, mesmo
@@ -1005,16 +1013,64 @@ export const futebolDataService = {
     return (await this.getVitrine()).map((m) => m.market);
   },
 
+  /**
+   * O corte de valor por mercado (migration 137): a linha que paga abaixo do
+   * limiar sai da vitrine, com a data em que o corte passou a valer.
+   *
+   * Mora no banco pelo mesmo motivo da vitrine — o Telegram precisa ler a MESMA
+   * fonte, e mudar o limiar tem de ser UPDATE e não release.
+   *
+   * ⚠️ Falha em silêncio e FECHADA, que é o contrário do que parece natural. O
+   * `withRetry` trata "função não existe" como erro definitivo, então lançar aqui
+   * mataria o board inteiro por uma leitura de configuração. Mas cair para lista
+   * vazia mostraria a linha que o produto decidiu tirar. O escuro usa o último
+   * valor bom e, sem ele, o `CORTE_FALLBACK` compilado, sem data — que a regra
+   * lê como "de hoje em diante, sem tocar no passado".
+   */
+  async getLimiaresDeValor(): Promise<LimiarDeValor[]> {
+    const agora = Date.now();
+    if (limiaresCache && agora < limiaresCache.expiraEm) {
+      return limiaresCache.valor;
+    }
+    try {
+      const { data, error } = await supabaseClient.rpc('get_futebol_limiar_valor');
+      if (error) throw error;
+      const valor = (
+        (data || []) as { market: string; limiar: number | string; vigente_desde: string }[]
+      ).map((linha) => ({
+        market: linha.market,
+        // `numeric` pode chegar como texto, dependendo da serialização.
+        limiar: Number(linha.limiar),
+        vigenteDesde: linha.vigente_desde,
+      }));
+      // Um limiar ilegível deixaria aquele mercado sem corte. Melhor o escuro.
+      if (valor.some((l) => typeof l.market !== 'string' || !Number.isFinite(l.limiar))) {
+        throw new Error('limiar de valor ilegível');
+      }
+      limiaresCache = { valor, expiraEm: agora + MERCADOS_OCULTOS_TTL_MS };
+      return valor;
+    } catch {
+      return (
+        limiaresCache?.valor ??
+        CORTE_FALLBACK.map((l) => ({ market: l.market, limiar: l.limiar, vigenteDesde: null }))
+      );
+    }
+  },
+
   async getValueBoard(): Promise<FutebolValueBoardRow[]> {
     return withRetry(async () => {
-      const [{ data, error }, ocultos] = await Promise.all([
+      const [{ data, error }, ocultos, limiares] = await Promise.all([
         supabaseClient.rpc('get_futebol_value_board'),
         this.getMercadosOcultos(),
+        this.getLimiaresDeValor(),
       ]);
       if (error) throw error;
-      return filtrarMercadosOcultos(
-        normalizeFutebolScoreRows<FutebolValueBoardRow>(data || []),
-        ocultos,
+      return filtrarCorteDeValor(
+        filtrarMercadosOcultos(
+          normalizeFutebolScoreRows<FutebolValueBoardRow>(data || []),
+          ocultos,
+        ),
+        limiares,
       );
     });
   },
@@ -1042,6 +1098,9 @@ export const futebolDataService = {
    * da vitrine ele apareceu na tela, e o assinante pode ter apostado nele.
    * Escondê-lo aqui reescreveria o passado dele e mudaria a performance exibida.
    * Ver prop-play-predictor#324.
+   *
+   * O corte de valor (migration 137) segue a mesma regra pelo mesmo motivo: ele
+   * entra POR DATA no `mergeBoardAndHistory`, e não aqui.
    */
   async getValueHistory(from: string, to: string): Promise<FutebolValueBoardRow[]> {
     return withRetry(async () => {
@@ -1072,14 +1131,18 @@ export const futebolDataService = {
 
   async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValueRow[]> {
     return withRetry(async () => {
-      const [{ data, error }, ocultos] = await Promise.all([
+      const [{ data, error }, ocultos, limiares] = await Promise.all([
         supabaseClient.rpc('get_futebol_fixture_value', { p_fixture_id: fixtureId }),
         this.getMercadosOcultos(),
+        this.getLimiaresDeValor(),
       ]);
       if (error) throw error;
-      return filtrarMercadosOcultos(
-        normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
-        ocultos,
+      return filtrarCorteDeValor(
+        filtrarMercadosOcultos(
+          normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
+          ocultos,
+        ),
+        limiares,
       );
     });
   },
