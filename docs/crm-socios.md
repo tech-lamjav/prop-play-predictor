@@ -93,7 +93,7 @@ apareciam como "Em teste" e a etapa delas ficava invisível — justamente os le
 mais quentes, que estão usando o produto agora. Era ali que a conversa se
 perdia. Renomear "contatado" para "primeiro contato" veio junto: "contatado" não
 diz se foi a primeira vez ou a quinta, e o funil precisa do primeiro toque como
-marco. Migration 133.
+marco. Migration 138.
 
 As etiquetas do teste são três, e a ordem é a da urgência: **teste vencendo**
 (perde o acesso hoje ou amanhã), **em teste**, **teste vencido**. A de vencendo

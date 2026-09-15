@@ -44,7 +44,7 @@ describe('LinhaDoTempo', () => {
     montar();
     const lista = screen.getByRole('list', { name: /linha do tempo/i });
     expect(within(lista).getByText(/achou o Betinho confuso/)).toBeInTheDocument();
-    // `contatado` saiu do vocabulário na migration 133, e o evento gravado
+    // `contatado` saiu do vocabulário na migration 138, e o evento gravado
     // naquele dia continua dizendo `contatado`. O rótulo cai no valor cru em
     // vez de imprimir `undefined`: a linha do tempo mostra o que aconteceu,
     // com o nome que a etapa tinha então.

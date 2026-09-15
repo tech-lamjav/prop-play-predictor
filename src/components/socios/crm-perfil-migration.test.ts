@@ -15,7 +15,7 @@ import { comando, lerMigration } from './crm-migration-de-teste';
 // é a que toca a tabela mais sensível do produto.
 // ============================================================================
 
-const MIGRATION = lerMigration('20260914160000_134_crm_perfil_de_aposta.sql');
+const MIGRATION = lerMigration('20260916120000_139_crm_perfil_de_aposta.sql');
 const FUNCAO = comando(
   MIGRATION,
   /create or replace function public\.crm_perfil_de_aposta/,

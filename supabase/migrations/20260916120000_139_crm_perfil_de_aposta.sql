@@ -1,4 +1,4 @@
--- 20260914160000_134_crm_perfil_de_aposta
+-- 20260916120000_139_crm_perfil_de_aposta
 --
 -- Como uma pessoa aposta, para o sócio estudar os power users.
 --

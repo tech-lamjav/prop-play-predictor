@@ -15,7 +15,7 @@ import { PLANOS_A_VENDER } from './crm-vocabulario';
 // cobra quem já pagou, ou deixa de cobrar quem não pagou.
 // ============================================================================
 
-const MIGRATION = lerMigration('20260915100000_136_crm_pagamento.sql');
+const MIGRATION = lerMigration('20260916160000_141_crm_pagamento.sql');
 
 const REGISTRAR = comando(
   MIGRATION,

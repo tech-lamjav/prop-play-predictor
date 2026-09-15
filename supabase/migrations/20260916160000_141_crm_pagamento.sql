@@ -1,4 +1,4 @@
--- 20260915100000_136_crm_pagamento
+-- 20260916160000_141_crm_pagamento
 --
 -- A assinatura manual passa a ser RECORRENTE, e o dinheiro recebido por fora
 -- do Stripe passa a ter registro.

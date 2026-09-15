@@ -16,7 +16,20 @@ export default defineConfig(({ mode }) => ({
       //
       // `dist/` também fica de fora: é saída de build, e vigiar o que a gente
       // mesmo gera é recarregar a página por causa do próprio build.
-      ignored: ["**/worktrees/**", "**/dist/**"],
+      //
+      // ⚠️ Função, e não padrão de glob. A primeira versão era
+      // `**/worktrees/**`, e o vigia compara com o caminho ABSOLUTO do arquivo:
+      // um servidor rodando de dentro de uma worktree tem "worktrees" no
+      // próprio caminho, então ignorava todos os arquivos e a recarga
+      // automática morria. Um caminho absoluto no padrão também não serve no
+      // Windows, onde a barra invertida vira escape de glob. Relativo à raiz,
+      // com a barra normalizada, vale nos dois casos.
+      ignored: (arquivo: string) => {
+        const relativo = path.relative(__dirname, arquivo).replace(/\\/g, "/");
+        return ["dist", ".claude/worktrees"].some(
+          (pasta) => relativo === pasta || relativo.startsWith(`${pasta}/`),
+        );
+      },
     },
   },
   plugins: [

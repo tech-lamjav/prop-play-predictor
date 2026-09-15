@@ -1,4 +1,4 @@
--- 20260914180000_135_fecha_funcoes_sem_revoke
+-- 20260916140000_140_fecha_funcoes_sem_revoke
 --
 -- Fecha duas funções `SECURITY DEFINER` que qualquer pessoa logada consegue
 -- chamar hoje. Issue #408.

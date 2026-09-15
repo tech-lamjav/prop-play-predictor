@@ -10,7 +10,7 @@ import { emReais, lerValorDigitado } from './crm-receita';
  * o que está dando ANTES de dar. "Essencial" não diz nada sobre o Betinho ir
  * junto, e ir junto é justamente o que surpreende quem só olhou o nome.
  *
- * ⚠️ Isto é rótulo, não regra. Quem concede é a migration 137, que segue a
+ * ⚠️ Isto é rótulo, não regra. Quem concede é a migration 142, que segue a
  * mesma escada de `shared/concessoes.ts`, e há um teste cobrando que as duas
  * não divirjam.
  */

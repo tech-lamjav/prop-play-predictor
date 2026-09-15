@@ -5,13 +5,13 @@ import { ETAPAS } from './crm-vocabulario';
 // ============================================================================
 // O vocabulário do banco e o da tela não podem se separar
 // ============================================================================
-// A restrição vigente é a da migration 133, que substituiu a da 128, que já
+// A restrição vigente é a da migration 138, que substituiu a da 128, que já
 // tinha substituído a da 123. O guarda mora aqui e acompanha a vigente
 // justamente por isso: apontar para uma restrição antiga deixaria o teste verde
 // guardando um vocabulário aposentado.
 // ============================================================================
 
-const MIGRATION = lerMigration('20260914100000_133_crm_primeiro_contato.sql');
+const MIGRATION = lerMigration('20260916100000_138_crm_primeiro_contato.sql');
 
 describe('as etapas da venda', () => {
   it('a restrição do banco lista exatamente as etapas do glossário', () => {
@@ -32,7 +32,7 @@ describe('as etapas da venda', () => {
 
   it('nenhuma etapa aposentada sobrevive na restrição', () => {
     const restricao = MIGRATION.match(/check\s*\(\s*etapa in \(([\s\S]*?)\)\s*\)/)![1];
-    // `contatado` entra na lista porque virou `primeiro_contato` na 133:
+    // `contatado` entra na lista porque virou `primeiro_contato` na 138:
     // "contatado" não diz se foi a primeira vez ou a quinta, e o funil precisa
     // do primeiro toque como marco. `em_teste` nunca foi etapa e não pode
     // voltar a ser: é etiqueta da pessoa, não altura da conversa.
@@ -63,7 +63,7 @@ describe('as etapas da venda', () => {
  * Cada rename converte os dados que ELE aposentou.
  *
  * Este bloco olha uma migration por vez, e não a vigente: a 128 tinha três
- * etapas para converter e a 133 tem uma, então cobrar as três da 133 é cobrar
+ * etapas para converter e a 138 tem uma, então cobrar as três da 138 é cobrar
  * dela um trabalho que não é dela. O que se guarda é o par — quem aposentou um
  * valor converteu aquele valor.
  *
@@ -77,7 +77,7 @@ describe('quem aposentou um valor converteu aquele valor', () => {
       arquivo: '20260911200000_128_crm_etapas_da_venda.sql',
       aposentadas: ['conversando', 'proposta', 'assinou'],
     },
-    { arquivo: '20260914100000_133_crm_primeiro_contato.sql', aposentadas: ['contatado'] },
+    { arquivo: '20260916100000_138_crm_primeiro_contato.sql', aposentadas: ['contatado'] },
   ];
 
   for (const { arquivo, aposentadas } of RENAMES) {
@@ -104,7 +104,7 @@ describe('quem aposentou um valor converteu aquele valor', () => {
   it('a última da lista é a que define o vocabulário de hoje', () => {
     // Sem isto, somar um rename novo sem trocar o MIGRATION do topo deixaria o
     // guarda do glossário olhando para a restrição de antes.
-    expect(RENAMES[RENAMES.length - 1].arquivo).toBe('20260914100000_133_crm_primeiro_contato.sql');
+    expect(RENAMES[RENAMES.length - 1].arquivo).toBe('20260916100000_138_crm_primeiro_contato.sql');
     const daVigente = MIGRATION.match(/check\s*\(\s*etapa in \(([\s\S]*?)\)\s*\)/)![1];
     const daUltima = lerMigration(RENAMES[RENAMES.length - 1].arquivo).match(
       /check\s*\(\s*etapa in \(([\s\S]*?)\)\s*\)/,

@@ -29,7 +29,7 @@ function montar(props: Partial<Parameters<typeof DarAssinatura>[0]> = {}) {
 describe('DarAssinatura', () => {
   it('pede plano, prazo e valor: é o acordo inteiro', () => {
     // O prazo é o que faz a cobrança existir; o valor é o que faz a receita
-    // existir. A 136 criou a coluna do valor e nada a escrevia, então a metade
+    // existir. A 141 criou a coluna do valor e nada a escrevia, então a metade
     // financeira do CRM estava inalcançável pela tela.
     montar();
     expect(screen.getByLabelText('Plano da assinatura manual')).toBeInTheDocument();

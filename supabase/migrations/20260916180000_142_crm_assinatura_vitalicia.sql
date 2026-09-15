@@ -1,15 +1,15 @@
--- 20260915140000_137_crm_assinatura_vitalicia
+-- 20260916180000_142_crm_assinatura_vitalicia
 --
 -- A concessão passa a combinar o VALOR, e a data de fim passa a poder não
 -- existir.
 --
 -- ## O que estava furado
 --
--- A 136 deu à assinatura manual uma coluna `valor_mensal` e construiu a tabela
+-- A 141 deu à assinatura manual uma coluna `valor_mensal` e construiu a tabela
 -- de pagamentos em cima dela. Só que NINGUÉM ESCREVE essa coluna: a função que
 -- concede é a da 131, que recebe plano e data e mais nada. Na prática toda
 -- assinatura nascia sem valor, e sem valor não há mês em aberto, não há fila de
--- inadimplente e não há receita para somar. A metade financeira da 136 estava
+-- inadimplente e não há receita para somar. A metade financeira da 141 estava
 -- inalcançável pela tela.
 --
 -- ## Vitalício
@@ -174,7 +174,7 @@ revoke execute on function public.crm_dar_assinatura_manual(uuid, text, date, nu
 grant execute on function public.crm_dar_assinatura_manual(uuid, text, date, numeric) to authenticated;
 
 -- ── Registrar pagamento não pode acabar com o vitalício ─────────────────────
--- A 136 empurrava a data com `greatest(vence_em, fim_do_mes)`, e em Postgres
+-- A 141 empurrava a data com `greatest(vence_em, fim_do_mes)`, e em Postgres
 -- `greatest` IGNORA nulo: devolve o outro valor. Então um pagamento lançado numa
 -- assinatura vitalícia DAVA uma data a quem não tinha, e o vitalício virava
 -- mensal sem ninguém pedir. O `if` abaixo é o conserto.

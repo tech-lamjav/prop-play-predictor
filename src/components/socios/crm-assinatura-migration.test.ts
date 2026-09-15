@@ -40,7 +40,7 @@ describe('a tabela', () => {
     // Sem os dois não há cobrança possível: a tela nova existe para dizer
     // "fulano está no Essencial e vence sexta".
     //
-    // ⚠️ A 137 solta o `not null` do `vence_em` para caber VITALÍCIA, e este
+    // ⚠️ A 142 solta o `not null` do `vence_em` para caber VITALÍCIA, e este
     // guarda continua verde porque lê o arquivo da 131, que é história. Quem
     // for mexer nisto olha `crm-assinatura-vitalicia-migration.test.ts`, que
     // guarda o estado vigente.
@@ -146,8 +146,8 @@ describe('a escada de planos não pode divergir do Stripe', () => {
    * existe para vigiar. Se as duas divergirem, um assinante manual do Essencial
    * ganha um acesso a menos que um assinante pagante do mesmo plano.
    *
-   * ⚠️ Lê a versão VIGENTE da função, que é a da 137, e não a da 131 guardada
-   * acima. A 137 recria a função com um parâmetro novo, então é ela que está no
+   * ⚠️ Lê a versão VIGENTE da função, que é a da 142, e não a da 131 guardada
+   * acima. A 142 recria a função com um parâmetro novo, então é ela que está no
    * banco: um guarda apontado para a 131 aqui vigiaria código morto, e a
    * divergência que ele existe para pegar passaria batida.
    */
@@ -157,7 +157,7 @@ describe('a escada de planos não pode divergir do Stripe', () => {
   );
 
   const DAR_VIGENTE = comando(
-    lerMigration('20260915140000_137_crm_assinatura_vitalicia.sql'),
+    lerMigration('20260916180000_142_crm_assinatura_vitalicia.sql'),
     /create or replace function public\.crm_dar_assinatura_manual/,
     '$function$;',
   );

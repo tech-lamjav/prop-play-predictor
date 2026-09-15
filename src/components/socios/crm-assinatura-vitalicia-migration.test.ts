@@ -7,7 +7,7 @@ import { PLANOS_A_VENDER } from './crm-vocabulario';
 // ============================================================================
 // Duas coisas acontecem aqui, e elas parecem uma só:
 //
-// 1. A 136 criou `valor_mensal` e construiu a tabela de pagamentos em cima
+// 1. A 141 criou `valor_mensal` e construiu a tabela de pagamentos em cima
 //    dela, mas NINGUÉM ESCREVIA a coluna: quem concede era a função da 131, que
 //    recebe plano e data e mais nada. Toda assinatura nascia sem valor, e sem
 //    valor não há mês em aberto, nem inadimplente, nem receita para somar.
@@ -21,7 +21,7 @@ import { PLANOS_A_VENDER } from './crm-vocabulario';
 // cobrança. As quatro combinações existem na prática.
 // ============================================================================
 
-const MIGRATION = lerMigration('20260915140000_137_crm_assinatura_vitalicia.sql');
+const MIGRATION = lerMigration('20260916180000_142_crm_assinatura_vitalicia.sql');
 
 const DAR = comando(
   MIGRATION,
@@ -62,7 +62,7 @@ describe('crm_dar_assinatura_manual', () => {
   });
 
   it('recebe o valor mensal, e grava ele na linha', () => {
-    // É o conserto do furo da 136: sem esta gravação, a coluna existe e fica
+    // É o conserto do furo da 141: sem esta gravação, a coluna existe e fica
     // sempre nula, e a metade financeira do CRM não tem de onde sair.
     expect(DAR).toMatch(/p_valor_mensal numeric default null/);
     expect(DAR).toMatch(/insert into public\.crm_assinatura_manual[\s\S]*?valor_mensal/);
@@ -151,7 +151,7 @@ describe('crm_dar_assinatura_manual', () => {
 describe('registrar pagamento não pode matar o vitalício', () => {
   it('só empurra a data quando existe data', () => {
     // ⚠️ O bug que esta migration conserta: em Postgres `greatest` IGNORA nulo
-    // e devolve o outro valor. A 136 fazia `greatest(vence_em, fim_do_mes)` sem
+    // e devolve o outro valor. A 141 fazia `greatest(vence_em, fim_do_mes)` sem
     // condição, então lançar um pagamento numa assinatura vitalícia DAVA uma
     // data de fim a quem não tinha, e o vitalício virava mensal sem ninguém
     // pedir.
@@ -178,7 +178,7 @@ describe('registrar pagamento não pode matar o vitalício', () => {
   });
 
   it('continua recusando valor zerado e assinatura encerrada', () => {
-    // O corpo é recriado inteiro, então cada guarda da 136 tem que estar aqui
+    // O corpo é recriado inteiro, então cada guarda da 141 tem que estar aqui
     // de novo. Um `create or replace` que esquece uma linha apaga a proteção
     // sem nenhum sinal.
     expect(REGISTRAR).toMatch(/raise exception 'valor invalido'/);
