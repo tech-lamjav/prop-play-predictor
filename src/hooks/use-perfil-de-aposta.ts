@@ -37,7 +37,10 @@ export function usePerfilDeAposta(userId: string | undefined): EstadoDoPerfil {
       // `returns table` devolve lista. Sem apostas a lista tem uma linha com
       // tudo zerado, e não lista vazia — mas as duas coisas podem acontecer se
       // a função mudar, então as duas viram nulo aqui.
-      const linhas = (data ?? []) as PerfilDoBanco[];
+      // Por `unknown`: os tipos gerados descrevem os recortes como `Json`
+      // genérico, e o formato de dentro deles quem garante é a migration 139,
+      // guardada por teste. A conversão direta o compilador recusa, com razão.
+      const linhas = (data ?? []) as unknown as PerfilDoBanco[];
       return linhas[0] ?? null;
     },
     // Aposta não muda de minuto em minuto, e a ficha abre e fecha muitas vezes
