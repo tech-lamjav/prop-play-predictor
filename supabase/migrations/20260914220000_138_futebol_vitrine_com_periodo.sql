@@ -83,6 +83,9 @@ $function$;
 -- Função de gatilho não é chamada por ninguém de fora, e nasce executável por
 -- PUBLIC como qualquer outra (issue #408).
 revoke execute on function public.futebol_mercados_ocultos_periodo() from public;
+-- No Supabase o schema public dá EXECUTE explícito a anon e authenticated em toda
+-- função nova (privilégio padrão), e o revoke de PUBLIC não tira isso. Conferido em staging.
+revoke execute on function public.futebol_mercados_ocultos_periodo() from anon, authenticated;
 grant execute on function public.futebol_mercados_ocultos_periodo() to service_role;
 
 drop trigger if exists futebol_mercados_ocultos_periodo on public.futebol_mercados_ocultos;
