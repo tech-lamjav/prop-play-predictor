@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
-import type { MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import { ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
 import type { LimiarDeValor } from '@/utils/futebol-corte-de-valor';
 import type { FixtureScope } from '@/utils/futebol-competitions';
 import {
@@ -476,8 +476,9 @@ export function useVitrine(): {
   // Memoizados: o fallback e o .map criam array novo a cada render e
   // envenenariam as dependencias de todo useMemo que os recebe.
   const vitrine = useMemo(() => data ?? [], [data]);
-  // Só os nomes, para quem decide sobre o presente e não precisa da data.
-  const ocultos = useMemo(() => vitrine.map((m) => m.market), [vitrine]);
+  // Só os nomes, para quem decide sobre o presente e não precisa da data — e
+  // por isso só os que estão fora AGORA: o mercado que voltou está na tela.
+  const ocultos = useMemo(() => ocultosAgora(vitrine), [vitrine]);
   const limiares = useMemo(() => dadosDoCorte ?? [], [dadosDoCorte]);
   return { vitrine, ocultos, limiares, isLoading: isLoading || carregandoCorte };
 }

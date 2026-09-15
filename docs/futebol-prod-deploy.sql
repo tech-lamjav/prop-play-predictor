@@ -2809,8 +2809,50 @@ create table if not exists public.futebol_mercados_ocultos (
   -- comparável quando ele voltar.
   oculto boolean not null default true,
   oculto_desde timestamptz not null default now(),
+  -- Quando o mercado VOLTOU à vitrine (migration 138). Null enquanto está fora.
+  oculto_ate timestamptz,
   motivo text not null
 );
+
+-- Ambiente que já tinha a tabela antes da 138 não ganha a coluna pelo create.
+alter table public.futebol_mercados_ocultos
+  add column if not exists oculto_ate timestamptz;
+
+alter table public.futebol_mercados_ocultos
+  drop constraint if exists futebol_mercados_ocultos_periodo;
+alter table public.futebol_mercados_ocultos
+  add constraint futebol_mercados_ocultos_periodo check (
+    (oculto and oculto_ate is null)
+    or (not oculto and oculto_ate is not null and oculto_ate > oculto_desde)
+  );
+
+-- Religar é um UPDATE de uma coluna; o gatilho fecha o período sozinho, porque
+-- o passo manual a mais é o que se esquece no dia, e o esquecimento é silencioso.
+create or replace function public.futebol_mercados_ocultos_periodo()
+returns trigger
+language plpgsql
+set search_path to ''
+as $function$
+begin
+  if old.oculto and not new.oculto then
+    new.oculto_ate := coalesce(new.oculto_ate, now());
+  elsif not old.oculto and new.oculto then
+    if new.oculto_desde is not distinct from old.oculto_desde then
+      new.oculto_desde := now();
+    end if;
+    new.oculto_ate := null;
+  end if;
+  return new;
+end;
+$function$;
+
+revoke execute on function public.futebol_mercados_ocultos_periodo() from public;
+grant execute on function public.futebol_mercados_ocultos_periodo() to service_role;
+
+drop trigger if exists futebol_mercados_ocultos_periodo on public.futebol_mercados_ocultos;
+create trigger futebol_mercados_ocultos_periodo
+  before update of oculto on public.futebol_mercados_ocultos
+  for each row execute function public.futebol_mercados_ocultos_periodo();
 
 -- RLS ligada e SEM policy, no mesmo padrão da futebol_premissa_copy: nada lê a
 -- tabela direto, só a RPC security definer abaixo.
@@ -2841,22 +2883,29 @@ grant execute on function public.get_futebol_mercados_ocultos() to anon, authent
 -- Convive com a leitura acima em vez de substituí-la: as duas funções de
 -- notificação só olham o board — presente e futuro, sempre depois do corte —
 -- e para elas a lista de nomes basta.
-create or replace function public.get_futebol_vitrine()
-returns table (market text, oculto_desde timestamptz)
+--
+-- Desde a 138 ela devolve o período INTEIRO, aberto ou fechado: sem o fim, o
+-- mercado religado sumia da vitrine e o histórico mostrava tudo de quando ele
+-- esteve fora. DROP porque o tipo de retorno mudou.
+drop function if exists public.get_futebol_vitrine();
+
+create function public.get_futebol_vitrine()
+returns table (market text, oculto_desde timestamptz, oculto_ate timestamptz)
  language sql
  stable
  security definer
  set search_path to ''
 as $function$
-  select o.market, o.oculto_desde
+  select o.market, o.oculto_desde, o.oculto_ate
     from public.futebol_mercados_ocultos o
-   where o.oculto
+   where o.oculto or o.oculto_ate is not null
    order by o.market;
 $function$;
 
 comment on function public.get_futebol_vitrine() is
-  'Mercados fora da vitrine COM a data de corte. A data é o que separa a linha que foi publicada e vista da que nunca esteve na tela.';
+  'Períodos fora da vitrine, abertos (oculto_ate null) e fechados. O período é o que separa a linha que foi publicada e vista da que nunca esteve na tela.';
 
+revoke execute on function public.get_futebol_vitrine() from public;
 grant execute on function public.get_futebol_vitrine() to anon, authenticated, service_role;
 
 insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)

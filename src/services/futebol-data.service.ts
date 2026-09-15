@@ -7,6 +7,7 @@ import {
 import {
   filtrarMercadosOcultos,
   type MercadoOculto,
+  ocultosAgora,
   VITRINE_FALLBACK,
 } from '@/utils/futebol-mercados-ocultos';
 import {
@@ -978,9 +979,15 @@ export const futebolDataService = {
     try {
       const { data, error } = await supabaseClient.rpc('get_futebol_vitrine');
       if (error) throw error;
-      const valor = ((data || []) as { market: string; oculto_desde: string }[]).map(
-        (linha) => ({ market: linha.market, ocultoDesde: linha.oculto_desde }),
-      );
+      const valor = (
+        (data || []) as { market: string; oculto_desde: string; oculto_ate?: string | null }[]
+      ).map((linha) => ({
+        market: linha.market,
+        ocultoDesde: linha.oculto_desde,
+        // Ausente antes da migration 138: o período conta como aberto, que é
+        // exatamente o comportamento de antes.
+        ocultoAte: linha.oculto_ate ?? null,
+      }));
       mercadosOcultosCache = { valor, expiraEm: agora + MERCADOS_OCULTOS_TTL_MS };
       return valor;
     } catch {
@@ -1008,9 +1015,12 @@ export const futebolDataService = {
     }
   },
 
-  /** Só os nomes, para quem não precisa saber desde quando. */
+  /**
+   * Só os nomes, e só dos mercados fora da vitrine AGORA — para quem decide
+   * sobre o presente. O mercado que já voltou (migration 138) fica de fora.
+   */
   async getMercadosOcultos(): Promise<string[]> {
-    return (await this.getVitrine()).map((m) => m.market);
+    return ocultosAgora(await this.getVitrine());
   },
 
   /**

@@ -1,4 +1,4 @@
-import { mercadoOcultoNaData, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import { mercadoOcultoNaData, ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
 import { cortadaNaData, type LimiarDeValor } from '@/utils/futebol-corte-de-valor';
 import type { LinhaPublicada } from './placar-agregacao';
 
@@ -61,5 +61,6 @@ export function soAVitrine(
  * `null` quando o mercado está na tela: selo em toda linha não marca nada.
  */
 export function seloDeOculto(market: string, ocultos: readonly MercadoOculto[]): string | null {
-  return ocultos.some((o) => o.market === market) ? 'fora da vitrine' : null;
+  // Só o período aberto: o mercado que já voltou está na tela (migration 138).
+  return ocultosAgora(ocultos).includes(market) ? 'fora da vitrine' : null;
 }
