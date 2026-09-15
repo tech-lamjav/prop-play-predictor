@@ -99,7 +99,9 @@ begin
    * tem três apostas. Com o N, a tela consegue dizer "2 de 3" e quem lê decide
    * se aquilo é perfil ou coincidência.
    *
-   * Cinco por recorte: passa disso e vira lista, e lista não é perfil.
+   * Todos os recortes, sem corte. A primeira versão guardava os cinco mais
+   * usados, e o sexto mercado sumia junto com o ROI dele: é justamente o
+   * mercado raro de um power user que ensina alguma coisa. A ordem é da tela.
    */
   esportes as (
     select jsonb_agg(x order by x->>'lucro' desc) as j from (
@@ -109,7 +111,7 @@ begin
                'apostado', coalesce(sum(a.stake) filter (where a.liquidada), 0),
                'lucro', coalesce(sum(a.profit), 0)
              ) as x
-      from apostas a group by a.esporte order by count(*) desc limit 5
+      from apostas a group by a.esporte
     ) t
   ),
   mercados as (
@@ -120,7 +122,7 @@ begin
                'apostado', coalesce(sum(a.stake) filter (where a.liquidada), 0),
                'lucro', coalesce(sum(a.profit), 0)
              ) as x
-      from apostas a group by a.mercado order by count(*) desc limit 5
+      from apostas a group by a.mercado
     ) t
   ),
   /*

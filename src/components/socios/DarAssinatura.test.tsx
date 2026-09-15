@@ -217,3 +217,18 @@ describe('enquanto grava', () => {
     expect(screen.getByText(/não está mais marcada como sócio/)).toBeInTheDocument();
   });
 });
+
+describe('o que acontece quando a pessoa não paga', () => {
+  it('a tela diz que a assinatura não encerra sozinha', () => {
+    // É a pergunta que surge ao dar uma assinatura, e a resposta não estava em
+    // lugar nenhum da tela.
+    montar();
+    expect(screen.getByText(/Não encerra sozinha/)).toBeInTheDocument();
+  });
+
+  it('a vitalícia avisa que, com cobrança, entra na fila de inadimplentes', async () => {
+    montar();
+    await userEvent.click(screen.getByLabelText(VITALICIA));
+    expect(screen.getByText(/fila de inadimplentes/)).toBeInTheDocument();
+  });
+});

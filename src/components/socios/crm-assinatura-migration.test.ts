@@ -187,6 +187,34 @@ describe('a escada de planos não pode divergir do Stripe', () => {
     });
   }
 
+  /*
+   * A função de registrar pagamento libera os acessos do plano de novo, e é
+   * mais uma cópia da escada. Sem esta comparação ela podia liberar menos que o
+   * Stripe e ninguém saberia: a concessão estava coberta, o pagamento não.
+   */
+  const REGISTRAR_VIGENTE = comando(
+    lerMigration('20260916180000_142_crm_assinatura_vitalicia.sql'),
+    /create or replace function public\.crm_registrar_pagamento/,
+    '$function$;',
+  );
+
+  /** As colunas que o ramo do plano no registro de pagamento libera. */
+  function noPagamento(plano: string): string[] {
+    const ramo = REGISTRAR_VIGENTE?.slice(REGISTRAR_VIGENTE.indexOf(`v_plano = '${plano}'`)) ?? '';
+    const ate = ramo.indexOf('where id = v_user_id');
+    return [...ramo.slice(0, ate).matchAll(/([a-z_]+_subscription_status)/g)]
+      .map((m) => m[1])
+      .filter((c, i, todas) => todas.indexOf(c) === i)
+      .sort();
+  }
+
+  for (const plano of PLANOS_A_VENDER) {
+    it(`${plano}: registrar pagamento libera o mesmo que o Stripe`, () => {
+      expect(REGISTRAR_VIGENTE).not.toBeNull();
+      expect(noPagamento(plano)).toEqual(noStripe(plano));
+    });
+  }
+
   it('a escada é cumulativa, e o guarda acima notaria se deixasse de ser', () => {
     // Prova que as listas acima têm tamanhos diferentes: se o parser estivesse
     // devolvendo a mesma coisa para os três, os testes passariam sem guardar

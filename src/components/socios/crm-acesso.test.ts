@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acessoAtual, entraNoFutebol, estadoDoTeste, PRODUTOS_EDITAVEIS } from './crm-acesso';
+import { acessoAtual, estadoDoTeste, PRODUTOS_EDITAVEIS } from './crm-acesso';
 import type { Pessoa } from './crm-ficha';
 
 const AGORA = new Date('2026-09-12T12:00:00Z').getTime();
@@ -170,33 +170,6 @@ describe('estadoDoTeste', () => {
   });
 });
 
-describe('entraNoFutebol', () => {
-  it('vale pelo teste, mesmo sem assinatura', () => {
-    const p = pessoa({ futebol_trial_ends_at: '2026-09-13T12:00:00Z' });
-    expect(entraNoFutebol(p, AGORA)).toBe(true);
-  });
-
-  it('teste de 48 horas começado há três dias não dá acesso', () => {
-    // A regra antiga somava sete dias ao início e diria que sim.
-    const p = pessoa({
-      futebol_trial_started_at: '2026-09-09T12:00:00Z',
-      futebol_trial_ends_at: '2026-09-11T12:00:00Z',
-    });
-    expect(entraNoFutebol(p, AGORA)).toBe(false);
-  });
-
-  it('vale pela assinatura, mesmo com o teste vencido', () => {
-    const p = pessoa({
-      futebol_subscription_status: 'premium',
-      futebol_trial_ends_at: '2026-01-08T12:00:00Z',
-    });
-    expect(entraNoFutebol(p, AGORA)).toBe(true);
-  });
-
-  it('sem nenhum dos dois, não entra', () => {
-    expect(entraNoFutebol(pessoa(), AGORA)).toBe(false);
-  });
-});
 describe('a lista de produtos', () => {
   it('só o Betinho e as Análises têm prazo', () => {
     // Os outros dois não têm coluna de data no banco. A tela precisa avisar

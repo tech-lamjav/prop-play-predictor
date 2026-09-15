@@ -5,9 +5,12 @@ import {
   lerValorDigitado,
   mesesEmAberto,
   receitaRecebida,
+  rotuloDaOrigem,
   situacaoDaReceita,
+  valorComoTexto,
   ORIGENS_PARA_LANCAR,
   ROTULO_DA_ORIGEM,
+  type OrigemParaLancar,
   type Pagamento,
 } from './crm-receita';
 import type { EstadoDosPagamentos, PagamentoALancar } from '@/hooks/use-pagamentos';
@@ -45,11 +48,6 @@ const CAMPO =
   'mt-1 h-9 w-full rounded-rebrand-sm border border-line-2 bg-white px-2 text-[13px] text-ink disabled:opacity-60';
 const ROTULO = 'block text-[11px] text-ink-2';
 
-/** O valor combinado, como texto de campo. */
-function comoTexto(valor: number | null): string {
-  return valor === null ? '' : String(valor).replace('.', ',');
-}
-
 /**
  * Uma linha do histórico, com o estorno escondido até alguém pedir.
  *
@@ -74,7 +72,7 @@ function Lancamento({
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
         <span className={`text-[13px] ${pagamento.estornado ? 'text-ink-dim' : 'text-ink'}`}>
           <span className="font-bold">{formatarMes(pagamento.mes)}</span>{' '}
-          {ROTULO_DA_ORIGEM[pagamento.origem] ?? pagamento.origem} {emReais(pagamento.valor)}
+          {rotuloDaOrigem(pagamento.origem)} {emReais(pagamento.valor)}
         </span>
 
         {pagamento.estornado ? (
@@ -161,7 +159,7 @@ export function Receita({
    */
   const [mesEscolhido, setMesEscolhido] = useState<string | null>(null);
   const [valorDigitado, setValorDigitado] = useState<string | null>(null);
-  const [origem, setOrigem] = useState<string>('pix');
+  const [origem, setOrigem] = useState<OrigemParaLancar>('pix');
   const [pagoEm, setPagoEm] = useState(hoje);
 
   // Sem assinatura manual não há pagamento: eles penduram nela. Um formulário
@@ -192,7 +190,7 @@ export function Receita({
   const situacao = situacaoDaReceita(assinatura.comecouEm, assinatura.valorMensal, pagamentos, hoje);
 
   const mes = mesEscolhido ?? abertos[0] ?? hoje.slice(0, 7);
-  const valor = valorDigitado ?? comoTexto(assinatura.valorMensal);
+  const valor = valorDigitado ?? valorComoTexto(assinatura.valorMensal);
   const valorLido = lerValorDigitado(valor);
   const salvando = escrita.tipo === 'salvando';
 
@@ -221,7 +219,8 @@ export function Receita({
 
       {abertos.length > 0 ? (
         <p className="text-[12px] text-ink-2">
-          Em aberto: {abertos.map(formatarMes).join(', ')}
+          Em aberto: {abertos.map(formatarMes).join(', ')}. A assinatura não encerra sozinha: se
+          for para cortar o acesso, encerre na assinatura acima.
         </p>
       ) : null}
 
@@ -265,7 +264,7 @@ export function Receita({
               value={origem}
               disabled={salvando}
               aria-label="Origem do pagamento"
-              onChange={(e) => setOrigem(e.target.value)}
+              onChange={(e) => setOrigem(e.target.value as OrigemParaLancar)}
               className={CAMPO}
             >
               {ORIGENS_PARA_LANCAR.map((o) => (

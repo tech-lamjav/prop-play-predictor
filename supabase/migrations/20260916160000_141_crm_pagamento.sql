@@ -124,10 +124,13 @@ create policy "Socios leem os pagamentos"
   on public.crm_pagamento for select to authenticated
   using (public.eh_socio());
 
+-- Escrita só pelas funções abaixo, e SEM política de escrita, de propósito. Com
+-- uma política `for all` o sócio conseguiria apagar ou editar um pagamento
+-- direto pela API, e o estorno com motivo existiria só na tela: um registro de
+-- dinheiro apagado não deixa rastro. As funções são `security definer` e não
+-- precisam de política para escrever. O `drop` fica para quem já tinha a
+-- política criada por uma versão anterior desta migration, como o staging.
 drop policy if exists "Socios gerenciam os pagamentos" on public.crm_pagamento;
-create policy "Socios gerenciam os pagamentos"
-  on public.crm_pagamento for all to authenticated
-  using (public.eh_socio()) with check (public.eh_socio());
 
 -- ── Registrar um pagamento ──────────────────────────────────────────────────
 create or replace function public.crm_registrar_pagamento(

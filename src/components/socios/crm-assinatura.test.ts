@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   aCobrar,
+  inadimplentes,
   montarAssinaturas,
   type Assinatura,
   type AssinaturaDoBanco,
 } from './crm-assinatura';
+import { montarPagamentos, type PagamentoDoBanco } from './crm-receita';
 import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 const HOJE = '2026-09-12';
@@ -152,5 +154,86 @@ describe('aCobrar', () => {
       [cadastro({ id: 'u1', name: 'Vitalicia' }), cadastro({ id: 'u2', name: 'Vence amanha' })],
     );
     expect(ordem.map((a) => a.pessoa)).toEqual(['Vence amanha', 'Vitalicia']);
+  });
+});
+
+describe('inadimplentes', () => {
+  const HOJE_I = '2026-09-15';
+
+  const pagamento = (over: Partial<PagamentoDoBanco>): PagamentoDoBanco => ({
+    id: `p-${over.competencia}`,
+    competencia: '2026-09-01',
+    valor: '39.90',
+    origem: 'pix',
+    pago_em: '2026-09-03',
+    estornado_em: null,
+    motivo_do_estorno: null,
+    ...over,
+  });
+
+  const assinaturas = (...linhas: AssinaturaDoBanco[]) =>
+    montarAssinaturas(linhas, [
+      cadastro({ id: 'u1', name: 'Maria' }),
+      cadastro({ id: 'u2', name: 'João' }),
+    ]);
+
+  it('quem tem cobrança e mês em aberto entra, com os meses e o total', () => {
+    const [i] = inadimplentes(
+      assinaturas(linha({ criada_em: '2026-07-10T15:00:00Z' })),
+      new Map(),
+      HOJE_I,
+    );
+    expect(i.meses).toEqual(['2026-07', '2026-08', '2026-09']);
+    expect(i.total).toBeCloseTo(119.7);
+  });
+
+  it('quem pagou todos os meses não entra', () => {
+    const pagos = montarPagamentos([
+      pagamento({ competencia: '2026-07-01' }),
+      pagamento({ competencia: '2026-08-01' }),
+      pagamento({ competencia: '2026-09-01' }),
+    ]);
+    const lista = assinaturas(linha({ criada_em: '2026-07-10T15:00:00Z' }));
+    expect(inadimplentes(lista, new Map([['a1', pagos]]), HOJE_I)).toEqual([]);
+  });
+
+  it('sem cobrança nunca entra', () => {
+    // Quem não combinou pagar não deve nada.
+    const lista = assinaturas(linha({ valor_mensal: null, criada_em: '2026-01-10T15:00:00Z' }));
+    expect(inadimplentes(lista, new Map(), HOJE_I)).toEqual([]);
+  });
+
+  it('vitalícia com cobrança entra quando deixa de pagar', () => {
+    // ⚠️ É o que separa esta fila da de cobrança: a vitalícia nunca vence, mas
+    // quem combinou pagar e parou está devendo como qualquer outro.
+    const lista = assinaturas(linha({ vence_em: null, criada_em: '2026-08-10T15:00:00Z' }));
+    const [i] = inadimplentes(lista, new Map(), HOJE_I);
+    expect(i.meses).toEqual(['2026-08', '2026-09']);
+  });
+
+  it('do que deve mais para o que deve menos', () => {
+    // O total é o que decide se vale insistir ou encerrar.
+    const lista = assinaturas(
+      linha({ id: 'a1', user_id: 'u1', criada_em: '2026-09-02T15:00:00Z' }),
+      linha({ id: 'a2', user_id: 'u2', criada_em: '2026-06-02T15:00:00Z' }),
+    );
+    expect(inadimplentes(lista, new Map(), HOJE_I).map((i) => i.assinatura.pessoa)).toEqual([
+      'João',
+      'Maria',
+    ]);
+  });
+
+  it('o mês de começo é o de Brasília', () => {
+    // 01:00Z do dia 1º de agosto ainda é 31 de julho aqui.
+    const lista = assinaturas(linha({ criada_em: '2026-08-01T01:00:00Z' }));
+    expect(inadimplentes(lista, new Map(), HOJE_I)[0].meses[0]).toBe('2026-07');
+  });
+
+  it('um pagamento estornado volta a contar como devido', () => {
+    const estornado = montarPagamentos([
+      pagamento({ competencia: '2026-09-01', estornado_em: '2026-09-04T12:00:00Z' }),
+    ]);
+    const lista = assinaturas(linha({ criada_em: '2026-09-02T15:00:00Z' }));
+    expect(inadimplentes(lista, new Map([['a1', estornado]]), HOJE_I)).toHaveLength(1);
   });
 });

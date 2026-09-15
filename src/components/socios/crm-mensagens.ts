@@ -1,4 +1,5 @@
-import type { TipoDeGancho } from './crm-ficha';
+import { mensagemDeCobranca, mensagemDeConversao, prazoDe } from './crm-cobranca';
+import { primeiroNome as primeiroNomeDe, saudacao, type TipoDeGancho } from './crm-ficha';
 import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 
 // ============================================================================
@@ -22,16 +23,6 @@ import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 // você entrou nas análises de futebol" soa como fato e pode estar errado — o
 // mesmo gancho nasce de quem só leu a explicação dos alertas.
 // ============================================================================
-
-/**
- * "Oi, Maria!" ou "Oi!".
- *
- * A saudação inteira muda, e não só a lacuna. Trocar a lacuna por vazio deixa
- * "Oi, !" — o defeito clássico do modelo com buraco.
- */
-function saudacao(primeiroNome: string | null): string {
-  return primeiroNome ? `Oi, ${primeiroNome}!` : 'Oi!';
-}
 
 /**
  * Nenhum modelo usa travessão.
@@ -196,6 +187,95 @@ export function modelosDeAbordagem(primeiroNome: string | null): ModeloDeMensage
       })),
     ];
   });
+}
+
+/** O que, além do gancho e da etapa, muda as mensagens que a ficha oferece. */
+export interface ContextoDaMensagem {
+  /**
+   * Dias de teste que restam contando hoje: zero acaba hoje, negativo já
+   * acabou. Nulo para quem não tem etiqueta de teste, inclusive quem já assina.
+   */
+  diasDeTeste: number | null;
+  /** A assinatura manual com data de fim, para a mensagem de cobrança. */
+  cobranca: { plano: string; venceEm: string; hoje: string } | null;
+}
+
+/** O identificador da mensagem de conversão para quem tem `dias` de teste. */
+function idDoTeste(dias: number): string {
+  if (dias < 0) return 'teste:acabou';
+  if (dias === 0) return 'teste:hoje';
+  if (dias === 1) return 'teste:amanha';
+  return 'teste:em-dias';
+}
+
+/**
+ * Tudo que a ficha oferece no seletor: a abordagem, a conversão do teste e,
+ * quando há assinatura com data, a cobrança.
+ *
+ * As três de conversão estão sempre lá, e não só para quem está em teste: o
+ * sócio pode estar falando de um teste que ele mesmo vai dar, ou de um que
+ * acabou antes de a etiqueta existir. A de "acaba em N dias" só existe quando
+ * há um N de verdade, porque sem ele o número seria inventado.
+ *
+ * A de cobrança só existe com assinatura que vence: ela fala de uma data, e sem
+ * data nenhuma daquelas frases é verdade.
+ */
+export function modelosDaFicha(
+  nome: string | null,
+  contexto: ContextoDaMensagem,
+): ModeloDeMensagem[] {
+  const deTeste = (id: string, rotulo: string, dias: number): ModeloDeMensagem => ({
+    id,
+    grupo: 'Teste gratuito',
+    rotulo,
+    texto: mensagemDeConversao(nome, dias),
+  });
+
+  const conversao = [
+    deTeste('teste:amanha', 'Acaba amanhã', 1),
+    deTeste('teste:hoje', 'Acaba hoje', 0),
+    deTeste('teste:acabou', 'Já acabou', -1),
+  ];
+  const { diasDeTeste, cobranca } = contexto;
+  if (diasDeTeste !== null && diasDeTeste > 1) {
+    conversao.unshift(deTeste('teste:em-dias', `Acaba em ${diasDeTeste} dias`, diasDeTeste));
+  }
+
+  const deCobranca: ModeloDeMensagem[] = cobranca
+    ? [
+        {
+          id: 'cobranca',
+          grupo: 'Cobrança',
+          rotulo: 'Vencimento da assinatura',
+          texto: mensagemDeCobranca(
+            nome,
+            cobranca.plano,
+            cobranca.venceEm,
+            prazoDe(cobranca.venceEm, cobranca.hoje),
+          ),
+        },
+      ]
+    : [];
+
+  return [...modelosDeAbordagem(primeiroNomeDe(nome)), ...conversao, ...deCobranca];
+}
+
+/**
+ * A mensagem que a ficha sugere.
+ *
+ * Quem tem etiqueta de teste recebe a de conversão, com o prazo dela. É o
+ * contato da véspera que motivou a etiqueta: a conversa com quem está testando
+ * é sobre o teste, e não sobre a etapa em que a conversa parou. Para o resto,
+ * vale o par de gancho e etapa.
+ */
+export function idSugeridoNaFicha(
+  gancho: TipoDeGancho,
+  etapa: Etapa,
+  contexto: ContextoDaMensagem,
+): string {
+  return contexto.diasDeTeste === null
+    ? idDaSugerida(gancho, etapa)
+    : idDoTeste(contexto.diasDeTeste);
 }
 
 /**

@@ -5,13 +5,14 @@ import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
-import { idDaSugerida, mensagemPara, modelosDeAbordagem } from './crm-mensagens';
+import { idSugeridoNaFicha, modelosDaFicha, type ContextoDaMensagem } from './crm-mensagens';
+import { diasDeTesteRestantes, etiquetaDe } from './crm-etiquetas';
+import { EtiquetaDoLead } from './EtiquetaDoLead';
 import {
   ganchoDe,
   nomeDoPlano,
   type Pessoa,
   type ResumoDeApostas,
-  primeiroNome,
   type TipoDeGancho,
 } from './crm-ficha';
 
@@ -121,6 +122,8 @@ const COMO_CHAMAR: Record<TipoDeGancho, string> = {
 export function Ficha({
   estado,
   etapa,
+  hoje,
+  cobranca,
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
@@ -141,6 +144,14 @@ export function Ficha({
   aoMudarEtapa: (etapa: Etapa) => void;
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
+  /** O dia de hoje em Brasília, para a etiqueta de teste e o prazo das mensagens. */
+  hoje: string;
+  /**
+   * A assinatura manual com data de fim, para oferecer a mensagem de cobrança.
+   * Nula sem assinatura ou com assinatura vitalícia, porque toda mensagem de
+   * cobrança fala de uma data.
+   */
+  cobranca: { plano: string; venceEm: string } | null;
   comportamento: ReactNode;
   /**
    * Como a pessoa aposta.
@@ -195,6 +206,8 @@ export function Ficha({
     <Conteudo
       {...estado}
       etapa={etapa}
+      hoje={hoje}
+      cobranca={cobranca}
       aoMudarEtapa={aoMudarEtapa}
       mudandoEtapa={mudandoEtapa}
       erroAoMudarEtapa={erroAoMudarEtapa}
@@ -213,6 +226,8 @@ function Conteudo({
   pessoa,
   apostas,
   etapa,
+  hoje,
+  cobranca,
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
@@ -230,6 +245,8 @@ function Conteudo({
   aoMudarEtapa: (etapa: Etapa) => void;
   mudandoEtapa: boolean;
   erroAoMudarEtapa: boolean;
+  hoje: string;
+  cobranca: { plano: string; venceEm: string } | null;
   linhaDoTempo: ReactNode;
   /** Entra por fora, como a linha do tempo: tem consulta própria, e só sai
    *  quando o modal abre. */
@@ -245,6 +262,21 @@ function Conteudo({
   const gancho = ganchoDe(pessoa, apostas);
   const cadastroEm = dia(pessoa.created_at);
   const ultimaAposta = apostas?.ultima ? dia(apostas.ultima) : null;
+  const etiqueta = etiquetaDe(pessoa, hoje);
+
+  /*
+   * O que muda a mensagem além do gancho e da etapa. Quem tem etiqueta de teste
+   * recebe a de conversão como sugerida, com o prazo dela; quem já assina não
+   * tem etiqueta, e por isso não recebe conversão de um teste que não importa
+   * mais.
+   */
+  const contextoDaMensagem: ContextoDaMensagem = {
+    diasDeTeste: etiqueta ? diasDeTesteRestantes(pessoa, hoje) : null,
+    cobranca: cobranca ? { ...cobranca, hoje } : null,
+  };
+  const opcoesDaMensagem = modelosDaFicha(pessoa.name, contextoDaMensagem);
+  const idSugerido = etapa ? idSugeridoNaFicha(gancho.tipo, etapa, contextoDaMensagem) : null;
+  const modeloSugerido = opcoesDaMensagem.find((o) => o.id === idSugerido)?.texto ?? '';
 
   return (
     <div className="flex max-h-[82vh] flex-col">
@@ -276,6 +308,11 @@ function Conteudo({
             <p className="mt-0.5 text-[12.5px] text-ink-2">
               {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
             </p>
+            {etiqueta ? (
+              <div className="mt-1.5">
+                <EtiquetaDoLead etiqueta={etiqueta} />
+              </div>
+            ) : null}
           </div>
 
           {/* A etapa fica alinhada à DIREITA do nome, e não abaixo dos
@@ -397,11 +434,11 @@ function Conteudo({
           {/* Só depois de saber a etapa: o modelo depende dela, e o campo é
               semeado uma vez só — nascer com a etapa errada deixaria o texto
               desatualizado sem o sócio perceber. */}
-          {etapa && (
+          {etapa && idSugerido && (
             <MensagemPronta
-              modelo={mensagemPara(gancho.tipo, etapa, primeiroNome(pessoa.name))}
-              opcoes={modelosDeAbordagem(primeiroNome(pessoa.name))}
-              idSugerido={idDaSugerida(gancho.tipo, etapa)}
+              modelo={modeloSugerido}
+              opcoes={opcoesDaMensagem}
+              idSugerido={idSugerido}
               numero={pessoa.whatsapp_number}
             />
           )}

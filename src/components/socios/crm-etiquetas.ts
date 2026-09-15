@@ -1,5 +1,4 @@
-import { temAcessoAoFutebolPeloFim } from '@/utils/futebol-acesso';
-import { diasEntre } from '@/utils/futebol-datas';
+import { brtDayOf, diasEntre } from '@/utils/futebol-datas';
 import type { Cadastro } from './crm-lista';
 
 // ============================================================================
@@ -80,7 +79,7 @@ export const EXPLICACAO_DA_ETIQUETA: Record<Etiqueta, string> = {
 export function etiquetaDe(c: Cadastro, hoje: string): Etiqueta | null {
   if (ehAssinanteDeQualquerCoisa(c)) return null;
 
-  const fim = ultimoDiaDoTeste(c);
+  const fim = ultimoDiaDoTeste(c.futebol_trial_ends_at);
   if (!fim) return null;
 
   const faltam = diasEntre(hoje, fim);
@@ -97,27 +96,8 @@ export function etiquetaDe(c: Cadastro, hoje: string): Etiqueta | null {
  * vez de um número que quem lê tem de converter em dia da semana.
  */
 export function diasDeTesteRestantes(c: Cadastro, hoje: string): number | null {
-  const fim = ultimoDiaDoTeste(c);
+  const fim = ultimoDiaDoTeste(c.futebol_trial_ends_at);
   return fim ? diasEntre(hoje, fim) : null;
-}
-
-/**
- * A pessoa entra no futebol agora, por teste ou por assinatura?
- *
- * Reexportado para a ficha não precisar conhecer a regra do teste. Ela mora em
- * `utils/futebol-acesso`, e as edge functions do Telegram têm a própria cópia
- * em Deno — está avisado lá.
- */
-export function entraNoFutebol(c: Cadastro, agora = Date.now()): boolean {
-  return temAcessoAoFutebolPeloFim(c.futebol_subscription_status, c.futebol_trial_ends_at, agora);
-}
-
-function ehAssinanteDeQualquerCoisa(c: Cadastro): boolean {
-  return (
-    c.betinho_subscription_status === 'premium' ||
-    c.futebol_subscription_status === 'premium' ||
-    c.analytics_subscription_status === 'premium'
-  );
 }
 
 /**
@@ -131,10 +111,21 @@ function ehAssinanteDeQualquerCoisa(c: Cadastro): boolean {
  * O último instante com acesso é o anterior ao fim. Um teste que termina à
  * meia-noite daqui não dá aquele dia a ninguém, e sem o milissegundo a etiqueta
  * diria que dá.
+ *
+ * Exportada porque a ficha mostra o mesmo dia no "termina em", e as duas telas
+ * precisam concordar sobre qual é o último dia de acesso.
  */
-function ultimoDiaDoTeste(c: Cadastro): string | null {
-  if (!c.futebol_trial_ends_at) return null;
-  const ms = Date.parse(c.futebol_trial_ends_at);
+export function ultimoDiaDoTeste(fimDoTeste: string | null): string | null {
+  if (!fimDoTeste) return null;
+  const ms = Date.parse(fimDoTeste);
   if (Number.isNaN(ms)) return null;
-  return new Date(ms - 1 - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return brtDayOf(new Date(ms - 1).toISOString());
+}
+
+function ehAssinanteDeQualquerCoisa(c: Cadastro): boolean {
+  return (
+    c.betinho_subscription_status === 'premium' ||
+    c.futebol_subscription_status === 'premium' ||
+    c.analytics_subscription_status === 'premium'
+  );
 }

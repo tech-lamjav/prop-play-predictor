@@ -323,6 +323,26 @@ decide encerrar. Não existe cron cortando acesso: cortar o de um cliente por
 engano custa mais caro que deixá-lo um mês a mais, e corte automático erra em
 silêncio.
 
+**A fila de inadimplentes é o lugar de decidir.** Na tela de Assinaturas, o
+recorte "Devendo" junta todo mundo com cobrança mensal e mês em aberto, do que
+deve mais para o que deve menos, vitalícia com cobrança inclusive. Ela sai dos
+meses em aberto, e não da data de vencimento: é outra fila, e é por isso que a
+vitalícia entra nela.
+
+**Trocar o plano, o prazo ou o valor edita a mesma assinatura.** A primeira
+versão encerrava a aberta e criava outra a cada troca, e com isso o histórico de
+Pix, o total recebido e os meses em aberto voltavam a zero na tela. Os
+pagamentos pertencem ao acordo, e o acordo continua o mesmo quando os termos
+mudam.
+
+**Pagamento só se escreve pelas funções.** A tabela não tem política de escrita:
+com uma, o sócio conseguiria apagar um pagamento direto pela API, e o estorno
+com motivo existiria só na tela.
+
+**Quem está em teste recebe a mensagem de conversão.** A ficha sugere a de
+conversão, com o prazo do teste, para quem tem etiqueta de teste. A de abordagem
+e a de cobrança continuam no seletor.
+
 **A escada é cumulativa**, a mesma do Stripe: Entrada é o Betinho, Essencial é
 futebol mais Betinho, Completo é os três. Ela está escrita duas vezes por
 necessidade — a fonte da verdade é `shared/concessoes.ts`, que roda em Deno, e a

@@ -1,6 +1,6 @@
 import { diasEntre } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
-import { primeiroNome } from './crm-ficha';
+import { primeiroNome, saudacao as saudacaoPara } from './crm-ficha';
 
 // ============================================================================
 // Cobrar quem está com assinatura dada na mão
@@ -48,8 +48,7 @@ export function mensagemDeCobranca(
   vence: string,
   prazo: Prazo,
 ): string {
-  const primeiro = primeiroNome(nome);
-  const saudacao = primeiro ? `Oi, ${primeiro}!` : 'Oi!';
+  const saudacao = saudacaoPara(primeiroNome(nome));
   const dia = formatarDia(vence);
 
   if (prazo.tipo === 'vencida') {
@@ -95,8 +94,7 @@ export function mensagemDeCobranca(
  * número errado numa proposta é pior que nenhum.
  */
 export function mensagemDeConversao(nome: string | null, diasRestantes: number): string {
-  const primeiro = primeiroNome(nome);
-  const saudacao = primeiro ? `Oi, ${primeiro}!` : 'Oi!';
+  const saudacao = saudacaoPara(primeiroNome(nome));
 
   if (diasRestantes < 0) {
     return (

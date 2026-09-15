@@ -1,4 +1,6 @@
+import { brtDayOf } from '@/utils/futebol-datas';
 import type { Cadastro } from './crm-lista';
+import { mesesEmAberto, type Pagamento } from './crm-receita';
 import { PLANOS_A_VENDER, type PlanoAVender } from './crm-vocabulario';
 
 // ============================================================================
@@ -9,8 +11,8 @@ import { PLANOS_A_VENDER, type PlanoAVender } from './crm-vocabulario';
 // ela já está sem o produto e sem motivo nenhum para voltar.
 //
 // Este módulo transforma as linhas de `crm_assinatura_manual` na fila de quem
-// precisa ser cobrado, na ordem em que vence. Tudo puro; quem desenha não faz
-// conta nenhuma.
+// precisa ser cobrado, na ordem em que vence, e na fila de quem está devendo.
+// Tudo puro; quem desenha não faz conta nenhuma.
 // ============================================================================
 
 /** Uma linha de `crm_assinatura_manual`, como o banco devolve. */
@@ -44,17 +46,12 @@ export interface Assinatura {
    * Quanto a pessoa paga por mês, ou nulo quando NÃO HÁ COBRANÇA.
    *
    * ⚠️ Outra pergunta, e não a mesma de `venceEm`. Vitalícia com valor é quem
-   * paga todo mês e nunca perde o acesso por atraso; com data e sem valor é
-   * acesso dado na mão por um tempo. As quatro combinações existem.
+   * paga todo mês e nunca vence; com data e sem valor é acesso dado na mão por
+   * um tempo. As quatro combinações existem.
    */
   valorMensal: number | null;
   criadaEm: string;
   criadaPor: string | null;
-}
-
-/** Nunca vence. O nome existe para a condição não aparecer solta na tela. */
-export function ehVitalicia(a: Pick<Assinatura, 'venceEm'>): boolean {
-  return a.venceEm === null;
 }
 
 const CONHECIDOS = new Set<string>(PLANOS_A_VENDER);
@@ -155,7 +152,7 @@ export type AssinaturaQueVence = Assinatura & { venceEm: string };
  *
  * ⚠️ Vitalícia nunca entra. Não é esquecimento: esta fila é a de VENCIMENTO, e
  * quem não vence não tem o que vencer. Quem é vitalício e paga por mês pode
- * ficar devendo, e essa é a fila de INADIMPLÊNCIA, que sai dos meses em aberto
+ * ficar devendo, e essa é a fila de INADIMPLENTES, que sai dos meses em aberto
  * e não de uma data.
  */
 export function aCobrar(
@@ -179,4 +176,54 @@ export function aCobrar(
   return assinaturas.filter(
     (a): a is AssinaturaQueVence => a.venceEm !== null && a.venceEm <= limite,
   );
+}
+
+/** Uma assinatura com o que ela deve. */
+export interface Inadimplente {
+  assinatura: Assinatura;
+  /** Os meses em aberto, `YYYY-MM`, do mais antigo para o mais novo. */
+  meses: string[];
+  total: number;
+}
+
+/**
+ * Quem está devendo, do que deve mais para o que deve menos.
+ *
+ * Sai dos MESES EM ABERTO, e não da data de vencimento, e é por isso que é uma
+ * fila diferente da de cobrança: vitalícia com cobrança mensal entra aqui
+ * quando deixa de pagar, mesmo sem nunca vencer. Sem cobrança nunca entra,
+ * porque quem não combinou pagar não deve nada.
+ *
+ * Não encerra ninguém. A fila é o lugar de decidir: cortar o acesso de um
+ * cliente por engano custa mais caro que deixá-lo um mês a mais, e um corte
+ * automático erra em silêncio.
+ *
+ * O total ordena antes do número de meses porque é o total que decide se vale
+ * insistir ou encerrar.
+ */
+export function inadimplentes(
+  assinaturas: Assinatura[],
+  pagamentosPorAssinatura: ReadonlyMap<string, Pagamento[]>,
+  hoje: string,
+): Inadimplente[] {
+  return assinaturas
+    .flatMap((assinatura) => {
+      if (assinatura.valorMensal === null) return [];
+      // O mês de começo é o de Brasília, pela mesma razão da receita na ficha:
+      // uma assinatura dada às 22h de 31 de agosto é de agosto para quem deu.
+      const comecouEm = brtDayOf(assinatura.criadaEm) ?? hoje;
+      const meses = mesesEmAberto(
+        comecouEm,
+        assinatura.valorMensal,
+        pagamentosPorAssinatura.get(assinatura.id) ?? [],
+        hoje,
+      );
+      if (meses.length === 0) return [];
+      return [{ assinatura, meses, total: meses.length * assinatura.valorMensal }];
+    })
+    .sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      if (b.meses.length !== a.meses.length) return b.meses.length - a.meses.length;
+      return a.assinatura.pessoa.localeCompare(b.assinatura.pessoa, 'pt-BR');
+    });
 }

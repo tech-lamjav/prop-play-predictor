@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PLANOS_A_VENDER, ROTULO_DO_PLANO, type PlanoAVender } from './crm-vocabulario';
 import { formatarDia } from './crm-lista';
-import { emReais, lerValorDigitado } from './crm-receita';
+import { emReais, lerValorDigitado, valorComoTexto } from './crm-receita';
 
 /**
  * O que cada plano libera, em palavras.
@@ -25,11 +25,6 @@ function daquiUmMes(hoje: string): string {
   const d = new Date(`${hoje}T12:00:00Z`);
   d.setUTCMonth(d.getUTCMonth() + 1);
   return d.toISOString().slice(0, 10);
-}
-
-/** O valor que já está combinado, como texto de campo. */
-function comoTexto(valor: number | null): string {
-  return valor === null ? '' : String(valor).replace('.', ',');
 }
 
 export type EstadoDaConcessao =
@@ -89,7 +84,7 @@ export function DarAssinatura({
   // devolve o que estava digitado, em vez de um campo vazio que obriga a
   // digitar de novo quem só queria ver a outra opção.
   const [venceEm, setVenceEm] = useState(atual?.venceEm ?? daquiUmMes(hoje));
-  const [valor, setValor] = useState(comoTexto(atual?.valorMensal ?? null));
+  const [valor, setValor] = useState(valorComoTexto(atual?.valorMensal ?? null));
 
   const salvando = estado.tipo === 'salvando';
   const valorLido = lerValorDigitado(valor);
@@ -210,9 +205,12 @@ export function DarAssinatura({
       </button>
 
       <p className="mt-2 text-[11px] text-ink-2">
+        {/* O aviso de que nada encerra sozinho fica aqui, onde se decide o
+            acordo, porque é a pergunta que surge ao dar uma assinatura: e se a
+            pessoa parar de pagar? */}
         {vitalicia
-          ? 'Vitalícia não entra na fila de vencimento. Se tiver cobrança mensal, os meses em aberto continuam aparecendo.'
-          : 'Entra na fila de cobrança sete dias antes de vencer.'}
+          ? 'Vitalícia não entra na fila de vencimento. Se tiver cobrança mensal e deixar de pagar, entra na fila de inadimplentes.'
+          : 'Entra na fila de cobrança sete dias antes de vencer. Não encerra sozinha: parar de pagar só coloca a pessoa na fila de inadimplentes, e quem encerra é você.'}
       </p>
     </div>
   );

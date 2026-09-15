@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/integrations/supabase/client';
 import type { EstadoDaFicha } from '@/components/socios/Ficha';
 import type { Pessoa, ResumoDeApostas } from '@/components/socios/crm-ficha';
+import { CHAVES } from './crm-chaves';
 
 /**
  * Os campos da ficha, e só eles.
@@ -55,7 +56,7 @@ const NAO_ENCONTRADO = 'PGRST116';
  */
 export function usePessoa(id: string | undefined): EstadoDaFicha {
   const consulta = useQuery({
-    queryKey: ['socios', 'pessoa', id ?? ''],
+    queryKey: CHAVES.pessoa(id ?? ''),
     enabled: !!id,
     queryFn: async () => {
       const cliente = createClient();

@@ -1,5 +1,5 @@
 import type { Pessoa } from './crm-ficha';
-import { temAcessoAoFutebolPeloFim } from '@/utils/futebol-acesso';
+import { ultimoDiaDoTeste } from './crm-etiquetas';
 import { brtDayOf } from '@/utils/futebol-datas';
 
 // ============================================================================
@@ -131,21 +131,11 @@ export function estadoDoTeste(p: Pessoa, agora = Date.now()): EstadoDoTeste {
   const fim = new Date(p.futebol_trial_ends_at).getTime();
   if (Number.isNaN(fim)) return { tipo: 'nunca' };
 
-  // O último instante com acesso é o anterior ao fim, e o dia é o de Brasília.
-  // Um teste que termina à meia-noite daqui não dá aquele dia a ninguém, e às
-  // 22h ainda é o mesmo dia aqui, embora já seja o seguinte em Greenwich.
-  const dia = brtDayOf(new Date(fim - 1).toISOString()) ?? '';
+  // O dia vem da mesma regra das etiquetas, e não de uma conta aqui: as duas
+  // telas precisam concordar sobre qual é o último dia de acesso, e é na
+  // virada da meia-noite que duas contas divergiriam.
+  const dia = ultimoDiaDoTeste(p.futebol_trial_ends_at) ?? '';
 
   if (fim <= agora) return { tipo: 'vencido', terminouEm: dia };
   return { tipo: 'correndo', terminaEm: dia, diasRestantes: Math.ceil((fim - agora) / UM_DIA) };
-}
-/**
- * A pessoa entra no futebol agora?
- *
- * Reexportado daqui porque a tela de edição precisa responder isso DEPOIS de
- * mexer, e a regra é a mesma que a ficha já usa. Duas contas do mesmo acesso
- * divergiriam no dia em que o prazo mudasse.
- */
-export function entraNoFutebol(p: Pessoa, agora = Date.now()): boolean {
-  return temAcessoAoFutebolPeloFim(p.futebol_subscription_status, p.futebol_trial_ends_at, agora);
 }

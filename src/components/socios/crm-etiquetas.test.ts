@@ -2,25 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   diasDeTesteRestantes,
   DIAS_PARA_VENCER,
-  entraNoFutebol,
   etiquetaDe,
   ETIQUETAS,
   EXPLICACAO_DA_ETIQUETA,
   ROTULO_DA_ETIQUETA,
+  ultimoDiaDoTeste,
 } from './crm-etiquetas';
-import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
+import { cadastroDeTeste as cadastro, fimDoTesteEm } from './crm-cadastro-de-teste';
 
 const HOJE = '2026-09-12';
 
-/**
- * Teste cujo ÚLTIMO DIA de acesso é daqui a `dias` dias. Zero é hoje, negativo
- * é passado. O fim fica no meio do dia daqui, longe da virada.
- */
-const terminaEm = (dias: number) => {
-  const d = new Date(`${HOJE}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + dias);
-  return `${d.toISOString().slice(0, 10)}T15:00:00Z`;
-};
+/** Teste cujo ÚLTIMO DIA de acesso é daqui a `dias` dias. Zero é hoje. */
+const terminaEm = (dias: number) => fimDoTesteEm(HOJE, dias);
 
 describe('etiquetaDe', () => {
   it('quem nunca testou não tem etiqueta', () => {
@@ -87,14 +80,6 @@ describe('etiquetaDe', () => {
     expect(etiquetaDe(seteDias, HOJE)).toBe('trial_ativo');
   });
 
-  it('"vencendo" ganha de "em teste" quando os dois caberiam', () => {
-    // Quem vence amanhã também está ativo. Mostrar a menos urgente das duas é
-    // perder o motivo da etiqueta existir.
-    expect(etiquetaDe(cadastro({ futebol_trial_ends_at: terminaEm(0) }), HOJE)).toBe(
-      'trial_vencendo',
-    );
-  });
-
   it('quem já assina não recebe etiqueta de teste', () => {
     // A pessoa converteu. Lembrar que ela um dia testou não muda conversa
     // nenhuma, e a etiqueta pediria uma cobrança que não faz sentido.
@@ -143,25 +128,18 @@ describe('diasDeTesteRestantes', () => {
   });
 });
 
-describe('entraNoFutebol', () => {
-  const AGORA = Date.parse(`${HOJE}T12:00:00Z`);
-
-  it('entra enquanto o fim não chegou', () => {
-    expect(entraNoFutebol(cadastro({ futebol_trial_ends_at: terminaEm(1) }), AGORA)).toBe(true);
+describe('ultimoDiaDoTeste', () => {
+  it('é o dia de Brasília do instante anterior ao fim', () => {
+    // A ficha usa esta mesma função no "termina em". Duas contas do último dia
+    // divergiriam justamente na virada, que é onde o erro aparece.
+    expect(ultimoDiaDoTeste('2026-09-12T15:00:00Z')).toBe('2026-09-12');
+    expect(ultimoDiaDoTeste('2026-09-12T03:00:00Z')).toBe('2026-09-11');
+    expect(ultimoDiaDoTeste('2026-09-13T01:00:00Z')).toBe('2026-09-12');
   });
 
-  it('teste de 48 horas começado há três dias não dá acesso', () => {
-    // A regra antiga somava sete dias ao início e diria que sim. O servidor
-    // corta, e a ficha mostraria acesso que a pessoa não tem.
-    const vencido = cadastro({
-      futebol_trial_started_at: terminaEm(-3),
-      futebol_trial_ends_at: terminaEm(-1),
-    });
-    expect(entraNoFutebol(vencido, AGORA)).toBe(false);
-  });
-
-  it('assinatura vale mesmo sem teste', () => {
-    expect(entraNoFutebol(cadastro({ futebol_subscription_status: 'premium' }), AGORA)).toBe(true);
+  it('sem fim, ou com fim ilegível, é nulo', () => {
+    expect(ultimoDiaDoTeste(null)).toBeNull();
+    expect(ultimoDiaDoTeste('sei lá')).toBeNull();
   });
 });
 

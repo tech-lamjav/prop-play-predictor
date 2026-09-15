@@ -106,6 +106,13 @@ describe('crm_perfil_de_aposta', () => {
     }
   });
 
+  it('não corta os recortes: do sexto mercado em diante também aparece', () => {
+    // A primeira versão guardava só os cinco mais usados. O sexto mercado sumia
+    // junto com o ROI dele, e é justamente o mercado raro de um power user que
+    // ensina alguma coisa sobre como ele aposta.
+    expect(FUNCAO).not.toMatch(/\blimit\b/i);
+  });
+
   it('nulo e string vazia caem no mesmo balde', () => {
     // As duas ocorrem: mercado e esporte são texto livre sem restrição. Sem o
     // `nullif`, a tela mostraria "Outros" e "" como dois recortes diferentes.

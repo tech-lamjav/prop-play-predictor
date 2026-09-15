@@ -58,11 +58,21 @@ describe('a tabela de pagamentos', () => {
     );
   });
 
-  it('só sócio lê e escreve', () => {
+  it('só sócio lê', () => {
     expect(MIGRATION).toMatch(/alter table public\.crm_pagamento enable row level security/);
     const politicas = MIGRATION.match(/create policy [^;]*?on public\.crm_pagamento[^;]*;/g) ?? [];
     expect(politicas.length).toBeGreaterThan(0);
     for (const p of politicas) expect(p).toMatch(/public\.eh_socio\(\)/);
+  });
+
+  it('não há política de escrita: pagamento só se escreve pelas funções', () => {
+    // ⚠️ Com uma política `for all`, o sócio conseguia apagar ou editar um
+    // pagamento direto pela API, e o estorno com motivo existiria só na tela.
+    // As funções são `security definer` e não precisam de política para
+    // escrever. O `drop` fica para tirar a política de quem já tinha.
+    const politicas = MIGRATION.match(/create policy [^;]*?on public\.crm_pagamento[^;]*;/g) ?? [];
+    for (const p of politicas) expect(p).toMatch(/for select/);
+    expect(MIGRATION).toMatch(/drop policy if exists "Socios gerenciam os pagamentos"/);
   });
 
   it('a assinatura ganha valor mensal, e ele pode ser nulo', () => {

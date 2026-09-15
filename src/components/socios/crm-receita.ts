@@ -47,7 +47,12 @@ export interface Pagamento {
  * `stripe` está aqui mesmo sem ninguém lançar ainda: quando o webhook entrar,
  * os pagamentos dele já têm nome.
  */
-export const ROTULO_DA_ORIGEM: Record<string, string> = {
+export const ORIGENS = ['pix', 'dinheiro', 'transferencia', 'stripe', 'outro'] as const;
+
+/** Como o dinheiro chegou. É a mesma lista da restrição da tabela no banco. */
+export type OrigemDoPagamento = (typeof ORIGENS)[number];
+
+export const ROTULO_DA_ORIGEM: Record<OrigemDoPagamento, string> = {
   pix: 'Pix',
   dinheiro: 'Dinheiro',
   transferencia: 'Transferência',
@@ -56,7 +61,25 @@ export const ROTULO_DA_ORIGEM: Record<string, string> = {
 };
 
 /** As origens que o sócio pode escolher ao lançar. `stripe` fica fora: ninguém lança à mão. */
-export const ORIGENS_PARA_LANCAR = ['pix', 'dinheiro', 'transferencia', 'outro'] as const;
+export const ORIGENS_PARA_LANCAR = [
+  'pix',
+  'dinheiro',
+  'transferencia',
+  'outro',
+] as const satisfies readonly OrigemDoPagamento[];
+
+export type OrigemParaLancar = (typeof ORIGENS_PARA_LANCAR)[number];
+
+/**
+ * O rótulo de uma origem que veio do banco.
+ *
+ * Recebe texto, e não o tipo fechado, porque a linha do banco pode trazer uma
+ * origem que esta versão da tela ainda não conhece. Nesse caso mostra o valor
+ * cru, que é o que ajuda a investigar, em vez de uma célula vazia.
+ */
+export function rotuloDaOrigem(origem: string): string {
+  return (ROTULO_DA_ORIGEM as Record<string, string>)[origem] ?? origem;
+}
 
 /** `2026-09-01` → `2026-09`. O dia não importa: competência é mês. */
 function mesDe(competencia: string): string {
@@ -184,6 +207,17 @@ export function lerValorDigitado(texto: string): number | null | 'invalido' {
   // três casas viraria outro número na gravação, e a tela mostraria um e o
   // banco guardaria outro.
   return Math.round(numero * 100) / 100;
+}
+
+/**
+ * O valor combinado como texto de campo: `39.9` vira `39,9`, e nulo vira vazio.
+ *
+ * O avesso de `lerValorDigitado`, e mora do lado dela por isso. Os formulários
+ * de assinatura e de receita abrem com o valor que já existe, e cada um tinha a
+ * sua cópia.
+ */
+export function valorComoTexto(valor: number | null): string {
+  return valor === null ? '' : String(valor).replace('.', ',');
 }
 
 /** `2026-09` → `09/2026`. O mês como quem lê escreve. */

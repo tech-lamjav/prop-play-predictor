@@ -193,3 +193,15 @@ export function primeiroNome(nome: string | null): string | null {
   if (!inteiro) return null;
   return inteiro.split(/\s+/)[0];
 }
+
+/**
+ * "Oi, Maria!" ou "Oi!".
+ *
+ * A saudação inteira muda, e não só a lacuna: trocar a lacuna por vazio deixa
+ * "Oi, !", o defeito clássico do modelo com buraco. Mora aqui, junto do
+ * primeiro nome, porque as mensagens de abordagem, de conversão e de cobrança
+ * começam todas assim, e três cópias divergiriam na primeira vírgula.
+ */
+export function saudacao(primeiro: string | null): string {
+  return primeiro ? `Oi, ${primeiro}!` : 'Oi!';
+}

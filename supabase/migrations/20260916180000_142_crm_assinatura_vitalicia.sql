@@ -81,6 +81,8 @@ declare
   v_rotulo text;
   -- Sai daqui para o texto da linha do tempo não repetir a condição.
   v_vitalicio boolean := p_vence_em is null;
+  -- Se a pessoa já tinha assinatura aberta e ela foi editada, e não criada.
+  v_trocou boolean;
 begin
   if not public.eh_socio() then
     raise exception 'apenas socios';
@@ -137,17 +139,35 @@ begin
     raise exception 'pessoa nao encontrada';
   end if;
 
-  -- Renovar é dar de novo. Sem encerrar a anterior, o índice único derruba a
-  -- gravação e o sócio vê um erro de banco sem entender o que fez de errado.
+  /*
+   * Trocar o plano, o prazo ou o valor EDITA a assinatura aberta, e não
+   * encerra uma para abrir outra.
+   *
+   * Os pagamentos penduram na assinatura. A primeira versão encerrava a aberta
+   * e criava uma nova a cada troca, e com isso o histórico de Pix, o total
+   * recebido e os meses em aberto voltavam a zero na tela: quem devia três
+   * meses deixava de dever porque o sócio corrigiu o valor. Editar mantém o
+   * mesmo acordo, com o mesmo começo, e só muda os termos dele.
+   *
+   * O índice único garante no máximo uma aberta por pessoa, então o
+   * `returning` nunca devolve mais de uma linha.
+   */
   update public.crm_assinatura_manual
-    set encerrada_em = now(), encerrada_por = (select auth.uid())
-    where user_id = p_user_id and encerrada_em is null;
+    set plano = p_plano,
+        vence_em = p_vence_em,
+        valor_mensal = p_valor_mensal
+    where user_id = p_user_id and encerrada_em is null
+    returning id into v_id;
 
-  insert into public.crm_assinatura_manual
-    (user_id, plano, vence_em, valor_mensal, criada_por)
-  values
-    (p_user_id, p_plano, p_vence_em, p_valor_mensal, (select auth.uid()))
-  returning id into v_id;
+  v_trocou := v_id is not null;
+
+  if v_id is null then
+    insert into public.crm_assinatura_manual
+      (user_id, plano, vence_em, valor_mensal, criada_por)
+    values
+      (p_user_id, p_plano, p_vence_em, p_valor_mensal, (select auth.uid()))
+    returning id into v_id;
+  end if;
 
   -- A anotação diz as duas coisas separadas, porque são duas: até quando vale,
   -- e quanto foi combinado. Daqui a três meses é esta linha que responde por
@@ -156,7 +176,7 @@ begin
   values (
     p_user_id,
     'acesso',
-    v_rotulo || ' na mao, '
+    case when v_trocou then 'Assinatura trocada para ' || v_rotulo else v_rotulo || ' na mao' end || ', '
       || case when v_vitalicio then 'vitalicio' else 'valido ate ' || to_char(p_vence_em, 'DD/MM/YYYY') end
       || case when p_valor_mensal is null then ', sem cobranca'
               else ', R$ ' || to_char(p_valor_mensal, 'FM999999990.00') || ' por mes' end,

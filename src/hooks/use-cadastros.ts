@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/integrations/supabase/client';
 import type { EstadoDoPainel } from '@/components/socios/PainelCrm';
 import type { Cadastro } from '@/components/socios/crm-lista';
+import { CHAVES } from './crm-chaves';
 
 /**
  * Os campos que a lista usa, e só eles.
@@ -67,7 +68,7 @@ const TETO = 5000;
  */
 export function useCadastros(): EstadoDoPainel {
   const consulta = useQuery({
-    queryKey: ['socios', 'cadastros'],
+    queryKey: CHAVES.cadastros,
     queryFn: async () => {
       const { data, count, error } = await createClient()
         .from('users')

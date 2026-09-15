@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { KanbanDeLeads } from './KanbanDeLeads';
 import { montarLeads, type Lead } from './crm-painel';
-import { cadastroDeTeste } from './crm-cadastro-de-teste';
+import { cadastroDeTeste, fimDoTesteEm } from './crm-cadastro-de-teste';
 
 // ============================================================================
 // O kanban mostra a FORMA do funil
@@ -85,5 +85,24 @@ describe('KanbanDeLeads', () => {
     expect(
       within(screen.getByRole('region', { name: 'Novo' })).getByText('Pessoa 0'),
     ).toBeInTheDocument();
+  });
+
+  it('o cartão mostra a etiqueta de teste de quem tem', () => {
+    // A etiqueta é da pessoa. Só no filtro do topo, olhar a coluna não dizia
+    // quem estava com o teste vencendo.
+    montar(
+      montarLeads(
+        [
+          cadastroDeTeste({ id: 'x', name: 'Testando', futebol_trial_ends_at: fimDoTesteEm(HOJE, 0) }),
+          cadastroDeTeste({ id: 'y', name: 'Seco' }),
+        ],
+        {},
+        {},
+        {},
+        HOJE,
+      ),
+    );
+    expect(screen.getByRole('link', { name: /Testando/ })).toHaveTextContent('Teste vencendo');
+    expect(screen.getByRole('link', { name: /Seco/ })).not.toHaveTextContent(/Teste/);
   });
 });

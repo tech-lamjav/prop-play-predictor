@@ -7,8 +7,7 @@ import {
 } from '@/components/socios/crm-assinatura';
 import type { Cadastro } from '@/components/socios/crm-lista';
 import type { PlanoAVender } from '@/components/socios/crm-vocabulario';
-
-const CHAVE = ['socios', 'assinaturas-manuais'] as const;
+import { CHAVES } from './crm-chaves';
 
 /**
  * O estado da fila de cobrança.
@@ -32,7 +31,7 @@ export type EstadoDasAssinaturas =
  */
 export function useAssinaturas(cadastros: Cadastro[]): EstadoDasAssinaturas {
   const consulta = useQuery({
-    queryKey: CHAVE,
+    queryKey: CHAVES.assinaturas,
     queryFn: async (): Promise<AssinaturaDoBanco[]> => {
       const { data, error } = await createClient()
         .from('crm_assinatura_manual')
@@ -105,12 +104,14 @@ export function useEncerrarAssinatura() {
 }
 
 function invalidar(fila: ReturnType<typeof useQueryClient>, userId: string | undefined) {
-  fila.invalidateQueries({ queryKey: CHAVE });
+  fila.invalidateQueries({ queryKey: CHAVES.assinaturas });
   // A ficha e a lista também: conceder um plano muda o acesso da pessoa, e com
   // isso a posição dela no funil.
   if (userId) {
-    fila.invalidateQueries({ queryKey: ['socios', 'pessoa', userId] });
-    fila.invalidateQueries({ queryKey: ['socios', 'linha-do-tempo', userId] });
+    fila.invalidateQueries({ queryKey: CHAVES.pessoa(userId) });
+    fila.invalidateQueries({ queryKey: CHAVES.linhaDoTempo(userId) });
   }
-  fila.invalidateQueries({ queryKey: ['socios', 'cadastros'] });
+  fila.invalidateQueries({ queryKey: CHAVES.cadastros });
+  // A fila de inadimplentes também: trocar o valor muda o que a pessoa deve.
+  fila.invalidateQueries({ queryKey: CHAVES.pagamentosDeTodas });
 }

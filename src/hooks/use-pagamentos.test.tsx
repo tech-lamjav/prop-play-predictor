@@ -1,7 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEstornarPagamento, usePagamentos, useRegistrarPagamento } from './use-pagamentos';
+import {
+  useEstornarPagamento,
+  usePagamentos,
+  usePagamentosDasAssinaturas,
+  useRegistrarPagamento,
+} from './use-pagamentos';
 
 // ============================================================================
 // A fiação do dinheiro
@@ -160,6 +165,9 @@ describe('useRegistrarPagamento', () => {
     expect(chaves).toContain(JSON.stringify(['socios', 'pagamentos', 'a1']));
     expect(chaves).toContain(JSON.stringify(['socios', 'assinaturas-manuais']));
     expect(chaves).toContain(JSON.stringify(['socios', 'linha-do-tempo', 'u1']));
+    // A fila de inadimplentes lê todos os pagamentos de uma vez. Sem invalidar
+    // a chave dela, quem acabou de pagar continuaria na fila de devedores.
+    expect(chaves).toContain(JSON.stringify(['socios', 'pagamentos', 'todas']));
   });
 });
 
@@ -182,5 +190,42 @@ describe('useEstornarPagamento', () => {
     const { result } = renderHook(() => useEstornarPagamento('a1', 'u1'), { wrapper });
     result.current.mutate({ id: 'p1', motivo: '  ' });
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe('usePagamentosDasAssinaturas', () => {
+  it('agrupa os pagamentos por assinatura, com o valor virando número', async () => {
+    resposta.linhas = {
+      data: [
+        { ...linhaDoBanco, id: 'p1', assinatura_id: 'a1' },
+        { ...linhaDoBanco, id: 'p2', assinatura_id: 'a1', competencia: '2026-08-01' },
+        { ...linhaDoBanco, id: 'p3', assinatura_id: 'a2' },
+      ],
+      error: null,
+    };
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    await waitFor(() => expect(result.current.tipo).toBe('pronto'));
+    if (result.current.tipo !== 'pronto') throw new Error('não ficou pronto');
+    expect(result.current.porAssinatura.get('a1')).toHaveLength(2);
+    expect(result.current.porAssinatura.get('a2')?.[0].valor).toBe(39.9);
+  });
+
+  it('lê a tabela inteira, sem filtrar por assinatura', async () => {
+    // A fila de inadimplentes precisa de todo mundo de uma vez.
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    await waitFor(() => expect(result.current.tipo).toBe('pronto'));
+    expect(resposta.filtros).toContainEqual({ metodo: 'from', campo: 'crm_pagamento' });
+    expect(resposta.filtros.some((f) => f.metodo === 'eq')).toBe(false);
+  });
+
+  it('começa carregando, e erro é erro', async () => {
+    // "Ninguém devendo" por falta de dado faria o sócio deixar de cobrar.
+    resposta.linhas = { data: null, error: { message: 'caiu' } };
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    expect(result.current.tipo).toBe('carregando');
+    await waitFor(() => expect(result.current.tipo).toBe('erro'));
   });
 });

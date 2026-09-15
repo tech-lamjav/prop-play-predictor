@@ -34,6 +34,8 @@ const montar = (
     mudandoEtapa?: boolean;
     erroAoMudarEtapa?: boolean;
     linhaDoTempo?: React.ReactNode;
+    hoje?: string;
+    cobranca?: { plano: string; venceEm: string } | null;
   } = {},
 ) =>
   render(
@@ -45,6 +47,10 @@ const montar = (
         mudandoEtapa={extras.mudandoEtapa ?? false}
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
         linhaDoTempo={extras.linhaDoTempo ?? null}
+        hoje={extras.hoje ?? '2026-09-12'}
+        cobranca={extras.cobranca ?? null}
+        perfilDeAposta={null}
+        receita={null}
         comportamento={<p>o comportamento</p>}
         edicaoDeAcesso={<p>o editor de acesso</p>}
         assinatura={<p>o formulário de assinatura</p>}
@@ -146,6 +152,10 @@ describe('Ficha', () => {
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
           linhaDoTempo={null}
+          hoje="2026-09-12"
+          cobranca={null}
+          perfilDeAposta={null}
+          receita={null}
           comportamento={null}
           edicaoDeAcesso={null}
           assinatura={null}
@@ -237,6 +247,10 @@ describe('Ficha · a linha do tempo entra na página', () => {
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
           linhaDoTempo={<p>a linha do tempo</p>}
+          hoje="2026-09-12"
+          cobranca={null}
+          perfilDeAposta={null}
+          receita={null}
           comportamento={null}
           edicaoDeAcesso={null}
           assinatura={null}
@@ -325,5 +339,46 @@ describe('Ficha · o cabeçalho e as abas', () => {
     montar();
     await userEvent.click(screen.getByRole('tab', { name: /Comportamento/ }));
     expect(screen.getByLabelText('Etapa do lead')).toBeInTheDocument();
+  });
+});
+
+describe('Ficha · o teste gratuito e a cobrança', () => {
+  // `hoje` é 12/09 e o teste termina no dia 13: sobram hoje e amanhã.
+  const emTeste = pessoa({
+    betinho_subscription_status: 'free',
+    futebol_subscription_status: 'free',
+    futebol_trial_ends_at: '2026-09-13T15:00:00Z',
+  });
+
+  it('a etiqueta de teste aparece no cabeçalho', () => {
+    montar(emTeste);
+    const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
+    expect(within(cabecalho).getByText('Teste vencendo')).toBeInTheDocument();
+  });
+
+  it('quem está em teste recebe a mensagem de conversão como sugerida', () => {
+    // É o contato da véspera com mensagem pronta, que foi o pedido. A de
+    // abordagem continua no seletor.
+    montar(emTeste, { total: 0, ultima: null }, { etapa: 'nutrindo' });
+    const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
+    expect((within(bloco).getByRole('textbox') as HTMLTextAreaElement).value).toMatch(
+      /teste do futebol acaba amanhã/,
+    );
+  });
+
+  it('quem já assina não recebe etiqueta nem conversão', () => {
+    montar(pessoa({ futebol_trial_ends_at: '2026-09-13T15:00:00Z' }));
+    expect(screen.queryByText('Teste vencendo')).not.toBeInTheDocument();
+    const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
+    expect((within(bloco).getByRole('textbox') as HTMLTextAreaElement).value).not.toMatch(
+      /teste do futebol/,
+    );
+  });
+
+  it('com assinatura que vence, a mensagem de cobrança fica à escolha', () => {
+    montar(pessoa(), { total: 0, ultima: null }, {
+      cobranca: { plano: 'Essencial', venceEm: '2026-09-20' },
+    });
+    expect(screen.getByRole('option', { name: /Vencimento da assinatura/ })).toBeInTheDocument();
   });
 });

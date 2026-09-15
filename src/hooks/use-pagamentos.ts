@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/integrations/supabase/client';
 import {
   montarPagamentos,
+  type OrigemParaLancar,
   type Pagamento,
   type PagamentoDoBanco,
 } from '@/components/socios/crm-receita';
-
-const CHAVE = (assinaturaId: string) => ['socios', 'pagamentos', assinaturaId] as const;
+import { CHAVES } from './crm-chaves';
 
 /**
  * O estado dos pagamentos de uma assinatura.
@@ -28,7 +28,7 @@ export type EstadoDosPagamentos =
  */
 export function usePagamentos(assinaturaId: string | undefined): EstadoDosPagamentos {
   const consulta = useQuery({
-    queryKey: CHAVE(assinaturaId ?? 'nenhuma'),
+    queryKey: CHAVES.pagamentos(assinaturaId ?? 'nenhuma'),
     enabled: !!assinaturaId,
     queryFn: async (): Promise<PagamentoDoBanco[]> => {
       const { data, error } = await createClient()
@@ -50,11 +50,56 @@ export function usePagamentos(assinaturaId: string | undefined): EstadoDosPagame
   return { tipo: 'pronto', pagamentos: montarPagamentos(consulta.data) };
 }
 
+export type EstadoDosPagamentosPorAssinatura =
+  | { tipo: 'carregando' }
+  | { tipo: 'erro' }
+  | { tipo: 'pronto'; porAssinatura: ReadonlyMap<string, Pagamento[]> };
+
+/**
+ * Os pagamentos de TODAS as assinaturas, agrupados por assinatura.
+ *
+ * Para a fila de inadimplentes, que precisa dos meses em aberto de todo mundo de
+ * uma vez. Uma consulta por assinatura seriam dezenas de idas ao servidor para
+ * montar uma lista; a tabela de pagamentos recebidos na mão é pequena, e a
+ * política já restringe a leitura a sócio.
+ *
+ * O mapa é montado dentro da consulta, e não a cada desenho: montado fora, ele
+ * nasceria novo em toda renderização e a fila recalcularia sem motivo.
+ */
+export function usePagamentosDasAssinaturas(): EstadoDosPagamentosPorAssinatura {
+  const consulta = useQuery({
+    queryKey: CHAVES.pagamentosDeTodas,
+    queryFn: async (): Promise<Map<string, Pagamento[]>> => {
+      const { data, error } = await createClient()
+        .from('crm_pagamento')
+        .select(
+          'id, assinatura_id, competencia, valor, origem, pago_em, estornado_em, motivo_do_estorno',
+        )
+        .order('competencia', { ascending: false });
+      if (error) throw error;
+
+      const linhas = (data ?? []) as unknown as (PagamentoDoBanco & { assinatura_id: string })[];
+      const brutas = new Map<string, PagamentoDoBanco[]>();
+      for (const linha of linhas) {
+        const daAssinatura = brutas.get(linha.assinatura_id) ?? [];
+        daAssinatura.push(linha);
+        brutas.set(linha.assinatura_id, daAssinatura);
+      }
+      return new Map([...brutas].map(([id, lista]) => [id, montarPagamentos(lista)]));
+    },
+    staleTime: 60 * 1000,
+  });
+
+  if (consulta.isError) return { tipo: 'erro' };
+  if (!consulta.data) return { tipo: 'carregando' };
+  return { tipo: 'pronto', porAssinatura: consulta.data };
+}
+
 export interface PagamentoALancar {
   /** `YYYY-MM`, o mês a que o dinheiro se refere. */
   mes: string;
   valor: number;
-  origem: string;
+  origem: OrigemParaLancar;
   /** `YYYY-MM-DD`, o dia em que caiu. */
   pagoEm: string;
 }
@@ -114,15 +159,19 @@ function invalidar(
   assinaturaId: string | undefined,
   userId: string | undefined,
 ) {
-  if (assinaturaId) fila.invalidateQueries({ queryKey: CHAVE(assinaturaId) });
+  if (assinaturaId) fila.invalidateQueries({ queryKey: CHAVES.pagamentos(assinaturaId) });
+
+  // A fila de inadimplentes também: um pagamento tira a pessoa de lá, e o
+  // estorno pode colocar de volta.
+  fila.invalidateQueries({ queryKey: CHAVES.pagamentosDeTodas });
 
   // A assinatura também: registrar um pagamento empurra o `vence_em`, e sem
   // isto a ficha continuaria mostrando a data velha ao lado do pagamento novo.
-  fila.invalidateQueries({ queryKey: ['socios', 'assinaturas-manuais'] });
+  fila.invalidateQueries({ queryKey: CHAVES.assinaturas });
 
   if (userId) {
-    fila.invalidateQueries({ queryKey: ['socios', 'pessoa', userId] });
-    fila.invalidateQueries({ queryKey: ['socios', 'linha-do-tempo', userId] });
+    fila.invalidateQueries({ queryKey: CHAVES.pessoa(userId) });
+    fila.invalidateQueries({ queryKey: CHAVES.linhaDoTempo(userId) });
   }
-  fila.invalidateQueries({ queryKey: ['socios', 'cadastros'] });
+  fila.invalidateQueries({ queryKey: CHAVES.cadastros });
 }

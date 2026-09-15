@@ -106,8 +106,8 @@ mudança deixa um registro do tipo `acesso` na linha do tempo, que ninguém digi
 _Avoid_: Cortesia, comp, override, liberar acesso manual
 
 **Teste do futebol**:
-A janela entre `futebol_trial_started_at` e `futebol_trial_ends_at`, gravados
-juntos. Dura 48 horas para quem começa hoje; quem começou antes de 12/09/2026
+A janela entre o começo e o fim do teste, gravados juntos. Dura 48 horas para
+quem começa hoje; quem começou antes de 12/09/2026
 ficou com os 7 dias que a página prometia. Por isso o acesso se decide pelo FIM
 gravado, e nunca pelo início mais uma duração. Não é
 status de assinatura, e tem controle próprio na ficha: tratá-lo como um quarto
@@ -120,8 +120,8 @@ _Avoid_: Trial, free trial, degustação, período de teste
 Um plano inteiro concedido por um sócio, fora do Stripe. Segue a escada
 cumulativa: Entrada é o Betinho, Essencial é futebol mais Betinho, Completo é os
 três. É coisa diferente de um acesso avulso, que liga UM produto sem plano nem
-prazo. Toda concessão vira linha em `crm_assinatura_manual`, e é dessa tabela que
-sai a fila de cobrança.
+prazo. Trocar o plano, o prazo ou o valor é mudar os termos da MESMA assinatura,
+e não dar outra: o histórico de pagamento pertence a ela.
 
 Combina duas coisas INDEPENDENTES: até quando vale e quanto custa por mês. As
 quatro combinações existem, e é por isso que são duas perguntas na tela e duas
@@ -131,13 +131,13 @@ _Avoid_: Cortesia paga, plano de teste, assinatura interna
 
 **Vitalícia**:
 Assinatura manual que não vence. Sócio, parceiro, quem ajudou a construir a
-coisa. No banco é `vence_em` nulo, e nulo é a resposta certa: a alternativa era
+coisa. Não tem data de fim, e a ausência é a resposta certa: a alternativa era
 digitar uma data de 2099, um número falso que o resto do sistema trataria como
 verdade e que um dia chegaria.
 
 Não entra na fila de vencimento, porque não tem o que vencer. ⚠️ Pode ter
 cobrança mensal: quem é vitalício e paga todo mês fica devendo como qualquer
-outro, só não perde o acesso por atraso. Vitalícia e sem cobrança são coisas
+outro e entra na fila de inadimplentes. Vitalícia e sem cobrança são coisas
 diferentes, e confundir as duas faz um cliente pagante desaparecer da conta de
 receita.
 _Avoid_: Permanente, eterna, para sempre, ilimitada, lifetime
@@ -149,6 +149,14 @@ sozinha: sem a fila, o acesso some um dia e a conversa acontece tarde, com a
 pessoa já sem o produto. É a terceira seção do CRM, ao lado de Leads e
 Feedbacks, e responde uma terceira pergunta: "quem eu preciso cobrar".
 _Avoid_: Renovações, vencimentos, inadimplentes
+
+**Fila de inadimplentes**:
+Quem tem cobrança mensal combinada e está com mês em aberto, do que deve mais
+para o que deve menos. É OUTRA fila, e não a de cobrança: a de cobrança sai da
+data de vencimento, e esta sai do dinheiro que não entrou. Por isso a vitalícia
+com cobrança entra aqui e nunca entra na outra. Ninguém sai dela encerrado
+sozinho: ela é o lugar onde o sócio decide encerrar.
+_Avoid_: Devedores, calote, caloteiros, bloqueados
 
 **Etiqueta**:
 O que o produto diz sobre a pessoa, num eixo SEPARADO da etapa. Hoje só existem

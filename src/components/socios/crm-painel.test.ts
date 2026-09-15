@@ -13,7 +13,7 @@ import {
   montarLeads,
   type Toques,
 } from './crm-painel';
-import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
+import { cadastroDeTeste as cadastro, fimDoTesteEm } from './crm-cadastro-de-teste';
 import type { EtapasGravadas } from './crm-funil';
 
 const HOJE = '2026-09-11';
@@ -342,11 +342,7 @@ describe('filtrarPorPeriodo', () => {
 describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
   const HOJE_T = '2026-09-12';
   /** Teste cujo último dia de acesso é daqui a `dias` dias. Zero é hoje. */
-  const terminaEm = (dias: number) => {
-    const d = new Date(`${HOJE_T}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + dias);
-    return `${d.toISOString().slice(0, 10)}T15:00:00Z`;
-  };
+  const terminaEm = (dias: number) => fimDoTesteEm(HOJE_T, dias);
   const montaT = (cadastros: Parameters<typeof montarLeads>[0], etapas: EtapasGravadas = {}) =>
     montarLeads(cadastros, etapas, {}, {}, HOJE_T);
 

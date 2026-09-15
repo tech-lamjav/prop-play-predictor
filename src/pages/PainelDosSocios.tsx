@@ -16,7 +16,7 @@ import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
 import { mensagemDoErro } from '@/components/socios/crm-linha-do-tempo';
-import { ROTA_DO_CRM } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_CRM, ROTULO_DO_PLANO } from '@/components/socios/crm-vocabulario';
 import { useCadastros } from '@/hooks/use-cadastros';
 import { useEtapas, useMudarEtapa } from '@/hooks/use-etapas';
 import { useLinhaDoTempo, useAnotar } from '@/hooks/use-linha-do-tempo';
@@ -72,6 +72,21 @@ export default function PainelDosSocios() {
       </FichaEmModal>
     </>
   );
+}
+
+/**
+ * O estado de uma gravação feita por mutações que nunca correm juntas.
+ *
+ * A ficha fazia a mesma conta duas vezes, com o mesmo ternário: lançar e
+ * estornar um pagamento, e dar e encerrar uma assinatura. Cada par trava o
+ * mesmo formulário enquanto grava, e o recado de erro é o da que falhou.
+ */
+function estadoDaGravacao(
+  ...mutacoes: { isPending: boolean; isError: boolean; error: unknown }[]
+): EstadoDaConcessao {
+  if (mutacoes.some((m) => m.isPending)) return { tipo: 'salvando' };
+  const falhou = mutacoes.find((m) => m.isError);
+  return falhou ? { tipo: 'erro', recado: mensagemDoErro(falhou.error) } : { tipo: 'parado' };
 }
 
 /**
@@ -136,29 +151,8 @@ function FichaDoModal({ id }: { id: string }) {
   const registrarPagamento = useRegistrarPagamento(assinaturaAberta?.id, id);
   const estornarPagamento = useEstornarPagamento(assinaturaAberta?.id, id);
 
-  /**
-   * Um estado para as duas escritas de dinheiro.
-   *
-   * Lançar e estornar nunca acontecem ao mesmo tempo — as duas travam a mesma
-   * lista enquanto gravam — e separá-los só faria a tela ter dois jeitos de
-   * dizer a mesma coisa.
-   */
-  const escritaDaReceita: EstadoDaReceita =
-    registrarPagamento.isPending || estornarPagamento.isPending
-      ? { tipo: 'salvando' }
-      : registrarPagamento.isError || estornarPagamento.isError
-        ? {
-            tipo: 'erro',
-            recado: mensagemDoErro(registrarPagamento.error ?? estornarPagamento.error),
-          }
-        : { tipo: 'parado' };
-
-  const concessao: EstadoDaConcessao =
-    darAssinatura.isPending || encerrarAssinatura.isPending
-      ? { tipo: 'salvando' }
-      : darAssinatura.isError || encerrarAssinatura.isError
-        ? { tipo: 'erro', recado: mensagemDoErro(darAssinatura.error ?? encerrarAssinatura.error) }
-        : { tipo: 'parado' };
+  const escritaDaReceita: EstadoDaReceita = estadoDaGravacao(registrarPagamento, estornarPagamento);
+  const concessao: EstadoDaConcessao = estadoDaGravacao(darAssinatura, encerrarAssinatura);
 
   return (
     <Ficha
@@ -169,6 +163,14 @@ function FichaDoModal({ id }: { id: string }) {
       aoMudarEtapa={(etapa) => mudar.mutate(etapa)}
       mudandoEtapa={mudar.isPending}
       erroAoMudarEtapa={mudar.isError}
+      hoje={hoje}
+      // A mensagem de cobrança fala de uma data. Sem assinatura, ou com uma
+      // vitalícia, não há data nenhuma para ela falar.
+      cobranca={
+        assinaturaAberta?.venceEm
+          ? { plano: ROTULO_DO_PLANO[assinaturaAberta.plano], venceEm: assinaturaAberta.venceEm }
+          : null
+      }
       // Só com a ficha carregada: o editor abre mostrando o que JÁ vale, e sem
       // a linha do banco ele nasceria todo em branco — um convite a apagar sem
       // querer o acesso de quem já tem.

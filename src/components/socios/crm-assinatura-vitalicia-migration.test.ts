@@ -128,8 +128,22 @@ describe('crm_dar_assinatura_manual', () => {
     expect(DAR).toMatch(/raise exception 'plano desconhecido/);
   });
 
-  it('continua encerrando a anterior antes de abrir a nova', () => {
-    expect(DAR).toMatch(/update public\.crm_assinatura_manual[\s\S]*?set encerrada_em/);
+  it('trocar plano, prazo ou valor edita a aberta, e não encerra para abrir outra', () => {
+    // ⚠️ Os pagamentos penduram na assinatura. Encerrar e criar outra a cada
+    // troca zerava na tela o total recebido e os meses em aberto: quem devia
+    // três meses deixava de dever porque o sócio corrigiu o valor.
+    expect(DAR).not.toMatch(/set encerrada_em/);
+    expect(DAR).toMatch(
+      /update public\.crm_assinatura_manual\s+set plano = p_plano,[\s\S]*?where user_id = p_user_id and encerrada_em is null/,
+    );
+    expect(DAR).toMatch(/if v_id is null then[\s\S]*?insert into public\.crm_assinatura_manual/);
+  });
+
+  it('a linha do tempo diz quando foi troca, e não assinatura nova', () => {
+    // Daqui a três meses alguém pergunta por que o valor dessa pessoa mudou, e a
+    // resposta precisa dizer que foi o mesmo acordo com outros termos.
+    expect(DAR).toMatch(/v_trocou := v_id is not null/);
+    expect(DAR).toMatch(/Assinatura trocada para/);
   });
 
   it('não monta SQL com texto vindo de fora', () => {

@@ -287,3 +287,17 @@ describe('quando não há o que mostrar', () => {
     expect(screen.getByText(/cobrar seria chute/i)).toBeInTheDocument();
   });
 });
+
+describe('quem está devendo', () => {
+  it('é avisado de que a assinatura não encerra sozinha', () => {
+    // Ver "devendo 3 meses" sem saber o que acontece em seguida leva a
+    // esperar um corte que não vem.
+    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9 } });
+    expect(screen.getByText(/não encerra sozinha/)).toBeInTheDocument();
+  });
+
+  it('quem está em dia não recebe o aviso', () => {
+    montar({ estado: pronto([linha()]) });
+    expect(screen.queryByText(/não encerra sozinha/)).not.toBeInTheDocument();
+  });
+});
