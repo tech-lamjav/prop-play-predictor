@@ -1102,7 +1102,11 @@ export const futebolDataService = {
    */
   async getOportunidadesPublicadas(de: string, ate: string): Promise<LinhaPublicada[]> {
     return withRetry(async () => {
-      const { data, error } = await supabaseClient.rpc('get_futebol_oportunidades_publicadas', {
+      // Uma resposta só, em JSON, e não linha a linha: a API corta resposta de
+      // várias linhas em 1.000, e o período padrão passa de 3.000. Cortada, a
+      // tela recebia só os jogos mais distantes — todos por jogar — e dizia que
+      // nada tinha liquidado (migration 137).
+      const { data, error } = await supabaseClient.rpc('get_futebol_placar_da_metodologia', {
         p_de: de,
         p_ate: ate,
       });
