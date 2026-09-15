@@ -55,7 +55,7 @@ export default function PlacarDaMetodologia() {
   );
   const [recorte, setRecorte] = useState<Recorte>(SEM_RECORTE);
   const [pesos, setPesos] = useState<PesoPorFaixa>(PESO_DE_ABERTURA);
-  const { vitrine } = useVitrine();
+  const { vitrine, limiares } = useVitrine();
 
   /**
    * O que a RPC devolveu, recortado pelas três escolhas da tela.
@@ -69,7 +69,7 @@ export default function PlacarDaMetodologia() {
    */
   const recortar = (linhas: LinhaPublicada[], janela: Periodo) => {
     const noEixo = aplicarRecorte(filtrarPeloEixo(linhas, eixo, janela), recorte);
-    const publicadas = soVitrine ? soAVitrine(noEixo, vitrine) : noEixo;
+    const publicadas = soVitrine ? soAVitrine(noEixo, vitrine, Date.now(), limiares) : noEixo;
     return { publicadas, foraDaVitrine: noEixo.length - publicadas.length };
   };
 

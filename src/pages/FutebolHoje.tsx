@@ -346,7 +346,7 @@ export default function FutebolHoje() {
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
-  const { vitrine, ocultos, isLoading: lVitrine } = useVitrine();
+  const { vitrine, ocultos, limiares, isLoading: lVitrine } = useVitrine();
   // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
   // conteúdo renderiza borrado, desborrando quando a resposta volta. Para quem
   // paga, isso é o mesmo defeito do card de motivos, num lugar diferente.
@@ -404,8 +404,8 @@ export default function FutebolHoje() {
   // exclusivo desta tela: ele zerava a home toda noite, num dia que teve
   // oportunidades. Quem quer só o que dá para acompanhar tem o filtro no painel.
   const valueRows = useMemo(
-    () => mergeBoardAndHistory(boardRows ?? [], histRows ?? [], agora, vitrine),
-    [boardRows, histRows, agora, vitrine],
+    () => mergeBoardAndHistory(boardRows ?? [], histRows ?? [], agora, vitrine, limiares),
+    [boardRows, histRows, agora, vitrine, limiares],
   );
   // As oportunidades REGISTRADAS entram aqui pelo mesmo motivo que entram no
   // painel: elas existiram no dia e o board não as tem mais, porque o mart é

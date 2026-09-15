@@ -31,6 +31,7 @@ import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { ehFaixaPublicavel } from "../shared/faixa.ts";
 import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
+import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
 import { logMessageRun } from "../shared/runs.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -213,9 +214,17 @@ serve(async (req) => {
     const vitrine = await carregarMercadosOcultos(supabase);
     const mercadosOcultos = vitrine.mercados;
 
+    // 1c) o corte de valor (migration 137), da MESMA fonte do painel. A linha de
+    // mercado com limiar que paga abaixo dele some da tela — e sem isto chegaria
+    // no celular.
+    const corte = await carregarLimiaresDeValor(supabase);
+
     const now = new Date();
     const today = brtDay(now);
-    const naVitrine = filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos);
+    const naVitrine = filtrarCorteDeValor(
+      filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos),
+      corte.limiares,
+    );
     const todayRows = naVitrine.filter((r) => {
       const k = kickoffDate(r.kickoff_utc);
       return k.getTime() > now.getTime() && brtDay(k) === today && ehFaixaPublicavel(r.faixa);
@@ -246,6 +255,8 @@ serve(async (req) => {
         // mas é o sinal de que a vitrine pode estar desatualizada, e sem ele
         // isso sobreviveria em silêncio.
         vitrine: { origem: vitrine.origem, ocultos: mercadosOcultos },
+        // Mesma leitura para o corte: "fallback" é DM correta com limiar embutido.
+        corte: { origem: corte.origem, limiares: corte.limiares },
         picks: picks.map((p) => ({
           jogo: `${p.home_team_name} × ${p.away_team_name}`,
           pick: pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name),

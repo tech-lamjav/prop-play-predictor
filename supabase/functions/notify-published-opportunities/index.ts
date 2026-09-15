@@ -15,6 +15,7 @@ import { trackedUrl } from "../shared/links.ts";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { logMessageRun } from "../shared/runs.ts";
 import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
+import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
 import { planPublicationBatch, type PublicationBoardRow } from "./planner.ts";
 import {
   type PublishedMessageOpportunity,
@@ -362,6 +363,9 @@ serve(async (req) => {
     // deixaria o alerta de publicação continuar mandando. Ver #324.
     const vitrine = await carregarMercadosOcultos(supabase);
     const mercadosOcultos = vitrine.mercados;
+    // O corte de valor (migration 137), pelo mesmo motivo: cortar só no
+    // `notify-opportunities` deixaria o alerta de publicação mandando.
+    const corte = await carregarLimiaresDeValor(supabase);
     const now = new Date();
     const { data: existing, error: existingError } = await supabase
       .from("futebol_publication_alerts")
@@ -372,7 +376,10 @@ serve(async (req) => {
       alreadyAlerted: new Set(
         (existing ?? []).map((row: any) => row.opportunity_key as string),
       ),
-      board: filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos),
+      board: filtrarCorteDeValor(
+        filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos),
+        corte.limiares,
+      ),
     });
 
     const { data: recipients, error: recipientsError } = await supabase.rpc(
@@ -383,6 +390,7 @@ serve(async (req) => {
       return json({
         ok: true,
         mode,
+        corte: { origem: corte.origem, limiares: corte.limiares },
         new_opportunities: plan.newOpportunities.map((row) => ({
           key: row.key,
           jogo: `${row.home_team_name} × ${row.away_team_name}`,
