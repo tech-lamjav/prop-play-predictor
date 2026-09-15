@@ -76,11 +76,13 @@ export default function PlacarDaMetodologia() {
   const estado = useOportunidadesPublicadas(periodo.de, periodo.ate);
   const a = recortar(estado.tipo === 'pronto' ? estado.publicadas : [], periodo);
 
-  // A segunda consulta só sai quando há comparação. As datas iguais fazem dela
-  // uma chamada vazia e barata quando não há, sem um hook condicional.
+  // A segunda consulta só sai quando há comparação. Sem ela, fica desligada —
+  // e não uma chamada com datas iguais, que parecia barata e rodava a consulta
+  // inteira do placar de novo.
   const estadoB = useOportunidadesPublicadas(
     periodoB?.de ?? periodo.de,
     periodoB?.ate ?? periodo.de,
+    periodoB !== null,
   );
   const publicadasB =
     periodoB && estadoB.tipo === 'pronto' ? recortar(estadoB.publicadas, periodoB).publicadas : [];

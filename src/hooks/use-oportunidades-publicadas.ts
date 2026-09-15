@@ -20,7 +20,18 @@ export type EstadoDoPlacar =
  *
  * Não liquida nada: o veredito sai da regra do site, no módulo de agregação.
  */
-export function useOportunidadesPublicadas(de: string, ate: string): EstadoDoPlacar {
+export function useOportunidadesPublicadas(
+  de: string,
+  ate: string,
+  /**
+   * Desligada, a consulta não sai.
+   *
+   * Existe para a segunda janela da tela, que só tem sentido comparando. Chamar
+   * com datas quaisquer "para não ter hook condicional" rodava a consulta
+   * inteira do placar à toa, disputando o mesmo limite de tempo da primeira.
+   */
+  ativa = true,
+): EstadoDoPlacar {
   const consulta = useQuery({
     queryKey: ['socios', 'placar', de, ate],
     // A chamada vive no service de futebol, com as outras RPCs do módulo: é
@@ -31,6 +42,7 @@ export function useOportunidadesPublicadas(de: string, ate: string): EstadoDoPla
     // jogo de hoje liquidando. Cinco minutos é o suficiente para o sócio ver a
     // conta andar sem a tela consultar a cada clique de filtro.
     staleTime: 5 * 60 * 1000,
+    enabled: ativa,
   });
 
   if (consulta.isError) return { tipo: 'erro' };
