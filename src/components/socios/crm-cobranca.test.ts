@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mensagemDeCobranca, prazoDe, type Prazo } from './crm-cobranca';
+import { mensagemDeCobranca, mensagemDeConversao, prazoDe, type Prazo } from './crm-cobranca';
 
 const HOJE = '2026-09-12';
 
@@ -88,5 +88,54 @@ describe('mensagemDeCobranca', () => {
     expect(
       mensagemDeCobranca('Maria', 'Essencial', '2026-09-13', { tipo: 'a_vencer', dias: 1 }),
     ).not.toMatch(/1 dias/);
+  });
+});
+
+describe('mensagemDeConversao', () => {
+  it('usa o primeiro nome, e sem nome não sobra vírgula', () => {
+    expect(mensagemDeConversao('Maria Silva', 3)).toContain('Maria');
+    const anonimo = mensagemDeConversao(null, 3);
+    expect(anonimo).not.toMatch(/,\s*[!?.]/);
+    expect(anonimo.trim()).toBe(anonimo);
+  });
+
+  it('a véspera diz "amanhã", e não "em 1 dias"', () => {
+    const texto = mensagemDeConversao('Maria', 1);
+    expect(texto).toContain('amanhã');
+    expect(texto).not.toMatch(/1 dias|em 1 dia/);
+  });
+
+  it('o último dia diz que é hoje', () => {
+    // "Acaba amanhã" para quem perde o acesso hoje à noite é a mensagem
+    // chegando com um dia de atraso, no dia que menos podia.
+    const texto = mensagemDeConversao('Maria', 0);
+    expect(texto).toMatch(/hoje/i);
+    // A palavra "amanhã" pode aparecer, e aparece: "você não fica sem nada
+    // amanhã". O que ela não pode dizer é que o teste ACABA amanhã.
+    expect(texto).not.toMatch(/acaba amanhã/);
+  });
+
+  it('depois de vencer, fala no passado e oferece retomada', () => {
+    const texto = mensagemDeConversao('Maria', -3);
+    expect(texto).toMatch(/acabou/i);
+    expect(texto).not.toMatch(/acaba amanhã|último dia/);
+    expect(texto).toMatch(/de volta|retomar/i);
+  });
+
+  it('nunca promete preço nem link', () => {
+    // Quem sabe o que foi combinado é o sócio. Um valor errado numa proposta é
+    // pior que nenhum, e um link inventado é pior ainda.
+    for (const dias of [-5, 0, 1, 5]) {
+      const texto = mensagemDeConversao('Maria', dias);
+      expect(texto, String(dias)).not.toMatch(/R\$|http|link/i);
+    }
+  });
+
+  it('nenhuma delas usa travessão', () => {
+    for (const dias of [-30, -1, 0, 1, 2, 6]) {
+      for (const nome of ['Maria', null]) {
+        expect(mensagemDeConversao(nome, dias), String(dias)).not.toMatch(/[–—]/);
+      }
+    }
   });
 });

@@ -34,14 +34,14 @@ describe('ROTULO_DA_ETAPA', () => {
 
 describe('filtrarPorEtapa', () => {
   const base = [cadastro({ id: 'a' }), cadastro({ id: 'b' }), cadastro({ id: 'c' })];
-  const etapas = { b: 'contatado', c: 'interesse' };
+  const etapas = { b: 'primeiro_contato', c: 'interesse' };
 
   it('sem filtro, devolve tudo', () => {
     expect(filtrarPorEtapa(base, etapas, null)).toHaveLength(3);
   });
 
   it('filtra pela etapa gravada', () => {
-    expect(filtrarPorEtapa(base, etapas, 'contatado').map((c) => c.id)).toEqual(['b']);
+    expect(filtrarPorEtapa(base, etapas, 'primeiro_contato').map((c) => c.id)).toEqual(['b']);
   });
 
   it('o filtro de "novo" encontra quem nunca foi tocado', () => {

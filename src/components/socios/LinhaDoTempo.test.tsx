@@ -44,7 +44,11 @@ describe('LinhaDoTempo', () => {
     montar();
     const lista = screen.getByRole('list', { name: /linha do tempo/i });
     expect(within(lista).getByText(/achou o Betinho confuso/)).toBeInTheDocument();
-    expect(within(lista).getByText(/Novo.*Contatado/)).toBeInTheDocument();
+    // `contatado` saiu do vocabulário na migration 138, e o evento gravado
+    // naquele dia continua dizendo `contatado`. O rótulo cai no valor cru em
+    // vez de imprimir `undefined`: a linha do tempo mostra o que aconteceu,
+    // com o nome que a etapa tinha então.
+    expect(within(lista).getByText(/Novo.*contatado/)).toBeInTheDocument();
   });
 
   it('diz qual sócio registrou cada coisa', () => {
@@ -60,7 +64,7 @@ describe('LinhaDoTempo', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: /só feedbacks/i }));
     expect(screen.getByText(/achou o Betinho confuso/)).toBeInTheDocument();
     expect(screen.queryByText(/pediu para retomar/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Novo.*Contatado/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Novo.*contatado/)).not.toBeInTheDocument();
   });
 
   it('anotação vazia não grava', async () => {

@@ -155,3 +155,117 @@ describe('MensagemPronta · o link', () => {
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
   });
 });
+
+describe('MensagemPronta · trocar de mensagem', () => {
+  const OPCOES = [
+    { id: 'novo', grupo: 'Novo', rotulo: 'Geral', texto: 'Texto geral do novo.' },
+    {
+      id: 'novo:betinho',
+      grupo: 'Novo',
+      rotulo: 'Betinho',
+      texto: 'Oi, Maria! Vi que você começou a usar o Betinho.',
+    },
+    { id: 'sem_resposta', grupo: 'Sem resposta', rotulo: 'Geral', texto: 'Texto de retomada.' },
+  ];
+
+  const comCatalogo = (over: Partial<Parameters<typeof MensagemPronta>[0]> = {}) =>
+    montar({ opcoes: OPCOES, idSugerido: 'novo:betinho', ...over });
+
+  const seletor = () => screen.getByRole('combobox', { name: /outra mensagem/i });
+
+  it('sem catálogo, não há seletor', () => {
+    // A fila de cobrança tem um texto só para cada prazo. Um seletor de uma
+    // opção é ruído.
+    montar();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  it('com catálogo, a sugerida vem escolhida e marcada', () => {
+    comCatalogo();
+    expect(seletor()).toHaveValue('novo:betinho');
+    expect(screen.getByRole('option', { name: /Betinho \(sugerida\)/ })).toBeInTheDocument();
+  });
+
+  it('as opções vêm agrupadas por etapa', () => {
+    comCatalogo();
+    expect(screen.getByRole('group', { name: 'Sem resposta' })).toBeInTheDocument();
+  });
+
+  it('escolher outra troca o texto, e o link do WhatsApp acompanha', async () => {
+    comCatalogo();
+    await userEvent.selectOptions(seletor(), 'sem_resposta');
+    expect(campo()).toHaveValue('Texto de retomada.');
+    expect(screen.getByRole('link', { name: /whatsapp/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining(encodeURIComponent('Texto de retomada.')),
+    );
+  });
+
+  it('escolher outra descarta o que foi digitado', async () => {
+    // Manter o texto velho na caixa com outra opção marcada faria a tela dizer
+    // uma coisa e mostrar outra.
+    comCatalogo();
+    await userEvent.clear(campo());
+    await userEvent.type(campo(), 'rascunho meu');
+    await userEvent.selectOptions(seletor(), 'sem_resposta');
+    expect(campo()).toHaveValue('Texto de retomada.');
+    expect(screen.queryByRole('button', { name: /voltar ao modelo/i })).not.toBeInTheDocument();
+  });
+
+  it('voltar ao modelo devolve a mensagem escolhida, e não a sugerida', async () => {
+    comCatalogo();
+    await userEvent.selectOptions(seletor(), 'sem_resposta');
+    await userEvent.type(campo(), ' mexi');
+    await userEvent.click(screen.getByRole('button', { name: /voltar ao modelo/i }));
+    expect(campo()).toHaveValue('Texto de retomada.');
+  });
+
+  it('a escolha do sócio sobrevive à troca de etapa', () => {
+    // Quem escolheu uma mensagem de propósito não pode perdê-la porque mexeu
+    // na etapa logo em seguida.
+    const { rerender } = render(
+      <MensagemPronta
+        modelo={OPCOES[1].texto}
+        opcoes={OPCOES}
+        idSugerido="novo:betinho"
+        numero="5511998877665"
+      />,
+    );
+    return userEvent.selectOptions(seletor(), 'novo').then(() => {
+      rerender(
+        <MensagemPronta
+          modelo={OPCOES[2].texto}
+          opcoes={OPCOES}
+          idSugerido="sem_resposta"
+          numero="5511998877665"
+        />,
+      );
+      expect(campo()).toHaveValue('Texto geral do novo.');
+    });
+  });
+
+  it('escolher de novo a sugerida volta ao automático', async () => {
+    // Voltar à sugerida não fixa o texto dela: a caixa volta a acompanhar a
+    // etapa, que é o comportamento de quem nunca mexeu no seletor.
+    const { rerender } = render(
+      <MensagemPronta
+        modelo={OPCOES[1].texto}
+        opcoes={OPCOES}
+        idSugerido="novo:betinho"
+        numero="5511998877665"
+      />,
+    );
+    await userEvent.selectOptions(seletor(), 'novo');
+    await userEvent.selectOptions(seletor(), 'novo:betinho');
+    rerender(
+      <MensagemPronta
+        modelo={OPCOES[2].texto}
+        opcoes={OPCOES}
+        idSugerido="sem_resposta"
+        numero="5511998877665"
+      />,
+    );
+    expect(campo()).toHaveValue('Texto de retomada.');
+    expect(seletor()).toHaveValue('sem_resposta');
+  });
+});

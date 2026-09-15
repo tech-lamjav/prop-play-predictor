@@ -20,5 +20,20 @@ export const cadastroDeTeste = (over: Partial<Cadastro> = {}): Cadastro => ({
   subscription_product_type: null,
   futebol_trial_started_at: null,
   futebol_publication_alerts_ack_at: null,
+  futebol_trial_ends_at: null,
   ...over,
 });
+
+/**
+ * Um fim de teste cujo ÚLTIMO DIA de acesso é daqui a `dias` dias, a partir de
+ * `hoje`. Zero é hoje, negativo é passado. O fim cai no meio do dia daqui,
+ * longe da virada, para o teste não depender de fuso.
+ *
+ * Mora aqui porque as suítes de etiqueta, de painel, de tabela e de kanban
+ * montavam a mesma data à mão.
+ */
+export function fimDoTesteEm(hoje: string, dias: number): string {
+  const d = new Date(`${hoje}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return `${d.toISOString().slice(0, 10)}T15:00:00Z`;
+}

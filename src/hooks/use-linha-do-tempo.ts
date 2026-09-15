@@ -7,8 +7,9 @@ import {
 } from '@/components/socios/crm-linha-do-tempo';
 import type { EstadoDaLinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import type { TipoDeAnotacao } from '@/components/socios/crm-vocabulario';
+import { CHAVES } from './crm-chaves';
 
-const chaveDa = (id: string) => ['socios', 'linha-do-tempo', id] as const;
+const chaveDa = CHAVES.linhaDoTempo;
 
 /**
  * A linha do tempo de uma pessoa: anotações e mudanças de etapa.

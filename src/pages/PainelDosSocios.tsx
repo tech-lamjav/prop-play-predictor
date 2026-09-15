@@ -4,13 +4,19 @@ import { Seo } from '@/components/Seo';
 import { Ficha } from '@/components/socios/Ficha';
 import { FichaEmModal } from '@/components/socios/FichaEmModal';
 import { BlocoDeComportamento } from '@/components/socios/BlocoDeComportamento';
-import { EditorDeAcesso, type EstadoDaEscrita } from '@/components/socios/EditorDeAcesso';
+import {
+  EditorDeAcesso,
+  TesteDoFutebol,
+  type EstadoDaEscrita,
+} from '@/components/socios/EditorDeAcesso';
 import { DarAssinatura, type EstadoDaConcessao } from '@/components/socios/DarAssinatura';
+import { Receita, type EstadoDaReceita } from '@/components/socios/Receita';
+import { PerfilDeAposta } from '@/components/socios/PerfilDeAposta';
 import { LinhaDoTempo } from '@/components/socios/LinhaDoTempo';
 import { PainelCrm } from '@/components/socios/PainelCrm';
 import { etapaDe } from '@/components/socios/crm-funil';
 import { mensagemDoErro } from '@/components/socios/crm-linha-do-tempo';
-import { ROTA_DO_CRM } from '@/components/socios/crm-vocabulario';
+import { ROTA_DO_CRM, ROTULO_DO_PLANO } from '@/components/socios/crm-vocabulario';
 import { useCadastros } from '@/hooks/use-cadastros';
 import { useEtapas, useMudarEtapa } from '@/hooks/use-etapas';
 import { useLinhaDoTempo, useAnotar } from '@/hooks/use-linha-do-tempo';
@@ -18,9 +24,15 @@ import { useMovimento } from '@/hooks/use-painel-do-crm';
 import { useComportamento } from '@/hooks/use-comportamento';
 import { useDefinirAcesso, useDefinirTeste } from '@/hooks/use-acesso';
 import { useAssinaturas, useDarAssinatura, useEncerrarAssinatura } from '@/hooks/use-assinaturas';
+import {
+  useEstornarPagamento,
+  usePagamentos,
+  useRegistrarPagamento,
+} from '@/hooks/use-pagamentos';
 import { useNomeDoSocio } from '@/hooks/use-nome-do-socio';
+import { usePerfilDeAposta } from '@/hooks/use-perfil-de-aposta';
 import { usePessoa } from '@/hooks/use-pessoa';
-import { brtToday } from '@/utils/futebol-datas';
+import { brtDayOf, brtToday } from '@/utils/futebol-datas';
 
 /**
  * O painel dos sócios, e a ficha por cima dele.
@@ -63,6 +75,21 @@ export default function PainelDosSocios() {
 }
 
 /**
+ * O estado de uma gravação feita por mutações que nunca correm juntas.
+ *
+ * A ficha fazia a mesma conta duas vezes, com o mesmo ternário: lançar e
+ * estornar um pagamento, e dar e encerrar uma assinatura. Cada par trava o
+ * mesmo formulário enquanto grava, e o recado de erro é o da que falhou.
+ */
+function estadoDaGravacao(
+  ...mutacoes: { isPending: boolean; isError: boolean; error: unknown }[]
+): EstadoDaConcessao {
+  if (mutacoes.some((m) => m.isPending)) return { tipo: 'salvando' };
+  const falhou = mutacoes.find((m) => m.isError);
+  return falhou ? { tipo: 'erro', recado: mensagemDoErro(falhou.error) } : { tipo: 'parado' };
+}
+
+/**
  * As consultas da ficha, isoladas num componente próprio.
  *
  * Isso não é organização: é o que garante que elas só rodem quando o modal
@@ -82,6 +109,7 @@ function FichaDoModal({ id }: { id: string }) {
   const assinaturas = useAssinaturas(cadastros.tipo === 'pronto' ? cadastros.cadastros : []);
   const darAssinatura = useDarAssinatura(id);
   const encerrarAssinatura = useEncerrarAssinatura();
+  const perfil = usePerfilDeAposta(id);
   const comportamento = useComportamento(
     id,
     estado.tipo === 'pronta' ? estado.pessoa.email : undefined,
@@ -119,12 +147,12 @@ function FichaDoModal({ id }: { id: string }) {
       ? (assinaturas.assinaturas.find((a) => a.userId === id) ?? null)
       : null;
 
-  const concessao: EstadoDaConcessao =
-    darAssinatura.isPending || encerrarAssinatura.isPending
-      ? { tipo: 'salvando' }
-      : darAssinatura.isError || encerrarAssinatura.isError
-        ? { tipo: 'erro', recado: mensagemDoErro(darAssinatura.error ?? encerrarAssinatura.error) }
-        : { tipo: 'parado' };
+  const pagamentos = usePagamentos(assinaturaAberta?.id);
+  const registrarPagamento = useRegistrarPagamento(assinaturaAberta?.id, id);
+  const estornarPagamento = useEstornarPagamento(assinaturaAberta?.id, id);
+
+  const escritaDaReceita: EstadoDaReceita = estadoDaGravacao(registrarPagamento, estornarPagamento);
+  const concessao: EstadoDaConcessao = estadoDaGravacao(darAssinatura, encerrarAssinatura);
 
   return (
     <Ficha
@@ -135,6 +163,14 @@ function FichaDoModal({ id }: { id: string }) {
       aoMudarEtapa={(etapa) => mudar.mutate(etapa)}
       mudandoEtapa={mudar.isPending}
       erroAoMudarEtapa={mudar.isError}
+      hoje={hoje}
+      // A mensagem de cobrança fala de uma data. Sem assinatura, ou com uma
+      // vitalícia, não há data nenhuma para ela falar.
+      cobranca={
+        assinaturaAberta?.venceEm
+          ? { plano: ROTULO_DO_PLANO[assinaturaAberta.plano], venceEm: assinaturaAberta.venceEm }
+          : null
+      }
       // Só com a ficha carregada: o editor abre mostrando o que JÁ vale, e sem
       // a linha do banco ele nasceria todo em branco — um convite a apagar sem
       // querer o acesso de quem já tem.
@@ -144,27 +180,67 @@ function FichaDoModal({ id }: { id: string }) {
             pessoa={estado.pessoa}
             escrita={escrita}
             aoSalvar={(mudanca) => acesso.mutate(mudanca)}
-            aoDefinirTeste={(ligado) => teste.mutate(ligado)}
-            assinatura={
-              <DarAssinatura
-                hoje={hoje}
-                atual={
-                  assinaturaAberta
-                    ? {
-                        id: assinaturaAberta.id,
-                        plano: assinaturaAberta.plano,
-                        venceEm: assinaturaAberta.venceEm,
-                      }
-                    : null
-                }
-                estado={concessao}
-                aoConceder={(plano, venceEm) => darAssinatura.mutate({ plano, venceEm })}
-                aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
-              />
-            }
           />
         ) : null
       }
+      // O teste em cartão próprio: ele não é um avulso, é a única coisa da aba
+      // com prazo correndo.
+      testeDoFutebol={
+        estado.tipo === 'pronta' ? (
+          <TesteDoFutebol
+            pessoa={estado.pessoa}
+            escrita={escrita}
+            aoDefinir={(ligado) => teste.mutate(ligado)}
+          />
+        ) : null
+      }
+      // Separada dos acessos avulsos: na aba de planos as duas ficam em
+      // colunas diferentes, porque são a venda e os remendos.
+      assinatura={
+        estado.tipo === 'pronta' ? (
+          <DarAssinatura
+            hoje={hoje}
+            atual={
+              assinaturaAberta
+                ? {
+                    id: assinaturaAberta.id,
+                    plano: assinaturaAberta.plano,
+                    venceEm: assinaturaAberta.venceEm,
+                    valorMensal: assinaturaAberta.valorMensal,
+                  }
+                : null
+            }
+            estado={concessao}
+            aoConceder={(plano, venceEm, valorMensal) =>
+              darAssinatura.mutate({ plano, venceEm, valorMensal })
+            }
+            aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
+          />
+        ) : null
+      }
+      receita={
+        <Receita
+          hoje={hoje}
+          assinatura={
+            assinaturaAberta
+              ? {
+                  // O dia em BRT, e não o carimbo cru: uma assinatura criada às
+                  // 22h de 31 de agosto é de agosto para quem deu, e de setembro
+                  // para o UTC. O mês de competência sairia errado por uma hora.
+                  comecouEm: brtDayOf(assinaturaAberta.criadaEm) ?? hoje,
+                  valorMensal: assinaturaAberta.valorMensal,
+                }
+              : null
+          }
+          estado={pagamentos}
+          escrita={escritaDaReceita}
+          aoLancar={(pagamento) => registrarPagamento.mutate(pagamento)}
+          aoEstornar={(idDoPagamento, motivo) =>
+            estornarPagamento.mutate({ id: idDoPagamento, motivo })
+          }
+        />
+      }
+      perfilDeAposta={<PerfilDeAposta estado={perfil} />}
       comportamento={
         <BlocoDeComportamento
           estado={comportamento}

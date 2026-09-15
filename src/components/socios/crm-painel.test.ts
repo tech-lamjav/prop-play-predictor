@@ -5,13 +5,15 @@ import {
   type Periodo,
   agruparPorPosicao,
   contarPorPosicao,
+  contarPorEtiqueta,
+  filtrarPorEtiqueta,
   DIAS_PARA_ESTAR_PARADO,
   precisamDeAtencao,
   metricasDeNegocio,
   montarLeads,
   type Toques,
 } from './crm-painel';
-import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
+import { cadastroDeTeste as cadastro, fimDoTesteEm } from './crm-cadastro-de-teste';
 import type { EtapasGravadas } from './crm-funil';
 
 const HOJE = '2026-09-11';
@@ -27,12 +29,12 @@ describe('montarLeads', () => {
   it('junta cadastro, etapa e gancho numa linha só', () => {
     const [lead] = monta(
       [cadastro({ id: 'a', name: 'Maria Silva' })],
-      { a: 'contatado' },
+      { a: 'primeiro_contato' },
       {},
       { a: 12 },
     );
     expect(lead.nome).toBe('Maria Silva');
-    expect(lead.etapa).toBe('contatado');
+    expect(lead.etapa).toBe('primeiro_contato');
     expect(lead.gancho.tipo).toBe('betinho');
   });
 
@@ -53,7 +55,7 @@ describe('montarLeads', () => {
   it('quem foi tocado conta o tempo desde o último toque', () => {
     const [lead] = monta(
       [cadastro({ id: 'a', created_at: '2026-08-01T12:00:00Z' })],
-      { a: 'contatado' },
+      { a: 'primeiro_contato' },
       { a: '2026-09-10T12:00:00Z' },
     );
     expect(lead.diasParado).toBe(1);
@@ -66,7 +68,7 @@ describe('montarLeads', () => {
 });
 
 describe('contarPorPosicao', () => {
-  it('conta as oito posições, inclusive as vazias', () => {
+  it('conta as sete posições, inclusive as vazias', () => {
     // Posição com zero precisa aparecer: a faixa do funil desenha a FORMA do
     // funil, e uma posição que some faz o desenho mentir sobre onde está o
     // gargalo.
@@ -76,7 +78,7 @@ describe('contarPorPosicao', () => {
     expect(contagem.novo).toBe(1);
     expect(contagem.interesse).toBe(1);
     expect(contagem.boletada).toBe(0);
-    expect(Object.keys(contagem)).toHaveLength(8);
+    expect(Object.keys(contagem)).toHaveLength(7);
   });
 
   it('quem assina aparece como assinante, e não na etapa manual', () => {
@@ -90,22 +92,37 @@ describe('contarPorPosicao', () => {
     expect(contagem.interesse).toBe(0);
   });
 
-  it('quem está no teste gratuito aparece como em teste', () => {
+  it('quem está no teste gratuito continua mostrando a etapa da conversa', () => {
+    // Estar em teste NÃO é etapa, é etiqueta. Enquanto era posição do funil,
+    // ela vencia a etapa manual e engolia a conversa de quem está em teste —
+    // que é o lead mais quente que existe. Em produção isso escondia a etapa
+    // de 59 pessoas ao mesmo tempo.
     const contagem = contarPorPosicao(
-      monta([cadastro({ id: 'a', futebol_trial_started_at: '2026-09-09T12:00:00Z' })]),
+      monta([cadastro({ id: 'a', futebol_trial_started_at: '2026-09-09T12:00:00Z' })], {
+        a: 'nutrindo',
+      }),
     );
-    expect(contagem.em_teste).toBe(1);
-    expect(contagem.novo).toBe(0);
+    expect(contagem.nutrindo).toBe(1);
   });
 
-  it('teste vencido não segura ninguém em em teste', () => {
-    // Sete dias e acabou. Sem isso, a coluna vira depósito de gente que testou
-    // meses atrás e nunca mais voltou.
+  it('o funil não tem posição de teste nenhuma', () => {
+    const contagem = contarPorPosicao(monta());
+    expect(Object.keys(contagem)).not.toContain('em_teste');
+  });
+
+  it('quem está em teste E assina aparece como assinante', () => {
+    // Assinar é o destino da escada, e o destino vence: quem virou premium
+    // durante o teste já converteu.
     const contagem = contarPorPosicao(
-      monta([cadastro({ id: 'a', futebol_trial_started_at: '2026-07-01T12:00:00Z' })]),
+      monta([
+        cadastro({
+          id: 'a',
+          futebol_trial_started_at: '2026-09-09T12:00:00Z',
+          betinho_subscription_status: 'premium',
+        }),
+      ]),
     );
-    expect(contagem.em_teste).toBe(0);
-    expect(contagem.novo).toBe(1);
+    expect(contagem.assinante).toBe(1);
   });
 });
 
@@ -140,7 +157,7 @@ describe('metricasDeNegocio', () => {
   it('abordados é quem já saiu de novo', () => {
     // É a métrica de esforço, e não de resultado: mede quanto da base a gente
     // conseguiu tocar, que na fase de MVP é o gargalo real.
-    const leads = monta(base, { b: 'interesse', c: 'contatado' });
+    const leads = monta(base, { b: 'interesse', c: 'primeiro_contato' });
     expect(metricasDeNegocio(leads, HOJE).abordados).toBe(50);
   });
 });
@@ -151,7 +168,7 @@ describe('precisamDeAtencao', () => {
     // distingue quem nunca foi abordado de quem esfriou.
     const leads = monta(
       [cadastro({ id: 'novo' }), cadastro({ id: 'frio' })],
-      { frio: 'contatado' },
+      { frio: 'primeiro_contato' },
       { frio: '2026-08-01T12:00:00Z' },
     );
     expect(precisamDeAtencao(leads).map((l) => l.id)).toHaveLength(2);
@@ -162,7 +179,7 @@ describe('precisamDeAtencao', () => {
     // trabalho, e a fila de leads novos é sempre muito maior.
     const leads = monta(
       [cadastro({ id: 'novo', created_at: '2020-01-01T12:00:00Z' }), cadastro({ id: 'frio' })],
-      { frio: 'contatado' },
+      { frio: 'primeiro_contato' },
       { frio: '2026-08-01T12:00:00Z' },
     );
     expect(precisamDeAtencao(leads)[0].id).toBe('frio');
@@ -177,7 +194,11 @@ describe('precisamDeAtencao', () => {
   });
 
   it('conversa com toque recente não entra', () => {
-    const leads = monta([cadastro({ id: 'a' })], { a: 'contatado' }, { a: '2026-09-10T12:00:00Z' });
+    const leads = monta(
+      [cadastro({ id: 'a' })],
+      { a: 'primeiro_contato' },
+      { a: '2026-09-10T12:00:00Z' },
+    );
     expect(precisamDeAtencao(leads)).toEqual([]);
   });
 
@@ -214,10 +235,10 @@ describe('montarLeads · quando a contagem de apostas falha', () => {
 });
 
 describe('agruparPorPosicao', () => {
-  it('devolve as oito posições, inclusive as vazias', () => {
+  it('devolve as sete posições, inclusive as vazias', () => {
     // Posição que some esconde onde está o gargalo, o mesmo motivo da faixa.
     const grupos = agruparPorPosicao(monta([cadastro({ id: 'a' })]));
-    expect(grupos).toHaveLength(8);
+    expect(grupos).toHaveLength(7);
     expect(grupos.find((c) => c.posicao === 'boletada')?.leads).toEqual([]);
   });
 
@@ -315,5 +336,55 @@ describe('filtrarPorPeriodo', () => {
       DIA,
     );
     expect(filtrarPorPeriodo(madrugada, { de: '2026-09-12', ate: '2026-09-12' })).toHaveLength(1);
+  });
+});
+
+describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
+  const HOJE_T = '2026-09-12';
+  /** Teste cujo último dia de acesso é daqui a `dias` dias. Zero é hoje. */
+  const terminaEm = (dias: number) => fimDoTesteEm(HOJE_T, dias);
+  const montaT = (cadastros: Parameters<typeof montarLeads>[0], etapas: EtapasGravadas = {}) =>
+    montarLeads(cadastros, etapas, {}, {}, HOJE_T);
+
+  it('o lead carrega etapa E etiqueta ao mesmo tempo', () => {
+    // É o ponto de toda a mudança: as duas coisas valem juntas. Antes a
+    // etiqueta virava posição e engolia a etapa.
+    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_ends_at: terminaEm(4) })], {
+      a: 'nutrindo',
+    });
+    expect(lead.etapa).toBe('nutrindo');
+    expect(lead.etiqueta).toBe('trial_ativo');
+  });
+
+  it('quem não testou tem etiqueta nula, e etapa normal', () => {
+    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_ends_at: null })]);
+    expect(lead.etiqueta).toBeNull();
+    expect(lead.etapa).toBe('novo');
+  });
+
+  it('contar por etiqueta ignora quem não tem', () => {
+    const leads = montaT([
+      cadastro({ id: 'a', futebol_trial_ends_at: terminaEm(0) }),
+      cadastro({ id: 'b', futebol_trial_ends_at: terminaEm(4) }),
+      cadastro({ id: 'c', futebol_trial_ends_at: null }),
+    ]);
+    const contagem = contarPorEtiqueta(leads);
+    expect(contagem.trial_vencendo).toBe(1);
+    expect(contagem.trial_ativo).toBe(1);
+    expect(contagem.trial_vencido).toBe(0);
+  });
+
+  it('filtrar por etiqueta devolve só quem a tem', () => {
+    const leads = montaT([
+      cadastro({ id: 'vencendo', futebol_trial_ends_at: terminaEm(0) }),
+      cadastro({ id: 'ativo', futebol_trial_ends_at: terminaEm(5) }),
+    ]);
+    expect(filtrarPorEtiqueta(leads, 'trial_vencendo').map((l) => l.id)).toEqual(['vencendo']);
+  });
+
+  it('filtro nulo não filtra nada', () => {
+    // O filtro nasce desligado, e desligado tem que ser "tudo" e não "nada".
+    const leads = montaT([cadastro({ id: 'a' }), cadastro({ id: 'b' })]);
+    expect(filtrarPorEtiqueta(leads, null)).toHaveLength(2);
   });
 });
