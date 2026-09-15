@@ -24,13 +24,17 @@ vi.mock('@/components/AnalyticsNav', () => ({
 const estado = vi.hoisted(() => ({
   publicadas: [] as LinhaPublicada[],
   tipo: 'pronto' as 'pronto' | 'carregando' | 'erro',
+  /** Os argumentos de cada chamada do hook, para saber qual consulta sai. */
+  chamadas: [] as unknown[][],
 }));
 
 vi.mock('@/hooks/use-oportunidades-publicadas', () => ({
-  useOportunidadesPublicadas: () =>
-    estado.tipo === 'pronto'
+  useOportunidadesPublicadas: (...args: unknown[]) => {
+    estado.chamadas.push(args);
+    return estado.tipo === 'pronto'
       ? { tipo: 'pronto', publicadas: estado.publicadas }
-      : { tipo: estado.tipo },
+      : { tipo: estado.tipo };
+  },
 }));
 
 vi.mock('@/hooks/use-futebol-data', () => ({
@@ -116,6 +120,20 @@ describe('a página do placar', () => {
   // A porta de volta para o CRM saiu daqui: ela agora é uma pílula da faixa 2 do
   // cabeçalho do site, como Futebol e NBA. Quem guarda isso é crm-rota.test.ts,
   // que lê o AnalyticsNav — aqui o header é um dublê.
+
+  it('sem comparação, a consulta do segundo período nem sai', () => {
+    // Ela saía com datas iguais, "vazia e barata". Não era barata: rodava a
+    // consulta inteira do placar de novo, e em produção disputava o mesmo
+    // limite de tempo da primeira.
+    estado.tipo = 'pronto';
+    estado.publicadas = [linha()];
+    estado.chamadas.length = 0;
+    montar();
+
+    const ativas = estado.chamadas.map((args) => args[2] ?? true);
+    expect(ativas).toContain(true);
+    expect(ativas).toContain(false);
+  });
 
   it('sem nada publicado, não finge resultado', () => {
     estado.publicadas = [];

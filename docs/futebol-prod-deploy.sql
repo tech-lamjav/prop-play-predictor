@@ -3091,6 +3091,39 @@ grant execute on function public.get_futebol_oportunidades_publicadas(date, date
 comment on function public.get_futebol_oportunidades_publicadas(date, date) is
   'Foto de nascimento das oportunidades publicadas no período, com o placar do jogo e as premissas acesas. Insumo do placar da metodologia. Restrita a sócio: devolve o board inteiro, inclusive mercado oculto.';
 
+-- O placar numa resposta só (migration 137). A API corta resposta de várias
+-- linhas em 1.000, e o período padrão passa de 3.000: é esta que o front chama.
+create or replace function public.get_futebol_placar_da_metodologia(
+  p_de date,
+  p_ate date
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path to ''
+as $function$
+begin
+  if not public.eh_socio() then
+    raise exception 'apenas socios';
+  end if;
+
+  return coalesce(
+    (
+      select jsonb_agg(to_jsonb(o) order by o.kickoff_utc desc, o.score desc, o.opportunity_key)
+      from public.get_futebol_oportunidades_publicadas(p_de, p_ate) o
+    ),
+    '[]'::jsonb
+  );
+end;
+$function$;
+
+revoke execute on function public.get_futebol_placar_da_metodologia(date, date) from public;
+grant execute on function public.get_futebol_placar_da_metodologia(date, date) to authenticated;
+
+comment on function public.get_futebol_placar_da_metodologia(date, date) is
+  'O placar da metodologia numa resposta só: as linhas de get_futebol_oportunidades_publicadas como um jsonb, para não passar pelo corte de 1.000 linhas da API. Restrita a sócio.';
+
 
 -- ── 7. Reverse trial (48 horas, sem cartão) — colunas no public.users ────────
 -- São DUAS colunas, e o fim não é derivado do início: é gravado junto com ele
