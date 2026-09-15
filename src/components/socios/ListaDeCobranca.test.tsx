@@ -119,7 +119,7 @@ describe('ListaDeCobranca', () => {
 
   it('cada nome leva à ficha daquela pessoa', () => {
     montar(pronto([linha()]));
-    expect(screen.getByRole('link', { name: 'Maria' })).toHaveAttribute('href', '/socios/u1');
+    expect(screen.getByRole('link', { name: 'Maria' })).toHaveAttribute('href', '/socios/crm/u1');
   });
 
   it('desenha uma cobrança por concessão', () => {

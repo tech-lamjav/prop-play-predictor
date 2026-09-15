@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { LinhaPublicada } from '@/components/placar/placar-agregacao';
 import {
   normalizeFutebolScoreRows,
   type FutebolScoreVersion,
@@ -419,12 +420,25 @@ export const FUTEBOL_ZONE_LABEL: Record<Exclude<FutebolZone, null>, string> = {
   rebaixamento: 'Rebaixamento',
 };
 
-/** Estado de acesso ao módulo Futebol (reverse trial 7 dias, sem cartão). */
+/** Estado de acesso ao módulo Futebol (reverse trial 48 horas, sem cartão). */
 export type FutebolAccessState = 'anon' | 'trial' | 'expired' | 'subscribed';
 export interface FutebolAccess {
   state: FutebolAccessState;
   unlocked: boolean;
+  /**
+   * Dias arredondados para cima. Nenhuma tela lê mais — `tempo-de-teste.ts`
+   * decide a unidade a partir das horas. Continua no contrato porque o banco
+   * sobe antes do bundle: até o deploy do frontend, e depois dele para quem
+   * está com a página aberta ou com o JS antigo em cache, existe navegador
+   * pedindo este campo.
+   */
   days_left: number | null;
+  /**
+   * Horas arredondadas para cima. É a unidade do teste de 48 horas, e chega
+   * nula de resposta antiga em cache ou de ambiente sem a migration 136 —
+   * `tempo-de-teste.ts` cai para `trial_ends_at` nesse caso.
+   */
+  hours_left: number | null;
   trial_ends_at: string | null;
 }
 
@@ -830,7 +844,7 @@ export const futebolDataService = {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_access');
       if (error) throw error;
-      return (data || { state: 'anon', unlocked: false, days_left: null, trial_ends_at: null }) as FutebolAccess;
+      return (data || { state: 'anon', unlocked: false, days_left: null, hours_left: null, trial_ends_at: null }) as FutebolAccess;
     });
   },
 
@@ -1067,6 +1081,37 @@ export const futebolDataService = {
         normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
         ocultos,
       );
+    });
+  },
+
+  /**
+   * A FOTO DE NASCIMENTO das oportunidades publicadas num período, para o placar
+   * da metodologia dos sócios (migration 133).
+   *
+   * ⚠️ Devolve o BOARD, e não a vitrine: mercado oculto vem junto, de propósito,
+   * porque decidir se ele volta é uma das decisões que o placar sustenta. Quem
+   * quiser a leitura do produto recorta depois — o contrário do que
+   * `getFixtureValue` faz, e por isso este método NÃO chama
+   * `filtrarMercadosOcultos`.
+   *
+   * ⚠️ Restrita a sócio no banco: para quem não é, a RPC levanta exceção. A tela
+   * já está atrás do portão, então o erro aqui é sinal de rota exposta.
+   *
+   * A RPC devolve o que TOCA o período pelos dois eixos — jogo dentro da janela
+   * ou detecção dentro dela. Escolher o eixo é da tela.
+   */
+  async getOportunidadesPublicadas(de: string, ate: string): Promise<LinhaPublicada[]> {
+    return withRetry(async () => {
+      // Uma resposta só, em JSON, e não linha a linha: a API corta resposta de
+      // várias linhas em 1.000, e o período padrão passa de 3.000. Cortada, a
+      // tela recebia só os jogos mais distantes — todos por jogar — e dizia que
+      // nada tinha liquidado (migration 137).
+      const { data, error } = await supabaseClient.rpc('get_futebol_placar_da_metodologia', {
+        p_de: de,
+        p_ate: ate,
+      });
+      if (error) throw error;
+      return (data || []) as LinhaPublicada[];
     });
   },
 

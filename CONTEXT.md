@@ -99,3 +99,62 @@ _Avoid_: Primeira aparição histórica, última atualização da odd
 **Odd de referência**:
 A odd efetivamente coletada que ocupa a posição central entre as cotações de uma candidata que não virou oportunidade. Representa o mercado sem inventar uma cotação intermediária.
 _Avoid_: Melhor odd, odd da oportunidade
+
+### O placar da metodologia
+
+**Placar da metodologia**:
+O acompanhamento do resultado das oportunidades já publicadas, feito para os
+sócios decidirem se o peso de uma premissa está bom, se a premissa faz sentido e
+se falta premissa. Julga o método, não o apostador — a **performance semanal** é
+do caderno de apostas do assinante e não tem relação com isto.
+_Avoid_: Painel de performance, dashboard, ROI da banca, performance semanal
+
+**Unidade**:
+A aposta com que o placar MEDE: toda oportunidade publicada vale uma, sempre a
+mesma. É a medida da metodologia, e não depende de valor nem de nota, porque
+tamanho de aposta é outra pergunta e misturar as duas faz o número responder as
+duas pela metade.
+_Avoid_: Stake, entrada, aposta do usuário, banca
+
+**Simulação**:
+A leitura do placar com um número de unidades diferente por faixa de Score — por
+exemplo nenhuma na Baixa e meia na Média. Responde "como teria ido apostando
+assim", e nunca é a medida da metodologia: quando ela está ligada, a tela diz.
+_Avoid_: Stake, gestão de banca, placar real
+
+**Foto de nascimento**:
+O primeiro registro de uma oportunidade no histórico — a odd, a nota e a faixa
+com que ela foi publicada e alertada. É o que o placar mede, porque é sobre
+essa régua que a decisão foi tomada. Diferente do estado dela no apito, que é o
+que o assinante viu por último.
+_Avoid_: PIT, snapshot, estado no apito, última odd
+
+**Liquidado**:
+A oportunidade cujo jogo terminou e recebeu veredito pela regra de liquidação:
+green, meio green, anulada, meio red ou red. Enquanto o jogo não termina ela é
+**pendente**, e pendente nunca entra em conta nenhuma.
+_Avoid_: Resultado, fechado, settled, apurado
+
+**Quebra**:
+A dimensão pela qual o placar agrupa as oportunidades liquidadas: mercado, faixa
+de Score, faixa de odd e campeonato. Nunca chame isso de **corte**: corte é o
+limiar de uma premissa, e a palavra já está ocupada.
+_Avoid_: Corte, recorte, dimensão, filtro
+
+**Taxa de acerto**:
+Quantas oportunidades bateram, sobre as liquidadas que valeram aposta. Anulada
+sai do denominador, porque ninguém ganha nem perde nela.
+_Avoid_: Win rate, aproveitamento, assertividade
+
+**ROI**:
+O lucro somado em **unidades** dividido pelo número de unidades apostadas.
+Anulada fica no denominador com lucro zero, porque a aposta existiu e devolveu o
+valor. É por isso que ROI e **taxa de acerto** têm denominadores diferentes.
+_Avoid_: Lucro, retorno, rendimento
+
+**Série comparável**:
+O trecho do histórico em que a nota está na mesma escala. Começa em 04/09/2026,
+quando o denominador do Score trocou do p95 para o teto de pontos: linha
+anterior a essa data tem Score em outra escala e somar as duas inventa uma série
+que nunca existiu.
+_Avoid_: Histórico completo, desde o início, base inteira

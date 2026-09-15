@@ -4,7 +4,7 @@ import type { LpVariant } from "@/pages/lp/variants";
 // ============================================================
 // Oferta, bônus, ancoragem e preço. Fecha a página.
 //
-// O bloco muda com o eixo de oferta da variação: trial mostra "7 dias grátis,
+// O bloco muda com o eixo de oferta da variação: trial mostra "48 horas grátis,
 // depois R$ X", pagamento mostra o preço direto com o valor cheio riscado.
 //
 // PENDENTE: o "Guia Prático dos 10 Filtros" não existe ainda. A página não pode
@@ -29,11 +29,11 @@ export function LpOferta({ variant, onCta }: { variant: LpVariant; onCta: () => 
             A oferta
           </p>
           <h2 className="font-display text-[28px] sm:text-[38px] font-black leading-[1.1] tracking-tight text-ink text-balance">
-            Teste 7 dias grátis. Depois, a Smart Betting trabalha em cada análise por{" "}
+            Teste 48 horas grátis. Depois, a Smart Betting trabalha em cada análise por{" "}
             <span className="text-forest">R$ {variant.preco.valor}</span> por mês.
           </h2>
           <p className="text-[17px] text-ink-2 leading-relaxed mt-5">
-            Você entra sem cartão e usa a plataforma completa por 7 dias, consultando as
+            Você entra sem cartão e usa a plataforma completa por 48 horas, consultando as
             oportunidades já analisadas pela Inteligência Artificial nos 10 filtros. Só paga se
             quiser continuar.
           </p>
@@ -113,7 +113,7 @@ export function LpOferta({ variant, onCta }: { variant: LpVariant; onCta: () => 
             <span className="text-[15px] sm:text-[16px] text-ink-2 whitespace-nowrap">por mês</span>
           </div>
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-amber-2 mt-2.5">
-            Preço de lançamento · só depois dos 7 dias
+            Preço de lançamento · só depois das 48 horas
           </p>
           <p className="text-[16px] text-ink-2 leading-relaxed mt-5 max-w-[52ch] mx-auto">
             Sem precisar contratar ferramenta diferente para cada coisa, nem depender de palpite sem
@@ -129,7 +129,7 @@ export function LpOferta({ variant, onCta }: { variant: LpVariant; onCta: () => 
             <ArrowRight className="h-5 w-5 shrink-0" />
           </button>
           <p className="text-[13px] text-ink-3 mt-3.5 leading-snug max-w-[46ch] mx-auto">
-            Acesso liberado na hora, sem cartão. Passados os 7 dias, a assinatura é mensal, com
+            Acesso liberado na hora, sem cartão. Passadas as 48 horas, a assinatura é mensal, com
             renovação automática e cancelamento quando quiser.
           </p>
           <p className="text-[12px] text-ink-3 mt-5 leading-snug">

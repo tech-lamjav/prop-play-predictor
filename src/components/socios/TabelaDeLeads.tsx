@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { DIAS_PARA_ESTAR_PARADO, ROTULO_DA_POSICAO, TOM_DA_POSICAO, type Lead } from './crm-painel';
 import { NOME_DO_GANCHO } from './crm-ficha';
-import { ROTA_DOS_SOCIOS } from './crm-vocabulario';
+import { ROTA_DO_CRM } from './crm-vocabulario';
 
 /**
  * As iniciais de quem está na linha.
@@ -68,7 +68,7 @@ export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }
                           quem navega por leitor de tela ouve o telefone inteiro
                           a cada linha da lista. */}
                       <Link
-                        to={`${ROTA_DOS_SOCIOS}/${lead.id}`}
+                        to={`${ROTA_DO_CRM}/${lead.id}`}
                         className="block truncate text-[14px] font-bold text-ink group-hover:text-forest"
                       >
                         {lead.nome}

@@ -184,12 +184,12 @@ que é consulta (etapa, contatos, planos, comportamento), à direita o que é
 trabalho (o palpite, a mensagem pronta, a linha do tempo). O formato saiu de um
 protótipo de três variações, na branch `prototype/ficha-do-lead`.
 
-O endereço continua `/socios/<id>`, porque a ficha precisa ser compartilhável
+O endereço é `/socios/crm/<id>`, porque a ficha precisa ser compartilhável
 entre os sócios. As duas rotas desenham a mesma página: a segunda é a primeira
 com o modal aberto. Fechar navega de volta, e o botão voltar do navegador
 funciona sozinho.
 
-**Feedbacks** — seção própria na faixa do CRM, em `/socios/feedbacks`. Todos os
+**Feedbacks** — seção própria na faixa do CRM, em `/socios/crm/feedbacks`. Todos os
 feedbacks da base numa lista, do mais recente para o mais antigo, com quem
 registrou e o nome levando de volta para a ficha.
 
@@ -280,7 +280,7 @@ Corrigir a spec ou fazer o campo é decisão em aberto.
 
 ## Assinaturas dadas na mão
 
-Terceira seção do CRM, em `/socios/assinaturas`, ao lado de Leads e Feedbacks.
+Terceira seção do CRM, em `/socios/crm/assinaturas`, ao lado de Leads e Feedbacks.
 Ela responde uma terceira pergunta: a lista de leads responde "com quem eu falo
 agora", a de feedbacks responde "o que estão achando", e esta responde "quem eu
 preciso cobrar".

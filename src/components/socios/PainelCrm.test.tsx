@@ -197,7 +197,7 @@ describe('PainelCrm · a base', () => {
 
   it('cada nome leva à ficha daquela pessoa', () => {
     montar();
-    expect(screen.getByRole('link', { name: 'Maria Silva' })).toHaveAttribute('href', '/socios/a');
+    expect(screen.getByRole('link', { name: 'Maria Silva' })).toHaveAttribute('href', '/socios/crm/a');
   });
 
   it('base vazia é dita com palavra, sem números zerados em cima', () => {
