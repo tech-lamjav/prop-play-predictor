@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { linkDoWhatsApp, mensagemPara } from './crm-mensagens';
-import { ETAPAS } from './crm-vocabulario';
+import { idDaSugerida, linkDoWhatsApp, mensagemPara, modelosDeAbordagem } from './crm-mensagens';
+import { ETAPAS, ROTULO_DA_ETAPA } from './crm-vocabulario';
 import type { TipoDeGancho } from './crm-ficha';
 
 const GANCHOS: TipoDeGancho[] = ['betinho', 'futebol', 'nba', 'indefinido'];
@@ -64,12 +64,22 @@ describe('mensagemPara', () => {
   });
 
   it('nenhum texto de futebol promete acesso livre a um produto pago', () => {
-    // O futebol é pago, com sete dias de teste. Prometer "sem compromisso
+    // O futebol é pago, com 48 horas de teste. Prometer "sem compromisso
     // nenhum" fecha a conversa mal no dia em que a pessoa esbarra no paywall.
     for (const etapa of ETAPAS) {
       expect(mensagemPara('futebol', etapa, 'Maria')).not.toMatch(
         /sem compromisso|de graça|gratuito para sempre/i,
       );
+    }
+  });
+
+  it('nenhuma mensagem do catálogo promete teste de sete dias', () => {
+    // ⚠️ O teste grátis passou de 7 dias para 48 horas (#410), e uma mensagem
+    // continuou dizendo "o teste de sete dias não custa nada". Com o seletor, o
+    // sócio escolhe qualquer texto do catálogo, e esse chegaria ao cliente
+    // prometendo cinco dias que o produto não dá.
+    for (const m of modelosDeAbordagem('Maria')) {
+      expect(m.texto, m.id).not.toMatch(/\b(7|sete)\s+dias\b/i);
     }
   });
 
@@ -144,6 +154,62 @@ describe('nenhuma mensagem usa travessão', () => {
           const texto = mensagemPara(gancho, etapa, nome);
           expect(texto, `${gancho} + ${etapa}`).not.toMatch(/[\u2013\u2014]/);
         }
+      }
+    }
+  });
+});
+
+describe('o catálogo para trocar de mensagem', () => {
+  it('toda mensagem que a sugestão pode escolher está no catálogo', () => {
+    // Senão existiria mensagem que a caixa mostra sozinha e que o sócio nunca
+    // consegue escolher de volta depois de trocar para outra.
+    const textos = modelosDeAbordagem('Maria').map((m) => m.texto);
+    for (const gancho of GANCHOS) {
+      for (const etapa of ETAPAS) {
+        expect(textos, `${gancho} + ${etapa}`).toContain(mensagemPara(gancho, etapa, 'Maria'));
+      }
+    }
+  });
+
+  it('a marcada como sugerida é a mesma que está na caixa, em todo par', () => {
+    // ⚠️ `idDaSugerida` repete a escada de `mensagemPara`. Se as duas
+    // divergirem, a tela marca "(sugerida)" numa opção e mostra outro texto.
+    const porId = new Map(modelosDeAbordagem('Maria').map((m) => [m.id, m.texto]));
+    for (const gancho of GANCHOS) {
+      for (const etapa of ETAPAS) {
+        expect(porId.get(idDaSugerida(gancho, etapa)), `${gancho} + ${etapa}`).toBe(
+          mensagemPara(gancho, etapa, 'Maria'),
+        );
+      }
+    }
+  });
+
+  it('nenhum identificador se repete', () => {
+    // O seletor usa o identificador como valor. Repetido, escolher um marca o
+    // outro, e a caixa mostra o texto errado.
+    const ids = modelosDeAbordagem('Maria').map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('as opções seguem a ordem do funil', () => {
+    const grupos = modelosDeAbordagem('Maria')
+      .map((m) => m.grupo)
+      .filter((g, i, todos) => todos.indexOf(g) === i);
+    expect(grupos).toEqual(ETAPAS.map((e) => ROTULO_DA_ETAPA[e]));
+  });
+
+  it('usa o nome, e sem nome não deixa vírgula solta', () => {
+    expect(modelosDeAbordagem('Maria').every((m) => m.texto.includes('Maria'))).toBe(true);
+    for (const m of modelosDeAbordagem(null)) {
+      expect(m.texto, m.id).not.toMatch(/,\s*[!?.]/);
+    }
+  });
+
+  it('nenhum modelo do catálogo deixa lacuna nem usa travessão', () => {
+    for (const nome of ['Maria', null]) {
+      for (const m of modelosDeAbordagem(nome)) {
+        expect(m.texto, m.id).not.toMatch(/\{|\}/);
+        expect(m.texto, m.id).not.toMatch(/[–—]/);
       }
     }
   });

@@ -1,5 +1,5 @@
 import type { TipoDeGancho } from './crm-ficha';
-import { type Etapa } from './crm-vocabulario';
+import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 
 // ============================================================================
 // As mensagens prontas
@@ -91,7 +91,7 @@ const POR_PAR: Partial<Record<Etapa, Partial<Record<TipoDeGancho, string>>>> = {
       'retomar, é só me chamar.',
     futebol:
       `{saudacao} ${NAO_INSISTIR} Deixo só uma coisa: as análises de futebol saem todo dia antes ` +
-      'dos jogos, e o teste de sete dias não custa nada. Se quiser retomar, é só me chamar.',
+      'dos jogos, e o teste de 48 horas não custa nada. Se quiser retomar, é só me chamar.',
   },
 };
 
@@ -136,6 +136,66 @@ export function mensagemPara(
 ): string {
   const modelo = POR_PAR[etapa]?.[gancho] ?? POR_ETAPA[etapa];
   return modelo.replace('{saudacao}', saudacao(primeiroNome));
+}
+
+/**
+ * Um modelo do catálogo, para o sócio escolher outro que não o sugerido.
+ */
+export interface ModeloDeMensagem {
+  /** `novo` para o texto da etapa, `novo:betinho` para o do par. */
+  id: string;
+  /** A etapa a que o texto pertence. É o que agrupa as opções na tela. */
+  grupo: string;
+  rotulo: string;
+  texto: string;
+}
+
+/** Como cada gancho aparece como opção no seletor. */
+const ROTULO_DO_GANCHO: Record<TipoDeGancho, string> = {
+  betinho: 'Betinho',
+  futebol: 'Futebol',
+  nba: 'NBA',
+  indefinido: 'Geral',
+};
+
+/**
+ * O identificador do modelo que `mensagemPara` escolheria.
+ *
+ * A mesma escada de dois degraus, escrita de novo para devolver o NOME do
+ * modelo em vez do texto. Há teste cobrando que os dois apontem para o mesmo
+ * texto em todos os pares: se divergirem, a tela marca como sugerida uma
+ * mensagem diferente da que está na caixa.
+ */
+export function idDaSugerida(gancho: TipoDeGancho, etapa: Etapa): string {
+  return POR_PAR[etapa]?.[gancho] ? `${etapa}:${gancho}` : etapa;
+}
+
+/**
+ * O catálogo inteiro de abordagem, para o sócio trocar de mensagem.
+ *
+ * A sugerida acerta na maior parte das vezes, mas quem conhece a pessoa sabe o
+ * que o banco não sabe: o lead que o gancho diz ser do futebol e que na conversa
+ * só falou de Betinho. Travar a mensagem no palpite obrigaria o sócio a
+ * reescrever do zero um texto que já existe aqui.
+ *
+ * Na ordem do funil, e dentro de cada etapa o texto geral antes dos pares.
+ */
+export function modelosDeAbordagem(primeiroNome: string | null): ModeloDeMensagem[] {
+  const comNome = (modelo: string) => modelo.replace('{saudacao}', saudacao(primeiroNome));
+
+  return ETAPAS.flatMap((etapa) => {
+    const grupo = ROTULO_DA_ETAPA[etapa];
+    const pares = Object.entries(POR_PAR[etapa] ?? {}) as [TipoDeGancho, string][];
+    return [
+      { id: etapa, grupo, rotulo: 'Geral', texto: comNome(POR_ETAPA[etapa]) },
+      ...pares.map(([gancho, modelo]) => ({
+        id: `${etapa}:${gancho}`,
+        grupo,
+        rotulo: ROTULO_DO_GANCHO[gancho],
+        texto: comNome(modelo),
+      })),
+    ];
+  });
 }
 
 /**

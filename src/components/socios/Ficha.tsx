@@ -5,7 +5,7 @@ import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
-import { mensagemPara } from './crm-mensagens';
+import { idDaSugerida, mensagemPara, modelosDeAbordagem } from './crm-mensagens';
 import {
   ganchoDe,
   nomeDoPlano,
@@ -400,6 +400,8 @@ function Conteudo({
           {etapa && (
             <MensagemPronta
               modelo={mensagemPara(gancho.tipo, etapa, primeiroNome(pessoa.name))}
+              opcoes={modelosDeAbordagem(primeiroNome(pessoa.name))}
+              idSugerido={idDaSugerida(gancho.tipo, etapa)}
               numero={pessoa.whatsapp_number}
             />
           )}
