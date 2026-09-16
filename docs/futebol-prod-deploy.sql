@@ -12,7 +12,7 @@
 -- evidencias/avisos — são puladas pelo sync; as RPCs reconstroem evidências dos
 -- booleans das int_futebol_premissas_*). Gerado do estado dev (kpbjuplcwiyrymafhehz).
 --
--- Tabelas sincronizadas (22): dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities, fact_value_opportunities_hist
+-- Tabelas sincronizadas (23): dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities, fact_value_opportunities_hist, fact_insumos_medidos
 -- ============================================================================
 
 -- Não validar corpo das funções no CREATE (ordem-robusto; valida em runtime).
@@ -695,6 +695,32 @@ create table futebol.fact_value_opportunities_hist (
   "score_versao" text not null default 'legacy'
 );
 
+drop table if exists futebol.fact_insumos_medidos cascade;
+-- O VALOR que cada premissa comparou, não só se ela acendeu (analytics-engineering#175,
+-- ADR 0016). Uma linha por jogo × saída × premissa × insumo.
+--
+-- Tabela COMPRIDA, e não uma coluna por insumo, por duas razões registradas na
+-- decisão: passa pelo sync do jeito que ele é hoje (o sync pula coluna
+-- REPEATED/RECORD, e era esse o formato no BigQuery), e não cresce em largura a
+-- cada premissa nova.
+--
+-- `market` e `line_value` já entram no grão mesmo com só o 1X2 populado
+-- (market = 'match_winner', line_value nulo): mudar o grão de uma tabela já
+-- sincronizada é o que já quebrou o sync quatro vezes neste repositório.
+--
+-- Sem `not null`: este schema é espelho escalar carregado por COPY, e nenhuma
+-- tabela dele declara restrição — quem garante o formato é o
+-- `check_schema_parity` do sync, que compara os dois lados antes de carregar.
+create table futebol.fact_insumos_medidos (
+  "fixture_id" bigint,
+  "outcome" text,
+  "market" text,
+  "line_value" double precision,
+  "premissa" text,
+  "insumo" text,
+  "valor" double precision
+);
+
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
 revoke all on schema futebol from anon, authenticated;
 revoke all on all tables in schema futebol from anon, authenticated;
@@ -716,6 +742,7 @@ CREATE INDEX IF NOT EXISTS fact_fixtures_home_team_id_idx ON futebol.fact_fixtur
 CREATE INDEX IF NOT EXISTS fact_fixtures_kickoff_utc_idx ON futebol.fact_fixtures USING btree (kickoff_utc);
 CREATE INDEX IF NOT EXISTS fact_h2h_h2h_pair_key_idx ON futebol.fact_h2h USING btree (h2h_pair_key);
 CREATE INDEX IF NOT EXISTS fact_injuries_snapshot_fixture_id_idx ON futebol.fact_injuries_snapshot USING btree (fixture_id);
+CREATE INDEX IF NOT EXISTS fact_insumos_medidos_fixture_id_idx ON futebol.fact_insumos_medidos USING btree (fixture_id);
 CREATE INDEX IF NOT EXISTS fact_odds_snapshot_fixture_id_idx ON futebol.fact_odds_snapshot USING btree (fixture_id);
 CREATE INDEX IF NOT EXISTS fact_odds_snapshot_fixture_id_market_name_outcome_label_idx ON futebol.fact_odds_snapshot USING btree (fixture_id, market_name, outcome_label);
 CREATE INDEX IF NOT EXISTS fact_predictions_api_fixture_id_idx ON futebol.fact_predictions_api USING btree (fixture_id);
@@ -1294,7 +1321,7 @@ grant execute on function public.futebol_copy(text, text, text, jsonb) to anon, 
 -- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
 drop function if exists public.get_futebol_fixture_value(bigint);
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_value(p_fixture_id bigint)
- returns table(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, penalidades_especificas_pts integer, score integer, faixa text, score_versao text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
+ returns table(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, penalidades_especificas_pts integer, score integer, faixa text, score_versao text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer, edge_publicacao double precision)
  language sql
  security definer
  set search_path to ''
@@ -1326,6 +1353,15 @@ as $function$
                      and fx.kickoff_utc <= (now() at time zone 'UTC')
                      and h.dbt_valid_from <= fx.kickoff_utc
                      and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to))
+  ), nascimento as (
+    -- A FOTO DE NASCIMENTO das linhas deste jogo. Chaveada pelas quatro colunas
+    -- que identificam a saída, e não por `opportunity_key`, porque `v_src` não a
+    -- carrega: ela vem do board no ramo de cima, e lá a coluna não existe.
+    select distinct on (h.market, h.outcome, h.line_value)
+      h.market, h.outcome, h.line_value, h.edge
+    from futebol.fact_value_opportunities_hist h
+    where h.fixture_id = p_fixture_id
+    order by h.market, h.outcome, h.line_value, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.market, v.outcome,
     (case when v.market = 'match_winner'
@@ -1346,8 +1382,12 @@ as $function$
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     public.futebol_copy('aviso', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     (public.futebol_copy('contra', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))))[1:3],
-    v.premissas_sem_dado::int
+    v.premissas_sem_dado::int,
+    -- Jogo por começar: a linha está viva e a vantagem corrente é a publicada.
+    -- Jogo encerrado: a da foto de nascimento.
+    coalesce(n.edge, v.edge)
   from v_src v
+  left join nascimento n on n.market = v.market and n.outcome = v.outcome and n.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
@@ -1745,7 +1785,7 @@ end; $function$
 -- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
 drop function if exists public.get_futebol_value_board();
 CREATE OR REPLACE FUNCTION public.get_futebol_value_board()
- returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer, edge_publicacao double precision)
  language sql
  security definer
  set search_path to ''
@@ -1755,7 +1795,9 @@ as $function$
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
-    v.premissas_sem_dado::int
+    v.premissas_sem_dado::int,
+    -- A linha está viva: a vantagem corrente é a que está publicada agora.
+    v.edge
   from futebol.fact_value_opportunities v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
@@ -1786,7 +1828,10 @@ $function$;
 --     00:30 UTC do dia seguinte, horário de metade do calendário brasileiro.
 --   · `RETURNS TABLE` espelha o de `get_futebol_value_board`, incluindo
 --     `premissas_sem_dado`, para o front reaproveitar `FutebolValueBoardRow`.
---   · `get_futebol_value_board` NÃO é tocada.
+--   · `get_futebol_value_board` não era tocada aqui. Passou a ser na 146, que
+--     acrescenta `edge_publicacao` nas três RPCs para o corte de valor poder
+--     julgar pela foto de nascimento — o contrato exige board e histórico com a
+--     mesma forma.
 --
 -- Crédito: `kickoff < now()`, DISTINCT ON, janela sargável e o índice acima vêm
 -- do PR #259 do Matheus, que implementou a mesma entrega em paralelo.
@@ -1799,13 +1844,14 @@ $function$;
 -- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
 drop function if exists public.get_futebol_value_history(date, date);
 CREATE OR REPLACE FUNCTION public.get_futebol_value_history(p_from date, p_to date)
- returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer, edge_publicacao double precision)
  language sql
  security definer
  set search_path to ''
 as $function$
   with pit as (
     select distinct on (h.opportunity_key)
+      h.opportunity_key,
       h.fixture_id, h.market, h.outcome, h.line_value, h.edge,
       h.best_odd, h.best_book, h.avg_odd, h.n_casas, h.janela_usada,
       h.prob_justa_fechamento, h.pts_premissas,
@@ -1819,15 +1865,30 @@ as $function$
       and h.dbt_valid_from <= fx.kickoff_utc
       and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to)
     order by h.opportunity_key, h.dbt_valid_from desc
+  ), nascimento as (
+    -- A FOTO DE NASCIMENTO: a primeira versão de cada oportunidade, com a
+    -- vantagem que ela tinha quando foi publicada e vista. `asc` é a única
+    -- diferença de ordem para o CTE acima; `dbt_scd_id` é o desempate
+    -- explícito que a 102 exige do DISTINCT ON.
+    select distinct on (h.opportunity_key)
+      h.opportunity_key, h.edge
+    from futebol.fact_value_opportunities_hist h
+    join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
+    where fx.kickoff_utc >= ((p_from::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
+      and fx.kickoff_utc <  (((p_to + 1)::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
+      and fx.kickoff_utc <  (now() at time zone 'UTC')
+    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
-    v.premissas_sem_dado::int
+    v.premissas_sem_dado::int,
+    n.edge
   from pit v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
+  left join nascimento n on n.opportunity_key = v.opportunity_key
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
@@ -1835,6 +1896,8 @@ as $function$
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   order by f.kickoff_utc desc, v.score desc, v.edge desc;
 $function$;
+
+grant execute on function public.get_futebol_value_history(date, date) to anon, authenticated, service_role;
 
 -- ── 5c. Agenda por dia, catálogo e detalhe do jogo (migrations 091 a 096) ────
 -- ⚠️ Estas oito estavam FALTANDO neste arquivo, e é a dívida da #250 no seu
@@ -2809,8 +2872,53 @@ create table if not exists public.futebol_mercados_ocultos (
   -- comparável quando ele voltar.
   oculto boolean not null default true,
   oculto_desde timestamptz not null default now(),
+  -- Quando o mercado VOLTOU à vitrine (migration 145). Null enquanto está fora.
+  oculto_ate timestamptz,
   motivo text not null
 );
+
+-- Ambiente que já tinha a tabela antes da 145 não ganha a coluna pelo create.
+alter table public.futebol_mercados_ocultos
+  add column if not exists oculto_ate timestamptz;
+
+alter table public.futebol_mercados_ocultos
+  drop constraint if exists futebol_mercados_ocultos_periodo;
+alter table public.futebol_mercados_ocultos
+  add constraint futebol_mercados_ocultos_periodo check (
+    (oculto and oculto_ate is null)
+    or (not oculto and oculto_ate is not null and oculto_ate > oculto_desde)
+  );
+
+-- Religar é um UPDATE de uma coluna; o gatilho fecha o período sozinho, porque
+-- o passo manual a mais é o que se esquece no dia, e o esquecimento é silencioso.
+create or replace function public.futebol_mercados_ocultos_periodo()
+returns trigger
+language plpgsql
+set search_path to ''
+as $function$
+begin
+  if old.oculto and not new.oculto then
+    new.oculto_ate := coalesce(new.oculto_ate, now());
+  elsif not old.oculto and new.oculto then
+    if new.oculto_desde is not distinct from old.oculto_desde then
+      new.oculto_desde := now();
+    end if;
+    new.oculto_ate := null;
+  end if;
+  return new;
+end;
+$function$;
+
+revoke execute on function public.futebol_mercados_ocultos_periodo() from public;
+-- No Supabase o schema public dá EXECUTE explícito a anon e authenticated em toda
+-- função nova (privilégio padrão), e o revoke de PUBLIC não tira isso. Conferido em staging.
+revoke execute on function public.futebol_mercados_ocultos_periodo() from anon, authenticated;
+grant execute on function public.futebol_mercados_ocultos_periodo() to service_role;
+
+drop trigger if exists futebol_mercados_ocultos_periodo on public.futebol_mercados_ocultos;
+create trigger futebol_mercados_ocultos_periodo
+  before update of oculto on public.futebol_mercados_ocultos
+  for each row execute function public.futebol_mercados_ocultos_periodo();
 
 -- RLS ligada e SEM policy, no mesmo padrão da futebol_premissa_copy: nada lê a
 -- tabela direto, só a RPC security definer abaixo.
@@ -2841,22 +2949,29 @@ grant execute on function public.get_futebol_mercados_ocultos() to anon, authent
 -- Convive com a leitura acima em vez de substituí-la: as duas funções de
 -- notificação só olham o board — presente e futuro, sempre depois do corte —
 -- e para elas a lista de nomes basta.
-create or replace function public.get_futebol_vitrine()
-returns table (market text, oculto_desde timestamptz)
+--
+-- Desde a 138 ela devolve o período INTEIRO, aberto ou fechado: sem o fim, o
+-- mercado religado sumia da vitrine e o histórico mostrava tudo de quando ele
+-- esteve fora. DROP porque o tipo de retorno mudou.
+drop function if exists public.get_futebol_vitrine();
+
+create function public.get_futebol_vitrine()
+returns table (market text, oculto_desde timestamptz, oculto_ate timestamptz)
  language sql
  stable
  security definer
  set search_path to ''
 as $function$
-  select o.market, o.oculto_desde
+  select o.market, o.oculto_desde, o.oculto_ate
     from public.futebol_mercados_ocultos o
-   where o.oculto
+   where o.oculto or o.oculto_ate is not null
    order by o.market;
 $function$;
 
 comment on function public.get_futebol_vitrine() is
-  'Mercados fora da vitrine COM a data de corte. A data é o que separa a linha que foi publicada e vista da que nunca esteve na tela.';
+  'Períodos fora da vitrine, abertos (oculto_ate null) e fechados. O período é o que separa a linha que foi publicada e vista da que nunca esteve na tela.';
 
+revoke execute on function public.get_futebol_vitrine() from public;
 grant execute on function public.get_futebol_vitrine() to anon, authenticated, service_role;
 
 insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)
@@ -2865,6 +2980,53 @@ values (
   true,
   timestamptz '2026-09-01 00:00:00+00',
   'ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols. Investigacao na B3 (ClickUp wdx6zev656). Decisao do PM em 31/08/2026, prop-play-predictor#324.'
+)
+on conflict (market) do nothing;
+
+-- ── Corte de valor por mercado (migration 144) ──────────────────────────────
+-- Irmão da vitrine, no grão da LINHA: a linha cuja vantagem sobre a referência
+-- sharp é igual ou pior que o limiar do mercado sai do painel e das DMs. O board
+-- continua publicando. Primeiro caso: asian_handicap, -2%.
+--
+-- vigente_desde faz aqui o que oculto_desde faz na vitrine: separa a linha que
+-- esteve na tela da que nunca esteve, para o histórico não devolver amanhã a
+-- linha cortada hoje (a lição da migration 119).
+create table if not exists public.futebol_limiar_valor (
+  market text primary key,
+  -- Fração, na escala do edge do board: -0,02 é -2%.
+  limiar numeric not null check (limiar > -1 and limiar < 1),
+  vigente_desde timestamptz not null default now(),
+  motivo text not null
+);
+
+alter table public.futebol_limiar_valor enable row level security;
+
+comment on table public.futebol_limiar_valor is
+  'Limiar de vantagem por mercado. Linha com edge <= limiar sai da vitrine (painel e DM). Não é gate: o board continua publicando.';
+
+create or replace function public.get_futebol_limiar_valor()
+returns table (market text, limiar numeric, vigente_desde timestamptz)
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select l.market, l.limiar, l.vigente_desde
+    from public.futebol_limiar_valor l
+   order by l.market;
+$function$;
+
+comment on function public.get_futebol_limiar_valor() is
+  'O corte de valor por mercado, com a data em que passou a valer. A data separa a linha que esteve na tela da que nunca esteve.';
+
+revoke execute on function public.get_futebol_limiar_valor() from public;
+grant execute on function public.get_futebol_limiar_valor() to anon, authenticated, service_role;
+
+insert into public.futebol_limiar_valor (market, limiar, motivo)
+values (
+  'asian_handicap',
+  -0.02,
+  'Desde 01/09: edge > -2% ROI +7,9 em 122 linhas (EP 9,0); edge <= -2% ROI -17,4 em 232 (EP 7,5). Remedicao na analytics-engineering#156. Decisao do PM em 12/09/2026, ClickUp wdx6zf1gpn.'
 )
 on conflict (market) do nothing;
 

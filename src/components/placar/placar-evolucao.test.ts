@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { liquidarTudo, type LinhaPublicada } from './placar-agregacao';
 import {
+  abrirGaveta,
   gavetaDe,
   granularidadeAbaixo,
   granularidadesDe,
@@ -152,6 +153,25 @@ describe('a série', () => {
     expect(pontos).toHaveLength(1);
     expect(Object.keys(pontos[0].porMercado).sort()).toEqual(['btts', 'match_winner']);
     expect(pontos[0].porMercado.match_winner.n).toBe(2);
+  });
+});
+
+describe('abrir uma gaveta', () => {
+  it('devolve a janela, o rótulo, o degrau que abre e o de volta', () => {
+    // As três contas juntas num lugar só: espalhadas no JSX de quem chamava,
+    // elas eram a única parte da regra sem onde ser provada.
+    expect(abrirGaveta('2026-09-07', 'semana')).toEqual({
+      janela: { de: '2026-09-07', ate: '2026-09-13' },
+      rotulo: '07/09',
+      degrau: 'dia',
+      volta: 'semana',
+    });
+  });
+
+  it('não abre o dia, que é o último degrau', () => {
+    // Null aqui é o que impede a tela de trocar a janela por uma igual e ainda
+    // pedir um degrau abaixo que não existe.
+    expect(abrirGaveta('2026-09-07', 'dia')).toBeNull();
   });
 });
 

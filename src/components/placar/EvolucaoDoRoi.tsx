@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { LinhaLiquidada } from './placar-agregacao';
@@ -6,15 +6,13 @@ import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import {
   granularidadeAbaixo,
   granularidadesDe,
-  janelaDaGaveta,
   mercadosPresentes,
   ROTULO_DA_GRANULARIDADE,
-  rotuloDaGaveta,
   serie,
   type Granularidade,
   type Ponto,
 } from './placar-evolucao';
-import { noPeriodo, type Eixo, type Periodo } from './placar-periodo';
+import type { Eixo, Periodo } from './placar-periodo';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { rotuloDoMercado } from './placar-vocabulario';
 
@@ -50,6 +48,11 @@ function Balao({ ponto }: { ponto?: Ponto }) {
  * caminho de volta fica escrito à esquerda, porque sem ele quem desce fica
  * perdido.
  *
+ * A gaveta NÃO mora aqui: ela é estado do placar inteiro. Enquanto foi estado
+ * interno deste gráfico, abrir um dia mudava só as barras — os números do topo,
+ * as quebras e as premissas continuavam somando o período inteiro, e a tela
+ * mostrava duas janelas diferentes ao mesmo tempo sem dizer qual era qual.
+ *
  * A cor é o sinal do ROI, não a categoria: o que a barra precisa dizer de longe
  * é se aquela semana ganhou ou perdeu dinheiro.
  */
@@ -59,7 +62,12 @@ export function EvolucaoDoRoi({
   eixo,
   granularidade,
   aoMudarGranularidade,
+  gaveta,
+  aoAbrirGaveta,
+  aoFecharGaveta,
+  comparando,
 }: {
+  /** Já recortadas pela gaveta aberta, quando há uma: quem recorta é o placar. */
   liquidadas: LinhaLiquidada[];
   periodo: Periodo;
   eixo: Eixo;
@@ -72,43 +80,44 @@ export function EvolucaoDoRoi({
    */
   granularidade: Granularidade;
   aoMudarGranularidade: (g: Granularidade) => void;
+  /** A gaveta que a tela está mostrando, quando há uma. */
+  gaveta: { rotulo: string } | null;
+  aoAbrirGaveta: (chave: string, de: Granularidade) => void;
+  aoFecharGaveta: () => void;
+  /**
+   * Comparando dois períodos, a barra não abre.
+   *
+   * Vem dito por extenso, e não deduzido de um callback nulo: o rodapé imprime
+   * o motivo como afirmação, e no dia em que existir um segundo motivo para não
+   * abrir, a frase passaria a mentir.
+   */
+  comparando: boolean;
 }) {
   const noCelular = useIsMobile();
   const disponiveis = granularidadesDe(periodo);
-  const setGranularidade = aoMudarGranularidade;
-  /** A gaveta aberta por clique, com o caminho de volta. */
-  const [zoom, setZoom] = useState<{ janela: Periodo; rotulo: string; volta: Granularidade } | null>(
-    null,
-  );
   const [mercados, setMercados] = useState<string[]>([]);
   /** No celular, a barra tocada: o toque mostra o número, e descer vira um botão. */
   const [tocada, setTocada] = useState<string | null>(null);
 
   const presentes = mercadosPresentes(liquidadas);
-  const emFoco = zoom
-    ? liquidadas.filter((l) => noPeriodo(l.linha, eixo, zoom.janela))
-    : liquidadas;
-  const pontos = serie(emFoco, granularidade, eixo, mercados);
+  const pontos = serie(liquidadas, granularidade, eixo, mercados);
   const pontoTocado = pontos.find((p) => p.chave === tocada) ?? null;
-  const degrauAbaixo = granularidadeAbaixo(granularidade);
+  const degrauAbaixo = comparando ? null : granularidadeAbaixo(granularidade);
+
+  // Trocar de gaveta apaga a barra tocada. A chave da semana e a do primeiro
+  // dia dela são a MESMA data, então a marca sobrevivia à descida e voltava
+  // acesa na barra errada, com as outras apagadas em volta.
+  useEffect(() => setTocada(null), [gaveta]);
 
   const abrir = (chave: string) => {
-    const abaixo = granularidadeAbaixo(granularidade);
-    if (!abaixo) return;
+    if (!degrauAbaixo) return;
     setTocada(null);
-    setZoom({
-      janela: janelaDaGaveta(chave, granularidade),
-      rotulo: rotuloDaGaveta(chave, granularidade),
-      volta: granularidade,
-    });
-    setGranularidade(abaixo);
+    aoAbrirGaveta(chave, granularidade);
   };
 
   const voltar = () => {
-    if (!zoom) return;
     setTocada(null);
-    setGranularidade(zoom.volta);
-    setZoom(null);
+    aoFecharGaveta();
   };
 
   const alternarMercado = (slug: string) =>
@@ -121,18 +130,18 @@ export function EvolucaoDoRoi({
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-2 px-4 py-3 sm:px-5">
         <h2 className="font-display text-[17px] font-black text-ink">Evolução do ROI</h2>
 
-        {zoom && (
+        {gaveta && (
           <button
             type="button"
             onClick={voltar}
             className="flex items-center gap-1 rounded-rebrand-sm border border-line-2 px-2 py-1 text-[12px] font-bold text-ink-2 transition hover:border-ink hover:text-ink"
           >
             <ChevronLeft className="h-3 w-3" />
-            {zoom.rotulo}, por {ROTULO_DA_GRANULARIDADE[granularidade].toLowerCase()} — voltar
+            {gaveta.rotulo}, por {ROTULO_DA_GRANULARIDADE[granularidade].toLowerCase()} — voltar
           </button>
         )}
 
-        {!zoom && disponiveis.length > 1 && (
+        {!gaveta && disponiveis.length > 1 && (
           <span className="flex overflow-hidden rounded-rebrand-sm border border-line-2">
             {disponiveis.map((g) => (
               <button
@@ -140,7 +149,7 @@ export function EvolucaoDoRoi({
                 type="button"
                 onClick={() => {
                   setTocada(null);
-                  setGranularidade(g);
+                  aoMudarGranularidade(g);
                 }}
                 className={`px-2.5 py-1 text-[12px] font-bold transition ${
                   granularidade === g ? 'bg-forest text-white' : 'bg-white text-ink-2 hover:text-ink'
@@ -222,7 +231,7 @@ export function EvolucaoDoRoi({
                   if (noCelular) setTocada(d.chave);
                   else abrir(d.chave);
                 }}
-                cursor={granularidadeAbaixo(granularidade) ? 'pointer' : 'default'}
+                cursor={degrauAbaixo ? 'pointer' : 'default'}
               >
                 {pontos.map((p) => (
                   <Cell
@@ -267,12 +276,12 @@ export function EvolucaoDoRoi({
           )}
 
           <p className="px-3 pt-1 text-[11px] text-ink-dim">
-            {noCelular
+            {comparando
+              ? 'Comparando dois períodos, a barra não abre: a gaveta recorta a tela toda, e a tela está mostrando duas janelas.'
+              : noCelular
               ? 'Toque numa barra para ver o número dela.'
-              : granularidadeAbaixo(granularidade)
-              ? `Clique numa barra para abrir por ${ROTULO_DA_GRANULARIDADE[
-                  granularidadeAbaixo(granularidade)!
-                ].toLowerCase()}.`
+              : degrauAbaixo
+              ? `Clique numa barra para abrir por ${ROTULO_DA_GRANULARIDADE[degrauAbaixo].toLowerCase()}.`
               : 'Este é o último degrau: cada barra é um dia.'}
           </p>
         </div>

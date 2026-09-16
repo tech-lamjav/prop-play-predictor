@@ -97,7 +97,7 @@ export default function FutebolJogos() {
   // "sem leitura ainda" enquanto a resposta não chegou — isso é conclusão.
   const { data: boardCorrente, isLoading: boardCarregando } = useFutebolValueBoard();
   const { data: histRows, isLoading: histCarregando } = useFutebolValueHistory();
-  const { vitrine } = useVitrine();
+  const { vitrine, limiares } = useVitrine();
   const { data: access } = useFutebolAccess();
 
   // A agenda lia SÓ o board, e o board some no apito (migration 102). Resultado:
@@ -109,8 +109,8 @@ export default function FutebolJogos() {
   // apitou, foto do apito para o que já passou. A mesma função, para as duas
   // telas contarem a mesma história do mesmo dia.
   const board = useMemo(
-    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], Date.now(), vitrine),
-    [boardCorrente, histRows, vitrine],
+    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], Date.now(), vitrine, limiares),
+    [boardCorrente, histRows, vitrine, limiares],
   );
 
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
