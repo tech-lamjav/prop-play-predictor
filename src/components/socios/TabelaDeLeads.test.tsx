@@ -23,18 +23,28 @@ describe('TabelaDeLeads · a etiqueta de teste', () => {
       cadastroDeTeste({ id: 'x', name: 'Testando', futebol_trial_ends_at: fimDoTesteEm(HOJE, 5) }),
     ]);
     expect(screen.getByRole('link', { name: 'Testando' })).toBeInTheDocument();
-    expect(screen.getByText('Em teste')).toBeInTheDocument();
+    // Com o dia dentro: o sócio ordena as ligações sem abrir ficha nenhuma.
+    expect(screen.getByText('Em teste até 16/09, faltam 5 dias')).toBeInTheDocument();
   });
 
-  it('a véspera aparece como vencendo', () => {
+  it('a véspera aparece como vencendo, e diz que é amanhã', () => {
     montar([
       cadastroDeTeste({ id: 'x', name: 'Testando', futebol_trial_ends_at: fimDoTesteEm(HOJE, 1) }),
     ]);
-    expect(screen.getByText('Teste vencendo')).toBeInTheDocument();
+    expect(screen.getByText('Vence amanhã, 12/09')).toBeInTheDocument();
+  });
+
+  it('quem venceu diz há quantos dias', () => {
+    // Ontem e maio pedem conversas diferentes: uma é retomada, a outra é
+    // recomeço. "Teste vencido" sozinho não separava as duas.
+    montar([
+      cadastroDeTeste({ id: 'x', name: 'Testando', futebol_trial_ends_at: fimDoTesteEm(HOJE, -3) }),
+    ]);
+    expect(screen.getByText('Venceu 08/09, faz 3 dias')).toBeInTheDocument();
   });
 
   it('quem nunca testou não ganha etiqueta', () => {
     montar([cadastroDeTeste({ id: 'y', name: 'Seco' })]);
-    expect(screen.queryByText(/Em teste|Teste vencendo|Teste vencido/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Em teste|Vence|Venceu/)).not.toBeInTheDocument();
   });
 });

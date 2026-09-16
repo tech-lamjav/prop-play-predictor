@@ -21,6 +21,7 @@ import { useCadastros } from '@/hooks/use-cadastros';
 import { useEtapas, useMudarEtapa } from '@/hooks/use-etapas';
 import { useLinhaDoTempo, useAnotar } from '@/hooks/use-linha-do-tempo';
 import { useMovimento } from '@/hooks/use-painel-do-crm';
+import { useMarcasSemWhatsApp, useMarcarSemWhatsApp } from '@/hooks/use-sem-whatsapp';
 import { useComportamento } from '@/hooks/use-comportamento';
 import { useDefinirAcesso, useDefinirTeste } from '@/hooks/use-acesso';
 import { useAssinaturas, useDarAssinatura, useEncerrarAssinatura } from '@/hooks/use-assinaturas';
@@ -56,6 +57,7 @@ export default function PainelDosSocios() {
   const estado = useCadastros();
   const etapas = useEtapas();
   const movimento = useMovimento();
+  const marcas = useMarcasSemWhatsApp();
 
   return (
     <>
@@ -63,7 +65,13 @@ export default function PainelDosSocios() {
       <AnalyticsNav />
       {/* O dia entra por prop para a tela não mudar de comportamento à
           meia-noite dentro de um teste. */}
-      <PainelCrm estado={estado} etapas={etapas} movimento={movimento} hoje={brtToday()} />
+      <PainelCrm
+        estado={estado}
+        etapas={etapas}
+        movimento={movimento}
+        marcas={marcas}
+        hoje={brtToday()}
+      />
 
       <FichaEmModal aberta={!!id} aoFechar={() => navegar(ROTA_DO_CRM)}>
         {/* Montado só com identificador na rota: as consultas da ficha não
@@ -100,6 +108,8 @@ function FichaDoModal({ id }: { id: string }) {
   const estado = usePessoa(id);
   const etapas = useEtapas();
   const mudar = useMudarEtapa(id);
+  const marcas = useMarcasSemWhatsApp();
+  const marcarSemWhatsApp = useMarcarSemWhatsApp(id);
   const linha = useLinhaDoTempo(id);
   const anotar = useAnotar(id);
   const nomeDoSocio = useNomeDoSocio();
@@ -163,6 +173,12 @@ function FichaDoModal({ id }: { id: string }) {
       aoMudarEtapa={(etapa) => mudar.mutate(etapa)}
       mudandoEtapa={mudar.isPending}
       erroAoMudarEtapa={mudar.isError}
+      // Enquanto as marcas não chegam vale `false`: a ficha ainda mostra o selo
+      // de quem não tem número, que ela descobre sozinha no cadastro.
+      marcadoSemWhatsApp={marcas.tipo === 'pronto' && marcas.marcados.has(id)}
+      aoMarcarSemWhatsApp={(marcado) => marcarSemWhatsApp.mutate(marcado)}
+      marcandoSemWhatsApp={marcarSemWhatsApp.isPending}
+      erroAoMarcarSemWhatsApp={marcarSemWhatsApp.isError}
       hoje={hoje}
       // A mensagem de cobrança fala de uma data. Sem assinatura, ou com uma
       // vitalícia, não há data nenhuma para ela falar.

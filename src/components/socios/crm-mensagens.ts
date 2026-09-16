@@ -278,14 +278,56 @@ export function idSugeridoNaFicha(
     : idDoTeste(contexto.diasDeTeste);
 }
 
-/**
- * Mínimo de dígitos para um número virar link.
- *
- * Doze: código do país, DDD e o número. Um telefone sem DDI monta um endereço
- * que leva a outra pessoa ou a lugar nenhum, e mandar mensagem para um estranho
- * é pior que não ter botão.
- */
+/** Doze dígitos: código do país, DDD e o número. */
 const MINIMO_DE_DIGITOS = 12;
+
+/** O teto do padrão internacional. Acima disso não é telefone, é lixo no campo. */
+const MAXIMO_DE_DIGITOS = 15;
+
+/** Onde cabe um telefone brasileiro sem o código do país: DDD mais oito ou nove. */
+const DIGITOS_SEM_PAIS = [10, 11];
+
+/** O código do país que a gente assume quando ele falta. */
+const BRASIL = '55';
+
+/**
+ * O número em dígitos prontos para o WhatsApp, ou nulo quando não dá.
+ *
+ * ⚠️ Dez ou onze dígitos GANHAM o 55 na frente, e isso REVERTE o que este
+ * arquivo decidia antes. A regra antiga recusava número sem código do país, com
+ * o argumento de que mandar mensagem para um estranho é pior que não ter botão.
+ * O argumento continua de pé; o que mudou foi o custo do outro lado. A base
+ * antiga tem muito celular gravado sem o 55, e recusar todos escondia da fila
+ * de trabalho gente que o sócio alcança sem nenhum problema — o oposto do que o
+ * recorte "Sem WhatsApp" existe para fazer.
+ *
+ * O palpite é de PAÍS, e só se sustenta porque a base é brasileira. Um telefone
+ * estrangeiro de dez dígitos vira um endereço errado; em troca, volta para a
+ * fila muita gente abordável. Fora dessa faixa nada é inventado: de doze a
+ * quinze dígitos o número já traz o país e vai como está, e o resto é nulo.
+ *
+ * Mora aqui, do lado do link, porque quem responde nulo é exatamente quem não
+ * ganha botão na ficha — e é o mesmo conjunto que o recorte "Sem WhatsApp" da
+ * lista mostra. Com duas definições, a lista prometeria gente que a ficha não
+ * consegue abrir.
+ */
+export function digitosDoWhatsApp(numero: string | null | undefined): string | null {
+  const digitos = (numero ?? '').replace(/\D/g, '');
+  if (DIGITOS_SEM_PAIS.includes(digitos.length)) return `${BRASIL}${digitos}`;
+  if (digitos.length >= MINIMO_DE_DIGITOS && digitos.length <= MAXIMO_DE_DIGITOS) return digitos;
+  return null;
+}
+
+/**
+ * O número serve para abrir uma conversa?
+ *
+ * ⚠️ Não é "o campo está preenchido": um campo com cinco dígitos está
+ * preenchido e não abre conversa nenhuma. Quem decide é `digitosDoWhatsApp`, a
+ * mesma função que monta o link — para a lista e a ficha nunca discordarem.
+ */
+export function temWhatsApp(numero: string | null | undefined): boolean {
+  return digitosDoWhatsApp(numero) !== null;
+}
 
 /**
  * O endereço que abre o WhatsApp com o texto dentro.
@@ -295,7 +337,7 @@ const MINIMO_DE_DIGITOS = 12;
  * sem o sócio entender por quê.
  */
 export function linkDoWhatsApp(numero: string | null | undefined, texto: string): string | null {
-  const digitos = (numero ?? '').replace(/\D/g, '');
-  if (digitos.length < MINIMO_DE_DIGITOS) return null;
+  const digitos = digitosDoWhatsApp(numero);
+  if (!digitos) return null;
   return `https://wa.me/${digitos}?text=${encodeURIComponent(texto)}`;
 }
