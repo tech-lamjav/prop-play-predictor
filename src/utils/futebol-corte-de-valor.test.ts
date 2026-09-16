@@ -11,6 +11,8 @@ import { esteveNaVitrine, soAVitrine } from '@/components/placar/placar-vitrine'
 
 const CORTE = [{ market: 'asian_handicap', limiar: -0.02 }];
 
+const linha = (market: string, edge: number | null, id: number) => ({ market, edge, fixture_id: id });
+
 describe('passaNoCorteDeValor', () => {
   it('mercado sem limiar sempre passa, qualquer que seja o preço', () => {
     expect(passaNoCorteDeValor('goals_over_under', -0.3, CORTE)).toBe(true);
@@ -46,8 +48,6 @@ describe('passaNoCorteDeValor', () => {
 // isso a tela lê a ausência como "não houve preço coletado" e repõe a contagem
 // de premissas no lugar do Score que o corte tirou.
 describe('separaNoCorteDeValor', () => {
-  const linha = (market: string, edge: number | null, id: number) => ({ market, edge, fixture_id: id });
-
   it('devolve os dois lados, sem perder nem duplicar linha', () => {
     const linhas = [
       linha('asian_handicap', 0.01, 1),
@@ -90,8 +90,6 @@ describe('separaNoCorteDeValor', () => {
 });
 
 describe('filtrarCorteDeValor', () => {
-  const linha = (market: string, edge: number | null, id: number) => ({ market, edge, fixture_id: id });
-
   it('tira só as linhas cortadas, na ordem', () => {
     const linhas = [
       linha('asian_handicap', 0.01, 1),

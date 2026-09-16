@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resumoDosMercados, melhorLeitura, sufixoDeLeitura } from './futebol-leitura';
+import { resumoDosMercados, melhorLeitura, sufixoDeLeitura, leituraDaFolha } from './futebol-leitura';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import type { Saida } from './futebol-saida';
 
@@ -118,6 +118,15 @@ describe('a saída cortada pelo corte de valor', () => {
 
     expect(g.value?.score).toBe(61);
     expect(g.cortada).toBe(false);
+  });
+
+  it('a folha tem TRÊS estados, e é o par do meio que a tela confundia', () => {
+    // O número grande da folha sai daqui. Sem o terceiro estado, "não tem linha
+    // de valor" respondia a mesma coisa para o jogo sem preço coletado e para a
+    // linha que o corte removeu.
+    expect(leituraDaFolha(true, false)).toBe('score');
+    expect(leituraDaFolha(false, false)).toBe('premissas');
+    expect(leituraDaFolha(false, true)).toBe('nenhuma');
   });
 
   it('a manchete do jogo não elege o mercado cortado', () => {

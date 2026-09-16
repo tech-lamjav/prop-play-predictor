@@ -35,7 +35,7 @@ import {
   type FutebolLeaders,
   type FutebolValueBoardRow,
   type FutebolFixtureValueRow,
-  type FutebolFixtureValue,
+  type FutebolFixtureValueComCortadas,
   type FutebolAlertedPick,
 } from '@/services/futebol-data.service';
 
@@ -372,7 +372,7 @@ export function useFutebolAlertedPicks() {
   });
 }
 
-const FIXTURE_VALUE = (fixtureId: number | undefined) => ({
+const opcoesDoValorDoJogo = (fixtureId: number | undefined) => ({
   queryKey: ['futebol', 'fixture-value', fixtureId] as const,
   queryFn: () => futebolDataService.getFixtureValue(fixtureId as number),
   enabled: !!fixtureId,
@@ -382,8 +382,8 @@ const FIXTURE_VALUE = (fixtureId: number | undefined) => ({
 });
 
 export function useFutebolFixtureValue(fixtureId: number | undefined) {
-  return useQuery<FutebolFixtureValue, Error, FutebolFixtureValueRow[]>({
-    ...FIXTURE_VALUE(fixtureId),
+  return useQuery<FutebolFixtureValueComCortadas, Error, FutebolFixtureValueRow[]>({
+    ...opcoesDoValorDoJogo(fixtureId),
     select: (d) => d.linhas,
   });
 }
@@ -400,8 +400,8 @@ export function useFutebolFixtureValue(fixtureId: number | undefined) {
  * exibir: a lista não carrega Score nem vantagem.
  */
 export function useFutebolFixtureCortadas(fixtureId: number | undefined) {
-  return useQuery<FutebolFixtureValue, Error, Saida[]>({
-    ...FIXTURE_VALUE(fixtureId),
+  return useQuery<FutebolFixtureValueComCortadas, Error, Saida[]>({
+    ...opcoesDoValorDoJogo(fixtureId),
     select: (d) => d.cortadas,
   });
 }

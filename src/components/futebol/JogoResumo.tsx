@@ -228,12 +228,7 @@ export function JogoResumo({
 }: {
   jogo: JogoInfo;
   valueRows: FutebolFixtureValueRow[] | null | undefined;
-  /**
-   * As saídas que o corte de valor removeu (#432). Vem por prop junto do
-   * `valueRows`, e não por hook, porque as duas listas nascem da MESMA resposta:
-   * buscá-las em lugares diferentes abre a janela em que a tela tem uma e não
-   * tem a outra, e nessa janela ela anuncia o que estamos escondendo.
-   */
+  /** As saídas que o corte de valor removeu (#432), junto do `valueRows`. */
   cortadas: readonly Saida[];
   injuries: FutebolInjury[] | null | undefined;
   locked: boolean;

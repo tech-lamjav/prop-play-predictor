@@ -10,6 +10,7 @@ import {
   useFutebolFixtureInjuries,
   useFutebolFixtureHistorico,
   useFutebolFixtureReasonContract,
+  useFutebolFixtureCortadas,
   useVitrine,
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
@@ -131,10 +132,15 @@ export function JogoResumoPanel({
   // premissas. É a mesma conta da tela de jogo, então os dois nunca divergem.
   // A vitrine (#324): mesma razão do JogoResumo — a prateleira sai do catálogo.
   const { ocultos } = useVitrine();
-  // Sem cortadas: este painel lê o BOARD, que já chega cortado do serviço, e não
-  // a resposta do detalhe do jogo — a linha que o corte removeu não passa por
-  // aqui, então não há o que distinguir (#432).
-  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null, null, ocultos, []), [premissas, best, ocultos]);
+  // O corte de valor (#432). O `best` já chega cortado do board, mas quando não
+  // há linha no board a leitura sai das PREMISSAS — e essas não passam por corte
+  // nenhum. Sem isto, a saída que o corte removeu vira a "melhor leitura" do
+  // jogo aqui, com a contagem de premissas no mesmo número grande âmbar.
+  const { data: cortadas } = useFutebolFixtureCortadas(demo ? undefined : fixture.fixture_id);
+  const resumos = useMemo(
+    () => resumoDosMercados(premissas, best ? [] : null, null, ocultos, cortadas ?? []),
+    [premissas, best, ocultos, cortadas],
+  );
   const topo = useMemo(() => melhorLeitura(resumos), [resumos]);
 
   const mercadoLeitura = best ? best.market : topo?.mercado.slug ?? null;

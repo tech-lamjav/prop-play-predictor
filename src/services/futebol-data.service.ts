@@ -646,7 +646,7 @@ export interface FutebolAlertedPick {
  * saída nesta lista é toda a informação, e é o bastante para a folha parar de
  * ler a ausência de linha de valor como "não houve preço coletado".
  */
-export interface FutebolFixtureValue {
+export interface FutebolFixtureValueComCortadas {
   linhas: FutebolFixtureValueRow[];
   cortadas: Saida[];
 }
@@ -1180,7 +1180,7 @@ export const futebolDataService = {
    * pelo catálogo. O corte só decide entre as linhas de mercado que está na
    * vitrine, e por isso ele roda depois.
    */
-  async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValue> {
+  async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValueComCortadas> {
     return withRetry(async () => {
       const [{ data, error }, ocultos, limiares] = await Promise.all([
         supabaseClient.rpc('get_futebol_fixture_value', { p_fixture_id: fixtureId }),
