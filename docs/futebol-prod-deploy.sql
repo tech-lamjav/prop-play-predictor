@@ -2809,12 +2809,12 @@ create table if not exists public.futebol_mercados_ocultos (
   -- comparável quando ele voltar.
   oculto boolean not null default true,
   oculto_desde timestamptz not null default now(),
-  -- Quando o mercado VOLTOU à vitrine (migration 138). Null enquanto está fora.
+  -- Quando o mercado VOLTOU à vitrine (migration 145). Null enquanto está fora.
   oculto_ate timestamptz,
   motivo text not null
 );
 
--- Ambiente que já tinha a tabela antes da 138 não ganha a coluna pelo create.
+-- Ambiente que já tinha a tabela antes da 145 não ganha a coluna pelo create.
 alter table public.futebol_mercados_ocultos
   add column if not exists oculto_ate timestamptz;
 
@@ -2920,7 +2920,7 @@ values (
 )
 on conflict (market) do nothing;
 
--- ── Corte de valor por mercado (migration 137) ──────────────────────────────
+-- ── Corte de valor por mercado (migration 144) ──────────────────────────────
 -- Irmão da vitrine, no grão da LINHA: a linha cuja vantagem sobre a referência
 -- sharp é igual ou pior que o limiar do mercado sai do painel e das DMs. O board
 -- continua publicando. Primeiro caso: asian_handicap, -2%.

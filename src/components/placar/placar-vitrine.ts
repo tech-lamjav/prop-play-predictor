@@ -35,7 +35,7 @@ export function esteveNaVitrine(
   linha: LinhaPublicada,
   ocultos: readonly MercadoOculto[],
   agoraMs: number = Date.now(),
-  // O corte de valor (migration 137) é a outra forma de uma linha não estar na
+  // O corte de valor (migration 144) é a outra forma de uma linha não estar na
   // tela, e vale pelo mesmo eixo: a detecção.
   limiares: readonly LimiarDeValor[] = [],
 ): boolean {
@@ -61,6 +61,6 @@ export function soAVitrine(
  * `null` quando o mercado está na tela: selo em toda linha não marca nada.
  */
 export function seloDeOculto(market: string, ocultos: readonly MercadoOculto[]): string | null {
-  // Só o período aberto: o mercado que já voltou está na tela (migration 138).
+  // Só o período aberto: o mercado que já voltou está na tela (migration 145).
   return ocultosAgora(ocultos).includes(market) ? 'fora da vitrine' : null;
 }

@@ -105,11 +105,14 @@ describe('a catraca das funções security definer', () => {
         'Acrescente no MESMO arquivo que a cria, depois do CREATE FUNCTION —\n' +
         'no mesmo arquivo porque entre criar aberta e fechar depois existe uma\n' +
         'janela, e nas duas funções da #408 essa janela foi de meses:\n' +
-        '  revoke execute on function public.<nome>(<tipos>) from public;\n' +
+        '  revoke execute on function public.<nome>(<tipos>) from public, anon, authenticated;\n' +
         '  grant  execute on function public.<nome>(<tipos>) to <papel>;\n\n' +
-        'Função nova nasce executável por PUBLIC, e PUBLIC inclui o anon: sem o\n' +
-        'revoke, qualquer visitante chama uma função que roda com privilégio de\n' +
-        'dono do banco e passa por cima de RLS.',
+        'Função nova nasce executável por PUBLIC, e PUBLIC inclui o anon. Mas\n' +
+        'revogar só de PUBLIC NÃO BASTA no Supabase: o schema public tem\n' +
+        'privilégio padrão (pg_default_acl) que dá EXECUTE explícito a anon,\n' +
+        'authenticated e service_role em toda função nova, e esses três grants\n' +
+        'sobrevivem ao revoke de PUBLIC. Foi assim que a 140 fechou as duas da\n' +
+        '#408 e elas continuaram abertas em produção — ver a 143.',
     ).toEqual([]);
   });
 
@@ -142,6 +145,45 @@ describe('a catraca das funções security definer', () => {
     for (const funcao of ['get_weekly_recap_candidates', 'get_settlement_reminder_candidates']) {
       expect(aindaAbertas, funcao).not.toContain(funcao);
       expect(passivoAceito(), funcao).not.toContain(funcao);
+    }
+  });
+
+  // ==========================================================================
+  // O revoke que de verdade fecha
+  // ==========================================================================
+  // A 140 fez `revoke ... from public` nas duas da #408 e subiu para produção.
+  // Conferido no banco depois disso: `anon` continuava executando as duas. O
+  // schema public do Supabase tem privilégio padrão que dá EXECUTE explícito a
+  // anon, authenticated e service_role em TODA função nova — o revoke de PUBLIC
+  // tira só o `=X` de PUBLIC e deixa os três grants de pé ao lado.
+  //
+  // O teste acima não pega isso: para ele, qualquer revoke conta como fechar.
+  // Reescrevê-lo para exigir anon/authenticated em TODAS reprovaria as dezenas
+  // de funções do CRM que fecharam pelo padrão antigo — o passivo tem de encolher
+  // por decisão, não por teste que ninguém consegue passar. Então este guarda é
+  // estreito de propósito: vale para as duas que já vazaram de verdade.
+  // ==========================================================================
+  it('as duas da #408 revogam também de anon e authenticated', () => {
+    const sql = migrations().join('\n');
+
+    for (const funcao of ['get_weekly_recap_candidates', 'get_settlement_reminder_candidates']) {
+      const alvos = [
+        ...sql.matchAll(
+          new RegExp(
+            `revoke\\s+execute\\s+on\\s+function\\s+(?:public\\.)?${funcao}\\s*\\([^)]*\\)\\s+from\\s+([^;]+);`,
+            'gi',
+          ),
+        ),
+      ].map((m) => m[1].toLowerCase());
+
+      for (const papel of ['anon', 'authenticated']) {
+        expect(
+          alvos.some((de) => de.includes(papel)),
+          `${funcao} nunca é revogada de ${papel}. Revogar só de public deixa o\n` +
+            'grant explícito do privilégio padrão do Supabase de pé, e a função\n' +
+            'continua chamável com a chave pública que vai no bundle do site.',
+        ).toBe(true);
+      }
     }
   });
 });

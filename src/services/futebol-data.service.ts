@@ -22,7 +22,7 @@ import {
 // não somar uma chamada a cada carga do board.
 const MERCADOS_OCULTOS_TTL_MS = 5 * 60 * 1000;
 let mercadosOcultosCache: { valor: MercadoOculto[]; expiraEm: number } | null = null;
-// O corte de valor muda pelo mesmo caminho (UPDATE, migration 137), então vale o
+// O corte de valor muda pelo mesmo caminho (UPDATE, migration 144), então vale o
 // mesmo prazo.
 let limiaresCache: { valor: LimiarDeValor[]; expiraEm: number } | null = null;
 
@@ -984,7 +984,7 @@ export const futebolDataService = {
       ).map((linha) => ({
         market: linha.market,
         ocultoDesde: linha.oculto_desde,
-        // Ausente antes da migration 138: o período conta como aberto, que é
+        // Ausente antes da migration 145: o período conta como aberto, que é
         // exatamente o comportamento de antes.
         ocultoAte: linha.oculto_ate ?? null,
       }));
@@ -1017,14 +1017,14 @@ export const futebolDataService = {
 
   /**
    * Só os nomes, e só dos mercados fora da vitrine AGORA — para quem decide
-   * sobre o presente. O mercado que já voltou (migration 138) fica de fora.
+   * sobre o presente. O mercado que já voltou (migration 145) fica de fora.
    */
   async getMercadosOcultos(): Promise<string[]> {
     return ocultosAgora(await this.getVitrine());
   },
 
   /**
-   * O corte de valor por mercado (migration 137): a linha que paga abaixo do
+   * O corte de valor por mercado (migration 144): a linha que paga abaixo do
    * limiar sai da vitrine, com a data em que o corte passou a valer.
    *
    * Mora no banco pelo mesmo motivo da vitrine — o Telegram precisa ler a MESMA
@@ -1109,7 +1109,7 @@ export const futebolDataService = {
    * Escondê-lo aqui reescreveria o passado dele e mudaria a performance exibida.
    * Ver prop-play-predictor#324.
    *
-   * O corte de valor (migration 137) segue a mesma regra pelo mesmo motivo: ele
+   * O corte de valor (migration 144) segue a mesma regra pelo mesmo motivo: ele
    * entra POR DATA no `mergeBoardAndHistory`, e não aqui.
    */
   async getValueHistory(from: string, to: string): Promise<FutebolValueBoardRow[]> {

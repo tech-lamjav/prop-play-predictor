@@ -1,4 +1,4 @@
--- 20260914210000_137_futebol_corte_de_valor
+-- 20260914210000_144_futebol_corte_de_valor
 --
 -- A linha que paga abaixo do preço justo sai da vitrine — por mercado.
 --

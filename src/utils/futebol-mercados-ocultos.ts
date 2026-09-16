@@ -57,7 +57,7 @@ export interface MercadoOculto {
   ocultoDesde: string | null;
   /**
    * ISO em UTC do momento em que o mercado VOLTOU à vitrine, ou `null` (ou
-   * ausente, antes da migration 138) enquanto ele continua fora.
+   * ausente, antes da migration 145) enquanto ele continua fora.
    *
    * Sem o fim, religar o mercado tirava ele da vitrine inteira, e o passado
    * devolvia pela porta dos fundos todas as linhas de quando ele estava fora —
@@ -80,7 +80,7 @@ export interface MercadoOculto {
  * Kickoff ilegível esconde. Entre mostrar um mercado que o produto retirou e
  * omitir uma linha cuja data o front não soube ler, a segunda erra menos.
  *
- * Exceção: com o período já fechado (migration 138) a data ilegível MOSTRA,
+ * Exceção: com o período já fechado (migration 145) a data ilegível MOSTRA,
  * porque o mercado voltou e está na tela.
  */
 export function mercadoOcultoNaData(
@@ -110,7 +110,7 @@ export function mercadoOcultoNaData(
  * Os mercados fora da vitrine AGORA — só os nomes.
  *
  * A vitrine traz também o período já encerrado de um mercado que voltou
- * (migration 138), porque é ele que impede o histórico de mostrar o que nunca
+ * (migration 145), porque é ele que impede o histórico de mostrar o que nunca
  * esteve na tela. Mas para decidir sobre o PRESENTE — board, catálogo do
  * detalhe, selo do placar — o mercado que voltou está na tela.
  *
