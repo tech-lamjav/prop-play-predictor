@@ -9,6 +9,7 @@ import {
   metricasDeNegocio,
   montarLeads,
   precisamDeAtencao,
+  semWhatsApp,
   type Lead,
   type Posicao,
 } from './crm-painel';
@@ -41,12 +42,17 @@ const VAZIO: Cadastro[] = [];
 /**
  * Qual fatia da base a lista mostra.
  *
- * Duas, e não mais: a primeira versão tinha três recortes, e o primeiro deles ainda
- * se dividia em duas tabelas por dentro — cinco listas para uma base só. O
- * recorte é filtro, e agrupar por dia é uma chave à parte, porque as duas
- * coisas se combinam em vez de competir.
+ * Poucas, e cada uma respondendo a uma pergunta que o sócio faz de verdade: com
+ * quem eu falo agora, quem eu não consigo abordar, e a base inteira. A primeira
+ * versão tinha três recortes em que o primeiro ainda se dividia em duas tabelas
+ * por dentro — cinco listas para uma base só. O recorte é filtro, e agrupar por
+ * dia é uma chave à parte, porque as duas coisas se combinam em vez de competir.
+ *
+ * ⚠️ "Sem WhatsApp" é recorte, e não posição do funil. Não ter número é fato do
+ * cadastro, e a pessoa continua tendo a etapa que tem — a mesma separação que
+ * tirou "em teste" do funil.
  */
-type Recorte = 'atencao' | 'todos';
+type Recorte = 'atencao' | 'sem-whatsapp' | 'todos';
 
 const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
   {
@@ -54,6 +60,12 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
     rotulo: 'Precisa de atenção',
     explicacao:
       'quem está esperando você: conversas sem toque há 7 dias ou mais, e quem nunca foi abordado',
+  },
+  {
+    id: 'sem-whatsapp',
+    rotulo: 'Sem WhatsApp',
+    explicacao:
+      'quem não tem número que abra conversa: dá para ver o cadastro, mas não dá para abordar por WhatsApp',
   },
   {
     id: 'todos',
@@ -69,10 +81,15 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
  * A frase muda com o recorte de propósito: lista vazia em "precisa de atenção"
  * é uma boa notícia, e a mesma frase genérica faria parecer defeito.
  */
-const vazioDo = (recorte: Recorte) =>
-  recorte === 'atencao'
-    ? 'Ninguém esperando. Toda conversa começada teve toque na última semana, e todo lead novo já foi abordado.'
-    : 'Nenhum cadastro com esses filtros.';
+const vazioDo = (recorte: Recorte) => {
+  if (recorte === 'atencao') {
+    return 'Ninguém esperando. Toda conversa começada teve toque na última semana, e todo lead novo já foi abordado.';
+  }
+  if (recorte === 'sem-whatsapp') {
+    return 'Todo mundo desta lista tem número que abre conversa.';
+  }
+  return 'Nenhum cadastro com esses filtros.';
+};
 
 /**
  * O painel dos sócios.
@@ -188,7 +205,8 @@ export function PainelCrm({
   const lista = useMemo(() => {
     if (!noRecorte) return null;
     if (recorte === 'atencao') return precisamDeAtencao(noRecorte);
-    return [...noRecorte].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
+    const doRecorte = recorte === 'sem-whatsapp' ? semWhatsApp(noRecorte) : noRecorte;
+    return [...doRecorte].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
   }, [noRecorte, recorte]);
 
   /**
@@ -206,7 +224,11 @@ export function PainelCrm({
    */
   const quantos = useMemo<Record<Recorte, number> | null>(() => {
     if (!noRecorte) return null;
-    return { atencao: precisamDeAtencao(noRecorte).length, todos: noRecorte.length };
+    return {
+      atencao: precisamDeAtencao(noRecorte).length,
+      'sem-whatsapp': semWhatsApp(noRecorte).length,
+      todos: noRecorte.length,
+    };
   }, [noRecorte]);
 
   const porDia = useMemo(

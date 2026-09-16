@@ -11,6 +11,7 @@ import {
   precisamDeAtencao,
   metricasDeNegocio,
   montarLeads,
+  semWhatsApp,
   type Toques,
 } from './crm-painel';
 import { cadastroDeTeste as cadastro, fimDoTesteEm } from './crm-cadastro-de-teste';
@@ -386,5 +387,66 @@ describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
     // O filtro nasce desligado, e desligado tem que ser "tudo" e não "nada".
     const leads = montaT([cadastro({ id: 'a' }), cadastro({ id: 'b' })]);
     expect(filtrarPorEtiqueta(leads, null)).toHaveLength(2);
+  });
+
+  it('o lead carrega o prazo do teste, e não só a etiqueta', () => {
+    // A tabela, o kanban e a ficha mostram o MESMO prazo. Calculado em cada
+    // tela, o dia divergiria na virada da meia-noite — que é exatamente quando
+    // ele importa.
+    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_ends_at: terminaEm(4) })]);
+    expect(lead.fimDoTeste).toBe('2026-09-16');
+    expect(lead.diasDeTeste).toBe(4);
+  });
+
+  it('quem já venceu carrega dia no passado e dias negativos', () => {
+    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_ends_at: terminaEm(-3) })]);
+    expect(lead.fimDoTeste).toBe('2026-09-09');
+    expect(lead.diasDeTeste).toBe(-3);
+  });
+
+  it('quem nunca testou não ganha prazo inventado', () => {
+    const [lead] = montaT([cadastro({ id: 'a', futebol_trial_ends_at: null })]);
+    expect(lead.fimDoTeste).toBeNull();
+    expect(lead.diasDeTeste).toBeNull();
+  });
+});
+
+describe('semWhatsApp · de quem o sócio não consegue chegar perto', () => {
+  // O pedido, nas palavras dele: "leads sem whatsapp, esses eu nao consigo
+  // fazer nada". É recorte da lista, e não etapa: não ter número é fato do
+  // cadastro, e a pessoa continua tendo a etapa que tem.
+
+  it('devolve quem não tem número', () => {
+    const leads = monta([
+      cadastro({ id: 'com', whatsapp_number: '5511998877665' }),
+      cadastro({ id: 'sem', whatsapp_number: null }),
+    ]);
+    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['sem']);
+  });
+
+  it('número sem código do país conta como sem WhatsApp', () => {
+    // ⚠️ A parte que tem dentes. "Campo vazio" deixaria este de fora, e ele é
+    // justamente quem a ficha não consegue abrir: a lista prometeria uma
+    // conversa que não existe.
+    const leads = monta([cadastro({ id: 'ddi-faltando', whatsapp_number: '11998877665' })]);
+    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['ddi-faltando']);
+  });
+
+  it('não mexe na etapa de ninguém', () => {
+    // A separação de sempre: etapa é até onde a conversa chegou, e não ter
+    // número é fato do cadastro. Como posição do funil, engoliria a etapa.
+    const leads = montarLeads(
+      [cadastro({ id: 'sem', whatsapp_number: null })],
+      { sem: 'nutrindo' },
+      {},
+      {},
+      HOJE,
+    );
+    expect(semWhatsApp(leads)[0].etapa).toBe('nutrindo');
+  });
+
+  it('base inteira com número devolve lista vazia', () => {
+    const leads = monta([cadastro({ id: 'a', whatsapp_number: '5511998877665' })]);
+    expect(semWhatsApp(leads)).toEqual([]);
   });
 });

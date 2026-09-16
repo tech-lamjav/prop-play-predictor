@@ -100,6 +100,43 @@ export function diasDeTesteRestantes(c: Cadastro, hoje: string): number | null {
   return fim ? diasEntre(hoje, fim) : null;
 }
 
+/** `2026-09-21` vira `21/09`. O ano fica de fora: a etiqueta é sobre esta semana. */
+function diaCurto(dia: string): string {
+  return `${dia.slice(8, 10)}/${dia.slice(5, 7)}`;
+}
+
+/**
+ * A etiqueta com o PRAZO dentro, do jeito que ela aparece na linha do lead.
+ *
+ * O rótulo sozinho respondia metade da pergunta. "Teste vencendo" não dizia se
+ * vence hoje ou amanhã, e "teste vencido" não dizia se foi ontem ou em maio —
+ * e é isso que separa uma conversa de retomada de uma de recomeço. Com o dia na
+ * etiqueta, o sócio decide a ordem das ligações sem abrir ficha nenhuma.
+ *
+ * Sem o dia gravado, cai no rótulo: a etiqueta continua dizendo a situação, que
+ * é o que ela sempre disse.
+ */
+export function textoDaEtiqueta(
+  etiqueta: Etiqueta,
+  fimDoTeste: string | null,
+  diasDeTeste: number | null,
+): string {
+  if (!fimDoTeste || diasDeTeste === null) return ROTULO_DA_ETIQUETA[etiqueta];
+
+  const dia = diaCurto(fimDoTeste);
+
+  if (etiqueta === 'trial_vencido') {
+    const faz = Math.abs(diasDeTeste);
+    return `Venceu ${dia}, faz ${faz} ${faz === 1 ? 'dia' : 'dias'}`;
+  }
+
+  if (etiqueta === 'trial_ativo') return `Em teste até ${dia}`;
+
+  // Vencendo é hoje ou amanhã, e é assim que a pessoa pensa no próprio prazo.
+  // O dia vai junto porque é ele que entra na mensagem e na conversa.
+  return diasDeTeste <= 0 ? `Vence hoje, ${dia}` : `Vence amanhã, ${dia}`;
+}
+
 /**
  * O último dia, em Brasília, em que a pessoa ainda entra no futebol pelo teste.
  *

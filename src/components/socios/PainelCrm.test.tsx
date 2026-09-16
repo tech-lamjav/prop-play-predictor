@@ -421,6 +421,38 @@ describe('PainelCrm · o recorte diz quanta gente ele esconde', () => {
   });
 });
 
+describe('PainelCrm · o recorte de quem não tem WhatsApp', () => {
+  // "leads sem whatsapp, esses eu nao consigo fazer nada". Eles ficavam
+  // misturados na fila de atenção, onde o sócio só descobria o problema depois
+  // de abrir a ficha e não achar botão nenhum.
+
+  const comESem = [
+    cadastro({ id: 'com', name: 'Tem Numero', whatsapp_number: '5511998877665' }),
+    cadastro({ id: 'sem', name: 'Sem Numero', whatsapp_number: null }),
+    cadastro({ id: 'ddi', name: 'Sem Ddi', whatsapp_number: '11998877665' }),
+  ];
+
+  it('mostra só quem não dá para abordar', async () => {
+    montar({ cadastros: comESem });
+    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+    expect(screen.getByText('Sem Ddi')).toBeInTheDocument();
+    expect(screen.queryByText('Tem Numero')).not.toBeInTheDocument();
+  });
+
+  it('conta quantos são, como os outros recortes', () => {
+    // Sem o número, o sócio teria que clicar para descobrir se vale a pena.
+    montar({ cadastros: comESem });
+    expect(screen.getByRole('radio', { name: /^Sem WhatsApp 2$/ })).toBeInTheDocument();
+  });
+
+  it('base inteira com número diz isso, em vez de parecer defeito', async () => {
+    montar({ cadastros: [comESem[0]] });
+    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp 0$/ }));
+    expect(screen.getByText(/número que abre conversa/)).toBeInTheDocument();
+  });
+});
+
 describe('PainelCrm · o teste gratuito é eixo separado do funil', () => {
   // `HOJE` é 2026-09-11 e o teste termina no dia 12: sobram hoje e amanhã, que
   // é o corte de "vencendo".

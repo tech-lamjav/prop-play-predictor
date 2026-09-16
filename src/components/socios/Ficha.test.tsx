@@ -353,7 +353,9 @@ describe('Ficha · o teste gratuito e a cobrança', () => {
   it('a etiqueta de teste aparece no cabeçalho', () => {
     montar(emTeste);
     const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
-    expect(within(cabecalho).getByText('Teste vencendo')).toBeInTheDocument();
+    // O mesmo prazo que a lista mostra, pela mesma conta: duas contas do último
+    // dia divergiriam na virada da meia-noite.
+    expect(within(cabecalho).getByText('Vence amanhã, 13/09')).toBeInTheDocument();
   });
 
   it('quem está em teste recebe a mensagem de conversão como sugerida', () => {
@@ -368,7 +370,7 @@ describe('Ficha · o teste gratuito e a cobrança', () => {
 
   it('quem já assina não recebe etiqueta nem conversão', () => {
     montar(pessoa({ futebol_trial_ends_at: '2026-09-13T15:00:00Z' }));
-    expect(screen.queryByText('Teste vencendo')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Vence amanhã/)).not.toBeInTheDocument();
     const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
     expect((within(bloco).getByRole('textbox') as HTMLTextAreaElement).value).not.toMatch(
       /teste do futebol/,

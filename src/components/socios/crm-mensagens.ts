@@ -294,8 +294,24 @@ const MINIMO_DE_DIGITOS = 12;
  * da base antiga não tem WhatsApp, e um link quebrado abre uma aba em branco
  * sem o sócio entender por quê.
  */
+/**
+ * O número serve para abrir uma conversa?
+ *
+ * ⚠️ Não é "o campo está preenchido". Um telefone sem código do país monta um
+ * endereço que leva a outra pessoa ou a lugar nenhum, então a regra é o MÍNIMO
+ * DE DÍGITOS, e não a existência do campo.
+ *
+ * Mora aqui, do lado do link, porque quem responde "não" é exatamente quem não
+ * ganha botão de WhatsApp na ficha — e é o mesmo conjunto que o recorte "Sem
+ * WhatsApp" da lista mostra. Com duas definições, a lista prometeria gente que
+ * a ficha não consegue abrir.
+ */
+export function temWhatsApp(numero: string | null | undefined): boolean {
+  return (numero ?? '').replace(/\D/g, '').length >= MINIMO_DE_DIGITOS;
+}
+
 export function linkDoWhatsApp(numero: string | null | undefined, texto: string): string | null {
+  if (!temWhatsApp(numero)) return null;
   const digitos = (numero ?? '').replace(/\D/g, '');
-  if (digitos.length < MINIMO_DE_DIGITOS) return null;
   return `https://wa.me/${digitos}?text=${encodeURIComponent(texto)}`;
 }

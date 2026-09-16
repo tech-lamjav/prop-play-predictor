@@ -4,6 +4,7 @@ import {
   idSugeridoNaFicha,
   linkDoWhatsApp,
   mensagemPara,
+  temWhatsApp,
   modelosDaFicha,
   modelosDeAbordagem,
   type ContextoDaMensagem,
@@ -144,6 +145,45 @@ describe('número sem código do país', () => {
 
   it('com o código do país, vira', () => {
     expect(linkDoWhatsApp('5511998877665', 'oi')).not.toBeNull();
+  });
+});
+
+describe('temWhatsApp', () => {
+  it('campo preenchido não basta: o número tem que abrir conversa', () => {
+    // O recorte "Sem WhatsApp" da lista existe para o sócio ver de quem ele não
+    // consegue se aproximar. Se ele contasse campo vazio, prometeria conversa
+    // com quem tem um celular sem DDI gravado — que é justamente quem não tem
+    // botão na ficha.
+    expect(temWhatsApp('11998877665')).toBe(false);
+    expect(temWhatsApp('5511998877665')).toBe(true);
+  });
+
+  it('sem número, vazio ou curto demais, é não', () => {
+    expect(temWhatsApp(null)).toBe(false);
+    expect(temWhatsApp(undefined)).toBe(false);
+    expect(temWhatsApp('   ')).toBe(false);
+    expect(temWhatsApp('11999')).toBe(false);
+  });
+
+  it('aceita máscara, porque é como o número costuma ser copiado', () => {
+    expect(temWhatsApp('+55 (11) 99887-7665')).toBe(true);
+  });
+
+  it('responde exatamente o que o link responde', () => {
+    // ⚠️ A catraca das duas definições. A lista diz "não dá para abordar" e a
+    // ficha some com o botão: se as regras divergirem, uma das duas telas mente.
+    for (const numero of [
+      null,
+      undefined,
+      '',
+      '   ',
+      '11999',
+      '11998877665',
+      '5511998877665',
+      '+55 (11) 99887-7665',
+    ]) {
+      expect(temWhatsApp(numero), String(numero)).toBe(linkDoWhatsApp(numero, 'oi') !== null);
+    }
   });
 });
 

@@ -77,7 +77,11 @@ export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }
                         </Link>
                         {/* A etiqueta fica FORA do link, pelo mesmo motivo do
                             contato: dentro, ela entraria no nome acessível. */}
-                        <EtiquetaDoLead etiqueta={lead.etiqueta} />
+                        <EtiquetaDoLead
+                          etiqueta={lead.etiqueta}
+                          fimDoTeste={lead.fimDoTeste}
+                          diasDeTeste={lead.diasDeTeste}
+                        />
                       </div>
                       <p className="truncate text-[12px] text-ink-2">
                         {lead.whatsapp ?? lead.email}

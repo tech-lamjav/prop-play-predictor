@@ -3,7 +3,14 @@ import { ehAssinante, type Cadastro } from './crm-lista';
 import { ganchoDe, type Gancho } from './crm-ficha';
 import { etapaDe, type EtapasGravadas } from './crm-funil';
 import { ETAPAS, ETAPA_PADRAO, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
-import { etiquetaDe, ETIQUETAS, type Etiqueta } from './crm-etiquetas';
+import {
+  diasDeTesteRestantes,
+  etiquetaDe,
+  ETIQUETAS,
+  ultimoDiaDoTeste,
+  type Etiqueta,
+} from './crm-etiquetas';
+import { temWhatsApp } from './crm-mensagens';
 
 // ============================================================================
 // As contas do painel
@@ -122,6 +129,16 @@ export interface Lead {
    * era posição do funil, ele vencia a etapa e a escondia.
    */
   etiqueta: Etiqueta | null;
+  /**
+   * O último dia em que a pessoa ainda entra pelo teste, e quantos dias faltam
+   * contando hoje. Nulos para quem nunca testou.
+   *
+   * Vêm montados no lead, e não calculados na tela, porque a linha da tabela, o
+   * cartão do kanban e a ficha mostram o mesmo prazo: três contas do mesmo dia
+   * divergiriam na virada da meia-noite, que é justamente quando ele importa.
+   */
+  fimDoTeste: string | null;
+  diasDeTeste: number | null;
   assinante: boolean;
   /** Último toque registrado, ou nulo para quem nunca recebeu nada. */
   ultimoToque: string | null;
@@ -172,6 +189,8 @@ export function montarLeads(
       // esta distinção, uma falha da RPC vira "conferi, não apostou" na tela.
       gancho: ganchoDe(c, apostas ? { total: apostas[c.id] ?? 0, ultima: null } : null),
       etiqueta: etiquetaDe(c, hoje),
+      fimDoTeste: ultimoDiaDoTeste(c.futebol_trial_ends_at),
+      diasDeTeste: diasDeTesteRestantes(c, hoje),
       assinante: ehAssinante(c),
       ultimoToque,
       diasParado: referencia ? diasEntre(referencia, hoje) : null,
@@ -366,4 +385,21 @@ export function contarPorEtiqueta(leads: Lead[]): Record<Etiqueta, number> {
  */
 export function filtrarPorEtiqueta(leads: Lead[], etiqueta: Etiqueta | null): Lead[] {
   return etiqueta ? leads.filter((l) => l.etiqueta === etiqueta) : leads;
+}
+
+/**
+ * Quem a gente não consegue abordar por WhatsApp.
+ *
+ * ⚠️ Não é "campo vazio". A regra é a mesma que decide se o botão de WhatsApp
+ * aparece na ficha, em `temWhatsApp`: um telefone sem código do país está
+ * preenchido e não abre conversa nenhuma. Duas definições fariam a lista
+ * prometer gente que a ficha não consegue abrir.
+ *
+ * É recorte da lista, e NÃO posição do funil. Não ter número é fato do
+ * cadastro, e a pessoa continua tendo a etapa que tem — é a mesma separação que
+ * tirou "em teste" do funil. Como posição, ela engoliria a etapa de todo mundo
+ * que está sem número.
+ */
+export function semWhatsApp(leads: Lead[]): Lead[] {
+  return leads.filter((l) => !temWhatsApp(l.whatsapp));
 }

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
 import { idSugeridoNaFicha, modelosDaFicha, type ContextoDaMensagem } from './crm-mensagens';
-import { diasDeTesteRestantes, etiquetaDe } from './crm-etiquetas';
+import { diasDeTesteRestantes, etiquetaDe, ultimoDiaDoTeste } from './crm-etiquetas';
 import { EtiquetaDoLead } from './EtiquetaDoLead';
 import {
   ganchoDe,
@@ -310,7 +310,11 @@ function Conteudo({
             </p>
             {etiqueta ? (
               <div className="mt-1.5">
-                <EtiquetaDoLead etiqueta={etiqueta} />
+                <EtiquetaDoLead
+                  etiqueta={etiqueta}
+                  fimDoTeste={ultimoDiaDoTeste(pessoa.futebol_trial_ends_at)}
+                  diasDeTeste={diasDeTesteRestantes(pessoa, hoje)}
+                />
               </div>
             ) : null}
           </div>

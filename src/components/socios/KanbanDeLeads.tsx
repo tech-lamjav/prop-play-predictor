@@ -36,7 +36,11 @@ function Cartao({ lead }: { lead: Lead }) {
           quem está com o teste vencendo sem abrir a ficha. */}
       {lead.etiqueta ? (
         <div className="mt-1">
-          <EtiquetaDoLead etiqueta={lead.etiqueta} />
+          <EtiquetaDoLead
+            etiqueta={lead.etiqueta}
+            fimDoTeste={lead.fimDoTeste}
+            diasDeTeste={lead.diasDeTeste}
+          />
         </div>
       ) : null}
       <p className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px]">
