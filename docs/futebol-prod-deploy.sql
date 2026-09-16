@@ -12,7 +12,7 @@
 -- evidencias/avisos — são puladas pelo sync; as RPCs reconstroem evidências dos
 -- booleans das int_futebol_premissas_*). Gerado do estado dev (kpbjuplcwiyrymafhehz).
 --
--- Tabelas sincronizadas (22): dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities, fact_value_opportunities_hist
+-- Tabelas sincronizadas (23): dim_leagues, dim_teams, fact_fixtures, fact_fixture_stats, fact_fixture_events, fact_fixture_lineups, fact_fixture_lineups_players, fact_fixture_player_stats, fact_h2h, fact_injuries_snapshot, fact_standings_snapshot, fact_team_season_stats, fact_odds_snapshot, fact_predictions_api, int_futebol_odds_devig, int_futebol_premissas_1x2, int_futebol_premissas_ou, int_futebol_premissas_ah, int_futebol_premissas_btts, int_futebol_premissas_dc, fact_value_opportunities, fact_value_opportunities_hist, fact_insumos_medidos
 -- ============================================================================
 
 -- Não validar corpo das funções no CREATE (ordem-robusto; valida em runtime).
@@ -695,6 +695,32 @@ create table futebol.fact_value_opportunities_hist (
   "score_versao" text not null default 'legacy'
 );
 
+drop table if exists futebol.fact_insumos_medidos cascade;
+-- O VALOR que cada premissa comparou, não só se ela acendeu (analytics-engineering#175,
+-- ADR 0016). Uma linha por jogo × saída × premissa × insumo.
+--
+-- Tabela COMPRIDA, e não uma coluna por insumo, por duas razões registradas na
+-- decisão: passa pelo sync do jeito que ele é hoje (o sync pula coluna
+-- REPEATED/RECORD, e era esse o formato no BigQuery), e não cresce em largura a
+-- cada premissa nova.
+--
+-- `market` e `line_value` já entram no grão mesmo com só o 1X2 populado
+-- (market = 'match_winner', line_value nulo): mudar o grão de uma tabela já
+-- sincronizada é o que já quebrou o sync quatro vezes neste repositório.
+--
+-- Sem `not null`: este schema é espelho escalar carregado por COPY, e nenhuma
+-- tabela dele declara restrição — quem garante o formato é o
+-- `check_schema_parity` do sync, que compara os dois lados antes de carregar.
+create table futebol.fact_insumos_medidos (
+  "fixture_id" bigint,
+  "outcome" text,
+  "market" text,
+  "line_value" double precision,
+  "premissa" text,
+  "insumo" text,
+  "valor" double precision
+);
+
 -- ── 2b. Lockdown RPC-only (espelha nba_mart): acesso só via RPCs security definer
 revoke all on schema futebol from anon, authenticated;
 revoke all on all tables in schema futebol from anon, authenticated;
@@ -716,6 +742,7 @@ CREATE INDEX IF NOT EXISTS fact_fixtures_home_team_id_idx ON futebol.fact_fixtur
 CREATE INDEX IF NOT EXISTS fact_fixtures_kickoff_utc_idx ON futebol.fact_fixtures USING btree (kickoff_utc);
 CREATE INDEX IF NOT EXISTS fact_h2h_h2h_pair_key_idx ON futebol.fact_h2h USING btree (h2h_pair_key);
 CREATE INDEX IF NOT EXISTS fact_injuries_snapshot_fixture_id_idx ON futebol.fact_injuries_snapshot USING btree (fixture_id);
+CREATE INDEX IF NOT EXISTS fact_insumos_medidos_fixture_id_idx ON futebol.fact_insumos_medidos USING btree (fixture_id);
 CREATE INDEX IF NOT EXISTS fact_odds_snapshot_fixture_id_idx ON futebol.fact_odds_snapshot USING btree (fixture_id);
 CREATE INDEX IF NOT EXISTS fact_odds_snapshot_fixture_id_market_name_outcome_label_idx ON futebol.fact_odds_snapshot USING btree (fixture_id, market_name, outcome_label);
 CREATE INDEX IF NOT EXISTS fact_predictions_api_fixture_id_idx ON futebol.fact_predictions_api USING btree (fixture_id);
