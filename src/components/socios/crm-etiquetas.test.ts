@@ -6,6 +6,7 @@ import {
   ETIQUETAS,
   EXPLICACAO_DA_ETIQUETA,
   ROTULO_DA_ETIQUETA,
+  textoDaEtiqueta,
   ultimoDiaDoTeste,
 } from './crm-etiquetas';
 import { cadastroDeTeste as cadastro, fimDoTesteEm } from './crm-cadastro-de-teste';
@@ -161,5 +162,52 @@ describe('o vocabulário das etiquetas', () => {
 
   it('o corte da véspera é declarado, e não um número solto no código', () => {
     expect(DIAS_PARA_VENCER).toBe(1);
+  });
+});
+
+describe('textoDaEtiqueta · a etiqueta diz o prazo, e não só a situação', () => {
+  // O pedido: "que dia que vence, quantos dias ele venceu". O rótulo sozinho
+  // respondia metade — o sócio ainda tinha que abrir a ficha para saber se era
+  // hoje ou amanhã, e há quanto tempo tinha vencido.
+
+  it('em teste mostra até que dia vale E quantos dias faltam', () => {
+    // Os dois, porque foi o pedido para as três situações. O vencido já dizia
+    // "faz N dias"; era justamente o lead mais quente que ficava sem a conta.
+    expect(textoDaEtiqueta('trial_ativo', '2026-09-16', 4)).toBe(
+      'Em teste até 16/09, faltam 4 dias',
+    );
+  });
+
+  it('vencendo separa hoje de amanhã, que é a diferença que muda a ligação', () => {
+    // Esta é a etiqueta com prazo correndo. Dizer só "vencendo" para os dois
+    // casos deixa o sócio adiar quem perde o acesso hoje à noite.
+    expect(textoDaEtiqueta('trial_vencendo', '2026-09-12', 0)).toBe('Vence hoje, 12/09');
+    expect(textoDaEtiqueta('trial_vencendo', '2026-09-13', 1)).toBe('Vence amanhã, 13/09');
+  });
+
+  it('vencido conta há quantos dias, no singular e no plural', () => {
+    // "Faz 1 dias" denuncia texto montado por máquina, e é o tipo de detalhe
+    // que o sócio lê como tela descuidada.
+    expect(textoDaEtiqueta('trial_vencido', '2026-09-11', -1)).toBe('Venceu 11/09, faz 1 dia');
+    expect(textoDaEtiqueta('trial_vencido', '2026-09-09', -3)).toBe('Venceu 09/09, faz 3 dias');
+  });
+
+  it('sem dia gravado, cai no rótulo em vez de inventar data', () => {
+    // Quem não tem fim gravado ainda pode ter etiqueta por outro caminho. A
+    // etiqueta continua dizendo a situação, que é o que ela sempre disse.
+    expect(textoDaEtiqueta('trial_ativo', null, null)).toBe(ROTULO_DA_ETIQUETA.trial_ativo);
+    expect(textoDaEtiqueta('trial_ativo', '2026-09-16', null)).toBe(ROTULO_DA_ETIQUETA.trial_ativo);
+    expect(textoDaEtiqueta('trial_vencido', '2026-09-09', null)).toBe(
+      ROTULO_DA_ETIQUETA.trial_vencido,
+    );
+  });
+
+  it('o dia sai do fim gravado, e não de hoje mais uma duração', () => {
+    // Amarra as duas funções: quem monta o texto tem que usar o mesmo último
+    // dia que decide o acesso, senão a etiqueta promete um dia a mais.
+    const fim = ultimoDiaDoTeste(terminaEm(0));
+    expect(textoDaEtiqueta('trial_vencendo', fim, diasDeTesteRestantes(cadastro({ futebol_trial_ends_at: terminaEm(0) }), HOJE))).toBe(
+      'Vence hoje, 12/09',
+    );
   });
 });

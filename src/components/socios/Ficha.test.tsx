@@ -33,6 +33,10 @@ const montar = (
     aoMudarEtapa?: (e: Etapa) => void;
     mudandoEtapa?: boolean;
     erroAoMudarEtapa?: boolean;
+    marcadoSemWhatsApp?: boolean;
+    aoMarcarSemWhatsApp?: (marcado: boolean) => void;
+    marcandoSemWhatsApp?: boolean;
+    erroAoMarcarSemWhatsApp?: boolean;
     linhaDoTempo?: React.ReactNode;
     hoje?: string;
     cobranca?: { plano: string; venceEm: string } | null;
@@ -46,6 +50,10 @@ const montar = (
         aoMudarEtapa={extras.aoMudarEtapa ?? (() => {})}
         mudandoEtapa={extras.mudandoEtapa ?? false}
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
+        marcadoSemWhatsApp={extras.marcadoSemWhatsApp ?? false}
+        aoMarcarSemWhatsApp={extras.aoMarcarSemWhatsApp ?? (() => {})}
+        marcandoSemWhatsApp={extras.marcandoSemWhatsApp ?? false}
+        erroAoMarcarSemWhatsApp={extras.erroAoMarcarSemWhatsApp ?? false}
         linhaDoTempo={extras.linhaDoTempo ?? null}
         hoje={extras.hoje ?? '2026-09-12'}
         cobranca={extras.cobranca ?? null}
@@ -151,6 +159,10 @@ describe('Ficha', () => {
           aoMudarEtapa={() => {}}
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
+          marcadoSemWhatsApp={false}
+          aoMarcarSemWhatsApp={() => {}}
+          marcandoSemWhatsApp={false}
+          erroAoMarcarSemWhatsApp={false}
           linhaDoTempo={null}
           hoje="2026-09-12"
           cobranca={null}
@@ -246,6 +258,10 @@ describe('Ficha · a linha do tempo entra na página', () => {
           aoMudarEtapa={() => {}}
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
+          marcadoSemWhatsApp={false}
+          aoMarcarSemWhatsApp={() => {}}
+          marcandoSemWhatsApp={false}
+          erroAoMarcarSemWhatsApp={false}
           linhaDoTempo={<p>a linha do tempo</p>}
           hoje="2026-09-12"
           cobranca={null}
@@ -342,6 +358,115 @@ describe('Ficha · o cabeçalho e as abas', () => {
   });
 });
 
+describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
+  // "Não só porque ele tem o número cadastrado significa que o lead existe."
+  // A ficha resolve sozinha o caso do número que não abre conversa; o botão
+  // existe para o caso que ela NÃO tem como enxergar — o número bem formado
+  // que não leva à pessoa.
+
+  // ⚠️ Um CAMPO, ao lado do de etapa, e não um botão. Pedido do Victor depois
+  // de duas versões recusadas: botão embaixo do nome (peso de ação principal
+  // para uma classificação rara) e link debaixo do número. É uma escolha entre
+  // dois estados, do mesmo tipo da etapa.
+  const campoDoWhatsApp = () => screen.getByRole('combobox', { name: /situação do whatsapp/i });
+
+  it('quem tem número bom não ganha selo, e o campo diz que está ok', () => {
+    montar();
+    expect(screen.queryByText(/^Sem WhatsApp/)).not.toBeInTheDocument();
+    expect(campoDoWhatsApp()).toHaveValue('ok');
+  });
+
+  it('sem número usável, o selo aparece sozinho', () => {
+    montar(pessoa({ whatsapp_number: null }));
+    expect(screen.getByText('Sem WhatsApp')).toBeInTheDocument();
+  });
+
+  it('celular brasileiro sem o 55 NÃO é sem WhatsApp: a gente completa', () => {
+    // ⚠️ Regra revertida na revisão. Antes, onze dígitos sem código do país
+    // viravam "sem WhatsApp" e sumiam da fila por padrão — e numa base antiga
+    // isso é gente que o sócio alcança.
+    montar(pessoa({ whatsapp_number: '11998877665' }));
+    expect(screen.queryByText(/^Sem WhatsApp/)).not.toBeInTheDocument();
+  });
+
+  it('campo com lixo curto conta como sem WhatsApp', () => {
+    // Cinco dígitos não abrem conversa nenhuma, e completar código de país não
+    // transforma isso em telefone.
+    montar(pessoa({ whatsapp_number: '11999' }));
+    expect(screen.getByText('Sem WhatsApp')).toBeInTheDocument();
+  });
+
+  it('sem número, o campo nem aparece: não há decisão a tomar', () => {
+    // ⚠️ Escolher "não leva à pessoa" para quem não tem número não mudaria
+    // nada, e o campo só sugeriria trabalho inútil. O que falta ali é
+    // completar o cadastro.
+    montar(pessoa({ whatsapp_number: null }));
+    expect(
+      screen.queryByRole('combobox', { name: /situação do whatsapp/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('marcado diz que foi na mão, e o campo mostra a escolha', () => {
+    // A origem tem de ficar distinguível: um cadastro a completar não é a mesma
+    // coisa que uma decisão que alguém tomou.
+    montar(pessoa(), { total: 0, ultima: null }, { marcadoSemWhatsApp: true });
+    expect(screen.getByText('Sem WhatsApp · marcado')).toBeInTheDocument();
+    expect(campoDoWhatsApp()).toHaveValue('nao');
+  });
+
+  it('escolher "não leva à pessoa" manda marcar', async () => {
+    const aoMarcar = vi.fn();
+    montar(pessoa(), { total: 0, ultima: null }, { aoMarcarSemWhatsApp: aoMarcar });
+    await userEvent.selectOptions(campoDoWhatsApp(), 'nao');
+    expect(aoMarcar).toHaveBeenCalledWith(true);
+  });
+
+  it('voltar para "número ok" manda desmarcar', async () => {
+    // ⚠️ Desfazer é do mesmo tamanho que marcar, e num campo isso é a mesma
+    // peça — que foi metade do motivo de ele virar campo. Na versão de link,
+    // voltar atrás exigia achar outro rótulo.
+    const aoMarcar = vi.fn();
+    montar(
+      pessoa(),
+      { total: 0, ultima: null },
+      { marcadoSemWhatsApp: true, aoMarcarSemWhatsApp: aoMarcar },
+    );
+    await userEvent.selectOptions(campoDoWhatsApp(), 'ok');
+    expect(aoMarcar).toHaveBeenCalledWith(false);
+  });
+
+  it('o campo trava enquanto grava, como o de etapa', () => {
+    // Duas escolhas em voo gravariam duas vezes, e a segunda registraria um
+    // estado que já não era verdade.
+    montar(pessoa(), { total: 0, ultima: null }, { marcandoSemWhatsApp: true });
+    expect(campoDoWhatsApp()).toBeDisabled();
+    expect(screen.getByText('Gravando…')).toBeInTheDocument();
+  });
+
+  it('quando a gravação falha, a tela diz que o estado não mudou', () => {
+    // ⚠️ O seletor é controlado pelo valor do servidor: sem o recado, uma
+    // gravação que falha o faz voltar sozinho e parece um clique que não pegou.
+    montar(pessoa(), { total: 0, ultima: null }, { erroAoMarcarSemWhatsApp: true });
+    expect(screen.getByText('Não gravou. Continua como estava.')).toBeInTheDocument();
+  });
+
+  it('o selo e a etiqueta de teste convivem', () => {
+    // Eixos independentes: alguém pode estar em teste E sem WhatsApp, e a ficha
+    // não pode escolher um dos dois para mostrar.
+    montar(
+      pessoa({
+        whatsapp_number: null,
+        betinho_subscription_status: 'free',
+        futebol_subscription_status: 'free',
+        futebol_trial_ends_at: '2026-09-13T15:00:00Z',
+      }),
+    );
+    const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
+    expect(within(cabecalho).getByText('Vence amanhã, 13/09')).toBeInTheDocument();
+    expect(within(cabecalho).getByText('Sem WhatsApp')).toBeInTheDocument();
+  });
+});
+
 describe('Ficha · o teste gratuito e a cobrança', () => {
   // `hoje` é 12/09 e o teste termina no dia 13: sobram hoje e amanhã.
   const emTeste = pessoa({
@@ -353,7 +478,9 @@ describe('Ficha · o teste gratuito e a cobrança', () => {
   it('a etiqueta de teste aparece no cabeçalho', () => {
     montar(emTeste);
     const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
-    expect(within(cabecalho).getByText('Teste vencendo')).toBeInTheDocument();
+    // O mesmo prazo que a lista mostra, pela mesma conta: duas contas do último
+    // dia divergiriam na virada da meia-noite.
+    expect(within(cabecalho).getByText('Vence amanhã, 13/09')).toBeInTheDocument();
   });
 
   it('quem está em teste recebe a mensagem de conversão como sugerida', () => {
@@ -368,7 +495,7 @@ describe('Ficha · o teste gratuito e a cobrança', () => {
 
   it('quem já assina não recebe etiqueta nem conversão', () => {
     montar(pessoa({ futebol_trial_ends_at: '2026-09-13T15:00:00Z' }));
-    expect(screen.queryByText('Teste vencendo')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Vence amanhã/)).not.toBeInTheDocument();
     const bloco = screen.getByRole('region', { name: 'Mensagem pronta' });
     expect((within(bloco).getByRole('textbox') as HTMLTextAreaElement).value).not.toMatch(
       /teste do futebol/,

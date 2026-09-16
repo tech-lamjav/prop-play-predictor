@@ -123,7 +123,12 @@ describe('ListaDeCobranca', () => {
   });
 
   it('desenha uma cobrança por concessão', () => {
-    const cadastros = [cadastro({ id: 'u1', name: 'Maria' }), cadastro({ id: 'u2', name: 'João' })];
+    // Sem número nos dois: aqui se conta o link do NOME, e quem tem telefone
+    // ganha também o link de abrir o WhatsApp — que é assunto do bloco abaixo.
+    const cadastros = [
+      cadastro({ id: 'u1', name: 'Maria', whatsapp_number: null }),
+      cadastro({ id: 'u2', name: 'João', whatsapp_number: null }),
+    ];
     montar(
       pronto([linha(), linha({ id: 'a2', user_id: 'u2', vence_em: '2026-09-14' })], cadastros),
     );

@@ -3,7 +3,14 @@ import { ehAssinante, type Cadastro } from './crm-lista';
 import { ganchoDe, type Gancho } from './crm-ficha';
 import { etapaDe, type EtapasGravadas } from './crm-funil';
 import { ETAPAS, ETAPA_PADRAO, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
-import { etiquetaDe, ETIQUETAS, type Etiqueta } from './crm-etiquetas';
+import {
+  diasDeTesteRestantes,
+  etiquetaDe,
+  ETIQUETAS,
+  ultimoDiaDoTeste,
+  type Etiqueta,
+} from './crm-etiquetas';
+import { temWhatsApp } from './crm-mensagens';
 
 // ============================================================================
 // As contas do painel
@@ -122,6 +129,40 @@ export interface Lead {
    * era posição do funil, ele vencia a etapa e a escondia.
    */
   etiqueta: Etiqueta | null;
+  /**
+   * O último dia em que a pessoa ainda entra pelo teste, e quantos dias faltam
+   * contando hoje. Nulos para quem nunca testou.
+   *
+   * Vêm montados no lead, e não calculados na tela, porque a linha da tabela, o
+   * cartão do kanban e a ficha mostram o mesmo prazo: três contas do mesmo dia
+   * divergiriam na virada da meia-noite, que é justamente quando ele importa.
+   */
+  fimDoTeste: string | null;
+  diasDeTeste: number | null;
+  /**
+   * Não dá para abordar esta pessoa por WhatsApp.
+   *
+   * ⚠️ É a UNIÃO de dois caminhos, e não só o campo do cadastro:
+   *
+   *   · o número não abre conversa — vazio, curto, ou sem código do país, que é
+   *     exatamente a regra do botão da ficha, em `temWhatsApp`;
+   *   · o sócio marcou na mão — o número está lá, bem formado, e não leva à
+   *     pessoa. É o caso que o cadastro não tem como enxergar sozinho.
+   *
+   * Fato do cadastro, num eixo separado da etapa: quem está sem número continua
+   * tendo a etapa que tem. Como posição do funil, ele engoliria a etapa de todo
+   * mundo que está sem número — o mesmo erro que já escondeu 59 leads quando
+   * "em teste" era etapa.
+   */
+  semWhatsApp: boolean;
+  /**
+   * A marca veio da mão do sócio, e não do número.
+   *
+   * Separado do de cima porque as duas origens pedem reações diferentes: um
+   * cadastro a completar não é a mesma coisa que uma decisão que alguém tomou e
+   * que dá para desfazer.
+   */
+  marcadoSemWhatsApp: boolean;
   assinante: boolean;
   /** Último toque registrado, ou nulo para quem nunca recebeu nada. */
   ultimoToque: string | null;
@@ -148,6 +189,19 @@ function posicaoDe(c: Cadastro, etapa: Etapa): Posicao {
   return ehAssinante(c) ? 'assinante' : etapa;
 }
 
+/** Os ids que o sócio marcou na mão. Vazio é "ninguém", e não "não sei". */
+export type MarcadosSemWhatsApp = ReadonlySet<string>;
+
+/**
+ * Ninguém marcado, num objeto só.
+ *
+ * Exportado porque a tela precisa do MESMO conjunto enquanto as marcas não
+ * chegam: um Set novo a cada render remontaria a lista inteira sem nada ter
+ * mudado. Duas constantes vazias, uma aqui e outra lá, eram a mesma ideia
+ * escrita duas vezes.
+ */
+export const SEM_MARCAS: MarcadosSemWhatsApp = new Set<string>();
+
 export function montarLeads(
   cadastros: Cadastro[],
   etapas: EtapasGravadas,
@@ -155,10 +209,16 @@ export function montarLeads(
   /** Nulo quando a consulta de apostas falhou — e isso NÃO é o mesmo que zero. */
   apostas: Apostas | null,
   hoje: string,
+  /**
+   * Quem o sócio marcou na mão. Opcional porque a marca é acréscimo: sem ela, o
+   * lead ainda sabe dizer que está sem WhatsApp pelo próprio número.
+   */
+  marcados: MarcadosSemWhatsApp = SEM_MARCAS,
 ): Lead[] {
   return cadastros.map((c) => {
     const ultimoToque = toques[c.id] ?? null;
     const referencia = brtDayOf(ultimoToque) ?? brtDayOf(c.created_at);
+    const marcado = marcados.has(c.id);
 
     return {
       id: c.id,
@@ -172,6 +232,10 @@ export function montarLeads(
       // esta distinção, uma falha da RPC vira "conferi, não apostou" na tela.
       gancho: ganchoDe(c, apostas ? { total: apostas[c.id] ?? 0, ultima: null } : null),
       etiqueta: etiquetaDe(c, hoje),
+      fimDoTeste: ultimoDiaDoTeste(c.futebol_trial_ends_at),
+      diasDeTeste: diasDeTesteRestantes(c, hoje),
+      semWhatsApp: marcado || !temWhatsApp(c.whatsapp_number),
+      marcadoSemWhatsApp: marcado,
       assinante: ehAssinante(c),
       ultimoToque,
       diasParado: referencia ? diasEntre(referencia, hoje) : null,
@@ -366,4 +430,34 @@ export function contarPorEtiqueta(leads: Lead[]): Record<Etiqueta, number> {
  */
 export function filtrarPorEtiqueta(leads: Lead[], etiqueta: Etiqueta | null): Lead[] {
   return etiqueta ? leads.filter((l) => l.etiqueta === etiqueta) : leads;
+}
+
+/**
+ * As três respostas do filtro de WhatsApp.
+ *
+ * `com` é o padrão: a tela abre pronta para o trabalho. `sem` existe para
+ * revisar a pilha — completar cadastro, ou decidir mandar e-mail.
+ */
+export type FiltroDeWhatsApp = 'com' | 'todos' | 'sem';
+
+/**
+ * A lista, recortada por ter ou não WhatsApp.
+ *
+ * ⚠️ UMA função, e não duas. Antes eram `semWhatsApp` e `escondeSemWhatsApp`,
+ * que com um filtro de três estados são literalmente a mesma conta com o sinal
+ * trocado — e duas funções para uma regra acabam divergindo no dia em que
+ * alguém mexe só numa.
+ *
+ * "Ter WhatsApp" NÃO é "o campo está preenchido": a regra é a mesma que decide
+ * se o botão aparece na ficha, em `temWhatsApp`, e ela inclui a marca que o
+ * sócio pôs na mão. Duas definições fariam a lista prometer gente que a ficha
+ * não consegue abrir.
+ *
+ * É FILTRO, e não posição do funil nem etapa: não ter número é fato do
+ * cadastro, e a pessoa continua tendo a etapa que tem — a mesma separação que
+ * tirou "em teste" do funil.
+ */
+export function filtrarPorWhatsApp(leads: Lead[], filtro: FiltroDeWhatsApp): Lead[] {
+  if (filtro === 'todos') return leads;
+  return leads.filter((l) => (filtro === 'sem' ? l.semWhatsApp : !l.semWhatsApp));
 }

@@ -11,7 +11,13 @@ export const cadastroDeTeste = (over: Partial<Cadastro> = {}): Cadastro => ({
   id: 'u1',
   name: 'Fulano',
   email: 'fulano@exemplo.com',
-  whatsapp_number: null,
+  // Número usável por padrão porque é o caso comum de um lead de verdade.
+  //
+  // ⚠️ Com null aqui, TODA a suíte passava a contar como "sem WhatsApp", e o
+  // esconder — que nasce ligado na fila — esvaziava listas em testes que não
+  // falam disso. Quem testa a ausência põe null explicitamente, e aí o teste
+  // diz o que está testando.
+  whatsapp_number: '5511998877665',
   created_at: '2026-09-10T12:00:00Z',
   betinho_subscription_status: 'free',
   futebol_subscription_status: 'free',
