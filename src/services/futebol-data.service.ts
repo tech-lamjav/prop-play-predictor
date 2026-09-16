@@ -574,6 +574,18 @@ export interface FutebolValueBoardRow {
   outcome: string;         // 'Home'|'Draw'|'Away' | 'Over'|'Under'
   line_value: number | null; // linha do Over/Under; null no 1X2
   edge: number;
+  /**
+   * A vantagem com que a linha foi PUBLICADA, e não a do apito (`edge`).
+   *
+   * As duas divergem porque o board é reconstruído: a linha sai com −1%, é
+   * exibida e alertada, e no apito está em −2,5%. Para decidir o que o
+   * assinante VIU — o corte de valor no histórico — vale a de publicação; a do
+   * apito é a última leitura, e usá-la esconderia linha que apareceu na tela.
+   *
+   * Só o histórico devolve. No board vem indefinido, e ali `edge` já é a
+   * vantagem corrente, que é a mesma coisa.
+   */
+  edge_publicacao?: number | null;
   best_odd: number;
   best_book: string;
   avg_odd: number;
