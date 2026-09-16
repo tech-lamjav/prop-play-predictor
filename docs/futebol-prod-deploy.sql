@@ -3234,23 +3234,24 @@ begin
 
   return query
   with nascimento as (
-    -- SEM filtro de versão: identidade, preço e data de nascimento. "Apareceu na
-    -- tela" não tem versão de metodologia, e preço não mudou de escala
-    -- (migration 148).
+    -- SEM filtro de versão: identidade e PREÇO. "Apareceu na tela" não tem
+    -- versão de metodologia, e preço não mudou de escala (migration 148).
     select distinct on (h.opportunity_key)
       h.opportunity_key, h.fixture_id, h.market, h.outcome, h.line_value,
-      h.best_odd, h.edge, h.dbt_valid_from
+      h.best_odd, h.edge
     from futebol.fact_value_opportunities_hist h
     order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   ),
   nota as (
     -- COM filtro: a nota `legacy` veio de outro método, e somar as duas inventa
-    -- uma série que nunca existiu.
+    -- uma série que nunca existiu. A DATA fica aqui porque é ela que diz em que
+    -- escala esta NOTA foi calculada.
     select distinct on (h.opportunity_key)
       h.opportunity_key, h.score, h.faixa, h.score_versao,
       h.pts_premissas, h.penalidades, h.premissas_sem_dado,
       h.modelo_api_concorda, h.linha_sharp_confirma,
-      h.pen_odd_outlier, h.pen_poucas_casas, h.pen_odd_longshot, h.pen_odd_juice
+      h.pen_odd_outlier, h.pen_poucas_casas, h.pen_odd_longshot, h.pen_odd_juice,
+      h.dbt_valid_from
     from futebol.fact_value_opportunities_hist h
     where h.score_versao = 'contexto_v1'
     order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
@@ -3265,7 +3266,7 @@ begin
     f.status_short,
     f.goals_home::int,
     f.goals_away::int,
-    n.dbt_valid_from,
+    t.dbt_valid_from,
     n.market,
     n.outcome,
     n.line_value,
@@ -3300,7 +3301,7 @@ begin
   -- mostra. Em UTC, jogo das 21h de sábado cairia no domingo.
   where (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
           between p_de and p_ate
-     or (n.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
+     or (t.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
           between p_de and p_ate
   order by f.kickoff_utc desc, t.score desc;
 end;
@@ -3310,7 +3311,7 @@ revoke execute on function public.get_futebol_oportunidades_publicadas(date, dat
 grant execute on function public.get_futebol_oportunidades_publicadas(date, date) to authenticated;
 
 comment on function public.get_futebol_oportunidades_publicadas(date, date) is
-  'Foto de nascimento das oportunidades publicadas no período, com o placar do jogo e as premissas acesas. Insumo do placar da metodologia. Restrita a sócio: devolve o board inteiro, inclusive mercado oculto.';
+  'Foto de nascimento das oportunidades publicadas no periodo, com o placar do jogo e as premissas acesas. O PRECO vem da primeira versao de todas; a nota e a data vem da primeira contexto_v1 (migration 148). Insumo do placar da metodologia. Restrita a socio: devolve o board inteiro, inclusive mercado oculto.';
 
 -- O placar numa resposta só (migration 137). A API corta resposta de várias
 -- linhas em 1.000, e o período padrão passa de 3.000: é esta que o front chama.

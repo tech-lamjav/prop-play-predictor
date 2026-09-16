@@ -198,19 +198,39 @@ async function consultar(sql) {
   return j;
 }
 
-/** Só o primeiro snapshot de cada oportunidade: a foto de quando ela nasceu. */
+/**
+ * A foto de quando a oportunidade nasceu, de DUAS fontes (migration 148).
+ *
+ * O preço vem da primeira versão de todas, porque "apareceu na tela" não tem
+ * versão de metodologia e preço não mudou de escala. A nota e a data vêm da
+ * primeira `contexto_v1`, porque a escala da NOTA mudou e somar as duas inventa
+ * uma série que nunca existiu.
+ *
+ * ⚠️ Tem de casar com `get_futebol_oportunidades_publicadas`: o ADR 0003 diz que
+ * o placar segue este script, e mudar só um lado faz a tela e o terminal darem
+ * números diferentes justamente nas linhas que cruzam o cutover.
+ */
 const SQL_BOARD = `
-with primeiro as (
+with nascimento as (
   select distinct on (h.opportunity_key)
     h.opportunity_key, h.fixture_id, h.market, h.outcome, h.line_value,
-    h.best_odd, h.score, h.faixa, h.competition, h.dbt_valid_from
+    h.best_odd, h.competition
+  from futebol.fact_value_opportunities_hist h
+  order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
+),
+nota as (
+  select distinct on (h.opportunity_key)
+    h.opportunity_key, h.score, h.faixa, h.dbt_valid_from
   from futebol.fact_value_opportunities_hist h
   where h.score_versao = 'contexto_v1'
-  order by h.opportunity_key, h.dbt_valid_from asc
+  order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
 )
-select p.*, f.status_short, f.goals_home, f.goals_away, f.kickoff_utc
-from primeiro p
-join futebol.fact_fixtures f on f.fixture_id = p.fixture_id
+select n.opportunity_key, n.fixture_id, n.market, n.outcome, n.line_value,
+       n.best_odd, n.competition, t.score, t.faixa, t.dbt_valid_from,
+       f.status_short, f.goals_home, f.goals_away, f.kickoff_utc
+from nascimento n
+join nota t on t.opportunity_key = n.opportunity_key
+join futebol.fact_fixtures f on f.fixture_id = n.fixture_id
 `;
 
 const SQL_PICKS = `
