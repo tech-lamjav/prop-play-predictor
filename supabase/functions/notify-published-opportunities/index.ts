@@ -14,7 +14,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { trackedUrl } from "../shared/links.ts";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { logMessageRun } from "../shared/runs.ts";
-import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
+import { carregarVitrine, filtrarPelaVitrine } from "../shared/mercados-ocultos.ts";
 import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
 import { planPublicationBatch, type PublicationBoardRow } from "./planner.ts";
 import {
@@ -358,10 +358,11 @@ serve(async (req) => {
       "get_futebol_value_board",
     );
     if (boardError) throw boardError;
-    // A vitrine, da MESMA fonte que o painel lê (migration 116). Este é o
-    // segundo canal de alerta: esconder o mercado só no `notify-opportunities`
-    // deixaria o alerta de publicação continuar mandando. Ver #324.
-    const vitrine = await carregarMercadosOcultos(supabase);
+    // A vitrine, da MESMA fonte que o painel lê (migration 116), com o PERÍODO
+    // (migration 145). Este é o segundo canal de alerta: esconder o mercado só
+    // no `notify-opportunities` deixaria o alerta de publicação continuar
+    // mandando. Ver #324, e a data de corte na #439.
+    const vitrine = await carregarVitrine(supabase);
     const mercadosOcultos = vitrine.mercados;
     // O corte de valor (migration 144), pelo mesmo motivo: cortar só no
     // `notify-opportunities` deixaria o alerta de publicação mandando.
@@ -377,7 +378,7 @@ serve(async (req) => {
         (existing ?? []).map((row: any) => row.opportunity_key as string),
       ),
       board: filtrarCorteDeValor(
-        filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos),
+        filtrarPelaVitrine((board ?? []) as BoardRow[], mercadosOcultos, now.getTime()),
         corte.limiares,
       ),
     });
