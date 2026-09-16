@@ -574,6 +574,19 @@ export interface FutebolValueBoardRow {
   outcome: string;         // 'Home'|'Draw'|'Away' | 'Over'|'Under'
   line_value: number | null; // linha do Over/Under; null no 1X2
   edge: number;
+  /**
+   * A vantagem com que a linha foi PUBLICADA, e não a do apito (`edge`).
+   *
+   * As duas divergem porque o board é reconstruído: a linha sai com −1%, é
+   * exibida e alertada, e no apito está em −2,5%. Para decidir o que o
+   * assinante VIU — o corte de valor no histórico — vale a de publicação; a do
+   * apito é a última leitura, e usá-la esconderia linha que apareceu na tela.
+   *
+   * As três RPCs devolvem. No board, e no detalhe enquanto o jogo não começou,
+   * ela é a própria `edge`: a linha está viva, e a vantagem corrente é a que
+   * está publicada agora. Vem indefinida só contra um banco anterior à 146.
+   */
+  edge_publicacao?: number | null;
   best_odd: number;
   best_book: string;
   avg_odd: number;
@@ -638,6 +651,8 @@ export interface FutebolFixtureValueRow {
   penalidades_especificas_pts: number;
   score: number;
   faixa: string;
+  /** A vantagem da foto de nascimento. Ver `FutebolValueBoardRow.edge_publicacao`. */
+  edge_publicacao?: number | null;
   modelo_api_concorda: boolean;
   linha_sharp_confirma: boolean;
   // "por quê", avisos e contras já vêm prontos do backend (montados a partir dos flags das premissas)

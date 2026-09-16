@@ -1321,7 +1321,7 @@ grant execute on function public.futebol_copy(text, text, text, jsonb) to anon, 
 -- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
 drop function if exists public.get_futebol_fixture_value(bigint);
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_value(p_fixture_id bigint)
- returns table(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, penalidades_especificas_pts integer, score integer, faixa text, score_versao text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer)
+ returns table(market text, outcome text, outcome_order integer, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, penalidades_especificas_pts integer, score integer, faixa text, score_versao text, modelo_api_concorda boolean, linha_sharp_confirma boolean, evidencias text[], avisos text[], contras text[], premissas_sem_dado integer, edge_publicacao double precision)
  language sql
  security definer
  set search_path to ''
@@ -1353,6 +1353,15 @@ as $function$
                      and fx.kickoff_utc <= (now() at time zone 'UTC')
                      and h.dbt_valid_from <= fx.kickoff_utc
                      and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to))
+  ), nascimento as (
+    -- A FOTO DE NASCIMENTO das linhas deste jogo. Chaveada pelas quatro colunas
+    -- que identificam a saída, e não por `opportunity_key`, porque `v_src` não a
+    -- carrega: ela vem do board no ramo de cima, e lá a coluna não existe.
+    select distinct on (h.market, h.outcome, h.line_value)
+      h.market, h.outcome, h.line_value, h.edge
+    from futebol.fact_value_opportunities_hist h
+    where h.fixture_id = p_fixture_id
+    order by h.market, h.outcome, h.line_value, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.market, v.outcome,
     (case when v.market = 'match_winner'
@@ -1373,8 +1382,12 @@ as $function$
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     public.futebol_copy('aviso', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     (public.futebol_copy('contra', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))))[1:3],
-    v.premissas_sem_dado::int
+    v.premissas_sem_dado::int,
+    -- Jogo por começar: a linha está viva e a vantagem corrente é a publicada.
+    -- Jogo encerrado: a da foto de nascimento.
+    coalesce(n.edge, v.edge)
   from v_src v
+  left join nascimento n on n.market = v.market and n.outcome = v.outcome and n.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
@@ -1772,7 +1785,7 @@ end; $function$
 -- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
 drop function if exists public.get_futebol_value_board();
 CREATE OR REPLACE FUNCTION public.get_futebol_value_board()
- returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer, edge_publicacao double precision)
  language sql
  security definer
  set search_path to ''
@@ -1782,7 +1795,9 @@ as $function$
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
-    v.premissas_sem_dado::int
+    v.premissas_sem_dado::int,
+    -- A linha está viva: a vantagem corrente é a que está publicada agora.
+    v.edge
   from futebol.fact_value_opportunities v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
@@ -1813,7 +1828,10 @@ $function$;
 --     00:30 UTC do dia seguinte, horário de metade do calendário brasileiro.
 --   · `RETURNS TABLE` espelha o de `get_futebol_value_board`, incluindo
 --     `premissas_sem_dado`, para o front reaproveitar `FutebolValueBoardRow`.
---   · `get_futebol_value_board` NÃO é tocada.
+--   · `get_futebol_value_board` não era tocada aqui. Passou a ser na 146, que
+--     acrescenta `edge_publicacao` nas três RPCs para o corte de valor poder
+--     julgar pela foto de nascimento — o contrato exige board e histórico com a
+--     mesma forma.
 --
 -- Crédito: `kickoff < now()`, DISTINCT ON, janela sargável e o índice acima vêm
 -- do PR #259 do Matheus, que implementou a mesma entrega em paralelo.
@@ -1826,13 +1844,14 @@ $function$;
 -- `create or replace` que altere o RETURNS TABLE. Derruba antes de recriar.
 drop function if exists public.get_futebol_value_history(date, date);
 CREATE OR REPLACE FUNCTION public.get_futebol_value_history(p_from date, p_to date)
- returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer)
+ returns table(fixture_id bigint, home_team_id bigint, away_team_id bigint, home_team_name text, away_team_name text, competition text, kickoff_utc timestamp without time zone, status_short text, market text, outcome text, line_value double precision, edge double precision, best_odd double precision, best_book text, avg_odd double precision, n_casas integer, janela_usada text, prob_justa_fechamento double precision, pts_premissas integer, penalidades integer, score integer, faixa text, score_versao text, evidencias text[], premissas_sem_dado integer, edge_publicacao double precision)
  language sql
  security definer
  set search_path to ''
 as $function$
   with pit as (
     select distinct on (h.opportunity_key)
+      h.opportunity_key,
       h.fixture_id, h.market, h.outcome, h.line_value, h.edge,
       h.best_odd, h.best_book, h.avg_odd, h.n_casas, h.janela_usada,
       h.prob_justa_fechamento, h.pts_premissas,
@@ -1846,15 +1865,30 @@ as $function$
       and h.dbt_valid_from <= fx.kickoff_utc
       and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to)
     order by h.opportunity_key, h.dbt_valid_from desc
+  ), nascimento as (
+    -- A FOTO DE NASCIMENTO: a primeira versão de cada oportunidade, com a
+    -- vantagem que ela tinha quando foi publicada e vista. `asc` é a única
+    -- diferença de ordem para o CTE acima; `dbt_scd_id` é o desempate
+    -- explícito que a 102 exige do DISTINCT ON.
+    select distinct on (h.opportunity_key)
+      h.opportunity_key, h.edge
+    from futebol.fact_value_opportunities_hist h
+    join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
+    where fx.kickoff_utc >= ((p_from::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
+      and fx.kickoff_utc <  (((p_to + 1)::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
+      and fx.kickoff_utc <  (now() at time zone 'UTC')
+    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
     v.pts_premissas::int, v.penalidades::int, v.score::int, v.faixa, v.score_versao,
     public.futebol_copy('evidencia', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
-    v.premissas_sem_dado::int
+    v.premissas_sem_dado::int,
+    n.edge
   from pit v
   join futebol.fact_fixtures f on f.fixture_id = v.fixture_id
+  left join nascimento n on n.opportunity_key = v.opportunity_key
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
@@ -1862,6 +1896,8 @@ as $function$
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   order by f.kickoff_utc desc, v.score desc, v.edge desc;
 $function$;
+
+grant execute on function public.get_futebol_value_history(date, date) to anon, authenticated, service_role;
 
 -- ── 5c. Agenda por dia, catálogo e detalhe do jogo (migrations 091 a 096) ────
 -- ⚠️ Estas oito estavam FALTANDO neste arquivo, e é a dívida da #250 no seu

@@ -78,12 +78,19 @@ export function passaNoCorteDeValor(
  * `filtrarMercadosOcultos`: board, detalhe do jogo e fila do Telegram carregam
  * formas diferentes, e a regra é a mesma nos três.
  */
-export function filtrarCorteDeValor<T extends { market: string; edge?: number | null }>(
+export function filtrarCorteDeValor<
+  T extends { market: string; edge?: number | null; edge_publicacao?: number | null },
+>(
   linhas: readonly T[],
   limiares: readonly { market: string; limiar: number }[],
 ): T[] {
   if (!limiares.length) return [...linhas];
-  return linhas.filter((linha) => passaNoCorteDeValor(linha.market, linha.edge, limiares));
+  // Pela vantagem de PUBLICAÇÃO quando ela vem (migration 146): depois do apito,
+  // board e detalhe do jogo devolvem a foto do apito, e cortar por ela esconde
+  // linha que apareceu na tela. `edge` é o que resta contra banco anterior à 146.
+  return linhas.filter((linha) =>
+    passaNoCorteDeValor(linha.market, linha.edge_publicacao ?? linha.edge, limiares),
+  );
 }
 
 /**
