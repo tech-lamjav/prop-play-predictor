@@ -31,7 +31,7 @@ import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
-import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
+import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaCortada, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
@@ -43,7 +43,7 @@ import { acendeuNaSaida, rotuloEmTitulo } from '@/utils/futebol-estado-da-premis
 import { useGuardaDeDivergencia } from '@/hooks/use-guarda-de-divergencia';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
-import { linhaDaSaida } from '@/utils/futebol-saida';
+import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
 import type { JogoInfo } from './JogoResumo';
 
@@ -245,6 +245,7 @@ function SeloRes({ r }: { r: BetResult }) {
 export function BancadaMercados({
   jogo,
   valueRows,
+  cortadas,
   tendencies,
   locked,
   mercadoAtivo,
@@ -253,6 +254,13 @@ export function BancadaMercados({
 }: {
   jogo: JogoInfo;
   valueRows: FutebolFixtureValueRow[] | null | undefined;
+  /**
+   * As saídas que o corte de valor removeu (#432). Desce por prop junto do
+   * `valueRows` porque as duas listas nascem da MESMA resposta do serviço, e
+   * porque a folha precisa distinguir "não houve preço coletado" de "houve
+   * preço, e a decisão já foi tomada".
+   */
+  cortadas: readonly Saida[];
   tendencies?: MatchupTendencies | null;
   locked: boolean;
   mercadoAtivo: string;
@@ -293,8 +301,8 @@ export function BancadaMercados({
   const noCelular = useIsMobile();
 
   const resumos = useMemo(
-    () => resumoDosMercados(rows, valueRows, preferida, ocultos),
-    [rows, valueRows, preferida, ocultos],
+    () => resumoDosMercados(rows, valueRows, preferida, ocultos, cortadas),
+    [rows, valueRows, preferida, ocultos, cortadas],
   );
   const mercadosCotados = useMemo(
     () => resumos.filter((r) => leituraDaCotacao(
@@ -372,6 +380,11 @@ export function BancadaMercados({
   const nB = ladoB ? contaQueValem(ladoB) : 0;
   const valA = ladoA ? valueDoCandidato(valueRows, ladoA) : null;
   const valB = ladoB ? valueDoCandidato(valueRows, ladoB) : null;
+  // O corte de valor tirou ESTA saída (#432). Por lado, e não por mercado: o
+  // corte decide linha a linha, e o outro lado da mesma parada pode continuar
+  // publicado.
+  const cortadaA = ladoA ? saidaCortada(cortadas, ladoA) : false;
+  const cortadaB = ladoB ? saidaCortada(cortadas, ladoB) : false;
   const [ladoSel, setLadoSel] = useState<'a' | 'b' | null>(null);
   // A escolha do lado sobrevive ao arrasto da régua, e some ao trocar de mercado.
   //
@@ -397,6 +410,7 @@ export function BancadaMercados({
   })();
   const principal = ladoSel === 'a' ? ladoA : ladoSel === 'b' ? ladoB : ladoPadrao;
   const valPrincipal = principal === ladoB ? valB : valA;
+  const cortadaPrincipal = principal === ladoB ? cortadaB : cortadaA;
   const cotacaoPrincipal = principal
     ? leituraDaCotacao(mercado.slug, principal.outcome, principal.line_value, valueRows, oddsRows)
     : { estado: 'sem_cotacao' as const, odd: null };
@@ -446,6 +460,13 @@ export function BancadaMercados({
 
   const ladoPrincipal = principal ? ladoDaSaida(mercado.slug, principal.outcome) : null;
   const nPrincipal = principal ? contaQueValem(principal) : 0;
+  // A saída cortada não TROCA a leitura, fica sem leitura (#432).
+  //
+  // Sem preço, esta folha põe a contagem de premissas onde estava o Score — no
+  // mesmo lugar, tamanho e cor. Para o jogo que nunca teve preço isso é a única
+  // informação que existe e é legítima; para a linha que o corte removeu é
+  // repor, com outro número, a leitura que o board escondeu.
+  const semLeituraPrincipal = !valPrincipal && cortadaPrincipal;
   const ate = numeros?.[0]?.ate ?? null;
 
   const chaveDosVisiveis = visiveis.map((p) => p.slug).join('|');
@@ -610,14 +631,18 @@ export function BancadaMercados({
       if (ehDestaque(valPrincipal.faixa)) return `${lbl} tem parte do cenário a favor: leitura parcial.`;
       return `Pouco do cenário sustenta ${lbl}: entra como consulta, não como aposta.`;
     }
-    if (cotacaoPrincipal.estado === 'cotada') {
+    // A cortada vem ANTES da porta de premissas, e é o que a impede de cair na
+    // frase "falta o preço" (#432): preço houve, e foi ele que decidiu. A frase
+    // é a mesma da linha cotada sem oportunidade porque o caso é o mesmo visto
+    // pelo assinante — tem cotação, não é pick nosso.
+    if (cortadaPrincipal || cotacaoPrincipal.estado === 'cotada') {
       return `${lbl} tem cotação, mas ficou fora dos filtros de oportunidade.`;
     }
     const n = principal ? contaQueValem(principal) : 0;
     if (n >= PORTA_PREMISSAS) return `O jogo aponta para ${lbl}, mas falta o preço: as odds entram perto do jogo.`;
     return `O jogo não sustenta esta saída.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [principal, valPrincipal, cotacaoPrincipal.estado, fim, mercado.slug, placar, semMotivosAFavor]);
+  }, [principal, valPrincipal, cortadaPrincipal, cotacaoPrincipal.estado, fim, mercado.slug, placar, semMotivosAFavor]);
 
   // Distribuição de gols: só no mercado de gols, cortada pela linha selecionada.
   const dist = useMemo(() => {
@@ -713,7 +738,10 @@ export function BancadaMercados({
           chave: o.outcome,
           rotulo: outcomeLabel(o, jogo.home, jogo.away),
           ativa: o.outcome === (saida ?? candidatoInicialDoMercado?.outcome),
-          passa: val ? ehDestaque(val.faixa) : n >= PORTA_PREMISSAS,
+          // A cortada não acende o chip pela porta de premissas (#432): acendendo,
+          // a saída que o board escondeu volta marcada como leitura que se
+          // sustenta.
+          passa: val ? ehDestaque(val.faixa) : !saidaCortada(cortadas, o) && n >= PORTA_PREMISSAS,
           res: placar ? settleFutebol(o, placar.home, placar.away) : null,
           escolher: () => setSaida(o.outcome),
         };
@@ -771,6 +799,10 @@ export function BancadaMercados({
               oddsRows,
             );
             const candidataCotada = leituraCotacao.estado === 'cotada';
+            // Sem número e sem barra também na cortada (#432): os dois exibem a
+            // contagem de premissas quando não há Score, e é ela que não pode
+            // ocupar o lugar da leitura que o corte tirou.
+            const semLeituraNoCard = candidataCotada || r.cortada;
             const s = temScore ? r.value!.score : r.nValem;
             const larg = temScore ? `${s}%` : `${Math.min(100, (r.nValem / Math.max(r.totalQueValem, 1)) * 100)}%`;
             // O tracinho marca onde começa a faixa Alta NA ESCALA daquela linha.
@@ -796,7 +828,7 @@ export function BancadaMercados({
                   >
                     {r.mercado.label}
                   </span>
-                  {!candidataCotada && (
+                  {!semLeituraNoCard && (
                     <span
                       className="tabular-nums text-[18px] font-bold shrink-0"
                       // O corte da Alta vem do `fronteirasDoScore`, na escala em
@@ -821,10 +853,14 @@ export function BancadaMercados({
                   ) : (
                     leituraCotacao.estado === 'cotada'
                       ? ` · cotada @ ${leituraCotacao.odd.toFixed(2)}`
-                      : ' · sem cotação'
+                      : r.cortada
+                        // Cortada e sem odd na régua: dizer "sem cotação" seria
+                        // falso, porque preço houve — foi ele que decidiu.
+                        ? ' · fora dos filtros de oportunidade'
+                        : ' · sem cotação'
                   )}
                 </div>
-                {!candidataCotada && (
+                {!semLeituraNoCard && (
                   <div
                     className="relative mt-2.5 h-1.5 rounded-full"
                     style={{ background: on ? 'rgba(255,255,255,.16)' : '#f1e9d6' }}
@@ -1016,13 +1052,17 @@ export function BancadaMercados({
                     "Premissas", ou o número entre uma e três casas. */}
                 <div className="shrink-0 text-left min-w-[84px]">
                   <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>
-                    {valPrincipal ? 'Score' : 'Premissas'}
+                    {valPrincipal || semLeituraPrincipal ? 'Score' : 'Premissas'}
                   </div>
                   <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em] mt-1" style={{ color: '#fbbf24' }}>
-                    {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
+                    {valPrincipal
+                      ? <Blur active={locked}>{String(valPrincipal.score)}</Blur>
+                      : semLeituraPrincipal ? '—' : nPrincipal}
                   </div>
                   <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] h-3 leading-[12px]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                    {valPrincipal ? rotuloDaFaixa(valPrincipal.faixa) : 'a favor'}
+                    {valPrincipal
+                      ? rotuloDaFaixa(valPrincipal.faixa)
+                      : semLeituraPrincipal ? 'sem leitura' : 'a favor'}
                   </div>
                 </div>
                 {/* Rótulo à esquerda, número à direita: as três linhas viram uma
@@ -1088,10 +1128,14 @@ export function BancadaMercados({
               {/* A régua vertical só separa onde há duas colunas lado a lado. */}
               <div className="text-center pl-6 min-w-[128px] border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                 <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
-                  {valPrincipal ? <Blur active={locked}>{String(valPrincipal.score)}</Blur> : nPrincipal}
+                  {valPrincipal
+                    ? <Blur active={locked}>{String(valPrincipal.score)}</Blur>
+                    : semLeituraPrincipal ? '—' : nPrincipal}
                 </div>
                 <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                  {valPrincipal ? `Score · ${rotuloDaFaixa(valPrincipal.faixa)}` : 'premissas a favor'}
+                  {valPrincipal
+                    ? `Score · ${rotuloDaFaixa(valPrincipal.faixa)}`
+                    : semLeituraPrincipal ? 'sem leitura' : 'premissas a favor'}
                 </div>
               </div>
             </div>

@@ -15,6 +15,7 @@ import {
 } from '@/utils/futebol-premissas';
 import { ladoDaSaida, manchete } from '@/utils/futebol-evidencias';
 import { melhorLeitura, resumoDosMercados, type MercadoResumo } from '@/utils/futebol-leitura';
+import type { Saida } from '@/utils/futebol-saida';
 import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { fmtDayShort, isFinished } from '@/utils/futebol-datas';
 import { settleFutebol, resultBadge, isHit } from '@/utils/futebol-settlement';
@@ -220,12 +221,20 @@ export function HeroLeitura({
 export function JogoResumo({
   jogo,
   valueRows,
+  cortadas,
   injuries,
   locked,
   onAbrirMercado,
 }: {
   jogo: JogoInfo;
   valueRows: FutebolFixtureValueRow[] | null | undefined;
+  /**
+   * As saídas que o corte de valor removeu (#432). Vem por prop junto do
+   * `valueRows`, e não por hook, porque as duas listas nascem da MESMA resposta:
+   * buscá-las em lugares diferentes abre a janela em que a tela tem uma e não
+   * tem a outra, e nessa janela ela anuncia o que estamos escondendo.
+   */
+  cortadas: readonly Saida[];
   injuries: FutebolInjury[] | null | undefined;
   locked: boolean;
   onAbrirMercado: (slug: string) => void;
@@ -237,7 +246,7 @@ export function JogoResumo({
   // as linhas não basta — sem isto o mercado escondido volta como chip, com
   // barra de Score e sem odd.
   const { ocultos } = useVitrine();
-  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, null, ocultos), [rows, valueRows, ocultos]);
+  const resumos = useMemo(() => resumoDosMercados(rows, valueRows, null, ocultos, cortadas), [rows, valueRows, ocultos, cortadas]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
   const placar = useMemo(

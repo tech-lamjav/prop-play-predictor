@@ -3,6 +3,7 @@ import {
   cortadaNaData,
   filtrarCorteDeValor,
   passaNoCorteDeValor,
+  separaNoCorteDeValor,
   type LimiarDeValor,
 } from './futebol-corte-de-valor';
 import { mergeBoardAndHistory } from './futebol-history';
@@ -38,6 +39,53 @@ describe('passaNoCorteDeValor', () => {
 
   it('sem nenhum limiar configurado nada corta', () => {
     expect(passaNoCorteDeValor('asian_handicap', -0.5, [])).toBe(true);
+  });
+});
+
+// O detalhe do jogo precisa saber que a linha EXISTIU e foi cortada (#432): sem
+// isso a tela lê a ausência como "não houve preço coletado" e repõe a contagem
+// de premissas no lugar do Score que o corte tirou.
+describe('separaNoCorteDeValor', () => {
+  const linha = (market: string, edge: number | null, id: number) => ({ market, edge, fixture_id: id });
+
+  it('devolve os dois lados, sem perder nem duplicar linha', () => {
+    const linhas = [
+      linha('asian_handicap', 0.01, 1),
+      linha('asian_handicap', -0.05, 2),
+      linha('goals_over_under', -0.05, 3),
+      linha('asian_handicap', null, 4),
+    ];
+
+    const { passam, cortadas } = separaNoCorteDeValor(linhas, CORTE);
+
+    expect(passam.map((l) => l.fixture_id)).toEqual([1, 3]);
+    expect(cortadas.map((l) => l.fixture_id)).toEqual([2, 4]);
+  });
+
+  it('o que passa é exatamente o que filtrarCorteDeValor devolve', () => {
+    // As duas saem da MESMA conta de propósito. No dia em que divergirem, a tela
+    // esconde uma linha e a lista de cortadas fala de outra — e o detalhe do jogo
+    // volta a tratar como "sem preço" a linha que o corte removeu.
+    const linhas = [linha('asian_handicap', -0.05, 1), linha('asian_handicap', 0.2, 2)];
+
+    expect(separaNoCorteDeValor(linhas, CORTE).passam).toEqual(filtrarCorteDeValor(linhas, CORTE));
+  });
+
+  it('sem limiar configurado nada é cortado', () => {
+    const linhas = [linha('asian_handicap', -0.5, 1)];
+
+    const { passam, cortadas } = separaNoCorteDeValor(linhas, []);
+
+    expect(passam).toEqual(linhas);
+    expect(cortadas).toEqual([]);
+  });
+
+  it('julga pela vantagem de PUBLICAÇÃO quando ela vem', () => {
+    // Mesma regra do filtro: depois do apito o detalhe devolve a foto do apito, e
+    // cortar por ela esconderia linha que apareceu na tela.
+    const publicada = { market: 'asian_handicap', edge: -0.05, edge_publicacao: -0.01 };
+
+    expect(separaNoCorteDeValor([publicada], CORTE).cortadas).toEqual([]);
   });
 });
 

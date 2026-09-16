@@ -84,13 +84,40 @@ export function filtrarCorteDeValor<
   linhas: readonly T[],
   limiares: readonly { market: string; limiar: number }[],
 ): T[] {
-  if (!limiares.length) return [...linhas];
-  // Pela vantagem de PUBLICAÇÃO quando ela vem (migration 146): depois do apito,
-  // board e detalhe do jogo devolvem a foto do apito, e cortar por ela esconde
-  // linha que apareceu na tela. `edge` é o que resta contra banco anterior à 146.
-  return linhas.filter((linha) =>
-    passaNoCorteDeValor(linha.market, linha.edge_publicacao ?? linha.edge, limiares),
-  );
+  return separaNoCorteDeValor(linhas, limiares).passam;
+}
+
+/**
+ * O mesmo corte, devolvendo OS DOIS LADOS.
+ *
+ * Existe porque sumir com a linha não basta no detalhe do jogo (#432). Lá a
+ * tela só conhece dois estados — tem linha de valor, não tem — e a cortada
+ * chegava igualzinha à de um jogo que nunca teve preço coletado. Nesse estado a
+ * folha troca o Score pela contagem de premissas, no mesmo lugar, tamanho e
+ * cor: o número escondido saía e outro entrava no lugar dele.
+ *
+ * Quem recebe as cortadas não renderiza NADA delas. É a existência que informa,
+ * não o conteúdo — e por isso o serviço as reduz à saída (mercado, lado e
+ * linha) antes de entregar à tela, sem Score e sem vantagem. O que não chega
+ * não é exibido por engano.
+ */
+export function separaNoCorteDeValor<
+  T extends { market: string; edge?: number | null; edge_publicacao?: number | null },
+>(
+  linhas: readonly T[],
+  limiares: readonly { market: string; limiar: number }[],
+): { passam: T[]; cortadas: T[] } {
+  if (!limiares.length) return { passam: [...linhas], cortadas: [] };
+  const passam: T[] = [];
+  const cortadas: T[] = [];
+  for (const linha of linhas) {
+    // Pela vantagem de PUBLICAÇÃO quando ela vem (migration 146): depois do apito,
+    // board e detalhe do jogo devolvem a foto do apito, e cortar por ela esconde
+    // linha que apareceu na tela. `edge` é o que resta contra banco anterior à 146.
+    const passa = passaNoCorteDeValor(linha.market, linha.edge_publicacao ?? linha.edge, limiares);
+    (passa ? passam : cortadas).push(linha);
+  }
+  return { passam, cortadas };
 }
 
 /**

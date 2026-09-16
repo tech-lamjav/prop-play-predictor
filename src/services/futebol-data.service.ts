@@ -13,8 +13,10 @@ import {
 import {
   CORTE_FALLBACK,
   filtrarCorteDeValor,
+  separaNoCorteDeValor,
   type LimiarDeValor,
 } from '@/utils/futebol-corte-de-valor';
+import type { Saida } from '@/utils/futebol-saida';
 
 // A vitrine muda por UPDATE no banco, não por release, então a lista não pode
 // ser lida uma vez e congelada pela vida da aba. Cinco minutos é curto o
@@ -633,6 +635,22 @@ export interface FutebolAlertedPick {
   sent_at: string;
 }
 
+/**
+ * O que o detalhe do jogo recebe: as linhas de valor, e as saídas que o corte de
+ * valor removeu (#432).
+ *
+ * Duas listas, e não uma lista marcada, por causa do que cada uma pode virar na
+ * tela. As de `linhas` viram Score, faixa, chance e valor. As `cortadas` não
+ * viram nada: chegam como `Saida` — mercado, lado e linha —, sem Score e sem
+ * vantagem, porque o que não chega não é exibido por engano. A presença da
+ * saída nesta lista é toda a informação, e é o bastante para a folha parar de
+ * ler a ausência de linha de valor como "não houve preço coletado".
+ */
+export interface FutebolFixtureValue {
+  linhas: FutebolFixtureValueRow[];
+  cortadas: Saida[];
+}
+
 export interface FutebolFixtureValueRow {
   market: string;            // 'match_winner' | 'goals_over_under'
   outcome: string;
@@ -1154,7 +1172,15 @@ export const futebolDataService = {
     });
   },
 
-  async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValueRow[]> {
+  /**
+   * As linhas de valor do jogo, e as que o corte de valor removeu.
+   *
+   * O mercado fora da vitrine não entra em nenhuma das duas listas: ali some o
+   * mercado INTEIRO, que é outro regime, e a prateleira do detalhe já o esconde
+   * pelo catálogo. O corte só decide entre as linhas de mercado que está na
+   * vitrine, e por isso ele roda depois.
+   */
+  async getFixtureValue(fixtureId: number): Promise<FutebolFixtureValue> {
     return withRetry(async () => {
       const [{ data, error }, ocultos, limiares] = await Promise.all([
         supabaseClient.rpc('get_futebol_fixture_value', { p_fixture_id: fixtureId }),
@@ -1162,13 +1188,22 @@ export const futebolDataService = {
         this.getLimiaresDeValor(),
       ]);
       if (error) throw error;
-      return filtrarCorteDeValor(
-        filtrarMercadosOcultos(
-          normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
-          ocultos,
-        ),
-        limiares,
+      const naVitrine = filtrarMercadosOcultos(
+        normalizeFutebolScoreRows<FutebolFixtureValueRow>(data || []),
+        ocultos,
       );
+      const { passam, cortadas } = separaNoCorteDeValor(naVitrine, limiares);
+      return {
+        linhas: passam,
+        // Reduzida à SAÍDA de propósito (#432): o Score e a vantagem da linha
+        // cortada não atravessam esta fronteira, então nenhuma tela consegue
+        // exibi-los por engano. Ver `separaNoCorteDeValor`.
+        cortadas: cortadas.map((l) => ({
+          market: l.market,
+          outcome: l.outcome,
+          line_value: l.line_value,
+        })),
+      };
     });
   },
 

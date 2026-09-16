@@ -66,8 +66,8 @@ describe('a prateleira do detalhe respeita a vitrine', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     })) as any;
 
-    const comVitrine = resumoDosMercados(premissas, [], null, OCULTOS).map((r) => r.mercado.slug);
-    const semVitrine = resumoDosMercados(premissas, [], null, []).map((r) => r.mercado.slug);
+    const comVitrine = resumoDosMercados(premissas, [], null, OCULTOS, []).map((r) => r.mercado.slug);
+    const semVitrine = resumoDosMercados(premissas, [], null, [], []).map((r) => r.mercado.slug);
 
     expect(semVitrine).toContain('asian_handicap');
     expect(comVitrine).not.toContain('asian_handicap');

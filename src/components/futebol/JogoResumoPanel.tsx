@@ -131,7 +131,10 @@ export function JogoResumoPanel({
   // premissas. É a mesma conta da tela de jogo, então os dois nunca divergem.
   // A vitrine (#324): mesma razão do JogoResumo — a prateleira sai do catálogo.
   const { ocultos } = useVitrine();
-  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null, null, ocultos), [premissas, best, ocultos]);
+  // Sem cortadas: este painel lê o BOARD, que já chega cortado do serviço, e não
+  // a resposta do detalhe do jogo — a linha que o corte removeu não passa por
+  // aqui, então não há o que distinguir (#432).
+  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null, null, ocultos, []), [premissas, best, ocultos]);
   const topo = useMemo(() => melhorLeitura(resumos), [resumos]);
 
   const mercadoLeitura = best ? best.market : topo?.mercado.slug ?? null;
