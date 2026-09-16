@@ -256,10 +256,13 @@ serve(async (req) => {
     if (mode === "report") {
       return json({
         ok: true, mode,
-        // `origem: "fallback"` significa que a lista do banco não respondeu e a
-        // mensagem saiu pela lista embutida. Não é erro — a DM sai correta —,
-        // mas é o sinal de que a vitrine pode estar desatualizada, e sem ele
-        // isso sobreviveria em silêncio.
+        // `origem: "fallback"` significa que a vitrine do banco não respondeu e
+        // a mensagem saiu pela lista embutida. Não é erro, mas também não é mais
+        // garantia de DM correta: desde a #433 aquela lista está vazia, então o
+        // escuro deixa passar todos os mercados — certo enquanto nenhum estiver
+        // escondido, errado no dia em que um estiver e a lista não for
+        // atualizada junto. É o sinal de que a vitrine pode estar desatualizada,
+        // e sem ele isso sobreviveria em silêncio.
         // `ocultosAgora`, e não um map na vitrine inteira: o período já fechado
         // de um mercado que VOLTOU continua na lista, e reportá-lo como oculto
         // mentiria justamente para quem está conferindo o religar.
