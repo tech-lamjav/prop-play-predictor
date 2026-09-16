@@ -20,21 +20,22 @@ import { brtDateStr, brtDayOf, parseUtc } from '@/utils/futebol-datas';
 /**
  * O que vale quando a lista do banco não pode ser lida.
  *
- * NÃO é a fonte da verdade — o banco é. Isto é só o que fazer no escuro, e a
- * única janela realista de escuro é entre o deploy deste código e a aplicação
- * da migration 116: depois dela, é uma RPC minúscula no mesmo banco que acabou
- * de servir o board.
+ * NÃO é a fonte da verdade — o banco é. Isto é só o que fazer no escuro, e o
+ * escuro é raro: uma RPC minúscula no mesmo banco que acabou de servir o board.
  *
- * Nessa janela, esconder o Handicap já é o comportamento decidido — o SQL é que
- * não subiu ainda. Cair para lista vazia mostraria na tela e mandaria na DM
- * exatamente o que o produto tirou da prateleira.
+ * ESTÁ VAZIA PORQUE NENHUM MERCADO ESTÁ ESCONDIDO HOJE. O handicap saiu daqui
+ * em 16/09, quando voltou à vitrine (#433). Enquanto ele ficou na lista, uma
+ * falha de leitura escondia um mercado que o produto exibe: o banco vence
+ * sempre que responde, mas o escuro passou a mentir no sentido contrário.
  *
- * ⚠️ Quando um mercado voltar à vitrine pelo UPDATE, TIRE-O DAQUI TAMBÉM. Se
- * ficar, uma falha de leitura o esconde de novo — o banco vence sempre que
- * responde, mas o escuro passaria a mentir. A guarda de paridade obriga as duas
- * cópias (esta e a de `supabase/functions/shared/`) a andarem juntas.
+ * ⚠️ AO ESCONDER UM MERCADO pelo UPDATE, ACRESCENTE-O AQUI na mesma mudança; ao
+ * devolvê-lo, TIRE-O. Esta lista espelha o estado ATUAL do banco, e é a única
+ * coisa que decide o escuro — vazia, uma falha de leitura mostra tudo. Nada
+ * fora do código lembra disso: a guarda de paridade só obriga as duas cópias
+ * (esta e a de `supabase/functions/shared/`) a andarem juntas, não a estarem
+ * certas.
  */
-export const VITRINE_FALLBACK: readonly string[] = ['asian_handicap'];
+export const VITRINE_FALLBACK: readonly string[] = [];
 
 /**
  * Um mercado fora da vitrine, com a data em que saiu.

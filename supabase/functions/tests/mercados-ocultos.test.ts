@@ -125,9 +125,13 @@ Deno.test("carrega a vitrine com o periodo", async () => {
   });
 });
 
-// No escuro a mensagem FECHA. Cair para a lista de nomes reproduziria o
-// vazamento: com o mercado religado ela vem vazia, e nada seria escondido.
-Deno.test("sem a RPC do periodo, o escuro fecha no fallback", async () => {
+// No escuro vale a lista compilada, e SO ela: cair para a RPC de nomes
+// reproduziria o vazamento da #439.
+//
+// Hoje essa lista esta VAZIA (#433), porque nenhum mercado esta escondido -
+// entao o escuro deixa passar tudo, e isso e o certo. O dia em que um mercado
+// for escondido, ele precisa entrar na lista junto: e ela que decide aqui.
+Deno.test("sem a RPC do periodo, vale a lista compilada", async () => {
   const supabase = { rpc: () => Promise.reject(new Error("function does not exist")) };
   assertEquals(await carregarVitrine(supabase), {
     mercados: VITRINE_FALLBACK.map((market) => ({
@@ -139,7 +143,7 @@ Deno.test("sem a RPC do periodo, o escuro fecha no fallback", async () => {
   });
 });
 
-Deno.test("resposta sem array tambem cai para o fallback", async () => {
+Deno.test("resposta sem array tambem cai para a lista compilada", async () => {
   const supabase = { rpc: () => Promise.resolve({ data: null, error: null }) };
   assertEquals(await carregarVitrine(supabase), {
     mercados: VITRINE_FALLBACK.map((market) => ({

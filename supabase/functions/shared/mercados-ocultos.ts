@@ -187,12 +187,18 @@ export function filtrarPelaVitrine<
 type ClienteRpc = { rpc: (nome: string, ...args: any[]) => PromiseLike<any> };
 
 /**
- * O que vale quando a lista do banco não pode ser lida. Cópia do
- * `VITRINE_FALLBACK` do painel — a guarda de paridade obriga as duas a andarem
- * juntas, e é lá que está o comentário inteiro, inclusive o aviso de tirar o
- * mercado daqui quando ele voltar à vitrine.
+ * O que vale quando a vitrine do banco não pode ser lida. Cópia do
+ * `VITRINE_FALLBACK` do painel, onde está o comentário inteiro — inclusive a
+ * regra de ACRESCENTAR o mercado aqui, na mesma mudança, ao escondê-lo.
+ *
+ * Vazia desde 16/09, quando o handicap voltou à vitrine (#433).
+ *
+ * ⚠️ Pesa mais deste lado desde a #441: aqui o escuro cai DIRETO nesta lista,
+ * sem degrau intermediário. Vazia, a mensagem sai com todos os mercados — que é
+ * o certo hoje, porque nenhum está escondido, e seria o vazamento de novo no dia
+ * em que um estiver e alguém esquecer desta linha.
  */
-export const VITRINE_FALLBACK: readonly string[] = ["asian_handicap"];
+export const VITRINE_FALLBACK: readonly string[] = [];
 
 /**
  * Lê a vitrine COM O PERÍODO, e NUNCA lança.
