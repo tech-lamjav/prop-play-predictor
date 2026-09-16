@@ -48,6 +48,8 @@ get_futebol_fixtures_by_day
 get_futebol_mercados_ocultos
 get_futebol_odds_board
 get_futebol_standings_official
+get_futebol_value_board
+get_futebol_value_history
 get_game_box_score
 get_games
 get_handoff_targets

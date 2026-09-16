@@ -64,6 +64,24 @@ describe('filtrarCorteDeValor', () => {
     filtrarCorteDeValor(linhas, CORTE);
     expect(linhas).toHaveLength(2);
   });
+
+  // A regra julga pela vantagem de PUBLICAÇÃO quando ela vem (migration 146).
+  // Board e detalhe do jogo devolvem a foto do apito depois que o jogo acaba, e
+  // cortar por ela esconderia linha que apareceu na tela.
+  it('prefere a vantagem de publicação à do apito', () => {
+    const publicada = { market: 'asian_handicap', edge: -0.025, edge_publicacao: -0.01 };
+    expect(filtrarCorteDeValor([publicada], CORTE)).toEqual([publicada]);
+  });
+
+  it('e corta quando foi a publicação que não passou, mesmo o apito tendo melhorado', () => {
+    const cortada = { market: 'asian_handicap', edge: -0.01, edge_publicacao: -0.025 };
+    expect(filtrarCorteDeValor([cortada], CORTE)).toEqual([]);
+  });
+
+  it('sem a de publicação, vale a que existe', () => {
+    const semPublicacao = { market: 'asian_handicap', edge: -0.05 };
+    expect(filtrarCorteDeValor([semPublicacao], CORTE)).toEqual([]);
+  });
 });
 
 // ============================================================================

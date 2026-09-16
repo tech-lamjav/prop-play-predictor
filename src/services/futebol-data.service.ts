@@ -582,8 +582,9 @@ export interface FutebolValueBoardRow {
    * assinante VIU — o corte de valor no histórico — vale a de publicação; a do
    * apito é a última leitura, e usá-la esconderia linha que apareceu na tela.
    *
-   * Só o histórico devolve. No board vem indefinido, e ali `edge` já é a
-   * vantagem corrente, que é a mesma coisa.
+   * As três RPCs devolvem. No board, e no detalhe enquanto o jogo não começou,
+   * ela é a própria `edge`: a linha está viva, e a vantagem corrente é a que
+   * está publicada agora. Vem indefinida só contra um banco anterior à 146.
    */
   edge_publicacao?: number | null;
   best_odd: number;
@@ -650,6 +651,8 @@ export interface FutebolFixtureValueRow {
   penalidades_especificas_pts: number;
   score: number;
   faixa: string;
+  /** A vantagem da foto de nascimento. Ver `FutebolValueBoardRow.edge_publicacao`. */
+  edge_publicacao?: number | null;
   modelo_api_concorda: boolean;
   linha_sharp_confirma: boolean;
   // "por quê", avisos e contras já vêm prontos do backend (montados a partir dos flags das premissas)
