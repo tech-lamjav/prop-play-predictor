@@ -3041,6 +3041,44 @@ values (
 )
 on conflict (market) do nothing;
 
+-- Mudar o limiar é UPDATE nas duas colunas, e o gatilho faz a segunda (migration
+-- 147): sem ele, um update só no limiar reescreve o passado -- some do histórico
+-- a linha que já foi vista, ou volta a que nunca esteve na tela.
+--
+-- Carimba só quando o VALOR muda: `update of` dispara por menção, e reescrever o
+-- mesmo número empurraria a vigência para frente sem que a régua tivesse mudado.
+--
+-- Limite conhecido: o plpgsql não distingue coluna ausente do SET de coluna
+-- presente com o mesmo valor, então repetir a vigência que já está gravada é
+-- sobrescrito por now(). Para datar a mudança, passe uma vigência diferente.
+create or replace function public.futebol_limiar_valor_vigencia()
+returns trigger
+language plpgsql
+set search_path to ''
+as $function$
+begin
+  if new.limiar is not distinct from old.limiar then
+    return new;
+  end if;
+  if new.vigente_desde is not distinct from old.vigente_desde then
+    new.vigente_desde := now();
+  end if;
+  return new;
+end;
+$function$;
+
+comment on column public.futebol_limiar_valor.vigente_desde is
+  'Data a partir da qual o limiar vale. RECARIMBADA pelo gatilho futebol_limiar_valor_vigencia quando o limiar muda sem vigencia explicita (migration 147). Para datar a mudanca, passe uma vigencia diferente da gravada.';
+
+revoke execute on function public.futebol_limiar_valor_vigencia() from public;
+revoke execute on function public.futebol_limiar_valor_vigencia() from anon, authenticated;
+grant execute on function public.futebol_limiar_valor_vigencia() to service_role;
+
+drop trigger if exists futebol_limiar_valor_vigencia on public.futebol_limiar_valor;
+create trigger futebol_limiar_valor_vigencia
+  before update of limiar on public.futebol_limiar_valor
+  for each row execute function public.futebol_limiar_valor_vigencia();
+
 -- ── Insumo do placar da metodologia (migration 133) ───────────────────
 -- A FOTO DE NASCIMENTO de cada oportunidade publicada, com o placar do jogo:
 -- o primeiro registro de cada linha no historico, que e a odd, a nota e a faixa
@@ -3354,6 +3392,18 @@ from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and p.proname like 'get_futebol%'
 order by 1;
+*/
+-- E os GATILHOS, que são o caso mais silencioso de todos: a função existe, o
+-- arquivo parece completo, e o gatilho não está lá. A regra fica instalada e
+-- desligada, que é pior do que não ter, porque parece protegida.
+/*
+select c.relname as tabela, t.tgname as gatilho, p.proname as funcao
+from pg_trigger t
+join pg_class c on c.oid = t.tgrelid
+join pg_proc p on p.oid = t.tgfoid
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and not t.tgisinternal and c.relname like 'futebol%'
+order by 1, 2;
 */
 
 -- ============================================================================
