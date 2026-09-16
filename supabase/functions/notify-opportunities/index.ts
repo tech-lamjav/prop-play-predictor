@@ -30,7 +30,7 @@ import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { ehFaixaPublicavel } from "../shared/faixa.ts";
-import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
+import { carregarVitrine, filtrarPelaVitrine, ocultosAgora } from "../shared/mercados-ocultos.ts";
 import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
 import { logMessageRun } from "../shared/runs.ts";
 
@@ -209,9 +209,15 @@ serve(async (req) => {
     const { data: board, error: bErr } = await supabase.rpc("get_futebol_value_board");
     if (bErr) throw bErr;
 
-    // 1b) a vitrine — MESMA fonte que o painel lê (migration 116). Sem isto o
-    // alerta vaza: o painel esconde o mercado e a DM continua mandando.
-    const vitrine = await carregarMercadosOcultos(supabase);
+    // 1b) a vitrine — MESMA fonte que o painel lê (migration 116), agora com o
+    // PERÍODO e não só os nomes (migration 145). Sem isto o alerta vaza: o
+    // painel esconde o mercado e a DM continua mandando.
+    //
+    // A data importa tanto quanto o nome (#439). Quando o handicap voltou com
+    // corte de data, a lista de nomes esvaziou e a DM passou a tratá-lo como
+    // liberado para TODOS os jogos, inclusive os anteriores ao corte, que o
+    // painel esconde: três alertas entregues a 26 pessoas em 16/09.
+    const vitrine = await carregarVitrine(supabase);
     const mercadosOcultos = vitrine.mercados;
 
     // 1c) o corte de valor (migration 144), da MESMA fonte do painel. A linha de
@@ -222,7 +228,7 @@ serve(async (req) => {
     const now = new Date();
     const today = brtDay(now);
     const naVitrine = filtrarCorteDeValor(
-      filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos),
+      filtrarPelaVitrine((board ?? []) as BoardRow[], mercadosOcultos, now.getTime()),
       corte.limiares,
     );
     const todayRows = naVitrine.filter((r) => {
@@ -254,7 +260,10 @@ serve(async (req) => {
         // mensagem saiu pela lista embutida. Não é erro — a DM sai correta —,
         // mas é o sinal de que a vitrine pode estar desatualizada, e sem ele
         // isso sobreviveria em silêncio.
-        vitrine: { origem: vitrine.origem, ocultos: mercadosOcultos },
+        // `ocultosAgora`, e não um map na vitrine inteira: o período já fechado
+        // de um mercado que VOLTOU continua na lista, e reportá-lo como oculto
+        // mentiria justamente para quem está conferindo o religar.
+        vitrine: { origem: vitrine.origem, ocultos: ocultosAgora(mercadosOcultos) },
         // Mesma leitura para o corte: "fallback" é DM correta com limiar embutido.
         corte: { origem: corte.origem, limiares: corte.limiares },
         picks: picks.map((p) => ({

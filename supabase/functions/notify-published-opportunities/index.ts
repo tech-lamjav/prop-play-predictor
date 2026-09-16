@@ -14,7 +14,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { trackedUrl } from "../shared/links.ts";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { logMessageRun } from "../shared/runs.ts";
-import { carregarMercadosOcultos, filtrarMercadosOcultos } from "../shared/mercados-ocultos.ts";
+import {
+  carregarVitrine,
+  filtrarPelaVitrine,
+  type MercadoOculto,
+} from "../shared/mercados-ocultos.ts";
 import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
 import { planPublicationBatch, type PublicationBoardRow } from "./planner.ts";
 import {
@@ -241,24 +245,55 @@ async function persistRegistrationPicks(
   if (refError) throw refError;
 }
 
+/**
+ * Reenvia o que ficou pendente ou falhou em lotes anteriores.
+ *
+ * ⚠️ A vitrine vale AQUI TAMBÉM (#439). Este caminho não passa pelo board: ele
+ * remonta a mensagem a partir das entregas reservadas pela RPC, que devolve
+ * `pending` e `failed` e só expira o que já passou do kickoff. Sem o filtro, uma
+ * entrega que falhou ANTES do corte de data volta a sair DEPOIS dele, com o jogo
+ * que o painel esconde — e as 12 falhas de entrega do lote que vazou em 16/09
+ * eram exatamente linhas neste estado.
+ */
 async function deliverPending(
   supabase: any,
   traceId: string,
-): Promise<{ sent: number; errors: string[] }> {
+  vitrine: readonly MercadoOculto[],
+  agoraMs: number,
+): Promise<{ sent: number; errors: string[]; escondidas: number }> {
   const { data, error } = await supabase.rpc(
     "claim_futebol_publication_alert_deliveries",
   );
   if (error) throw error;
   const deliveries = (data ?? []) as Delivery[];
   let sent = 0;
+  let escondidas = 0;
   const errors: string[] = [];
 
   for (const delivery of deliveries) {
+    // A MESMA regra do lote novo, na mesma função pura.
+    const publicaveis = filtrarPelaVitrine(
+      delivery.opportunities,
+      vitrine,
+      agoraMs,
+    );
+    if (publicaveis.length === 0) {
+      // `expired` é o estado que a própria RPC usa para a entrega que não deve
+      // mais sair. Marcar como enviada mentiria no registro, e deixar em
+      // `failed` a devolveria para a próxima reserva.
+      escondidas++;
+      await supabase
+        .from("futebol_publication_alert_deliveries")
+        .update({ status: "expired", attempt_id: null, claimed_at: null })
+        .eq("batch_id", delivery.batch_id)
+        .eq("user_id", delivery.user_id)
+        .eq("attempt_id", delivery.attempt_id)
+        .eq("status", "processing");
+      continue;
+    }
     let telegramAccepted = false;
     try {
-      const alertIds = delivery.opportunities.map((opportunity) =>
-        opportunity.alert_id
-      );
+      const alertIds = publicaveis.map((opportunity) => opportunity.alert_id);
       const { data: picks, error: picksError } = await supabase
         .from("futebol_publication_alert_pick_refs")
         .select("alert_id, pick_id")
@@ -267,13 +302,13 @@ async function deliverPending(
       const pickByAlertId = new Map<string, string>(
         (picks ?? []).map((pick: any) => [pick.alert_id, pick.pick_id]),
       );
-      const text = await buildMessage(delivery.opportunities, delivery.user_id);
-      const cta = delivery.opportunities.length === 1
+      const text = await buildMessage(publicaveis, delivery.user_id);
+      const cta = publicaveis.length === 1
         ? {
           label: "Ver o porquê dessa pick →",
           url: await trackedUrl(
             delivery.user_id,
-            opportunityDestination(delivery.opportunities[0]),
+            opportunityDestination(publicaveis[0]),
             CAMPAIGN,
           ),
         }
@@ -285,7 +320,7 @@ async function deliverPending(
         delivery.chat_id,
         text,
         cta,
-        registerButtons(delivery.opportunities, pickByAlertId),
+        registerButtons(publicaveis, pickByAlertId),
       );
       telegramAccepted = true;
 
@@ -305,9 +340,9 @@ async function deliverPending(
       await trackEvent(
         "published_opportunities_sent",
         {
-          picks_count: delivery.opportunities.length,
+          picks_count: publicaveis.length,
           top_score: Math.max(
-            ...delivery.opportunities.map((opportunity) => opportunity.score),
+            ...publicaveis.map((opportunity) => opportunity.score),
           ),
           channel: "telegram",
         },
@@ -336,7 +371,7 @@ async function deliverPending(
         .eq("status", "processing");
     }
   }
-  return { sent, errors };
+  return { sent, errors, escondidas };
 }
 
 serve(async (req) => {
@@ -358,10 +393,11 @@ serve(async (req) => {
       "get_futebol_value_board",
     );
     if (boardError) throw boardError;
-    // A vitrine, da MESMA fonte que o painel lê (migration 116). Este é o
-    // segundo canal de alerta: esconder o mercado só no `notify-opportunities`
-    // deixaria o alerta de publicação continuar mandando. Ver #324.
-    const vitrine = await carregarMercadosOcultos(supabase);
+    // A vitrine, da MESMA fonte que o painel lê (migration 116), com o PERÍODO
+    // (migration 145). Este é o segundo canal de alerta: esconder o mercado só
+    // no `notify-opportunities` deixaria o alerta de publicação continuar
+    // mandando. Ver #324, e a data de corte na #439.
+    const vitrine = await carregarVitrine(supabase);
     const mercadosOcultos = vitrine.mercados;
     // O corte de valor (migration 144), pelo mesmo motivo: cortar só no
     // `notify-opportunities` deixaria o alerta de publicação mandando.
@@ -377,7 +413,7 @@ serve(async (req) => {
         (existing ?? []).map((row: any) => row.opportunity_key as string),
       ),
       board: filtrarCorteDeValor(
-        filtrarMercadosOcultos((board ?? []) as BoardRow[], mercadosOcultos),
+        filtrarPelaVitrine((board ?? []) as BoardRow[], mercadosOcultos, now.getTime()),
         corte.limiares,
       ),
     });
@@ -465,7 +501,12 @@ serve(async (req) => {
       }
     }
 
-    const result = await deliverPending(supabase, traceId);
+    const result = await deliverPending(
+      supabase,
+      traceId,
+      mercadosOcultos,
+      now.getTime(),
+    );
     await logMessageRun(supabase, "notify-published-opportunities", {
       candidates: claimed.length,
       sent: result.sent,
@@ -477,6 +518,10 @@ serve(async (req) => {
       mode,
       published: claimed.length,
       sent: result.sent,
+      // Quantas entregas reservadas foram encerradas por estarem fora da vitrine
+      // na data delas. Sem este número, o filtro do reenvio some sem deixar
+      // rastro — e é ele que impede o lote de 16/09 de sair de novo.
+      escondidas_pela_vitrine: result.escondidas,
       errors: result.errors,
     });
   } catch (cause) {

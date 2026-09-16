@@ -68,9 +68,100 @@ describe('as duas cópias da vitrine concordam', () => {
   // ele monta prateleira a partir do catálogo. O que tem de existir dos dois
   // lados é o PAR DE PREDICADOS — é ele que decide o que o assinante vê.
   it('os dois predicados existem dos dois lados', () => {
-    for (const nome of ['mercadoEstaOculto', 'filtrarMercadosOcultos'] as const) {
+    for (const nome of ['mercadoEstaOculto', 'filtrarMercadosOcultos', 'mercadoOcultoNaData'] as const) {
       expect(typeof painel[nome]).toBe('function');
       expect(typeof notificacao[nome]).toBe('function');
+    }
+  });
+});
+
+// ============================================================================
+// A regra por DATA, que faltava do lado das mensagens (#439)
+// ============================================================================
+// O painel comparava o kickoff com o período da vitrine; a DM lia só os nomes
+// dos mercados ocultos AGORA. No dia em que o handicap voltou com data de corte
+// a lista de nomes esvaziou, e a DM passou a tratá-lo como liberado para todos
+// os jogos — inclusive os anteriores ao corte, que o painel esconde. Três
+// alertas saíram para 26 pessoas antes de alguém ver.
+//
+// Agora existem duas cópias da regra de data, e é esta guarda que as segura
+// juntas: ela compara comportamento, caso a caso, e não texto.
+// ============================================================================
+
+// 16/09/2026 às 9h BRT — o dia do vazamento.
+const AGORA = Date.parse('2026-09-16T12:00:00Z');
+
+// O estado real de produção quando o handicap voltou: escondido desde sempre,
+// de volta à vitrine a partir de 17/09 às 00h BRT.
+const PERIODO_FECHADO = [
+  { market: 'asian_handicap', ocultoDesde: '2024-01-01T03:00:00Z', ocultoAte: '2026-09-17T03:00:00Z' },
+];
+// O estado anterior: fora da vitrine, sem previsão de volta.
+const SEM_FIM = [{ market: 'asian_handicap', ocultoDesde: '2026-09-01T00:00:00Z', ocultoAte: null }];
+// O escuro: veio da RPC antiga ou do fallback, sem data nenhuma.
+const SEM_DATA = [{ market: 'asian_handicap', ocultoDesde: null }];
+
+const CASOS_DE_DATA: {
+  nome: string;
+  market: string;
+  kickoff: string | null;
+  vitrine: { market: string; ocultoDesde: string | null; ocultoAte?: string | null }[];
+}[] = [
+  // O caso que gerou a issue: jogo de HOJE, com o corte valendo a partir de amanhã.
+  { nome: 'jogo de hoje, período fecha amanhã', market: 'asian_handicap', kickoff: '2026-09-16T17:00:00', vitrine: PERIODO_FECHADO },
+  { nome: 'jogo de amanhã, depois do corte', market: 'asian_handicap', kickoff: '2026-09-17T19:00:00', vitrine: PERIODO_FECHADO },
+  { nome: 'jogo no instante exato da volta', market: 'asian_handicap', kickoff: '2026-09-17T03:00:00', vitrine: PERIODO_FECHADO },
+  { nome: 'jogo anterior ao início do período', market: 'asian_handicap', kickoff: '2023-06-01T19:00:00', vitrine: PERIODO_FECHADO },
+  { nome: 'outro mercado, mesmo período', market: 'goals_over_under', kickoff: '2026-09-16T17:00:00', vitrine: PERIODO_FECHADO },
+  { nome: 'período aberto, jogo de hoje', market: 'asian_handicap', kickoff: '2026-09-16T17:00:00', vitrine: SEM_FIM },
+  { nome: 'período aberto, jogo antes do início', market: 'asian_handicap', kickoff: '2026-08-20T17:00:00', vitrine: SEM_FIM },
+  { nome: 'sem data, jogo de hoje', market: 'asian_handicap', kickoff: '2026-09-16T17:00:00', vitrine: SEM_DATA },
+  { nome: 'sem data, jogo de ontem', market: 'asian_handicap', kickoff: '2026-09-15T17:00:00', vitrine: SEM_DATA },
+  { nome: 'kickoff ilegível, período fechado', market: 'asian_handicap', kickoff: 'nao é data', vitrine: PERIODO_FECHADO },
+  { nome: 'kickoff ilegível, período aberto', market: 'asian_handicap', kickoff: 'nao é data', vitrine: SEM_FIM },
+  { nome: 'kickoff nulo, período fechado', market: 'asian_handicap', kickoff: null, vitrine: PERIODO_FECHADO },
+  { nome: 'kickoff nulo, período aberto', market: 'asian_handicap', kickoff: null, vitrine: SEM_FIM },
+  { nome: 'vitrine vazia', market: 'asian_handicap', kickoff: '2026-09-16T17:00:00', vitrine: [] },
+  // O separador com ESPAÇO é o formato do timestamp cru, e é o que os outros
+  // leitores de kickoff das funções de mensagem já normalizavam. Sem aceitá-lo,
+  // a data vira ilegível e o período fechado deixa de esconder — o vazamento
+  // voltaria calado, e nenhum teste com "T" perceberia.
+  { nome: 'kickoff com espaço, jogo de hoje', market: 'asian_handicap', kickoff: '2026-09-16 17:00:00', vitrine: PERIODO_FECHADO },
+  { nome: 'kickoff com espaço, jogo de amanhã', market: 'asian_handicap', kickoff: '2026-09-17 19:00:00', vitrine: PERIODO_FECHADO },
+];
+
+describe('as duas cópias da regra por data concordam', () => {
+  it.each(CASOS_DE_DATA)('mercadoOcultoNaData · $nome', ({ market, kickoff, vitrine }) => {
+    expect(notificacao.mercadoOcultoNaData(market, kickoff, vitrine, AGORA)).toBe(
+      painel.mercadoOcultoNaData(market, kickoff, vitrine, AGORA),
+    );
+  });
+
+  // O cenário do aceite, afirmado em VALOR e não só por igualdade: duas cópias
+  // erradas do mesmo jeito passariam na comparação acima.
+  it('o jogo de hoje fica escondido e o de amanhã não, nas duas cópias', () => {
+    const hoje = '2026-09-16T17:00:00';
+    const amanha = '2026-09-17T19:00:00';
+    for (const copia of [painel, notificacao]) {
+      expect(copia.mercadoOcultoNaData('asian_handicap', hoje, PERIODO_FECHADO, AGORA)).toBe(true);
+      expect(copia.mercadoOcultoNaData('asian_handicap', amanha, PERIODO_FECHADO, AGORA)).toBe(false);
+    }
+  });
+
+  // Em VALOR, e nas duas cópias: uma comparação que só olha concordância
+  // passaria com as duas erradas do mesmo jeito — e "erradas do mesmo jeito" é o
+  // desfecho natural de copiar a função de uma para a outra.
+  it('o kickoff com espaço decide igual ao com T, nas duas cópias', () => {
+    for (const copia of [painel, notificacao]) {
+      expect(copia.mercadoOcultoNaData('asian_handicap', '2026-09-16 17:00:00', PERIODO_FECHADO, AGORA)).toBe(true);
+      expect(copia.mercadoOcultoNaData('asian_handicap', '2026-09-17 19:00:00', PERIODO_FECHADO, AGORA)).toBe(false);
+    }
+  });
+
+  it('ocultosAgora existe dos dois lados e ignora o período fechado', () => {
+    for (const copia of [painel, notificacao]) {
+      expect(copia.ocultosAgora(PERIODO_FECHADO)).toEqual([]);
+      expect(copia.ocultosAgora(SEM_FIM)).toEqual(['asian_handicap']);
     }
   });
 });
