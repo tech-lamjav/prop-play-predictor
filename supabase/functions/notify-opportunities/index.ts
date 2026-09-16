@@ -214,7 +214,7 @@ serve(async (req) => {
     const vitrine = await carregarMercadosOcultos(supabase);
     const mercadosOcultos = vitrine.mercados;
 
-    // 1c) o corte de valor (migration 137), da MESMA fonte do painel. A linha de
+    // 1c) o corte de valor (migration 144), da MESMA fonte do painel. A linha de
     // mercado com limiar que paga abaixo dele some da tela — e sem isto chegaria
     // no celular.
     const corte = await carregarLimiaresDeValor(supabase);

@@ -439,7 +439,7 @@ export function useFutebolMercadosOcultos() {
 }
 
 /**
- * O corte de valor por mercado (migration 137), com a data de vigência.
+ * O corte de valor por mercado (migration 144), com a data de vigência.
  *
  * O board e o detalhe do jogo já chegam cortados do serviço. Quem precisa disto
  * na tela é o HISTÓRICO e o placar, que mostram o passado e decidem por data.

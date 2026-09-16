@@ -10,7 +10,7 @@
 // medir, e é a medição que diz se o corte está certo.
 //
 // Primeiro caso: `asian_handicap`, limiar −2%. Os números que motivaram estão
-// na migration 137 e só lá.
+// na migration 144 e só lá.
 //
 // O limiar NÃO mora aqui. Ele vem do banco (`get_futebol_limiar_valor`), para
 // que mudar o corte seja um UPDATE e não um release, e para que o painel e a DM

@@ -85,7 +85,7 @@ export function mergeBoardAndHistory(
   // jogo, quando a linha passava a vir do histórico. Em produção isso somava 31
   // linhas de Handicap que ninguém nunca viu, contra 23 de verdade.
   vitrine: readonly MercadoOculto[] = [],
-  // O corte de valor por mercado (migration 137), com a data de vigência. Mesma
+  // O corte de valor por mercado (migration 144), com a data de vigência. Mesma
   // lógica da vitrine, no grão da LINHA: a que paga abaixo do limiar some a
   // partir da data, e fica antes dela. O board já chega cortado do serviço; é o
   // histórico que devolveria amanhã a linha cortada hoje.

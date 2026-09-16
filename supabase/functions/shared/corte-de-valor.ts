@@ -3,7 +3,7 @@
  *
  * Irmão do `mercados-ocultos.ts` ao lado: aquele tira o mercado inteiro da DM,
  * este tira a linha que paga pior que a referência sharp além do limiar do
- * mercado. Os números que motivaram estão na migration 137, e só lá.
+ * mercado. Os números que motivaram estão na migration 144, e só lá.
  *
  * ⚠️ O limiar mora no BANCO pelo mesmo motivo da vitrine: o painel roda no
  * browser e isto roda em Deno, sem módulo comum. Corte só num dos lados é o

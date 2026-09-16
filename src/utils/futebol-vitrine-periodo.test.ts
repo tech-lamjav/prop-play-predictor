@@ -4,7 +4,7 @@ import { mergeBoardAndHistory } from './futebol-history';
 import { esteveNaVitrine, seloDeOculto } from '@/components/placar/placar-vitrine';
 
 // ============================================================================
-// O mercado que volta à vitrine (migration 138)
+// O mercado que volta à vitrine (migration 145)
 // ============================================================================
 // Sem o fim do período, religar o mercado tirava ele da vitrine inteira, e o
 // histórico passava a mostrar todas as linhas de quando ele estava fora — que
@@ -47,7 +47,7 @@ describe('mercadoOcultoNaData com o período fechado', () => {
     expect(mercadoOcultoNaData('asian_handicap', null, ABERTO, AGORA)).toBe(true);
   });
 
-  it('sem o campo (vitrine de antes da 138) o período conta como aberto', () => {
+  it('sem o campo (vitrine de antes da 145) o período conta como aberto', () => {
     const antiga = [{ market: 'asian_handicap', ocultoDesde: '2026-09-01T00:00:00Z' }];
     expect(mercadoOcultoNaData('asian_handicap', '2026-10-05T18:00:00', antiga, AGORA)).toBe(true);
   });

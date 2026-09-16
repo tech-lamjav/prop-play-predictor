@@ -363,7 +363,7 @@ serve(async (req) => {
     // deixaria o alerta de publicação continuar mandando. Ver #324.
     const vitrine = await carregarMercadosOcultos(supabase);
     const mercadosOcultos = vitrine.mercados;
-    // O corte de valor (migration 137), pelo mesmo motivo: cortar só no
+    // O corte de valor (migration 144), pelo mesmo motivo: cortar só no
     // `notify-opportunities` deixaria o alerta de publicação mandando.
     const corte = await carregarLimiaresDeValor(supabase);
     const now = new Date();
