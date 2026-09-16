@@ -63,24 +63,7 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
  * numa faixa horizontal viraria um risco entre colunas em vez de um separador
  * entre linhas.
  */
-function Contato({
-  rotulo,
-  valor,
-  acao,
-}: {
-  rotulo: string;
-  valor: string | null;
-  /**
-   * Uma ação sobre ESTE contato, embaixo do valor.
-   *
-   * ⚠️ Mora aqui, e não no cabeçalho junto do nome. "Este número não leva à
-   * pessoa" é uma frase sobre o número: longe dele, vira um botão com borda
-   * debaixo do nome, com peso de ação principal — e o Victor reclamou disso
-   * exatamente. Do lado do valor, a mesma frase fica curta porque o contexto
-   * já está na tela.
-   */
-  acao?: ReactNode;
-}) {
+function Contato({ rotulo, valor }: { rotulo: string; valor: string | null }) {
   return (
     <div className="min-w-[140px]">
       <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim">
@@ -91,7 +74,6 @@ function Contato({
       <p className="mt-0.5 break-words text-[13.5px] text-ink">
         {valor ?? <span className="text-ink-2">não informado</span>}
       </p>
-      {acao}
     </div>
   );
 }
@@ -392,78 +374,109 @@ function Conteudo({
 
           </div>
 
-          {/* A etapa fica alinhada à DIREITA do nome, e não abaixo dos
-              contatos. É o único controle do cabeçalho, e misturá-lo na fileira
-              de leitura fazia o seletor parecer mais um campo de texto. */}
-          <div className="shrink-0">
-            <label
-              htmlFor="etapa-do-lead"
-              className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
-            >
-              Etapa
-            </label>
-            <div className="mt-1 flex items-center gap-2">
-              <select
-                id="etapa-do-lead"
-                value={etapa ?? ''}
-                disabled={mudandoEtapa || etapa === null}
-                onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
-                aria-label="Etapa do lead"
-                className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
-              >
-                {etapa === null ? <option value="">Carregando…</option> : null}
-                {ETAPAS.map((e) => (
-                  <option key={e} value={e}>
-                    {ROTULO_DA_ETAPA[e]}
-                  </option>
-                ))}
-              </select>
-              {/* Travar enquanto grava não é conforto: duas mudanças em voo
-                  gravariam dois eventos, e o segundo registraria um "de" que já
-                  não era verdade.
+          {/* Os controles ficam alinhados à DIREITA do nome, e não abaixo dos
+              contatos: misturá-los na fileira de leitura fazia seletor parecer
+              campo de texto.
 
-                  O recado só aparece quando tem o que dizer. A versão anterior
-                  mantinha "Cada mudança fica registrada" permanentemente embaixo
-                  do seletor, e uma promessa que está sempre lá não é lida — só
-                  ocupa a linha de baixo. Quando a gravação falha, ela ainda
-                  virava mentira no exato momento em que nada foi registrado. */}
-              {(mudandoEtapa || erroAoMudarEtapa) && (
-                <span
-                  className={`text-[11.5px] ${erroAoMudarEtapa ? 'font-bold text-ink' : 'text-ink-2'}`}
+              Agrupados num invólucro próprio porque o cabeçalho é
+              `justify-between`: soltos, o de etapa ia para o meio e o de
+              WhatsApp para a ponta, como se não tivessem relação. */}
+          <div className="flex shrink-0 flex-wrap items-start gap-4">
+            <div>
+              <label
+                htmlFor="etapa-do-lead"
+                className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
+              >
+                Etapa
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <select
+                  id="etapa-do-lead"
+                  value={etapa ?? ''}
+                  disabled={mudandoEtapa || etapa === null}
+                  onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
+                  aria-label="Etapa do lead"
+                  className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
                 >
-                  {erroAoMudarEtapa ? 'Não gravou. Continua como estava.' : 'Gravando…'}
-                </span>
-              )}
+                  {etapa === null ? <option value="">Carregando…</option> : null}
+                  {ETAPAS.map((e) => (
+                    <option key={e} value={e}>
+                      {ROTULO_DA_ETAPA[e]}
+                    </option>
+                  ))}
+                </select>
+                {/* Travar enquanto grava não é conforto: duas mudanças em voo
+                    gravariam dois eventos, e o segundo registraria um "de" que já
+                    não era verdade.
+
+                    O recado só aparece quando tem o que dizer. A versão anterior
+                    mantinha "Cada mudança fica registrada" permanentemente embaixo
+                    do seletor, e uma promessa que está sempre lá não é lida — só
+                    ocupa a linha de baixo. Quando a gravação falha, ela ainda
+                    virava mentira no exato momento em que nada foi registrado. */}
+                {(mudandoEtapa || erroAoMudarEtapa) && (
+                  <span
+                    className={`text-[11.5px] ${erroAoMudarEtapa ? 'font-bold text-ink' : 'text-ink-2'}`}
+                  >
+                    {erroAoMudarEtapa ? 'Não gravou. Continua como estava.' : 'Gravando…'}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* A situação do número, ao lado da etapa e com a mesma forma.
+                Pedido do Victor: "um campo ali do lado do etapa, literalmente
+                uma marca que eu seleciono se o whatsapp está certo ou não".
+                Antes era um link debaixo do número, e antes disso um botão
+                embaixo do nome — as duas versões faziam de uma ESCOLHA uma
+                ação solta, quando ela é do mesmo tipo da etapa: um estado que
+                se escolhe numa lista curta.
+
+                Só aparece quando há decisão a tomar. Para quem não tem número
+                nenhum não há o que escolher, e o campo só sugeriria trabalho
+                inútil; o que falta ali é completar o cadastro. */}
+            {podeDecidir ? (
+              <div>
+                <label
+                  htmlFor="whatsapp-do-lead"
+                  className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
+                >
+                  WhatsApp
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <select
+                    id="whatsapp-do-lead"
+                    value={marcadoSemWhatsApp ? 'nao' : 'ok'}
+                    disabled={marcandoSemWhatsApp}
+                    onChange={(e) => aoMarcarSemWhatsApp(e.target.value === 'nao')}
+                    aria-label="Situação do WhatsApp"
+                    className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
+                  >
+                    <option value="ok">Número ok</option>
+                    <option value="nao">Não leva à pessoa</option>
+                  </select>
+                  {/* Mesmo recado da etapa, e pela mesma razão: o seletor é
+                      controlado pelo valor do servidor, então uma gravação que
+                      falha o faz voltar sozinho — sem aviso, parece um clique
+                      que não pegou. */}
+                  {(marcandoSemWhatsApp || erroAoMarcarSemWhatsApp) && (
+                    <span
+                      className={`text-[11.5px] ${erroAoMarcarSemWhatsApp ? 'font-bold text-ink' : 'text-ink-2'}`}
+                    >
+                      {erroAoMarcarSemWhatsApp
+                        ? 'Não gravou. Continua como estava.'
+                        : 'Gravando…'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-start gap-x-7 gap-y-3">
           <Contato rotulo="E-mail" valor={pessoa.email} />
-          <Contato
-            rotulo="WhatsApp"
-            valor={pessoa.whatsapp_number}
-            acao={
-              podeDecidir ? (
-                <span className="mt-0.5 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => aoMarcarSemWhatsApp(!marcadoSemWhatsApp)}
-                    disabled={marcandoSemWhatsApp}
-                    className="text-[12px] text-ink-2 underline underline-offset-2 transition hover:text-ink disabled:opacity-60"
-                  >
-                    {marcadoSemWhatsApp ? 'desmarcar' : 'não leva à pessoa'}
-                  </button>
-                  {/* O recado só aparece quando tem o que dizer. Sem ele, uma
-                      gravação que falha faz o botão voltar sozinho ao rótulo
-                      anterior, e isso parece um clique que não pegou. */}
-                  {erroAoMarcarSemWhatsApp && (
-                    <span className="text-[12px] text-status-danger">não gravou</span>
-                  )}
-                </span>
-              ) : null
-            }
-          />
+          <Contato rotulo="WhatsApp" valor={pessoa.whatsapp_number} />
           <Contato
             rotulo="Telegram"
             valor={

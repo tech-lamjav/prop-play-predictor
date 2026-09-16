@@ -35,6 +35,8 @@ const montar = (
     erroAoMudarEtapa?: boolean;
     marcadoSemWhatsApp?: boolean;
     aoMarcarSemWhatsApp?: (marcado: boolean) => void;
+    marcandoSemWhatsApp?: boolean;
+    erroAoMarcarSemWhatsApp?: boolean;
     linhaDoTempo?: React.ReactNode;
     hoje?: string;
     cobranca?: { plano: string; venceEm: string } | null;
@@ -50,8 +52,8 @@ const montar = (
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
         marcadoSemWhatsApp={extras.marcadoSemWhatsApp ?? false}
         aoMarcarSemWhatsApp={extras.aoMarcarSemWhatsApp ?? (() => {})}
-        marcandoSemWhatsApp={false}
-        erroAoMarcarSemWhatsApp={false}
+        marcandoSemWhatsApp={extras.marcandoSemWhatsApp ?? false}
+        erroAoMarcarSemWhatsApp={extras.erroAoMarcarSemWhatsApp ?? false}
         linhaDoTempo={extras.linhaDoTempo ?? null}
         hoje={extras.hoje ?? '2026-09-12'}
         cobranca={extras.cobranca ?? null}
@@ -362,14 +364,16 @@ describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
   // existe para o caso que ela NÃO tem como enxergar — o número bem formado
   // que não leva à pessoa.
 
-  // O rótulo é curto porque ele mora ao LADO do número: o contexto já está na
-  // tela, e a frase inteira embaixo do nome era o que o Victor recusou.
-  const botaoDeMarcar = () => screen.getByRole('button', { name: /não leva à pessoa/i });
+  // ⚠️ Um CAMPO, ao lado do de etapa, e não um botão. Pedido do Victor depois
+  // de duas versões recusadas: botão embaixo do nome (peso de ação principal
+  // para uma classificação rara) e link debaixo do número. É uma escolha entre
+  // dois estados, do mesmo tipo da etapa.
+  const campoDoWhatsApp = () => screen.getByRole('combobox', { name: /situação do whatsapp/i });
 
-  it('quem tem número bom não ganha selo, e ganha o botão', () => {
+  it('quem tem número bom não ganha selo, e o campo diz que está ok', () => {
     montar();
     expect(screen.queryByText(/^Sem WhatsApp/)).not.toBeInTheDocument();
-    expect(botaoDeMarcar()).toBeInTheDocument();
+    expect(campoDoWhatsApp()).toHaveValue('ok');
   });
 
   it('sem número usável, o selo aparece sozinho', () => {
@@ -392,39 +396,58 @@ describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
     expect(screen.getByText('Sem WhatsApp')).toBeInTheDocument();
   });
 
-  it('sem número, não oferece marcar: não há decisão a tomar', () => {
-    // ⚠️ Marcar quem já está fora das listas não mudaria nada, e o botão só
-    // sugeriria um trabalho inútil. O que falta ali é completar o cadastro.
+  it('sem número, o campo nem aparece: não há decisão a tomar', () => {
+    // ⚠️ Escolher "não leva à pessoa" para quem não tem número não mudaria
+    // nada, e o campo só sugeriria trabalho inútil. O que falta ali é
+    // completar o cadastro.
     montar(pessoa({ whatsapp_number: null }));
-    expect(screen.queryByRole('button', { name: /não leva à pessoa/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: /situação do whatsapp/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it('marcado diz que foi na mão, e oferece o caminho de volta', () => {
+  it('marcado diz que foi na mão, e o campo mostra a escolha', () => {
     // A origem tem de ficar distinguível: um cadastro a completar não é a mesma
     // coisa que uma decisão que alguém tomou.
     montar(pessoa(), { total: 0, ultima: null }, { marcadoSemWhatsApp: true });
     expect(screen.getByText('Sem WhatsApp · marcado')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /desmarcar/i })).toBeInTheDocument();
+    expect(campoDoWhatsApp()).toHaveValue('nao');
   });
 
-  it('clicar manda marcar', async () => {
+  it('escolher "não leva à pessoa" manda marcar', async () => {
     const aoMarcar = vi.fn();
     montar(pessoa(), { total: 0, ultima: null }, { aoMarcarSemWhatsApp: aoMarcar });
-    await userEvent.click(botaoDeMarcar());
+    await userEvent.selectOptions(campoDoWhatsApp(), 'nao');
     expect(aoMarcar).toHaveBeenCalledWith(true);
   });
 
-  it('clicar em quem já está marcado manda desmarcar', async () => {
-    // Desmarcar é do mesmo tamanho que marcar: quem classificou errado tem de
-    // conseguir desfazer sem pedir para ninguém.
+  it('voltar para "número ok" manda desmarcar', async () => {
+    // ⚠️ Desfazer é do mesmo tamanho que marcar, e num campo isso é a mesma
+    // peça — que foi metade do motivo de ele virar campo. Na versão de link,
+    // voltar atrás exigia achar outro rótulo.
     const aoMarcar = vi.fn();
     montar(
       pessoa(),
       { total: 0, ultima: null },
       { marcadoSemWhatsApp: true, aoMarcarSemWhatsApp: aoMarcar },
     );
-    await userEvent.click(screen.getByRole('button', { name: /desmarcar/i }));
+    await userEvent.selectOptions(campoDoWhatsApp(), 'ok');
     expect(aoMarcar).toHaveBeenCalledWith(false);
+  });
+
+  it('o campo trava enquanto grava, como o de etapa', () => {
+    // Duas escolhas em voo gravariam duas vezes, e a segunda registraria um
+    // estado que já não era verdade.
+    montar(pessoa(), { total: 0, ultima: null }, { marcandoSemWhatsApp: true });
+    expect(campoDoWhatsApp()).toBeDisabled();
+    expect(screen.getByText('Gravando…')).toBeInTheDocument();
+  });
+
+  it('quando a gravação falha, a tela diz que o estado não mudou', () => {
+    // ⚠️ O seletor é controlado pelo valor do servidor: sem o recado, uma
+    // gravação que falha o faz voltar sozinho e parece um clique que não pegou.
+    montar(pessoa(), { total: 0, ultima: null }, { erroAoMarcarSemWhatsApp: true });
+    expect(screen.getByText('Não gravou. Continua como estava.')).toBeInTheDocument();
   });
 
   it('o selo e a etiqueta de teste convivem', () => {
