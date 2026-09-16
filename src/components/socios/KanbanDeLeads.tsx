@@ -10,6 +10,7 @@ import {
 import { NOME_DO_GANCHO } from './crm-ficha';
 import { ROTA_DO_CRM } from './crm-vocabulario';
 import { EtiquetaDoLead } from './EtiquetaDoLead';
+import { SeloSemWhatsApp } from './SeloSemWhatsApp';
 
 /**
  * Quantos cartões uma coluna desenha antes de dizer quantos sobraram.
@@ -34,13 +35,17 @@ function Cartao({ lead }: { lead: Lead }) {
       {/* Dentro do cartão, porque o cartão inteiro é o link. O nome acessível
           ganha a etiqueta junto, e aqui isso ajuda: quem ouve a coluna sabe
           quem está com o teste vencendo sem abrir a ficha. */}
-      {lead.etiqueta ? (
-        <div className="mt-1">
+      {/* Os dois selos dividem a mesma faixa, e cada um aparece por conta
+          própria: estar em teste e não ter WhatsApp são fatos independentes, e
+          alguém pode ter os dois ao mesmo tempo. */}
+      {lead.etiqueta || lead.semWhatsApp ? (
+        <div className="mt-1 flex flex-wrap items-center gap-1">
           <EtiquetaDoLead
             etiqueta={lead.etiqueta}
             fimDoTeste={lead.fimDoTeste}
             diasDeTeste={lead.diasDeTeste}
           />
+          {lead.semWhatsApp ? <SeloSemWhatsApp marcado={lead.marcadoSemWhatsApp} /> : null}
         </div>
       ) : null}
       <p className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px]">

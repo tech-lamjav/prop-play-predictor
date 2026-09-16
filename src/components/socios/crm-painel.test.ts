@@ -10,6 +10,7 @@ import {
   DIAS_PARA_ESTAR_PARADO,
   precisamDeAtencao,
   metricasDeNegocio,
+  escondeSemWhatsApp,
   montarLeads,
   semWhatsApp,
   type Toques,
@@ -448,5 +449,97 @@ describe('semWhatsApp · de quem o sócio não consegue chegar perto', () => {
   it('base inteira com número devolve lista vazia', () => {
     const leads = monta([cadastro({ id: 'a', whatsapp_number: '5511998877665' })]);
     expect(semWhatsApp(leads)).toEqual([]);
+  });
+});
+
+describe('a marca na mão entra na mesma conta que o número', () => {
+  // "Não só porque ele tem o número cadastrado significa que o lead existe."
+  // O cadastro não enxerga o número bem formado que não leva à pessoa — esse
+  // caso só existe porque alguém tentou e descobriu, e por isso a marca manual
+  // SOMA com a regra do número em vez de substituí-la.
+
+  const comMarca = (cadastros: Parameters<typeof montarLeads>[0], marcados: string[]) =>
+    montarLeads(cadastros, {}, {}, {}, HOJE, new Set(marcados));
+
+  it('marcado na mão conta como sem WhatsApp, mesmo com número bom', () => {
+    const [lead] = comMarca([cadastro({ id: 'a', whatsapp_number: '5511998877665' })], ['a']);
+    expect(lead.semWhatsApp).toBe(true);
+    expect(lead.marcadoSemWhatsApp).toBe(true);
+  });
+
+  it('sem número usável conta mesmo sem ninguém ter marcado', () => {
+    const [lead] = comMarca([cadastro({ id: 'a', whatsapp_number: null })], []);
+    expect(lead.semWhatsApp).toBe(true);
+    // ⚠️ A origem tem de ficar distinguível: um cadastro a completar não é a
+    // mesma coisa que uma decisão que alguém tomou e que dá para desfazer.
+    expect(lead.marcadoSemWhatsApp).toBe(false);
+  });
+
+  it('quem tem número bom e não foi marcado fica de fora', () => {
+    const [lead] = comMarca([cadastro({ id: 'a', whatsapp_number: '5511998877665' })], ['outro']);
+    expect(lead.semWhatsApp).toBe(false);
+    expect(lead.marcadoSemWhatsApp).toBe(false);
+  });
+
+  it('sem o conjunto de marcas, o lead ainda sabe dizer pelo número', () => {
+    // A marca é acréscimo. Se a consulta dela falhar, a tela continua sabendo
+    // de quem não tem número — que é a maior parte dos casos.
+    const [lead] = monta([cadastro({ id: 'a', whatsapp_number: null })]);
+    expect(lead.semWhatsApp).toBe(true);
+  });
+
+  it('o filtro pega os dois caminhos', () => {
+    const leads = comMarca(
+      [
+        cadastro({ id: 'sem-numero', whatsapp_number: null }),
+        cadastro({ id: 'marcado', whatsapp_number: '5511998877665' }),
+        cadastro({ id: 'falavel', whatsapp_number: '5511998877000' }),
+      ],
+      ['marcado'],
+    );
+    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['sem-numero', 'marcado']);
+  });
+});
+
+describe('escondeSemWhatsApp · o uso do dia a dia', () => {
+  // "Esses eu não consigo fazer nada, quero que saiam da lista." Mostrar a
+  // pilha é a exceção; escondê-la é o uso.
+
+  it('devolve só quem dá para abordar', () => {
+    const leads = montarLeads(
+      [
+        cadastro({ id: 'sem-numero', whatsapp_number: null }),
+        cadastro({ id: 'marcado', whatsapp_number: '5511998877665' }),
+        cadastro({ id: 'falavel', whatsapp_number: '5511998877000' }),
+      ],
+      {},
+      {},
+      {},
+      HOJE,
+      new Set(['marcado']),
+    );
+    expect(escondeSemWhatsApp(leads).map((l) => l.id)).toEqual(['falavel']);
+  });
+
+  it('é exatamente o complemento do filtro', () => {
+    // ⚠️ Os dois têm de particionar a lista. Se divergirem, existe lead que
+    // não aparece em nenhum dos dois lados — some da tela sem ninguém notar.
+    const leads = montarLeads(
+      [
+        cadastro({ id: 'a', whatsapp_number: null }),
+        cadastro({ id: 'b', whatsapp_number: '5511998877665' }),
+        cadastro({ id: 'c', whatsapp_number: '11998877665' }),
+        cadastro({ id: 'd', whatsapp_number: '5511998877000' }),
+      ],
+      {},
+      {},
+      {},
+      HOJE,
+      new Set(['b']),
+    );
+    const escondidos = semWhatsApp(leads).map((l) => l.id);
+    const mostrados = escondeSemWhatsApp(leads).map((l) => l.id);
+    expect([...escondidos, ...mostrados].sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(escondidos.filter((id) => mostrados.includes(id))).toEqual([]);
   });
 });

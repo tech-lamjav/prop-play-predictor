@@ -5,9 +5,15 @@ import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
-import { idSugeridoNaFicha, modelosDaFicha, type ContextoDaMensagem } from './crm-mensagens';
+import {
+  idSugeridoNaFicha,
+  modelosDaFicha,
+  temWhatsApp,
+  type ContextoDaMensagem,
+} from './crm-mensagens';
 import { diasDeTesteRestantes, etiquetaDe, ultimoDiaDoTeste } from './crm-etiquetas';
 import { EtiquetaDoLead } from './EtiquetaDoLead';
+import { SeloSemWhatsApp } from './SeloSemWhatsApp';
 import {
   ganchoDe,
   nomeDoPlano,
@@ -127,6 +133,10 @@ export function Ficha({
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
+  marcadoSemWhatsApp,
+  aoMarcarSemWhatsApp,
+  marcandoSemWhatsApp,
+  erroAoMarcarSemWhatsApp,
   linhaDoTempo,
   comportamento,
   perfilDeAposta,
@@ -152,6 +162,17 @@ export function Ficha({
    * cobrança fala de uma data.
    */
   cobranca: { plano: string; venceEm: string } | null;
+  /**
+   * O sócio marcou esta pessoa na mão como impossível de abordar.
+   *
+   * Vem de fora, como a etapa: é outra consulta, e a ficha continua sendo só
+   * desenho. Não confundir com "não tem número" — esse a ficha descobre sozinha
+   * olhando o cadastro.
+   */
+  marcadoSemWhatsApp: boolean;
+  aoMarcarSemWhatsApp: (marcado: boolean) => void;
+  marcandoSemWhatsApp: boolean;
+  erroAoMarcarSemWhatsApp: boolean;
   comportamento: ReactNode;
   /**
    * Como a pessoa aposta.
@@ -211,6 +232,10 @@ export function Ficha({
       aoMudarEtapa={aoMudarEtapa}
       mudandoEtapa={mudandoEtapa}
       erroAoMudarEtapa={erroAoMudarEtapa}
+      marcadoSemWhatsApp={marcadoSemWhatsApp}
+      aoMarcarSemWhatsApp={aoMarcarSemWhatsApp}
+      marcandoSemWhatsApp={marcandoSemWhatsApp}
+      erroAoMarcarSemWhatsApp={erroAoMarcarSemWhatsApp}
       linhaDoTempo={linhaDoTempo}
       comportamento={comportamento}
       perfilDeAposta={perfilDeAposta}
@@ -231,6 +256,10 @@ function Conteudo({
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
+  marcadoSemWhatsApp,
+  aoMarcarSemWhatsApp,
+  marcandoSemWhatsApp,
+  erroAoMarcarSemWhatsApp,
   linhaDoTempo,
   comportamento,
   perfilDeAposta,
@@ -247,6 +276,10 @@ function Conteudo({
   erroAoMudarEtapa: boolean;
   hoje: string;
   cobranca: { plano: string; venceEm: string } | null;
+  marcadoSemWhatsApp: boolean;
+  aoMarcarSemWhatsApp: (marcado: boolean) => void;
+  marcandoSemWhatsApp: boolean;
+  erroAoMarcarSemWhatsApp: boolean;
   linhaDoTempo: ReactNode;
   /** Entra por fora, como a linha do tempo: tem consulta própria, e só sai
    *  quando o modal abre. */
@@ -263,6 +296,23 @@ function Conteudo({
   const cadastroEm = dia(pessoa.created_at);
   const ultimaAposta = apostas?.ultima ? dia(apostas.ultima) : null;
   const etiqueta = etiquetaDe(pessoa, hoje);
+
+  /**
+   * Os dois caminhos até "não dá para falar com essa pessoa".
+   *
+   * O número é a mesma regra do botão de WhatsApp, em `temWhatsApp`: se ele não
+   * abre conversa, a pessoa já está fora das listas de abordagem sem ninguém
+   * precisar decidir nada.
+   *
+   * O botão de marcar só aparece quando há decisão a tomar: para quem TEM
+   * número usável (o caso que o cadastro não enxerga — o número existe e não é
+   * da pessoa) e para quem já está marcado, que precisa poder voltar. Para quem
+   * simplesmente não tem número, marcar não mudaria nada, e o botão só
+   * sugeriria um trabalho inútil.
+   */
+  const numeroServe = temWhatsApp(pessoa.whatsapp_number);
+  const semWhats = marcadoSemWhatsApp || !numeroServe;
+  const podeDecidir = numeroServe || marcadoSemWhatsApp;
 
   /*
    * O que muda a mensagem além do gancho e da etapa. Quem tem etiqueta de teste
@@ -308,13 +358,37 @@ function Conteudo({
             <p className="mt-0.5 text-[12.5px] text-ink-2">
               {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
             </p>
-            {etiqueta ? (
-              <div className="mt-1.5">
+            {/* Os dois selos dividem a faixa: estar em teste e não ter WhatsApp
+                são fatos independentes, e alguém pode ter os dois. */}
+            {etiqueta || semWhats ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <EtiquetaDoLead
                   etiqueta={etiqueta}
                   fimDoTeste={ultimoDiaDoTeste(pessoa.futebol_trial_ends_at)}
                   diasDeTeste={diasDeTesteRestantes(pessoa, hoje)}
                 />
+                {semWhats ? <SeloSemWhatsApp marcado={marcadoSemWhatsApp} /> : null}
+              </div>
+            ) : null}
+
+            {podeDecidir ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => aoMarcarSemWhatsApp(!marcadoSemWhatsApp)}
+                  disabled={marcandoSemWhatsApp}
+                  className="rounded-rebrand-sm border border-line-2 px-2 py-1 text-[12px] font-bold text-ink-2 transition hover:bg-canvas hover:text-ink disabled:opacity-60"
+                >
+                  {marcadoSemWhatsApp
+                    ? 'Voltar para as listas de abordagem'
+                    : 'Marcar: número não leva à pessoa'}
+                </button>
+                {/* O recado só aparece quando tem o que dizer. Sem ele, uma
+                    gravação que falha faz o botão voltar sozinho ao rótulo
+                    anterior, e isso parece um clique que não pegou. */}
+                {erroAoMarcarSemWhatsApp && (
+                  <span className="text-[12px] text-red-700">Não deu para gravar.</span>
+                )}
               </div>
             ) : null}
           </div>

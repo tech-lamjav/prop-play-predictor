@@ -81,7 +81,10 @@ describe('agruparPorDia', () => {
 
 describe('buscar', () => {
   const base = [
-    cadastro({ id: 'a', name: 'Maria Silva', email: 'maria@exemplo.com' }),
+    // Só 'b' tem telefone, e é isso que a busca por número prova. Herdar o
+    // número padrão do fixture daria o mesmo telefone aos dois, e a busca
+    // acharia os dois sem que o teste estivesse errado.
+    cadastro({ id: 'a', name: 'Maria Silva', email: 'maria@exemplo.com', whatsapp_number: null }),
     cadastro({ id: 'b', name: null, email: 'joao@exemplo.com', whatsapp_number: '5511998877665' }),
   ];
 

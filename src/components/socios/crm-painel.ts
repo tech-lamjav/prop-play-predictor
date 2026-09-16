@@ -139,6 +139,30 @@ export interface Lead {
    */
   fimDoTeste: string | null;
   diasDeTeste: number | null;
+  /**
+   * Não dá para abordar esta pessoa por WhatsApp.
+   *
+   * ⚠️ É a UNIÃO de dois caminhos, e não só o campo do cadastro:
+   *
+   *   · o número não abre conversa — vazio, curto, ou sem código do país, que é
+   *     exatamente a regra do botão da ficha, em `temWhatsApp`;
+   *   · o sócio marcou na mão — o número está lá, bem formado, e não leva à
+   *     pessoa. É o caso que o cadastro não tem como enxergar sozinho.
+   *
+   * Fato do cadastro, num eixo separado da etapa: quem está sem número continua
+   * tendo a etapa que tem. Como posição do funil, ele engoliria a etapa de todo
+   * mundo que está sem número — o mesmo erro que já escondeu 59 leads quando
+   * "em teste" era etapa.
+   */
+  semWhatsApp: boolean;
+  /**
+   * A marca veio da mão do sócio, e não do número.
+   *
+   * Separado do de cima porque as duas origens pedem reações diferentes: um
+   * cadastro a completar não é a mesma coisa que uma decisão que alguém tomou e
+   * que dá para desfazer.
+   */
+  marcadoSemWhatsApp: boolean;
   assinante: boolean;
   /** Último toque registrado, ou nulo para quem nunca recebeu nada. */
   ultimoToque: string | null;
@@ -165,6 +189,11 @@ function posicaoDe(c: Cadastro, etapa: Etapa): Posicao {
   return ehAssinante(c) ? 'assinante' : etapa;
 }
 
+/** Os ids que o sócio marcou na mão. Vazio é "ninguém", e não "não sei". */
+export type MarcadosSemWhatsApp = ReadonlySet<string>;
+
+const NINGUEM: MarcadosSemWhatsApp = new Set<string>();
+
 export function montarLeads(
   cadastros: Cadastro[],
   etapas: EtapasGravadas,
@@ -172,10 +201,16 @@ export function montarLeads(
   /** Nulo quando a consulta de apostas falhou — e isso NÃO é o mesmo que zero. */
   apostas: Apostas | null,
   hoje: string,
+  /**
+   * Quem o sócio marcou na mão. Opcional porque a marca é acréscimo: sem ela, o
+   * lead ainda sabe dizer que está sem WhatsApp pelo próprio número.
+   */
+  marcados: MarcadosSemWhatsApp = NINGUEM,
 ): Lead[] {
   return cadastros.map((c) => {
     const ultimoToque = toques[c.id] ?? null;
     const referencia = brtDayOf(ultimoToque) ?? brtDayOf(c.created_at);
+    const marcado = marcados.has(c.id);
 
     return {
       id: c.id,
@@ -191,6 +226,8 @@ export function montarLeads(
       etiqueta: etiquetaDe(c, hoje),
       fimDoTeste: ultimoDiaDoTeste(c.futebol_trial_ends_at),
       diasDeTeste: diasDeTesteRestantes(c, hoje),
+      semWhatsApp: marcado || !temWhatsApp(c.whatsapp_number),
+      marcadoSemWhatsApp: marcado,
       assinante: ehAssinante(c),
       ultimoToque,
       diasParado: referencia ? diasEntre(referencia, hoje) : null,
@@ -401,5 +438,16 @@ export function filtrarPorEtiqueta(leads: Lead[], etiqueta: Etiqueta | null): Le
  * que está sem número.
  */
 export function semWhatsApp(leads: Lead[]): Lead[] {
-  return leads.filter((l) => !temWhatsApp(l.whatsapp));
+  return leads.filter((l) => l.semWhatsApp);
+}
+
+/**
+ * A lista sem quem não dá para abordar.
+ *
+ * O contrário de `semWhatsApp`, e é este que o dia a dia usa: o pedido foi
+ * "esses eu não consigo fazer nada, quero que saiam da lista quando eu estou
+ * trabalhando". Mostrar a pilha é a exceção; escondê-la é o uso.
+ */
+export function escondeSemWhatsApp(leads: Lead[]): Lead[] {
+  return leads.filter((l) => !l.semWhatsApp);
 }

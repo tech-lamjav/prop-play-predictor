@@ -33,6 +33,8 @@ const montar = (
     aoMudarEtapa?: (e: Etapa) => void;
     mudandoEtapa?: boolean;
     erroAoMudarEtapa?: boolean;
+    marcadoSemWhatsApp?: boolean;
+    aoMarcarSemWhatsApp?: (marcado: boolean) => void;
     linhaDoTempo?: React.ReactNode;
     hoje?: string;
     cobranca?: { plano: string; venceEm: string } | null;
@@ -46,6 +48,10 @@ const montar = (
         aoMudarEtapa={extras.aoMudarEtapa ?? (() => {})}
         mudandoEtapa={extras.mudandoEtapa ?? false}
         erroAoMudarEtapa={extras.erroAoMudarEtapa ?? false}
+        marcadoSemWhatsApp={extras.marcadoSemWhatsApp ?? false}
+        aoMarcarSemWhatsApp={extras.aoMarcarSemWhatsApp ?? (() => {})}
+        marcandoSemWhatsApp={false}
+        erroAoMarcarSemWhatsApp={false}
         linhaDoTempo={extras.linhaDoTempo ?? null}
         hoje={extras.hoje ?? '2026-09-12'}
         cobranca={extras.cobranca ?? null}
@@ -151,6 +157,10 @@ describe('Ficha', () => {
           aoMudarEtapa={() => {}}
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
+          marcadoSemWhatsApp={false}
+          aoMarcarSemWhatsApp={() => {}}
+          marcandoSemWhatsApp={false}
+          erroAoMarcarSemWhatsApp={false}
           linhaDoTempo={null}
           hoje="2026-09-12"
           cobranca={null}
@@ -246,6 +256,10 @@ describe('Ficha · a linha do tempo entra na página', () => {
           aoMudarEtapa={() => {}}
           mudandoEtapa={false}
           erroAoMudarEtapa={false}
+          marcadoSemWhatsApp={false}
+          aoMarcarSemWhatsApp={() => {}}
+          marcandoSemWhatsApp={false}
+          erroAoMarcarSemWhatsApp={false}
           linhaDoTempo={<p>a linha do tempo</p>}
           hoje="2026-09-12"
           cobranca={null}
@@ -339,6 +353,86 @@ describe('Ficha · o cabeçalho e as abas', () => {
     montar();
     await userEvent.click(screen.getByRole('tab', { name: /Comportamento/ }));
     expect(screen.getByLabelText('Etapa do lead')).toBeInTheDocument();
+  });
+});
+
+describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
+  // "Não só porque ele tem o número cadastrado significa que o lead existe."
+  // A ficha resolve sozinha o caso do número que não abre conversa; o botão
+  // existe para o caso que ela NÃO tem como enxergar — o número bem formado
+  // que não leva à pessoa.
+
+  const botaoDeMarcar = () => screen.getByRole('button', { name: /número não leva à pessoa/i });
+
+  it('quem tem número bom não ganha selo, e ganha o botão', () => {
+    montar();
+    expect(screen.queryByText(/^Sem WhatsApp/)).not.toBeInTheDocument();
+    expect(botaoDeMarcar()).toBeInTheDocument();
+  });
+
+  it('sem número usável, o selo aparece sozinho', () => {
+    montar(pessoa({ whatsapp_number: null }));
+    expect(screen.getByText('Sem WhatsApp')).toBeInTheDocument();
+  });
+
+  it('número sem código do país conta como sem WhatsApp', () => {
+    // A mesma regra do botão de conversa: onze dígitos é um celular brasileiro
+    // sem DDI, e o endereço montado assim leva a outra pessoa ou a lugar nenhum.
+    montar(pessoa({ whatsapp_number: '11998877665' }));
+    expect(screen.getByText('Sem WhatsApp')).toBeInTheDocument();
+  });
+
+  it('sem número, não oferece marcar: não há decisão a tomar', () => {
+    // ⚠️ Marcar quem já está fora das listas não mudaria nada, e o botão só
+    // sugeriria um trabalho inútil. O que falta ali é completar o cadastro.
+    montar(pessoa({ whatsapp_number: null }));
+    expect(screen.queryByRole('button', { name: /número não leva à pessoa/i })).not.toBeInTheDocument();
+  });
+
+  it('marcado diz que foi na mão, e oferece o caminho de volta', () => {
+    // A origem tem de ficar distinguível: um cadastro a completar não é a mesma
+    // coisa que uma decisão que alguém tomou.
+    montar(pessoa(), { total: 0, ultima: null }, { marcadoSemWhatsApp: true });
+    expect(screen.getByText('Sem WhatsApp · marcado')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /voltar para as listas/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('clicar manda marcar', async () => {
+    const aoMarcar = vi.fn();
+    montar(pessoa(), { total: 0, ultima: null }, { aoMarcarSemWhatsApp: aoMarcar });
+    await userEvent.click(botaoDeMarcar());
+    expect(aoMarcar).toHaveBeenCalledWith(true);
+  });
+
+  it('clicar em quem já está marcado manda desmarcar', async () => {
+    // Desmarcar é do mesmo tamanho que marcar: quem classificou errado tem de
+    // conseguir desfazer sem pedir para ninguém.
+    const aoMarcar = vi.fn();
+    montar(
+      pessoa(),
+      { total: 0, ultima: null },
+      { marcadoSemWhatsApp: true, aoMarcarSemWhatsApp: aoMarcar },
+    );
+    await userEvent.click(screen.getByRole('button', { name: /voltar para as listas/i }));
+    expect(aoMarcar).toHaveBeenCalledWith(false);
+  });
+
+  it('o selo e a etiqueta de teste convivem', () => {
+    // Eixos independentes: alguém pode estar em teste E sem WhatsApp, e a ficha
+    // não pode escolher um dos dois para mostrar.
+    montar(
+      pessoa({
+        whatsapp_number: null,
+        betinho_subscription_status: 'free',
+        futebol_subscription_status: 'free',
+        futebol_trial_ends_at: '2026-09-13T15:00:00Z',
+      }),
+    );
+    const cabecalho = screen.getByRole('region', { name: 'Identificação do lead' });
+    expect(within(cabecalho).getByText('Vence amanhã, 13/09')).toBeInTheDocument();
+    expect(within(cabecalho).getByText('Sem WhatsApp')).toBeInTheDocument();
   });
 });
 

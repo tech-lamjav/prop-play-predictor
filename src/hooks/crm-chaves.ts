@@ -15,4 +15,6 @@ export const CHAVES = {
   pagamentos: (assinaturaId: string) => ['socios', 'pagamentos', assinaturaId] as const,
   /** Os pagamentos de todas as assinaturas, para a fila de inadimplentes. */
   pagamentosDeTodas: ['socios', 'pagamentos', 'todas'] as const,
+  /** Quem o sócio marcou na mão como impossível de abordar por WhatsApp. */
+  semWhatsApp: ['socios', 'sem-whatsapp'] as const,
 };

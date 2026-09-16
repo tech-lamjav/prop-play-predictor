@@ -6,6 +6,7 @@ import {
   filtrarPorEtiqueta,
   filtrarPorPeriodo,
   type Periodo,
+  escondeSemWhatsApp,
   metricasDeNegocio,
   montarLeads,
   precisamDeAtencao,
@@ -16,6 +17,7 @@ import {
 import type { Etiqueta } from './crm-etiquetas';
 import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
+import type { EstadoDasMarcas } from '@/hooks/use-sem-whatsapp';
 import { CabecalhoDoCrm } from './CabecalhoDoCrm';
 import { FaixaDoFunil } from './FaixaDoFunil';
 import { FaixaDeEtiquetas } from './FaixaDeEtiquetas';
@@ -38,6 +40,9 @@ export type EstadoDoPainel =
 
 /** Um array novo a cada render invalidaria os useMemo abaixo sem nada ter mudado. */
 const VAZIO: Cadastro[] = [];
+
+/** Pelo mesmo motivo do `VAZIO`: um Set novo a cada render remontaria a lista. */
+const VAZIO_DE_MARCAS: ReadonlySet<string> = new Set<string>();
 
 /**
  * Qual fatia da base a lista mostra.
@@ -110,11 +115,25 @@ export function PainelCrm({
   estado,
   etapas,
   movimento,
+  marcas,
   hoje,
 }: {
   estado: EstadoDoPainel;
   etapas: EstadoDasEtapas;
   movimento: EstadoDoMovimento;
+  /**
+   * Quem o sócio marcou na mão como impossível de abordar.
+   *
+   * ⚠️ Esta consulta NÃO segura a tela, ao contrário das etapas e dos toques.
+   * Sem etapas o funil inteiro mente sobre todo mundo; sem as marcas manuais, o
+   * pior que acontece é aparecer na lista alguém que devia estar escondido — e
+   * mostrar demais é o lado seguro do erro. Esconder alguém que precisava de
+   * ligação seria o lado caro.
+   *
+   * Quando ela falha, o esconder continua valendo pelo número e a tela diz isso
+   * em vez de fingir que sabe de tudo.
+   */
+  marcas: EstadoDasMarcas;
   hoje: string;
 }) {
   const [busca, setBusca] = useState('');
@@ -144,6 +163,19 @@ export function PainelCrm({
    * dois. Trocar de vista muda a disposição, e nunca o conteúdo.
    */
   const [vista, setVista] = useState<'tabela' | 'kanban'>('tabela');
+  /**
+   * Esconder quem não dá para abordar por WhatsApp.
+   *
+   * `null` quer dizer "ainda não mexi nisso", e aí vale o padrão de cada
+   * recorte: LIGADO na fila de atenção, que é onde o sócio age, e desligado em
+   * "Todos", que é onde ele confere a base. Foi o pedido: eles somem quando o
+   * trabalho é abordar, e continuam visíveis quando o trabalho é olhar tudo.
+   *
+   * Assim que o sócio mexe no interruptor, a escolha dele passa a valer em
+   * todos os recortes — um padrão que volta sozinho depois de a pessoa ter
+   * dito o contrário é o tipo de tela que parece ter vontade própria.
+   */
+  const [escondendo, setEscondendo] = useState<boolean | null>(null);
 
   const cadastros = estado.tipo === 'pronto' ? estado.cadastros : VAZIO;
   // Nulo enquanto as etapas não chegam. Um mapa vazio faria todo mundo cair em
@@ -154,6 +186,10 @@ export function PainelCrm({
   // mapa vazio faria a fila inchar com gente que já foi abordada. Por isso o
   // painel espera as duas consultas, e não desenha com meia informação.
   const movido = movimento.tipo === 'pronto' ? movimento.movimento : null;
+
+  // Conjunto vazio enquanto carrega ou quando falha: o lead ainda sabe dizer
+  // que está sem WhatsApp pelo próprio número, que é a maior parte dos casos.
+  const marcados = marcas.tipo === 'pronto' ? marcas.marcados : VAZIO_DE_MARCAS;
 
   /**
    * A base inteira, sem filtro nenhum.
@@ -166,10 +202,24 @@ export function PainelCrm({
   const todos = useMemo(
     () =>
       gravadas && movido
-        ? montarLeads(cadastros, gravadas, movido.toques, movido.apostas, hoje)
+        ? montarLeads(cadastros, gravadas, movido.toques, movido.apostas, hoje, marcados)
         : null,
-    [cadastros, gravadas, movido, hoje],
+    [cadastros, gravadas, movido, hoje, marcados],
   );
+
+  /**
+   * O esconder vale neste recorte?
+   *
+   * Por recorte, e não um booleano só, porque o número ao lado de cada botão
+   * promete "quantos eu veria se clicasse aqui" — e cada recorte tem um padrão
+   * diferente. Com um booleano único, o contador de "Todos" mostraria a conta
+   * da fila enquanto o sócio estivesse na fila.
+   *
+   * Dentro do próprio "Sem WhatsApp" nunca esconde: lá a pilha É a lista, e
+   * esconder devolveria sempre vazio.
+   */
+  const escondeNo = (r: Recorte) => r !== 'sem-whatsapp' && (escondendo ?? r === 'atencao');
+  const escondendoAqui = escondeNo(recorte);
 
   const faltouAlgo = etapas.tipo === 'erro' || movimento.tipo === 'erro';
 
@@ -204,10 +254,17 @@ export function PainelCrm({
    */
   const lista = useMemo(() => {
     if (!noRecorte) return null;
-    if (recorte === 'atencao') return precisamDeAtencao(noRecorte);
-    const doRecorte = recorte === 'sem-whatsapp' ? semWhatsApp(noRecorte) : noRecorte;
+    // Esconder ANTES de montar a fila, e não depois: a fila ordena por urgência,
+    // e tirar linhas de uma lista já ordenada deixaria buracos no topo.
+    const visiveis = escondendoAqui ? escondeSemWhatsApp(noRecorte) : noRecorte;
+    if (recorte === 'atencao') return precisamDeAtencao(visiveis);
+    // Sai de `visiveis`, e não de `noRecorte`: quem manda no esconder é o
+    // `escondeNo`, e só ele. Lendo a base crua aqui, o guarda que isenta este
+    // recorte virava código morto — dava para apagá-lo sem nada mudar, que é o
+    // pior estado de um guarda: parece proteger e não protege.
+    const doRecorte = recorte === 'sem-whatsapp' ? semWhatsApp(visiveis) : visiveis;
     return [...doRecorte].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
-  }, [noRecorte, recorte]);
+  }, [noRecorte, recorte, escondendoAqui]);
 
   /**
    * Quanta gente cada recorte mostraria, com os filtros de agora.
@@ -224,12 +281,18 @@ export function PainelCrm({
    */
   const quantos = useMemo<Record<Recorte, number> | null>(() => {
     if (!noRecorte) return null;
+    // Cada número segue o esconder DO SEU recorte, senão ele promete gente que
+    // o clique não traria. O de "Sem WhatsApp" conta a pilha inteira: é ela
+    // que o botão mostra.
+    const visiveisEm = (r: Recorte) =>
+      escondeNo(r) ? escondeSemWhatsApp(noRecorte) : noRecorte;
     return {
-      atencao: precisamDeAtencao(noRecorte).length,
-      'sem-whatsapp': semWhatsApp(noRecorte).length,
-      todos: noRecorte.length,
+      atencao: precisamDeAtencao(visiveisEm('atencao')).length,
+      'sem-whatsapp': semWhatsApp(visiveisEm('sem-whatsapp')).length,
+      todos: visiveisEm('todos').length,
     };
-  }, [noRecorte]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noRecorte, escondendo]);
 
   const porDia = useMemo(
     () => (lista && agrupado ? agruparPorDia(lista, (l) => l.cadastradoEm) : null),
@@ -394,6 +457,30 @@ export function PainelCrm({
                       </button>
                     ))}
                   </div>
+
+                  {/* Esconder quem não dá para abordar também é chave à parte,
+                      e por isso mora aqui e não vira um recorte: ela se combina
+                      com qualquer um deles. Some dentro do próprio "Sem
+                      WhatsApp", onde a pilha É a lista. */}
+                  {recorte !== 'sem-whatsapp' && (
+                    <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                      <input
+                        type="checkbox"
+                        checked={escondendoAqui}
+                        onChange={(e) => setEscondendo(e.target.checked)}
+                        aria-label="Esconder quem não tem WhatsApp"
+                      />
+                      Esconder sem WhatsApp
+                      {/* Só aparece quando tem o que dizer: sem as marcas
+                          manuais o esconder ainda funciona pelo número, e
+                          calar sobre isso faria a lista parecer completa. */}
+                      {marcas.tipo === 'erro' && (
+                        <span className="text-[12px] text-ink-dim">
+                          (só pelo número — as marcas não carregaram)
+                        </span>
+                      )}
+                    </label>
+                  )}
 
                   {/* Agrupar é chave à parte, e não um terceiro recorte: ela se
                     combina com os dois recortes em vez de competir com eles.

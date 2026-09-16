@@ -460,6 +460,35 @@ export type Database = {
           },
         ]
       }
+      crm_sem_whatsapp: {
+        Row: {
+          marcado_em: string
+          marcado_por: string | null
+          motivo: string | null
+          user_id: string
+        }
+        Insert: {
+          marcado_em?: string
+          marcado_por?: string | null
+          motivo?: string | null
+          user_id: string
+        }
+        Update: {
+          marcado_em?: string
+          marcado_por?: string | null
+          motivo?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_sem_whatsapp_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_queue: {
         Row: {
           channel: string | null
@@ -1291,6 +1320,10 @@ export type Database = {
       crm_anotar: {
         Args: { p_user_id: string; p_tipo: string; p_texto: string }
         Returns: string
+      }
+      crm_marcar_sem_whatsapp: {
+        Args: { p_user_id: string; p_marcado: boolean; p_motivo?: string | null }
+        Returns: boolean
       }
       crm_mudar_etapa: {
         Args: { p_user_id: string; p_etapa: string }

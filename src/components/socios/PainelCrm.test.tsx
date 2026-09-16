@@ -7,6 +7,7 @@ import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 import type { Cadastro } from './crm-lista';
 import type { Apostas, Toques } from './crm-painel';
 import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
+import type { EstadoDasMarcas } from '@/hooks/use-sem-whatsapp';
 import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 
 // ============================================================================
@@ -38,6 +39,8 @@ function montar({
   totalNaBase,
   estadoDasEtapas,
   estadoDoMovimento,
+  marcados = [],
+  estadoDasMarcas,
 }: {
   cadastros?: Cadastro[];
   etapas?: Record<string, string>;
@@ -46,6 +49,9 @@ function montar({
   totalNaBase?: number;
   estadoDasEtapas?: EstadoDasEtapas;
   estadoDoMovimento?: EstadoDoMovimento;
+  /** Quem o sócio marcou na mão como impossível de abordar. */
+  marcados?: string[];
+  estadoDasMarcas?: EstadoDasMarcas;
 } = {}) {
   return render(
     <MemoryRouter>
@@ -53,6 +59,7 @@ function montar({
         estado={{ tipo: 'pronto', cadastros, totalNaBase: totalNaBase ?? cadastros.length }}
         etapas={estadoDasEtapas ?? { tipo: 'pronto', etapas }}
         movimento={estadoDoMovimento ?? { tipo: 'pronto', movimento: { toques, apostas } }}
+        marcas={estadoDasMarcas ?? { tipo: 'pronto', marcados: new Set(marcados) }}
         hoje={HOJE}
       />
     </MemoryRouter>,
@@ -227,6 +234,7 @@ describe('PainelCrm · quando não dá para carregar', () => {
           estado={estado}
           etapas={{ tipo: 'carregando' }}
           movimento={{ tipo: 'carregando' }}
+          marcas={{ tipo: 'carregando' }}
           hoje={HOJE}
         />
       </MemoryRouter>,
@@ -450,6 +458,102 @@ describe('PainelCrm · o recorte de quem não tem WhatsApp', () => {
     montar({ cadastros: [comESem[0]] });
     await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp 0$/ }));
     expect(screen.getByText(/número que abre conversa/)).toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · esconder quem não dá para abordar', () => {
+  // "Esses eu não consigo fazer nada." O interruptor nasce LIGADO na fila, que
+  // é onde o sócio age, e desligado em "Todos", que é onde ele confere a base.
+
+  const filaMista = [
+    cadastro({ id: 'falavel', name: 'Da Para Falar' }),
+    cadastro({ id: 'mudo', name: 'Sem Numero', whatsapp_number: null }),
+  ];
+
+  const interruptor = () => screen.getByRole('checkbox', { name: /esconder quem não tem whatsapp/i });
+
+  it('a fila já abre sem eles', () => {
+    montar({ cadastros: filaMista });
+    expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
+    expect(interruptor()).toBeChecked();
+  });
+
+  it('em Todos eles continuam visíveis', async () => {
+    // Conferir a base é outro trabalho: lá esconder gente seria esconder o
+    // problema em vez de mostrá-lo.
+    montar({ cadastros: filaMista });
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+    expect(interruptor()).not.toBeChecked();
+  });
+
+  it('desligar traz eles de volta para a fila', async () => {
+    montar({ cadastros: filaMista });
+    await userEvent.click(interruptor());
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+  });
+
+  it('a escolha do sócio vale também no outro recorte', async () => {
+    // ⚠️ Um padrão que volta sozinho depois de a pessoa ter dito o contrário é
+    // tela com vontade própria. Uma vez mexido, o interruptor obedece.
+    montar({ cadastros: filaMista });
+    await userEvent.click(interruptor());
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
+    expect(interruptor()).not.toBeChecked();
+    await userEvent.click(interruptor());
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
+  });
+
+  it('o número de cada recorte segue o esconder daquele recorte', () => {
+    // O número promete "quantos eu veria se clicasse aqui". Com uma conta só
+    // para os dois, o contador de "Todos" mostraria a conta da fila.
+    montar({ cadastros: filaMista });
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 1$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Todos 2$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Sem WhatsApp 1$/ })).toBeInTheDocument();
+  });
+
+  it('a marca na mão esconde quem tem número bom', async () => {
+    // O caso que o cadastro não enxerga: o número existe, está bem formado, e
+    // não leva à pessoa.
+    montar({ cadastros: filaMista, marcados: ['falavel'] });
+    expect(screen.queryByText('Da Para Falar')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
+    expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
+  });
+
+  it('dentro de Sem WhatsApp o interruptor some, porque a pilha É a lista', async () => {
+    montar({ cadastros: filaMista });
+    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
+    expect(
+      screen.queryByRole('checkbox', { name: /esconder quem não tem whatsapp/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+  });
+
+  it('com o esconder ligado na mão, a pilha continua mostrando todo mundo', async () => {
+    // ⚠️ O caso que trocar de recorte sozinho NÃO cobre. Enquanto o sócio não
+    // mexe no interruptor, o padrão de cada recorte já resolve; o buraco é ele
+    // LIGAR o esconder na fila e depois ir olhar a pilha. Sem o guarda que
+    // isenta este recorte, o esconder se aplicaria à lista que o botão existe
+    // para mostrar, e ela viria vazia sem nada explicando.
+    montar({ cadastros: filaMista });
+    await userEvent.click(interruptor()); // desliga
+    await userEvent.click(interruptor()); // liga de novo, agora por escolha explícita
+    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+  });
+
+  it('marcas que não carregam não derrubam a tela, e a tela diz o que sabe', () => {
+    // ⚠️ Esta consulta NÃO segura o painel: sem ela o pior que acontece é
+    // aparecer alguém que devia estar escondido, e mostrar demais é o lado
+    // seguro do erro. Mas calar sobre isso faria a lista parecer completa.
+    montar({ cadastros: filaMista, estadoDasMarcas: { tipo: 'erro' } });
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText(/só pelo número/i)).toBeInTheDocument();
+    // O esconder pelo número continua valendo.
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
   });
 });
 
