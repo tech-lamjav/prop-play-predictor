@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Placar } from './Placar';
 import type { LinhaPublicada } from './placar-agregacao';
 
@@ -24,6 +25,9 @@ const BASE = {
   eixo: 'jogo' as const,
   granularidade: 'semana' as const,
   aoMudarGranularidade: () => {},
+  gaveta: null,
+  aoAbrirGaveta: () => {},
+  aoFecharGaveta: () => {},
 };
 
 const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada => ({
@@ -349,6 +353,35 @@ describe('o gráfico de evolução', () => {
     const resumo = screen.getByText('Como este número é medido');
     expect(resumo.tagName).toBe('SUMMARY');
     expect(resumo.closest('details')).not.toHaveAttribute('open');
+  });
+});
+
+describe('a gaveta aberta', () => {
+  const GAVETA = {
+    janela: { de: '2026-09-14', ate: '2026-09-14' },
+    rotulo: '14/09',
+    degrau: 'dia' as const,
+    volta: 'semana' as const,
+  };
+
+  it('é declarada antes do primeiro número, e não só no cabeçalho do gráfico', () => {
+    // A queixa foi esta: quem rola até os cartões não tinha como saber de que
+    // janela eles eram, porque o único aviso ficava para trás, no gráfico.
+    render(<Placar {...BASE} gaveta={GAVETA} publicadas={[linha()]} />);
+    const faixa = screen.getByRole('button', { name: /ver o período inteiro/i });
+    const primeiroNumero = screen.getByText('Publicadas');
+    expect(faixa.compareDocumentPosition(primeiroNumero) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('e o caminho de volta é um botão, que quem é dono da janela fecha', async () => {
+    // O placar não fecha a gaveta sozinho: fechar é devolver o degrau também, e
+    // o degrau é da página. Um dos três caminhos fazia só metade.
+    const fechar = vi.fn();
+    render(<Placar {...BASE} gaveta={GAVETA} aoFecharGaveta={fechar} publicadas={[linha()]} />);
+    await userEvent.click(screen.getByRole('button', { name: /ver o período inteiro/i }));
+    expect(fechar).toHaveBeenCalledTimes(1);
   });
 });
 
