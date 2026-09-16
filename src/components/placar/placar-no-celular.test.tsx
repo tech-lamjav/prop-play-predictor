@@ -28,6 +28,9 @@ const BASE = {
   eixo: 'jogo' as const,
   granularidade: 'semana' as const,
   aoMudarGranularidade: () => {},
+  gaveta: null,
+  aoAbrirGaveta: () => {},
+  aoFecharGaveta: () => {},
 };
 
 const linha = (p: Partial<LinhaPublicada> = {}): LinhaPublicada => ({

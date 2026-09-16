@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // ============================================================================
@@ -21,6 +21,27 @@ const MIGRATION = readFileSync(
   resolve(RAIZ, 'supabase/migrations/20260829120000_112_futebol_score_contexto_contrato.sql'),
   'utf8',
 );
+
+/**
+ * Todas as migrations concatenadas na ordem em que o banco as aplica.
+ *
+ * Serve SÓ para comparar assinatura com o shape file, e por um motivo: ali o
+ * que vale é a ÚLTIMA definição de cada função, e a migration da janela deixou
+ * de ser a última quando a 146 redefiniu board e histórico para acrescentar
+ * `edge_publicacao`. Comparar contra o arquivo fixo passaria a cobrar do shape
+ * file uma assinatura que o banco não tem mais.
+ *
+ * As outras asserções continuam contra a migration da JANELA, porque são sobre
+ * o que aquela entrega fez — semear a copy, não semear preço como evidência,
+ * derrubar antes de recriar. Rodá-las contra o repositório inteiro acusa
+ * migrations antigas que a própria janela substituiu, e foi o que aconteceu na
+ * primeira tentativa.
+ */
+const MIGRACOES_APLICADAS = readdirSync(resolve(RAIZ, 'supabase/migrations'))
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => readFileSync(resolve(RAIZ, 'supabase/migrations', f), 'utf8'))
+  .join('\n');
 
 /**
  * Colunas do `returns table(...)` da ÚLTIMA definição de uma função no SQL.
@@ -117,7 +138,9 @@ describe('contrato das RPCs no Score de contexto', () => {
 
   it('migration e shape file declaram a mesma assinatura nas quatro funções', () => {
     for (const funcao of FUNCOES_DO_SCORE) {
-      expect(colunasDoRetorno(SHAPE, funcao), funcao).toEqual(colunasDoRetorno(MIGRATION, funcao));
+      expect(colunasDoRetorno(SHAPE, funcao), funcao).toEqual(
+        colunasDoRetorno(MIGRACOES_APLICADAS, funcao),
+      );
     }
   });
 

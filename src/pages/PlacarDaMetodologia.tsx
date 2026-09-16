@@ -13,7 +13,12 @@ import {
   type Periodo,
 } from '@/components/placar/placar-periodo';
 import { PESO_DE_ABERTURA, type PesoPorFaixa } from '@/components/placar/placar-agregacao';
-import { granularidadesDe, type Granularidade } from '@/components/placar/placar-evolucao';
+import {
+  abrirGaveta,
+  granularidadesDe,
+  type GavetaAberta,
+  type Granularidade,
+} from '@/components/placar/placar-evolucao';
 import { aplicarRecorte, SEM_RECORTE, type Recorte } from '@/components/placar/placar-filtros';
 import { soAVitrine } from '@/components/placar/placar-vitrine';
 import type { LinhaPublicada } from '@/components/placar/placar-agregacao';
@@ -55,7 +60,31 @@ export default function PlacarDaMetodologia() {
   );
   const [recorte, setRecorte] = useState<Recorte>(SEM_RECORTE);
   const [pesos, setPesos] = useState<PesoPorFaixa>(PESO_DE_ABERTURA);
-  const { vitrine } = useVitrine();
+  /**
+   * A gaveta que um clique numa barra do gráfico abriu.
+   *
+   * Mora aqui junto do período e do degrau porque ela É um período: o resumo do
+   * cabeçalho, os avisos da janela e a conta do que ficou fora da vitrine saem
+   * todos daqui. Enquanto foi estado de dentro do gráfico, abrir um dia mudava
+   * só as barras, e a tela somava duas janelas ao mesmo tempo sem dizer qual
+   * era qual.
+   */
+  const [gaveta, setGaveta] = useState<GavetaAberta | null>(null);
+  const { vitrine, limiares } = useVitrine();
+
+  /** A janela que a tela inteira está lendo: a da gaveta, quando há uma. */
+  const janela = gaveta?.janela ?? periodo;
+
+  /**
+   * Fechar é sempre dois passos: devolver o degrau de onde a gaveta veio e
+   * limpar o estado. Escrito uma vez porque três caminhos fecham — o botão do
+   * gráfico, o da faixa, e trocar período ou eixo —, e um deles fazer só metade
+   * deixava a tela no degrau de baixo sem gaveta nenhuma para explicar.
+   */
+  const fecharGaveta = () => {
+    if (gaveta) setGranularidade(gaveta.volta);
+    setGaveta(null);
+  };
 
   /**
    * O que a RPC devolveu, recortado pelas três escolhas da tela.
@@ -69,12 +98,12 @@ export default function PlacarDaMetodologia() {
    */
   const recortar = (linhas: LinhaPublicada[], janela: Periodo) => {
     const noEixo = aplicarRecorte(filtrarPeloEixo(linhas, eixo, janela), recorte);
-    const publicadas = soVitrine ? soAVitrine(noEixo, vitrine) : noEixo;
+    const publicadas = soVitrine ? soAVitrine(noEixo, vitrine, Date.now(), limiares) : noEixo;
     return { publicadas, foraDaVitrine: noEixo.length - publicadas.length };
   };
 
   const estado = useOportunidadesPublicadas(periodo.de, periodo.ate);
-  const a = recortar(estado.tipo === 'pronto' ? estado.publicadas : [], periodo);
+  const a = recortar(estado.tipo === 'pronto' ? estado.publicadas : [], janela);
 
   // A segunda consulta só sai quando há comparação. Sem ela, fica desligada —
   // e não uma chamada com datas iguais, que parecia barata e rodava a consulta
@@ -110,10 +139,16 @@ export default function PlacarDaMetodologia() {
           eixo={eixo}
           soVitrine={soVitrine}
           aoAplicarPeriodo={(novo, novoB) => {
+            // A gaveta é um recorte de dentro da janela antiga: ela não
+            // sobrevive a uma janela nova, nem a ligar a comparação.
+            fecharGaveta();
             setPeriodo(novo);
             setPeriodoB(novoB);
           }}
-          aoMudarEixo={setEixo}
+          aoMudarEixo={(novo) => {
+            fecharGaveta();
+            setEixo(novo);
+          }}
           aoMudarVitrine={setSoVitrine}
           recorte={recorte}
           pesos={pesos}
@@ -129,8 +164,16 @@ export default function PlacarDaMetodologia() {
             eixo={eixo}
             granularidade={granularidade}
             aoMudarGranularidade={setGranularidade}
+            gaveta={gaveta}
+            aoAbrirGaveta={(chave, de) => {
+              const aberta = abrirGaveta(chave, de);
+              if (!aberta) return;
+              setGaveta(aberta);
+              setGranularidade(aberta.degrau);
+            }}
+            aoFecharGaveta={fecharGaveta}
             pesos={pesos}
-            avisos={avisosDoPeriodo(periodo, eixo)}
+            avisos={avisosDoPeriodo(janela, eixo)}
             ocultos={vitrine}
             foraDaVitrine={a.foraDaVitrine}
             comparacao={

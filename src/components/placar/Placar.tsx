@@ -9,7 +9,7 @@ import {
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import { EvolucaoDoRoi } from './EvolucaoDoRoi';
 import { MatrizDoPlacar } from './MatrizDoPlacar';
-import type { Granularidade } from './placar-evolucao';
+import type { GavetaAberta, Granularidade } from './placar-evolucao';
 import { porLadoDoMercado } from './placar-por-premissa';
 import { PremissasDoLado } from './PremissasDoLado';
 import { QUEBRAS, celulasDa, type Quebra } from './placar-quebras';
@@ -101,6 +101,9 @@ export function Placar({
   eixo,
   granularidade,
   aoMudarGranularidade,
+  gaveta,
+  aoAbrirGaveta,
+  aoFecharGaveta,
   pesos = PESO_MEDIDO,
   comparacao,
 }: {
@@ -128,6 +131,17 @@ export function Placar({
   /** O degrau do tempo: as colunas das matrizes e as barras do gráfico. */
   granularidade: Granularidade;
   aoMudarGranularidade: (g: Granularidade) => void;
+  /**
+   * A gaveta aberta por um clique numa barra, quando há uma.
+   *
+   * Chega de fora já aplicada: as publicadas que entram aqui são as dela. Quem
+   * é dono da janela é a página, que também soma o resumo do cabeçalho e
+   * escolhe os avisos — se a gaveta morasse aqui, aqueles dois continuariam
+   * falando do período inteiro em cima de uma tela que não é mais dele.
+   */
+  gaveta: GavetaAberta | null;
+  aoAbrirGaveta: (chave: string, de: Granularidade) => void;
+  aoFecharGaveta: () => void;
   /** Quanto apostar por faixa. Diferente de um em qualquer faixa vira simulação. */
   pesos?: PesoPorFaixa;
   /** O segundo período, quando o sócio está comparando. */
@@ -210,6 +224,25 @@ export function Placar({
         </p>
       ))}
 
+      {/* A gaveta aberta é dita ANTES do primeiro número, e não só no cabeçalho
+          do gráfico: quem rola até os cartões precisa saber de que janela eles
+          são sem ter de subir para conferir. */}
+      {gaveta && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-rebrand-md border border-forest bg-forest/[0.06] px-4 py-3 text-[13px] text-ink">
+          <span>
+            Aberto em <strong>{gaveta.rotulo}</strong>. Tudo nesta tela — os números do topo, o
+            gráfico, as quebras e as premissas — conta só essa janela.
+          </span>
+          <button
+            type="button"
+            onClick={aoFecharGaveta}
+            className="ml-auto shrink-0 rounded-rebrand-sm border border-forest px-2.5 py-1 text-[12px] font-bold text-forest transition hover:bg-forest hover:text-white"
+          >
+            Ver o período inteiro
+          </button>
+        </div>
+      )}
+
       {simulando && (
         <p className="mb-4 max-w-3xl rounded-rebrand-md border border-forest bg-forest/[0.06] px-4 py-3 text-[13px] text-ink">
           <strong>Simulação ligada.</strong> As unidades por faixa não são as medidas:{' '}
@@ -281,6 +314,10 @@ export function Placar({
           eixo={eixo}
           granularidade={granularidade}
           aoMudarGranularidade={aoMudarGranularidade}
+          gaveta={gaveta}
+          aoAbrirGaveta={aoAbrirGaveta}
+          aoFecharGaveta={aoFecharGaveta}
+          comparando={comparacao !== undefined}
         />
       </div>
 

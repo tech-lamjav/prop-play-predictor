@@ -55,6 +55,15 @@ export interface MercadoOculto {
    * e portanto degradação e não regressão.
    */
   ocultoDesde: string | null;
+  /**
+   * ISO em UTC do momento em que o mercado VOLTOU à vitrine, ou `null` (ou
+   * ausente, antes da migration 145) enquanto ele continua fora.
+   *
+   * Sem o fim, religar o mercado tirava ele da vitrine inteira, e o passado
+   * devolvia pela porta dos fundos todas as linhas de quando ele estava fora —
+   * que nunca estiveram em tela nenhuma.
+   */
+  ocultoAte?: string | null;
 }
 
 /**
@@ -70,6 +79,9 @@ export interface MercadoOculto {
  *
  * Kickoff ilegível esconde. Entre mostrar um mercado que o produto retirou e
  * omitir uma linha cuja data o front não soube ler, a segunda erra menos.
+ *
+ * Exceção: com o período já fechado (migration 145) a data ilegível MOSTRA,
+ * porque o mercado voltou e está na tela.
  */
 export function mercadoOcultoNaData(
   market: string,
@@ -79,14 +91,34 @@ export function mercadoOcultoNaData(
 ): boolean {
   const entrada = vitrine.find((m) => m.market === market);
   if (!entrada) return false;
-  if (!kickoffUtc) return true;
+  // Com o período fechado o mercado está na tela hoje, e a data ilegível não é
+  // motivo para esconder uma linha de um mercado que o produto exibe.
+  const fechado = entrada.ocultoAte != null;
+  if (!kickoffUtc) return !fechado;
   if (entrada.ocultoDesde == null) {
     const dia = brtDayOf(kickoffUtc);
     return dia == null || dia >= brtDateStr(new Date(agoraMs));
   }
   const kickoff = parseUtc(kickoffUtc)?.getTime();
-  if (kickoff == null) return true;
-  return kickoff >= Date.parse(entrada.ocultoDesde);
+  if (kickoff == null) return !fechado;
+  if (kickoff < Date.parse(entrada.ocultoDesde)) return false;
+  // O instante da volta já está na tela: a fronteira fecha do lado de dentro.
+  return !fechado || kickoff < Date.parse(entrada.ocultoAte as string);
+}
+
+/**
+ * Os mercados fora da vitrine AGORA — só os nomes.
+ *
+ * A vitrine traz também o período já encerrado de um mercado que voltou
+ * (migration 145), porque é ele que impede o histórico de mostrar o que nunca
+ * esteve na tela. Mas para decidir sobre o PRESENTE — board, catálogo do
+ * detalhe, selo do placar — o mercado que voltou está na tela.
+ *
+ * ⚠️ Todo consumidor de "está oculto hoje" passa por aqui. Um `.map(m =>
+ * m.market)` direto na vitrine esconderia para sempre o mercado religado.
+ */
+export function ocultosAgora(vitrine: readonly MercadoOculto[]): string[] {
+  return vitrine.filter((m) => m.ocultoAte == null).map((m) => m.market);
 }
 
 /** O mercado está fora da vitrine? */

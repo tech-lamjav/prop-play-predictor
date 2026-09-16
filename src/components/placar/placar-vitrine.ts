@@ -1,4 +1,5 @@
-import { mercadoOcultoNaData, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import { mercadoOcultoNaData, ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import { cortadaNaData, type LimiarDeValor } from '@/utils/futebol-corte-de-valor';
 import type { LinhaPublicada } from './placar-agregacao';
 
 // ============================================================================
@@ -34,8 +35,14 @@ export function esteveNaVitrine(
   linha: LinhaPublicada,
   ocultos: readonly MercadoOculto[],
   agoraMs: number = Date.now(),
+  // O corte de valor (migration 144) é a outra forma de uma linha não estar na
+  // tela, e vale pelo mesmo eixo: a detecção.
+  limiares: readonly LimiarDeValor[] = [],
 ): boolean {
-  return !mercadoOcultoNaData(linha.market, linha.detectada_em, ocultos, agoraMs);
+  return (
+    !mercadoOcultoNaData(linha.market, linha.detectada_em, ocultos, agoraMs) &&
+    !cortadaNaData(linha.market, linha.edge, linha.detectada_em, limiares, agoraMs)
+  );
 }
 
 /** Só o que o assinante viu. O resto é board, e continua medido em outra leitura. */
@@ -43,8 +50,9 @@ export function soAVitrine(
   linhas: readonly LinhaPublicada[],
   ocultos: readonly MercadoOculto[],
   agoraMs: number = Date.now(),
+  limiares: readonly LimiarDeValor[] = [],
 ): LinhaPublicada[] {
-  return linhas.filter((l) => esteveNaVitrine(l, ocultos, agoraMs));
+  return linhas.filter((l) => esteveNaVitrine(l, ocultos, agoraMs, limiares));
 }
 
 /**
@@ -53,5 +61,6 @@ export function soAVitrine(
  * `null` quando o mercado está na tela: selo em toda linha não marca nada.
  */
 export function seloDeOculto(market: string, ocultos: readonly MercadoOculto[]): string | null {
-  return ocultos.some((o) => o.market === market) ? 'fora da vitrine' : null;
+  // Só o período aberto: o mercado que já voltou está na tela (migration 145).
+  return ocultosAgora(ocultos).includes(market) ? 'fora da vitrine' : null;
 }

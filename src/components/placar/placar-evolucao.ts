@@ -87,6 +87,40 @@ export function janelaDaGaveta(chave: string, granularidade: Granularidade): Per
   return { de: primeiro, ate: `${chave}-${String(ultimo).padStart(2, '0')}` };
 }
 
+/**
+ * O recorte que um clique numa barra abriu.
+ *
+ * Tem nome próprio porque não é a gaveta de tempo da série — aquela é a caixa
+ * em que a linha cai. Esta é a janela que a TELA passou a ler, e por isso ela
+ * carrega também o degrau que abriu e o de onde veio.
+ */
+export type GavetaAberta = {
+  janela: Periodo;
+  rotulo: string;
+  /** O degrau que a tela passa a mostrar. */
+  degrau: Granularidade;
+  /** O degrau de onde ela veio, que é o caminho de volta. */
+  volta: Granularidade;
+};
+
+/**
+ * O que abrir uma barra produz, ou null quando não há degrau abaixo.
+ *
+ * Junta as três contas num lugar só, com teste: espalhadas no JSX de quem
+ * chama, elas eram a única parte da regra sem onde ser provada.
+ */
+export function abrirGaveta(chave: string, granularidade: Granularidade): GavetaAberta | null {
+  const abaixo = granularidadeAbaixo(granularidade);
+  if (!abaixo) return null;
+
+  return {
+    janela: janelaDaGaveta(chave, granularidade),
+    rotulo: rotuloDaGaveta(chave, granularidade),
+    degrau: abaixo,
+    volta: granularidade,
+  };
+}
+
 /** Uma barra da série. */
 export type Ponto = {
   chave: string;
