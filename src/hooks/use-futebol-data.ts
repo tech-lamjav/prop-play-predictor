@@ -5,6 +5,7 @@ import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
 import { ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
 import type { LimiarDeValor } from '@/utils/futebol-corte-de-valor';
+import type { Saida } from '@/utils/futebol-saida';
 import type { FixtureScope } from '@/utils/futebol-competitions';
 import {
   futebolDataService,
@@ -34,6 +35,7 @@ import {
   type FutebolLeaders,
   type FutebolValueBoardRow,
   type FutebolFixtureValueRow,
+  type FutebolFixtureValueComCortadas,
   type FutebolAlertedPick,
 } from '@/services/futebol-data.service';
 
@@ -370,14 +372,37 @@ export function useFutebolAlertedPicks() {
   });
 }
 
+const opcoesDoValorDoJogo = (fixtureId: number | undefined) => ({
+  queryKey: ['futebol', 'fixture-value', fixtureId] as const,
+  queryFn: () => futebolDataService.getFixtureValue(fixtureId as number),
+  enabled: !!fixtureId,
+  staleTime: 5 * 60 * 1000,
+  gcTime: 15 * 60 * 1000,
+  refetchOnWindowFocus: false,
+});
+
 export function useFutebolFixtureValue(fixtureId: number | undefined) {
-  return useQuery<FutebolFixtureValueRow[]>({
-    queryKey: ['futebol', 'fixture-value', fixtureId],
-    queryFn: () => futebolDataService.getFixtureValue(fixtureId as number),
-    enabled: !!fixtureId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    refetchOnWindowFocus: false,
+  return useQuery<FutebolFixtureValueComCortadas, Error, FutebolFixtureValueRow[]>({
+    ...opcoesDoValorDoJogo(fixtureId),
+    select: (d) => d.linhas,
+  });
+}
+
+/**
+ * As saídas que o corte de valor removeu deste jogo (#432).
+ *
+ * MESMA queryKey do `useFutebolFixtureValue`, de propósito: é uma busca só, e as
+ * duas listas nascem da mesma resposta. Separá-las em duas buscas abriria a
+ * janela em que a tela tem as linhas e ainda não tem as cortadas — e nessa
+ * janela ela anuncia como leitura exatamente o que estamos escondendo.
+ *
+ * Quem consome isto só pode PERGUNTAR se uma saída está aqui. Não há o que
+ * exibir: a lista não carrega Score nem vantagem.
+ */
+export function useFutebolFixtureCortadas(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureValueComCortadas, Error, Saida[]>({
+    ...opcoesDoValorDoJogo(fixtureId),
+    select: (d) => d.cortadas,
   });
 }
 

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FaixaPartida } from './FaixaPartida';
 import type { JogoInfo } from './JogoResumo';
+import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
 
 // O cabeçalho tem dois arranjos e o hook decide qual. Fixá-lo por teste é o que
 // permite cobrir os dois sem depender da largura que o jsdom inventa.
@@ -51,6 +52,7 @@ function renderFaixa(props: Partial<Parameters<typeof FaixaPartida>[0]> = {}) {
       awayTeamId={20}
       onAbrirMercado={vi.fn()}
       ocultos={[]}
+      cortadas={[]}
       {...props}
     />,
   );
@@ -81,6 +83,47 @@ describe('FaixaPartida · estado da leitura', () => {
 
     expect(screen.queryByTestId('faixa-leitura-carregando')).not.toBeInTheDocument();
     expect(screen.getByText('Sem leitura ainda')).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// A saída que o corte de valor removeu (#432)
+// ============================================================================
+// A faixa dá o TÍTULO do jogo, e sem preço ela escolhe por contagem de
+// premissas. Sem esta regra a cortada seria justamente a campeã: a linha que o
+// board escondeu viraria a manchete da tela, com a contagem de premissas no
+// lugar do Score.
+//
+// Fiel à regra do arquivo (#310), os testes olham o ESTADO da faixa, e não o
+// rótulo nem número nenhum.
+// ============================================================================
+
+const UNDER_45 = ['defesas_firmes', 'xg_baixo_combinado', 'ataques_fracos', 'historico_under'];
+const premissasDeGols: FutebolFixturePremissas[] = [
+  {
+    market: 'goals_over_under',
+    outcome: 'Under',
+    line_value: 4.5,
+    pts_premissas: 0,
+    penalidades_pts: 0,
+    acesas: UNDER_45,
+    apagadas: [],
+    penalidades: [],
+  },
+];
+const SAIDA_DE_GOLS = { market: 'goals_over_under', outcome: 'Under', line_value: 4.5 };
+
+describe('FaixaPartida · a saída cortada pelo corte de valor', () => {
+  it('a cortada não vira a manchete do jogo', () => {
+    renderFaixa({ premissas: premissasDeGols, valueRows: [], cortadas: [SAIDA_DE_GOLS] });
+
+    expect(screen.getByText('Sem leitura ainda')).toBeInTheDocument();
+  });
+
+  it('sem corte, a mesma saída é anunciada — o caso legítimo não regride', () => {
+    renderFaixa({ premissas: premissasDeGols, valueRows: [], cortadas: [] });
+
+    expect(screen.queryByText('Sem leitura ainda')).not.toBeInTheDocument();
   });
 });
 

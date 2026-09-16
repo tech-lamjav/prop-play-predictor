@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { resumoDosMercados, saidaQueAbreAFolha, melhorLeitura } from './futebol-leitura';
+import type { Saida } from './futebol-saida';
 import { melhorCandidato } from './futebol-premissas';
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
 
@@ -43,10 +44,11 @@ const ROWS = [
 
 const SEM_PRECO = null;
 const SEM_OCULTOS: string[] = [];
+const SEM_CORTADAS: Saida[] = [];
 
 describe('a leitura anunciada, sem preço nenhum', () => {
   it('o card do mercado nomeia a saída com mais premissas', () => {
-    const [gols] = resumoDosMercados(ROWS, SEM_PRECO, null, SEM_OCULTOS);
+    const [gols] = resumoDosMercados(ROWS, SEM_PRECO, null, SEM_OCULTOS, SEM_CORTADAS);
     expect(gols.candidato.outcome).toBe('Under');
     expect(gols.candidato.line_value).toBe(3.25);
     expect(gols.value).toBeNull();
@@ -57,7 +59,7 @@ describe('a leitura anunciada, sem preço nenhum', () => {
     // que abria a folha por ter cotação, enquanto o card ao lado dizia
     // Under 3,25. O teste afirma o valor esperado, e não `=== resumo.candidato`
     // — comparar a função com a propriedade que ela devolve não falha nunca.
-    const [gols] = resumoDosMercados(ROWS, SEM_PRECO, null, SEM_OCULTOS);
+    const [gols] = resumoDosMercados(ROWS, SEM_PRECO, null, SEM_OCULTOS, SEM_CORTADAS);
     const abre = saidaQueAbreAFolha(gols);
 
     expect(`${abre?.outcome} ${abre?.line_value}`).toBe('Under 3.25');
@@ -72,6 +74,7 @@ describe('a leitura anunciada, sem preço nenhum', () => {
       SEM_PRECO,
       { market: 'goals_over_under', outcome: 'Over', line_value: 2.5 },
       SEM_OCULTOS,
+      SEM_CORTADAS,
     );
 
     expect(gols.candidato.outcome).toBe('Over');
@@ -85,6 +88,7 @@ describe('a leitura anunciada, sem preço nenhum', () => {
       SEM_PRECO,
       { market: 'goals_over_under', outcome: 'Over', line_value: 9.5 },
       SEM_OCULTOS,
+      SEM_CORTADAS,
     );
     expect(gols.candidato.line_value).toBe(3.25);
   });
@@ -155,7 +159,7 @@ describe('o desempate não é mais a menor linha', () => {
   });
 
   it('e a folha abre nela também', () => {
-    const [gols] = resumoDosMercados(EMPATADAS, SEM_PRECO, null, SEM_OCULTOS);
+    const [gols] = resumoDosMercados(EMPATADAS, SEM_PRECO, null, SEM_OCULTOS, SEM_CORTADAS);
     expect(saidaQueAbreAFolha(gols)?.line_value).toBe(2.5);
   });
 });
@@ -166,7 +170,7 @@ describe('os três lugares nomeiam a mesma saída', () => {
   // e a folha usa `saidaQueAbreAFolha`. Antes os dois primeiros diziam
   // "Menos de 3,25" e o terceiro dizia "Mais de 0,5".
   it('painel de resumo, card do mercado e folha de detalhe', () => {
-    const resumos = resumoDosMercados(ROWS, SEM_PRECO, null, SEM_OCULTOS);
+    const resumos = resumoDosMercados(ROWS, SEM_PRECO, null, SEM_OCULTOS, SEM_CORTADAS);
     const doPainel = melhorLeitura(resumos);
     const doCard = resumos.find((r) => r.mercado.slug === 'goals_over_under');
     const daFolha = saidaQueAbreAFolha(doCard);

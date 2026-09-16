@@ -1,7 +1,7 @@
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { ehDestaque } from '@/utils/futebol-score';
-import { mesmaLinha, type Saida } from '@/utils/futebol-saida';
+import { mesmaLinha, mesmaSaida, type Saida } from '@/utils/futebol-saida';
 import {
   MERCADOS,
   PORTA_PREMISSAS,
@@ -31,10 +31,7 @@ export function valueDoCandidato(
   s: Saida,
 ): FutebolFixtureValueRow | null {
   if (!valueRows?.length) return null;
-  return (
-    valueRows.find((v) => v.market === s.market && v.outcome === s.outcome && mesmaLinha(v.line_value, s.line_value)) ??
-    null
-  );
+  return valueRows.find((v) => mesmaSaida(v, s)) ?? null;
 }
 
 /** O caminho inverso: a linha de premissas da saída que tem preço. */
@@ -42,10 +39,7 @@ export function candidatoDaValue(
   rows: FutebolFixturePremissas[] | null | undefined,
   v: FutebolFixtureValueRow,
 ): FutebolFixturePremissas | null {
-  return (
-    (rows ?? []).find((r) => r.market === v.market && r.outcome === v.outcome && mesmaLinha(r.line_value, v.line_value)) ??
-    null
-  );
+  return (rows ?? []).find((r) => mesmaSaida(r, v)) ?? null;
 }
 
 /**
@@ -101,6 +95,54 @@ function saidaComPreco(
   )[0];
 }
 
+/**
+ * Esta saída é uma das que o corte de valor removeu?
+ *
+ * As cortadas chegam do serviço como SAÍDA, sem Score e sem vantagem
+ * (`separaNoCorteDeValor`), e é só isso que a tela precisa saber: que ali houve
+ * preço e a decisão já foi tomada.
+ */
+export function saidaCortada(cortadas: readonly Saida[], s: Saida): boolean {
+  return cortadas.some((c) => mesmaSaida(c, s));
+}
+
+/**
+ * A leitura desta saída se sustenta?
+ *
+ * Com preço, quem decide é a FAIXA publicada pelo backend. Sem preço, a porta de
+ * contexto — menos quando o corte de valor removeu a linha (#432): ali houve
+ * preço, a decisão já foi tomada por ele, e a contagem de premissas não reabre o
+ * caso.
+ *
+ * Existe como função porque a MESMA pergunta é feita em dois grãos — por
+ * mercado, no resumo, e por saída, nos chips da bancada. Eram duas cópias da
+ * mesma linha, e mudar a porta deixaria uma delas para trás.
+ */
+export function passaNaLeitura(
+  value: { faixa: string } | null | undefined,
+  cortada: boolean,
+  nValem: number,
+): boolean {
+  if (value) return ehDestaque(value.faixa);
+  return !cortada && nValem >= PORTA_PREMISSAS;
+}
+
+/** O que a folha do mercado tem para pôr no lugar do número grande. */
+export type LeituraDaFolha = 'score' | 'premissas' | 'nenhuma';
+
+/**
+ * TRÊS estados, e não dois — é o ponto inteiro do #432.
+ *
+ * `premissas` é o jogo que não teve preço coletado, onde a contagem é a única
+ * leitura que existe e é legítima. `nenhuma` é a linha que TEVE preço e o corte
+ * removeu: repor outro número no mesmo lugar, tamanho e cor devolve à tela a
+ * leitura que o board escondeu.
+ */
+export function leituraDaFolha(temValor: boolean, cortada: boolean): LeituraDaFolha {
+  if (temValor) return 'score';
+  return cortada ? 'nenhuma' : 'premissas';
+}
+
 export interface MercadoResumo {
   mercado: MercadoInfo;
   /**
@@ -119,6 +161,16 @@ export interface MercadoResumo {
    * escala nova. Sem odds, continua a porta de contexto (2+ premissas).
    */
   passa: boolean;
+  /**
+   * A saída que representa o mercado teve preço, e o corte de valor a removeu
+   * (#432).
+   *
+   * Separa os dois jeitos de `value` ser nulo, que a tela vinha tratando como
+   * um só: NÃO HOUVE preço coletado, onde a contagem de premissas é a única
+   * leitura que existe e é legítima; e HOUVE preço e a decisão já foi tomada
+   * pelo preço, onde a contagem de premissas não pode reabrir o caso.
+   */
+  cortada: boolean;
 }
 
 export function resumoDosMercados(
@@ -131,6 +183,10 @@ export function resumoDosMercados(
   // e não do board, então filtrar as linhas do board não bastava: o mercado
   // escondido continuava como chip, com barra de Score e sem odd.
   ocultos: readonly string[],
+  // As saídas que o corte de valor removeu (#432). Obrigatório pelo mesmo motivo
+  // de `ocultos`: com default, a tela que esquecer de passá-lo volta a anunciar
+  // a linha cortada, e o compilador não cobra nada.
+  cortadas: readonly Saida[],
 ): MercadoResumo[] {
   if (!rows?.length) return [];
   return filtrarCatalogoDeMercados(MERCADOS, ocultos).flatMap((m) => {
@@ -153,17 +209,28 @@ export function resumoDosMercados(
     // contá-las fazia "2 de 8" onde o certo é "2 de 3".
     const { acesas: nValem, total: totalQueValem } = contagemDaPorta(c);
     const value = comPreco?.value ?? null;
-    const passa = value ? ehDestaque(value.faixa) : nValem >= PORTA_PREMISSAS;
-    return [{ mercado: m, candidato: c, nValem, totalQueValem, value, passa }];
+    // Só faz pergunta quem não tem preço: com linha de valor viva, o corte já
+    // não removeu nada deste mercado.
+    const cortada = value == null && saidaCortada(cortadas, c);
+    const passa = passaNaLeitura(value, cortada, nValem);
+    return [{ mercado: m, candidato: c, nValem, totalQueValem, value, passa, cortada }];
   });
 }
 
-/** A "melhor leitura do jogo": maior Score real; sem odds, mais contexto. */
+/**
+ * A "melhor leitura do jogo": maior Score real; sem odds, mais contexto.
+ *
+ * O mercado cortado fica fora da disputa sem preço (#432): ele é a manchete do
+ * jogo na faixa e no painel de resumo, e eleger a linha que o board escondeu
+ * faria dela o título da tela — com a contagem de premissas no lugar do Score.
+ */
 export function melhorLeitura(resumos: MercadoResumo[]): MercadoResumo | null {
   if (!resumos.length) return null;
   const comValor = resumos.filter((r) => r.value != null);
   if (comValor.length) return [...comValor].sort((a, b) => (b.value!.score) - (a.value!.score))[0];
-  return [...resumos].sort((a, b) => b.nValem - a.nValem)[0];
+  const legiveis = resumos.filter((r) => !r.cortada);
+  if (!legiveis.length) return null;
+  return [...legiveis].sort((a, b) => b.nValem - a.nValem)[0];
 }
 
 /**

@@ -8,6 +8,7 @@ import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 
 import type { FutebolFixturePremissas, FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
 import { melhorLeitura, resumoDosMercados, type SaidaPreferida } from '@/utils/futebol-leitura';
+import type { Saida } from '@/utils/futebol-saida';
 import { rotuloDaFaixa } from '@/utils/futebol-score';
 import { outcomeLabel, contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
 import { isFinished, isLive } from '@/utils/futebol-datas';
@@ -147,6 +148,7 @@ export function FaixaPartida({
   onAbrirMercado,
   preferida,
   ocultos,
+  cortadas,
 }: {
   jogo: JogoInfo;
   /** As premissas do jogo. Vêm da página: ela já faz essa query e é a dona do estado. */
@@ -191,8 +193,14 @@ export function FaixaPartida({
    * três testes dele na primeira tentativa.
    */
   ocultos: readonly string[];
+  /**
+   * As saídas que o corte de valor removeu (#432). Vem por prop pela mesma razão
+   * de `ocultos` — aqui não há consulta própria —, e junto do `valueRows` porque
+   * as duas listas nascem da MESMA resposta do serviço.
+   */
+  cortadas: readonly Saida[];
 }) {
-  const resumos = useMemo(() => resumoDosMercados(premissas, valueRows, preferida, ocultos), [premissas, valueRows, preferida, ocultos]);
+  const resumos = useMemo(() => resumoDosMercados(premissas, valueRows, preferida, ocultos, cortadas), [premissas, valueRows, preferida, ocultos, cortadas]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
   // A faixa conhecia dois estados, encerrado e "não começou", então o jogo EM
