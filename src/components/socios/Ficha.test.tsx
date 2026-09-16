@@ -362,7 +362,9 @@ describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
   // existe para o caso que ela NÃO tem como enxergar — o número bem formado
   // que não leva à pessoa.
 
-  const botaoDeMarcar = () => screen.getByRole('button', { name: /número não leva à pessoa/i });
+  // O rótulo é curto porque ele mora ao LADO do número: o contexto já está na
+  // tela, e a frase inteira embaixo do nome era o que o Victor recusou.
+  const botaoDeMarcar = () => screen.getByRole('button', { name: /não leva à pessoa/i });
 
   it('quem tem número bom não ganha selo, e ganha o botão', () => {
     montar();
@@ -394,7 +396,7 @@ describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
     // ⚠️ Marcar quem já está fora das listas não mudaria nada, e o botão só
     // sugeriria um trabalho inútil. O que falta ali é completar o cadastro.
     montar(pessoa({ whatsapp_number: null }));
-    expect(screen.queryByRole('button', { name: /número não leva à pessoa/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /não leva à pessoa/i })).not.toBeInTheDocument();
   });
 
   it('marcado diz que foi na mão, e oferece o caminho de volta', () => {
@@ -402,9 +404,7 @@ describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
     // coisa que uma decisão que alguém tomou.
     montar(pessoa(), { total: 0, ultima: null }, { marcadoSemWhatsApp: true });
     expect(screen.getByText('Sem WhatsApp · marcado')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /voltar para as listas/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /desmarcar/i })).toBeInTheDocument();
   });
 
   it('clicar manda marcar', async () => {
@@ -423,7 +423,7 @@ describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
       { total: 0, ultima: null },
       { marcadoSemWhatsApp: true, aoMarcarSemWhatsApp: aoMarcar },
     );
-    await userEvent.click(screen.getByRole('button', { name: /voltar para as listas/i }));
+    await userEvent.click(screen.getByRole('button', { name: /desmarcar/i }));
     expect(aoMarcar).toHaveBeenCalledWith(false);
   });
 

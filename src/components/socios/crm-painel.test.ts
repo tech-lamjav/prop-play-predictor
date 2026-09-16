@@ -10,9 +10,8 @@ import {
   DIAS_PARA_ESTAR_PARADO,
   precisamDeAtencao,
   metricasDeNegocio,
-  escondeSemWhatsApp,
+  filtrarPorWhatsApp,
   montarLeads,
-  semWhatsApp,
   type Toques,
 } from './crm-painel';
 import { cadastroDeTeste as cadastro, fimDoTesteEm } from './crm-cadastro-de-teste';
@@ -412,17 +411,59 @@ describe('a etiqueta entra no lead, como eixo separado da etapa', () => {
   });
 });
 
-describe('semWhatsApp · de quem o sócio não consegue chegar perto', () => {
+describe('filtrarPorWhatsApp · quem dá e quem não dá para abordar', () => {
   // O pedido, nas palavras dele: "leads sem whatsapp, esses eu nao consigo
-  // fazer nada". É recorte da lista, e não etapa: não ter número é fato do
-  // cadastro, e a pessoa continua tendo a etapa que tem.
+  // fazer nada" — e depois, olhando a tela: "deveria ser um filtro mesmo,
+  // igual o desde sempre". É FILTRO, e não etapa nem recorte: não ter número é
+  // característica do cadastro, e a pessoa continua tendo a etapa que tem.
 
-  it('devolve quem não tem número', () => {
+  it('"sem" devolve quem não tem número', () => {
     const leads = monta([
       cadastro({ id: 'com', whatsapp_number: '5511998877665' }),
       cadastro({ id: 'sem', whatsapp_number: null }),
     ]);
-    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['sem']);
+    expect(filtrarPorWhatsApp(leads, 'sem').map((l) => l.id)).toEqual(['sem']);
+  });
+
+  it('"com" devolve só quem dá para abordar, e é o padrão da tela', () => {
+    const leads = monta([
+      cadastro({ id: 'com', whatsapp_number: '5511998877665' }),
+      cadastro({ id: 'sem', whatsapp_number: null }),
+    ]);
+    expect(filtrarPorWhatsApp(leads, 'com').map((l) => l.id)).toEqual(['com']);
+  });
+
+  it('"todos" não filtra nada', () => {
+    // A opção do meio existe para conferir a base sem perder ninguém de vista.
+    const leads = monta([
+      cadastro({ id: 'com', whatsapp_number: '5511998877665' }),
+      cadastro({ id: 'sem', whatsapp_number: null }),
+    ]);
+    expect(filtrarPorWhatsApp(leads, 'todos')).toHaveLength(2);
+  });
+
+  it('os dois lados particionam a lista, sem sobra nem repetição', () => {
+    // ⚠️ Era o que duas funções separadas arriscavam: se divergissem, existiria
+    // lead que não aparece em nenhum dos lados e some da tela sem ninguém
+    // notar. Com uma função só e o sinal trocado isso não tem como acontecer —
+    // e este teste guarda a propriedade mesmo assim.
+    const leads = montarLeads(
+      [
+        cadastro({ id: 'a', whatsapp_number: null }),
+        cadastro({ id: 'b', whatsapp_number: '5511998877665' }),
+        cadastro({ id: 'c', whatsapp_number: '11999' }),
+        cadastro({ id: 'd', whatsapp_number: '5511998877000' }),
+      ],
+      {},
+      {},
+      {},
+      HOJE,
+      new Set(['b']),
+    );
+    const sem = filtrarPorWhatsApp(leads, 'sem').map((l) => l.id);
+    const com = filtrarPorWhatsApp(leads, 'com').map((l) => l.id);
+    expect([...sem, ...com].sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect(sem.filter((id) => com.includes(id))).toEqual([]);
   });
 
   it('campo com lixo curto conta como sem WhatsApp', () => {
@@ -430,16 +471,16 @@ describe('semWhatsApp · de quem o sócio não consegue chegar perto', () => {
     // justamente quem a ficha não consegue abrir: a lista prometeria uma
     // conversa que não existe.
     const leads = monta([cadastro({ id: 'lixo-no-campo', whatsapp_number: '11999' })]);
-    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['lixo-no-campo']);
+    expect(filtrarPorWhatsApp(leads, 'sem').map((l) => l.id)).toEqual(['lixo-no-campo']);
   });
 
   it('celular brasileiro sem o 55 NÃO conta: esse a gente alcança', () => {
     // ⚠️ Regra revertida na revisão. Antes, onze dígitos sem código do país
     // entravam aqui — e numa base antiga isso escondia da fila de trabalho,
-    // por padrão, gente perfeitamente abordável. O contrário do que o recorte
+    // por padrão, gente perfeitamente abordável. O contrário do que o filtro
     // existe para fazer.
     const leads = monta([cadastro({ id: 'br-sem-ddi', whatsapp_number: '11998877665' })]);
-    expect(semWhatsApp(leads)).toEqual([]);
+    expect(filtrarPorWhatsApp(leads, 'sem')).toEqual([]);
     expect(leads[0].semWhatsApp).toBe(false);
   });
 
@@ -453,12 +494,12 @@ describe('semWhatsApp · de quem o sócio não consegue chegar perto', () => {
       {},
       HOJE,
     );
-    expect(semWhatsApp(leads)[0].etapa).toBe('nutrindo');
+    expect(filtrarPorWhatsApp(leads, 'sem')[0].etapa).toBe('nutrindo');
   });
 
-  it('base inteira com número devolve lista vazia', () => {
+  it('base inteira com número devolve lista vazia no "sem"', () => {
     const leads = monta([cadastro({ id: 'a', whatsapp_number: '5511998877665' })]);
-    expect(semWhatsApp(leads)).toEqual([]);
+    expect(filtrarPorWhatsApp(leads, 'sem')).toEqual([]);
   });
 });
 
@@ -507,49 +548,7 @@ describe('a marca na mão entra na mesma conta que o número', () => {
       ],
       ['marcado'],
     );
-    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['sem-numero', 'marcado']);
+    expect(filtrarPorWhatsApp(leads, 'sem').map((l) => l.id)).toEqual(['sem-numero', 'marcado']);
   });
 });
 
-describe('escondeSemWhatsApp · o uso do dia a dia', () => {
-  // "Esses eu não consigo fazer nada, quero que saiam da lista." Mostrar a
-  // pilha é a exceção; escondê-la é o uso.
-
-  it('devolve só quem dá para abordar', () => {
-    const leads = montarLeads(
-      [
-        cadastro({ id: 'sem-numero', whatsapp_number: null }),
-        cadastro({ id: 'marcado', whatsapp_number: '5511998877665' }),
-        cadastro({ id: 'falavel', whatsapp_number: '5511998877000' }),
-      ],
-      {},
-      {},
-      {},
-      HOJE,
-      new Set(['marcado']),
-    );
-    expect(escondeSemWhatsApp(leads).map((l) => l.id)).toEqual(['falavel']);
-  });
-
-  it('é exatamente o complemento do filtro', () => {
-    // ⚠️ Os dois têm de particionar a lista. Se divergirem, existe lead que
-    // não aparece em nenhum dos dois lados — some da tela sem ninguém notar.
-    const leads = montarLeads(
-      [
-        cadastro({ id: 'a', whatsapp_number: null }),
-        cadastro({ id: 'b', whatsapp_number: '5511998877665' }),
-        cadastro({ id: 'c', whatsapp_number: '11998877665' }),
-        cadastro({ id: 'd', whatsapp_number: '5511998877000' }),
-      ],
-      {},
-      {},
-      {},
-      HOJE,
-      new Set(['b']),
-    );
-    const escondidos = semWhatsApp(leads).map((l) => l.id);
-    const mostrados = escondeSemWhatsApp(leads).map((l) => l.id);
-    expect([...escondidos, ...mostrados].sort()).toEqual(['a', 'b', 'c', 'd']);
-    expect(escondidos.filter((id) => mostrados.includes(id))).toEqual([]);
-  });
-});

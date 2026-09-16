@@ -177,8 +177,8 @@ cadastros qualquer formato parece bom, e é com seiscentos, dos quais 82% em
 coluna tem teto de cartões e diz quantos sobraram, porque fingir que ela é
 navegável seria pior que admitir o limite.
 
-A tabela tem um **recorte** — precisa de atenção, sem WhatsApp, ou todos — e
-duas chaves separadas: agrupar por dia e esconder quem não dá para abordar. "Precisa de atenção" junta duas situações numa
+A tabela tem um **recorte** — precisa de atenção, ou todos — e duas chaves
+separadas: agrupar por dia e o filtro de WhatsApp. "Precisa de atenção" junta duas situações numa
 lista ordenada: conversa começada e sem toque há sete dias ou mais vem primeiro,
 depois quem nunca saiu de "novo". As duas já eram distinguíveis pela coluna de
 etapa, e separá-las em tabelas diferentes era o que fazia a tela parecer cinco
@@ -421,9 +421,20 @@ custo do outro lado — a base antiga tem muito celular gravado sem o 55, e
 recusar todos escondia da fila gente perfeitamente abordável. O palpite é só de
 PAÍS e só nessa faixa: fora dela nada é inventado.
 
-**O esconder nasce ligado na fila** de atenção, onde o sócio age, e desligado em
-"Todos", onde ele confere a base. A escolha é por recorte: mexer no interruptor
-de um não muda o outro.
+**É um filtro, e não um recorte nem uma caixa de marcar.** Fica ao lado do
+"Desde sempre", com o mesmo formato, e responde três coisas: só quem tem
+WhatsApp (o padrão), com e sem, e só quem não tem.
+
+⚠️ A primeira versão fez disso DUAS coisas — uma aba "Sem WhatsApp" na fileira
+dos recortes e uma caixa "Esconder sem WhatsApp" ao lado de "Agrupar por dia" —
+e o Victor recusou: "deveria ser um filtro mesmo, igual o desde sempre". Ele
+tinha razão. Recorte responde "qual fatia do trabalho", e ter ou não número é
+uma característica do cadastro, como a data em que a pessoa chegou. Duas coisas
+para uma pergunta só ainda obrigavam a escolher entre ver a pilha e escondê-la,
+quando o filtro faz as duas com a mesma peça.
+
+Ele nasce em "só quem tem WhatsApp": a tela abre pronta para o trabalho, sem
+ninguém precisar ligar nada.
 
 **A consulta das marcas não segura a tela**, ao contrário das etapas. Sem ela o
 pior que acontece é aparecer alguém que devia estar escondido, e mostrar demais é

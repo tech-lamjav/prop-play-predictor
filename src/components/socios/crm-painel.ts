@@ -433,29 +433,31 @@ export function filtrarPorEtiqueta(leads: Lead[], etiqueta: Etiqueta | null): Le
 }
 
 /**
- * Quem a gente não consegue abordar por WhatsApp.
+ * As três respostas do filtro de WhatsApp.
  *
- * ⚠️ Não é "campo vazio". A regra é a mesma que decide se o botão de WhatsApp
- * aparece na ficha, em `temWhatsApp`: um telefone sem código do país está
- * preenchido e não abre conversa nenhuma. Duas definições fariam a lista
- * prometer gente que a ficha não consegue abrir.
- *
- * É recorte da lista, e NÃO posição do funil. Não ter número é fato do
- * cadastro, e a pessoa continua tendo a etapa que tem — é a mesma separação que
- * tirou "em teste" do funil. Como posição, ela engoliria a etapa de todo mundo
- * que está sem número.
+ * `com` é o padrão: a tela abre pronta para o trabalho. `sem` existe para
+ * revisar a pilha — completar cadastro, ou decidir mandar e-mail.
  */
-export function semWhatsApp(leads: Lead[]): Lead[] {
-  return leads.filter((l) => l.semWhatsApp);
-}
+export type FiltroDeWhatsApp = 'com' | 'todos' | 'sem';
 
 /**
- * A lista sem quem não dá para abordar.
+ * A lista, recortada por ter ou não WhatsApp.
  *
- * O contrário de `semWhatsApp`, e é este que o dia a dia usa: o pedido foi
- * "esses eu não consigo fazer nada, quero que saiam da lista quando eu estou
- * trabalhando". Mostrar a pilha é a exceção; escondê-la é o uso.
+ * ⚠️ UMA função, e não duas. Antes eram `semWhatsApp` e `escondeSemWhatsApp`,
+ * que com um filtro de três estados são literalmente a mesma conta com o sinal
+ * trocado — e duas funções para uma regra acabam divergindo no dia em que
+ * alguém mexe só numa.
+ *
+ * "Ter WhatsApp" NÃO é "o campo está preenchido": a regra é a mesma que decide
+ * se o botão aparece na ficha, em `temWhatsApp`, e ela inclui a marca que o
+ * sócio pôs na mão. Duas definições fariam a lista prometer gente que a ficha
+ * não consegue abrir.
+ *
+ * É FILTRO, e não posição do funil nem etapa: não ter número é fato do
+ * cadastro, e a pessoa continua tendo a etapa que tem — a mesma separação que
+ * tirou "em teste" do funil.
  */
-export function escondeSemWhatsApp(leads: Lead[]): Lead[] {
-  return leads.filter((l) => !l.semWhatsApp);
+export function filtrarPorWhatsApp(leads: Lead[], filtro: FiltroDeWhatsApp): Lead[] {
+  if (filtro === 'todos') return leads;
+  return leads.filter((l) => (filtro === 'sem' ? l.semWhatsApp : !l.semWhatsApp));
 }

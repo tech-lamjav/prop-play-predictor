@@ -63,7 +63,24 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
  * numa faixa horizontal viraria um risco entre colunas em vez de um separador
  * entre linhas.
  */
-function Contato({ rotulo, valor }: { rotulo: string; valor: string | null }) {
+function Contato({
+  rotulo,
+  valor,
+  acao,
+}: {
+  rotulo: string;
+  valor: string | null;
+  /**
+   * Uma ação sobre ESTE contato, embaixo do valor.
+   *
+   * ⚠️ Mora aqui, e não no cabeçalho junto do nome. "Este número não leva à
+   * pessoa" é uma frase sobre o número: longe dele, vira um botão com borda
+   * debaixo do nome, com peso de ação principal — e o Victor reclamou disso
+   * exatamente. Do lado do valor, a mesma frase fica curta porque o contexto
+   * já está na tela.
+   */
+  acao?: ReactNode;
+}) {
   return (
     <div className="min-w-[140px]">
       <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim">
@@ -74,6 +91,7 @@ function Contato({ rotulo, valor }: { rotulo: string; valor: string | null }) {
       <p className="mt-0.5 break-words text-[13.5px] text-ink">
         {valor ?? <span className="text-ink-2">não informado</span>}
       </p>
+      {acao}
     </div>
   );
 }
@@ -371,26 +389,7 @@ function Conteudo({
               </div>
             ) : null}
 
-            {podeDecidir ? (
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => aoMarcarSemWhatsApp(!marcadoSemWhatsApp)}
-                  disabled={marcandoSemWhatsApp}
-                  className="rounded-rebrand-sm border border-line-2 px-2 py-1 text-[12px] font-bold text-ink-2 transition hover:bg-canvas hover:text-ink disabled:opacity-60"
-                >
-                  {marcadoSemWhatsApp
-                    ? 'Voltar para as listas de abordagem'
-                    : 'Marcar: número não leva à pessoa'}
-                </button>
-                {/* O recado só aparece quando tem o que dizer. Sem ele, uma
-                    gravação que falha faz o botão voltar sozinho ao rótulo
-                    anterior, e isso parece um clique que não pegou. */}
-                {erroAoMarcarSemWhatsApp && (
-                  <span className="text-[12px] text-status-danger">Não deu para gravar.</span>
-                )}
-              </div>
-            ) : null}
+
           </div>
 
           {/* A etapa fica alinhada à DIREITA do nome, e não abaixo dos
@@ -441,7 +440,30 @@ function Conteudo({
 
         <div className="mt-4 flex flex-wrap items-start gap-x-7 gap-y-3">
           <Contato rotulo="E-mail" valor={pessoa.email} />
-          <Contato rotulo="WhatsApp" valor={pessoa.whatsapp_number} />
+          <Contato
+            rotulo="WhatsApp"
+            valor={pessoa.whatsapp_number}
+            acao={
+              podeDecidir ? (
+                <span className="mt-0.5 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => aoMarcarSemWhatsApp(!marcadoSemWhatsApp)}
+                    disabled={marcandoSemWhatsApp}
+                    className="text-[12px] text-ink-2 underline underline-offset-2 transition hover:text-ink disabled:opacity-60"
+                  >
+                    {marcadoSemWhatsApp ? 'desmarcar' : 'não leva à pessoa'}
+                  </button>
+                  {/* O recado só aparece quando tem o que dizer. Sem ele, uma
+                      gravação que falha faz o botão voltar sozinho ao rótulo
+                      anterior, e isso parece um clique que não pegou. */}
+                  {erroAoMarcarSemWhatsApp && (
+                    <span className="text-[12px] text-status-danger">não gravou</span>
+                  )}
+                </span>
+              ) : null
+            }
+          />
           <Contato
             rotulo="Telegram"
             valor={

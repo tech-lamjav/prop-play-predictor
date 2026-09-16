@@ -429,126 +429,99 @@ describe('PainelCrm · o recorte diz quanta gente ele esconde', () => {
   });
 });
 
-describe('PainelCrm · o recorte de quem não tem WhatsApp', () => {
-  // "leads sem whatsapp, esses eu nao consigo fazer nada". Eles ficavam
-  // misturados na fila de atenção, onde o sócio só descobria o problema depois
-  // de abrir a ficha e não achar botão nenhum.
-
-  const comESem = [
-    cadastro({ id: 'com', name: 'Tem Numero', whatsapp_number: '5511998877665' }),
-    cadastro({ id: 'sem', name: 'Sem Numero', whatsapp_number: null }),
-    // Cinco dígitos não viram telefone. O celular brasileiro sem o 55 NÃO entra
-    // mais aqui: a gente completa o código do país e ele volta a ser abordável.
-    cadastro({ id: 'lixo', name: 'Campo Estragado', whatsapp_number: '11999' }),
-  ];
-
-  it('mostra só quem não dá para abordar', async () => {
-    montar({ cadastros: comESem });
-    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
-    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
-    expect(screen.getByText('Campo Estragado')).toBeInTheDocument();
-    expect(screen.queryByText('Tem Numero')).not.toBeInTheDocument();
-  });
-
-  it('conta quantos são, como os outros recortes', () => {
-    // Sem o número, o sócio teria que clicar para descobrir se vale a pena.
-    montar({ cadastros: comESem });
-    expect(screen.getByRole('radio', { name: /^Sem WhatsApp 2$/ })).toBeInTheDocument();
-  });
-
-  it('base inteira com número diz isso, em vez de parecer defeito', async () => {
-    montar({ cadastros: [comESem[0]] });
-    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp 0$/ }));
-    expect(screen.getByText(/número que abre conversa/)).toBeInTheDocument();
-  });
-});
-
-describe('PainelCrm · esconder quem não dá para abordar', () => {
-  // "Esses eu não consigo fazer nada." O interruptor nasce LIGADO na fila, que
-  // é onde o sócio age, e desligado em "Todos", que é onde ele confere a base.
+describe('PainelCrm · o filtro de WhatsApp', () => {
+  // "Não gostei desse filtro aqui de sem whatsapp; para mim ele deveria ser um
+  // filtro mesmo, igual o desde sempre, mas que ele já vem ocultando os que não
+  // têm whatsapp." E completou que não precisa da caixa de esconder ali, nem
+  // de um recorte só para quem não tem — a palavra que ele usou para isso é
+  // proibida neste arquivo, e a catraca do vocabulário está certa: quem a
+  // escreve acaba desenhando uma.
+  //
+  // A primeira versão era DUAS peças para uma pergunta só: um botão na fileira
+  // dos recortes e uma caixa de marcar ao lado de "Agrupar por dia". Virou um
+  // seletor, ao lado do de período, porque é da mesma natureza — os dois
+  // recortam por característica do cadastro, e não por fatia do trabalho.
 
   const filaMista = [
     cadastro({ id: 'falavel', name: 'Da Para Falar' }),
     cadastro({ id: 'mudo', name: 'Sem Numero', whatsapp_number: null }),
   ];
 
-  const interruptor = () => screen.getByRole('checkbox', { name: /esconder quem não tem whatsapp/i });
+  const filtro = () => screen.getByRole('combobox', { name: /filtrar por whatsapp/i });
 
-  it('a fila já abre sem eles', () => {
+  it('a tela abre já filtrando quem não dá para abordar', () => {
+    // Sem ninguém precisar ligar nada: o padrão é o trabalho.
     montar({ cadastros: filaMista });
+    expect(filtro()).toHaveValue('com');
     expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
     expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
-    expect(interruptor()).toBeChecked();
   });
 
-  it('em Todos eles continuam visíveis', async () => {
-    // Conferir a base é outro trabalho: lá esconder gente seria esconder o
-    // problema em vez de mostrá-lo.
+  it('"com e sem" traz todo mundo de volta', async () => {
     montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'todos');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+    expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
+  });
+
+  it('"só quem não tem" mostra a pilha, sem precisar de recorte próprio', async () => {
+    // É o que substituiu o botão na fileira: a mesma peça que esconde mostra.
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'sem');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+    expect(screen.queryByText('Da Para Falar')).not.toBeInTheDocument();
+  });
+
+  it('não existe mais botão de recorte nem caixa de marcar para isso', async () => {
+    // ⚠️ O pedido foi explícito: uma peça só. Se alguma das duas voltar, a tela
+    // volta a ter dois jeitos de responder a mesma pergunta.
+    montar({ cadastros: filaMista });
+    expect(screen.queryByRole('radio', { name: /Sem WhatsApp/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: /esconder quem não tem whatsapp/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('o filtro atravessa a troca de recorte', async () => {
+    // Um filtro só, e não um por recorte: ele recorta a base, e a base é a
+    // mesma nos dois.
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'todos');
     await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
-    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
-    expect(interruptor()).not.toBeChecked();
-  });
-
-  it('desligar traz eles de volta para a fila', async () => {
-    montar({ cadastros: filaMista });
-    await userEvent.click(interruptor());
+    expect(filtro()).toHaveValue('todos');
     expect(screen.getByText('Sem Numero')).toBeInTheDocument();
   });
 
-  it('a escolha num recorte não mexe no outro', async () => {
-    // ⚠️ Ele escolheu um PADRÃO POR RECORTE: ligado onde se age, desligado onde
-    // se confere a base. A primeira versão fazia a escolha valer nos dois assim
-    // que ele mexesse em um — decisão minha, não dele —, e aí desligar uma vez
-    // para conferir a base voltava a encher a fila de trabalho.
+  it('os números dos recortes seguem o filtro', () => {
+    // O número promete "quantos eu veria se clicasse aqui". Contando a base
+    // crua, ele prometeria gente que o clique não traria.
     montar({ cadastros: filaMista });
-
-    await userEvent.click(interruptor()); // desliga na fila
-    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
-    expect(interruptor()).not.toBeChecked(); // "Todos" já nascia desligado
-    await userEvent.click(interruptor()); // liga só aqui
-    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('radio', { name: /^Precisa de atenção/ }));
-    expect(interruptor()).not.toBeChecked(); // a fila ficou como ele deixou
-    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
-
-    // ⚠️ E os CONTADORES seguem cada um o seu recorte, não o recorte aberto.
-    // Sem esta parte o teste não tinha dentes: olhando só a lista e o
-    // interruptor, "o esconder do recorte aberto" e "o esconder de cada
-    // recorte" dão exatamente o mesmo resultado, porque os dois coincidem
-    // justamente onde se está. A diferença só aparece no número do OUTRO
-    // botão — e é ele que promete o que o clique entrega.
-    expect(screen.getByRole('radio', { name: /^Precisa de atenção 2$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 1$/ })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /^Todos 1$/ })).toBeInTheDocument();
   });
 
+  it('e voltam a contar todo mundo com o filtro aberto', async () => {
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'todos');
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 2$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Todos 2$/ })).toBeInTheDocument();
+  });
+
   it('o funil conta só quem está visível', () => {
-    // ⚠️ Achado da revisão. Os dois leads são "novo", e com o esconder ligado o
+    // ⚠️ Achado da revisão. Os dois leads são "novo", e com o filtro ligado o
     // funil dizia "Novo 2" enquanto o clique trazia 1 — sem nada explicando o
-    // sumiço. Número ao lado de um botão promete o que o clique entrega.
+    // sumiço.
     //
-    // Ele continua ignorando a BUSCA, que é outra coisa: procurar um nome não
-    // muda como está a operação.
+    // Ele continua ignorando a BUSCA e o período, que é outra coisa: procurar
+    // um nome não muda como está a operação.
     montar({ cadastros: filaMista });
     expect(posicaoNoFunil(/Novo/)).toHaveTextContent('1');
   });
 
-  it('e o funil volta a contar todo mundo quando o esconder desliga', async () => {
+  it('e o funil volta a contar todo mundo com o filtro aberto', async () => {
     montar({ cadastros: filaMista });
-    await userEvent.click(interruptor());
+    await userEvent.selectOptions(filtro(), 'todos');
     expect(posicaoNoFunil(/Novo/)).toHaveTextContent('2');
-  });
-
-  it('o número de cada recorte segue o esconder daquele recorte', () => {
-    // O número promete "quantos eu veria se clicasse aqui". Com uma conta só
-    // para os dois, o contador de "Todos" mostraria a conta da fila.
-    montar({ cadastros: filaMista });
-    expect(screen.getByRole('radio', { name: /^Precisa de atenção 1$/ })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /^Todos 2$/ })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /^Sem WhatsApp 1$/ })).toBeInTheDocument();
   });
 
   it('a marca na mão esconde quem tem número bom', async () => {
@@ -556,30 +529,14 @@ describe('PainelCrm · esconder quem não dá para abordar', () => {
     // não leva à pessoa.
     montar({ cadastros: filaMista, marcados: ['falavel'] });
     expect(screen.queryByText('Da Para Falar')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
+    await userEvent.selectOptions(filtro(), 'sem');
     expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
   });
 
-  it('dentro de Sem WhatsApp o interruptor some, porque a pilha É a lista', async () => {
-    montar({ cadastros: filaMista });
-    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
-    expect(
-      screen.queryByRole('checkbox', { name: /esconder quem não tem whatsapp/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
-  });
-
-  it('com o esconder ligado na mão, a pilha continua mostrando todo mundo', async () => {
-    // ⚠️ O caso que trocar de recorte sozinho NÃO cobre. Enquanto o sócio não
-    // mexe no interruptor, o padrão de cada recorte já resolve; o buraco é ele
-    // LIGAR o esconder na fila e depois ir olhar a pilha. Sem o guarda que
-    // isenta este recorte, o esconder se aplicaria à lista que o botão existe
-    // para mostrar, e ela viria vazia sem nada explicando.
-    montar({ cadastros: filaMista });
-    await userEvent.click(interruptor()); // desliga
-    await userEvent.click(interruptor()); // liga de novo, agora por escolha explícita
-    await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
-    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+  it('lista vazia no "só quem não tem" é boa notícia, e a frase diz isso', async () => {
+    montar({ cadastros: [filaMista[0]] });
+    await userEvent.selectOptions(filtro(), 'sem');
+    expect(screen.getByText(/ninguém sem whatsapp por aqui/i)).toBeInTheDocument();
   });
 
   it('marcas que não carregam não derrubam a tela, e a tela diz o que sabe', () => {
@@ -589,7 +546,7 @@ describe('PainelCrm · esconder quem não dá para abordar', () => {
     montar({ cadastros: filaMista, estadoDasMarcas: { tipo: 'erro' } });
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByText(/só pelo número/i)).toBeInTheDocument();
-    // O esconder pelo número continua valendo.
+    // O filtro pelo número continua valendo.
     expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
   });
 });

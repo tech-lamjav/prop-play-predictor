@@ -6,15 +6,16 @@ import {
   filtrarPorEtiqueta,
   filtrarPorPeriodo,
   type Periodo,
-  escondeSemWhatsApp,
+  filtrarPorWhatsApp,
   metricasDeNegocio,
   SEM_MARCAS,
   montarLeads,
   precisamDeAtencao,
-  semWhatsApp,
+  type FiltroDeWhatsApp as ValorDoFiltro,
   type Lead,
   type Posicao,
 } from './crm-painel';
+import { FiltroDeWhatsApp } from './FiltroDeWhatsApp';
 import type { Etiqueta } from './crm-etiquetas';
 import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
@@ -46,17 +47,18 @@ const VAZIO: Cadastro[] = [];
 /**
  * Qual fatia da base a lista mostra.
  *
- * Poucas, e cada uma respondendo a uma pergunta que o sócio faz de verdade: com
- * quem eu falo agora, quem eu não consigo abordar, e a base inteira. A primeira
- * versão tinha três recortes em que o primeiro ainda se dividia em duas tabelas
- * por dentro — cinco listas para uma base só. O recorte é filtro, e agrupar por
- * dia é uma chave à parte, porque as duas coisas se combinam em vez de competir.
+ * Duas, e cada uma responde uma pergunta que o sócio faz de verdade: com quem
+ * eu falo agora, e a base inteira. A primeira versão tinha três recortes em que
+ * o primeiro ainda se dividia em duas tabelas por dentro — cinco listas para
+ * uma base só.
  *
- * ⚠️ "Sem WhatsApp" é recorte, e não posição do funil. Não ter número é fato do
- * cadastro, e a pessoa continua tendo a etapa que tem — a mesma separação que
- * tirou "em teste" do funil.
+ * ⚠️ "Sem WhatsApp" JÁ FOI um recorte aqui, e voltou a ser o que sempre foi:
+ * um filtro, ao lado do de período. Recorte responde "qual fatia do trabalho";
+ * ter ou não número é característica do cadastro, como a data em que a pessoa
+ * chegou. Chave à parte — agrupar por dia, filtrar por WhatsApp — combina com
+ * qualquer recorte em vez de competir por espaço na mesma fileira.
  */
-type Recorte = 'atencao' | 'sem-whatsapp' | 'todos';
+type Recorte = 'atencao' | 'todos';
 
 const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
   {
@@ -64,12 +66,6 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
     rotulo: 'Precisa de atenção',
     explicacao:
       'quem está esperando você: conversas sem toque há 7 dias ou mais, e quem nunca foi abordado',
-  },
-  {
-    id: 'sem-whatsapp',
-    rotulo: 'Sem WhatsApp',
-    explicacao:
-      'quem não tem número que abra conversa: dá para ver o cadastro, mas não dá para abordar por WhatsApp',
   },
   {
     id: 'todos',
@@ -82,15 +78,16 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
 /**
  * O que dizer quando a lista sai vazia.
  *
- * A frase muda com o recorte de propósito: lista vazia em "precisa de atenção"
- * é uma boa notícia, e a mesma frase genérica faria parecer defeito.
+ * A frase muda com o que produziu o vazio: lista vazia em "precisa de atenção"
+ * é uma boa notícia, e a mesma frase genérica faria parecer defeito. Vazia com
+ * o filtro em "só quem não tem" também é boa notícia, e de outro tipo.
  */
-const vazioDo = (recorte: Recorte) => {
+const vazioDo = (recorte: Recorte, whatsapp: ValorDoFiltro) => {
+  if (whatsapp === 'sem') {
+    return 'Ninguém sem WhatsApp por aqui: todo mundo desta lista tem número que abre conversa.';
+  }
   if (recorte === 'atencao') {
     return 'Ninguém esperando. Toda conversa começada teve toque na última semana, e todo lead novo já foi abordado.';
-  }
-  if (recorte === 'sem-whatsapp') {
-    return 'Todo mundo desta lista tem número que abre conversa.';
   }
   return 'Nenhum cadastro com esses filtros.';
 };
@@ -163,19 +160,13 @@ export function PainelCrm({
    */
   const [vista, setVista] = useState<'tabela' | 'kanban'>('tabela');
   /**
-   * Esconder quem não dá para abordar por WhatsApp, POR RECORTE.
+   * Ter ou não WhatsApp, como filtro da base.
    *
-   * Recorte que não está no mapa é recorte onde o sócio não mexeu, e aí vale o
-   * padrão: LIGADO na fila de atenção, que é onde ele age, e desligado em
-   * "Todos", que é onde ele confere a base.
-   *
-   * ⚠️ Por recorte, e não um interruptor só. A primeira versão fazia a escolha
-   * valer nos dois assim que ele mexesse em um, e isso foi decisão minha e não
-   * dele: ele escolheu um PADRÃO POR RECORTE, e um interruptor global desfaz
-   * justamente essa distinção — desligar para conferir a base voltaria a
-   * encher a fila de gente que não dá para abordar.
+   * Nasce em "só quem tem": a tela abre pronta para o trabalho, sem ninguém
+   * precisar ligar nada. Vale para a lista E para os contadores, como o filtro
+   * de período NÃO vale — e a diferença tem motivo, explicada em `visiveisNaBase`.
    */
-  const [escondendo, setEscondendo] = useState<Partial<Record<Recorte, boolean>>>({});
+  const [filtroWhatsApp, setFiltroWhatsApp] = useState<ValorDoFiltro>('com');
 
   const cadastros = estado.tipo === 'pronto' ? estado.cadastros : VAZIO;
   // Nulo enquanto as etapas não chegam. Um mapa vazio faria todo mundo cair em
@@ -219,33 +210,18 @@ export function PainelCrm({
    * esconder devolveria sempre vazio.
    */
   /**
-   * O esconder vale neste recorte?
-   *
-   * ⚠️ NÃO há guarda isentando o recorte "Sem WhatsApp" aqui, e a ausência é
-   * deliberada. Houve um, e com o estado POR RECORTE ele virou inalcançável:
-   * ninguém consegue ligar o interruptor naquele recorte porque ele não é
-   * desenhado lá, então a entrada nunca existe no mapa e o padrão já responde
-   * falso. Um guarda que não pode disparar é pior que nenhum — parece proteger.
-   *
-   * Quem protege a pilha de ser escondida por ela mesma é o interruptor não
-   * existir naquele recorte, e há teste garantindo isso.
-   */
-  const escondeNo = (r: Recorte) => escondendo[r] ?? r === 'atencao';
-  const escondendoAqui = escondeNo(recorte);
-
-  /**
-   * A base já sem quem está escondido.
+   * A base já sem quem o filtro de WhatsApp tirou.
    *
    * O funil e a faixa de etiquetas contam DAQUI, e não da base crua. Eles
-   * continuam ignorando a busca — essa resposta não muda porque alguém digitou
-   * um nome —, mas seguem o esconder, e a diferença tem motivo: número ao lado
-   * de um botão promete o que o clique entrega. Com o esconder ligado e o funil
-   * contando tudo, ele dizia "Nutrindo 12" e o clique trazia 8, sem nada
-   * explicando o sumiço.
+   * continuam ignorando a BUSCA e o período — essas respostas não mudam porque
+   * alguém digitou um nome ou foi olhar quem chegou esta semana —, mas seguem o
+   * filtro de WhatsApp, e a diferença tem motivo: número ao lado de um botão
+   * promete o que o clique entrega. Com o filtro ligado e o funil contando
+   * tudo, ele dizia "Nutrindo 12" e o clique trazia 8, sem nada explicando.
    */
   const visiveisNaBase = useMemo(
-    () => (todos && escondendoAqui ? escondeSemWhatsApp(todos) : todos),
-    [todos, escondendoAqui],
+    () => (todos ? filtrarPorWhatsApp(todos, filtroWhatsApp) : null),
+    [todos, filtroWhatsApp],
   );
 
   const faltouAlgo = etapas.tipo === 'erro' || movimento.tipo === 'erro';
@@ -287,17 +263,12 @@ export function PainelCrm({
    */
   const lista = useMemo(() => {
     if (!noRecorte) return null;
-    // Esconder ANTES de montar a fila, e não depois: a fila ordena por urgência,
+    // Filtrar ANTES de montar a fila, e não depois: a fila ordena por urgência,
     // e tirar linhas de uma lista já ordenada deixaria buracos no topo.
-    const visiveis = escondendoAqui ? escondeSemWhatsApp(noRecorte) : noRecorte;
+    const visiveis = filtrarPorWhatsApp(noRecorte, filtroWhatsApp);
     if (recorte === 'atencao') return precisamDeAtencao(visiveis);
-    // Sai de `visiveis`, e não de `noRecorte`: quem manda no esconder é o
-    // `escondeNo`, e só ele. Lendo a base crua aqui, o guarda que isenta este
-    // recorte virava código morto — dava para apagá-lo sem nada mudar, que é o
-    // pior estado de um guarda: parece proteger e não protege.
-    const doRecorte = recorte === 'sem-whatsapp' ? semWhatsApp(visiveis) : visiveis;
-    return [...doRecorte].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
-  }, [noRecorte, recorte, escondendoAqui]);
+    return [...visiveis].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
+  }, [noRecorte, recorte, filtroWhatsApp]);
 
   /**
    * Quanta gente cada recorte mostraria, com os filtros de agora.
@@ -314,21 +285,16 @@ export function PainelCrm({
    */
   const quantos = useMemo<Record<Recorte, number> | null>(() => {
     if (!noRecorte) return null;
-    // Cada número segue o esconder DO SEU recorte, senão ele promete gente que
-    // o clique não traria. O de "Sem WhatsApp" conta a pilha inteira: é ela
-    // que o botão mostra.
-    const visiveisEm = (r: Recorte) =>
-      escondeNo(r) ? escondeSemWhatsApp(noRecorte) : noRecorte;
+    // Os dois números seguem o filtro de WhatsApp, senão eles prometem gente
+    // que o clique não traria. Um filtro só para os dois recortes é o que
+    // manteve isto simples: antes havia um esconder por recorte, e cada número
+    // tinha de consultar o esconder do SEU recorte para não mentir.
+    const visiveis = filtrarPorWhatsApp(noRecorte, filtroWhatsApp);
     return {
-      atencao: precisamDeAtencao(visiveisEm('atencao')).length,
-      'sem-whatsapp': semWhatsApp(visiveisEm('sem-whatsapp')).length,
-      todos: visiveisEm('todos').length,
+      atencao: precisamDeAtencao(visiveis).length,
+      todos: visiveis.length,
     };
-    // `escondeNo` é recriado a cada render e só lê `escondendo`, então a lista
-    // de dependências certa é essa — pô-lo aqui faria o memo recalcular sempre
-    // e a contagem deixaria de ser memo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noRecorte, escondendo]);
+  }, [noRecorte, filtroWhatsApp]);
 
   const porDia = useMemo(
     () => (lista && agrupado ? agruparPorDia(lista, (l) => l.cadastradoEm) : null),
@@ -420,6 +386,15 @@ export function PainelCrm({
                 }}
               />
 
+              {/* Do lado do período porque é da mesma natureza: os dois
+                  recortam a base por uma característica do cadastro, e não por
+                  uma fatia do trabalho. */}
+              <FiltroDeWhatsApp
+                valor={filtroWhatsApp}
+                semAsMarcas={marcas.tipo === 'erro'}
+                aoMudar={setFiltroWhatsApp}
+              />
+
               {posicao && (
                 <button
                   type="button"
@@ -494,32 +469,6 @@ export function PainelCrm({
                     ))}
                   </div>
 
-                  {/* Esconder quem não dá para abordar também é chave à parte,
-                      e por isso mora aqui e não vira um recorte: ela se combina
-                      com qualquer um deles. Some dentro do próprio "Sem
-                      WhatsApp", onde a pilha É a lista. */}
-                  {recorte !== 'sem-whatsapp' && (
-                    <label className="flex items-center gap-2 text-[13px] text-ink-2">
-                      <input
-                        type="checkbox"
-                        checked={escondendoAqui}
-                        onChange={(e) =>
-                          setEscondendo((antes) => ({ ...antes, [recorte]: e.target.checked }))
-                        }
-                        aria-label="Esconder quem não tem WhatsApp"
-                      />
-                      Esconder sem WhatsApp
-                      {/* Só aparece quando tem o que dizer: sem as marcas
-                          manuais o esconder ainda funciona pelo número, e
-                          calar sobre isso faria a lista parecer completa. */}
-                      {marcas.tipo === 'erro' && (
-                        <span className="text-[12px] text-ink-dim">
-                          (só pelo número — as marcas não carregaram)
-                        </span>
-                      )}
-                    </label>
-                  )}
-
                   {/* Agrupar é chave à parte, e não um terceiro recorte: ela se
                     combina com os dois recortes em vez de competir com eles.
                     Some no kanban, onde a coluna já é o agrupamento. */}
@@ -562,7 +511,7 @@ export function PainelCrm({
                   </div>
                 ))
               ) : (
-                <TabelaDeLeads leads={lista} vazio={vazioDo(recorte)} />
+                <TabelaDeLeads leads={lista} vazio={vazioDo(recorte, filtroWhatsApp)} />
               )}
             </div>
           </>
