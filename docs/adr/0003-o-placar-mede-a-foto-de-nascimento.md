@@ -14,6 +14,29 @@ responde a outra pergunta, e responder as duas com o mesmo número é como duas
 pessoas chegam a taxas diferentes para a mesma semana — o defeito que o script
 foi escrito para matar.
 
+## A foto de nascimento tem duas fontes (revisto em 16/09/2026, #436)
+
+A regra acima valia enquanto "primeiro registro" era uma coisa só. Não é: a nota
+mudou de escala entre `legacy` e `contexto_v1`, e o script e o placar filtravam a
+versão ANTES de pegar o primeiro registro — o que dava, para a linha nascida
+antes do cutover e reavaliada depois, uma foto diferente da que o histórico do
+assinante mostra.
+
+Passa a valer, nos dois lados:
+
+- **o preço** (odd e vantagem) vem da **primeira versão de todas**. "Apareceu na
+  tela" não tem versão de metodologia, e preço não mudou de escala;
+- **a nota e a data** vêm da **primeira `contexto_v1`**. A escala da nota mudou, e
+  somar as duas inventa uma série que nunca existiu. A data acompanha a nota
+  porque é ela que diz em que escala a nota foi calculada.
+
+A linha resultante vem de dois registros do snapshot, e isso é a decisão: preço e
+nota respondem perguntas diferentes, e só a nota tem problema de escala.
+
+`scripts/futebol-roi.mjs` e `get_futebol_oportunidades_publicadas` implementam a
+MESMA regra, e é por isso que ela está escrita aqui: mudar um lado sem o outro
+faz a tela e o terminal darem números diferentes de novo.
+
 ## Consequências
 
 Existem duas séries legítimas e diferentes sobre os mesmos jogos, e cada tela diz

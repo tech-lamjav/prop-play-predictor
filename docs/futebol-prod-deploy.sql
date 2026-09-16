@@ -3234,18 +3234,27 @@ begin
 
   return query
   with nascimento as (
+    -- SEM filtro de versão: identidade e PREÇO. "Apareceu na tela" não tem
+    -- versão de metodologia, e preço não mudou de escala (migration 148).
     select distinct on (h.opportunity_key)
       h.opportunity_key, h.fixture_id, h.market, h.outcome, h.line_value,
-      h.best_odd, h.edge, h.score, h.faixa, h.score_versao,
+      h.best_odd, h.edge
+    from futebol.fact_value_opportunities_hist h
+    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
+  ),
+  nota as (
+    -- COM filtro: a nota `legacy` veio de outro método, e somar as duas inventa
+    -- uma série que nunca existiu. A DATA fica aqui porque é ela que diz em que
+    -- escala esta NOTA foi calculada.
+    select distinct on (h.opportunity_key)
+      h.opportunity_key, h.score, h.faixa, h.score_versao,
       h.pts_premissas, h.penalidades, h.premissas_sem_dado,
       h.modelo_api_concorda, h.linha_sharp_confirma,
       h.pen_odd_outlier, h.pen_poucas_casas, h.pen_odd_longshot, h.pen_odd_juice,
       h.dbt_valid_from
     from futebol.fact_value_opportunities_hist h
-    -- Só a metodologia vigente. A nota `legacy` veio de outro método, e somar
-    -- as duas inventa uma série que nunca existiu.
     where h.score_versao = 'contexto_v1'
-    order by h.opportunity_key, h.dbt_valid_from asc
+    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select
     n.opportunity_key,
@@ -3257,29 +3266,31 @@ begin
     f.status_short,
     f.goals_home::int,
     f.goals_away::int,
-    n.dbt_valid_from,
+    t.dbt_valid_from,
     n.market,
     n.outcome,
     n.line_value,
     n.best_odd,
     n.edge,
-    n.score::int,
-    n.faixa,
-    n.score_versao,
-    n.pts_premissas::int,
-    n.penalidades::int,
-    n.premissas_sem_dado::int,
-    n.modelo_api_concorda,
-    n.linha_sharp_confirma,
-    n.pen_odd_outlier,
-    n.pen_poucas_casas,
-    n.pen_odd_longshot,
-    n.pen_odd_juice,
+    t.score::int,
+    t.faixa,
+    t.score_versao,
+    t.pts_premissas::int,
+    t.penalidades::int,
+    t.premissas_sem_dado::int,
+    t.modelo_api_concorda,
+    t.linha_sharp_confirma,
+    t.pen_odd_outlier,
+    t.pen_poucas_casas,
+    t.pen_odd_longshot,
+    t.pen_odd_juice,
     -- Left join, e não join: linha sem premissa casada chega com nulo em vez de
     -- desaparecer da conta. O casamento é 100% hoje, e o dia em que deixar de
     -- ser eu quero ver o buraco no denominador, não a linha sumindo.
     pa.acesas
   from nascimento n
+  -- Junção INTERNA: quem nunca teve versão `contexto_v1` continua fora.
+  join nota t on t.opportunity_key = n.opportunity_key
   join futebol.fact_fixtures f on f.fixture_id = n.fixture_id
   left join futebol.vw_premissas_acesas pa
     on pa.fixture_id = n.fixture_id
@@ -3290,9 +3301,9 @@ begin
   -- mostra. Em UTC, jogo das 21h de sábado cairia no domingo.
   where (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
           between p_de and p_ate
-     or (n.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
+     or (t.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
           between p_de and p_ate
-  order by f.kickoff_utc desc, n.score desc;
+  order by f.kickoff_utc desc, t.score desc;
 end;
 $function$;
 
@@ -3300,7 +3311,7 @@ revoke execute on function public.get_futebol_oportunidades_publicadas(date, dat
 grant execute on function public.get_futebol_oportunidades_publicadas(date, date) to authenticated;
 
 comment on function public.get_futebol_oportunidades_publicadas(date, date) is
-  'Foto de nascimento das oportunidades publicadas no período, com o placar do jogo e as premissas acesas. Insumo do placar da metodologia. Restrita a sócio: devolve o board inteiro, inclusive mercado oculto.';
+  'Foto de nascimento das oportunidades publicadas no periodo, com o placar do jogo e as premissas acesas. O PRECO vem da primeira versao de todas; a nota e a data vem da primeira contexto_v1 (migration 148). Insumo do placar da metodologia. Restrita a socio: devolve o board inteiro, inclusive mercado oculto.';
 
 -- O placar numa resposta só (migration 137). A API corta resposta de várias
 -- linhas em 1.000, e o período padrão passa de 3.000: é esta que o front chama.
