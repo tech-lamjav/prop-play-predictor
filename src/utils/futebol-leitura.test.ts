@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { resumoDosMercados, melhorLeitura, sufixoDeLeitura } from './futebol-leitura';
+import { resumoDosMercados, melhorLeitura, sufixoDeLeitura, leituraDaFolha, passaNaLeitura } from './futebol-leitura';
+import { PORTA_PREMISSAS } from './futebol-premissas';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import type { Saida } from './futebol-saida';
 
 // O caso é o Independ. Rivadavia x Fluminense (fixture 1547770, staging): o mart
 // cotou UMA saída de gols, Mais de 1,5, Score 54 — e é ela que Oportunidades
@@ -78,7 +80,74 @@ const resumo = (
   rows: Parameters<typeof resumoDosMercados>[0],
   valueRows: Parameters<typeof resumoDosMercados>[1],
   preferida: Parameters<typeof resumoDosMercados>[2] = null,
-) => resumoDosMercados(rows, valueRows, preferida, []);
+) => resumoDosMercados(rows, valueRows, preferida, [], []);
+
+// ============================================================================
+// A saída que o corte de valor removeu (#432)
+// ============================================================================
+// "Não tem linha de valor" significava DUAS coisas e chegava como uma só: o jogo
+// que não teve preço coletado, onde a contagem de premissas é a única leitura
+// que existe e é legítima; e a linha que teve preço e o corte tirou do board,
+// onde a decisão já foi tomada pelo preço.
+//
+// Chegando iguais, a folha respondia igual às duas: punha a contagem de
+// premissas onde estava o Score, no mesmo lugar, tamanho e cor. Para a segunda,
+// isso é devolver à tela a leitura que o board escondeu — com outro número.
+// ============================================================================
+const CORTADA_UNDER: Saida[] = [{ market: 'goals_over_under', outcome: 'Under', line_value: 4.5 }];
+
+describe('a saída cortada pelo corte de valor', () => {
+  it('a cortada não vira leitura de premissas, e não é destaque', () => {
+    const g = gols(resumoDosMercados(rows, null, null, [], CORTADA_UNDER));
+
+    expect(g.candidato.outcome).toBe('Under');
+    expect(g.cortada).toBe(true);
+    expect(g.passa).toBe(false);
+    expect(g.value).toBeNull();
+  });
+
+  it('sem preço coletado nada muda — este é o caso legítimo, e não pode regredir', () => {
+    const g = gols(resumoDosMercados(rows, null, null, [], []));
+
+    expect(g.cortada).toBe(false);
+    expect(g.passa).toBe(true);
+    expect(g.nValem).toBe(UNDER_45.length);
+  });
+
+  it('com linha de valor viva, o corte não tem o que dizer sobre o mercado', () => {
+    const g = gols(resumoDosMercados(rows, [value('Under', 4.5, 61)], null, [], CORTADA_UNDER));
+
+    expect(g.value?.score).toBe(61);
+    expect(g.cortada).toBe(false);
+  });
+
+  it('a mesma regra responde nos dois grãos, o do mercado e o da saída', () => {
+    // O resumo pergunta por mercado e o chip da bancada pergunta por saída. Eram
+    // duas cópias da mesma linha, e mudar a porta deixaria uma para trás.
+    expect(passaNaLeitura({ faixa: 'Alta' }, false, 0)).toBe(true);
+    // Com preço, a contagem de premissas não decide nada.
+    expect(passaNaLeitura({ faixa: 'Baixa' }, false, 99)).toBe(false);
+    expect(passaNaLeitura(null, false, PORTA_PREMISSAS)).toBe(true);
+    // E a cortada não entra pela porta de premissas.
+    expect(passaNaLeitura(null, true, PORTA_PREMISSAS)).toBe(false);
+  });
+
+  it('a folha tem TRÊS estados, e é o par do meio que a tela confundia', () => {
+    // O número grande da folha sai daqui. Sem o terceiro estado, "não tem linha
+    // de valor" respondia a mesma coisa para o jogo sem preço coletado e para a
+    // linha que o corte removeu.
+    expect(leituraDaFolha(true, false)).toBe('score');
+    expect(leituraDaFolha(false, false)).toBe('premissas');
+    expect(leituraDaFolha(false, true)).toBe('nenhuma');
+  });
+
+  it('a manchete do jogo não elege o mercado cortado', () => {
+    // `melhorLeitura` dá o título da faixa e do painel de resumo. Sem preço ela
+    // ordena por premissas, e sem esta regra a cortada seria justamente a
+    // campeã — a linha escondida virando o título da tela.
+    expect(melhorLeitura(resumoDosMercados(rows, null, null, [], CORTADA_UNDER))).toBeNull();
+  });
+});
 
 describe('resumoDosMercados', () => {
   // Esta suíte não testa a vitrine — ela vive em futebol-vitrine-aceite.test.ts.
@@ -90,7 +159,7 @@ describe('resumoDosMercados', () => {
     rows: Parameters<typeof resumoDosMercados>[0],
     valueRows: Parameters<typeof resumoDosMercados>[1],
     preferida: Parameters<typeof resumoDosMercados>[2] = null,
-  ) => resumoDosMercados(rows, valueRows, preferida, []);
+  ) => resumoDosMercados(rows, valueRows, preferida, [], []);
 
   it('com preço, quem representa o mercado é a saída que tem preço', () => {
     const g = gols(resumo(rows, [value('Over', 1.5, 54)]));

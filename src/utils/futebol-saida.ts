@@ -49,3 +49,19 @@ export function mesmaLinha(a: number | null | undefined, b: number | null | unde
   if (a == null || b == null) return false;
   return Math.abs(a - b) < 0.011;
 }
+
+/**
+ * Mesma saída — mesmo mercado, mesmo lado, mesma parada?
+ *
+ * A tripla estava escrita de novo a cada vez que alguém precisava casar duas
+ * listas do jogo (`valueDoCandidato`, `candidatoDaValue`, e agora o corte de
+ * valor), sempre igual. Uma cópia que esquecesse o `outcome` casaria o Over com
+ * o Under da mesma parada — que é o #264 outra vez, e para o compilador são só
+ * duas strings e um número.
+ *
+ * Mora aqui pelo mesmo motivo de `mesmaLinha`: este é o módulo folha da saída, e
+ * quem casa saída já depende dele.
+ */
+export function mesmaSaida(a: Saida, b: Saida): boolean {
+  return a.market === b.market && a.outcome === b.outcome && mesmaLinha(a.line_value, b.line_value);
+}

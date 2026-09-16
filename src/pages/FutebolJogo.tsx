@@ -9,7 +9,7 @@ import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { CampoEscalacao } from '@/components/futebol/CampoEscalacao';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies,
@@ -271,6 +271,18 @@ export default function FutebolJogo() {
   // todos eles sem que nada tivesse mudado.
   const demoValueRows = useDemoFixtureValueRows(realValueRows);
   const valueRows = isDemo ? demoValueRows : realValueRows;
+  // As saídas que o corte de valor removeu (#432). Mesma resposta do serviço que
+  // o `valueRows`, e por isso a mesma busca: as duas descem juntas para a faixa e
+  // para a bancada, senão existe um instante em que a tela tem as linhas e não
+  // tem as cortadas — e é justamente nele que ela anuncia o que escondemos.
+  //
+  // Na demonstração não há cortada nenhuma: as linhas são de exemplo e não
+  // passaram por corte.
+  const { data: cortadasDoJogo } = useFutebolFixtureCortadas(fid);
+  const cortadas = useMemo(
+    () => (isDemo ? [] : cortadasDoJogo ?? []),
+    [isDemo, cortadasDoJogo],
+  );
   const { data: access } = useFutebolAccess();
   const locked = isDemo ? false : !access?.unlocked;
   // Perfis (médias da temporada) dos dois times — pra "Estatísticas · temporada"
@@ -517,6 +529,7 @@ export default function FutebolJogo() {
                   jogo={jogoInfo}
                   premissas={premissasDoJogo}
                   valueRows={valueRows}
+                  cortadas={cortadas}
                   ocultos={ocultos}
                   leituraCarregando={leituraCarregando}
                   locked={locked}
@@ -598,6 +611,7 @@ export default function FutebolJogo() {
                 <BancadaMercados
                   jogo={jogoInfo}
                   valueRows={valueRows}
+                  cortadas={cortadas}
                   tendencies={tendencies}
                   locked={locked}
                   mercadoAtivo={mercadoAtivo}

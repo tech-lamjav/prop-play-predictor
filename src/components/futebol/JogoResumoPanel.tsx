@@ -10,6 +10,7 @@ import {
   useFutebolFixtureInjuries,
   useFutebolFixtureHistorico,
   useFutebolFixtureReasonContract,
+  useFutebolFixtureCortadas,
   useVitrine,
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
@@ -18,6 +19,7 @@ import { chancePct, pickLabel } from '@/utils/futebol-score';
 import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
 import { contaQueValem, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
 import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
+import { mesmaSaida } from '@/utils/futebol-saida';
 import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico, perfilDaJanela } from '@/utils/futebol-historico';
@@ -131,7 +133,17 @@ export function JogoResumoPanel({
   // premissas. É a mesma conta da tela de jogo, então os dois nunca divergem.
   // A vitrine (#324): mesma razão do JogoResumo — a prateleira sai do catálogo.
   const { ocultos } = useVitrine();
-  const resumos = useMemo(() => resumoDosMercados(premissas, best ? [] : null, null, ocultos), [premissas, best, ocultos]);
+  // O corte de valor (#432). O `best` já chega cortado do board, mas quando não
+  // há linha no board a leitura sai das PREMISSAS — e essas não passam por corte
+  // nenhum. Sem isto, a saída que o corte removeu vira a "melhor leitura" do
+  // jogo aqui, com a contagem de premissas no mesmo número grande âmbar.
+  const { data: cortadas, isLoading: cortadasCarregando } = useFutebolFixtureCortadas(
+    demo ? undefined : fixture.fixture_id,
+  );
+  const resumos = useMemo(
+    () => resumoDosMercados(premissas, best ? [] : null, null, ocultos, cortadas ?? []),
+    [premissas, best, ocultos, cortadas],
+  );
   const topo = useMemo(() => melhorLeitura(resumos), [resumos]);
 
   const mercadoLeitura = best ? best.market : topo?.mercado.slug ?? null;
@@ -141,13 +153,7 @@ export function JogoResumoPanel({
   const cand = !mercadoLeitura
     ? null
     : (best
-        ? (premissas ?? []).find(
-            (r) =>
-              r.market === best.market &&
-              r.outcome === best.outcome &&
-              ((r.line_value == null && best.line_value == null) ||
-                (r.line_value != null && best.line_value != null && Math.abs(r.line_value - best.line_value) < 0.011)),
-          )
+        ? (premissas ?? []).find((r) => mesmaSaida(r, best))
         : null) ?? resumos.find((r) => r.mercado.slug === mercadoLeitura)?.candidato ?? null;
   const pick = best
     ? pickLabel(best, fixture.home_team_name, fixture.away_team_name)
@@ -156,8 +162,21 @@ export function JogoResumoPanel({
       : null;
 
   // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
-  const carregandoLeitura = demo ? false : leituraCarregando || premissasCarregando;
-  const temLeitura = !!best || (topo != null && topo.nValem > 0);
+  //
+  // O corte entra na espera (#432). Aqui as premissas e as cortadas vêm de
+  // consultas DIFERENTES — ao contrário da tela do jogo, onde as duas listas
+  // nascem da mesma resposta —, e entre uma e outra existe a janela em que o
+  // painel já conhece a leitura e ainda não sabe que ela foi cortada.
+  const carregandoLeitura = demo
+    ? false
+    : leituraCarregando || premissasCarregando || cortadasCarregando;
+  // `temLeitura` é o que decide a manchete, e ele NÃO passa por `carregandoLeitura`
+  // no bloco do pick: sem esta guarda, somar a espera não fecharia janela nenhuma.
+  //
+  // Só o lado das premissas espera. `best` vem do board, que já chega cortado do
+  // serviço: segurá-lo atrasaria a leitura COM preço por causa de uma consulta
+  // que não muda nada nela.
+  const temLeitura = !!best || (!carregandoLeitura && topo != null && topo.nValem > 0);
   // Os dois links do painel levam à MESMA leitura que ele está exibindo (#344).
   //
   // `best ?? cand`, e não só `best`: a #344 mandava apenas a leitura COM preço,

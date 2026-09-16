@@ -2974,12 +2974,23 @@ comment on function public.get_futebol_vitrine() is
 revoke execute on function public.get_futebol_vitrine() from public;
 grant execute on function public.get_futebol_vitrine() to anon, authenticated, service_role;
 
-insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)
+-- O handicap VOLTOU à vitrine em 16/09/2026, com data de corte: fica escondido
+-- para jogo anterior a 17/09 e aparece de lá em diante. A linha continua aqui,
+-- com o período FECHADO, porque é ela que segura o passado — sem ela, um
+-- ambiente novo mostraria no histórico as linhas do tempo em que o mercado
+-- esteve fora, que nunca estiveram em tela nenhuma.
+--
+-- Semeava `oculto = true` até 16/09 (prop-play-predictor#433). A RPC antiga lê
+-- `where oculto`, então um ambiente reprovisionado nascia com o mercado sumido
+-- do painel e das mensagens — o mesmo estado velho que a #433 tirou das duas
+-- listas compiladas do código.
+insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, oculto_ate, motivo)
 values (
   'asian_handicap',
-  true,
-  timestamptz '2026-09-01 00:00:00+00',
-  'ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols. Investigacao na B3 (ClickUp wdx6zev656). Decisao do PM em 31/08/2026, prop-play-predictor#324.'
+  false,
+  timestamptz '2024-01-01 00:00:00-03',
+  timestamptz '2026-09-17 00:00:00-03',
+  'Fora da vitrine por ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols (decisao do PM em 31/08/2026, prop-play-predictor#324). De volta em 16/09/2026 com corte de valor de -2% e data de corte em 17/09 (prop-play-predictor#419 e #420).'
 )
 on conflict (market) do nothing;
 
@@ -3029,6 +3040,44 @@ values (
   'Desde 01/09: edge > -2% ROI +7,9 em 122 linhas (EP 9,0); edge <= -2% ROI -17,4 em 232 (EP 7,5). Remedicao na analytics-engineering#156. Decisao do PM em 12/09/2026, ClickUp wdx6zf1gpn.'
 )
 on conflict (market) do nothing;
+
+-- Mudar o limiar é UPDATE nas duas colunas, e o gatilho faz a segunda (migration
+-- 147): sem ele, um update só no limiar reescreve o passado -- some do histórico
+-- a linha que já foi vista, ou volta a que nunca esteve na tela.
+--
+-- Carimba só quando o VALOR muda: `update of` dispara por menção, e reescrever o
+-- mesmo número empurraria a vigência para frente sem que a régua tivesse mudado.
+--
+-- Limite conhecido: o plpgsql não distingue coluna ausente do SET de coluna
+-- presente com o mesmo valor, então repetir a vigência que já está gravada é
+-- sobrescrito por now(). Para datar a mudança, passe uma vigência diferente.
+create or replace function public.futebol_limiar_valor_vigencia()
+returns trigger
+language plpgsql
+set search_path to ''
+as $function$
+begin
+  if new.limiar is not distinct from old.limiar then
+    return new;
+  end if;
+  if new.vigente_desde is not distinct from old.vigente_desde then
+    new.vigente_desde := now();
+  end if;
+  return new;
+end;
+$function$;
+
+comment on column public.futebol_limiar_valor.vigente_desde is
+  'Data a partir da qual o limiar vale. RECARIMBADA pelo gatilho futebol_limiar_valor_vigencia quando o limiar muda sem vigencia explicita (migration 147). Para datar a mudanca, passe uma vigencia diferente da gravada.';
+
+revoke execute on function public.futebol_limiar_valor_vigencia() from public;
+revoke execute on function public.futebol_limiar_valor_vigencia() from anon, authenticated;
+grant execute on function public.futebol_limiar_valor_vigencia() to service_role;
+
+drop trigger if exists futebol_limiar_valor_vigencia on public.futebol_limiar_valor;
+create trigger futebol_limiar_valor_vigencia
+  before update of limiar on public.futebol_limiar_valor
+  for each row execute function public.futebol_limiar_valor_vigencia();
 
 -- ── Insumo do placar da metodologia (migration 133) ───────────────────
 -- A FOTO DE NASCIMENTO de cada oportunidade publicada, com o placar do jogo:
@@ -3185,18 +3234,27 @@ begin
 
   return query
   with nascimento as (
+    -- SEM filtro de versão: identidade e PREÇO. "Apareceu na tela" não tem
+    -- versão de metodologia, e preço não mudou de escala (migration 148).
     select distinct on (h.opportunity_key)
       h.opportunity_key, h.fixture_id, h.market, h.outcome, h.line_value,
-      h.best_odd, h.edge, h.score, h.faixa, h.score_versao,
+      h.best_odd, h.edge
+    from futebol.fact_value_opportunities_hist h
+    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
+  ),
+  nota as (
+    -- COM filtro: a nota `legacy` veio de outro método, e somar as duas inventa
+    -- uma série que nunca existiu. A DATA fica aqui porque é ela que diz em que
+    -- escala esta NOTA foi calculada.
+    select distinct on (h.opportunity_key)
+      h.opportunity_key, h.score, h.faixa, h.score_versao,
       h.pts_premissas, h.penalidades, h.premissas_sem_dado,
       h.modelo_api_concorda, h.linha_sharp_confirma,
       h.pen_odd_outlier, h.pen_poucas_casas, h.pen_odd_longshot, h.pen_odd_juice,
       h.dbt_valid_from
     from futebol.fact_value_opportunities_hist h
-    -- Só a metodologia vigente. A nota `legacy` veio de outro método, e somar
-    -- as duas inventa uma série que nunca existiu.
     where h.score_versao = 'contexto_v1'
-    order by h.opportunity_key, h.dbt_valid_from asc
+    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select
     n.opportunity_key,
@@ -3208,29 +3266,31 @@ begin
     f.status_short,
     f.goals_home::int,
     f.goals_away::int,
-    n.dbt_valid_from,
+    t.dbt_valid_from,
     n.market,
     n.outcome,
     n.line_value,
     n.best_odd,
     n.edge,
-    n.score::int,
-    n.faixa,
-    n.score_versao,
-    n.pts_premissas::int,
-    n.penalidades::int,
-    n.premissas_sem_dado::int,
-    n.modelo_api_concorda,
-    n.linha_sharp_confirma,
-    n.pen_odd_outlier,
-    n.pen_poucas_casas,
-    n.pen_odd_longshot,
-    n.pen_odd_juice,
+    t.score::int,
+    t.faixa,
+    t.score_versao,
+    t.pts_premissas::int,
+    t.penalidades::int,
+    t.premissas_sem_dado::int,
+    t.modelo_api_concorda,
+    t.linha_sharp_confirma,
+    t.pen_odd_outlier,
+    t.pen_poucas_casas,
+    t.pen_odd_longshot,
+    t.pen_odd_juice,
     -- Left join, e não join: linha sem premissa casada chega com nulo em vez de
     -- desaparecer da conta. O casamento é 100% hoje, e o dia em que deixar de
     -- ser eu quero ver o buraco no denominador, não a linha sumindo.
     pa.acesas
   from nascimento n
+  -- Junção INTERNA: quem nunca teve versão `contexto_v1` continua fora.
+  join nota t on t.opportunity_key = n.opportunity_key
   join futebol.fact_fixtures f on f.fixture_id = n.fixture_id
   left join futebol.vw_premissas_acesas pa
     on pa.fixture_id = n.fixture_id
@@ -3241,9 +3301,9 @@ begin
   -- mostra. Em UTC, jogo das 21h de sábado cairia no domingo.
   where (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
           between p_de and p_ate
-     or (n.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
+     or (t.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
           between p_de and p_ate
-  order by f.kickoff_utc desc, n.score desc;
+  order by f.kickoff_utc desc, t.score desc;
 end;
 $function$;
 
@@ -3251,7 +3311,7 @@ revoke execute on function public.get_futebol_oportunidades_publicadas(date, dat
 grant execute on function public.get_futebol_oportunidades_publicadas(date, date) to authenticated;
 
 comment on function public.get_futebol_oportunidades_publicadas(date, date) is
-  'Foto de nascimento das oportunidades publicadas no período, com o placar do jogo e as premissas acesas. Insumo do placar da metodologia. Restrita a sócio: devolve o board inteiro, inclusive mercado oculto.';
+  'Foto de nascimento das oportunidades publicadas no periodo, com o placar do jogo e as premissas acesas. O PRECO vem da primeira versao de todas; a nota e a data vem da primeira contexto_v1 (migration 148). Insumo do placar da metodologia. Restrita a socio: devolve o board inteiro, inclusive mercado oculto.';
 
 -- O placar numa resposta só (migration 137). A API corta resposta de várias
 -- linhas em 1.000, e o período padrão passa de 3.000: é esta que o front chama.
@@ -3343,6 +3403,18 @@ from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and p.proname like 'get_futebol%'
 order by 1;
+*/
+-- E os GATILHOS, que são o caso mais silencioso de todos: a função existe, o
+-- arquivo parece completo, e o gatilho não está lá. A regra fica instalada e
+-- desligada, que é pior do que não ter, porque parece protegida.
+/*
+select c.relname as tabela, t.tgname as gatilho, p.proname as funcao
+from pg_trigger t
+join pg_class c on c.oid = t.tgrelid
+join pg_proc p on p.oid = t.tgfoid
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and not t.tgisinternal and c.relname like 'futebol%'
+order by 1, 2;
 */
 
 -- ============================================================================

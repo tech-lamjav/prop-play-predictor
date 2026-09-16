@@ -48,6 +48,21 @@ function funcoesComGrant(sql: string): Set<string> {
   return nomes;
 }
 
+/**
+ * Nomes de gatilho criados por um SQL qualquer.
+ *
+ * Gatilho é o caso mais silencioso da #250: a FUNÇÃO vem para o shape file, o
+ * arquivo parece completo, e o `create trigger` fica para trás. Aí a regra
+ * nasce instalada e desligada no ambiente novo — pior do que não existir,
+ * porque parece protegida.
+ */
+function gatilhosCriados(sql: string): Set<string> {
+  const nomes = new Set<string>();
+  const re = /create\s+trigger\s+(\w+)/gi;
+  for (const m of sql.matchAll(re)) nomes.add(m[1]);
+  return nomes;
+}
+
 const shape = readFileSync(SHAPE, 'utf8');
 
 describe('shape file de futebol (docs/futebol-prod-deploy.sql)', () => {
@@ -104,6 +119,34 @@ describe('shape file de futebol (docs/futebol-prod-deploy.sql)', () => {
       faltando,
       `Estas funções existem em migration e NÃO estão no shape file:\n  ${faltando.join('\n  ')}\n` +
         `Traga-as para docs/futebol-prod-deploy.sql (com grant) no mesmo PR da migration.`,
+    ).toEqual([]);
+  });
+
+  // O mesmo para GATILHO. A guarda acima cobra só a função, e a função sozinha
+  // não faz nada: quem liga a regra é o `create trigger`.
+  it('tem todo gatilho de futebol que alguma migration cria', () => {
+    const arquivos = readdirSync(MIGRACOES).filter((f) => f.endsWith('.sql'));
+    const doBanco = new Map<string, string>(); // gatilho -> migration que criou
+
+    for (const arq of arquivos) {
+      const sql = readFileSync(resolve(MIGRACOES, arq), 'utf8');
+      for (const nome of gatilhosCriados(sql)) {
+        if (!/futebol/i.test(nome)) continue;
+        if (nome.startsWith('crm_')) continue;
+        if (!doBanco.has(nome)) doBanco.set(nome, arq);
+      }
+    }
+
+    const noShape = gatilhosCriados(shape);
+    const faltando = [...doBanco.entries()]
+      .filter(([nome]) => !noShape.has(nome))
+      .map(([nome, arq]) => `${nome} (criado em ${arq})`)
+      .sort();
+
+    expect(
+      faltando,
+      `Estes gatilhos existem em migration e NÃO estão no shape file:\n  ${faltando.join('\n  ')}\n` +
+        `Traga-os para docs/futebol-prod-deploy.sql no mesmo PR da migration — a função sem o gatilho é regra desligada.`,
     ).toEqual([]);
   });
 });
