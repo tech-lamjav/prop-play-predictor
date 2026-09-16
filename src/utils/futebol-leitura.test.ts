@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { resumoDosMercados, melhorLeitura, sufixoDeLeitura, leituraDaFolha } from './futebol-leitura';
+import { resumoDosMercados, melhorLeitura, sufixoDeLeitura, leituraDaFolha, passaNaLeitura } from './futebol-leitura';
+import { PORTA_PREMISSAS } from './futebol-premissas';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
 import type { Saida } from './futebol-saida';
 
@@ -118,6 +119,17 @@ describe('a saída cortada pelo corte de valor', () => {
 
     expect(g.value?.score).toBe(61);
     expect(g.cortada).toBe(false);
+  });
+
+  it('a mesma regra responde nos dois grãos, o do mercado e o da saída', () => {
+    // O resumo pergunta por mercado e o chip da bancada pergunta por saída. Eram
+    // duas cópias da mesma linha, e mudar a porta deixaria uma para trás.
+    expect(passaNaLeitura({ faixa: 'Alta' }, false, 0)).toBe(true);
+    // Com preço, a contagem de premissas não decide nada.
+    expect(passaNaLeitura({ faixa: 'Baixa' }, false, 99)).toBe(false);
+    expect(passaNaLeitura(null, false, PORTA_PREMISSAS)).toBe(true);
+    // E a cortada não entra pela porta de premissas.
+    expect(passaNaLeitura(null, true, PORTA_PREMISSAS)).toBe(false);
   });
 
   it('a folha tem TRÊS estados, e é o par do meio que a tela confundia', () => {

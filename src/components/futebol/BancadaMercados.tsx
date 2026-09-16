@@ -857,7 +857,17 @@ export function BancadaMercados({
                   ) : (
                     leituraCotacao.estado === 'cotada'
                       ? ` · cotada @ ${leituraCotacao.odd.toFixed(2)}`
-                      : ' · sem cotação'
+                      // A cortada sem odd na régua NÃO diz "sem cotação": preço
+                      // houve, e foi ele que decidiu. A folha ganhou frase
+                      // própria por esse mesmo motivo, e o card dizia o
+                      // contrário dela na mesma tela.
+                      //
+                      // E não volta a dizer "fora dos filtros", que é o
+                      // vocabulário que o selo removido levou embora: "filtros"
+                      // é a nossa máquina. É a frase da folha, encurtada.
+                      : r.cortada
+                        ? ' · não é oportunidade'
+                        : ' · sem cotação'
                   )}
                 </div>
                 {!semLeituraNoCard && (
