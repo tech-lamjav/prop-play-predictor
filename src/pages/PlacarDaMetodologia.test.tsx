@@ -104,6 +104,20 @@ describe('a página do placar', () => {
     expect(screen.getByText(/2 oportunidades publicadas no período/)).toBeInTheDocument();
   });
 
+  it('abre na vitrine, porque a primeira pergunta é como foi o produto no ar', () => {
+    // O padrão era o board inteiro. Ele respondia calado a segunda pergunta —
+    // como está a metodologia — somando na mesma conta a linha que o assinante
+    // nunca viu. A decisão sobre o mercado oculto continua aqui, a um clique.
+    estado.tipo = 'pronto';
+    estado.publicadas = [linha(), linha({ market: 'asian_handicap' })];
+    montar();
+
+    expect(screen.getByRole('button', { name: 'Só a vitrine', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Board inteiro', pressed: false })).toBeInTheDocument();
+    // E a tela diz quantas ficaram de fora: sem isso, a conta encolhe calada.
+    expect(screen.getByText(/uma oportunidade ficou de fora/i)).toBeInTheDocument();
+  });
+
   it('abre simulando com as unidades que os sócios usam, e diz que é simulação', () => {
     // Zero na Baixa, meia na Média, uma nas Altas: pedido como padrão para a
     // primeira leitura já responder "como a gente teria ido". Como não é o
