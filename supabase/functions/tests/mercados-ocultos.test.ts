@@ -7,6 +7,7 @@ import {
   filtrarMercadosOcultos,
   filtrarPelaVitrine,
   mercadoOcultoNaData,
+  ocultosAgora,
   VITRINE_FALLBACK,
 } from "../shared/mercados-ocultos.ts";
 
@@ -124,21 +125,10 @@ Deno.test("carrega a vitrine com o periodo", async () => {
   });
 });
 
-Deno.test("sem a RPC nova, cai para a lista de nomes — sem data, mas sem mentir", async () => {
-  const supabase = {
-    rpc: (nome: string) =>
-      nome === "get_futebol_vitrine"
-        ? Promise.reject(new Error("function does not exist"))
-        : Promise.resolve({ data: ["asian_handicap"], error: null }),
-  };
-  assertEquals(await carregarVitrine(supabase), {
-    mercados: [{ market: "asian_handicap", ocultoDesde: null, ocultoAte: null }],
-    origem: "sem-data",
-  });
-});
-
-Deno.test("as duas RPCs fora do ar caem para o fallback", async () => {
-  const supabase = { rpc: () => Promise.reject(new Error("boom")) };
+// No escuro a mensagem FECHA. Cair para a lista de nomes reproduziria o
+// vazamento: com o mercado religado ela vem vazia, e nada seria escondido.
+Deno.test("sem a RPC do periodo, o escuro fecha no fallback", async () => {
+  const supabase = { rpc: () => Promise.reject(new Error("function does not exist")) };
   assertEquals(await carregarVitrine(supabase), {
     mercados: VITRINE_FALLBACK.map((market) => ({
       market,
@@ -149,13 +139,8 @@ Deno.test("as duas RPCs fora do ar caem para o fallback", async () => {
   });
 });
 
-Deno.test("resposta sem array cai para o degrau seguinte", async () => {
-  const supabase = {
-    rpc: (nome: string) =>
-      nome === "get_futebol_vitrine"
-        ? Promise.resolve({ data: null, error: null })
-        : Promise.resolve({ data: null, error: { message: "boom" } }),
-  };
+Deno.test("resposta sem array tambem cai para o fallback", async () => {
+  const supabase = { rpc: () => Promise.resolve({ data: null, error: null }) };
   assertEquals(await carregarVitrine(supabase), {
     mercados: VITRINE_FALLBACK.map((market) => ({
       market,
@@ -164,4 +149,28 @@ Deno.test("resposta sem array cai para o degrau seguinte", async () => {
     })),
     origem: "fallback",
   });
+});
+
+// O formato cru do timestamp, com espaco no lugar do T. Os outros leitores de
+// kickoff destas funcoes ja o normalizavam; sem isto, a data vira ilegivel e o
+// periodo fechado deixa de esconder.
+Deno.test("kickoff com espaco decide igual ao com T", () => {
+  assertEquals(
+    mercadoOcultoNaData("asian_handicap", "2026-09-16 17:00:00", PERIODO_FECHADO, AGORA),
+    true,
+  );
+  assertEquals(
+    mercadoOcultoNaData("asian_handicap", "2026-09-17 19:00:00", PERIODO_FECHADO, AGORA),
+    false,
+  );
+});
+
+Deno.test("ocultosAgora ignora o mercado que voltou", () => {
+  assertEquals(ocultosAgora(PERIODO_FECHADO), []);
+  assertEquals(
+    ocultosAgora([
+      { market: "asian_handicap", ocultoDesde: "2026-09-01T00:00:00Z", ocultoAte: null },
+    ]),
+    ["asian_handicap"],
+  );
 });

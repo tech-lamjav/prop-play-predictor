@@ -30,6 +30,12 @@ export function mercadoEstaOculto(
   return ocultos.includes(market);
 }
 
+/**
+ * ⚠️ Sem consumidor de produção deste lado desde a #439 — quem decide envio é o
+ * `filtrarPelaVitrine`, que sabe de data. Continua exportado porque é METADE do
+ * par de predicados que a guarda de paridade compara com o painel, onde ele
+ * segue em uso para decidir sobre o presente.
+ */
 export function filtrarMercadosOcultos<T extends { market: string }>(
   linhas: readonly T[],
   ocultos: readonly string[],
@@ -56,19 +62,33 @@ export interface MercadoOculto {
 // ---------------------------------------------------------------------------
 // Datas, inlineadas de propósito
 // ---------------------------------------------------------------------------
-// Cópias de `src/utils/futebol-datas.ts`. Não dá para importar: o painel roda no
-// browser e isto roda em Deno, e este arquivo ainda é lido pelo vitest da guarda
-// de paridade — um import com extensão `.ts` de módulo Deno quebraria lá.
+// Cópias de `src/utils/futebol-datas.ts`. Não dá para importar, e o motivo é o
+// DEPLOY: cada edge function é empacotada sozinha, a partir de
+// `supabase/functions`, então um import que alcance `src/` não sobe. É o mesmo
+// motivo pelo qual o `corte-de-valor.ts` ao lado não importa nada — e,
+// provavelmente, por que esta regra nunca tinha sido espelhada para cá.
 //
-// É o mesmo motivo pelo qual o `corte-de-valor.ts` ao lado não tem import
-// nenhum. Mudou uma, muda a outra; a guarda compara comportamento.
+// (Não é restrição do vitest: o tsconfig liga `allowImportingTsExtensions`, e a
+// guarda de paridade importa este arquivo sem problema. Uma versão anterior
+// deste comentário dizia isso, e ensinava errado.)
+//
+// Mudou uma cópia, muda a outra; a guarda compara comportamento, caso a caso.
 // ---------------------------------------------------------------------------
 
 const SAO_PAULO_TZ = "America/Sao_Paulo";
 
 function parseUtc(raw: string | null | undefined): Date | null {
   if (!raw) return null;
-  const iso = raw.includes("T") ? raw : `${raw}T00:00:00`;
+  // O separador com ESPAÇO é o formato do `timestamp without time zone` cru, e
+  // aparece nos dois lados da fronteira. Sem aceitá-lo, esta função devolve nulo
+  // e `mercadoOcultoNaData` cai no ramo do kickoff ilegível — que, com período
+  // fechado, NÃO esconde: o vazamento da #439 voltaria calado. Os outros três
+  // leitores de kickoff destas funções já normalizavam.
+  const iso = raw.includes("T")
+    ? raw
+    : raw.includes(" ")
+    ? raw.replace(" ", "T")
+    : `${raw}T00:00:00`;
   const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -121,6 +141,22 @@ export function mercadoOcultoNaData(
 }
 
 /**
+ * Os mercados fora da vitrine AGORA — só os nomes.
+ *
+ * Espelho do `ocultosAgora` do painel, que documenta esta passagem como
+ * obrigatória para todo consumidor de "está oculto hoje", com aviso explícito
+ * contra o `.map` direto na vitrine.
+ *
+ * Aqui quem consome é a TELEMETRIA do ensaio. Sem isto, o evento que existe
+ * para denunciar vitrine desatualizada passaria a listar para sempre, como
+ * oculto, o mercado que voltou à prateleira — justamente no dia em que alguém
+ * confere o religar, que foi como a #439 apareceu.
+ */
+export function ocultosAgora(vitrine: readonly MercadoOculto[]): string[] {
+  return vitrine.filter((m) => m.ocultoAte == null).map((m) => m.market);
+}
+
+/**
  * Tira da fila de mensagem as linhas escondidas NA DATA DELAS.
  *
  * Substitui o `filtrarMercadosOcultos` nos dois pontos de envio. Aquele decide
@@ -166,21 +202,23 @@ export const VITRINE_FALLBACK: readonly string[] = ["asian_handicap"];
  * então o escuro cai para o `VITRINE_FALLBACK`, e a mensagem sai SEM o mercado
  * escondido em vez de sair errada ou não sair.
  *
- * Degrada em DOIS degraus, na mesma ordem do painel (`getVitrine` do service):
+ * UM degrau só, e é aqui que este carregador diverge do painel de propósito.
  *
- *   1. `get_futebol_vitrine`, que dá o período desde a migration 145;
- *   2. a RPC antiga, que dá só os nomes — é o caso de uma função publicada
- *      antes da 145. Sem data, a regra vale para o presente e não toca no
- *      passado, que é o comportamento anterior: degradação, não regressão;
- *   3. sem nem isso, o fallback compilado.
+ * O painel degrada para a RPC antiga, que devolve só os NOMES dos mercados
+ * ocultos agora. Do lado da mensagem esse degrau é pior do que inútil: com o
+ * mercado religado, a lista de nomes vem VAZIA, nada é escondido, e isso é
+ * exatamente o estado que vazou em 16/09. Seria reproduzir o defeito no escuro.
+ *
+ * O painel pode se dar a esse luxo porque tela errada se corrige na próxima
+ * renderização; DM enviada não volta. Então aqui o escuro FECHA: sem o período,
+ * vale o `VITRINE_FALLBACK`, que esconde de hoje em diante sem tocar no passado.
  *
  * Devolve a origem para o chamador registrar o estado degradado: silêncio aqui é
- * como uma vitrine desatualizada sobreviveria sem ninguém notar. `sem-data` é
- * origem própria justamente porque nesse degrau o corte por período não existe.
+ * como uma vitrine desatualizada sobreviveria sem ninguém notar.
  */
 export async function carregarVitrine(
   supabase: ClienteRpc,
-): Promise<{ mercados: MercadoOculto[]; origem: "banco" | "sem-data" | "fallback" }> {
+): Promise<{ mercados: MercadoOculto[]; origem: "banco" | "fallback" }> {
   const escuro = () => ({
     mercados: VITRINE_FALLBACK.map((market) => ({
       market,
@@ -203,19 +241,6 @@ export async function carregarVitrine(
     }
     return { mercados, origem: "banco" };
   } catch (_) {
-    try {
-      const { data, error } = await supabase.rpc("get_futebol_mercados_ocultos");
-      if (error || !Array.isArray(data)) return escuro();
-      return {
-        mercados: (data as string[]).map((market) => ({
-          market,
-          ocultoDesde: null,
-          ocultoAte: null,
-        })),
-        origem: "sem-data",
-      };
-    } catch (_) {
-      return escuro();
-    }
+    return escuro();
   }
 }

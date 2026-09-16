@@ -30,7 +30,7 @@ import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { ehFaixaPublicavel } from "../shared/faixa.ts";
-import { carregarVitrine, filtrarPelaVitrine } from "../shared/mercados-ocultos.ts";
+import { carregarVitrine, filtrarPelaVitrine, ocultosAgora } from "../shared/mercados-ocultos.ts";
 import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
 import { logMessageRun } from "../shared/runs.ts";
 
@@ -260,7 +260,10 @@ serve(async (req) => {
         // mensagem saiu pela lista embutida. Não é erro — a DM sai correta —,
         // mas é o sinal de que a vitrine pode estar desatualizada, e sem ele
         // isso sobreviveria em silêncio.
-        vitrine: { origem: vitrine.origem, ocultos: mercadosOcultos.map((m) => m.market) },
+        // `ocultosAgora`, e não um map na vitrine inteira: o período já fechado
+        // de um mercado que VOLTOU continua na lista, e reportá-lo como oculto
+        // mentiria justamente para quem está conferindo o religar.
+        vitrine: { origem: vitrine.origem, ocultos: ocultosAgora(mercadosOcultos) },
         // Mesma leitura para o corte: "fallback" é DM correta com limiar embutido.
         corte: { origem: corte.origem, limiares: corte.limiares },
         picks: picks.map((p) => ({

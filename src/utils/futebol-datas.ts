@@ -14,13 +14,24 @@
 export const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
 /**
- * Interpreta string do banco como UTC. Aceita data pura (`2026-08-01`) e timestamp
- * sem fuso (`2026-08-01T00:30:00`), que é o formato de `kickoff_utc`. Sem o `Z`
- * forçado, o browser leria o timestamp como hora LOCAL e o horário sairia errado.
+ * Interpreta string do banco como UTC. Aceita data pura (`2026-08-01`), timestamp
+ * sem fuso (`2026-08-01T00:30:00`), que é o formato de `kickoff_utc`, e a forma
+ * crua com ESPAÇO no lugar do `T` (`2026-08-01 00:30:00`). Sem o `Z` forçado, o
+ * browser leria o timestamp como hora LOCAL e o horário sairia errado.
+ *
+ * O separador com espaço entrou pela #439: a cópia desta função do lado das
+ * mensagens decide se uma linha está escondida na data dela, e devolver nulo ali
+ * fazia a regra tratar a data como ilegível — que, com período fechado, NÃO
+ * esconde. Os outros leitores de kickoff daquele lado já normalizavam a forma
+ * com espaço, e esta era a única que não.
  */
 export function parseUtc(raw: string | null | undefined): Date | null {
   if (!raw) return null;
-  const iso = raw.includes('T') ? raw : `${raw}T00:00:00`;
+  const iso = raw.includes('T')
+    ? raw
+    : raw.includes(' ')
+      ? raw.replace(' ', 'T')
+      : `${raw}T00:00:00`;
   const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
   return isNaN(d.getTime()) ? null : d;
 }

@@ -122,6 +122,12 @@ const CASOS_DE_DATA: {
   { nome: 'kickoff nulo, período fechado', market: 'asian_handicap', kickoff: null, vitrine: PERIODO_FECHADO },
   { nome: 'kickoff nulo, período aberto', market: 'asian_handicap', kickoff: null, vitrine: SEM_FIM },
   { nome: 'vitrine vazia', market: 'asian_handicap', kickoff: '2026-09-16T17:00:00', vitrine: [] },
+  // O separador com ESPAÇO é o formato do timestamp cru, e é o que os outros
+  // leitores de kickoff das funções de mensagem já normalizavam. Sem aceitá-lo,
+  // a data vira ilegível e o período fechado deixa de esconder — o vazamento
+  // voltaria calado, e nenhum teste com "T" perceberia.
+  { nome: 'kickoff com espaço, jogo de hoje', market: 'asian_handicap', kickoff: '2026-09-16 17:00:00', vitrine: PERIODO_FECHADO },
+  { nome: 'kickoff com espaço, jogo de amanhã', market: 'asian_handicap', kickoff: '2026-09-17 19:00:00', vitrine: PERIODO_FECHADO },
 ];
 
 describe('as duas cópias da regra por data concordam', () => {
@@ -139,6 +145,23 @@ describe('as duas cópias da regra por data concordam', () => {
     for (const copia of [painel, notificacao]) {
       expect(copia.mercadoOcultoNaData('asian_handicap', hoje, PERIODO_FECHADO, AGORA)).toBe(true);
       expect(copia.mercadoOcultoNaData('asian_handicap', amanha, PERIODO_FECHADO, AGORA)).toBe(false);
+    }
+  });
+
+  // Em VALOR, e nas duas cópias: uma comparação que só olha concordância
+  // passaria com as duas erradas do mesmo jeito — e "erradas do mesmo jeito" é o
+  // desfecho natural de copiar a função de uma para a outra.
+  it('o kickoff com espaço decide igual ao com T, nas duas cópias', () => {
+    for (const copia of [painel, notificacao]) {
+      expect(copia.mercadoOcultoNaData('asian_handicap', '2026-09-16 17:00:00', PERIODO_FECHADO, AGORA)).toBe(true);
+      expect(copia.mercadoOcultoNaData('asian_handicap', '2026-09-17 19:00:00', PERIODO_FECHADO, AGORA)).toBe(false);
+    }
+  });
+
+  it('ocultosAgora existe dos dois lados e ignora o período fechado', () => {
+    for (const copia of [painel, notificacao]) {
+      expect(copia.ocultosAgora(PERIODO_FECHADO)).toEqual([]);
+      expect(copia.ocultosAgora(SEM_FIM)).toEqual(['asian_handicap']);
     }
   });
 });
