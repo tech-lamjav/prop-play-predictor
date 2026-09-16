@@ -5,9 +5,15 @@ import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
-import { idSugeridoNaFicha, modelosDaFicha, type ContextoDaMensagem } from './crm-mensagens';
-import { diasDeTesteRestantes, etiquetaDe } from './crm-etiquetas';
+import {
+  idSugeridoNaFicha,
+  modelosDaFicha,
+  temWhatsApp,
+  type ContextoDaMensagem,
+} from './crm-mensagens';
+import { diasDeTesteRestantes, etiquetaDe, ultimoDiaDoTeste } from './crm-etiquetas';
 import { EtiquetaDoLead } from './EtiquetaDoLead';
+import { SeloSemWhatsApp } from './SeloSemWhatsApp';
 import {
   ganchoDe,
   nomeDoPlano,
@@ -127,6 +133,10 @@ export function Ficha({
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
+  marcadoSemWhatsApp,
+  aoMarcarSemWhatsApp,
+  marcandoSemWhatsApp,
+  erroAoMarcarSemWhatsApp,
   linhaDoTempo,
   comportamento,
   perfilDeAposta,
@@ -152,6 +162,17 @@ export function Ficha({
    * cobrança fala de uma data.
    */
   cobranca: { plano: string; venceEm: string } | null;
+  /**
+   * O sócio marcou esta pessoa na mão como impossível de abordar.
+   *
+   * Vem de fora, como a etapa: é outra consulta, e a ficha continua sendo só
+   * desenho. Não confundir com "não tem número" — esse a ficha descobre sozinha
+   * olhando o cadastro.
+   */
+  marcadoSemWhatsApp: boolean;
+  aoMarcarSemWhatsApp: (marcado: boolean) => void;
+  marcandoSemWhatsApp: boolean;
+  erroAoMarcarSemWhatsApp: boolean;
   comportamento: ReactNode;
   /**
    * Como a pessoa aposta.
@@ -211,6 +232,10 @@ export function Ficha({
       aoMudarEtapa={aoMudarEtapa}
       mudandoEtapa={mudandoEtapa}
       erroAoMudarEtapa={erroAoMudarEtapa}
+      marcadoSemWhatsApp={marcadoSemWhatsApp}
+      aoMarcarSemWhatsApp={aoMarcarSemWhatsApp}
+      marcandoSemWhatsApp={marcandoSemWhatsApp}
+      erroAoMarcarSemWhatsApp={erroAoMarcarSemWhatsApp}
       linhaDoTempo={linhaDoTempo}
       comportamento={comportamento}
       perfilDeAposta={perfilDeAposta}
@@ -231,6 +256,10 @@ function Conteudo({
   aoMudarEtapa,
   mudandoEtapa,
   erroAoMudarEtapa,
+  marcadoSemWhatsApp,
+  aoMarcarSemWhatsApp,
+  marcandoSemWhatsApp,
+  erroAoMarcarSemWhatsApp,
   linhaDoTempo,
   comportamento,
   perfilDeAposta,
@@ -247,6 +276,10 @@ function Conteudo({
   erroAoMudarEtapa: boolean;
   hoje: string;
   cobranca: { plano: string; venceEm: string } | null;
+  marcadoSemWhatsApp: boolean;
+  aoMarcarSemWhatsApp: (marcado: boolean) => void;
+  marcandoSemWhatsApp: boolean;
+  erroAoMarcarSemWhatsApp: boolean;
   linhaDoTempo: ReactNode;
   /** Entra por fora, como a linha do tempo: tem consulta própria, e só sai
    *  quando o modal abre. */
@@ -263,6 +296,23 @@ function Conteudo({
   const cadastroEm = dia(pessoa.created_at);
   const ultimaAposta = apostas?.ultima ? dia(apostas.ultima) : null;
   const etiqueta = etiquetaDe(pessoa, hoje);
+
+  /**
+   * Os dois caminhos até "não dá para falar com essa pessoa".
+   *
+   * O número é a mesma regra do botão de WhatsApp, em `temWhatsApp`: se ele não
+   * abre conversa, a pessoa já está fora das listas de abordagem sem ninguém
+   * precisar decidir nada.
+   *
+   * O botão de marcar só aparece quando há decisão a tomar: para quem TEM
+   * número usável (o caso que o cadastro não enxerga — o número existe e não é
+   * da pessoa) e para quem já está marcado, que precisa poder voltar. Para quem
+   * simplesmente não tem número, marcar não mudaria nada, e o botão só
+   * sugeriria um trabalho inútil.
+   */
+  const numeroServe = temWhatsApp(pessoa.whatsapp_number);
+  const semWhatsApp = marcadoSemWhatsApp || !numeroServe;
+  const podeDecidir = numeroServe || marcadoSemWhatsApp;
 
   /*
    * O que muda a mensagem além do gancho e da etapa. Quem tem etiqueta de teste
@@ -308,56 +358,119 @@ function Conteudo({
             <p className="mt-0.5 text-[12.5px] text-ink-2">
               {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
             </p>
-            {etiqueta ? (
-              <div className="mt-1.5">
-                <EtiquetaDoLead etiqueta={etiqueta} />
+            {/* Os dois selos dividem a faixa: estar em teste e não ter WhatsApp
+                são fatos independentes, e alguém pode ter os dois. */}
+            {etiqueta || semWhatsApp ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <EtiquetaDoLead
+                  etiqueta={etiqueta}
+                  fimDoTeste={ultimoDiaDoTeste(pessoa.futebol_trial_ends_at)}
+                  diasDeTeste={diasDeTesteRestantes(pessoa, hoje)}
+                />
+                {semWhatsApp ? <SeloSemWhatsApp marcado={marcadoSemWhatsApp} /> : null}
               </div>
             ) : null}
+
+
           </div>
 
-          {/* A etapa fica alinhada à DIREITA do nome, e não abaixo dos
-              contatos. É o único controle do cabeçalho, e misturá-lo na fileira
-              de leitura fazia o seletor parecer mais um campo de texto. */}
-          <div className="shrink-0">
-            <label
-              htmlFor="etapa-do-lead"
-              className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
-            >
-              Etapa
-            </label>
-            <div className="mt-1 flex items-center gap-2">
-              <select
-                id="etapa-do-lead"
-                value={etapa ?? ''}
-                disabled={mudandoEtapa || etapa === null}
-                onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
-                aria-label="Etapa do lead"
-                className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
-              >
-                {etapa === null ? <option value="">Carregando…</option> : null}
-                {ETAPAS.map((e) => (
-                  <option key={e} value={e}>
-                    {ROTULO_DA_ETAPA[e]}
-                  </option>
-                ))}
-              </select>
-              {/* Travar enquanto grava não é conforto: duas mudanças em voo
-                  gravariam dois eventos, e o segundo registraria um "de" que já
-                  não era verdade.
+          {/* Os controles ficam alinhados à DIREITA do nome, e não abaixo dos
+              contatos: misturá-los na fileira de leitura fazia seletor parecer
+              campo de texto.
 
-                  O recado só aparece quando tem o que dizer. A versão anterior
-                  mantinha "Cada mudança fica registrada" permanentemente embaixo
-                  do seletor, e uma promessa que está sempre lá não é lida — só
-                  ocupa a linha de baixo. Quando a gravação falha, ela ainda
-                  virava mentira no exato momento em que nada foi registrado. */}
-              {(mudandoEtapa || erroAoMudarEtapa) && (
-                <span
-                  className={`text-[11.5px] ${erroAoMudarEtapa ? 'font-bold text-ink' : 'text-ink-2'}`}
+              Agrupados num invólucro próprio porque o cabeçalho é
+              `justify-between`: soltos, o de etapa ia para o meio e o de
+              WhatsApp para a ponta, como se não tivessem relação. */}
+          <div className="flex shrink-0 flex-wrap items-start gap-4">
+            <div>
+              <label
+                htmlFor="etapa-do-lead"
+                className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
+              >
+                Etapa
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <select
+                  id="etapa-do-lead"
+                  value={etapa ?? ''}
+                  disabled={mudandoEtapa || etapa === null}
+                  onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
+                  aria-label="Etapa do lead"
+                  className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
                 >
-                  {erroAoMudarEtapa ? 'Não gravou. Continua como estava.' : 'Gravando…'}
-                </span>
-              )}
+                  {etapa === null ? <option value="">Carregando…</option> : null}
+                  {ETAPAS.map((e) => (
+                    <option key={e} value={e}>
+                      {ROTULO_DA_ETAPA[e]}
+                    </option>
+                  ))}
+                </select>
+                {/* Travar enquanto grava não é conforto: duas mudanças em voo
+                    gravariam dois eventos, e o segundo registraria um "de" que já
+                    não era verdade.
+
+                    O recado só aparece quando tem o que dizer. A versão anterior
+                    mantinha "Cada mudança fica registrada" permanentemente embaixo
+                    do seletor, e uma promessa que está sempre lá não é lida — só
+                    ocupa a linha de baixo. Quando a gravação falha, ela ainda
+                    virava mentira no exato momento em que nada foi registrado. */}
+                {(mudandoEtapa || erroAoMudarEtapa) && (
+                  <span
+                    className={`text-[11.5px] ${erroAoMudarEtapa ? 'font-bold text-ink' : 'text-ink-2'}`}
+                  >
+                    {erroAoMudarEtapa ? 'Não gravou. Continua como estava.' : 'Gravando…'}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* A situação do número, ao lado da etapa e com a mesma forma.
+                Pedido do Victor: "um campo ali do lado do etapa, literalmente
+                uma marca que eu seleciono se o whatsapp está certo ou não".
+                Antes era um link debaixo do número, e antes disso um botão
+                embaixo do nome — as duas versões faziam de uma ESCOLHA uma
+                ação solta, quando ela é do mesmo tipo da etapa: um estado que
+                se escolhe numa lista curta.
+
+                Só aparece quando há decisão a tomar. Para quem não tem número
+                nenhum não há o que escolher, e o campo só sugeriria trabalho
+                inútil; o que falta ali é completar o cadastro. */}
+            {podeDecidir ? (
+              <div>
+                <label
+                  htmlFor="whatsapp-do-lead"
+                  className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
+                >
+                  WhatsApp
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <select
+                    id="whatsapp-do-lead"
+                    value={marcadoSemWhatsApp ? 'nao' : 'ok'}
+                    disabled={marcandoSemWhatsApp}
+                    onChange={(e) => aoMarcarSemWhatsApp(e.target.value === 'nao')}
+                    aria-label="Situação do WhatsApp"
+                    className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
+                  >
+                    <option value="ok">Número ok</option>
+                    <option value="nao">Não leva à pessoa</option>
+                  </select>
+                  {/* Mesmo recado da etapa, e pela mesma razão: o seletor é
+                      controlado pelo valor do servidor, então uma gravação que
+                      falha o faz voltar sozinho — sem aviso, parece um clique
+                      que não pegou. */}
+                  {(marcandoSemWhatsApp || erroAoMarcarSemWhatsApp) && (
+                    <span
+                      className={`text-[11.5px] ${erroAoMarcarSemWhatsApp ? 'font-bold text-ink' : 'text-ink-2'}`}
+                    >
+                      {erroAoMarcarSemWhatsApp
+                        ? 'Não gravou. Continua como estava.'
+                        : 'Gravando…'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

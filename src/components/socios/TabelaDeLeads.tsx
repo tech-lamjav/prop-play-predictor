@@ -4,6 +4,7 @@ import { DIAS_PARA_ESTAR_PARADO, ROTULO_DA_POSICAO, TOM_DA_POSICAO, type Lead } 
 import { NOME_DO_GANCHO } from './crm-ficha';
 import { ROTA_DO_CRM } from './crm-vocabulario';
 import { EtiquetaDoLead } from './EtiquetaDoLead';
+import { SeloSemWhatsApp } from './SeloSemWhatsApp';
 
 /**
  * As iniciais de quem está na linha.
@@ -77,7 +78,18 @@ export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }
                         </Link>
                         {/* A etiqueta fica FORA do link, pelo mesmo motivo do
                             contato: dentro, ela entraria no nome acessível. */}
-                        <EtiquetaDoLead etiqueta={lead.etiqueta} />
+                        <EtiquetaDoLead
+                          etiqueta={lead.etiqueta}
+                          fimDoTeste={lead.fimDoTeste}
+                          diasDeTeste={lead.diasDeTeste}
+                        />
+                        {/* Também fora do link, pelo mesmo motivo da etiqueta:
+                            dentro, "Sem WhatsApp" entraria no nome acessível e
+                            quem usa leitor de tela ouviria isso colado ao nome
+                            em toda linha. */}
+                        {lead.semWhatsApp ? (
+                          <SeloSemWhatsApp marcado={lead.marcadoSemWhatsApp} />
+                        ) : null}
                       </div>
                       <p className="truncate text-[12px] text-ink-2">
                         {lead.whatsapp ?? lead.email}

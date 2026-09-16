@@ -102,7 +102,9 @@ describe('KanbanDeLeads', () => {
         HOJE,
       ),
     );
-    expect(screen.getByRole('link', { name: /Testando/ })).toHaveTextContent('Teste vencendo');
-    expect(screen.getByRole('link', { name: /Seco/ })).not.toHaveTextContent(/Teste/);
+    // Com o prazo dentro, e não só a situação: é o que decide a ordem das
+    // ligações sem abrir a ficha.
+    expect(screen.getByRole('link', { name: /Testando/ })).toHaveTextContent('Vence hoje');
+    expect(screen.getByRole('link', { name: /Seco/ })).not.toHaveTextContent(/Vence|Em teste/);
   });
 });

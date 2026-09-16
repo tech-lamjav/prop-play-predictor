@@ -7,6 +7,7 @@ import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 import type { Cadastro } from './crm-lista';
 import type { Apostas, Toques } from './crm-painel';
 import type { EstadoDoMovimento } from '@/hooks/use-painel-do-crm';
+import type { EstadoDasMarcas } from '@/hooks/use-sem-whatsapp';
 import type { EstadoDasEtapas } from '@/hooks/use-etapas';
 
 // ============================================================================
@@ -38,6 +39,8 @@ function montar({
   totalNaBase,
   estadoDasEtapas,
   estadoDoMovimento,
+  marcados = [],
+  estadoDasMarcas,
 }: {
   cadastros?: Cadastro[];
   etapas?: Record<string, string>;
@@ -46,6 +49,9 @@ function montar({
   totalNaBase?: number;
   estadoDasEtapas?: EstadoDasEtapas;
   estadoDoMovimento?: EstadoDoMovimento;
+  /** Quem o sócio marcou na mão como impossível de abordar. */
+  marcados?: string[];
+  estadoDasMarcas?: EstadoDasMarcas;
 } = {}) {
   return render(
     <MemoryRouter>
@@ -53,6 +59,7 @@ function montar({
         estado={{ tipo: 'pronto', cadastros, totalNaBase: totalNaBase ?? cadastros.length }}
         etapas={estadoDasEtapas ?? { tipo: 'pronto', etapas }}
         movimento={estadoDoMovimento ?? { tipo: 'pronto', movimento: { toques, apostas } }}
+        marcas={estadoDasMarcas ?? { tipo: 'pronto', marcados: new Set(marcados) }}
         hoje={HOJE}
       />
     </MemoryRouter>,
@@ -227,6 +234,7 @@ describe('PainelCrm · quando não dá para carregar', () => {
           estado={estado}
           etapas={{ tipo: 'carregando' }}
           movimento={{ tipo: 'carregando' }}
+          marcas={{ tipo: 'carregando' }}
           hoje={HOJE}
         />
       </MemoryRouter>,
@@ -418,6 +426,128 @@ describe('PainelCrm · o recorte diz quanta gente ele esconde', () => {
     // vazia parece defeito.
     montar({ cadastros: [cadastro({ id: 'ass', betinho_subscription_status: 'premium' })] });
     expect(screen.getByRole('radio', { name: /^Precisa de atenção 0$/ })).toBeInTheDocument();
+  });
+});
+
+describe('PainelCrm · o filtro de WhatsApp', () => {
+  // "Não gostei desse filtro aqui de sem whatsapp; para mim ele deveria ser um
+  // filtro mesmo, igual o desde sempre, mas que ele já vem ocultando os que não
+  // têm whatsapp." E completou que não precisa da caixa de esconder ali, nem
+  // de um recorte só para quem não tem — a palavra que ele usou para isso é
+  // proibida neste arquivo, e a catraca do vocabulário está certa: quem a
+  // escreve acaba desenhando uma.
+  //
+  // A primeira versão era DUAS peças para uma pergunta só: um botão na fileira
+  // dos recortes e uma caixa de marcar ao lado de "Agrupar por dia". Virou um
+  // seletor, ao lado do de período, porque é da mesma natureza — os dois
+  // recortam por característica do cadastro, e não por fatia do trabalho.
+
+  const filaMista = [
+    cadastro({ id: 'falavel', name: 'Da Para Falar' }),
+    cadastro({ id: 'mudo', name: 'Sem Numero', whatsapp_number: null }),
+  ];
+
+  const filtro = () => screen.getByRole('combobox', { name: /filtrar por whatsapp/i });
+
+  it('a tela abre já filtrando quem não dá para abordar', () => {
+    // Sem ninguém precisar ligar nada: o padrão é o trabalho.
+    montar({ cadastros: filaMista });
+    expect(filtro()).toHaveValue('com');
+    expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
+  });
+
+  it('"com e sem" traz todo mundo de volta', async () => {
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'todos');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+    expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
+  });
+
+  it('"só quem não tem" mostra a pilha, sem precisar de recorte próprio', async () => {
+    // É o que substituiu o botão na fileira: a mesma peça que esconde mostra.
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'sem');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+    expect(screen.queryByText('Da Para Falar')).not.toBeInTheDocument();
+  });
+
+  it('não existe mais botão de recorte nem caixa de marcar para isso', async () => {
+    // ⚠️ O pedido foi explícito: uma peça só. Se alguma das duas voltar, a tela
+    // volta a ter dois jeitos de responder a mesma pergunta.
+    montar({ cadastros: filaMista });
+    expect(screen.queryByRole('radio', { name: /Sem WhatsApp/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: /esconder quem não tem whatsapp/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('o filtro atravessa a troca de recorte', async () => {
+    // Um filtro só, e não um por recorte: ele recorta a base, e a base é a
+    // mesma nos dois.
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'todos');
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
+    expect(filtro()).toHaveValue('todos');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+  });
+
+  it('os números dos recortes seguem o filtro', () => {
+    // O número promete "quantos eu veria se clicasse aqui". Contando a base
+    // crua, ele prometeria gente que o clique não traria.
+    montar({ cadastros: filaMista });
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 1$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Todos 1$/ })).toBeInTheDocument();
+  });
+
+  it('e voltam a contar todo mundo com o filtro aberto', async () => {
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'todos');
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 2$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Todos 2$/ })).toBeInTheDocument();
+  });
+
+  it('o funil conta só quem está visível', () => {
+    // ⚠️ Achado da revisão. Os dois leads são "novo", e com o filtro ligado o
+    // funil dizia "Novo 2" enquanto o clique trazia 1 — sem nada explicando o
+    // sumiço.
+    //
+    // Ele continua ignorando a BUSCA e o período, que é outra coisa: procurar
+    // um nome não muda como está a operação.
+    montar({ cadastros: filaMista });
+    expect(posicaoNoFunil(/Novo/)).toHaveTextContent('1');
+  });
+
+  it('e o funil volta a contar todo mundo com o filtro aberto', async () => {
+    montar({ cadastros: filaMista });
+    await userEvent.selectOptions(filtro(), 'todos');
+    expect(posicaoNoFunil(/Novo/)).toHaveTextContent('2');
+  });
+
+  it('a marca na mão esconde quem tem número bom', async () => {
+    // O caso que o cadastro não enxerga: o número existe, está bem formado, e
+    // não leva à pessoa.
+    montar({ cadastros: filaMista, marcados: ['falavel'] });
+    expect(screen.queryByText('Da Para Falar')).not.toBeInTheDocument();
+    await userEvent.selectOptions(filtro(), 'sem');
+    expect(screen.getByText('Da Para Falar')).toBeInTheDocument();
+  });
+
+  it('lista vazia no "só quem não tem" é boa notícia, e a frase diz isso', async () => {
+    montar({ cadastros: [filaMista[0]] });
+    await userEvent.selectOptions(filtro(), 'sem');
+    expect(screen.getByText(/ninguém sem whatsapp por aqui/i)).toBeInTheDocument();
+  });
+
+  it('marcas que não carregam não derrubam a tela, e a tela diz o que sabe', () => {
+    // ⚠️ Esta consulta NÃO segura o painel: sem ela o pior que acontece é
+    // aparecer alguém que devia estar escondido, e mostrar demais é o lado
+    // seguro do erro. Mas calar sobre isso faria a lista parecer completa.
+    montar({ cadastros: filaMista, estadoDasMarcas: { tipo: 'erro' } });
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText(/só pelo número/i)).toBeInTheDocument();
+    // O filtro pelo número continua valendo.
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
   });
 });
 
