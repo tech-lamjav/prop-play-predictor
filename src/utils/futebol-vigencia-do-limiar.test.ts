@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -18,77 +18,92 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ O QUE ESTE TESTE PROVA, E O QUE NÃO PROVA.
 // Ele prova que o SQL DIZ a coisa certa. Não prova que o Postgres FAZ, porque
 // este repositório não tem harness de SQL — não há `supabase/tests`, nem pgtap,
-// e o banco não sobe no CI. É a mesma natureza das outras guardas de SQL daqui
-// (`shape-file-futebol`, `funcao-sem-revoke`, `placar-contrato-rpc`): elas leem
-// o texto das migrations.
+// e o CI não sobe banco. É a mesma natureza das outras guardas de SQL daqui:
+// `shape-file-futebol.test.ts`, `funcao-sem-revoke.test.ts` e
+// `src/components/placar/placar-contrato-rpc.test.ts` também leem texto.
 //
 // A prova de comportamento está no cabeçalho da migration, como consulta para
 // rodar depois de aplicar — foi assim que a 144 e a 145 fizeram.
+//
+// ⚠️ POR QUE O CORPO INTEIRO, E NÃO TRECHOS.
+// A primeira versão deste arquivo afirmava três substrings soltas. Uma
+// implementação INVERTIDA — carimbar quando a vigência veio explícita e sair
+// quando não veio — contém exatamente as mesmas três strings e passava verde.
+// Trocar a ordem dos dois `if`, ou devolver `old` no primeiro, também passava.
+// Substring não vê direção nem ordem; o corpo inteiro vê.
+//
+// O preço é o teste quebrar se alguém só reformatar o SQL. Para um gatilho de
+// dez linhas cuja função é impedir que o passado seja reescrito em silêncio, o
+// preço é barato: quem reformatar atualiza a expectativa de propósito. O espaço
+// é normalizado e os comentários saem, então indentação e explicação ficam
+// livres.
 // ============================================================================
 
 const RAIZ = resolve(__dirname, '../..');
-const MIGRACOES = resolve(RAIZ, 'supabase/migrations');
-
-/** Todas as migrations concatenadas, sem `\r`. */
-const TODAS = readdirSync(MIGRACOES)
-  .filter((f) => f.endsWith('.sql'))
-  .sort()
-  .map((f) => readFileSync(resolve(MIGRACOES, f), 'utf8').replace(/\r\n/g, '\n'))
-  .join('\n');
-
-const SHAPE = readFileSync(resolve(RAIZ, 'docs/futebol-prod-deploy.sql'), 'utf8').replace(
-  /\r\n/g,
-  '\n',
+const MIGRATION = resolve(
+  RAIZ,
+  'supabase/migrations/20260917140000_147_futebol_vigencia_do_limiar.sql',
 );
+const SHAPE = resolve(RAIZ, 'docs/futebol-prod-deploy.sql');
 
-/** O corpo da função de gatilho, sem comentários, em um dos dois arquivos. */
-function corpoDoGatilho(sql: string): string {
-  const inicio = sql.indexOf('create or replace function public.futebol_limiar_valor_vigencia()');
-  expect(inicio, 'a função do gatilho não existe neste arquivo').toBeGreaterThan(-1);
+const ABRE = 'create or replace function public.futebol_limiar_valor_vigencia()';
+
+/**
+ * O corpo da função de gatilho: sem comentários, com espaço normalizado.
+ *
+ * Lê o arquivo NOMEADO, e não todas as migrations concatenadas: com a
+ * concatenação, uma migration futura que substituísse esta função deixaria o
+ * teste verde sobre a versão velha, que é o contrário de uma guarda.
+ */
+function corpoDoGatilho(sql: string, onde: string): string {
+  const inicio = sql.indexOf(ABRE);
+  expect(inicio, `a função do gatilho não existe em ${onde}`).toBeGreaterThan(-1);
   const fim = sql.indexOf('$function$;', inicio);
-  return sql.slice(inicio, fim).replace(/--.*$/gm, '');
+  expect(fim, `a função do gatilho não termina em ${onde}`).toBeGreaterThan(inicio);
+  return sql
+    .slice(inicio, fim)
+    .replace(/--.*$/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-describe('o gatilho da vigência do limiar', () => {
-  // O aceite 1 da issue: `update ... set limiar = x` sozinho atualiza a data.
-  it('dispara no update do limiar, e carimba a vigência', () => {
-    const corpo = corpoDoGatilho(TODAS);
+// A regra inteira, em uma linha. Quem mudar o gatilho muda isto junto — e é
+// exatamente essa a intenção.
+//
+//   1. limiar igual  -> sai sem carimbar (`update of` dispara por MENÇÃO, e
+//      reescrever o mesmo número não é mudança de régua);
+//   2. vigência não veio explícita -> carimba `now()`;
+//   3. veio explícita -> o valor dado vence.
+const CORPO_ESPERADO = [
+  `${ABRE} returns trigger`,
+  "language plpgsql set search_path to '' as $function$ begin",
+  'if new.limiar is not distinct from old.limiar then return new; end if;',
+  'if new.vigente_desde is not distinct from old.vigente_desde then',
+  'new.vigente_desde := now(); end if;',
+  'return new; end;',
+].join(' ');
 
-    expect(corpo).toContain('new.vigente_desde := now()');
-    expect(TODAS).toContain(
-      'before update of limiar on public.futebol_limiar_valor',
+describe('o gatilho da vigência do limiar', () => {
+  // Cobre os aceites 1 e 2 da issue de uma vez: a direção dos dois `if` É o
+  // comportamento. Um corpo diferente reprova, inclusive o invertido.
+  it('o corpo da função é exatamente a regra combinada', () => {
+    expect(corpoDoGatilho(readFileSync(MIGRATION, 'utf8'), 'na migration 147')).toBe(
+      CORPO_ESPERADO,
     );
   });
 
-  // O aceite 2: `update ... set limiar = x, vigente_desde = y` respeita o `y`.
-  //
-  // O `is not distinct from` é o que distingue "não veio na instrução" de "veio
-  // com valor". Sem ele o gatilho atropelaria a data explícita, e datar uma
-  // mudança de propósito — uma correção retroativa combinada — deixaria de ser
-  // possível.
-  it('respeita a vigência quando ela vem explícita', () => {
-    const corpo = corpoDoGatilho(TODAS);
+  it('dispara no update do limiar, e só nele', () => {
+    const migration = readFileSync(MIGRATION, 'utf8');
 
-    expect(corpo).toContain('new.vigente_desde is not distinct from old.vigente_desde');
+    expect(migration).toMatch(
+      /create\s+trigger\s+futebol_limiar_valor_vigencia\s+before\s+update\s+of\s+limiar\s+on\s+public\.futebol_limiar_valor/i,
+    );
   });
 
-  // Reescrever o MESMO limiar não é mudança de régua. Se carimbasse, empurraria
-  // a data de corte para frente e esconderia linhas passadas — o próprio defeito
-  // entrando por outra porta. Reaplicar a semente da 144 é exatamente o comando
-  // que alguém roda duas vezes.
-  it('não carimba quando o valor do limiar não muda', () => {
-    const corpo = corpoDoGatilho(TODAS);
-
-    expect(corpo).toContain('new.limiar is not distinct from old.limiar');
-  });
-
-  // A guarda do shape file cobra a FUNÇÃO; o gatilho em si ela não vê. E um
-  // ambiente provisionado com a função e sem o gatilho tem a regra instalada e
-  // desligada, que é pior do que não ter — parece protegido.
-  it('o shape file traz a função E o gatilho', () => {
-    expect(corpoDoGatilho(SHAPE)).toContain('new.vigente_desde := now()');
-    expect(SHAPE).toContain('create trigger futebol_limiar_valor_vigencia');
-    expect(SHAPE).toContain('before update of limiar on public.futebol_limiar_valor');
+  // A guarda do shape file cobra a função e o gatilho por NOME. O corpo, não:
+  // um ambiente novo podia nascer com a versão errada da regra.
+  it('o shape file traz a MESMA regra, e não outra', () => {
+    expect(corpoDoGatilho(readFileSync(SHAPE, 'utf8'), 'no shape file')).toBe(CORPO_ESPERADO);
   });
 
   // O aceite 4: o aviso sobre o fallback no cabeçalho da migration. O limiar
@@ -96,14 +111,22 @@ describe('o gatilho da vigência do limiar', () => {
   // quando ele não responde — mudar um sem os outros faz o escuro aplicar o
   // corte velho, e isso é release, não UPDATE.
   it('o cabeçalho avisa que o fallback do código não vem junto', () => {
-    const migration = readFileSync(
-      resolve(MIGRACOES, '20260917140000_147_futebol_vigencia_do_limiar.sql'),
-      'utf8',
-    );
-    const cabecalho = migration.slice(0, migration.indexOf('create or replace function'));
+    const migration = readFileSync(MIGRATION, 'utf8');
+    const cabecalho = migration.slice(0, migration.indexOf(ABRE));
 
     expect(cabecalho).toContain('CORTE_FALLBACK');
     expect(cabecalho).toContain('src/utils/futebol-corte-de-valor.ts');
     expect(cabecalho).toContain('supabase/functions/shared/corte-de-valor.ts');
+  });
+
+  // O limite que não tem conserto em gatilho de linha: o plpgsql não distingue
+  // coluna ausente do SET de coluna presente com o mesmo valor. Quem não souber
+  // disso vai datar uma mudança repetindo a data gravada, e ela será
+  // sobrescrita. Está declarado, e o teste garante que continue declarado.
+  it('o cabeçalho declara o limite da vigência repetida', () => {
+    const cabecalho = readFileSync(MIGRATION, 'utf8');
+
+    expect(cabecalho).toContain('LIMITE CONHECIDO');
+    expect(cabecalho).toContain('vigência DIFERENTE da que está gravada');
   });
 });

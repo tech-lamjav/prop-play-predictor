@@ -1,57 +1,72 @@
 -- 20260917140000_147_futebol_vigencia_do_limiar
 --
--- Mudar o limiar do corte nao pode reescrever o passado.
+-- Mudar o limiar do corte de valor não pode reescrever o passado.
 --
 -- `futebol_limiar_valor` (migration 144) tem duas colunas que precisam andar
--- juntas: `limiar` e `vigente_desde`. A segunda e o que faz o corte valer de uma
--- data em diante, e e ela que impede o historico de esconder linha que ja foi
--- exibida ao assinante. E a licao da 119.
+-- juntas: `limiar` e `vigente_desde`. A segunda é o que faz o corte valer de uma
+-- data em diante, e é ela que impede o histórico de esconder linha que o
+-- assinante já viu. É a lição da 119.
 --
--- Nada obrigava as duas a mudarem juntas. Um `update` so no limiar passava, e
+-- Nada obrigava as duas a mudarem juntas. Um `update` só no limiar passava, e
 -- reescrevia o passado nos DOIS sentidos:
 --
---   apertar   (-0,02 -> 0)      somem do historico e do placar as linhas entre
+--   apertar   (-0,02 -> 0)      somem do histórico e do placar as linhas entre
 --                               -2% e 0 desde 16/09 -- linhas que foram vistas
 --   afrouxar  (-0,02 -> -0,04)  voltam linhas que nunca estiveram na tela
 --
--- A regra de mudar as duas juntas estava escrita num comentario da 144.
--- Comentario nao segura UPDATE. Mesmo gatilho e mesmo motivo da 145: o passo
--- manual a mais e o que se esquece no dia, e o esquecimento e silencioso.
+-- A regra de mudar as duas juntas estava escrita num comentário da 144.
+-- Comentário não segura UPDATE. Mesmo gatilho e mesmo motivo da 145: o passo
+-- manual a mais é o que se esquece no dia, e o esquecimento é silencioso.
 --
--- ⚠️ CARIMBA SO QUANDO O VALOR MUDA, e nao quando a coluna e apenas mencionada.
--- `update ... set limiar = -0.02` com o mesmo -0.02 nao e mudanca de regua: se
--- carimbasse, empurraria a data de corte para frente e esconderia linhas
--- passadas -- o proprio defeito que esta migration existe para fechar, entrando
--- por outra porta. O gatilho da 145 tem o mesmo cuidado (`old.oculto and not
--- new.oculto`), e aqui ele vale em dobro, porque reaplicar a semente da 144 e
--- exatamente o tipo de comando que alguem roda duas vezes.
+-- ⚠️ CARIMBA SÓ QUANDO O VALOR MUDA, e não quando a coluna é apenas mencionada.
+-- `update of` dispara por MENÇÃO: reescrever o mesmo -0,02 -- reexecutando o
+-- comando anterior, ou por uma ferramenta que grava todas as colunas de volta --
+-- empurraria a vigência para frente e esconderia linhas passadas, que é o
+-- próprio defeito desta issue entrando por outra porta.
 --
--- ⚠️ UMA VIGENCIA POR MERCADO. Mudar o limiar joga fora a regua anterior: o
--- historico passa a julgar tudo pelo limiar novo desde a data nova, e o periodo
--- anterior fica sem regua propria. Aceito enquanto o limiar for um so por
--- mercado e mudar raramente. Se virar rotina, isto vira tabela de vigencias, e
--- ai o historico escolhe a regua pela data da LINHA.
+-- ⚠️ LIMITE CONHECIDO, e não tem conserto em gatilho de linha. O `is not
+-- distinct from` é o mais perto que dá de "a coluna não veio no comando": o
+-- plpgsql não distingue coluna AUSENTE do SET de coluna PRESENTE com o mesmo
+-- valor. Então um update que muda o limiar E repete a vigência que já estava na
+-- linha tem a data sobrescrita por `now()`. Herdado da 145, onde o caso não
+-- aparecia porque lá a coluna saía de nulo. Para datar uma mudança de propósito,
+-- passe uma vigência DIFERENTE da que está gravada.
 --
--- ⚠️ O FALLBACK DO CODIGO NAO VEM JUNTO, E ISSO E RELEASE, NAO UPDATE.
--- `CORTE_FALLBACK` existe em duas copias, `src/utils/futebol-corte-de-valor.ts` e
+-- ⚠️ UMA VIGÊNCIA POR MERCADO. Mudar o limiar joga fora a régua anterior: o
+-- histórico passa a julgar tudo pelo limiar novo desde a data nova, e o período
+-- anterior fica sem régua própria. Aceito enquanto o limiar for um só por
+-- mercado e mudar raramente. Se virar rotina, isto vira tabela de vigências, e
+-- aí o histórico escolhe a régua pela data da LINHA.
+--
+-- ⚠️ O FALLBACK DO CÓDIGO NÃO VEM JUNTO, E ISSO É RELEASE, NÃO UPDATE.
+-- `CORTE_FALLBACK` existe em duas cópias, `src/utils/futebol-corte-de-valor.ts` e
 -- `supabase/functions/shared/corte-de-valor.ts`, com guarda de paridade entre
--- elas, e carrega o limiar embutido para quando o banco nao responde. Mudar o
--- limiar aqui sem mudar as duas copias faz a falha de leitura aplicar o corte
+-- elas, e carrega o limiar embutido para quando o banco não responde. Mudar o
+-- limiar aqui sem mudar as duas cópias faz a falha de leitura aplicar o corte
 -- VELHO -- e o painel e a DM passam a discordar do banco exatamente na janela em
--- que ninguem esta olhando.
+-- que ninguém está olhando.
 --
--- Conferencia depois de aplicar:
+-- ⚠️ ISTO PROTEGE O PAINEL E O HISTÓRICO, NÃO A DM. A cópia do lado das
+-- mensagens (`shared/corte-de-valor.ts`) lê só `market` e `limiar`, e descarta a
+-- vigência: ela decide sobre linha VIVA do dia, onde a data não muda nada. Quem
+-- usa `vigente_desde` é o painel, no `cortadaNaData`.
 --
---   -- 1) update so no limiar: a vigencia anda sozinha
+-- Conferência depois de aplicar:
+--
+--   -- 1) update só no limiar: a vigência anda sozinha
 --   update public.futebol_limiar_valor set limiar = -0.03 where market = 'asian_handicap';
 --   select market, limiar, vigente_desde from public.futebol_limiar_valor;
 --   -- espera vigente_desde = agora
 --
---   -- 2) update com data explicita: o valor dado vence
+--   -- 2) update com data explícita e DIFERENTE: o valor dado vence
 --   update public.futebol_limiar_valor
 --      set limiar = -0.02, vigente_desde = timestamptz '2026-09-16 00:00:00-03'
 --    where market = 'asian_handicap';
 --   -- espera vigente_desde = 16/09/2026 00:00 BRT, e limiar de volta a -0,02
+--
+--   -- 3) reescrever o mesmo limiar: NÃO carimba
+--   update public.futebol_limiar_valor set limiar = -0.02 where market = 'asian_handicap';
+--   -- espera vigente_desde inalterada
 
 -- ── O gatilho ───────────────────────────────────────────────────────────────
 create or replace function public.futebol_limiar_valor_vigencia()
@@ -60,13 +75,11 @@ language plpgsql
 set search_path to ''
 as $function$
 begin
-  -- Valor igual nao e mudanca de regua: sai sem carimbar.
+  -- Valor igual não é mudança de régua: sai sem carimbar.
   if new.limiar is not distinct from old.limiar then
     return new;
   end if;
-  -- Carimba so quando a vigencia NAO veio explicita na mesma instrucao. Mesmo
-  -- `is not distinct from` da 145: quem quiser datar a mudanca de proposito --
-  -- uma correcao retroativa combinada -- continua podendo.
+  -- Carimba só quando a vigência NÃO veio explícita na mesma instrução.
   if new.vigente_desde is not distinct from old.vigente_desde then
     new.vigente_desde := now();
   end if;
@@ -74,11 +87,13 @@ begin
 end;
 $function$;
 
--- Funcao de gatilho nao e chamada por ninguem de fora, e nasce executavel por
--- PUBLIC como qualquer outra (issue #408).
+comment on column public.futebol_limiar_valor.vigente_desde is
+  'Data a partir da qual o limiar vale. RECARIMBADA pelo gatilho futebol_limiar_valor_vigencia quando o limiar muda sem vigencia explicita (migration 147). Para datar a mudanca, passe uma vigencia diferente da gravada.';
+
+-- Função de gatilho não é chamada por ninguém de fora, e nasce executável por
+-- PUBLIC como qualquer outra (issue #408). Revogar de anon e authenticated não
+-- desliga o gatilho: o privilégio é conferido no CREATE TRIGGER, não no disparo.
 revoke execute on function public.futebol_limiar_valor_vigencia() from public;
--- No Supabase o schema public da EXECUTE explicito a anon e authenticated em toda
--- funcao nova (privilegio padrao), e o revoke de PUBLIC nao tira isso.
 revoke execute on function public.futebol_limiar_valor_vigencia() from anon, authenticated;
 grant execute on function public.futebol_limiar_valor_vigencia() to service_role;
 
