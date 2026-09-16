@@ -131,28 +131,30 @@ Deno.test("carrega a vitrine com o periodo", async () => {
 // Hoje essa lista esta VAZIA (#433), porque nenhum mercado esta escondido -
 // entao o escuro deixa passar tudo, e isso e o certo. O dia em que um mercado
 // for escondido, ele precisa entrar na lista junto: e ela que decide aqui.
-Deno.test("sem a RPC do periodo, vale a lista compilada", async () => {
+// Valor a mao, e nao `VITRINE_FALLBACK.map(...)`: derivar o esperado da mesma
+// constante que se exercita faz o teste passar com qualquer conteudo dela.
+Deno.test("sem a RPC do periodo, vale a lista compilada — hoje vazia", async () => {
   const supabase = { rpc: () => Promise.reject(new Error("function does not exist")) };
-  assertEquals(await carregarVitrine(supabase), {
-    mercados: VITRINE_FALLBACK.map((market) => ({
-      market,
-      ocultoDesde: null,
-      ocultoAte: null,
-    })),
-    origem: "fallback",
-  });
+  assertEquals(await carregarVitrine(supabase), { mercados: [], origem: "fallback" });
 });
 
 Deno.test("resposta sem array tambem cai para a lista compilada", async () => {
   const supabase = { rpc: () => Promise.resolve({ data: null, error: null }) };
-  assertEquals(await carregarVitrine(supabase), {
-    mercados: VITRINE_FALLBACK.map((market) => ({
-      market,
-      ocultoDesde: null,
-      ocultoAte: null,
-    })),
-    origem: "fallback",
-  });
+  assertEquals(await carregarVitrine(supabase), { mercados: [], origem: "fallback" });
+});
+
+// O criterio de aceite da #433, de ponta a ponta e do lado que manda mensagem:
+// com o banco fora do ar, o handicap PASSA. Antes desta mudanca ele era o unico
+// item da lista compilada, e o escuro o derrubava — escondendo da DM um mercado
+// que o produto voltou a exibir.
+Deno.test("no escuro, o handicap sai na mensagem em vez de sumir", async () => {
+  const supabase = { rpc: () => Promise.reject(new Error("banco fora do ar")) };
+  const vitrine = await carregarVitrine(supabase);
+  const linhas = [
+    jogo("asian_handicap", "2026-09-20T17:30:00", 1),
+    jogo("goals_over_under", "2026-09-20T17:30:00", 2),
+  ];
+  assertEquals(filtrarPelaVitrine(linhas, vitrine.mercados, AGORA), linhas);
 });
 
 // O formato cru do timestamp, com espaco no lugar do T. Os outros leitores de

@@ -2974,12 +2974,23 @@ comment on function public.get_futebol_vitrine() is
 revoke execute on function public.get_futebol_vitrine() from public;
 grant execute on function public.get_futebol_vitrine() to anon, authenticated, service_role;
 
-insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, motivo)
+-- O handicap VOLTOU à vitrine em 16/09/2026, com data de corte: fica escondido
+-- para jogo anterior a 17/09 e aparece de lá em diante. A linha continua aqui,
+-- com o período FECHADO, porque é ela que segura o passado — sem ela, um
+-- ambiente novo mostraria no histórico as linhas do tempo em que o mercado
+-- esteve fora, que nunca estiveram em tela nenhuma.
+--
+-- Semeava `oculto = true` até 16/09 (prop-play-predictor#433). A RPC antiga lê
+-- `where oculto`, então um ambiente reprovisionado nascia com o mercado sumido
+-- do painel e das mensagens — o mesmo estado velho que a #433 tirou das duas
+-- listas compiladas do código.
+insert into public.futebol_mercados_ocultos (market, oculto, oculto_desde, oculto_ate, motivo)
 values (
   'asian_handicap',
-  true,
-  timestamptz '2026-09-01 00:00:00+00',
-  'ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols. Investigacao na B3 (ClickUp wdx6zev656). Decisao do PM em 31/08/2026, prop-play-predictor#324.'
+  false,
+  timestamptz '2024-01-01 00:00:00-03',
+  timestamptz '2026-09-17 00:00:00-03',
+  'Fora da vitrine por ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols (decisao do PM em 31/08/2026, prop-play-predictor#324). De volta em 16/09/2026 com corte de valor de -2% e data de corte em 17/09 (prop-play-predictor#419 e #420).'
 )
 on conflict (market) do nothing;
 

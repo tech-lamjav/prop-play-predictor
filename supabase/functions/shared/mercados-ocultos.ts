@@ -203,24 +203,30 @@ export const VITRINE_FALLBACK: readonly string[] = [];
 /**
  * Lê a vitrine COM O PERÍODO, e NUNCA lança.
  *
- * Configuração indisponível não pode derrubar o envio do dia. Mas cair para
- * lista vazia mandaria na DM exatamente o que o produto tirou da prateleira —
- * então o escuro cai para o `VITRINE_FALLBACK`, e a mensagem sai SEM o mercado
- * escondido em vez de sair errada ou não sair.
+ * Configuração indisponível não pode derrubar o envio do dia. Sem a resposta do
+ * banco, vale o `VITRINE_FALLBACK` — e é ELE, não esta função, que decide o que
+ * o escuro esconde. Hoje a lista está vazia (#433), então o escuro deixa passar
+ * TODOS os mercados. Isso é o certo enquanto nenhum estiver escondido, e vira o
+ * vazamento no dia em que um estiver e a lista não for atualizada junto.
+ *
+ * ⚠️ Uma versão anterior deste bloco dizia que "o escuro FECHA". Era verdade
+ * quando a lista tinha o handicap dentro, e deixou de ser quando ele saiu. O
+ * comportamento mora na constante, não aqui.
  *
  * UM degrau só, e é aqui que este carregador diverge do painel de propósito.
  *
  * O painel degrada para a RPC antiga, que devolve só os NOMES dos mercados
  * ocultos agora. Do lado da mensagem esse degrau é pior do que inútil: com o
  * mercado religado, a lista de nomes vem VAZIA, nada é escondido, e isso é
- * exatamente o estado que vazou em 16/09. Seria reproduzir o defeito no escuro.
+ * exatamente o estado que vazou em 16/09 (#439). Seria reproduzir o defeito.
  *
  * O painel pode se dar a esse luxo porque tela errada se corrige na próxima
- * renderização; DM enviada não volta. Então aqui o escuro FECHA: sem o período,
- * vale o `VITRINE_FALLBACK`, que esconde de hoje em diante sem tocar no passado.
+ * renderização; DM enviada não volta.
  *
  * Devolve a origem para o chamador registrar o estado degradado: silêncio aqui é
- * como uma vitrine desatualizada sobreviveria sem ninguém notar.
+ * como uma vitrine desatualizada sobreviveria sem ninguém notar. É também o
+ * único sinal que separa "o banco não respondeu" de "o banco respondeu vazio",
+ * que agora dão o mesmo resultado.
  */
 export async function carregarVitrine(
   supabase: ClienteRpc,

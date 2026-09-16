@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as painel from './futebol-mercados-ocultos';
 import * as notificacao from '../../supabase/functions/shared/mercados-ocultos';
-import { MERCADOS } from '@/utils/futebol-premissas';
+import { MERCADOS } from './futebol-premissas';
 
 // ============================================================================
 // A guarda que impede as duas cópias da vitrine de divergirem (#324)
@@ -193,5 +193,16 @@ describe('o fallback da vitrine é o mesmo dos dois lados', () => {
     for (const market of painel.VITRINE_FALLBACK) {
       expect(slugs).toContain(market);
     }
+  });
+
+  // E o valor de HOJE, afirmado. A guarda acima é latente: com a lista vazia ela
+  // não executa asserção nenhuma, e sozinha deixaria o estado atual virar um
+  // default silencioso — recolocar um mercado aqui passaria despercebido.
+  //
+  // ⚠️ AO ESCONDER UM MERCADO, esta linha muda junto com as duas constantes. É
+  // de propósito: é o terceiro lugar que obriga a decisão a ser consciente, e o
+  // único que quebra se alguém mexer na lista sem querer.
+  it('hoje a lista está vazia, porque nenhum mercado está escondido', () => {
+    expect([...painel.VITRINE_FALLBACK]).toEqual([]);
   });
 });

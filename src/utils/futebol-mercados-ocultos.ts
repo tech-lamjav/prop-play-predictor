@@ -29,11 +29,15 @@ import { brtDateStr, brtDayOf, parseUtc } from '@/utils/futebol-datas';
  * sempre que responde, mas o escuro passou a mentir no sentido contrário.
  *
  * ⚠️ AO ESCONDER UM MERCADO pelo UPDATE, ACRESCENTE-O AQUI na mesma mudança; ao
- * devolvê-lo, TIRE-O. Esta lista espelha o estado ATUAL do banco, e é a única
- * coisa que decide o escuro — vazia, uma falha de leitura mostra tudo. Nada
- * fora do código lembra disso: a guarda de paridade só obriga as duas cópias
- * (esta e a de `supabase/functions/shared/`) a andarem juntas, não a estarem
- * certas.
+ * devolvê-lo, TIRE-O. Esta lista é a única coisa que decide o escuro — vazia,
+ * uma falha de leitura mostra tudo. Nada fora do código lembra disso: a guarda
+ * de paridade só obriga as duas cópias (esta e a de
+ * `supabase/functions/shared/`) a andarem juntas, não a estarem certas.
+ *
+ * E ela NÃO espelha o banco, nem poderia: o banco guarda PERÍODO, e isto é uma
+ * lista de nomes. Mapeada sem data, ela só sabe dizer "esconde de hoje em
+ * diante" — no escuro, linha anterior ao corte volta a aparecer. Sempre foi
+ * assim; o que muda com a lista vazia é que hoje ela não esconde nada.
  */
 export const VITRINE_FALLBACK: readonly string[] = [];
 
