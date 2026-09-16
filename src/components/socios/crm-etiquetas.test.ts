@@ -170,8 +170,12 @@ describe('textoDaEtiqueta · a etiqueta diz o prazo, e não só a situação', (
   // respondia metade — o sócio ainda tinha que abrir a ficha para saber se era
   // hoje ou amanhã, e há quanto tempo tinha vencido.
 
-  it('em teste mostra até que dia vale', () => {
-    expect(textoDaEtiqueta('trial_ativo', '2026-09-16', 4)).toBe('Em teste até 16/09');
+  it('em teste mostra até que dia vale E quantos dias faltam', () => {
+    // Os dois, porque foi o pedido para as três situações. O vencido já dizia
+    // "faz N dias"; era justamente o lead mais quente que ficava sem a conta.
+    expect(textoDaEtiqueta('trial_ativo', '2026-09-16', 4)).toBe(
+      'Em teste até 16/09, faltam 4 dias',
+    );
   });
 
   it('vencendo separa hoje de amanhã, que é a diferença que muda a ligação', () => {
@@ -192,6 +196,7 @@ describe('textoDaEtiqueta · a etiqueta diz o prazo, e não só a situação', (
     // Quem não tem fim gravado ainda pode ter etiqueta por outro caminho. A
     // etiqueta continua dizendo a situação, que é o que ela sempre disse.
     expect(textoDaEtiqueta('trial_ativo', null, null)).toBe(ROTULO_DA_ETIQUETA.trial_ativo);
+    expect(textoDaEtiqueta('trial_ativo', '2026-09-16', null)).toBe(ROTULO_DA_ETIQUETA.trial_ativo);
     expect(textoDaEtiqueta('trial_vencido', '2026-09-09', null)).toBe(
       ROTULO_DA_ETIQUETA.trial_vencido,
     );

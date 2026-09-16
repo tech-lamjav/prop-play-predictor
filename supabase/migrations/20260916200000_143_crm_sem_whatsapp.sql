@@ -29,16 +29,17 @@
 -- era etapa, e que a 138 desfez.
 --
 -- Conferência depois de aplicar, logado como sócio:
---   select public.crm_marcar_sem_whatsapp('<uuid>', true, 'numero de outra pessoa');
+--   select public.crm_marcar_sem_whatsapp('<uuid>', true);
 --   select * from public.crm_sem_whatsapp where user_id = '<uuid>';
 --   select * from public.crm_anotacao where user_id = '<uuid>' order by criada_em desc limit 1;
 --   select public.crm_marcar_sem_whatsapp('<uuid>', false);
 
 create table if not exists public.crm_sem_whatsapp (
   user_id uuid primary key references public.users(id) on delete cascade,
-  -- Opcional: marcar é o ato, e exigir justificativa faria o sócio inventar
-  -- texto para conseguir marcar. Quando vem, aparece na linha do tempo.
-  motivo text,
+  -- ⚠️ NÃO existe coluna de motivo. A primeira versão tinha uma, ponta a ponta,
+  -- e nenhuma tela mandava nada nela: campo pela metade é pior que campo
+  -- nenhum, porque promete um dado que ninguém preenche. Se o motivo fizer
+  -- falta, ele volta com a tela que o escreve, no mesmo commit.
   marcado_em timestamptz not null default now(),
   marcado_por uuid references public.users(id)
 );
@@ -61,8 +62,7 @@ create policy "Socios leem sem whatsapp"
 
 create or replace function public.crm_marcar_sem_whatsapp(
   p_user_id uuid,
-  p_marcado boolean,
-  p_motivo text default null
+  p_marcado boolean
 )
 returns boolean
 language plpgsql
@@ -71,7 +71,6 @@ set search_path to ''
 as $function$
 declare
   v_quem uuid := (select auth.uid());
-  v_motivo text := nullif(btrim(coalesce(p_motivo, '')), '');
   v_ja boolean;
 begin
   if not public.eh_socio() then
@@ -80,28 +79,20 @@ begin
 
   select exists(select 1 from public.crm_sem_whatsapp s where s.user_id = p_user_id) into v_ja;
 
+  -- Marcar quem já está marcado não faz nada, de propósito: um evento novo
+  -- encheria a linha do tempo de mudanças que não aconteceram — a mesma regra
+  -- que a 125 aplica quando alguém reescolhe a etapa que já valia.
   if p_marcado and not v_ja then
-    insert into public.crm_sem_whatsapp (user_id, motivo, marcado_em, marcado_por)
-    values (p_user_id, v_motivo, now(), v_quem);
+    insert into public.crm_sem_whatsapp (user_id, marcado_em, marcado_por)
+    values (p_user_id, now(), v_quem);
 
     insert into public.crm_anotacao (user_id, tipo, texto, criada_por)
     values (
       p_user_id,
       'anotacao',
-      'Marcado como sem WhatsApp' || coalesce(': ' || v_motivo, '') ||
-        '. Sai das listas de abordagem ate alguem desmarcar.',
+      'Marcado como sem WhatsApp. Sai das listas de abordagem ate alguem desmarcar.',
       v_quem
     );
-
-  elsif p_marcado and v_ja then
-    -- Já estava marcado: atualiza o motivo e PRONTO. Um evento novo aqui
-    -- encheria a linha do tempo de mudanças que não aconteceram — a mesma
-    -- regra que a 125 aplica quando alguém reescolhe a etapa que já valia.
-    update public.crm_sem_whatsapp
-       set motivo = v_motivo,
-           marcado_em = now(),
-           marcado_por = v_quem
-     where user_id = p_user_id;
 
   elsif not p_marcado and v_ja then
     delete from public.crm_sem_whatsapp where user_id = p_user_id;
@@ -119,7 +110,7 @@ begin
 end;
 $function$;
 
-comment on function public.crm_marcar_sem_whatsapp(uuid, boolean, text) is
+comment on function public.crm_marcar_sem_whatsapp(uuid, boolean) is
   'Marca ou desmarca um lead como impossivel de abordar por WhatsApp, registrando na linha do tempo na mesma transacao. So socio. O autor vem de auth.uid(), nunca do cliente.';
 
 -- Revoke antes do grant: função nova nasce executável por PUBLIC.
@@ -129,6 +120,6 @@ comment on function public.crm_marcar_sem_whatsapp(uuid, boolean, text) is
 -- `authenticated`, e esse grant direto continua de pé depois do revoke de
 -- PUBLIC. Só o de PUBLIC deixaria um visitante deslogado chamando uma função
 -- que roda com privilégio de dono do banco.
-revoke execute on function public.crm_marcar_sem_whatsapp(uuid, boolean, text) from public;
-revoke execute on function public.crm_marcar_sem_whatsapp(uuid, boolean, text) from anon;
-grant  execute on function public.crm_marcar_sem_whatsapp(uuid, boolean, text) to authenticated;
+revoke execute on function public.crm_marcar_sem_whatsapp(uuid, boolean) from public;
+revoke execute on function public.crm_marcar_sem_whatsapp(uuid, boolean) from anon;
+grant  execute on function public.crm_marcar_sem_whatsapp(uuid, boolean) to authenticated;

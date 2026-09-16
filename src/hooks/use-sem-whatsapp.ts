@@ -13,6 +13,14 @@ import { CHAVES } from './crm-chaves';
  * A marca manual existe para o caso que o cadastro não consegue enxergar: o
  * número está lá, bem formado, e não é da pessoa — ou não existe mais.
  */
+/**
+ * Três estados, como nas outras consultas do painel.
+ *
+ * Carregando e erro não podem virar conjunto vazio na mesma porta: vazio quer
+ * dizer "ninguém foi marcado", e é uma afirmação. Quem chama decide o que fazer
+ * com o erro — no painel, ele continua escondendo pelo número e DIZ que as
+ * marcas não chegaram.
+ */
 export type EstadoDasMarcas =
   | { tipo: 'carregando' }
   | { tipo: 'erro' }
@@ -56,11 +64,10 @@ export function useMarcarSemWhatsApp(userId: string | undefined) {
   const fila = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ marcado, motivo }: { marcado: boolean; motivo?: string }) => {
+    mutationFn: async (marcado: boolean) => {
       const { error } = await createClient().rpc('crm_marcar_sem_whatsapp', {
         p_user_id: userId!,
         p_marcado: marcado,
-        p_motivo: motivo ?? null,
       });
       if (error) throw error;
       return marcado;

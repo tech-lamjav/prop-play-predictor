@@ -1322,7 +1322,7 @@ export type Database = {
         Returns: string
       }
       crm_marcar_sem_whatsapp: {
-        Args: { p_user_id: string; p_marcado: boolean; p_motivo?: string | null }
+        Args: { p_user_id: string; p_marcado: boolean }
         Returns: boolean
       }
       crm_mudar_etapa: {

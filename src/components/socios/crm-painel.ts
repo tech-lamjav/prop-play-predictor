@@ -192,7 +192,15 @@ function posicaoDe(c: Cadastro, etapa: Etapa): Posicao {
 /** Os ids que o sócio marcou na mão. Vazio é "ninguém", e não "não sei". */
 export type MarcadosSemWhatsApp = ReadonlySet<string>;
 
-const NINGUEM: MarcadosSemWhatsApp = new Set<string>();
+/**
+ * Ninguém marcado, num objeto só.
+ *
+ * Exportado porque a tela precisa do MESMO conjunto enquanto as marcas não
+ * chegam: um Set novo a cada render remontaria a lista inteira sem nada ter
+ * mudado. Duas constantes vazias, uma aqui e outra lá, eram a mesma ideia
+ * escrita duas vezes.
+ */
+export const SEM_MARCAS: MarcadosSemWhatsApp = new Set<string>();
 
 export function montarLeads(
   cadastros: Cadastro[],
@@ -205,7 +213,7 @@ export function montarLeads(
    * Quem o sócio marcou na mão. Opcional porque a marca é acréscimo: sem ela, o
    * lead ainda sabe dizer que está sem WhatsApp pelo próprio número.
    */
-  marcados: MarcadosSemWhatsApp = NINGUEM,
+  marcados: MarcadosSemWhatsApp = SEM_MARCAS,
 ): Lead[] {
   return cadastros.map((c) => {
     const ultimoToque = toques[c.id] ?? null;

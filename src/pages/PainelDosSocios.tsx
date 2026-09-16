@@ -176,7 +176,7 @@ function FichaDoModal({ id }: { id: string }) {
       // Enquanto as marcas não chegam vale `false`: a ficha ainda mostra o selo
       // de quem não tem número, que ela descobre sozinha no cadastro.
       marcadoSemWhatsApp={marcas.tipo === 'pronto' && marcas.marcados.has(id)}
-      aoMarcarSemWhatsApp={(marcado) => marcarSemWhatsApp.mutate({ marcado })}
+      aoMarcarSemWhatsApp={(marcado) => marcarSemWhatsApp.mutate(marcado)}
       marcandoSemWhatsApp={marcarSemWhatsApp.isPending}
       erroAoMarcarSemWhatsApp={marcarSemWhatsApp.isError}
       hoje={hoje}

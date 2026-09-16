@@ -437,14 +437,16 @@ describe('PainelCrm · o recorte de quem não tem WhatsApp', () => {
   const comESem = [
     cadastro({ id: 'com', name: 'Tem Numero', whatsapp_number: '5511998877665' }),
     cadastro({ id: 'sem', name: 'Sem Numero', whatsapp_number: null }),
-    cadastro({ id: 'ddi', name: 'Sem Ddi', whatsapp_number: '11998877665' }),
+    // Cinco dígitos não viram telefone. O celular brasileiro sem o 55 NÃO entra
+    // mais aqui: a gente completa o código do país e ele volta a ser abordável.
+    cadastro({ id: 'lixo', name: 'Campo Estragado', whatsapp_number: '11999' }),
   ];
 
   it('mostra só quem não dá para abordar', async () => {
     montar({ cadastros: comESem });
     await userEvent.click(screen.getByRole('radio', { name: /^Sem WhatsApp/ }));
     expect(screen.getByText('Sem Numero')).toBeInTheDocument();
-    expect(screen.getByText('Sem Ddi')).toBeInTheDocument();
+    expect(screen.getByText('Campo Estragado')).toBeInTheDocument();
     expect(screen.queryByText('Tem Numero')).not.toBeInTheDocument();
   });
 
@@ -494,15 +496,50 @@ describe('PainelCrm · esconder quem não dá para abordar', () => {
     expect(screen.getByText('Sem Numero')).toBeInTheDocument();
   });
 
-  it('a escolha do sócio vale também no outro recorte', async () => {
-    // ⚠️ Um padrão que volta sozinho depois de a pessoa ter dito o contrário é
-    // tela com vontade própria. Uma vez mexido, o interruptor obedece.
+  it('a escolha num recorte não mexe no outro', async () => {
+    // ⚠️ Ele escolheu um PADRÃO POR RECORTE: ligado onde se age, desligado onde
+    // se confere a base. A primeira versão fazia a escolha valer nos dois assim
+    // que ele mexesse em um — decisão minha, não dele —, e aí desligar uma vez
+    // para conferir a base voltava a encher a fila de trabalho.
+    montar({ cadastros: filaMista });
+
+    await userEvent.click(interruptor()); // desliga na fila
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
+    expect(interruptor()).not.toBeChecked(); // "Todos" já nascia desligado
+    await userEvent.click(interruptor()); // liga só aqui
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('radio', { name: /^Precisa de atenção/ }));
+    expect(interruptor()).not.toBeChecked(); // a fila ficou como ele deixou
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+
+    // ⚠️ E os CONTADORES seguem cada um o seu recorte, não o recorte aberto.
+    // Sem esta parte o teste não tinha dentes: olhando só a lista e o
+    // interruptor, "o esconder do recorte aberto" e "o esconder de cada
+    // recorte" dão exatamente o mesmo resultado, porque os dois coincidem
+    // justamente onde se está. A diferença só aparece no número do OUTRO
+    // botão — e é ele que promete o que o clique entrega.
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 2$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Todos 1$/ })).toBeInTheDocument();
+  });
+
+  it('o funil conta só quem está visível', () => {
+    // ⚠️ Achado da revisão. Os dois leads são "novo", e com o esconder ligado o
+    // funil dizia "Novo 2" enquanto o clique trazia 1 — sem nada explicando o
+    // sumiço. Número ao lado de um botão promete o que o clique entrega.
+    //
+    // Ele continua ignorando a BUSCA, que é outra coisa: procurar um nome não
+    // muda como está a operação.
+    montar({ cadastros: filaMista });
+    expect(posicaoNoFunil(/Novo/)).toHaveTextContent('1');
+  });
+
+  it('e o funil volta a contar todo mundo quando o esconder desliga', async () => {
     montar({ cadastros: filaMista });
     await userEvent.click(interruptor());
-    await userEvent.click(screen.getByRole('radio', { name: /^Todos/ }));
-    expect(interruptor()).not.toBeChecked();
-    await userEvent.click(interruptor());
-    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
+    expect(posicaoNoFunil(/Novo/)).toHaveTextContent('2');
   });
 
   it('o número de cada recorte segue o esconder daquele recorte', () => {

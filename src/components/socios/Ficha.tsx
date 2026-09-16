@@ -311,7 +311,7 @@ function Conteudo({
    * sugeriria um trabalho inútil.
    */
   const numeroServe = temWhatsApp(pessoa.whatsapp_number);
-  const semWhats = marcadoSemWhatsApp || !numeroServe;
+  const semWhatsApp = marcadoSemWhatsApp || !numeroServe;
   const podeDecidir = numeroServe || marcadoSemWhatsApp;
 
   /*
@@ -360,14 +360,14 @@ function Conteudo({
             </p>
             {/* Os dois selos dividem a faixa: estar em teste e não ter WhatsApp
                 são fatos independentes, e alguém pode ter os dois. */}
-            {etiqueta || semWhats ? (
+            {etiqueta || semWhatsApp ? (
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <EtiquetaDoLead
                   etiqueta={etiqueta}
                   fimDoTeste={ultimoDiaDoTeste(pessoa.futebol_trial_ends_at)}
                   diasDeTeste={diasDeTesteRestantes(pessoa, hoje)}
                 />
-                {semWhats ? <SeloSemWhatsApp marcado={marcadoSemWhatsApp} /> : null}
+                {semWhatsApp ? <SeloSemWhatsApp marcado={marcadoSemWhatsApp} /> : null}
               </div>
             ) : null}
 
@@ -387,7 +387,7 @@ function Conteudo({
                     gravação que falha faz o botão voltar sozinho ao rótulo
                     anterior, e isso parece um clique que não pegou. */}
                 {erroAoMarcarSemWhatsApp && (
-                  <span className="text-[12px] text-red-700">Não deu para gravar.</span>
+                  <span className="text-[12px] text-status-danger">Não deu para gravar.</span>
                 )}
               </div>
             ) : null}

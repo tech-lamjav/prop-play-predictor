@@ -8,6 +8,7 @@ import {
   type Periodo,
   escondeSemWhatsApp,
   metricasDeNegocio,
+  SEM_MARCAS,
   montarLeads,
   precisamDeAtencao,
   semWhatsApp,
@@ -41,8 +42,6 @@ export type EstadoDoPainel =
 /** Um array novo a cada render invalidaria os useMemo abaixo sem nada ter mudado. */
 const VAZIO: Cadastro[] = [];
 
-/** Pelo mesmo motivo do `VAZIO`: um Set novo a cada render remontaria a lista. */
-const VAZIO_DE_MARCAS: ReadonlySet<string> = new Set<string>();
 
 /**
  * Qual fatia da base a lista mostra.
@@ -164,18 +163,19 @@ export function PainelCrm({
    */
   const [vista, setVista] = useState<'tabela' | 'kanban'>('tabela');
   /**
-   * Esconder quem não dá para abordar por WhatsApp.
+   * Esconder quem não dá para abordar por WhatsApp, POR RECORTE.
    *
-   * `null` quer dizer "ainda não mexi nisso", e aí vale o padrão de cada
-   * recorte: LIGADO na fila de atenção, que é onde o sócio age, e desligado em
-   * "Todos", que é onde ele confere a base. Foi o pedido: eles somem quando o
-   * trabalho é abordar, e continuam visíveis quando o trabalho é olhar tudo.
+   * Recorte que não está no mapa é recorte onde o sócio não mexeu, e aí vale o
+   * padrão: LIGADO na fila de atenção, que é onde ele age, e desligado em
+   * "Todos", que é onde ele confere a base.
    *
-   * Assim que o sócio mexe no interruptor, a escolha dele passa a valer em
-   * todos os recortes — um padrão que volta sozinho depois de a pessoa ter
-   * dito o contrário é o tipo de tela que parece ter vontade própria.
+   * ⚠️ Por recorte, e não um interruptor só. A primeira versão fazia a escolha
+   * valer nos dois assim que ele mexesse em um, e isso foi decisão minha e não
+   * dele: ele escolheu um PADRÃO POR RECORTE, e um interruptor global desfaz
+   * justamente essa distinção — desligar para conferir a base voltaria a
+   * encher a fila de gente que não dá para abordar.
    */
-  const [escondendo, setEscondendo] = useState<boolean | null>(null);
+  const [escondendo, setEscondendo] = useState<Partial<Record<Recorte, boolean>>>({});
 
   const cadastros = estado.tipo === 'pronto' ? estado.cadastros : VAZIO;
   // Nulo enquanto as etapas não chegam. Um mapa vazio faria todo mundo cair em
@@ -189,7 +189,7 @@ export function PainelCrm({
 
   // Conjunto vazio enquanto carrega ou quando falha: o lead ainda sabe dizer
   // que está sem WhatsApp pelo próprio número, que é a maior parte dos casos.
-  const marcados = marcas.tipo === 'pronto' ? marcas.marcados : VAZIO_DE_MARCAS;
+  const marcados = marcas.tipo === 'pronto' ? marcas.marcados : SEM_MARCAS;
 
   /**
    * A base inteira, sem filtro nenhum.
@@ -218,13 +218,46 @@ export function PainelCrm({
    * Dentro do próprio "Sem WhatsApp" nunca esconde: lá a pilha É a lista, e
    * esconder devolveria sempre vazio.
    */
-  const escondeNo = (r: Recorte) => r !== 'sem-whatsapp' && (escondendo ?? r === 'atencao');
+  /**
+   * O esconder vale neste recorte?
+   *
+   * ⚠️ NÃO há guarda isentando o recorte "Sem WhatsApp" aqui, e a ausência é
+   * deliberada. Houve um, e com o estado POR RECORTE ele virou inalcançável:
+   * ninguém consegue ligar o interruptor naquele recorte porque ele não é
+   * desenhado lá, então a entrada nunca existe no mapa e o padrão já responde
+   * falso. Um guarda que não pode disparar é pior que nenhum — parece proteger.
+   *
+   * Quem protege a pilha de ser escondida por ela mesma é o interruptor não
+   * existir naquele recorte, e há teste garantindo isso.
+   */
+  const escondeNo = (r: Recorte) => escondendo[r] ?? r === 'atencao';
   const escondendoAqui = escondeNo(recorte);
+
+  /**
+   * A base já sem quem está escondido.
+   *
+   * O funil e a faixa de etiquetas contam DAQUI, e não da base crua. Eles
+   * continuam ignorando a busca — essa resposta não muda porque alguém digitou
+   * um nome —, mas seguem o esconder, e a diferença tem motivo: número ao lado
+   * de um botão promete o que o clique entrega. Com o esconder ligado e o funil
+   * contando tudo, ele dizia "Nutrindo 12" e o clique trazia 8, sem nada
+   * explicando o sumiço.
+   */
+  const visiveisNaBase = useMemo(
+    () => (todos && escondendoAqui ? escondeSemWhatsApp(todos) : todos),
+    [todos, escondendoAqui],
+  );
 
   const faltouAlgo = etapas.tipo === 'erro' || movimento.tipo === 'erro';
 
-  const contagem = useMemo(() => (todos ? contarPorPosicao(todos) : null), [todos]);
-  const porEtiqueta = useMemo(() => (todos ? contarPorEtiqueta(todos) : null), [todos]);
+  const contagem = useMemo(
+    () => (visiveisNaBase ? contarPorPosicao(visiveisNaBase) : null),
+    [visiveisNaBase],
+  );
+  const porEtiqueta = useMemo(
+    () => (visiveisNaBase ? contarPorEtiqueta(visiveisNaBase) : null),
+    [visiveisNaBase],
+  );
   const metricas = useMemo(() => (todos ? metricasDeNegocio(todos, hoje) : null), [todos, hoje]);
 
   // A busca roda sobre os cadastros porque é lá que ela já existe e está
@@ -291,6 +324,9 @@ export function PainelCrm({
       'sem-whatsapp': semWhatsApp(visiveisEm('sem-whatsapp')).length,
       todos: visiveisEm('todos').length,
     };
+    // `escondeNo` é recriado a cada render e só lê `escondendo`, então a lista
+    // de dependências certa é essa — pô-lo aqui faria o memo recalcular sempre
+    // e a contagem deixaria de ser memo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noRecorte, escondendo]);
 
@@ -467,7 +503,9 @@ export function PainelCrm({
                       <input
                         type="checkbox"
                         checked={escondendoAqui}
-                        onChange={(e) => setEscondendo(e.target.checked)}
+                        onChange={(e) =>
+                          setEscondendo((antes) => ({ ...antes, [recorte]: e.target.checked }))
+                        }
                         aria-label="Esconder quem não tem WhatsApp"
                       />
                       Esconder sem WhatsApp

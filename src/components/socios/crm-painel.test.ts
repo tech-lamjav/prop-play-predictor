@@ -425,12 +425,22 @@ describe('semWhatsApp · de quem o sócio não consegue chegar perto', () => {
     expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['sem']);
   });
 
-  it('número sem código do país conta como sem WhatsApp', () => {
+  it('campo com lixo curto conta como sem WhatsApp', () => {
     // ⚠️ A parte que tem dentes. "Campo vazio" deixaria este de fora, e ele é
     // justamente quem a ficha não consegue abrir: a lista prometeria uma
     // conversa que não existe.
-    const leads = monta([cadastro({ id: 'ddi-faltando', whatsapp_number: '11998877665' })]);
-    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['ddi-faltando']);
+    const leads = monta([cadastro({ id: 'lixo-no-campo', whatsapp_number: '11999' })]);
+    expect(semWhatsApp(leads).map((l) => l.id)).toEqual(['lixo-no-campo']);
+  });
+
+  it('celular brasileiro sem o 55 NÃO conta: esse a gente alcança', () => {
+    // ⚠️ Regra revertida na revisão. Antes, onze dígitos sem código do país
+    // entravam aqui — e numa base antiga isso escondia da fila de trabalho,
+    // por padrão, gente perfeitamente abordável. O contrário do que o recorte
+    // existe para fazer.
+    const leads = monta([cadastro({ id: 'br-sem-ddi', whatsapp_number: '11998877665' })]);
+    expect(semWhatsApp(leads)).toEqual([]);
+    expect(leads[0].semWhatsApp).toBe(false);
   });
 
   it('não mexe na etapa de ninguém', () => {

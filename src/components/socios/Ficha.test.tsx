@@ -375,10 +375,18 @@ describe('Ficha · marcar que não dá para falar por WhatsApp', () => {
     expect(screen.getByText('Sem WhatsApp')).toBeInTheDocument();
   });
 
-  it('número sem código do país conta como sem WhatsApp', () => {
-    // A mesma regra do botão de conversa: onze dígitos é um celular brasileiro
-    // sem DDI, e o endereço montado assim leva a outra pessoa ou a lugar nenhum.
+  it('celular brasileiro sem o 55 NÃO é sem WhatsApp: a gente completa', () => {
+    // ⚠️ Regra revertida na revisão. Antes, onze dígitos sem código do país
+    // viravam "sem WhatsApp" e sumiam da fila por padrão — e numa base antiga
+    // isso é gente que o sócio alcança.
     montar(pessoa({ whatsapp_number: '11998877665' }));
+    expect(screen.queryByText(/^Sem WhatsApp/)).not.toBeInTheDocument();
+  });
+
+  it('campo com lixo curto conta como sem WhatsApp', () => {
+    // Cinco dígitos não abrem conversa nenhuma, e completar código de país não
+    // transforma isso em telefone.
+    montar(pessoa({ whatsapp_number: '11999' }));
     expect(screen.getByText('Sem WhatsApp')).toBeInTheDocument();
   });
 

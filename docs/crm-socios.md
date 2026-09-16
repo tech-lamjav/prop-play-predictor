@@ -101,6 +101,13 @@ tem um dia de antecedência a pedido, porque a conversa precisa acontecer com o
 acesso ainda de pé, e ela tem mensagem pronta própria — converter quem está
 testando é outra conversa que cobrar quem já decidiu pagar.
 
+⚠️ Na tela a etiqueta mostra o PRAZO, e não só a situação: "Vence hoje, 21/09",
+"Vence amanhã, 22/09", "Em teste até 25/09", "Venceu 12/09, faz 3 dias". O
+rótulo sozinho respondia metade da pergunta — não separava hoje de amanhã, nem
+ontem de maio, que é o que decide se a conversa é de retomada ou de recomeço. O
+prazo é calculado UMA vez, ao montar o lead, porque a tabela, o kanban e a ficha
+mostram o mesmo dia e três contas divergiriam na virada da meia-noite.
+
 O filtro da etiqueta SOMA com o do funil em vez de substituí-lo: "quem está em
 teste e ainda está em nutrindo" é pergunta legítima, e era exatamente ela que
 não dava para fazer quando os dois eixos eram um só.
@@ -145,6 +152,12 @@ Uma migration, quatro objetos:
 
 As três tabelas do CRM só são legíveis e escrevíveis por sócio.
 
+O modelo cresceu depois desta migration. As tabelas de assinatura e de pagamento
+estão na seção "Assinaturas dadas na mão"; a de classificação, em "Leads que não
+dá para abordar". Nas mais novas a escrita NÃO tem política própria: só as
+funções `security definer` escrevem, para o autor e o registro na linha do tempo
+saírem na mesma transação.
+
 ## Telas
 
 **Painel** — na ordem em que a tela responde "com quem eu falo agora": três
@@ -164,8 +177,8 @@ cadastros qualquer formato parece bom, e é com seiscentos, dos quais 82% em
 coluna tem teto de cartões e diz quantos sobraram, porque fingir que ela é
 navegável seria pior que admitir o limite.
 
-A tabela tem um **recorte** — precisa de atenção, ou todos — e uma chave
-separada para agrupar por dia. "Precisa de atenção" junta duas situações numa
+A tabela tem um **recorte** — precisa de atenção, sem WhatsApp, ou todos — e
+duas chaves separadas: agrupar por dia e esconder quem não dá para abordar. "Precisa de atenção" junta duas situações numa
 lista ordenada: conversa começada e sem toque há sete dias ou mais vem primeiro,
 depois quem nunca saiu de "novo". As duas já eram distinguíveis pela coluna de
 etapa, e separá-las em tabelas diferentes era o que fazia a tela parecer cinco
@@ -175,9 +188,15 @@ Agrupar por dia é chave à parte, e não um terceiro recorte: ela se combina co
 os dois em vez de competir. É a única visão que mostra o RITMO de chegada, e
 some no kanban, onde a coluna já é o agrupamento.
 
-Os números do topo e o funil contam a base INTEIRA, e não o recorte da busca:
-eles respondem como está a operação, e essa resposta não muda porque alguém
-digitou um nome.
+Os números do topo contam a base INTEIRA, e não o recorte da busca: eles
+respondem como está a operação, e essa resposta não muda porque alguém digitou
+um nome.
+
+⚠️ O funil e a faixa de etiquetas seguem a MESMA regra para a busca, e a regra
+OPOSTA para o esconder: eles contam só quem está visível. É deliberado e custou
+uma revisão para aparecer — com o esconder ligado, o funil prometia "Nutrindo
+12" e o clique entregava 8. Número ao lado de um botão promete o que o clique
+entrega, e essa promessa vale mais aqui do que a simetria com a busca.
 
 **Ficha** — abre em **modal por cima da lista**, em duas colunas: à esquerda o
 que é consulta (etapa, contatos, planos, comportamento), à direita o que é
@@ -372,3 +391,41 @@ não inventa link nem valor, porque quem sabe o preço combinado é o sócio.
 coisa: consertar UM acesso, ou dar os Relatórios, que não pertencem a plano
 nenhum. O formulário de assinatura vem primeiro porque é assim que a venda
 acontece.
+
+## Leads que não dá para abordar
+
+Nas palavras do Victor: "esses eu não consigo fazer nada". Um lead sem WhatsApp
+é quase uma desqualificação — dá para mandar e-mail um dia, mas não adianta para
+o trabalho de hoje. Misturado na fila, ele só se revelava depois de abrir a
+ficha e não achar botão nenhum.
+
+**A marca vem de dois lados.** Automática, pelo número, com a mesma regra que
+decide se o botão de conversa aparece; e manual, quando o número está lá, bem
+formado, e não leva à pessoa — caso que o cadastro não tem como enxergar, e que
+só existe porque alguém tentou e descobriu. Migration 143: `crm_sem_whatsapp` e
+`crm_marcar_sem_whatsapp`.
+
+A tabela guarda SÓ a marca manual. Gravar também quem não tem número seria manter
+uma cópia que envelhece sozinha no dia em que a pessoa cadastrar um telefone.
+
+**Não é etapa nem etiqueta.** Etapa é até onde a conversa chegou, e não ter
+número é fato do cadastro; como etapa, engoliria a etapa de quem está sem número,
+o mesmo erro que escondeu 59 leads quando "em teste" era etapa. E a etiqueta do
+teste é um eixo de valor único, enquanto alguém pode estar em teste E sem
+WhatsApp — por isso selo próprio, e não um quarto valor de etiqueta.
+
+⚠️ **Dez ou onze dígitos ganham o 55 na frente.** A regra anterior recusava
+número sem código do país, com o argumento de que mandar mensagem para um
+estranho é pior que não ter botão. O argumento continua de pé; o que mudou foi o
+custo do outro lado — a base antiga tem muito celular gravado sem o 55, e
+recusar todos escondia da fila gente perfeitamente abordável. O palpite é só de
+PAÍS e só nessa faixa: fora dela nada é inventado.
+
+**O esconder nasce ligado na fila** de atenção, onde o sócio age, e desligado em
+"Todos", onde ele confere a base. A escolha é por recorte: mexer no interruptor
+de um não muda o outro.
+
+**A consulta das marcas não segura a tela**, ao contrário das etapas. Sem ela o
+pior que acontece é aparecer alguém que devia estar escondido, e mostrar demais é
+o lado seguro do erro; esconder quem precisava de ligação seria o lado caro.
+Quando falha, a tela diz que está contando só pelo número.

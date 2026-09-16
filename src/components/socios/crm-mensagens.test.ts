@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   idDaSugerida,
   idSugeridoNaFicha,
+  digitosDoWhatsApp,
   linkDoWhatsApp,
   mensagemPara,
   temWhatsApp,
@@ -136,15 +137,38 @@ describe('linkDoWhatsApp', () => {
 });
 
 describe('número sem código do país', () => {
-  it('não vira link', () => {
-    // Onze dígitos é um celular brasileiro sem DDI. O endereço montado assim
-    // leva a outra pessoa ou a lugar nenhum — e mandar mensagem para um
-    // estranho é pior que não ter botão.
-    expect(linkDoWhatsApp('11998877665', 'oi')).toBeNull();
+  // ⚠️ ESTA REGRA FOI REVERTIDA, e de propósito. Antes, onze dígitos não viravam
+  // link: o argumento era que um endereço sem DDI leva a outra pessoa, e mandar
+  // mensagem para um estranho é pior que não ter botão.
+  //
+  // O argumento continua verdadeiro. O que mudou foi o custo do outro lado: a
+  // revisão mostrou que a base antiga tem muito celular gravado sem o 55, e
+  // recusar todos escondia da fila de trabalho gente perfeitamente abordável —
+  // exatamente o contrário do que o recorte "Sem WhatsApp" existe para fazer.
+  // Decisão do Victor: assumir Brasil nessa faixa.
+
+  it('dez ou onze dígitos ganham o 55 na frente', () => {
+    expect(linkDoWhatsApp('11998877665', 'oi')).toContain('5511998877665');
+    expect(linkDoWhatsApp('1133224455', 'oi')).toContain('551133224455');
   });
 
-  it('com o código do país, vira', () => {
+  it('o palpite é só de país, e só nessa faixa', () => {
+    // Fora de dez ou onze dígitos nada é inventado. Cinco dígitos não viram um
+    // telefone por acrescentar código de país na frente.
+    expect(linkDoWhatsApp('11999', 'oi')).toBeNull();
+    expect(digitosDoWhatsApp('11999')).toBeNull();
+  });
+
+  it('quem já tem o código do país passa intacto', () => {
+    // ⚠️ Sem esta, um número completo levaria 55 de novo e viraria 5555...
+    expect(digitosDoWhatsApp('5511998877665')).toBe('5511998877665');
     expect(linkDoWhatsApp('5511998877665', 'oi')).not.toBeNull();
+  });
+
+  it('lixo comprido no campo não vira telefone', () => {
+    // O teto do padrão internacional. Sem ele, um campo com vinte dígitos
+    // colados viraria link e o sócio abriria uma aba em branco.
+    expect(digitosDoWhatsApp('12345678901234567890')).toBeNull();
   });
 });
 
@@ -152,10 +176,16 @@ describe('temWhatsApp', () => {
   it('campo preenchido não basta: o número tem que abrir conversa', () => {
     // O recorte "Sem WhatsApp" da lista existe para o sócio ver de quem ele não
     // consegue se aproximar. Se ele contasse campo vazio, prometeria conversa
-    // com quem tem um celular sem DDI gravado — que é justamente quem não tem
-    // botão na ficha.
-    expect(temWhatsApp('11998877665')).toBe(false);
+    // com quem tem cinco dígitos gravados — que é justamente quem não tem botão
+    // na ficha.
+    expect(temWhatsApp('11999')).toBe(false);
     expect(temWhatsApp('5511998877665')).toBe(true);
+  });
+
+  it('celular brasileiro sem o 55 CONTA, porque a gente completa', () => {
+    // ⚠️ O caso que a revisão pegou: esses estavam sumindo da fila por padrão,
+    // e são gente que o sócio alcança.
+    expect(temWhatsApp('11998877665')).toBe(true);
   });
 
   it('sem número, vazio ou curto demais, é não', () => {
@@ -179,8 +209,10 @@ describe('temWhatsApp', () => {
       '   ',
       '11999',
       '11998877665',
+      '1133224455',
       '5511998877665',
       '+55 (11) 99887-7665',
+      '12345678901234567890',
     ]) {
       expect(temWhatsApp(numero), String(numero)).toBe(linkDoWhatsApp(numero, 'oi') !== null);
     }

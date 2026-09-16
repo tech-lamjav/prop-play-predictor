@@ -22,7 +22,7 @@ const MARCAR = comando(
 );
 
 describe('a tabela da marca', () => {
-  it('guarda quem, quando, por quem e o motivo', () => {
+  it('guarda quem, quando e por quem', () => {
     expect(MIGRATION).toMatch(/create table if not exists public\.crm_sem_whatsapp/);
     expect(MIGRATION).toMatch(/user_id uuid primary key references public\.users\(id\)/);
     expect(MIGRATION).toMatch(/marcado_em timestamptz not null default now\(\)/);
@@ -36,10 +36,18 @@ describe('a tabela da marca', () => {
     expect(MIGRATION).toMatch(/user_id uuid primary key/);
   });
 
-  it('o motivo é opcional, e o banco não exige texto', () => {
-    // Exigir justificativa faz o sócio inventar texto para conseguir marcar, e
-    // aí o campo passa a mentir em vez de informar.
-    expect(MIGRATION).not.toMatch(/motivo text not null/);
+  it('não existe coluna de motivo', () => {
+    // ⚠️ A revisão pegou: a primeira versão tinha motivo ponta a ponta — coluna,
+    // parâmetro e opção do hook — e NENHUMA tela mandava nada. Campo pela
+    // metade promete um dado que ninguém preenche, e alguém lendo a tabela
+    // daqui a um ano concluiria que os sócios nunca justificam. Se fizer falta,
+    // volta junto com a tela que o escreve.
+    // A asserção é sobre a COLUNA e o PARÂMETRO, e não sobre a palavra solta:
+    // o comentário acima da tabela explica justamente por que o campo não
+    // existe, e proibir a palavra proibiria a explicação.
+    expect(MIGRATION).not.toMatch(/^\s*motivo\s+text/m);
+    expect(MIGRATION).not.toMatch(/p_motivo/);
+    expect(MIGRATION).not.toMatch(/v_motivo/);
   });
 
   it('some junto com a pessoa', () => {
@@ -76,12 +84,14 @@ describe('crm_marcar_sem_whatsapp', () => {
     // deixaria um visitante deslogado chamando uma função que roda com
     // privilégio de dono do banco.
     expect(MIGRATION).toMatch(
-      /revoke execute on function public\.crm_marcar_sem_whatsapp\(uuid, boolean, text\) from public/,
+      /revoke execute on function public\.crm_marcar_sem_whatsapp\(uuid, boolean\) from public/,
     );
     expect(MIGRATION).toMatch(
-      /revoke execute on function public\.crm_marcar_sem_whatsapp\(uuid, boolean, text\) from anon/,
+      /revoke execute on function public\.crm_marcar_sem_whatsapp\(uuid, boolean\) from anon/,
     );
-    expect(MIGRATION).toMatch(/grant\s+execute on function public\.crm_marcar_sem_whatsapp\(uuid, boolean, text\) to authenticated/);
+    expect(MIGRATION).toMatch(
+      /grant\s+execute on function public\.crm_marcar_sem_whatsapp\(uuid, boolean\) to authenticated/,
+    );
   });
 
   it('o autor vem do banco, e não dos parâmetros', () => {
@@ -115,13 +125,13 @@ describe('crm_marcar_sem_whatsapp', () => {
     expect(MARCAR).toMatch(/delete from public\.crm_sem_whatsapp/);
   });
 
-  it('remarcar quem já está marcado não gera evento novo', () => {
+  it('remarcar quem já está marcado não escreve nada', () => {
     // Mesma regra da 125 quando alguém reescolhe a etapa que já valia: encher
     // a linha do tempo de mudanças que não aconteceram estraga justamente a
-    // leitura dela.
+    // leitura dela. Sem motivo para atualizar, remarcar não tem o que fazer.
     expect(MARCAR).toMatch(/v_ja/);
-    expect(MARCAR).toMatch(/elsif p_marcado and v_ja then/);
-    expect(MARCAR).toMatch(/update public\.crm_sem_whatsapp/);
+    expect(MARCAR).toMatch(/if p_marcado and not v_ja then/);
+    expect(MARCAR).not.toMatch(/update public\.crm_sem_whatsapp/);
   });
 
   it('desmarcar quem não estava marcado não escreve nada', () => {

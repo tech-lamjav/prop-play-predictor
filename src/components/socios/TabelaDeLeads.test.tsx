@@ -24,7 +24,7 @@ describe('TabelaDeLeads · a etiqueta de teste', () => {
     ]);
     expect(screen.getByRole('link', { name: 'Testando' })).toBeInTheDocument();
     // Com o dia dentro: o sócio ordena as ligações sem abrir ficha nenhuma.
-    expect(screen.getByText('Em teste até 16/09')).toBeInTheDocument();
+    expect(screen.getByText('Em teste até 16/09, faltam 5 dias')).toBeInTheDocument();
   });
 
   it('a véspera aparece como vencendo, e diz que é amanhã', () => {

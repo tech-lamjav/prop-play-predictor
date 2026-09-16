@@ -130,7 +130,13 @@ export function textoDaEtiqueta(
     return `Venceu ${dia}, faz ${faz} ${faz === 1 ? 'dia' : 'dias'}`;
   }
 
-  if (etiqueta === 'trial_ativo') return `Em teste até ${dia}`;
+  // "Quantos dias" foi pedido para as TRÊS situações, e o vencido já dizia. Sem
+  // isto, justamente o lead mais quente — o que ainda está testando — era o
+  // único sem a conta, e o sócio tinha de fazer de cabeça para saber se dava
+  // tempo de ligar amanhã.
+  if (etiqueta === 'trial_ativo') {
+    return `Em teste até ${dia}, faltam ${diasDeTeste} dias`;
+  }
 
   // Vencendo é hoje ou amanhã, e é assim que a pessoa pensa no próprio prazo.
   // O dia vai junto porque é ele que entra na mensagem e na conversa.
