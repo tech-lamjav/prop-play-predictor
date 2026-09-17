@@ -445,6 +445,36 @@ serve(async (req) => {
       );
     }
 
+    // /ofertas — liga e desliga a mensagem de OFERTA, que é venda e por isso
+    // tem chave própria: quem não quer ser vendido continua querendo o lembrete
+    // da aposta dele, e `/silenciar` cala o segundo. Migration 150.
+    if (command === "/ofertas") {
+      const { data: pref } = await supabase
+        .from("users").select("futebol_ofertas_muted").eq("id", user.id)
+        .maybeSingle();
+      const mute = !(pref?.futebol_ofertas_muted ?? false);
+      await supabase.from("users").update({ futebol_ofertas_muted: mute }).eq(
+        "id",
+        user.id,
+      );
+      await sendTelegramMessage(
+        chatId,
+        mute
+          ? "Beleza — parei com as mensagens sobre planos. Os lembretes das suas apostas continuam normais. Pra voltar, é só mandar /ofertas de novo."
+          : "Pronto, voltei a te avisar quando houver novidade de plano. Pra parar de novo, manda /ofertas.",
+      );
+      await trackEvent(
+        mute ? "futebol_ofertas_muted" : "futebol_ofertas_unmuted",
+        { via: "command", channel: "telegram" },
+        user.id,
+        traceId,
+      ).catch(() => {});
+      return new Response(
+        JSON.stringify({ success: true, message: "Offer preference updated" }),
+        { headers: { "Content-Type": "application/json" }, status: 200 },
+      );
+    }
+
     // /resumo — toggle do resumo semanal (par do botão "Silenciar resumo")
     if (command === "/resumo") {
       const { data: pref } = await supabase
