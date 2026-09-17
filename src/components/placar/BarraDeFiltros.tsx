@@ -27,6 +27,10 @@ function Escolha<T extends string>({
             key={o.id}
             type="button"
             title={o.ajuda}
+            // A escolha ativa se distinguia só pela cor: quem usa leitor de tela
+            // ouvia dois botões iguais, e nenhum teste conseguia afirmar em qual
+            // leitura a tela abre.
+            aria-pressed={valor === o.id}
             onClick={() => aoMudar(o.id)}
             className={`whitespace-nowrap px-3 py-2 text-[13px] font-bold transition ${
               valor === o.id ? 'bg-forest text-white' : 'bg-white text-ink-2 hover:text-ink'
