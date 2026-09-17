@@ -23,6 +23,7 @@ fraco = silêncio; usuário que ignora = para de receber.
 |---|---|---|---|
 | 7 | **"📋 Atualizamos seu histórico — seu ROI real"** (winback R1) | Uma única vez, após o backfill do histórico (3 curls do runbook) | Dev, manualmente |
 | 8 | **"🏆 A Copa acabou — e com ela o bolão!"** (handoff da final) | Dia 19/07, após a final encerrar (guarda técnica impede antes) | Dev, manualmente (2 curls) |
+| 12 | **"⚽ Seu teste do futebol terminou"** (oferta pós-teste) | 24h após o fim do teste, só entre 09h–23h BRT, e só para a coorte que começou o teste de 09/09/2026 em diante. Uma por pessoa, para sempre (`futebol_oferta_pos_teste_notifications`) | Dev: `mode=report` primeiro, `mode=send` depois. O cron está escrito e **comentado** na migration 150 — ligar é passo humano. Opt-out: `/ofertas`, **e o `/silenciar` geral também cala** |
 
 ## Interno (não vai pra usuário)
 
@@ -58,6 +59,10 @@ normal: 0 a 2. O silêncio é parte do produto.
   de liquidação e o winback/handoff também respeitam. `/lembretes` reativa.
 - `users.weekly_summary_muted` é opt-out **independente** do resumo semanal (#10) —
   cala só ele, não a liquidação. (Cadência semanal ≠ diária, não soma metralhadora.)
+- `users.futebol_ofertas_muted` (`/ofertas`) cala o que é **venda** (#12), e só isso.
+  Chave separada de propósito: `settlement_reminders_muted` é serviço, e usar a
+  mesma faria quem recusa oferta perder o lembrete da própria aposta — troca que a
+  pessoa nunca pediu. ⚠️ Ainda **não** aparece no `/mensagens`; entra junto do item 17.
 - **`/mensagens`** é o centro de controle: lista os recorrentes com estado e toggles
   (liquidação e resumo; o daily é automático — para sozinho sem clique). Embrião do
   item 17 (preferências). `/silenciar`, `/lembretes` e `/resumo` seguem como atalhos.
