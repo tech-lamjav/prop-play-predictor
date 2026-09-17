@@ -10,6 +10,7 @@
 //   dest permitidos: "board" → /futebol · "jogo-<id>" → /futebol/jogo/<id>
 //                    · "jogo-<id>|mercado|saída|linha" → leitura exata
 //                    · "bank" → /bets (resumo semanal, item 04)
+//                    · "assinar" → /futebol/assinar (oferta pós-teste, item 12)
 //   c = campanha (default "daily_opportunities" p/ retrocompat). Só a campanha
 //       do daily zera a régua de reativação (opportunity_dispatch_state).
 //   s = HMAC-SHA256(CRON_SECRET, "<u>:<d>") — impede forjar clique de outro
@@ -34,6 +35,9 @@ function destUrl(dest: string, campaign: string): string {
   }`;
   if (dest === "board") return `${SITE}/futebol?${utm}`;
   if (dest === "bank") return `${SITE}/bets?${utm}`;
+  // O checkout do futebol, e não a landing de aquisição: quem recebeu a oferta
+  // pós-teste já testou, e /futebol/comecar oferece começar de graça de novo.
+  if (dest === "assinar") return `${SITE}/futebol/assinar?${utm}`;
   const jogo = dest.match(/^jogo-(\d+)(?:\|([^|]+)\|([^|]+)\|([^|]*))?$/);
   if (jogo) {
     const params = new URLSearchParams({
