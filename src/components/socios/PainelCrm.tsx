@@ -244,6 +244,26 @@ export function PainelCrm({
     [cadastros, busca],
   );
 
+  /**
+   * Buscar passa por cima do filtro de WhatsApp.
+   *
+   * ⚠️ Foi defeito relatado: "não consigo pesquisar e-mail na barra". A busca
+   * achava certo, e o filtro escondia em seguida quem não tinha número usável.
+   * O resultado, da cadeira de quem usa, é idêntico a uma busca quebrada.
+   *
+   * Quando você digita um termo você NOMEIA alguém, e a tela sumir com essa
+   * pessoa contraria uma instrução explícita. Filtro é o que organiza a base
+   * enquanto ninguém pediu nada de específico; busca é o pedido específico, e
+   * ela ganha.
+   *
+   * Vale para a lista e para os contadores dos recortes. O funil e a faixa de
+   * etiquetas continuam de fora, porque eles já ignoram a busca de propósito:
+   * respondem "como está a operação", e essa resposta não muda porque alguém
+   * foi procurar um nome.
+   */
+  const buscando = busca.trim() !== '';
+  const filtroDaLista: ValorDoFiltro = buscando ? 'todos' : filtroWhatsApp;
+
   const noRecorte = useMemo(() => {
     if (!todos) return null;
     const porFiltros = todos.filter(
@@ -265,10 +285,10 @@ export function PainelCrm({
     if (!noRecorte) return null;
     // Filtrar ANTES de montar a fila, e não depois: a fila ordena por urgência,
     // e tirar linhas de uma lista já ordenada deixaria buracos no topo.
-    const visiveis = filtrarPorWhatsApp(noRecorte, filtroWhatsApp);
+    const visiveis = filtrarPorWhatsApp(noRecorte, filtroDaLista);
     if (recorte === 'atencao') return precisamDeAtencao(visiveis);
     return [...visiveis].sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
-  }, [noRecorte, recorte, filtroWhatsApp]);
+  }, [noRecorte, recorte, filtroDaLista]);
 
   /**
    * Quanta gente cada recorte mostraria, com os filtros de agora.
@@ -289,12 +309,12 @@ export function PainelCrm({
     // que o clique não traria. Um filtro só para os dois recortes é o que
     // manteve isto simples: antes havia um esconder por recorte, e cada número
     // tinha de consultar o esconder do SEU recorte para não mentir.
-    const visiveis = filtrarPorWhatsApp(noRecorte, filtroWhatsApp);
+    const visiveis = filtrarPorWhatsApp(noRecorte, filtroDaLista);
     return {
       atencao: precisamDeAtencao(visiveis).length,
       todos: visiveis.length,
     };
-  }, [noRecorte, filtroWhatsApp]);
+  }, [noRecorte, filtroDaLista]);
 
   const porDia = useMemo(
     () => (lista && agrupado ? agruparPorDia(lista, (l) => l.cadastradoEm) : null),
@@ -392,6 +412,7 @@ export function PainelCrm({
               <FiltroDeWhatsApp
                 valor={filtroWhatsApp}
                 semAsMarcas={marcas.tipo === 'erro'}
+                suspensoPelaBusca={buscando}
                 aoMudar={setFiltroWhatsApp}
               />
 

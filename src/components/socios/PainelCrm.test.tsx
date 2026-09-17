@@ -551,6 +551,86 @@ describe('PainelCrm · o filtro de WhatsApp', () => {
   });
 });
 
+describe('PainelCrm · buscar passa por cima do filtro de WhatsApp', () => {
+  // Defeito relatado: "não consigo pesquisar e-mail na barra de pesquisa". A
+  // busca achava certo; o filtro escondia em seguida quem não tinha número
+  // usável. Da cadeira de quem usa, idêntico a uma busca quebrada.
+
+  const mudo = cadastro({
+    id: 'mudo',
+    name: 'Sem Numero',
+    email: 'semnumero@exemplo.com',
+    whatsapp_number: null,
+  });
+  const falavel = cadastro({ id: 'falavel', name: 'Da Para Falar' });
+
+  const filtro = () => screen.getByRole('combobox', { name: /filtrar por whatsapp/i });
+
+  it('acha por e-mail quem o filtro estava escondendo', async () => {
+    montar({ cadastros: [falavel, mudo] });
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText('Buscar cadastro'), 'semnumero@exemplo.com');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+  });
+
+  it('acha por nome também, e não só por e-mail', async () => {
+    // O defeito foi notado pelo e-mail, mas a causa nunca foi do campo: era a
+    // ordem entre buscar e filtrar. Por nome tem de valer igual.
+    montar({ cadastros: [falavel, mudo] });
+    await userEvent.type(screen.getByLabelText('Buscar cadastro'), 'Sem Numero');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+    expect(screen.queryByText('Da Para Falar')).not.toBeInTheDocument();
+  });
+
+  it('a tela diz que o filtro está suspenso, em vez de calar', async () => {
+    // ⚠️ Filtro marcado que silenciosamente não se aplica é outra mentira. Quem
+    // vê "Só quem tem WhatsApp" e um resultado sem WhatsApp precisa do porquê.
+    montar({ cadastros: [falavel, mudo] });
+    expect(screen.queryByText(/a busca mostra todo mundo/i)).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText('Buscar cadastro'), 'semnumero');
+    expect(screen.getByText(/a busca mostra todo mundo/i)).toBeInTheDocument();
+  });
+
+  it('limpar a busca devolve o filtro', async () => {
+    montar({ cadastros: [falavel, mudo] });
+    const campo = screen.getByLabelText('Buscar cadastro');
+
+    await userEvent.type(campo, 'semnumero');
+    expect(screen.getByText('Sem Numero')).toBeInTheDocument();
+
+    await userEvent.clear(campo);
+    expect(screen.queryByText('Sem Numero')).not.toBeInTheDocument();
+    expect(filtro()).toHaveValue('com');
+  });
+
+  it('o seletor continua mostrando a escolha do sócio', async () => {
+    // Suspender não é desmarcar: a escolha dele volta a valer assim que a busca
+    // sai, e trocar o seletor durante a busca tem de continuar funcionando.
+    montar({ cadastros: [falavel, mudo] });
+    await userEvent.type(screen.getByLabelText('Buscar cadastro'), 'semnumero');
+    expect(filtro()).toHaveValue('com');
+    expect(filtro()).toBeEnabled();
+  });
+
+  it('os contadores dos recortes seguem a busca, não o filtro', async () => {
+    // O número promete "quantos eu veria se clicasse aqui". Se ele continuasse
+    // no filtro, diria zero com a pessoa na tela.
+    montar({ cadastros: [falavel, mudo] });
+    await userEvent.type(screen.getByLabelText('Buscar cadastro'), 'semnumero');
+    expect(screen.getByRole('radio', { name: /^Precisa de atenção 1$/ })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /^Todos 1$/ })).toBeInTheDocument();
+  });
+
+  it('o funil continua ignorando a busca', () => {
+    // Ele responde "como está a operação", e essa resposta não muda porque
+    // alguém foi procurar um nome. É regra antiga, e a suspensão não a toca.
+    montar({ cadastros: [falavel, mudo] });
+    expect(posicaoNoFunil(/Novo/)).toHaveTextContent('1');
+  });
+});
+
 describe('PainelCrm · o teste gratuito é eixo separado do funil', () => {
   // `HOJE` é 2026-09-11 e o teste termina no dia 12: sobram hoje e amanhã, que
   // é o corte de "vencendo".
