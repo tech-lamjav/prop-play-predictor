@@ -2891,20 +2891,42 @@ alter table public.futebol_mercados_ocultos
 
 -- Religar é um UPDATE de uma coluna; o gatilho fecha o período sozinho, porque
 -- o passo manual a mais é o que se esquece no dia, e o esquecimento é silencioso.
+--
+-- O gatilho também RECUSA uma volta marcada para o futuro (migration 149). Isso
+-- aconteceu em 15/09/2026, com `oculto_ate` escrito à mão para 17/09: o board
+-- passou a mostrar o handicap na hora, porque ele só pergunta se a coluna está
+-- preenchida, enquanto o placar classificava como fora da vitrine tudo que foi
+-- detectado antes da data. O assinante apostou o que o painel dizia que ele
+-- nunca tinha visto.
 create or replace function public.futebol_mercados_ocultos_periodo()
 returns trigger
 language plpgsql
 set search_path to ''
 as $function$
 begin
-  if old.oculto and not new.oculto then
-    new.oculto_ate := coalesce(new.oculto_ate, now());
-  elsif not old.oculto and new.oculto then
-    if new.oculto_desde is not distinct from old.oculto_desde then
-      new.oculto_desde := now();
+  -- `old` não existe no INSERT, e fechar ou abrir período é conversa de UPDATE.
+  if tg_op = 'UPDATE' then
+    if old.oculto and not new.oculto then
+      new.oculto_ate := coalesce(new.oculto_ate, now());
+    elsif not old.oculto and new.oculto then
+      if new.oculto_desde is not distinct from old.oculto_desde then
+        new.oculto_desde := now();
+      end if;
+      new.oculto_ate := null;
     end if;
-    new.oculto_ate := null;
   end if;
+
+  -- Data futura não é agendamento: é um fato que ainda não aconteceu, escrito
+  -- como se já tivesse acontecido.
+  if new.oculto_ate is not null and new.oculto_ate > now() then
+    raise exception
+      'oculto_ate (%) está no futuro para o mercado %: a coluna registra QUANDO o mercado voltou à vitrine, ela não agenda a volta.',
+      new.oculto_ate, new.market
+      using
+        errcode = 'check_violation',
+        hint = 'Para religar agora, deixe oculto_ate em branco e mude oculto para false: o gatilho preenche com o instante da troca. Para corrigir um religamento que já aconteceu, use o instante real dele.';
+  end if;
+
   return new;
 end;
 $function$;
@@ -2915,9 +2937,11 @@ revoke execute on function public.futebol_mercados_ocultos_periodo() from public
 revoke execute on function public.futebol_mercados_ocultos_periodo() from anon, authenticated;
 grant execute on function public.futebol_mercados_ocultos_periodo() to service_role;
 
+-- INSERT e UPDATE inteiros, e não `update of oculto`: o UPDATE que causou o
+-- incidente da 149 mexeu só na data, e nesse recorte o gatilho nem acordava.
 drop trigger if exists futebol_mercados_ocultos_periodo on public.futebol_mercados_ocultos;
 create trigger futebol_mercados_ocultos_periodo
-  before update of oculto on public.futebol_mercados_ocultos
+  before insert or update on public.futebol_mercados_ocultos
   for each row execute function public.futebol_mercados_ocultos_periodo();
 
 -- RLS ligada e SEM policy, no mesmo padrão da futebol_premissa_copy: nada lê a
@@ -2974,8 +2998,94 @@ comment on function public.get_futebol_vitrine() is
 revoke execute on function public.get_futebol_vitrine() from public;
 grant execute on function public.get_futebol_vitrine() to anon, authenticated, service_role;
 
--- O handicap VOLTOU à vitrine em 16/09/2026, com data de corte: fica escondido
--- para jogo anterior a 17/09 e aparece de lá em diante. A linha continua aqui,
+-- ── A oferta depois do teste (migration 150) ────────────────────────────────
+-- Uma DM, uma vez, para quem terminou o teste do futebol sem assinar. A máquina
+-- vive aqui inteira porque ambiente novo precisa dela de pé; o que NÃO vem é o
+-- agendamento, que é decisão humana e mora comentado na própria migration.
+alter table public.users
+  add column if not exists futebol_ofertas_muted boolean not null default false;
+
+create table if not exists public.futebol_oferta_pos_teste_notifications (
+  user_id      uuid primary key references public.users(id) on delete cascade,
+  reservada_em timestamptz not null default now(),
+  enviada_em   timestamptz,
+  erro         text
+);
+
+alter table public.futebol_oferta_pos_teste_notifications enable row level security;
+-- Sem policy: só o service_role alcança.
+
+create or replace function public.get_futebol_oferta_pos_teste_targets(
+  p_desde timestamptz default '2026-09-09 03:00:00+00',
+  p_horas integer default 24
+)
+returns table(user_id uuid, chat_id text, user_name text, trial_ends_at timestamptz)
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select u.id, u.telegram_chat_id::text, u.name::text, u.futebol_trial_ends_at
+    from public.users u
+   where u.telegram_chat_id is not null
+     and u.futebol_trial_started_at is not null
+     and u.futebol_trial_started_at >= p_desde
+     and u.futebol_trial_ends_at is not null
+     and u.futebol_trial_ends_at <= now() - make_interval(hours => p_horas)
+     and not public.futebol_acesso_vigente(u.futebol_subscription_status, u.futebol_trial_ends_at)
+     and coalesce(u.settlement_reminders_muted, false) = false
+     and coalesce(u.futebol_ofertas_muted, false) = false
+     and not exists (
+       select 1
+         from public.futebol_oferta_pos_teste_notifications n
+        where n.user_id = u.id
+     )
+   order by u.futebol_trial_ends_at;
+$function$;
+
+revoke execute on function public.get_futebol_oferta_pos_teste_targets(timestamptz, integer) from public;
+revoke execute on function public.get_futebol_oferta_pos_teste_targets(timestamptz, integer) from anon, authenticated;
+grant execute on function public.get_futebol_oferta_pos_teste_targets(timestamptz, integer) to service_role;
+
+create or replace function public.claim_futebol_oferta_pos_teste(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path to ''
+as $function$
+declare
+  v_reservou boolean;
+begin
+  insert into public.futebol_oferta_pos_teste_notifications (user_id)
+  values (p_user_id)
+  on conflict (user_id) do nothing;
+
+  get diagnostics v_reservou = row_count;
+  return v_reservou;
+end;
+$function$;
+
+revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from public;
+revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from anon, authenticated;
+grant execute on function public.claim_futebol_oferta_pos_teste(uuid) to service_role;
+
+-- Devolver a vaga é passo MANUAL: a função de borda não chama, para timeout não
+-- virar segundo envio.
+create or replace function public.release_futebol_oferta_pos_teste(p_user_id uuid)
+returns void
+language sql
+security definer
+set search_path to ''
+as $function$
+  delete from public.futebol_oferta_pos_teste_notifications where user_id = p_user_id;
+$function$;
+
+revoke execute on function public.release_futebol_oferta_pos_teste(uuid) from public;
+revoke execute on function public.release_futebol_oferta_pos_teste(uuid) from anon, authenticated;
+grant execute on function public.release_futebol_oferta_pos_teste(uuid) to service_role;
+
+-- O handicap VOLTOU à vitrine em 15/09/2026 às 17h BRT: fica escondido para
+-- linha detectada antes disso e aparece de lá em diante. A linha continua aqui,
 -- com o período FECHADO, porque é ela que segura o passado — sem ela, um
 -- ambiente novo mostraria no histórico as linhas do tempo em que o mercado
 -- esteve fora, que nunca estiveram em tela nenhuma.
@@ -2989,8 +3099,8 @@ values (
   'asian_handicap',
   false,
   timestamptz '2024-01-01 00:00:00-03',
-  timestamptz '2026-09-17 00:00:00-03',
-  'Fora da vitrine por ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols (decisao do PM em 31/08/2026, prop-play-predictor#324). De volta em 16/09/2026 com corte de valor de -2% e data de corte em 17/09 (prop-play-predictor#419 e #420).'
+  timestamptz '2026-09-15 17:00:00-03',
+  'Fora da vitrine por ROI -48,4 em 23 linhas publicadas (EP 16,5), contra +22,3 do Gols (decisao do PM em 31/08/2026, prop-play-predictor#324). De volta em 15/09/2026 as 17h BRT, com corte de valor de -2% (prop-play-predictor#419 e #420).'
 )
 on conflict (market) do nothing;
 

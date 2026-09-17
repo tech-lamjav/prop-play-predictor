@@ -43,9 +43,17 @@ export default function PlacarDaMetodologia() {
   const hoje = brtToday();
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoPadrao(hoje));
   const [eixo, setEixo] = useState<Eixo>('jogo');
-  // O padrão é o board inteiro, ao contrário do script de terminal: a decisão
-  // sobre um mercado oculto é uma das que esta tela sustenta.
-  const [soVitrine, setSoVitrine] = useState(false);
+  /**
+   * A tela abre na VITRINE: o que o assinante viu.
+   *
+   * O padrão era o board inteiro, com o argumento de que decidir sobre mercado
+   * oculto é uma das decisões que esta tela sustenta. Na prática a primeira
+   * pergunta de quem abre o painel é outra — como foi o produto que está no ar
+   * —, e o board inteiro respondia a segunda calado, misturando na mesma conta
+   * a linha que ninguém viu. A decisão sobre o mercado oculto continua aqui, a
+   * um clique, e agora ela é uma escolha explícita em vez do que vem de graça.
+   */
+  const [soVitrine, setSoVitrine] = useState(true);
   const [periodoB, setPeriodoB] = useState<Periodo | null>(null);
   /**
    * O degrau do tempo, um para a tela toda.
