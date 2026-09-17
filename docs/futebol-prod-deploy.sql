@@ -2891,20 +2891,42 @@ alter table public.futebol_mercados_ocultos
 
 -- Religar é um UPDATE de uma coluna; o gatilho fecha o período sozinho, porque
 -- o passo manual a mais é o que se esquece no dia, e o esquecimento é silencioso.
+--
+-- O gatilho também RECUSA uma volta marcada para o futuro (migration 149). Isso
+-- aconteceu em 15/09/2026, com `oculto_ate` escrito à mão para 17/09: o board
+-- passou a mostrar o handicap na hora, porque ele só pergunta se a coluna está
+-- preenchida, enquanto o placar classificava como fora da vitrine tudo que foi
+-- detectado antes da data. O assinante apostou o que o painel dizia que ele
+-- nunca tinha visto.
 create or replace function public.futebol_mercados_ocultos_periodo()
 returns trigger
 language plpgsql
 set search_path to ''
 as $function$
 begin
-  if old.oculto and not new.oculto then
-    new.oculto_ate := coalesce(new.oculto_ate, now());
-  elsif not old.oculto and new.oculto then
-    if new.oculto_desde is not distinct from old.oculto_desde then
-      new.oculto_desde := now();
+  -- `old` não existe no INSERT, e fechar ou abrir período é conversa de UPDATE.
+  if tg_op = 'UPDATE' then
+    if old.oculto and not new.oculto then
+      new.oculto_ate := coalesce(new.oculto_ate, now());
+    elsif not old.oculto and new.oculto then
+      if new.oculto_desde is not distinct from old.oculto_desde then
+        new.oculto_desde := now();
+      end if;
+      new.oculto_ate := null;
     end if;
-    new.oculto_ate := null;
   end if;
+
+  -- Data futura não é agendamento: é um fato que ainda não aconteceu, escrito
+  -- como se já tivesse acontecido.
+  if new.oculto_ate is not null and new.oculto_ate > now() then
+    raise exception
+      'oculto_ate (%) está no futuro para o mercado %: a coluna registra QUANDO o mercado voltou à vitrine, ela não agenda a volta.',
+      new.oculto_ate, new.market
+      using
+        errcode = 'check_violation',
+        hint = 'Para religar agora, deixe oculto_ate em branco e mude oculto para false: o gatilho preenche com o instante da troca. Para corrigir um religamento que já aconteceu, use o instante real dele.';
+  end if;
+
   return new;
 end;
 $function$;
@@ -2915,9 +2937,11 @@ revoke execute on function public.futebol_mercados_ocultos_periodo() from public
 revoke execute on function public.futebol_mercados_ocultos_periodo() from anon, authenticated;
 grant execute on function public.futebol_mercados_ocultos_periodo() to service_role;
 
+-- INSERT e UPDATE inteiros, e não `update of oculto`: o UPDATE que causou o
+-- incidente da 149 mexeu só na data, e nesse recorte o gatilho nem acordava.
 drop trigger if exists futebol_mercados_ocultos_periodo on public.futebol_mercados_ocultos;
 create trigger futebol_mercados_ocultos_periodo
-  before update of oculto on public.futebol_mercados_ocultos
+  before insert or update on public.futebol_mercados_ocultos
   for each row execute function public.futebol_mercados_ocultos_periodo();
 
 -- RLS ligada e SEM policy, no mesmo padrão da futebol_premissa_copy: nada lê a
