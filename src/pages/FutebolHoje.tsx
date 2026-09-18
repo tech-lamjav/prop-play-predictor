@@ -346,11 +346,7 @@ export default function FutebolHoje() {
     () => fixtureScopesFor(catalog, janelaDeFixtures, Number(todayStr.slice(0, 4))),
     [catalog, janelaDeFixtures, todayStr],
   );
-  const { data: jogosDoEspelho, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
-  // O placar do coletor entra ANTES de qualquer conta desta tela (issue #479):
-  // a grade, o trilho de jogos e a liquidação descem todos daqui, e sobrepor
-  // depois deixaria cada consumidor com uma versão diferente do mesmo jogo.
-  const allGames = useJogosComPlacarFresco(jogosDoEspelho, agora);
+  const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
@@ -546,7 +542,14 @@ export default function FutebolHoje() {
   const textoScore = textoDoScore(escalaDeExibicao(dayRows));
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
-  const gameList = isDemo ? demoFutebolFixtures : dayGames;
+  // O placar do coletor entra AQUI, no recorte do dia — e não na lista inteira
+  // (issue #479). `allGames` é a temporada de treze ligas: perguntar por ela
+  // arrastaria todo jogo adiado desde janeiro, e foi para tapar esse buraco que
+  // a primeira versão inventou uma janela de sete dias — que, de quebra, parava
+  // de perguntar pelo jogo antigo preso, justamente o que o coletor sabe
+  // responder desde que as ligas foram ligadas (#478).
+  const dayGamesFrescos = useJogosComPlacarFresco(isDemo ? [] : dayGames, agora);
+  const gameList = isDemo ? demoFutebolFixtures : dayGamesFrescos;
   // O que CABE na coluna, que não é o mesmo que o total do dia — o cabeçalho
   // continua dizendo "33 partidas" porque essa é a verdade sobre o dia; o que
   // muda é quantas linhas a coluna empilha. Recalcula com o relógio, então o
