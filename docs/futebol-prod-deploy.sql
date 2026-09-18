@@ -2173,7 +2173,7 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_numeros(p_fixture_id bigin
  SET search_path TO ''
 AS $function$
   with jogo as (
-    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id
+    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id, f.kickoff_utc
     from futebol.fact_fixtures f
     where f.fixture_id = p_fixture_id
   ),
@@ -2202,6 +2202,9 @@ AS $function$
       or (hh.home_team_id = j.away_team_id and hh.away_team_id = j.home_team_id)
     join lados l on true
     where hh.goals_home is not null and hh.goals_away is not null
+      -- A âncora (#464): só confronto que já tinha acontecido quando esta partida
+      -- começou. Mesmo padrão da 117. Apito nulo derruba a linha, e a tela omite.
+      and hh.kickoff_utc < j.kickoff_utc
     group by l.team_id
   ),
   tabela as (
