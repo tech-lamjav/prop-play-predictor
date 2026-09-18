@@ -2428,10 +2428,21 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_insumos(p_fixture_id bigin
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
+  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
+  --
+  -- Esta funcao devolve mercado, saida, linha e o NUMERO que sustenta cada
+  -- premissa: e o raciocinio do modelo, a materia-prima do "por que essa
+  -- aposta". Na lista de grants ela esta entre `get_futebol_fixture_premissas`
+  -- e `get_futebol_fixture_reason_contract`, agrupada como irma direta das
+  -- duas -- e as duas passam pelo portao. Ficou aberta porque nasceu depois
+  -- desta guarda, que e exatamente o modo de falha que o teste
+  -- futebol-guarda-acesso.test.ts existe para pegar. Ele pegou.
+  select * from (
   select i.outcome, i.market, i.line_value, i.premissa, i.insumo, i.valor
   from futebol.fact_insumos_medidos i
   where i.fixture_id = p_fixture_id
-  order by i.outcome, i.market, i.premissa, i.insumo;
+  order by i.outcome, i.market, i.premissa, i.insumo
+  ) _acesso where public.futebol_acesso_do_chamador();
 $function$
 
 ;

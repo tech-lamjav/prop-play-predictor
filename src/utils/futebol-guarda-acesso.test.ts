@@ -48,6 +48,12 @@ const DE_VALOR = [
   // Odd comparada entre casas. Hoje responde 500 em toda chamada; entrou na
   // lista porque no dia em que consertarem o 500 ela voltaria aberta.
   'get_futebol_fixture_quotes',
+  // O VALOR medido de cada premissa (mercado, saída, linha, número). É o
+  // raciocínio do modelo, e nasceu ABERTA porque veio depois desta guarda —
+  // o caso exato que a asserção de completude abaixo existe para pegar.
+  // Na lista de grants está agrupada entre `_premissas` e `_reason_contract`,
+  // as duas irmãs diretas dela, e as duas passam pelo portão.
+  'get_futebol_fixture_insumos',
 ];
 
 /**
@@ -91,6 +97,11 @@ const PUBLICAS = [
   'get_futebol_matchup_markets',
   'get_futebol_standings',
   'get_futebol_teams',
+  // Placar ao vivo lido direto do coletor: fixture, status e gols. Os MESMOS
+  // números que `get_futebol_fixtures` já devolve aberta — quem ganhou e como
+  // está o jogo é fato público de futebol, e fechar aqui não protegeria nada
+  // que a agenda não entregue ao lado.
+  'get_futebol_placar_fresco',
 ];
 
 /**
