@@ -2264,6 +2264,30 @@ $function$
 
 ;
 
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_insumos(p_fixture_id bigint)
+ RETURNS TABLE(outcome text, market text, line_value double precision, premissa text, insumo text, valor double precision)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select i.outcome, i.market, i.line_value, i.premissa, i.insumo, i.valor
+  from futebol.fact_insumos_medidos i
+  where i.fixture_id = p_fixture_id
+  order by i.outcome, i.market, i.premissa, i.insumo;
+$function$
+
+;
+
+-- Fechar aqui, junto da função, senão um ambiente provisionado por este arquivo
+-- nasce com ela aberta. Revogar só de `public` não basta no Supabase: o schema
+-- tem privilégio padrão que dá EXECUTE explícito a anon, authenticated e
+-- service_role em toda função nova, e esses grants sobrevivem ao revoke de
+-- PUBLIC — foi o que aconteceu com as duas da #408 entre a 140 e a 143.
+-- O grant fica na lista de grants mais abaixo, junto dos irmãos diretos
+-- (`get_futebol_fixture_numeros` e `_historico`).
+revoke execute on function public.get_futebol_fixture_insumos(bigint) from public;
+revoke execute on function public.get_futebol_fixture_insumos(bigint) from anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 40)
  RETURNS TABLE(side text, team_id bigint, team_name text, past_fixture_id bigint, data date, ordem bigint, mesma_competicao boolean, em_casa boolean, adversario text, adversario_id bigint, gols_pro integer, gols_contra integer, total_gols integer, ambos_marcaram boolean, sem_sofrer boolean, sem_marcar boolean, xg double precision, xg_contra double precision, resultado text)
  LANGUAGE sql
@@ -2761,6 +2785,7 @@ grant execute on function public.get_futebol_fixture_days(p_from date, p_to date
 grant execute on function public.get_futebol_fixtures_by_day(p_day date, p_competitions text[]) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_premissas(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_numeros(p_fixture_id bigint) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_insumos(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_reason_contract(p_fixture_id bigint) to anon, authenticated, service_role;
 
