@@ -42,12 +42,12 @@ const DE_VALOR = [
   'get_futebol_fixture_reason_contract',
   'get_futebol_fixture_disponivel_desde',
   'get_futebol_alerted_picks',
-  'get_futebol_vitrine',
-  'get_futebol_limiar_valor',
   'get_futebol_fixture_odds',
   'get_futebol_odds_board',
   'get_futebol_fixture_prediction',
-  'get_futebol_matchup_markets',
+  // Odd comparada entre casas. Hoje responde 500 em toda chamada; entrou na
+  // lista porque no dia em que consertarem o 500 ela voltaria aberta.
+  'get_futebol_fixture_quotes',
 ];
 
 /**
@@ -78,6 +78,34 @@ const PUBLICAS = [
   'get_futebol_team_profile',
   'get_futebol_team_season',
   'get_futebol_value_history',
+  // Regra de EXIBIÇÃO, não saída do modelo. O glossário diz que mercado oculto
+  // "não é porta de publicação: nada muda no gate, no mart nem nas RPCs".
+  // Fechadas, elas voltavam vazias — e vazio não é erro, então o filtro deixava
+  // de filtrar e a lista de quem não assina mostrava linhas que o assinante não
+  // vê. Esconder a régua não protege valor; só desalinha as duas listas.
+  'get_futebol_vitrine',
+  'get_futebol_mercados_ocultos',
+  'get_futebol_limiar_valor',
+  // Só agrega jogos encerrados: média de gols, over 2,5, ambos marcam. Fato
+  // público de futebol, e passado liquidado.
+  'get_futebol_matchup_markets',
+  'get_futebol_standings',
+  'get_futebol_teams',
+];
+
+/**
+ * Fechadas por OUTRA régua, não pela do assinante.
+ *
+ * Estas não passam pelo portão e não deveriam: são de sócio (revogadas de anon,
+ * com `eh_socio()` no corpo) ou de serviço, chamadas só por função de borda com
+ * a chave de serviço. Ficam listadas para a asserção de completude abaixo poder
+ * cobrar que TODA RPC esteja classificada em algum lugar.
+ */
+const FORA_DA_REGRA = [
+  'get_futebol_oportunidades_publicadas',
+  'get_futebol_placar_da_metodologia',
+  'get_futebol_oferta_pos_teste_targets',
+  'get_futebol_publication_alert_recipients',
 ];
 
 const sql = readFileSync(SHAPE, 'utf8').replace(/\r\n/g, '\n');
@@ -128,5 +156,25 @@ describe('o portão de acesso das RPCs de valor do futebol', () => {
       corpo,
       `${nome} é fato público de futebol e passou a exigir acesso: isso esvazia a tela de quem ainda não assinou`,
     ).not.toContain(PORTAO);
+  });
+
+  // Sem esta asserção as duas listas acima não fecham buraco nenhum: a RPC de
+  // valor de AMANHÃ nasce fora delas, ninguém a classifica, e o teste passa
+  // verde — exatamente o modo de falha que o cabeçalho deste arquivo declara.
+  it('toda RPC de futebol está classificada em alguma das listas', () => {
+    const declaradas = new Set([...DE_VALOR, ...PUBLICAS, ...FORA_DA_REGRA]);
+    const noArquivo = [
+      ...new Set(
+        [...sql.matchAll(/create\s+(?:or\s+replace\s+)?function\s+public\.(get_futebol_\w+)/gi)].map(
+          (m) => m[1].toLowerCase(),
+        ),
+      ),
+    ];
+    expect(noArquivo.length, 'não achei função nenhuma no shape file').toBeGreaterThan(20);
+    const semClasse = noArquivo.filter((n) => !declaradas.has(n));
+    expect(
+      semClasse,
+      `estas RPCs não estão em nenhuma lista — classifique antes de mergear:\n  ${semClasse.join('\n  ')}`,
+    ).toEqual([]);
   });
 });

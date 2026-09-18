@@ -634,7 +634,11 @@ export default function FutebolOportunidades() {
   // A montagem da URL saiu daqui para `futebol-links.ts` (#344): esta tela era a
   // única que carregava a saída clicada, e a home e o painel abriam a tela do
   // jogo no desempate padrão. Com um lugar só, a próxima origem não esquece.
-  const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
+  // A linha bloqueada chega com mercado, saída e linha nulos, então a chave de
+  // todas elas no mesmo jogo seria a mesma — e chave repetida faz o React
+  // duplicar ou omitir irmãos, em silêncio. Nessas, a posição é o que distingue.
+  const key = (o: OppLike, i: number) =>
+    linhaBloqueada(o) ? `bloqueada-${i}` : `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
     () => makeFutebolOportunidadesSteps({ hasDayBar: !isLoading && days.length > 0, hasBoard: bestRows.length > 0 }),
@@ -799,11 +803,11 @@ export default function FutebolOportunidades() {
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
                 <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
               </div>
-              {comValor.map((o) => {
+              {comValor.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (
-                  <div key={key(o)}>
+                  <div key={key(o, i)}>
                     <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!locked && (
                       <div className="px-5 pb-2 -mt-0.5">
@@ -817,12 +821,12 @@ export default function FutebolOportunidades() {
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o) => {
+              {comValor.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (
                   <OppMobileCard
-                    key={key(o)}
+                    key={key(o, i)}
                     o={o}
                     to={hrefDaSaida(o.fixture_id, o)}
                     locked={locked}

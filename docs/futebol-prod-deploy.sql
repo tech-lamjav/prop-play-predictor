@@ -1554,11 +1554,10 @@ CREATE OR REPLACE FUNCTION public.get_futebol_matchup_markets(p_home_id bigint, 
 AS $function$
 declare v jsonb;
 begin
-  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
-  if not public.futebol_acesso_do_chamador() then
-    return '{}'::jsonb;
-  end if;
-
+  -- SEM PORTAO: isto e fato publico de futebol, nao saida do modelo. O corpo so
+  -- agrega jogos ENCERRADOS (status FT) -- media de gols feitos e sofridos,
+  -- percentual de over 2,5 e de ambos marcam. Nenhum numero nosso entra, e o
+  -- passado liquidado fica aberto pela mesma regra que mantem o historico.
   select jsonb_object_agg(g.who, jsonb_build_object(
            'games', g.games, 'avg_gf', round(g.avg_gf, 2), 'avg_ga', round(g.avg_ga, 2),
            'over25_pct', round(g.over25 * 100), 'btts_pct', round(g.btts * 100)
@@ -1867,16 +1866,30 @@ as $function$
   -- todas as colunas nulas: a tela sabe que hoje ha N oportunidades e mostra N
   -- cadeados, sem dizer em qual jogo, em que mercado nem a que preco.
   --
+  -- DUAS COLUNAS ESCAPAM DO NULO, e sem elas a contagem nao existe:
+  --
+  --   c1 fixture_id  -- a tela precisa de chave estavel por linha; sem ela duas
+  --                     linhas bloqueadas colidem na mesma chave de React
+  --   c7 kickoff_utc -- a home conta por DIA (brtDayOf(kickoff) == dia). Anulada,
+  --                     nenhuma linha casa o dia, a contagem vira 0 e a tela cai
+  --                     em "Sem valor claro hoje" -- a frase que este trabalho
+  --                     existe para corrigir
+  --
+  -- O que isso entrega a quem nao assina: que existe oportunidade naquele jogo.
+  -- Nao entrega qual aposta, em que mercado, a que preco, com que chance nem com
+  -- que nota. E o horario ja identifica o jogo pela agenda, que e publica -- nao
+  -- havia o que proteger escondendo so um dos dois.
+  --
   -- O apelido posicional (_b.c1..) existe porque a consulta de baixo tem colunas
   -- sem nome (expressoes); nomear aqui e o que permite projetar uma a uma.
   select
-    case when _g.tem then _b.c1 end,
+    _b.c1,
     case when _g.tem then _b.c2 end,
     case when _g.tem then _b.c3 end,
     case when _g.tem then _b.c4 end,
     case when _g.tem then _b.c5 end,
     case when _g.tem then _b.c6 end,
-    case when _g.tem then _b.c7 end,
+    _b.c7,
     case when _g.tem then _b.c8 end,
     case when _g.tem then _b.c9 end,
     case when _g.tem then _b.c10 end,
@@ -2505,6 +2518,11 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path TO ''
 AS $function$
+  -- Sem acesso, zero linha. Ela devolve odd comparada entre casas (pinnacle,
+  -- media, melhor e qual casa paga) -- trabalho nosso, valor pela regra. Ficou
+  -- de fora da primeira leva porque hoje responde 500 em toda chamada; no dia
+  -- em que consertarem o 500, sem isto ela voltaria aberta.
+  select * from (
   with base as (
     select o.market_name, o.outcome_label, o.bookmaker_name, o.collection_window,
            o.odd_decimal, o.line_value, f.kickoff_utc
@@ -2597,7 +2615,9 @@ AS $function$
   join best_book bb using (market_name, outcome_label)
   left join pinnacle p using (market_name, outcome_label)
   where a.market_name <> 'Asian Handicap' or a.n_books >= 3
-  order by 1, 5 nulls first, 4;
+  order by 1, 5 nulls first, 4
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$;
 
 -- ── 5d. Contrato de motivos da leitura dos cinco mercados (migration 109) ────
@@ -3162,17 +3182,18 @@ returns table (market text, oculto_desde timestamptz, oculto_ate timestamptz)
  security definer
  set search_path to ''
 as $function$
-  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
-  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
-  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
-  select * from (
-
+  -- SEM PORTAO, de proposito. A vitrine e regra de EXIBICAO, nao saida do
+  -- modelo: o glossario (CONTEXT.md, "Mercado oculto") diz que mercado oculto
+  -- "nao e porta de publicacao: nada muda no gate, no mart nem nas RPCs".
+  --
+  -- Fechar aqui quebrava em silencio: vazio nao e erro, entao o fallback do
+  -- servico nao dispara, `mercadoEstaOculto` para de filtrar, e a lista de quem
+  -- NAO tem acesso passa a mostrar linhas que o assinante nao ve. Esconder a
+  -- regra de exibicao nao protege valor nenhum -- so desalinha as duas listas.
   select o.market, o.oculto_desde, o.oculto_ate
     from public.futebol_mercados_ocultos o
    where o.oculto or o.oculto_ate is not null
-   order by o.market
-  ) _acesso
-  where public.futebol_acesso_do_chamador();
+   order by o.market;
 $function$;
 
 comment on function public.get_futebol_vitrine() is
@@ -3358,16 +3379,13 @@ stable
 security definer
 set search_path to ''
 as $function$
-  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
-  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
-  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
-  select * from (
-
+  -- SEM PORTAO, mesma razao da vitrine: o limiar e regra de EXIBICAO. Ele diz
+  -- qual linha o produto corta, e esse corte tem que valer igual para todo
+  -- mundo. Fechado, `cortadaNaData` parava de cortar para quem nao tem acesso, e
+  -- o deslogado via no historico linhas que o assinante nao ve.
   select l.market, l.limiar, l.vigente_desde
     from public.futebol_limiar_valor l
-   order by l.market
-  ) _acesso
-  where public.futebol_acesso_do_chamador();
+   order by l.market;
 $function$;
 
 comment on function public.get_futebol_limiar_valor() is
