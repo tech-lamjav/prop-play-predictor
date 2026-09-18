@@ -24,7 +24,7 @@ import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { perfilDaJanela } from '@/utils/futebol-historico';
 import { Blur } from '@/components/futebol/FutebolGate';
-import { useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useFutebolAccess, useFutebolFixtureInsumos } from '@/hooks/use-futebol-data';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type {
   FutebolFixtureByDay,
@@ -110,6 +110,9 @@ export function JogoResumoPanel({
   const numeros = demo?.numeros ?? numerosReais;
   const { data: injuries } = useFutebolFixtureInjuries(fixture.fixture_id);
   const { data: historico } = useFutebolFixtureHistorico(fixture.fixture_id);
+  // O valor que o modelo comparou (#464). No tour não existe, e não faz falta:
+  // ausência cai na rota seguinte, como em jogo gravado antes do deploy.
+  const { data: insumos } = useFutebolFixtureInsumos(demo ? undefined : fixture.fixture_id);
   // A camada de VALOR é paga, e este painel era o furo: chance, odd e vantagem
   // apareciam limpas para quem não tem acesso, enquanto as MESMAS três estão
   // borradas na tela de Oportunidades e na folha do jogo. Uma tela dava de
@@ -199,6 +202,7 @@ export function JogoResumoPanel({
       contrato,
       numeros,
       historico,
+      insumos,
       lado,
     },
     { max: 4, incluirPesoZero: false, maxContra: 2 },

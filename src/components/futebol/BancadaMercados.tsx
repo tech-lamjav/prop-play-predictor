@@ -6,6 +6,7 @@ import {
   useVitrine,
   useFutebolFixturePremissas,
   useFutebolFixtureNumeros,
+  useFutebolFixtureInsumos,
   useFutebolFixtureHistorico,
   useFutebolFixtureInjuries,
   useFutebolFixtureOdds,
@@ -270,6 +271,9 @@ export function BancadaMercados({
   const { data: rows, isLoading } = useFutebolFixturePremissas(jogo.fixtureId);
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
   const { data: historico } = useFutebolFixtureHistorico(jogo.fixtureId);
+  // O valor que o modelo comparou (#464). Vazio é normal: o funil é append-only
+  // e jogo gravado antes do deploy não tem insumo medido.
+  const { data: insumos } = useFutebolFixtureInsumos(jogo.fixtureId);
   const { data: injuries } = useFutebolFixtureInjuries(jogo.fixtureId);
   const { data: oddsRows } = useFutebolFixtureOdds(jogo.fixtureId);
   const {
@@ -509,6 +513,7 @@ export function BancadaMercados({
       slug,
       numeros,
       historico,
+      insumos,
       lado: ladoPrincipal,
       linha,
       acesa,
@@ -1372,6 +1377,7 @@ export function BancadaMercados({
             extras={motivosFavor.extras}
             historico={historico}
             numeros={numeros}
+            insumos={insumos}
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}
@@ -1384,6 +1390,7 @@ export function BancadaMercados({
             extras={motivosContra.extras}
             historico={historico}
             numeros={numeros}
+            insumos={insumos}
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}

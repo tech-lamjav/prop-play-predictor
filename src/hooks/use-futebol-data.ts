@@ -18,6 +18,7 @@ import {
   type FutebolFixtureReasonContractRow,
   type FutebolFixtureDisponibilidade,
   type FutebolFixtureNumeros,
+  type FutebolFixtureInsumo,
   type FutebolFixtureHistorico,
   type FutebolCompetitionInfo,
   type FutebolFixtureDetail,
@@ -138,6 +139,18 @@ export function useFutebolFixtureNumeros(fixtureId: number | undefined) {
   return useQuery<FutebolFixtureNumeros[]>({
     queryKey: ['futebol', 'fixture-numeros', fixtureId],
     queryFn: () => futebolDataService.getFixtureNumeros(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** O valor que cada premissa comparou, direto do mart (#464). Vazio é normal. */
+export function useFutebolFixtureInsumos(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureInsumo[]>({
+    queryKey: ['futebol', 'fixture-insumos', fixtureId],
+    queryFn: () => futebolDataService.getFixtureInsumos(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
