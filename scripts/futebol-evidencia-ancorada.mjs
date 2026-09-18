@@ -259,21 +259,40 @@ export const discordancia = (amostra, valorDe, corte) => {
 
 const pct = (x) => (x == null ? '—' : `${(x * 100).toFixed(1)}%`);
 
-function relatorio(titulo, amostra, atual, ancorado, semDado) {
-  const metade = Math.floor(amostra.length / 2);
-  const ajuste = amostra.slice(0, metade);
-  const aval = amostra.slice(metade);
+function relatorio(titulo, amostraBruta, atual, ancorado, semDado) {
+  console.log(`\n### ${titulo}`);
+
+  // Só linhas em que AS DUAS rotas têm valor. Medir uma em 8.537 linhas e a
+  // outra em 6.383 compara populações diferentes, e aí a diferença de taxa
+  // carrega "quais linhas entraram" junto com "de onde veio o número" — que é
+  // o defeito que essa medição existe para não cometer.
+  const amostra = amostraBruta.filter((l) => atual(l) != null && ancorado(l) != null);
+  const fora = amostraBruta.length - amostra.length;
+
+  // Alternado, e NÃO as duas metades por data. Ordenar por data e partir ao
+  // meio põe os jogos antigos de um lado só: as fotos de classificação começam
+  // em 11/06/2026, então a metade de ajuste ficava sem nenhum valor e o corte
+  // nunca saía. É a mesma armadilha registrada na #448 sobre estratificar por
+  // data em vez de por competição.
+  const ajuste = amostra.filter((_, i) => i % 2 === 0);
+  const aval = amostra.filter((_, i) => i % 2 === 1);
 
   const corte = corteQueMelhorExplica(ajuste, ancorado);
-  console.log(`\n### ${titulo}`);
   if (corte == null) {
-    console.log('> amostra insuficiente para inferir o corte (menos de 200 linhas com valor).');
+    console.log(
+      `> amostra insuficiente para inferir o corte: ${amostra.length} linhas com valor ` +
+      'nas duas rotas (são precisas 200 na metade de ajuste).',
+    );
+    if (fora > 0) console.log(`> ${fora} linhas ficaram fora por faltar valor em alguma das rotas.`);
     return;
   }
 
   const a = discordancia(aval, atual, corte);
   const b = discordancia(aval, ancorado, corte);
-  console.log(`> corte inferido na 1ª metade: ${corte}. Taxas medidas na 2ª metade.`);
+  console.log(`> corte inferido em metade alternada da amostra: ${corte}.`);
+  if (fora > 0) {
+    console.log(`> ${fora} linhas fora da comparação por faltar valor em alguma das rotas.`);
+  }
   console.log('\n| rota | n | discorda do mart |');
   console.log('|---|---:|---:|');
   console.log(`| como estava (foto de hoje) | ${a.n} | ${pct(a.taxa)} |`);
