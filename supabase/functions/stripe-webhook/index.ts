@@ -7,6 +7,7 @@ import {
   fimDoPeriodoDaFatura,
   situacaoCrua,
 } from "../shared/situacao-do-stripe.ts";
+import { pagamentoDaFatura } from "../shared/pagamento-da-fatura.ts";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -483,6 +484,50 @@ serve(async (req) => {
         } else {
           console.log('[Webhook] ✅ Acesso renovado via invoice.paid para user:', userId);
           console.log('[Webhook] Updated data:', JSON.stringify(data));
+
+          /*
+           * O dinheiro do gateway entra no NOSSO registro.
+           *
+           * ⚠️ DEPOIS de o acesso ser renovado com sucesso, e dentro deste
+           * ramo de propósito. A primeira versão gravava antes de checar o
+           * `error` do update: se a renovação do acesso falhasse, o dinheiro
+           * entrava no registro e o acesso não, e os dois logs saíam em linhas
+           * separadas sem ninguém ligar uma à outra. Registro de dinheiro que
+           * diz que está tudo certo enquanto a pessoa está sem o produto é o
+           * pior dos dois erros.
+           *
+           * ⚠️ `upsert` por `stripe_invoice_id`, pelo mesmo motivo que a compra
+           * de bolão acima usa upsert por sessão: o Stripe RETENTA eventos, e
+           * sem isso duas entregas da mesma fatura virariam dois pagamentos e o
+           * total da pessoa inflaria sozinho. O índice único que sustenta isso
+           * nasce na migration 151.
+           *
+           * Recusa e erro de gravação daqui não derrubam o evento: o acesso já
+           * está de pé, que é o que a pessoa pagou para ter. Deixar um problema
+           * de contabilidade virar problema de acesso trocaria um erro
+           * silencioso por um erro que o cliente sente.
+           *
+           * `criada_por` fica nulo: quem gravou foi o webhook, e não um sócio.
+           * Inventar um autor seria mentir na auditoria.
+           */
+          const leitura = pagamentoDaFatura(invoice, userId);
+          if (leitura.tipo === 'recusa') {
+            console.warn('[Webhook] Fatura nao virou pagamento:', leitura.motivo);
+          } else {
+            const { error: erroDoPagamento } = await supabase
+              .from('crm_pagamento')
+              .upsert(leitura.pagamento, { onConflict: 'stripe_invoice_id' });
+
+            if (erroDoPagamento) {
+              console.error('[Webhook] Error recording crm_pagamento:', erroDoPagamento);
+            } else {
+              console.log(
+                '[Webhook] 💰 Pagamento registrado:',
+                leitura.pagamento.stripe_invoice_id,
+                leitura.pagamento.competencia,
+              );
+            }
+          }
         }
         break;
       }
