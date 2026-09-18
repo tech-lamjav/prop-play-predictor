@@ -17,13 +17,13 @@ fraco = silêncio; usuário que ignora = para de receber.
 | 6 | **Aviso de kickoff do bolão** (só pro DONO do bolão) | Jogo da Copa começando | No minuto do kickoff (:00/:30) | 1 por jogo por bolão | opt-in explícito do dono |
 | 10 | **"📊 Seus últimos 7 dias"** (resumo semanal · item 04) | Cron semanal | **Segunda 9h30 BRT** (antes do daily das 10h — narrativa passado→futuro), 1x/semana — e SÓ pra quem teve **≥2 apostas liquidadas** nos últimos 7 dias (rolling). Sem apostas = sem mensagem. Faixa por resultado (positiva/neutra/negativa); lidera por resultado+ROI, SEM taxa de acerto | 1×/semana por usuário (idempotência `weekly_summary_sent_at`, gap ~6d) | Botão "Silenciar resumo" na própria DM · `/resumo` reativa |
 
-## One-shot (disparo manual, 1x por usuário PRA SEMPRE)
+## One-shot (1x por usuário PRA SEMPRE — a #7 e a #8 no braço, a #12 no cron)
 
 | # | Mensagem | Quando dispara | Quem controla |
 |---|---|---|---|
 | 7 | **"📋 Atualizamos seu histórico — seu ROI real"** (winback R1) | Uma única vez, após o backfill do histórico (3 curls do runbook) | Dev, manualmente |
 | 8 | **"🏆 A Copa acabou — e com ela o bolão!"** (handoff da final) | Dia 19/07, após a final encerrar (guarda técnica impede antes) | Dev, manualmente (2 curls) |
-| 12 | **"⚽ Seu teste do futebol terminou"** (oferta pós-teste) | 24h após o fim do teste, só entre 09h–23h BRT, e só para a coorte que começou o teste de 09/09/2026 em diante. Uma por pessoa, para sempre (`futebol_oferta_pos_teste_notifications`) | Dev: `mode=report` primeiro, `mode=send` depois. O cron está escrito e **comentado** na migration 150 — ligar é passo humano. Opt-out: `/ofertas`, **e o `/silenciar` geral também cala** |
+| 12 | **"⚽ Seu teste do futebol terminou"** (oferta pós-teste) | **No ar desde 17/09/2026**, cron diário `notify-futebol-oferta` (`0 14 * * *` = 11h BRT). Sai 24h após o fim do teste, só entre 09h–23h BRT, e só para quem começou o teste de 09/09/2026 em diante. Uma por pessoa, para sempre (`futebol_oferta_pos_teste_notifications`) | Opt-out: `/ofertas`, **e o `/silenciar` geral também cala**. Desligar o disparo: `select cron.unschedule('notify-futebol-oferta')`. ⚠️ O bloco do cron segue **comentado** na migration 150: ele foi rodado à mão em produção, de propósito, para o merge nunca ligar venda sozinho |
 
 ## Interno (não vai pra usuário)
 
