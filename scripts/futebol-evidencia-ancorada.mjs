@@ -58,16 +58,37 @@ const PROJETO_PRD = 'lavclmlvvfzkblrstojd';
 
 let tokenEmCache = null;
 
+/**
+ * O `.env.local` da raiz, ou do primeiro diretório acima que o tenha.
+ *
+ * Subir importa: este repositório é trabalhado em worktrees sob
+ * `.claude/worktrees/`, e `.env.local` é ignorado pelo git — então ele existe no
+ * checkout principal e NUNCA numa worktree. Olhando só a raiz, o script falha
+ * exatamente no modo normal de trabalho daqui, que é o contrário de uma medição
+ * reproduzível por outra pessoa.
+ */
+function envLocal() {
+  let dir = RAIZ;
+  for (let i = 0; i < 6; i++) {
+    try {
+      return readFileSync(resolve(dir, '.env.local'), 'utf8');
+    } catch {
+      const acima = dirname(dir);
+      if (acima === dir) return null;
+      dir = acima;
+    }
+  }
+  return null;
+}
+
 function tokenDeAcesso() {
   if (tokenEmCache) return tokenEmCache;
   if (process.env.SUPABASE_ACCESS_TOKEN) {
     tokenEmCache = process.env.SUPABASE_ACCESS_TOKEN;
     return tokenEmCache;
   }
-  let env;
-  try {
-    env = readFileSync(resolve(RAIZ, '.env.local'), 'utf8');
-  } catch {
+  const env = envLocal();
+  if (env == null) {
     throw new Error('sem SUPABASE_ACCESS_TOKEN no ambiente e sem .env.local para ler');
   }
   const m = env.match(/^SUPABASE_ACCESS_TOKEN=(.*)$/m);
