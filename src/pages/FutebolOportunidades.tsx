@@ -19,7 +19,7 @@ import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/fu
 import {
   pickLabel, marketLabel, fmtEdgeScore,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
-  opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, ehDestaque, compararOportunidades,
+  opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
   FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
 } from '@/utils/futebol-score';
@@ -575,9 +575,17 @@ export default function FutebolOportunidades() {
       byDay.get(d)!.push(r);
     });
     const out: Record<string, number> = {};
-    // Conta o mesmo recorte que a lista abre por padrão (Alta e Média), senão o
-    // selo promete um número que a tela não mostra ao ser aberta.
-    byDay.forEach((rs, d) => { out[d] = rs.filter((o) => ehDestaque(o.faixa)).length; });
+    // Conta o mesmo recorte que a lista abre por padrão, e conta com a MESMA
+    // função que a lista usa — não com uma equivalente.
+    //
+    // `ehDestaque` era equivalente enquanto toda linha tinha faixa. Com a guarda
+    // de acesso a linha bloqueada chega com faixa nula, e aí as duas divergiram:
+    // o filtro deixa faixa nula passar (a linha aparece), `ehDestaque` não (o
+    // selo não conta). A barra dizia "hoje · 0" com oito linhas logo abaixo —
+    // dois números certos pela própria regra, mentindo juntos na mesma tela.
+    byDay.forEach((rs, d) => {
+      out[d] = rs.filter((o) => passaNoFiltroDeFaixas(FAIXAS_FILTRO_PADRAO, o.faixa)).length;
+    });
     // Registrada que o board não tem entra na conta, senão dia que só tem
     // registro apareceria zerado no seletor.
     // Uma vez por oportunidade, e não por envio: o mesmo pick mandado no
