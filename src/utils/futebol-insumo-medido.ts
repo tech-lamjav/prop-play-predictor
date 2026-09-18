@@ -18,6 +18,8 @@
  * sozinha, sem ninguém precisar apagar nada.
  */
 
+import type { Evidencia } from '@/utils/futebol-evidencias';
+
 /** Uma linha de `futebol.fact_insumos_medidos`, só com o que esta escolha usa. */
 export interface InsumoMedido {
   outcome: string;
@@ -70,41 +72,74 @@ export function insumosDaPremissa(
  * Premissa sem forma aqui também cai no par cru — é o que mantém a rota
  * agnóstica para as outras seis do 1X2 e para as que o mart publicar depois.
  */
-const FORMAS: Record<string, (v: Record<string, number>) => string | null> = {
+/** Os nomes dos dois times, para a barra. Nome não é medição: não muda com a janela. */
+export interface NomesDoConfronto {
+  time?: string | null;
+  adversario?: string | null;
+}
+
+const FORMAS: Record<string, (v: Record<string, number>, n: NomesDoConfronto) => Evidencia | null> = {
   // O modelo compara pontos POR JOGO; a frase antiga mostrava o total da
   // temporada ("76 pontos"), que é outra grandeza. Era um número verdadeiro que
   // não é o insumo — o que o glossário chama de ilustrar sem explicar.
-  'match_winner:superioridade_tabela': (v) =>
-    v.s_rank == null || v.o_rank == null || v.s_ppg == null || v.o_ppg == null
-      ? null
-      : `${numero(v.s_rank)}º com ${numero(v.s_ppg)} pontos por jogo, contra ` +
+  //
+  // A barra compara a mesma grandeza da frase, com a posição no rótulo. Mais
+  // pontos por jogo é o lado bom da aposta, daí o destaque à esquerda.
+  'match_winner:superioridade_tabela': (v, n) => {
+    if (v.s_rank == null || v.o_rank == null || v.s_ppg == null || v.o_ppg == null) return null;
+    return {
+      texto:
+        `${numero(v.s_rank)}º com ${numero(v.s_ppg)} pontos por jogo, contra ` +
         `${numero(v.o_rank)}º e ${numero(v.o_ppg)} do adversário`,
+      comparacao: {
+        esqLabel: `${n.time ?? 'O time'}, ${numero(v.s_rank)}º`,
+        esqValor: v.s_ppg,
+        dirLabel: `${n.adversario ?? 'Adversário'}, ${numero(v.o_rank)}º`,
+        dirValor: v.o_ppg,
+        destaque: 'esq',
+      },
+    };
+  },
 
-  'match_winner:h2h_favoravel': (v) =>
-    v.s_wins == null || v.h2h_total == null
-      ? null
-      : `${numero(v.s_wins)} ${v.s_wins === 1 ? 'vitória' : 'vitórias'} em ` +
+  // Sem barra, de propósito. O mart dá vitórias e TOTAL; entre as duas existem
+  // os empates, e daqui não dá para separar empate de derrota. A barra só
+  // conseguiria desenhar "vitórias contra o resto", que é outra afirmação —
+  // melhor frase sozinha do que barra dizendo o que o dado não diz.
+  'match_winner:h2h_favoravel': (v) => {
+    if (v.s_wins == null || v.h2h_total == null) return null;
+    return {
+      texto:
+        `${numero(v.s_wins)} ${v.s_wins === 1 ? 'vitória' : 'vitórias'} em ` +
         `${numero(v.h2h_total)} ${v.h2h_total === 1 ? 'confronto' : 'confrontos'}`,
+    };
+  },
 };
 
 /**
- * A frase da evidência a partir do valor medido, ou `null` quando não há.
+ * A evidência a partir do valor medido, ou `null` quando não há como formar uma.
  *
- * Ausência é normal, não erro: o funil é append-only e linha gravada antes do
- * deploy não tem valor medido. Quem chama cai na rota seguinte.
+ * ⚠️ Premissa sem forma conhecida devolve `null` DE PROPÓSITO, e não o par cru.
+ * Imprimir `s_form_pts 11` seria pôr identificador de coluna do dbt na cara do
+ * assinante — e, pior, faria a premissa falar por uma janela enquanto o gráfico
+ * logo abaixo dela desenha outra. Devolvendo nulo, ela cai na rota do histórico,
+ * que calcula a frase da MESMA série que o gráfico desenha, e as duas não têm
+ * como discordar.
+ *
+ * Ausência de insumo também é normal, não erro: o funil é append-only e linha
+ * gravada antes do deploy não tem valor medido.
  */
-export function fraseDoInsumoMedido(
+export function evidenciaDoInsumoMedido(
   mercado: string,
   slug: string,
   lado: 'home' | 'away' | null,
   insumos: InsumoMedido[] | undefined,
-): string | null {
+  nomes: NomesDoConfronto = {},
+): Evidencia | null {
   const achados = insumosDaPremissa(mercado, slug, lado, insumos);
   if (!achados.length) return null;
 
   const porNome: Record<string, number> = {};
   for (const i of achados) porNome[i.insumo] = i.valor as number;
 
-  const forma = FORMAS[`${mercado}:${slug}`];
-  return forma?.(porNome) ?? achados.map((i) => `${i.insumo} ${numero(i.valor as number)}`).join(' · ');
+  return FORMAS[`${mercado}:${slug}`]?.(porNome, nomes) ?? null;
 }

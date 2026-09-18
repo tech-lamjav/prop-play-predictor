@@ -360,7 +360,7 @@ para mudar sem release.
 | **Peso de cada premissa** | **Só no frontend**, `src/utils/futebol-premissas.ts` | Release do app |
 | Rótulo e copy da premissa | Frontend, e uma cópia em `futebol_premissa_copy` | Release / UPDATE |
 | Critério transcrito (só Gols) | Frontend, `src/utils/futebol-criterio.ts` | Release do app |
-| **O número embaixo da premissa** (a evidência) | **Três rotas, nesta ordem**: critério transcrito no frontend; histórico jogo a jogo, RPC 117; perfil de temporada, RPC 094 | Release / migration |
+| **O número embaixo da premissa** (a evidência) | **Quatro rotas, nesta ordem**: critério transcrito no frontend; valor medido pelo mart, RPC 155; histórico jogo a jogo, RPC 117; perfil de temporada, RPC 094 | Release / migration |
 | Quais premissas se aplicam a cada saída | **Duas cópias**: mart e migration 112 | Deploy nos dois |
 | Mercado na vitrine | Tabela `futebol_mercados_ocultos` | UPDATE, sem release |
 | Regra de liquidação (green/red) | **Só no navegador**, `src/utils/futebol-settlement.ts` | Release do app |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fraseDoInsumoMedido, insumosDaPremissa, type InsumoMedido } from './futebol-insumo-medido';
+import { evidenciaDoInsumoMedido, insumosDaPremissa, type InsumoMedido } from './futebol-insumo-medido';
 import { evidenciaDaPremissa } from './futebol-evidencia-da-premissa';
 import type { FutebolFixtureNumeros } from '@/services/futebol-data.service';
 
@@ -65,7 +65,7 @@ describe('escolher o insumo de uma premissa', () => {
   });
 });
 
-describe('a frase do valor medido', () => {
+describe('a evidência do valor medido', () => {
   const tabelaCompleta = [
     linha({ insumo: 's_rank', valor: 2 }),
     linha({ insumo: 's_ppg', valor: 2.24 }),
@@ -76,51 +76,71 @@ describe('a frase do valor medido', () => {
   it('lê a superioridade na tabela com a grandeza que o modelo compara', () => {
     // PONTOS POR JOGO, e não o total da temporada. A frase antiga mostrava "76
     // pontos", que é outra grandeza — verdadeira, e não era o insumo.
-    expect(fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', tabelaCompleta))
+    expect(evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', tabelaCompleta)?.texto)
       .toBe('2º com 2,24 pontos por jogo, contra 20º e 1,42 do adversário');
   });
 
-  it('lê o confronto direto em vitórias sobre total', () => {
-    const frase = fraseDoInsumoMedido('match_winner', 'h2h_favoravel', 'home', [
+  it('a barra volta, comparando a mesma grandeza da frase', () => {
+    // Sem isto a frase ficava e a BARRA sumia — perda de uma coisa que já
+    // existia e funcionava, em todo jogo do 1X2.
+    const ev = evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', tabelaCompleta, {
+      time: 'Casa',
+      adversario: 'Fora',
+    });
+
+    expect(ev?.comparacao).toEqual({
+      esqLabel: 'Casa, 2º',
+      esqValor: 2.24,
+      dirLabel: 'Fora, 20º',
+      dirValor: 1.42,
+      destaque: 'esq',
+    });
+  });
+
+  it('sem nome de time, a barra ainda sai, sem inventar nome', () => {
+    expect(evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', tabelaCompleta)?.comparacao)
+      .toMatchObject({ esqLabel: 'O time, 2º', dirLabel: 'Adversário, 20º' });
+  });
+
+  it('lê o confronto direto em vitórias sobre total, e sem barra', () => {
+    // Sem barra de propósito: o mart dá vitórias e total, e entre as duas estão
+    // os empates. "Vitórias contra o resto" seria outra afirmação.
+    const ev = evidenciaDoInsumoMedido('match_winner', 'h2h_favoravel', 'home', [
       linha({ premissa: 'h2h_favoravel', insumo: 's_wins', valor: 6 }),
       linha({ premissa: 'h2h_favoravel', insumo: 'h2h_total', valor: 10 }),
     ]);
 
-    expect(frase).toBe('6 vitórias em 10 confrontos');
+    expect(ev?.texto).toBe('6 vitórias em 10 confrontos');
+    expect(ev?.comparacao).toBeUndefined();
   });
 
   it('concorda em número quando é um só', () => {
-    const frase = fraseDoInsumoMedido('match_winner', 'h2h_favoravel', 'home', [
+    const ev = evidenciaDoInsumoMedido('match_winner', 'h2h_favoravel', 'home', [
       linha({ premissa: 'h2h_favoravel', insumo: 's_wins', valor: 1 }),
       linha({ premissa: 'h2h_favoravel', insumo: 'h2h_total', valor: 1 }),
     ]);
 
-    expect(frase).toBe('1 vitória em 1 confronto');
+    expect(ev?.texto).toBe('1 vitória em 1 confronto');
   });
 
-  it('faltando um insumo da forma, cai no par cru em vez de inventar', () => {
-    // Meia frase seria pior que frase nenhuma: ela afirmaria uma comparação
-    // com um dos lados ausente.
-    expect(fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [linha()]))
-      .toBe('s_rank 2');
+  it('faltando um insumo da forma, devolve nulo em vez de meia frase', () => {
+    expect(evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [linha()]))
+      .toBeNull();
   });
 
-  it('premissa sem forma conhecida continua agnóstica', () => {
-    const frase = fraseDoInsumoMedido('match_winner', 'forma', 'home', [
+  it('premissa sem forma conhecida devolve nulo, e NÃO o nome da coluna', () => {
+    // `s_form_pts 11` na tela seria identificador de banco na cara do
+    // assinante. Pior: a premissa falaria pela janela do mart enquanto o
+    // gráfico logo abaixo desenha a nossa. Nulo aqui faz cair no histórico,
+    // que sai da mesma série do gráfico.
+    expect(evidenciaDoInsumoMedido('match_winner', 'forma', 'home', [
       linha({ premissa: 'forma', insumo: 's_form_pts', valor: 11 }),
-    ]);
-
-    expect(frase).toBe('s_form_pts 11');
-  });
-
-  it('usa vírgula decimal, como o resto do produto', () => {
-    expect(fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [linha({ valor: 1.485 })]))
-      .toBe('s_rank 1,49');
+    ])).toBeNull();
   });
 
   it('sem insumo, devolve nulo para a próxima rota assumir', () => {
-    expect(fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [])).toBeNull();
-    expect(fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', undefined)).toBeNull();
+    expect(evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [])).toBeNull();
+    expect(evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', undefined)).toBeNull();
   });
 });
 
@@ -138,8 +158,27 @@ describe('a posição do valor medido na porta única', () => {
     });
 
   it('o valor medido vence o perfil de temporada', () => {
-    // Sem ele, a frase seria a do perfil: "Casa em 2º com 76 pontos contra...".
-    expect(chamar([linha()])?.texto).toBe('s_rank 2');
+    // Sem ele, a frase seria a do perfil: "Casa em 2º com 76 pontos contra...",
+    // que usa o TOTAL de pontos — grandeza que o modelo não compara.
+    const ev = chamar([
+      linha({ insumo: 's_rank', valor: 2 }),
+      linha({ insumo: 's_ppg', valor: 2.24 }),
+      linha({ insumo: 'o_rank', valor: 20 }),
+      linha({ insumo: 'o_ppg', valor: 1.42 }),
+    ]);
+
+    expect(ev?.texto).toBe('2º com 2,24 pontos por jogo, contra 20º e 1,42 do adversário');
+  });
+
+  it('a barra vem com o nome dos times, tirado da 094', () => {
+    const ev = chamar([
+      linha({ insumo: 's_rank', valor: 2 }),
+      linha({ insumo: 's_ppg', valor: 2.24 }),
+      linha({ insumo: 'o_rank', valor: 20 }),
+      linha({ insumo: 'o_ppg', valor: 1.42 }),
+    ]);
+
+    expect(ev?.comparacao).toMatchObject({ esqLabel: 'Casa, 2º', dirLabel: 'Fora, 20º' });
   });
 
   it('sem valor medido, o perfil de temporada continua respondendo', () => {
@@ -153,5 +192,11 @@ describe('a posição do valor medido na porta única', () => {
     // O funil é append-only: jogo gravado antes do deploy não tem insumo. Isso
     // é normal, e não pode virar tela vazia.
     expect(chamar([])?.texto).toContain('2º');
+  });
+
+  it('insumo incompleto não sequestra a premissa: cai na rota seguinte', () => {
+    // Era o defeito do escopo: a rota alcançava as 8 premissas do 1X2, não as
+    // 4 da issue, e preemptava o histórico nas que já estavam certas.
+    expect(chamar([linha()])?.texto).toContain('2º');
   });
 });

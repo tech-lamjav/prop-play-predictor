@@ -2,7 +2,7 @@ import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { fraseDaPrestacao, prestacaoDaPremissa } from '@/utils/futebol-criterio';
-import { fraseDoInsumoMedido, type InsumoMedido } from '@/utils/futebol-insumo-medido';
+import { evidenciaDoInsumoMedido, type InsumoMedido } from '@/utils/futebol-insumo-medido';
 
 // O número que acompanha uma premissa, de UMA fonte só (spec #349, issue #358).
 //
@@ -74,8 +74,13 @@ export function evidenciaDaPremissa({
 }): Evidencia | null {
   const p = prestacaoDaPremissa(mercado, slug, historico, lado, linha);
   if (p) return { texto: fraseDaPrestacao(p) };
-  const medido = fraseDoInsumoMedido(mercado, slug, lado, insumos);
-  if (medido) return { texto: medido };
+  // O nome do time sai da 094 e o VALOR do mart: nome não é medição, não muda
+  // com a janela, e é o que a barra precisa para dizer de quem é cada lado.
+  const medido = evidenciaDoInsumoMedido(mercado, slug, lado, insumos, {
+    time: numeros?.find((n) => n.side === lado)?.team_name,
+    adversario: numeros?.find((n) => n.side !== lado)?.team_name,
+  });
+  if (medido) return medido;
   return (
     evidenciaDoHistorico(slug, historico, lado, linha) ??
     evidenciaDe(slug, numeros, lado, acesa, linha)
