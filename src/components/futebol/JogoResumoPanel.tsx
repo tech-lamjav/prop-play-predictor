@@ -278,7 +278,10 @@ export function JogoResumoPanel({
   //
   // A exceção do passado continua de pé no banco: linha de jogo encerrado vem
   // pelo histórico, que é passado por construção e não pede acesso.
-  const bloqueadoSemLeitura = semAcesso && !desfecho && !best;
+  // A camada de valor está fechada para esta linha. A exceção do passado
+  // continua: linha já liquidada é registro do que foi publicado, não aposta.
+  const valorFechado = semAcesso && !desfecho;
+  const bloqueadoSemLeitura = valorFechado && !best;
 
   return (
     <div className="bg-white rounded-[20px] overflow-hidden" style={{ border: '1px solid #ded2b6' }}>
@@ -341,8 +344,10 @@ export function JogoResumoPanel({
                   </span>
                 )}
               </div>
-              <div className="mt-1.5 text-[22px] font-semibold leading-tight tracking-[-0.025em] text-white">{pick}</div>
-              {best ? (
+              <div className="mt-1.5 text-[22px] font-semibold leading-tight tracking-[-0.025em] text-white">
+                {valorFechado ? 'Leitura de assinante' : pick}
+              </div>
+              {best && !valorFechado ? (
                 <div className="flex gap-4 mt-2.5">
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>

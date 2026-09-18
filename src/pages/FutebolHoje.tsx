@@ -299,7 +299,7 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
 }
 
 // ── Linha de jogo (rail) ───────────────────────────────────
-function GameRailRow({ f, best, to }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string }) {
+function GameRailRow({ f, best, to, locked }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string; locked?: boolean }) {
   const finished = isFinished(f.status_short);
   return (
     <Link to={to} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
@@ -315,7 +315,7 @@ function GameRailRow({ f, best, to }: { f: FutebolFixture & { competition?: stri
         <Crest teamId={f.away_team_id} name={f.away_team_name} size={20} />
         <span className={`text-[13px] truncate ${finished ? 'text-ink-2' : 'text-ink'}`}>{f.away_team_name}</span>
       </div>
-      {best && !linhaBloqueada(best) ? (
+      {best && !locked && !linhaBloqueada(best) ? (
         <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums ${faixaBadgeCls(best.faixa)}`} title="Score de Confiabilidade">{best.score}</span>
       ) : null}
     </Link>
@@ -592,7 +592,10 @@ export default function FutebolHoje() {
                 <>
                   <span className="font-semibold text-ink">{gameList.length} jogo{gameList.length === 1 ? '' : 's'}</span>
                   {nOpps > 0 && <> · {nOpps} oportunidade{nOpps === 1 ? '' : 's'}</>}
-                  {alta > 0 && <> · <span className="font-semibold text-forest">{alta} de faixa Alta</span></>}
+                  {/* Quantas são Alta é leitura do modelo, igual ao indicador ao
+                      lado: sem acesso não sai. Quantas existem é contagem, e essa
+                      fica. */}
+                  {!locked && alta > 0 && <> · <span className="font-semibold text-forest">{alta} de faixa Alta</span></>}
                 </>
               ) : 'Sem jogos nesse dia'}
             </p>
@@ -702,7 +705,7 @@ export default function FutebolHoje() {
             ) : gradeDeJogos.length > 0 ? (
               <div className={`${CARD} overflow-hidden`}>
                 {gradeDeJogos.map((f) => (
-                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))} />
+                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))} locked={locked} />
                 ))}
               </div>
             ) : (

@@ -130,11 +130,13 @@ export function HeroLeitura({
       />
       <div className="relative">
         <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-white/50">Melhor leitura do jogo</div>
-        <div className={`font-semibold tracking-[-0.02em] mt-2 leading-[1.25] ${compacto ? 'text-[21px]' : 'text-[23px]'}`}>{pick}</div>
-        <div className="text-[12px] text-white/50 mt-1">{top.mercado.label}</div>
+        <div className={`font-semibold tracking-[-0.02em] mt-2 leading-[1.25] ${compacto ? 'text-[21px]' : 'text-[23px]'}`}>
+          {locked ? 'Leitura de assinante' : pick}
+        </div>
+        <div className="text-[12px] text-white/50 mt-1">{locked ? 'mercado de assinante' : top.mercado.label}</div>
 
         <div className="flex items-baseline gap-2 mt-4">
-          {top.value ? (
+          {top.value && !locked ? (
             <>
               <span className="tabular-nums font-bold leading-none text-[44px]" style={{ color: '#fbbf24' }}>
                 {top.value.score}
@@ -153,7 +155,7 @@ export function HeroLeitura({
           )}
         </div>
 
-        {top.value && (
+        {top.value && !locked && (
           <div className="grid grid-cols-2 gap-3.5 mt-4">
             <div>
               <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Chance</div>

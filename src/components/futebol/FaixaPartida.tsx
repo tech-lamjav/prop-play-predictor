@@ -212,7 +212,11 @@ export function FaixaPartida({
   const pick = top
     ? outcomeLabel(top.candidato, jogo.home, jogo.away)
     : null;
-  const v = top?.value ?? null;
+  // Sem acesso o valor é anulado NA ORIGEM, e não em cada número lá embaixo.
+  // Assim todos os ramos "sem dado" que já existem assumem sozinhos, e não fica
+  // um número solto por esquecimento. A trava do banco continua sendo a de
+  // verdade; esta é a da tela, e as duas têm que existir.
+  const v = locked ? null : (top?.value ?? null);
   const nValem = top ? contaQueValem(top.candidato) : 0;
 
   // No celular a data e o estado sobem para a linha da rodada, e o miolo fica
@@ -381,7 +385,7 @@ export function FaixaPartida({
               {/* Sem acesso a guarda do banco não devolve linha, então `pick` é
                   nulo — e "Sem leitura ainda" afirmaria sobre o jogo algo falso:
                   há leitura, ela é de assinante. */}
-              {pick ?? (locked ? 'Leitura de assinante' : 'Sem leitura ainda')}
+              {locked ? 'Leitura de assinante' : (pick ?? 'Sem leitura ainda')}
             </div>
             {v ? (
               <div className="flex gap-5 mt-2.5">

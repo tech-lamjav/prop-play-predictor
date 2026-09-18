@@ -408,7 +408,10 @@ export function BancadaMercados({
     return ladoB && nB > nA ? ladoB : ladoA;
   })();
   const principal = ladoSel === 'a' ? ladoA : ladoSel === 'b' ? ladoB : ladoPadrao;
-  const valPrincipal = principal === ladoB ? valB : valA;
+  // Anulado na origem quando não há acesso: cada número abaixo já tem o seu ramo
+  // de "sem leitura", e é ele que deve assumir. Gatear número por número é como
+  // um deles fica para trás.
+  const valPrincipal = locked ? null : (principal === ladoB ? valB : valA);
   const cortadaPrincipal = principal === ladoB ? cortadaB : cortadaA;
   const cotacaoPrincipal = principal
     ? leituraDaCotacao(mercado.slug, principal.outcome, principal.line_value, valueRows, oddsRows)
@@ -793,7 +796,10 @@ export function BancadaMercados({
         <div className="p-3.5 flex gap-1.5 overflow-x-auto no-scrollbar xl:flex-col xl:overflow-visible">
           {resumos.map((r) => {
             const on = r.mercado.slug === mercado.slug;
-            const temScore = r.value != null;
+            // Sem acesso a linha não TEM Score para esta tela: anular aqui faz
+            // o número, a barra, a régua e a cor caírem todos no ramo de
+            // premissas de uma vez. Gatear cada um deles é como um fica para trás.
+            const temScore = !locked && r.value != null;
             const leituraCotacao = leituraDaCotacao(
               r.mercado.slug,
               r.candidato.outcome,
@@ -845,7 +851,7 @@ export function BancadaMercados({
                   )}
                 </div>
                 <div className="mt-1 text-[11.5px] truncate" style={{ color: on ? 'rgba(255,255,255,.6)' : '#8d8672' }}>
-                  {pick}
+                  {locked ? 'de assinante' : pick}
                   {temScore ? (
                     <>
                       {' · '}
