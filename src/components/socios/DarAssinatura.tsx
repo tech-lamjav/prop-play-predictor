@@ -149,6 +149,17 @@ export function DarAssinatura({
           >
             Encerrar a assinatura
           </button>
+          {/* ⚠️ Dizer isso aqui é o que impede o sócio de encerrar e ir embora
+              achando que cortou.
+
+              Encerrar já tirou acesso, e parou de tirar: para saber se podia,
+              a função adivinhava quem paga no cartão olhando um campo que quase
+              nunca é preenchido — e derrubava o produto de quem estava pagando.
+              Sem sinal confiável, a saída foi parar de adivinhar. */}
+          <p className="mt-1 text-[11px] text-ink-2">
+            Encerrar registra o fim do acordo e <span className="font-bold">não tira o acesso</span>
+            . Para cortar o produto, use os acessos avulsos ao lado.
+          </p>
         </div>
       ) : null}
 

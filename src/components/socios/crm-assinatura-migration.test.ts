@@ -271,9 +271,38 @@ describe('encerrar tira só o que o plano deu', () => {
     expect(escrita).not.toMatch(/analytics_subscription_status/);
   });
 
-  it('quem paga no Stripe continua com o acesso', () => {
-    // A assinatura manual acabou, mas a assinatura dela é outra coisa, e derrubar as
-    // duas juntas tiraria o produto de quem está pagando por ele.
+  it('⚠️ e essa escada SAIU na 159, junto com o rebaixamento', () => {
+    // Este bloco inteiro descreve a 132, lida pelo nome do arquivo — então ele
+    // continuaria verde mesmo depois de a função mudar. Teste verde guardando
+    // código morto é pior que teste nenhum: parece conferido.
+    //
+    // A escada por plano foi um conserto REAL e fica registrada acima: a
+    // primeira versão zerava os três acessos de uma vez, e a pista era uma
+    // variável sem leitor. Ela estava certa enquanto o encerramento mexia em
+    // acesso.
+    //
+    // Na 159 o encerramento parou de mexer em acesso, porque a pergunta que
+    // ele fazia — "esta pessoa paga no Stripe?" — não tem resposta confiável no
+    // nosso banco, e errar nela derrubava o produto de quem estava pagando.
+    // Sem rebaixamento, não há escada a percorrer.
+    const VIGENTE = comando(
+      lerMigration('20260918180000_159_crm_encerrar_nao_tira_acesso.sql'),
+      /create or replace function public\.crm_encerrar_assinatura_manual/,
+      '$function$;',
+    );
+    expect(VIGENTE).not.toMatch(/update public\.users/);
+    expect(VIGENTE).not.toMatch(/stripe_subscription_id/);
+  });
+
+  it('quem paga no Stripe continua com o acesso, por outra razão', () => {
+    // O resultado é o mesmo de antes; a razão mudou, e a razão é o conserto.
+    //
+    // Antes: a função tentava ADIVINHAR quem paga no gateway e poupava essa
+    // pessoa. A adivinhação usava um campo escrito num único evento do webhook,
+    // então quem comprou por outro caminho era tratado como se não pagasse.
+    //
+    // Agora: ninguém é poupado porque ninguém é rebaixado. Tirar acesso é
+    // decisão separada, nos interruptores por produto.
     expect(ENCERRAR_VIGENTE).toMatch(/stripe_subscription_id is not null/);
   });
 });
