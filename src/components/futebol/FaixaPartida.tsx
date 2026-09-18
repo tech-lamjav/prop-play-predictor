@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { MapPin } from 'lucide-react';
-import { Blur } from '@/components/futebol/FutebolGate';
+import { MapPin, Lock } from 'lucide-react';
 import { Crest } from '@/components/futebol/Crest';
 import { useVitrine } from '@/hooks/use-futebol-data';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -213,7 +212,11 @@ export function FaixaPartida({
   const pick = top
     ? outcomeLabel(top.candidato, jogo.home, jogo.away)
     : null;
-  const v = top?.value ?? null;
+  // Sem acesso o valor é anulado NA ORIGEM, e não em cada número lá embaixo.
+  // Assim todos os ramos "sem dado" que já existem assumem sozinhos, e não fica
+  // um número solto por esquecimento. A trava do banco continua sendo a de
+  // verdade; esta é a da tela, e as duas têm que existir.
+  const v = locked ? null : (top?.value ?? null);
   const nValem = top ? contaQueValem(top.candidato) : 0;
 
   // No celular a data e o estado sobem para a linha da rodada, e o miolo fica
@@ -379,20 +382,23 @@ export function FaixaPartida({
             {/* Sem truncate: "Mais de 1,75 g…" escondia justamente a linha da
                 leitura. Aqui ela quebra em duas linhas. */}
             <div className="mt-1.5 text-[19px] md:text-[24px] font-semibold leading-tight tracking-[-0.025em] text-white">
-              {pick ?? 'Sem leitura ainda'}
+              {/* Sem acesso a guarda do banco não devolve linha, então `pick` é
+                  nulo — e "Sem leitura ainda" afirmaria sobre o jogo algo falso:
+                  há leitura, ela é de assinante. */}
+              {locked ? 'Leitura de assinante' : (pick ?? 'Sem leitura ainda')}
             </div>
             {v ? (
               <div className="flex gap-5 mt-2.5">
                 <div>
                   <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">Chance</div>
                   <div className="tabular-nums text-[16px] font-semibold text-white mt-0.5">
-                    <Blur active={locked}>{Math.round(v.prob_justa_fechamento * 100)}%</Blur>
+                    {Math.round(v.prob_justa_fechamento * 100)}%
                   </div>
                 </div>
                 <div>
                   <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">Odd</div>
                   <div className="tabular-nums text-[16px] font-semibold text-white mt-0.5">
-                    <Blur active={locked}>{v.best_odd.toFixed(2)}</Blur>
+                    {v.best_odd.toFixed(2)}
                   </div>
                 </div>
                 <div>
@@ -401,29 +407,41 @@ export function FaixaPartida({
                     className="tabular-nums text-[16px] font-semibold mt-0.5"
                     style={{ color: v.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}
                   >
-                    <Blur active={locked}>{`${v.edge >= 0 ? '+' : '−'}${Math.abs(v.edge * 100).toFixed(1).replace('.', ',')}%`}</Blur>
+                    {`${v.edge >= 0 ? '+' : '−'}${Math.abs(v.edge * 100).toFixed(1).replace('.', ',')}%`}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="text-[12px] text-white/55 mt-2.5 leading-relaxed">
-                {top ? `${nValem} de ${top.totalQueValem} premissas a favor` : 'Sem premissas suficientes'} · as odds entram
-                perto do jogo
+                {locked ? (
+                  'Chance, odd, valor e Score são de assinante.'
+                ) : (
+                  <>
+                    {top ? `${nValem} de ${top.totalQueValem} premissas a favor` : 'Sem premissas suficientes'} · as odds entram
+                    perto do jogo
+                  </>
+                )}
               </div>
             )}
           </button>
 
           <div className="text-center shrink-0">
             <div className="tabular-nums font-bold leading-none tracking-[-0.04em] text-[44px]" style={{ color: '#fbbf24' }}>
-              {v ? <Blur active={locked}>{String(v.score)}</Blur> : nValem}
+              {/* A contagem de premissas também é leitura do modelo: sem o Score
+                  ela vira o número que sobra na tela, e entrega quantos sinais
+                  acenderam neste jogo. Sem acesso, não sai nada. */}
+              {locked ? <Lock className="w-7 h-7 mx-auto text-white/40" /> : v ? String(v.score) : nValem}
             </div>
             <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] text-white/50">
-              {v ? `Score · ${rotuloDaFaixa(v.faixa)}` : 'premissas a favor'}
+              {locked ? 'de assinante' : v ? `Score · ${rotuloDaFaixa(v.faixa)}` : 'premissas a favor'}
             </div>
             {podeRegistrar && !empilhado && (
               <div className="mt-2.5 flex justify-center">{botaoRegistrar}</div>
             )}
-            {!v && top && nValem >= PORTA_PREMISSAS && !fim && (
+            {/* `!locked` aqui porque sem acesso o `v` é nulo POR BLOQUEIO, e não
+                por falta de preço: a frase afirmaria sobre o jogo algo que não é
+                verdade. Preço houve; o que não há é acesso. */}
+            {!locked && !v && top && nValem >= PORTA_PREMISSAS && !fim && (
               <div className="mt-2 text-[10px] text-white/45 max-w-[130px] mx-auto leading-snug">sem preço coletado</div>
             )}
           </div>

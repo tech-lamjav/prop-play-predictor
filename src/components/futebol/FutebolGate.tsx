@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Sparkles } from 'lucide-react';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
@@ -6,17 +5,70 @@ import type { FutebolAccess } from '@/services/futebol-data.service';
 import { tempoDeTeste } from './tempo-de-teste';
 
 /**
- * Reverse trial do Futebol (48 horas, sem cartão). A camada de VALOR (o pick em
- * si) fica borrada pra quem não tem acesso; o resto (Score, análise) é livre.
+ * Reverse trial do Futebol (48 horas, sem cartão).
+ *
+ * Quem está NO teste vê tudo — é o mecanismo inteiro: a pessoa ganha o produto
+ * por 48 horas para sentir falta depois. Quem não tem acesso é o deslogado e o
+ * expirado, e para esses nada que saia do modelo aparece: a aposta, o mercado,
+ * a odd, a chance, a vantagem, o Score, a faixa e as premissas.
+ *
+ * O que continua aberto é fato público de futebol — quem joga, quando, como
+ * terminou —, mais o passado já liquidado, que é registro do que foi publicado
+ * e não aposta que alguém ainda possa fazer.
+ *
+ * ⚠️ A fechadura é do BANCO, não daqui. A guarda `futebol_acesso_do_chamador`
+ * não devolve o campo, e esta camada só desenha o cadeado no lugar vazio. Antes
+ * era o contrário — o dado vinha inteiro e a tela borrava —, e borrão não é
+ * fechadura: o texto seguia no HTML e a força fixa em pixels deixava o número
+ * grande legível.
  */
 
-/** Borra o conteúdo (FOMO) quando `active`. Mantém o layout/espaço. */
-export function Blur({ active, children, strength = 6, className = '' }: { active: boolean; children: ReactNode; strength?: number; className?: string }) {
-  if (!active) return <>{children}</>;
+/**
+ * O lugar de um número que quem não assinou não recebe.
+ *
+ * Substituiu o `Blur`, que era a fechadura errada por dois motivos. O texto
+ * borrado continuava no HTML, legível no inspetor. E a força era fixa em pixels,
+ * então protegia ao contrário: 6px escondiam um rótulo de 11px e deixavam o
+ * Score de 44px perfeitamente legível — quanto maior e mais valioso o número,
+ * mais exposto ele ficava.
+ *
+ * Agora o dado nem chega: a guarda `futebol_acesso_do_chamador` no banco não
+ * devolve o campo. Aqui só sobra dizer que existe algo ali e que ele é pago.
+ */
+export function ValorBloqueado({ rotulo, className = '' }: { rotulo?: string; className?: string }) {
   return (
-    <span aria-hidden className={`inline-block select-none pointer-events-none align-middle ${className}`} style={{ filter: `blur(${strength}px)` }}>
-      {children}
+    <span
+      title="Disponível para assinantes"
+      className={`inline-flex items-center gap-1 align-middle text-ink-3 ${className}`}
+    >
+      <Lock className="w-3 h-3" aria-hidden />
+      {/* Com rótulo visível o texto só para leitor de tela sai: os dois juntos
+          fazem a mesma informação ser anunciada duas vezes. */}
+      {rotulo ? <span>{rotulo}</span> : <span className="sr-only">Disponível para assinantes</span>}
     </span>
+  );
+}
+
+/**
+ * O lugar de uma oportunidade inteira que não é entregue.
+ *
+ * A home mostra um destes por linha que o board contou: o assinante em potencial
+ * vê QUANTAS oportunidades existem hoje, e nenhuma delas. Some-las apagaria da
+ * tela que existe produto ali dentro; mostrá-las é o vazamento que fechamos.
+ */
+export function CartaoBloqueado({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={`rounded-rebrand-md border border-dashed border-line-2 bg-canvas-2/60 p-4 flex items-center gap-3 ${className}`}
+    >
+      <span className="w-8 h-8 rounded-full bg-forest/10 text-forest grid place-items-center shrink-0">
+        <Lock className="w-4 h-4" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-[13px] font-semibold text-ink">Oportunidade bloqueada</div>
+        <p className="text-[12px] text-ink-2 leading-snug">A aposta, a odd e o Score são de assinante.</p>
+      </div>
+    </div>
   );
 }
 

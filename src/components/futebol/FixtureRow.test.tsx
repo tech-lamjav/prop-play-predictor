@@ -121,9 +121,11 @@ describe('FixtureRow · estado da leitura', () => {
 // Oportunidades borra: o pick, a odd e a chance. Era a mesma informação, na
 // mesma sessão anônima, com preço diferente dependendo da tela.
 //
-// O Blur envolve o trecho num span aria-hidden com filtro de desfoque, então
-// "borrado" se testa pelo invólucro, e não pela ausência do texto: o conteúdo
-// continua no DOM (é o borrão que cria o desejo), só sai da árvore acessível.
+// O borrão saiu, e com ele o jeito antigo de testar isto. Ele envolvia o trecho
+// num span aria-hidden e deixava o texto no DOM — que era exatamente o furo:
+// legível no inspetor, e com força fixa em pixels, então o número grande passava
+// quase limpo. Agora o dado não chega (a guarda do banco não devolve a coluna) e
+// a tela desenha um cadeado. Logo: testa-se pela AUSÊNCIA do texto.
 // ============================================================================
 
 const leitura = {
@@ -137,17 +139,27 @@ const leitura = {
 } as unknown as Parameters<typeof FixtureRow>[0]['best'];
 
 describe('FixtureRow · acesso à camada de valor', () => {
-  it('sem acesso, o pick e a odd saem borrados', () => {
+  it('sem acesso, o pick e a odd não estão na tela', () => {
     renderLinha({ best: leitura, locked: true });
 
-    expect(screen.getByText(/odd 1/).closest('[aria-hidden="true"]')).not.toBeNull();
-    expect(screen.getByText(/Mais de 2,5/i).closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.queryByText(/odd 1/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Mais de 2,5/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/assinantes/i)).toBeInTheDocument();
   });
 
-  it('com acesso, os números aparecem sem desfoque', () => {
+  it('sem acesso, a agenda não afirma que o jogo está sem leitura', () => {
+    // Há leitura: ela é de assinante. Dizer "sem leitura ainda" aqui mentiria
+    // sobre o dia, e é a frase que a linha usa quando o board veio vazio.
+    renderLinha({ best: leitura, locked: true });
+
+    expect(screen.queryByText(/sem leitura/i)).not.toBeInTheDocument();
+  });
+
+  it('com acesso, os números aparecem', () => {
     renderLinha({ best: leitura });
 
-    expect(screen.getByText(/odd 1/).closest('[aria-hidden="true"]')).toBeNull();
+    expect(screen.getByText(/odd 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Mais de 2,5/i)).toBeInTheDocument();
   });
 
   it('jogo encerrado não borra, nem sem acesso', () => {
