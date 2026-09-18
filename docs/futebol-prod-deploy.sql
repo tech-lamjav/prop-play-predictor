@@ -2173,7 +2173,7 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_numeros(p_fixture_id bigin
  SET search_path TO ''
 AS $function$
   with jogo as (
-    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id, f.kickoff_utc
+    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id, f.kickoff_utc, f.date_utc
     from futebol.fact_fixtures f
     where f.fixture_id = p_fixture_id
   ),
@@ -2208,16 +2208,23 @@ AS $function$
     group by l.team_id
   ),
   tabela as (
+    -- A foto mais recente ANTERIOR ao jogo, por time (#464). Sem foto da época,
+    -- nenhuma linha: `posicao` vem nula e a tela omite em vez de mostrar hoje.
     select distinct on (s.team_id) s.team_id, s.rank_pos, s.pontos, s.zona
     from (
       select st.team_id,
              st."rank"::bigint          as rank_pos,
              st.points::bigint          as pontos,
-             st.rank_description        as zona
-      from jogo j,
-           public.get_futebol_standings_official(j.competition, j.season) st
+             st.rank_description        as zona,
+             st.snapshot_date
+      from jogo j
+      join futebol.fact_standings_snapshot st
+        on st.competition = j.competition
+       and st.season = j.season
+       and st.snapshot_date < j.date_utc
+      join lados l on l.team_id = st.team_id
     ) s
-    order by s.team_id
+    order by s.team_id, s.snapshot_date desc
   )
   select l.side,
          l.team_id,

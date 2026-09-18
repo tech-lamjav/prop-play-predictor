@@ -467,6 +467,15 @@ export function BancadaMercados({
     ? <Blur active={locked}>{String(valPrincipal.score)}</Blur>
     : leituraPrincipal === 'premissas' ? nPrincipal : '—';
   const ate = numeros?.[0]?.ate ?? null;
+  // Sem foto da classificação daquela data (#464), a RPC ancorada não devolve
+  // posição, e a evidência das premissas de tabela some — de propósito, porque
+  // mostrar a posição de HOJE num jogo de 2025 é a tela discordando de si mesma.
+  //
+  // Dizer por quê é o que separa "não temos este dado" de "a tela quebrou". Pela
+  // ADR 0003 isto DIAGNOSTICA e não penaliza: não mexe no Score, não é aviso de
+  // risco, e por isso mora nesta linha e não na faixa de ressalva.
+  const semTabelaDaEpoca =
+    (numeros?.length ?? 0) > 0 && (numeros ?? []).every((n) => n.posicao == null);
 
   const chaveDosVisiveis = visiveis.map((p) => p.slug).join('|');
 
@@ -1436,6 +1445,9 @@ export function BancadaMercados({
             ? 'Cada parada da régua tem o seu conjunto de premissas: trocar a linha muda o que precisa ser verdade.'
             : 'Cada saída do mercado tem o seu conjunto de premissas.'}{' '}
           {ate ? `Números da temporada até ${ate}.` : ''}
+          {semTabelaDaEpoca
+            ? ' Não há foto da classificação desta data, então a posição na tabela não é mostrada.'
+            : ''}
         </div>
       </div>
 
