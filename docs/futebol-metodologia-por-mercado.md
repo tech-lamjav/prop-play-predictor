@@ -182,7 +182,7 @@ para a porta**. As mesmas 7 valem para mandante e visitante.
 |---|---:|---|---|
 | Em boa fase, vem ganhando | 10 | decide | |
 | O mando pesa neste jogo | 8 | decide | Rótulo muda por mando: "manda bem em casa" / "vai bem fora" |
-| Bem à frente na tabela | 8 | decide | |
+| Bem à frente na tabela | 8 | decide | Compara **pontos por jogo** (`s_ppg`/`o_ppg`) e posição, não o total de pontos da temporada |
 | Ataque forte contra defesa frágil do adversário | 4 | decide | Entende o jogo, mas o preço já cobra quase tudo |
 | Cria mais chances de gol que o adversário | 0 | preço | Chance de gol prevê gols, não quem ganha |
 | Leva vantagem no histórico do confronto | 0 | preço | Todo mundo olha, então já está na odd |
