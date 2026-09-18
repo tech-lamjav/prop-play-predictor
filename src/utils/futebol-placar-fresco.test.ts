@@ -25,7 +25,9 @@ const SQL = readFileSync(
   resolve(RAIZ, 'supabase/migrations/20260918120000_152_futebol_placar_fresco.sql'),
   'utf8',
 );
-const DDL = readFileSync(resolve(RAIZ, 'docs/futebol-prod-deploy.sql'), 'utf8');
+// O espelho em `docs/futebol-prod-deploy.sql` NÃO é conferido aqui:
+// `shape-file-futebol.test.ts` já exige que toda função criada por migration
+// exista lá, e repetir a asserção daria a impressão de duas redes onde há uma.
 
 /** Sem comentários: nenhuma guarda pode passar por causa de prosa. */
 const semComentario = SQL.split(/\r?\n/)
@@ -58,6 +60,9 @@ describe('a consulta do placar fresco', () => {
     // Função nova nasce executável por PUBLIC no Postgres (issue #408). Esta é
     // chamada pelo navegador do assinante, então o grant é explícito e vem
     // DEPOIS do revoke — na ordem inversa, o revoke apagaria o grant.
+    //
+    // `funcao-sem-revoke.test.ts` já exige que exista revoke; o que ele não olha
+    // é a ORDEM, e é a ordem que decide se a função fica aberta ou fechada.
     const revoke = semComentario.indexOf(
       'revoke execute on function public.get_futebol_placar_fresco(bigint[]) from anon, authenticated',
     );
@@ -66,9 +71,5 @@ describe('a consulta do placar fresco', () => {
     );
     expect(revoke).toBeGreaterThan(-1);
     expect(grant).toBeGreaterThan(revoke);
-  });
-
-  it('está no arquivo de DDL, senão ambiente novo nasce sem ela', () => {
-    expect(DDL).toContain('create or replace function public.get_futebol_placar_fresco(');
   });
 });
