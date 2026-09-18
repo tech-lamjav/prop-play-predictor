@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import {
   useVitrine,
@@ -465,7 +464,7 @@ export function BancadaMercados({
   // O número grande, calculado UMA vez: ele é idêntico nos dois arranjos do
   // cabeçalho, e duplicá-lo é como os dois passaram a discordar antes.
   const numeroPrincipal = valPrincipal
-    ? <Blur active={locked}>{String(valPrincipal.score)}</Blur>
+    ? String(valPrincipal.score)
     : leituraPrincipal === 'premissas' ? nPrincipal : '—';
   const ate = numeros?.[0]?.ate ?? null;
 
@@ -841,7 +840,7 @@ export function BancadaMercados({
                       // e quebraria em silêncio na próxima mudança de número.
                       style={{ color: on ? '#fbbf24' : r.passa ? (temScore && s >= fronteirasDoScore(r.value!.score_versao).alta ? '#0a3d2e' : '#b8870f') : '#8d8672' }}
                     >
-                      <Blur active={locked && temScore}>{String(s)}</Blur>
+                      {String(s)}
                     </span>
                   )}
                 </div>
@@ -850,9 +849,9 @@ export function BancadaMercados({
                   {temScore ? (
                     <>
                       {' · '}
-                      <Blur active={locked}>{`${Math.round(r.value!.prob_justa_fechamento * 100)}%`}</Blur>
+                      {`${Math.round(r.value!.prob_justa_fechamento * 100)}%`}
                       {' · '}
-                      <Blur active={locked}>{r.value!.best_odd.toFixed(2)}</Blur>
+                      {r.value!.best_odd.toFixed(2)}
                     </>
                   ) : (
                     leituraCotacao.estado === 'cotada'
@@ -1070,7 +1069,8 @@ export function BancadaMercados({
                   <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] h-3 leading-[12px]" style={{ color: 'rgba(255,255,255,.5)' }}>
                     {valPrincipal
                       ? rotuloDaFaixa(valPrincipal.faixa)
-                      : leituraPrincipal === 'premissas' ? 'a favor' : 'sem leitura'}
+                      : leituraPrincipal === 'premissas' ? 'a favor'
+                      : locked ? 'de assinante' : 'sem leitura'}
                   </div>
                 </div>
                 {/* Rótulo à esquerda, número à direita: as três linhas viram uma
@@ -1098,7 +1098,7 @@ export function BancadaMercados({
                     <div key={rotulo} className="flex items-baseline justify-between gap-2">
                       <span className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{rotulo}</span>
                       <span className="tabular-nums text-[17px] font-semibold leading-none" style={{ color: cor }}>
-                        <Blur active={locked}>{valor}</Blur>
+                        {valor}
                       </span>
                     </div>
                   ))}
@@ -1109,14 +1109,14 @@ export function BancadaMercados({
               <div className="min-w-[58px]">
                 <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
-                  {valPrincipal ? <Blur active={locked}>{`${Math.round(valPrincipal.prob_justa_fechamento * 100)}%`}</Blur> : '—'}
+                  {valPrincipal ? `${Math.round(valPrincipal.prob_justa_fechamento * 100)}%` : '—'}
                 </div>
               </div>
               <div className="min-w-[52px]">
                 <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
                   {cotacaoPrincipal.odd != null
-                    ? <Blur active={locked}>{cotacaoPrincipal.odd.toFixed(2)}</Blur>
+                    ? cotacaoPrincipal.odd.toFixed(2)
                     : '—'}
                 </div>
               </div>
@@ -1126,11 +1126,9 @@ export function BancadaMercados({
                   className="tabular-nums text-[22px] font-semibold leading-none mt-1"
                   style={{ color: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}
                 >
-                  {valPrincipal ? (
-                    <Blur active={locked}>{`${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`}</Blur>
-                  ) : (
-                    '—'
-                  )}
+                  {valPrincipal
+                    ? `${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`
+                    : '—'}
                 </div>
               </div>
               {/* A régua vertical só separa onde há duas colunas lado a lado. */}

@@ -7,7 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
-import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
+import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
+import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { AlertasPublicacaoAtalho, AlertasPublicacaoCartao, AlertasPublicacaoStatus } from '@/components/futebol/AlertasPublicacao';
 import { FaixasLegenda } from '@/components/futebol/FaixasLegenda';
@@ -75,6 +76,10 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
+  // `showLock` é o que a TELA sabe; `linhaBloqueada` é o que o BANCO já fez.
+  // Desde a guarda de acesso a linha do board chega com as colunas nulas, e sem
+  // este teste `o.best_odd.toFixed(2)` estoura antes de qualquer condição rodar.
+  const bloqueada = showLock || linhaBloqueada(o);
   const hasScore = homeGoals != null && awayGoals != null;
   // Sem os números do instante em que era oportunidade, mostra "—" em vez de
   // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
@@ -90,7 +95,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[13px] font-semibold tracking-tight text-ink truncate"><Blur active={showLock}>{pick}</Blur></span>
+            <span className="text-[13px] font-semibold tracking-tight text-ink truncate">{pick}</span>
             {result && <ResultBadge r={result} />}
           </div>
           <div className="text-[11px] text-ink-3 truncate">
@@ -104,9 +109,19 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
         <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{competitionLabel(o.competition)} · {fmtHour(o.kickoff_utc)}</div>
       </div>
-      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{chance != null ? `${chance}%` : '—'}</Blur></div>
-      <div className="text-right tabular-nums text-[13px] font-semibold text-ink"><Blur active={showLock}>{o.best_odd.toFixed(2)}</Blur></div>
-      <div className={`text-right tabular-nums text-[14px] font-bold ${edgeToneCls(o.edge)}`}><Blur active={showLock}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</Blur></div>
+      {bloqueada ? (
+        <>
+          <div className="text-right"><ValorBloqueado /></div>
+          <div className="text-right"><ValorBloqueado /></div>
+          <div className="text-right"><ValorBloqueado /></div>
+        </>
+      ) : (
+        <>
+          <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{chance != null ? `${chance}%` : '—'}</div>
+          <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{o.best_odd.toFixed(2)}</div>
+          <div className={`text-right tabular-nums text-[14px] font-bold ${edgeToneCls(o.edge)}`}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</div>
+        </>
+      )}
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
     </Link>
   );
@@ -120,6 +135,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const showLock = !!locked && !result;
+  const bloqueada = showLock || linhaBloqueada(o);
   const hasScore = homeGoals != null && awayGoals != null;
   return (
     <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
@@ -137,7 +153,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
               )}
               {result && <ResultBadge r={result} />}
             </div>
-            <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink"><Blur active={showLock}>{pick}</Blur></div>
+            <div className="text-[15px] font-semibold tracking-tight mt-1.5 text-ink">{pick}</div>
             <div className="text-[11px] text-ink-3 truncate">
               {hasScore
                 ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`
@@ -153,14 +169,23 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
           {/* A cor do Valor sai de `edgeToneCls`, a mesma da linha do desktop:
               verde só quando positivo, neutro em zero ou negativo. Verde fixo
               aqui pintava de vantagem uma diferença que não existe. */}
-          {[
-            { label: 'Chance', valor: chance != null ? `${chance}%` : '—', cls: 'text-ink' },
-            { label: 'Odd', valor: o.best_odd.toFixed(2), cls: 'text-ink' },
-            { label: 'Valor', valor: o.edge != null ? fmtEdgeScore(o.edge) : '—', cls: edgeToneCls(o.edge) },
-          ].map(({ label, valor, cls }) => (
+          {(bloqueada
+            ? [
+                { label: 'Chance', valor: null, cls: '' },
+                { label: 'Odd', valor: null, cls: '' },
+                { label: 'Valor', valor: null, cls: '' },
+              ]
+            : [
+                { label: 'Chance', valor: chance != null ? `${chance}%` : '—', cls: 'text-ink' },
+                { label: 'Odd', valor: o.best_odd.toFixed(2), cls: 'text-ink' },
+                { label: 'Valor', valor: o.edge != null ? fmtEdgeScore(o.edge) : '—', cls: edgeToneCls(o.edge) },
+              ]
+          ).map(({ label, valor, cls }) => (
             <div key={label}>
               <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{label}</div>
-              <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${cls}`}><Blur active={showLock}>{valor}</Blur></div>
+              <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${cls}`}>
+                {valor ?? <ValorBloqueado />}
+              </div>
             </div>
           ))}
         </div>

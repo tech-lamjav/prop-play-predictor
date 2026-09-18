@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Zap, ArrowRight, Check, AlertTriangle } from 'lucide-react';
+import { Zap, ArrowRight, Check, AlertTriangle, Lock } from 'lucide-react';
 import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
-import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
+import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
+import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
 import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD, TEXTO_VALOR } from '@/utils/futebol-ajuda-copy';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
@@ -65,7 +66,10 @@ const CARD = 'bg-white border border-line rounded-rebrand-md';
 const LABEL = 'text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-3';
 
 // ── KPI ───────────────────────────────────────────────────
-function Kpi({ label, value, sub, tone = 'ink', anchor }: { label: string; value: string | number; sub: string; tone?: 'ink' | 'green' | 'amber'; anchor?: boolean }) {
+// `value` aceita nó, e não só texto: desde o bloqueio, Faixa Alta e Melhor valor
+// mostram um cadeado no lugar do número — imprimir "0" e "—" ali afirmaria sobre
+// o dia algo que a tela, sem acesso, não sabe.
+function Kpi({ label, value, sub, tone = 'ink', anchor }: { label: string; value: ReactNode; sub: string; tone?: 'ink' | 'green' | 'amber'; anchor?: boolean }) {
   const color = anchor ? 'text-amber-2' : tone === 'green' ? 'text-forest' : tone === 'amber' ? 'text-amber-2' : 'text-ink';
   return (
     <div className="rounded-rebrand-md p-4" style={anchor
@@ -79,7 +83,7 @@ function Kpi({ label, value, sub, tone = 'ink', anchor }: { label: string; value
 }
 
 // Número do hero (Chance / Odd / Se paga em / Valor)
-function HeroStat({ label, value, dark, locked, ajuda }: { label: string; value: string; dark?: boolean; locked?: boolean; ajuda?: string }) {
+function HeroStat({ label, value, dark, ajuda }: { label: string; value: string; dark?: boolean; ajuda?: string }) {
   return (
     <div>
       <div className="text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.5)' : undefined }}>
@@ -87,14 +91,14 @@ function HeroStat({ label, value, dark, locked, ajuda }: { label: string; value:
           ? <AjudaCampo rotulo={label} titulo={label} texto={ajuda} escuro={dark} />
           : <span className={dark ? '' : 'text-ink-3'}>{label}</span>}
       </div>
-      <div className={`text-[20px] font-bold tabular-nums leading-none mt-1 ${dark ? '' : 'text-ink'}`}><Blur active={!!locked}>{value}</Blur></div>
+      <div className={`text-[20px] font-bold tabular-nums leading-none mt-1 ${dark ? '' : 'text-ink'}`}>{value}</div>
     </div>
   );
 }
 
 // ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
-function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMotivos = false }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; locked?: boolean; carregandoMotivos?: boolean }) {
+function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
@@ -131,7 +135,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
             <Zap className="w-3 h-3" /> {pagaAcima ? 'Melhor valor do dia' : 'Destaque do dia'}
           </span>
           <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
-          <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}><Blur active={!!locked} strength={9}>{pick}</Blur></div>
+          <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}>{pick}</div>
           {/* No celular a data desce para a própria linha. Tudo numa fileira só,
               os nomes quebravam no meio e o escudo do visitante ficava órfão
               entre 'Bournemouth ×' e 'Everton'. No desktop cabe e segue inline. */}
@@ -163,7 +167,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
                 {favor.map((m) => (
                   <li key={m.slug} className={`flex items-start gap-2 text-[14px] leading-snug ${d ? 'text-white/90' : 'text-ink'}`}>
                     <Check className={`w-4 h-4 mt-0.5 shrink-0 ${d ? 'text-emerald-300' : 'text-status-success'}`} />
-                    <span><Blur active={!!locked}>{m.texto}</Blur></span>
+                    <span>{m.texto}</span>
                   </li>
                 ))}
               </ul>
@@ -190,7 +194,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
                       className="block w-3 h-3 mt-1 shrink-0 rounded-full border-[1.5px]"
                       style={{ borderColor: d ? 'rgba(255,255,255,.35)' : '#c0b79f' }}
                     />
-                    <span><Blur active={!!locked}>{m.texto}</Blur></span>
+                    <span>{m.texto}</span>
                   </li>
                 ))}
               </ul>
@@ -218,7 +222,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
           {estado === 'sem_motivos' && (
             <div>
               <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
-              <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}><Blur active={!!locked}>{porque}</Blur></p>
+              <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}>{porque}</p>
             </div>
           )}
         </div>
@@ -242,9 +246,9 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
                 estimada, o preço e a diferença entre os dois — e lidos em
                 sequência dizem mais do que empilhados. */}
             <div className="grid grid-cols-3 gap-x-3 gap-y-3 mt-5">
-              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} locked={locked} ajuda={TEXTO_CHANCE} />}
-              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} locked={locked} ajuda={TEXTO_ODD} />
-              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} locked={locked} ajuda={TEXTO_VALOR} />
+              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} ajuda={TEXTO_CHANCE} />}
+              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} ajuda={TEXTO_ODD} />
+              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} ajuda={TEXTO_VALOR} />
             </div>
           </div>
         </div>
@@ -254,7 +258,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, locked, carregandoMoti
 }
 
 // ── Card de oportunidade ───────────────────────────────────
-function OppCard({ o, to, locked }: { o: FutebolValueBoardRow; to: string; locked?: boolean }) {
+function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   return (
@@ -269,7 +273,7 @@ function OppCard({ o, to, locked }: { o: FutebolValueBoardRow; to: string; locke
           <div className="text-[26px] font-bold tabular-nums tracking-tight leading-none mt-0.5 text-forest">{o.score}</div>
         </div>
       </div>
-      <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink"><Blur active={!!locked}>{pick}</Blur></div>
+      <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink">{pick}</div>
       <div className="flex items-center gap-1.5 text-[12px] mt-1 text-ink-3">
         <Crest teamId={o.home_team_id} name={o.home_team_name} size={16} />
         <span className="truncate">{o.home_team_name} × {o.away_team_name}</span>
@@ -279,15 +283,15 @@ function OppCard({ o, to, locked }: { o: FutebolValueBoardRow; to: string; locke
       <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
-          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5"><Blur active={!!locked}>{chance != null ? `${chance}%` : '—'}</Blur></div>
+          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{chance != null ? `${chance}%` : '—'}</div>
         </div>
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</div>
-          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5"><Blur active={!!locked}>{o.best_odd.toFixed(2)}</Blur></div>
+          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{o.best_odd.toFixed(2)}</div>
         </div>
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Valor</div>
-          <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5"><Blur active={!!locked}>{fmtEdgeScore(o.edge)}</Blur></div>
+          <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5">{fmtEdgeScore(o.edge)}</div>
         </div>
       </div>
     </Link>
@@ -311,7 +315,7 @@ function GameRailRow({ f, best, to }: { f: FutebolFixture & { competition?: stri
         <Crest teamId={f.away_team_id} name={f.away_team_name} size={20} />
         <span className={`text-[13px] truncate ${finished ? 'text-ink-2' : 'text-ink'}`}>{f.away_team_name}</span>
       </div>
-      {best ? (
+      {best && !linhaBloqueada(best) ? (
         <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums ${faixaBadgeCls(best.faixa)}`} title="Score de Confiabilidade">{best.score}</span>
       ) : null}
     </Link>
@@ -600,7 +604,11 @@ export default function FutebolHoje() {
           <div data-tour="futebol-resumo" className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
             <Kpi label="Jogos hoje" value={loading ? '—' : gameList.length} sub={isToday ? 'na agenda' : 'no dia'} />
             <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="publicadas" tone="green" />
-            <Kpi label="Faixa Alta" value={loading ? '—' : alta} sub="maior confiança" anchor />
+            {/* Quantas existem é contagem, e a contagem sobrevive ao bloqueio.
+                Quantas são Alta e qual a melhor diferença do dia já são leitura
+                do modelo: sem acesso elas chegam nulas, e imprimir "0" e "—"
+                afirmaria sobre o dia algo que a tela não sabe. */}
+            <Kpi label="Faixa Alta" value={loading ? '—' : locked ? <ValorBloqueado /> : alta} sub="maior confiança" anchor />
             {/* Verde é promessa. Num dia em que a melhor diferença do dia é
                 NEGATIVA — e depois da virada de 03/09 isso é o normal, não a
                 exceção — o cartão verde dizia boa notícia com número de má
@@ -608,7 +616,7 @@ export default function FutebolHoje() {
                 onde ele não existe. */}
             <Kpi
               label={melhorValor != null && melhorValor < 0 ? 'Preço mais perto do justo' : 'Melhor valor'}
-              value={loading || melhorValor == null ? '—' : `${melhorValor >= 0 ? '+' : '−'}${Math.abs(melhorValor)}%`}
+              value={loading ? '—' : locked ? <ValorBloqueado /> : melhorValor == null ? '—' : `${melhorValor >= 0 ? '+' : '−'}${Math.abs(melhorValor)}%`}
               sub="maior diferença do dia"
               tone={melhorValor != null && melhorValor >= 0 ? 'green' : undefined}
             />
@@ -620,8 +628,22 @@ export default function FutebolHoje() {
         {/* Hero / sem valor */}
         {loading ? (
           <Skeleton className="h-64 w-full bg-canvas-2 rounded-2xl" />
+        ) : locked && nOpps > 0 ? (
+          // Sem acesso o board chega com as colunas nulas, então `heroOpp` é
+          // sempre nulo e a tela cairia em "Sem valor claro hoje" — que é
+          // mentira: há oportunidade, ela é de assinante. As duas frases são
+          // diferentes de propósito.
+          <div className={`${CARD} p-6 flex items-start gap-3`}>
+            <Lock className="w-5 h-5 text-forest mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-ink">
+                {nOpps} oportunidade{nOpps === 1 ? '' : 's'} {isToday ? 'hoje' : 'nesse dia'}, bloqueada{nOpps === 1 ? '' : 's'}
+              </p>
+              <p className="text-xs text-ink-2 mt-1">A aposta, a odd, a chance, o valor e o Score são de assinante. A agenda dos jogos continua aberta abaixo.</p>
+            </div>
+          </div>
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} to={hrefDaSaida(heroOpp.fixture_id, heroOpp)} locked={locked} />
+          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} to={hrefDaSaida(heroOpp.fixture_id, heroOpp)} />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
@@ -649,9 +671,16 @@ export default function FutebolHoje() {
             </div>
             {loading ? (
               <div className="grid sm:grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
+            ) : locked && nOpps > 0 ? (
+              // Um cadeado por oportunidade contada. Some-los apagaria da home
+              // que existe produto aqui dentro; mostrá-los inteiros é o
+              // vazamento que este trabalho fecha.
+              <div className="grid sm:grid-cols-2 gap-4">
+                {Array.from({ length: Math.min(nOpps, 4) }).map((_, i) => <CartaoBloqueado key={i} />)}
+              </div>
             ) : moreOpps.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
-                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} />)}
+                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} to={hrefDaSaida(o.fixture_id, o)} />)}
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>

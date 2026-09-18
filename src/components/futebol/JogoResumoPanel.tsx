@@ -23,7 +23,6 @@ import { mesmaSaida } from '@/utils/futebol-saida';
 import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico, perfilDaJanela } from '@/utils/futebol-historico';
-import { Blur } from '@/components/futebol/FutebolGate';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type {
@@ -272,9 +271,14 @@ export function JogoResumoPanel({
       : null;
 
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;
-  // Borra o pick de quem não tem acesso — menos quando ele já liquidou, que é a
-  // mesma exceção da lista de Oportunidades (`showLock = locked && !result`).
-  const borraValor = semAcesso && !desfecho;
+  // Sem acesso não há o que esconder aqui: a guarda do banco não devolve linha
+  // nenhuma para este jogo, então `best` chega nulo e o bloco de valor não
+  // renderiza. O que sobra é DIZER isso — senão o painel cai na frase de "sem
+  // preço coletado ainda", que afirma sobre o jogo algo que não é verdade.
+  //
+  // A exceção do passado continua de pé no banco: linha de jogo encerrado vem
+  // pelo histórico, que é passado por construção e não pede acesso.
+  const bloqueadoSemLeitura = semAcesso && !desfecho && !best;
 
   return (
     <div className="bg-white rounded-[20px] overflow-hidden" style={{ border: '1px solid #ded2b6' }}>
@@ -343,23 +347,27 @@ export function JogoResumoPanel({
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
                     <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">
-                      <Blur active={borraValor} strength={5}>{chance}%</Blur>
+                      {chance}%
                     </div>
                   </div>
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
                     <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">
-                      <Blur active={borraValor} strength={5}>{best.best_odd.toFixed(2)}</Blur>
+                      {best.best_odd.toFixed(2)}
                     </div>
                   </div>
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Valor</div>
                     <div className="tabular-nums text-[15px] font-semibold mt-0.5" style={{ color: best.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}>
-                      <Blur active={borraValor} strength={5}>
+                      
                         {`${best.edge >= 0 ? '+' : '−'}${Math.abs(best.edge * 100).toFixed(1).replace('.', ',')}%`}
-                      </Blur>
+                      
                     </div>
                   </div>
+                </div>
+              ) : bloqueadoSemLeitura ? (
+                <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
+                  chance, odd e valor são de assinante
                 </div>
               ) : (
                 <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
