@@ -13,12 +13,12 @@
 -- por um caminho que não gera aquele evento nunca ganha o identificador —
 -- mesmo pagando todo mês.
 --
--- Então encerrar uma cortesia derrubava o acesso de gente que estava pagando,
+-- Então encerrar uma assinatura manual derrubava o acesso de quem estava pagando,
 -- e ninguém ficava sabendo: a pessoa simplesmente perdia o produto.
 --
 -- O espelho do mesmo defeito também existia: um identificador antigo, de uma
 -- assinatura já cancelada no gateway, ficava gravado e fazia a função poupar o
--- acesso de quem deveria perdê-lo — cortesia encerrada virava acesso eterno.
+-- acesso de quem deveria perdê-lo: assinatura encerrada virava acesso eterno.
 --
 -- ## Por que não foi consertado trocando o sinal
 --
@@ -39,9 +39,25 @@
 -- recua o acesso, com o motivo escrito de que a pessoa já usou e que tirar por
 -- erro de lançamento castigaria quem não errou.
 --
--- ⚠️ O custo é real e é aceito: encerrar uma cortesia não corta o acesso
+-- ⚠️ O custo é real e é aceito: encerrar uma assinatura manual não corta o acesso
 -- sozinho. São dois passos do sócio. Em troca, o sistema nunca mais tira o
 -- produto de quem está pagando por ele.
+--
+-- ## ⚠️ E o rótulo do plano, `subscription_product_type`?
+--
+-- A 132 zerava essa coluna ao encerrar, e ela NÃO é portão: é o nome do plano
+-- que a ficha mostra. Aqui ela deixa de ser zerada, e isso é deliberado.
+--
+-- O motivo é o mesmo defeito, por outro ângulo: a 132 zerava DEPOIS da
+-- verificação de Stripe, então não zerava para quem paga no cartão. Zerar
+-- sempre apagaria o rótulo de quem paga no gateway; zerar só às vezes exige
+-- exatamente a pergunta que não tem resposta confiável no nosso banco.
+--
+-- A consequência conhecida: depois de encerrar, a ficha pode seguir mostrando
+-- o nome de um plano que acabou. É rótulo desencontrado, e não acesso indevido
+-- — e some quando a pessoa assina de novo ou quando o gateway fala dela.
+-- Consertar isso direito é a ficha derivar o plano da assinatura ABERTA em vez
+-- de ler uma coluna solta, e é trabalho próprio.
 
 create or replace function public.crm_encerrar_assinatura_manual(p_id uuid)
 returns void

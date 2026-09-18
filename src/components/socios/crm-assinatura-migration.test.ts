@@ -225,37 +225,47 @@ describe('a escada de planos não pode divergir do Stripe', () => {
   });
 });
 
-describe('encerrar tira só o que o plano deu', () => {
+describe('a escada de rebaixamento da 132, e por que ela saiu', () => {
   /**
-   * A escada é cumulativa, então cada plano deu um conjunto diferente. Encerrar
-   * um "Entrada" e zerar futebol e análises junto apaga acesso que veio de
-   * outro lugar — dos interruptores por produto, que existem justamente para
-   * dar um produto solto.
+   * ⚠️ HISTÓRIA, e não comportamento atual. Tudo aqui descreve a migration
+   * 132, lida pelo NOME do arquivo — e ela deixou de ser vigente na 159.
    *
-   * A primeira versão lia o plano da linha, guardava numa variável e nunca a
-   * usava: zerava os três de uma vez. A variável sem leitor era a pista.
+   * O nome antigo desta variável era `ENCERRAR_VIGENTE`, e ele mentia: prometia
+   * o estado atual e conferia código removido. Os dois eixos da revisão
+   * apontaram no mesmo lugar.
+   *
+   * Fica registrado porque a escada foi um conserto REAL, e apagar o teste
+   * apagaria a memória dele: a primeira versão lia o plano da linha, guardava
+   * numa variável e nunca a usava — zerava os três acessos de uma vez, e
+   * encerrar um "Entrada" apagava futebol e análises que tinham vindo dos
+   * interruptores por produto. A variável sem leitor era a pista.
+   *
+   * A escada estava certa enquanto o encerramento mexia em acesso. Na 159 ele
+   * parou de mexer, porque a pergunta que ele fazia — "esta pessoa paga no
+   * Stripe?" — não tem resposta confiável no nosso banco, e errar nela
+   * derrubava o produto de quem estava pagando.
    */
-  const ENCERRAR_VIGENTE = comando(
+  const ENCERRAR_132 = comando(
     lerMigration('20260913160000_132_crm_encerrar_por_plano.sql'),
     /create or replace function public\.crm_encerrar_assinatura_manual/,
     '$function$;',
   );
 
   it('usa o plano que estava guardado na linha', () => {
-    expect(ENCERRAR_VIGENTE).toMatch(/v_plano/);
+    expect(ENCERRAR_132).toMatch(/v_plano/);
     // Lido, e não só atribuído: um `if` sobre ele é a prova de que ele decide
     // alguma coisa.
-    expect(ENCERRAR_VIGENTE).toMatch(/if v_plano = |case v_plano/);
+    expect(ENCERRAR_132).toMatch(/if v_plano = |case v_plano/);
   });
 
   it('cada plano tem o próprio ramo de saída', () => {
     for (const plano of PLANOS_A_VENDER) {
-      expect(ENCERRAR_VIGENTE, plano).toContain(`'${plano}'`);
+      expect(ENCERRAR_132, plano).toContain(`'${plano}'`);
     }
   });
 
   it('encerrar um Entrada não encosta no futebol nem nas análises', () => {
-    const ramo = ENCERRAR_VIGENTE?.slice(ENCERRAR_VIGENTE.indexOf("v_plano = 'entrada'")) ?? '';
+    const ramo = ENCERRAR_132?.slice(ENCERRAR_132.indexOf("v_plano = 'entrada'")) ?? '';
     const ate = ramo.indexOf('where id = v_user_id');
     const escrita = ramo.slice(0, ate);
     expect(escrita).toMatch(/betinho_subscription_status/);
@@ -264,7 +274,7 @@ describe('encerrar tira só o que o plano deu', () => {
   });
 
   it('encerrar um Essencial não encosta nas análises', () => {
-    const ramo = ENCERRAR_VIGENTE?.slice(ENCERRAR_VIGENTE.indexOf("v_plano = 'essencial'")) ?? '';
+    const ramo = ENCERRAR_132?.slice(ENCERRAR_132.indexOf("v_plano = 'essencial'")) ?? '';
     const escrita = ramo.slice(0, ramo.indexOf('where id = v_user_id'));
     expect(escrita).toMatch(/futebol_subscription_status/);
     expect(escrita).toMatch(/betinho_subscription_status/);
@@ -303,6 +313,6 @@ describe('encerrar tira só o que o plano deu', () => {
     //
     // Agora: ninguém é poupado porque ninguém é rebaixado. Tirar acesso é
     // decisão separada, nos interruptores por produto.
-    expect(ENCERRAR_VIGENTE).toMatch(/stripe_subscription_id is not null/);
+    expect(ENCERRAR_132).toMatch(/stripe_subscription_id is not null/);
   });
 });

@@ -72,13 +72,27 @@ interface FaturaCrua {
   lines?: { data?: { period?: { start?: unknown; end?: unknown } }[] };
 }
 
-/** Quantos meses de competência o período declarado atravessa. */
+/**
+ * Quantos meses o período declarado DURA.
+ *
+ * ⚠️ Sem `+ 1`, e isto é o conserto de um defeito que teria zerado a receita do
+ * gateway.
+ *
+ * O Stripe declara o período com fim EXCLUSIVO: uma renovação mensal vai de
+ * 15/09 a 15/10, e isso é UM mês. A primeira versão somava um, dava dois, e o
+ * guarda de fatura longa recusava — ou seja, recusava toda renovação mensal
+ * real. Nenhum pagamento do gateway seria gravado, e como o webhook só escreve
+ * um aviso no log e responde 200, o dinheiro sumiria calado.
+ *
+ * O piso de 1 existe para o caso em que o fim cai no mesmo mês do início: a
+ * subtração dá zero, e zero mês não é resposta.
+ */
 function mesesDoPeriodo(inicio: number, fim: number): number {
   const a = diaEmBrasilia(inicio);
   const b = diaEmBrasilia(fim);
   const [anoA, mesA] = a.split('-').map(Number);
   const [anoB, mesB] = b.split('-').map(Number);
-  return (anoB - anoA) * 12 + (mesB - mesA) + 1;
+  return Math.max(1, (anoB - anoA) * 12 + (mesB - mesA));
 }
 
 /**

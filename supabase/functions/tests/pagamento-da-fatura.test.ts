@@ -131,19 +131,44 @@ Deno.test("⚠️ fatura que cobre MAIS DE UM MÊS é recusada, e não empilhada
       ],
     },
   };
-  assertEquals(recusa(fatura(anual)), "periodo cobre 13 meses de competencia");
+  assertEquals(recusa(fatura(anual)), "periodo cobre 12 meses de competencia");
 });
 
-Deno.test("dois meses ja bastam para recusar", () => {
-  // A virada de mês no meio do período é o caso mais provável de aparecer
-  // primeiro, e ele erra do mesmo jeito: metade do dinheiro no mês errado.
+Deno.test("⚠️ a renovação mensal por ANIVERSÁRIO passa, e não é confundida com longa", () => {
+  // O defeito que a revisão pegou, e ele teria zerado a receita do gateway.
+  //
+  // O Stripe declara o período com fim EXCLUSIVO: 28/09 a 28/10 é UM mês. A
+  // primeira versão somava um, dava dois, e o guarda recusava — ou seja,
+  // recusava toda renovação mensal real. Nenhum pagamento seria gravado, e o
+  // webhook só escreve aviso no log: o dinheiro sumiria calado.
+  //
+  // ⚠️ E um teste meu CONSAGRAVA o defeito: ele usava 15/09 a 15/10, que é a
+  // forma exata de uma mensalidade comum, e afirmava que a recusa estava certa.
+  const porAniversario = {
+    lines: {
+      data: [
+        {
+          period: {
+            start: Date.UTC(2026, 8, 28, 12, 0, 0) / 1000,
+            end: Date.UTC(2026, 9, 28, 12, 0, 0) / 1000,
+          },
+        },
+      ],
+    },
+  };
+  assertEquals(gravado(fatura(porAniversario)).competencia, "2026-09-01");
+});
+
+Deno.test("dois meses de verdade continuam sendo recusados", () => {
+  // Dois meses inteiros: 15/09 a 15/11. Sem este caso, tirar o guarda inteiro
+  // passaria despercebido.
   const doisMeses = {
     lines: {
       data: [
         {
           period: {
             start: Date.UTC(2026, 8, 15, 12, 0, 0) / 1000,
-            end: Date.UTC(2026, 9, 15, 12, 0, 0) / 1000,
+            end: Date.UTC(2026, 10, 15, 12, 0, 0) / 1000,
           },
         },
       ],

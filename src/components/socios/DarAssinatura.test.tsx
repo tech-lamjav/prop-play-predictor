@@ -285,6 +285,27 @@ describe('a assinatura que já existe', () => {
     expect(screen.getByLabelText(VALOR)).toHaveValue('39,9');
   });
 
+  it('⚠️ a tela AVISA que encerrar não tira o acesso', async () => {
+    // É o que sustenta a escolha da issue #454: encerrar deixou de rebaixar
+    // acesso, porque para decidir se podia a função adivinhava quem paga no
+    // cartão — e derrubava o produto de quem estava pagando.
+    //
+    // Sem este aviso, a mudança troca um defeito silencioso por outro: o sócio
+    // encerra, vai embora achando que cortou, e a pessoa segue com o produto.
+    montar({
+      atual: { id: 'c1', plano: 'entrada', venceEm: '2026-10-31', valorMensal: 39.9 },
+    });
+    expect(screen.getByText(/não tira o acesso/i)).toBeInTheDocument();
+    expect(screen.getByText(/acessos avulsos/i)).toBeInTheDocument();
+  });
+
+  it('e o aviso só aparece quando há assinatura para encerrar', () => {
+    // Numa concessão nova não há o que encerrar, e o aviso seria ruído — ruído
+    // ensina a ignorar aviso.
+    montar();
+    expect(screen.queryByText(/não tira o acesso/i)).not.toBeInTheDocument();
+  });
+
   it('dá para encerrar a assinatura manual aberta', async () => {
     const { aoEncerrar } = montar({
       atual: { id: 'c1', plano: 'entrada', venceEm: '2026-10-31', valorMensal: null },

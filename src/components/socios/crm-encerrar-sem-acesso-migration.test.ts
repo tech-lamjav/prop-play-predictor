@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { comando, lerMigration } from './crm-migration-de-teste';
 
@@ -18,7 +20,22 @@ import { comando, lerMigration } from './crm-migration-de-teste';
 // Então o conserto é parar de adivinhar.
 // ============================================================================
 
-const MIGRATION = lerMigration('20260918180000_159_crm_encerrar_nao_tira_acesso.sql');
+const ARQUIVO = '20260918180000_159_crm_encerrar_nao_tira_acesso.sql';
+
+const MIGRATION = lerMigration(ARQUIVO);
+
+/**
+ * O arquivo COM os comentários.
+ *
+ * `lerMigration` tira comentário de linha de propósito, porque as migrations do
+ * CRM escrevem a versão errada do código dentro do comentário para explicar por
+ * que ela não serve. Aqui tem um guarda que precisa do contrário: ele cobra que
+ * um motivo esteja ESCRITO, e motivo mora em comentário.
+ */
+const MIGRATION_CRUA = readFileSync(
+  resolve(__dirname, '../../../supabase/migrations', ARQUIVO),
+  'utf8',
+);
 
 const ENCERRAR = comando(
   MIGRATION,
@@ -65,10 +82,28 @@ describe('crm_encerrar_assinatura_manual, depois da 159', () => {
     expect(ENCERRAR).toMatch(/acessos avulsos/);
   });
 
-  it('diz qual plano acabou', () => {
+  it('diz qual plano acabou, e o plano é LIDO e não só declarado', () => {
     // Daqui a três meses alguém pergunta o que essa pessoa tinha, e a resposta
     // precisa estar junto do resto da conversa.
-    expect(ENCERRAR).toMatch(/v_plano/);
+    //
+    // ⚠️ `toMatch(/v_plano/)` sozinho ficava verde com a variável apenas
+    // declarada — e variável sem leitor é exatamente a pista que denunciou o
+    // defeito da 132, onde o plano era guardado e nunca usado. O guarda cobra
+    // que ele apareça CONCATENADO no texto da anotação.
+    expect(ENCERRAR).toMatch(/\|\| v_plano \|\|/);
+  });
+
+  it('⚠️ o rótulo do plano NÃO é zerado, e isso é deliberado', () => {
+    // A 132 zerava `subscription_product_type` ao encerrar. Ela fazia isso
+    // DEPOIS da verificação de Stripe, então não zerava para quem paga no
+    // cartão. Zerar sempre apagaria o rótulo de quem paga no gateway; zerar só
+    // às vezes exige a pergunta que não tem resposta confiável no nosso banco.
+    //
+    // A consequência é rótulo desencontrado na ficha, e não acesso indevido. O
+    // conserto certo é a ficha derivar o plano da assinatura ABERTA, e é
+    // trabalho próprio.
+    expect(ENCERRAR).not.toMatch(/subscription_product_type/);
+    expect(MIGRATION_CRUA).toMatch(/rótulo do plano/);
   });
 
   it('continua com portão de sócio e search_path travado', () => {
