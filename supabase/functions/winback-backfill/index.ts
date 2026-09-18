@@ -29,6 +29,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
+import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") || "";
 const API_SPORTS_KEY = Deno.env.get("API_SPORTS_KEY") || "";
@@ -382,7 +383,7 @@ async function buildDecisions(supabase: any): Promise<{ decisions: Decision[]; t
 }
 
 // ── notify: a DM única de reconquista ────────────────────────
-async function sendWinbackDm(chatId: string, name: string | null, settled: number, greens: number, profit: number, roi: number, leftovers: number): Promise<void> {
+async function sendWinbackDm(supabase: any, userId: string, chatId: string, name: string | null, settled: number, greens: number, profit: number, roi: number, leftovers: number): Promise<"enviada" | "bloqueada"> {
   const roiTxt = `${roi >= 0 ? "+" : ""}${roi.toFixed(1)}%`;
   const profitTxt = `${profit >= 0 ? "+" : "−"}${money(Math.abs(profit))}`;
   const lines = [
@@ -397,18 +398,15 @@ async function sendWinbackDm(chatId: string, name: string | null, settled: numbe
   }
   lines.push("", `Qualquer aposta que a gente tenha fechado errado, é só corrigir por lá.`);
 
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: lines.join("\n"),
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [[{ text: "📊 Ver meu histórico completo", url: BETS_URL }]] },
-    }),
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text: lines.join("\n"),
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: [[{ text: "📊 Ver meu histórico completo", url: BETS_URL }]] },
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 serve(async (req) => {
@@ -507,11 +505,28 @@ serve(async (req) => {
       const { data: rows, error } = await supabase.rpc("get_winback_notify_targets");
       if (error) throw error;
 
+      // Quem bloqueou o bot sai da lista antes do envio, com uma consulta só
+      // para a rodada. A DM de reconquista é única por pessoa: mandar para quem
+      // não pode receber gasta a única chance e ainda conta como enviada (#466).
+      const bloqueadosSet = await carregarBloqueados(supabase);
+
       let sent = 0;
+      let bloqueados = 0;
       const errors: string[] = [];
       for (const r of rows ?? []) {
+        if (bloqueadosSet.has(r.user_id)) {
+          bloqueados++;
+          continue;
+        }
         try {
-          await sendWinbackDm(r.chat_id, r.user_name, Number(r.settled), Number(r.greens), Number(r.profit), Number(r.roi), Number(r.leftovers));
+          const desfecho = await sendWinbackDm(supabase, r.user_id, r.chat_id, r.user_name, Number(r.settled), Number(r.greens), Number(r.profit), Number(r.roi), Number(r.leftovers));
+          // Bloqueou agora → pula sem gravar em `winback_notifications`: a linha
+          // ali é o que impede o reenvio, e queimá-la sem entrega perde a pessoa
+          // para sempre, mesmo que ela desbloqueie depois.
+          if (desfecho === "bloqueada") {
+            bloqueados++;
+            continue;
+          }
           const { error: insErr } = await supabase
             .from("winback_notifications")
             .insert({ user_id: r.user_id, bets_settled: r.settled, roi: r.roi });
@@ -526,7 +541,7 @@ serve(async (req) => {
           errors.push(`${r.user_id}: ${(e as Error)?.message}`);
         }
       }
-      return json({ ok: true, mode, alvo: (rows ?? []).length, sent, errors });
+      return json({ ok: true, mode, alvo: (rows ?? []).length, sent, bloqueados, errors });
     }
 
     return json({ error: `mode inválido: ${mode} (use report|execute|notify)` }, 400);

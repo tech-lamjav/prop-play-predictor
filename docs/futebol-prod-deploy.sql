@@ -3005,6 +3005,16 @@ grant execute on function public.get_futebol_vitrine() to anon, authenticated, s
 alter table public.users
   add column if not exists futebol_ofertas_muted boolean not null default false;
 
+-- Quem bloqueou o bot no Telegram (migration 151). Não é coluna de futebol, mas
+-- mora aqui porque as funções de futebol leem ela para pular quem não pode
+-- receber — e ambiente novo sem esta coluna faz o alerta de publicação quebrar.
+alter table public.users
+  add column if not exists telegram_bloqueado_em timestamptz;
+
+create index if not exists users_telegram_bloqueado_idx
+  on public.users (id)
+  where telegram_bloqueado_em is not null;
+
 create table if not exists public.futebol_oferta_pos_teste_notifications (
   user_id      uuid primary key references public.users(id) on delete cascade,
   reservada_em timestamptz not null default now(),

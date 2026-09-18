@@ -11,6 +11,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { maskPhone } from "../shared/phone.ts";
 import { temAcessoAoFutebol } from "../shared/acesso-ao-futebol.ts";
+import { limparBloqueio } from "../shared/telegram.ts";
 import {
   generateTraceId,
   identifyUser,
@@ -251,6 +252,13 @@ serve(async (req) => {
           name: fromUser?.first_name || undefined,
         }).catch(() => {});
 
+        // Reconectar pelo site é a outra porta de volta de quem tinha bloqueado
+        // (#466), e ela não passa pelo caminho de mensagem comum: este ramo
+        // responde e sai antes. Sem esta linha, quem desbloqueasse e refizesse o
+        // vínculo continuaria marcado — fora de todas as mensagens, tendo feito
+        // tudo certo.
+        await limparBloqueio(supabase, tok.user_id).catch(() => {});
+
         await sendWelcomeMessageTelegram(
           chatId,
           fromUser?.first_name || undefined,
@@ -396,6 +404,15 @@ serve(async (req) => {
       resolved_user_id: user.id,
       trace_id: traceId,
     });
+
+    // O caminho de volta de quem tinha bloqueado o bot (#466): chegar mensagem
+    // dela É a prova de que desbloqueou — o Telegram não entrega nada de um chat
+    // bloqueado. Sem isto, a marca virava sentença: a pessoa voltava e continuava
+    // fora de todas as mensagens, sem jeito de perceber.
+    //
+    // Sai daqui, e não de um comando: quem desbloqueia não sabe que foi marcado,
+    // então não teria o que mandar. A escrita só acontece para quem está marcado.
+    await limparBloqueio(supabase, user.id).catch(() => {});
 
     await identifyUser(user.id, {
       name: fromUser?.first_name || user.name || undefined,
