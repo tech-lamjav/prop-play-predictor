@@ -60,6 +60,47 @@ describe('ListaDoStripe', () => {
     expect(screen.queryByText(/quer renovar|Pix/i)).not.toBeInTheDocument();
   });
 
+  it('⚠️ diz COBRANÇA FALHANDO, e destaca quem precisa de conversa', () => {
+    // O ticket inteiro numa asserção. Antes do conserto no webhook, cartão
+    // recusado virava a mesma coisa que cancelado há um ano — os dois só
+    // "sem acesso" —, e a pessoa que ainda dava para salvar era impossível de
+    // achar no meio da lista.
+    montar(pronto([doGateway({ stripe_subscription_status: 'past_due' })]));
+    expect(screen.getByText('cobrança falhando')).toBeInTheDocument();
+  });
+
+  it('cancelada NÃO é destacada: não há conversa com prazo ali', () => {
+    montar(pronto([doGateway({ stripe_subscription_status: 'canceled' })]));
+    expect(screen.getByText('cancelada')).toBeInTheDocument();
+    expect(screen.queryByText('cobrança falhando')).not.toBeInTheDocument();
+  });
+
+  it('ativa e em teste aparecem com as palavras da casa', () => {
+    montar(pronto([doGateway({ stripe_subscription_status: 'trialing' })]));
+    expect(screen.getByText('em teste')).toBeInTheDocument();
+  });
+
+  it('estado que o gateway inventar aparece cru, e não vira "ativa"', () => {
+    // ⚠️ Cair para "ativa" seria dizer que está tudo bem com alguém de quem a
+    // gente não sabe nada.
+    montar(pronto([doGateway({ stripe_subscription_status: 'coisa_nova' })]));
+    expect(screen.getByText(/situação desconhecida: coisa_nova/)).toBeInTheDocument();
+    expect(screen.queryByText('ativa')).not.toBeInTheDocument();
+  });
+
+  it('sem situação gravada, diz isso em vez de ficar em branco', () => {
+    montar(pronto([doGateway({ stripe_subscription_status: null })]));
+    expect(screen.getByText('situação não gravada')).toBeInTheDocument();
+  });
+
+  it('a situação e a renovação são dois selos, e não um', () => {
+    // A situação é o que pede ação; a renovação é quando. Numa etiqueta só,
+    // "cobrança falhando" disputaria espaço com uma data.
+    montar(pronto([doGateway({ stripe_subscription_status: 'past_due' })]));
+    expect(screen.getByText('cobrança falhando')).toBeInTheDocument();
+    expect(screen.getByText(/renova em 20\/10\/2026/)).toBeInTheDocument();
+  });
+
   it('não chama ninguém de inadimplente nem de devendo', () => {
     // A palavra é do outro eixo: inadimplente é conclusão nossa, derivada do
     // nosso registro de pagamento, e só vale para origem manual.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assinaturasDoStripe } from './crm-assinatura-do-stripe';
+import { assinaturasDoStripe, situacaoNoGateway } from './crm-assinatura-do-stripe';
 import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 // ============================================================================
@@ -121,5 +121,73 @@ describe('assinaturasDoStripe', () => {
   it('leva o WhatsApp junto, porque a conversa acontece nele', () => {
     const [a] = assinaturasDoStripe([doGateway({ whatsapp_number: '5511998877665' })]);
     expect(a.whatsapp).toBe('5511998877665');
+  });
+
+  it('carrega a situação que o gateway relatou', () => {
+    const [a] = assinaturasDoStripe([doGateway({ stripe_subscription_status: 'past_due' })]);
+    expect(a.situacao.rotulo).toBe('cobrança falhando');
+  });
+});
+
+describe('situacaoNoGateway', () => {
+  it('⚠️ cartão recusado é COBRANÇA FALHANDO, e nunca inadimplente', () => {
+    // A palavra é o ticket inteiro. "Inadimplente" é conclusão NOSSA, derivada
+    // do nosso registro de pagamento, e só vale para assinatura de origem
+    // manual. O que o gateway relata é fato dele. Somar as duas encheria a fila
+    // de inadimplentes de gente que o Stripe já está cobrando sozinho.
+    const s = situacaoNoGateway('past_due');
+    expect(s.rotulo).toBe('cobrança falhando');
+    expect(s.rotulo).not.toMatch(/inadimpl|devendo|em aberto/i);
+    expect(s.pedeAtencao).toBe(true);
+  });
+
+  it('cobrança falhando é diferente de cancelada, e as duas de "sem acesso"', () => {
+    // ⚠️ O defeito que este ticket conserta. O achatamento em premium/free
+    // fazia as duas virarem a mesma coisa, e a pessoa que ainda dava para
+    // salvar ficava impossível de achar no meio de quem cancelou há um ano.
+    expect(situacaoNoGateway('past_due').rotulo).not.toBe(
+      situacaoNoGateway('canceled').rotulo,
+    );
+    expect(situacaoNoGateway('past_due').pedeAtencao).toBe(true);
+    expect(situacaoNoGateway('canceled').pedeAtencao).toBe(false);
+  });
+
+  it('ativa e em teste não pedem conversa', () => {
+    expect(situacaoNoGateway('active')).toMatchObject({ rotulo: 'ativa', pedeAtencao: false });
+    expect(situacaoNoGateway('trialing')).toMatchObject({ rotulo: 'em teste', pedeAtencao: false });
+  });
+
+  it('cobrança esgotada pede conversa, e com outra palavra', () => {
+    // `unpaid` é depois de o Stripe esgotar as tentativas. Dizer o mesmo que
+    // `past_due` esconderia que uma ainda está sendo tentada e a outra não.
+    const s = situacaoNoGateway('unpaid');
+    expect(s.rotulo).toBe('cobrança falhou');
+    expect(s.pedeAtencao).toBe(true);
+  });
+
+  it('⚠️ estado desconhecido aparece CRU, e nunca vira "ativa"', () => {
+    // O Stripe é dono do vocabulário dele e pode criar um estado novo amanhã.
+    // Traduzir para o rótulo mais próximo faria a tela afirmar o que ninguém
+    // verificou, e cair para "ativa" seria o pior dos chutes: diria que está
+    // tudo bem com alguém de quem não sabemos nada.
+    const s = situacaoNoGateway('estado_que_o_stripe_inventou');
+    expect(s.cru).toBe('estado_que_o_stripe_inventou');
+    expect(s.rotulo).toMatch(/desconhecida/);
+    expect(s.rotulo).toContain('estado_que_o_stripe_inventou');
+    expect(s.rotulo).not.toMatch(/^ativa$/);
+  });
+
+  it('ausência é dita com palavra, e não com vazio', () => {
+    // Um selo em branco na tela é lido como defeito, ou pior, ignorado.
+    for (const nada of [null, undefined, '', '   ']) {
+      const s = situacaoNoGateway(nada);
+      expect(s.cru).toBeNull();
+      expect(s.rotulo).toBe('situação não gravada');
+      expect(s.pedeAtencao).toBe(false);
+    }
+  });
+
+  it('normaliza espaço e caixa antes de traduzir', () => {
+    expect(situacaoNoGateway('  Past_Due  ').rotulo).toBe('cobrança falhando');
   });
 });

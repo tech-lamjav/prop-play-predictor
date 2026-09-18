@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { CreditCard, HelpCircle } from 'lucide-react';
+import { AlertTriangle, CreditCard, HelpCircle } from 'lucide-react';
 import type { AssinaturaDoStripe } from './crm-assinatura-do-stripe';
 import { formatarDia } from './crm-lista';
 import { ROTA_DO_CRM } from './crm-vocabulario';
@@ -19,7 +19,7 @@ export type EstadoDoStripe =
  * passando, que é como se produz pagamento em dobro.
  */
 function LinhaDoStripe({ assinatura }: { assinatura: AssinaturaDoStripe }) {
-  const { userId, pessoa, produto, renovaEm } = assinatura;
+  const { userId, pessoa, produto, renovaEm, situacao } = assinatura;
 
   return (
     <div className="border-t border-line-2 p-5 first:border-t-0">
@@ -31,17 +31,32 @@ function LinhaDoStripe({ assinatura }: { assinatura: AssinaturaDoStripe }) {
           {pessoa}
         </Link>
 
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-canvas px-2.5 py-1 text-[12px] font-bold text-ink-2">
-          {renovaEm === null ? (
-            <HelpCircle aria-hidden className="h-3 w-3" />
-          ) : (
-            <CreditCard aria-hidden className="h-3 w-3" />
-          )}
-          {/* ⚠️ "Não sabemos", e nunca um traço ou um vazio. Quem assina só o
-              futebol não tem coluna de prazo, e uma tela calada aqui seria lida
-              como "renova hoje" ou como defeito. */}
-          {renovaEm === null ? 'renovação: não sabemos' : `renova em ${formatarDia(renovaEm)}`}
-        </span>
+        {/* Dois selos, e não um.
+            A situação é o que pede ação; a renovação é quando. Juntar as duas
+            numa etiqueta só faria "cobrança falhando" disputar espaço com uma
+            data, e quem varre a lista de cima para baixo procura a primeira. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold ${
+              situacao.pedeAtencao ? 'bg-amber-400/20 text-ink' : 'bg-canvas text-ink-2'
+            }`}
+          >
+            {situacao.pedeAtencao ? (
+              <AlertTriangle aria-hidden className="h-3 w-3" />
+            ) : (
+              <CreditCard aria-hidden className="h-3 w-3" />
+            )}
+            {situacao.rotulo}
+          </span>
+
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-canvas px-2.5 py-1 text-[12px] font-bold text-ink-2">
+            {renovaEm === null ? <HelpCircle aria-hidden className="h-3 w-3" /> : null}
+            {/* ⚠️ "Não sabemos", e nunca um traço ou um vazio. Quem assina só o
+                futebol não tem coluna de prazo, e uma tela calada aqui seria
+                lida como "renova hoje" ou como defeito. */}
+            {renovaEm === null ? 'renovação: não sabemos' : `renova em ${formatarDia(renovaEm)}`}
+          </span>
+        </div>
       </div>
 
       <p className="mt-0.5 text-[13px] text-ink-2">

@@ -68,6 +68,15 @@ export interface Cadastro {
    */
   betinho_subscription_period_end: string | null;
   analytics_subscription_period_end: string | null;
+  /**
+   * O que o gateway relatou por último, CRU.
+   *
+   * ⚠️ Não confundir com as colunas `*_subscription_status` por produto: aquelas
+   * são PORTÃO e só entendem premium e free. Esta guarda o que o Stripe disse —
+   * `past_due`, `canceled`, `trialing` — e existe porque o achatamento
+   * destruía a diferença entre cartão recusado e cancelamento antigo.
+   */
+  stripe_subscription_status: string | null;
 }
 
 export interface DiaDe<T> {

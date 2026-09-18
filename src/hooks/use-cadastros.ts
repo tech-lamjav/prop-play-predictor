@@ -48,6 +48,9 @@ const MAPA_DE_CAMPOS: Record<keyof Cadastro, true> = {
   // estas colunas de propósito, e aí a tela diz que não sabe.
   betinho_subscription_period_end: true,
   analytics_subscription_period_end: true,
+  // O que o gateway relatou, cru. Não é portão: as colunas por produto é que
+  // decidem acesso.
+  stripe_subscription_status: true,
 };
 
 const CAMPOS = Object.keys(MAPA_DE_CAMPOS) as (keyof Cadastro)[];

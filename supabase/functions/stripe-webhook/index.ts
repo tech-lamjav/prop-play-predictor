@@ -2,6 +2,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14.21.0";
 import { prefixosDoPlano, statusDoPlano } from "../shared/concessoes.ts";
+import {
+  acessoDaSituacao,
+  fimDoPeriodoDaFatura,
+  situacaoCrua,
+} from "../shared/situacao-do-stripe.ts";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -274,15 +279,23 @@ serve(async (req) => {
         console.log(`Subscription ${event.type} - userId: ${userId}, status: ${subscription.status}, productType: ${productType}`);
 
         if (userId) {
-          // `trialing` também é acesso pago: é assinatura ativa em período de
-          // teste do Stripe. Tratar como 'free' bloquearia na hora quem acabou
-          // de assinar. Hoje o teste do futebol é do banco, não do Stripe, então
-          // isso não dispara — mas ligar `trial_period_days` no Stripe um dia
-          // não pode derrubar assinante.
-          const ativa = subscription.status === 'active' || subscription.status === 'trialing';
-          const status = ativa ? 'premium' : 'free';
+          // A regra de acesso saiu daqui para `shared/situacao-do-stripe.ts`,
+          // sem mudar: `active` e `trialing` liberam, o resto não, e situação
+          // desconhecida não libera. Lá ela tem teste; aqui era um ternário
+          // solto que ninguém exercitava.
+          const status = acessoDaSituacao(subscription.status);
           const updateData: Record<string, unknown> = {
             ...statusUpdate(productType, status),
+            /*
+             * ⚠️ A situação CRUA, ao lado do achatamento e nunca no lugar dele.
+             *
+             * As colunas por produto são PORTÃO e só entendem premium e free;
+             * gravar `past_due` nelas daria ou tiraria acesso de alguém. Mas
+             * gravar só o achatamento DESTRUÍA a informação: cartão recusado
+             * virava a mesma coisa que cancelado há um ano, e a tela não tinha
+             * como achar quem ainda dá para salvar com uma conversa.
+             */
+            stripe_subscription_status: situacaoCrua(subscription.status),
             stripe_subscription_id: subscription.id,
             subscription_product_type: productType || 'betinho',
             ...getProductMetadataUpdate(productType, subscription),
@@ -315,6 +328,10 @@ serve(async (req) => {
           // Essencial cancelado deixaria o Betinho ilimitado para trás.
           const updateData: Record<string, unknown> = {
             ...statusUpdate(productType, 'free'),
+            // A situação crua do evento, que aqui é o cancelamento. Guardar
+            // deixa a tela dizer "cancelada" em vez de só "sem acesso", que é
+            // o mesmo que ela diria de um cartão recusado.
+            stripe_subscription_status: situacaoCrua(subscription.status),
             ...getProductMetadataClear(productType),
           };
           const { data: userRow } = await supabase
@@ -425,9 +442,36 @@ serve(async (req) => {
           break;
         }
 
-        const updateData = statusUpdate(productType, 'premium');
+        const updateData: Record<string, unknown> = { ...statusUpdate(productType, 'premium') };
+
+        /*
+         * ⚠️ A data de renovação também anda aqui, e antes não andava.
+         *
+         * Só `customer.subscription.created/updated` chamava o montador de
+         * metadados, então a data de renovação envelhecia depois da PRIMEIRA
+         * cobrança — e é justamente a data que o sócio olha para decidir quando
+         * falar com a pessoa.
+         *
+         * Sai do período que a própria fatura DECLARA, e nunca de assumir que
+         * todo plano é mensal. O futebol fica de fora sozinho, porque
+         * `prefixosDoPlano` já o exclui: ele não tem colunas de prazo, e gravar
+         * um prefixo inexistente derruba o UPDATE inteiro e tira o acesso de
+         * quem pagou.
+         *
+         * NÃO grava a situação crua: a fatura não carrega o estado da
+         * assinatura, e escrever "ativa" aqui seria adivinhar. O Stripe manda
+         * `customer.subscription.updated` na renovação, e é lá que ela se
+         * mantém.
+         */
+        const fimDoPeriodo = fimDoPeriodoDaFatura(invoice);
+        if (fimDoPeriodo) {
+          for (const prefixo of prefixosDoPlano(productType)) {
+            updateData[`${prefixo}_period_end`] = fimDoPeriodo;
+          }
+        }
 
         console.log('[Webhook] Renovando acesso:', Object.keys(updateData).join(', '));
+        console.log('[Webhook] Fim do periodo declarado pela fatura:', fimDoPeriodo ?? 'ausente');
 
         const { data, error } = await supabase
           .from('users')

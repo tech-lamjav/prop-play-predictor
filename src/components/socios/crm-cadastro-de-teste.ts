@@ -37,6 +37,7 @@ export const cadastroDeTeste = (over: Partial<Cadastro> = {}): Cadastro => ({
   tem_assinatura_no_stripe: false,
   betinho_subscription_period_end: null,
   analytics_subscription_period_end: null,
+  stripe_subscription_status: null,
   ...over,
 });
 

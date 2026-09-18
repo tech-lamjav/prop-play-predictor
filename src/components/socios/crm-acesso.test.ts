@@ -26,6 +26,9 @@ function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
     telegram_username: null,
     betinho_subscription_period_end: null,
     analytics_subscription_period_end: null,
+    // O que o gateway relatou, cru. Nulo é o caso comum: quem não assina pelo
+    // cartão não tem situação relatada por ninguém.
+    stripe_subscription_status: null,
     has_report_access: null,
     ...campos,
   };
