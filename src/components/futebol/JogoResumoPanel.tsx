@@ -22,7 +22,7 @@ import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
 import { mesmaSaida } from '@/utils/futebol-saida';
 import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico, perfilDaJanela } from '@/utils/futebol-historico';
+import { perfilDaJanela } from '@/utils/futebol-historico';
 import { Blur } from '@/components/futebol/FutebolGate';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';

@@ -27,8 +27,7 @@ import {
   type MercadoInfo,
   type Premissa,
 } from '@/utils/futebol-premissas';
-import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico } from '@/utils/futebol-historico';
+import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaCortada, passaNaLeitura, leituraDaFolha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
@@ -45,7 +44,7 @@ import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futeb
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
-import type { JogoInfo } from './JogoResumo';
+import type { JogoInfo } from './jogo-info';
 
 /**
  * Aba MERCADOS — a "bancada" do Protótipo 1b: um mercado por vez, com a régua de
