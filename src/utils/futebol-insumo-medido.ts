@@ -56,6 +56,38 @@ export function insumosDaPremissa(
 }
 
 /**
+ * Como cada premissa lê os insumos dela em português.
+ *
+ * ⚠️ Isto é APRESENTAÇÃO, não critério. O corte continua sendo do modelo; aqui
+ * só se decide como o número medido vira frase. Por isso não é a "terceira
+ * cópia de vocabulário" que o cabeçalho deste arquivo teme: nada aqui decide se
+ * a premissa acende.
+ *
+ * `s_` é o time da saída e `o_` o adversário. Uma forma só devolve frase quando
+ * TODOS os insumos que ela usa vieram; faltando qualquer um, cai no par cru, que
+ * é honesto e não inventa o que não veio.
+ *
+ * Premissa sem forma aqui também cai no par cru — é o que mantém a rota
+ * agnóstica para as outras seis do 1X2 e para as que o mart publicar depois.
+ */
+const FORMAS: Record<string, (v: Record<string, number>) => string | null> = {
+  // O modelo compara pontos POR JOGO; a frase antiga mostrava o total da
+  // temporada ("76 pontos"), que é outra grandeza. Era um número verdadeiro que
+  // não é o insumo — o que o glossário chama de ilustrar sem explicar.
+  'match_winner:superioridade_tabela': (v) =>
+    v.s_rank == null || v.o_rank == null || v.s_ppg == null || v.o_ppg == null
+      ? null
+      : `${numero(v.s_rank)}º com ${numero(v.s_ppg)} pontos por jogo, contra ` +
+        `${numero(v.o_rank)}º e ${numero(v.o_ppg)} do adversário`,
+
+  'match_winner:h2h_favoravel': (v) =>
+    v.s_wins == null || v.h2h_total == null
+      ? null
+      : `${numero(v.s_wins)} ${v.s_wins === 1 ? 'vitória' : 'vitórias'} em ` +
+        `${numero(v.h2h_total)} ${v.h2h_total === 1 ? 'confronto' : 'confrontos'}`,
+};
+
+/**
  * A frase da evidência a partir do valor medido, ou `null` quando não há.
  *
  * Ausência é normal, não erro: o funil é append-only e linha gravada antes do
@@ -69,5 +101,10 @@ export function fraseDoInsumoMedido(
 ): string | null {
   const achados = insumosDaPremissa(mercado, slug, lado, insumos);
   if (!achados.length) return null;
-  return achados.map((i) => `${i.insumo} ${numero(i.valor as number)}`).join(' · ');
+
+  const porNome: Record<string, number> = {};
+  for (const i of achados) porNome[i.insumo] = i.valor as number;
+
+  const forma = FORMAS[`${mercado}:${slug}`];
+  return forma?.(porNome) ?? achados.map((i) => `${i.insumo} ${numero(i.valor as number)}`).join(' · ');
 }

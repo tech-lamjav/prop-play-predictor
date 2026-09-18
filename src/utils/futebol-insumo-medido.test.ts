@@ -66,18 +66,51 @@ describe('escolher o insumo de uma premissa', () => {
 });
 
 describe('a frase do valor medido', () => {
-  it('mostra nome e valor, sem traduzir o vocabulário do dbt', () => {
+  const tabelaCompleta = [
+    linha({ insumo: 's_rank', valor: 2 }),
+    linha({ insumo: 's_ppg', valor: 2.24 }),
+    linha({ insumo: 'o_rank', valor: 20 }),
+    linha({ insumo: 'o_ppg', valor: 1.42 }),
+  ];
+
+  it('lê a superioridade na tabela com a grandeza que o modelo compara', () => {
+    // PONTOS POR JOGO, e não o total da temporada. A frase antiga mostrava "76
+    // pontos", que é outra grandeza — verdadeira, e não era o insumo.
+    expect(fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', tabelaCompleta))
+      .toBe('2º com 2,24 pontos por jogo, contra 20º e 1,42 do adversário');
+  });
+
+  it('lê o confronto direto em vitórias sobre total', () => {
+    const frase = fraseDoInsumoMedido('match_winner', 'h2h_favoravel', 'home', [
+      linha({ premissa: 'h2h_favoravel', insumo: 's_wins', valor: 6 }),
+      linha({ premissa: 'h2h_favoravel', insumo: 'h2h_total', valor: 10 }),
+    ]);
+
+    expect(frase).toBe('6 vitórias em 10 confrontos');
+  });
+
+  it('concorda em número quando é um só', () => {
+    const frase = fraseDoInsumoMedido('match_winner', 'h2h_favoravel', 'home', [
+      linha({ premissa: 'h2h_favoravel', insumo: 's_wins', valor: 1 }),
+      linha({ premissa: 'h2h_favoravel', insumo: 'h2h_total', valor: 1 }),
+    ]);
+
+    expect(frase).toBe('1 vitória em 1 confronto');
+  });
+
+  it('faltando um insumo da forma, cai no par cru em vez de inventar', () => {
+    // Meia frase seria pior que frase nenhuma: ela afirmaria uma comparação
+    // com um dos lados ausente.
     expect(fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [linha()]))
       .toBe('s_rank 2');
   });
 
-  it('junta os insumos da mesma premissa', () => {
-    const frase = fraseDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [
-      linha({ insumo: 's_rank', valor: 2 }),
-      linha({ insumo: 'o_rank', valor: 20 }),
+  it('premissa sem forma conhecida continua agnóstica', () => {
+    const frase = fraseDoInsumoMedido('match_winner', 'forma', 'home', [
+      linha({ premissa: 'forma', insumo: 's_form_pts', valor: 11 }),
     ]);
 
-    expect(frase).toBe('s_rank 2 · o_rank 20');
+    expect(frase).toBe('s_form_pts 11');
   });
 
   it('usa vírgula decimal, como o resto do produto', () => {
