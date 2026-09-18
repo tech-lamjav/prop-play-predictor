@@ -126,13 +126,13 @@ function proximoMes(mes: string): string {
  * Assinatura sem valor mensal não tem mês em aberto: não há o que
  * cobrar de quem não combinou pagar nada.
  *
- * Um teto de doze meses existe para o caso de uma assinatura antiga sem nenhum
- * pagamento registrado: sem ele, a tela listaria dois anos de meses devidos, e
- * uma lista assim não é cobrança, é ruído. O primeiro mês da lista continua
- * sendo o mais antigo em aberto dentro da janela.
+ * ⚠️ Devolve TODOS os meses, nunca um recorte. Já cortou nos doze mais
+ * recentes, e o corte vazava para o dinheiro: quem chama multiplica pelo
+ * TAMANHO desta lista, então quem devia dezoito meses aparecia devendo doze, e
+ * a fila de inadimplentes — que ordena pelo total — mentia sobre a própria
+ * ordem, que é a única coisa que ela promete. Resumir a lista continua
+ * valendo, mas é decisão de tela e mora em `resumirMeses`.
  */
-export const TETO_DE_MESES_EM_ABERTO = 12;
-
 export function mesesEmAberto(
   comecouEm: string,
   valorMensal: number | null,
@@ -153,7 +153,62 @@ export function mesesEmAberto(
     mes = proximoMes(mes);
   }
 
-  return abertos.slice(-TETO_DE_MESES_EM_ABERTO);
+  return abertos;
+}
+
+/**
+ * Quanto a pessoa deve: cada mês em aberto vale uma mensalidade.
+ *
+ * ⚠️ Mora num lugar só porque esta multiplicação em DOIS donos foi exatamente
+ * por onde o defeito vazou. A ficha e a fila calculavam o mesmo total cada uma
+ * por si; quando a lista de meses passou a vir cortada em doze, as duas
+ * erraram junto e em silêncio. Com um dono, consertar a conta conserta os dois
+ * lugares — e quebrar a conta quebra os dois testes.
+ */
+export function totalEmAberto(meses: string[], valorMensal: number): number {
+  return meses.length * valorMensal;
+}
+
+/**
+ * Quantos meses em aberto a tela escreve por extenso antes de resumir.
+ *
+ * É teto de ESPAÇO, e não de dívida. O nome antigo dizia "teto de meses em
+ * aberto", e um nome assim convida de volta exatamente o bug que existia: o
+ * número que a pessoa deve não passa por aqui.
+ */
+export const MESES_MOSTRADOS_NA_TELA = 12;
+
+/**
+ * A lista de meses como a tela escreve: os mais recentes por extenso, e quantos
+ * ficaram de fora.
+ *
+ * ⚠️ `ocultos` existe para a tela DIZER que resumiu. Resumir em silêncio é
+ * metade do defeito que separou esta função de `mesesEmAberto`: quem lê "Em
+ * aberto:" e conta doze meses precisa saber que há mais, senão a linha
+ * desmente o selo de "devendo 18 meses" que está logo acima dela.
+ *
+ * Mantém os mais RECENTES, como a lista sempre fez.
+ */
+export function resumirMeses(meses: string[]): { mostrados: string[]; ocultos: number } {
+  if (meses.length <= MESES_MOSTRADOS_NA_TELA) return { mostrados: meses, ocultos: 0 };
+  return {
+    mostrados: meses.slice(0, MESES_MOSTRADOS_NA_TELA),
+    ocultos: meses.length - MESES_MOSTRADOS_NA_TELA,
+  };
+}
+
+/**
+ * A linha "Em aberto:" como as duas telas escrevem — a da ficha e a da fila de
+ * inadimplentes.
+ *
+ * Mora aqui, e não em cada tela, porque a frase precisa ser a MESMA nas duas: o
+ * sócio compara os dois lugares, e duas redações do mesmo resumo fariam ele
+ * achar que são contas diferentes.
+ */
+export function textoDosMesesEmAberto(meses: string[]): string {
+  const { mostrados, ocultos } = resumirMeses(meses);
+  const lista = mostrados.map(formatarMes).join(', ');
+  return ocultos > 0 ? `${lista}, e mais ${ocultos}` : lista;
 }
 
 /**
@@ -177,7 +232,7 @@ export function situacaoDaReceita(
   const abertos = mesesEmAberto(comecouEm, valorMensal, pagamentos, hoje);
   if (abertos.length === 0) return { tipo: 'em_dia' };
 
-  return { tipo: 'devendo', meses: abertos.length, total: abertos.length * valorMensal };
+  return { tipo: 'devendo', meses: abertos.length, total: totalEmAberto(abertos, valorMensal) };
 }
 
 /**

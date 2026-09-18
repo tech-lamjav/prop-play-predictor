@@ -46,6 +46,24 @@ describe('ListaDeInadimplentes', () => {
     expect(screen.getByText(/Em aberto: 07\/2026, 08\/2026, 09\/2026/)).toBeInTheDocument();
   });
 
+  it('lista longa é resumida, e a tela DIZ que resumiu', () => {
+    // ⚠️ Aqui o resumo calado custa mais caro que na ficha: esta fila é
+    // ordenada PELO TOTAL, e o total é o que decide insistir ou encerrar. Uma
+    // linha que mostra doze meses embaixo de um selo de dezoito faz o sócio
+    // duvidar do número que ele usa para decidir.
+    montar(pronto([linha({ criada_em: '2025-04-10T15:00:00Z' })]));
+    expect(screen.getByText(/devendo 18 meses/)).toHaveTextContent('718,20');
+    expect(screen.getByText(/e mais 6/)).toBeInTheDocument();
+  });
+
+  it('a dívida mais VELHA é a que a linha mostra', () => {
+    // ⚠️ Esta fila existe para decidir insistir ou encerrar, e é a idade da
+    // dívida que responde isso. Resumir cortando os meses antigos jogava fora
+    // exatamente o dado pelo qual a fila existe.
+    montar(pronto([linha({ criada_em: '2025-04-10T15:00:00Z' })]));
+    expect(screen.getByText(/Em aberto: 04\/2025/)).toBeInTheDocument();
+  });
+
   it('o nome leva para a ficha, onde se registra o Pix e se encerra', () => {
     // Não há botão de encerrar aqui de propósito: cortar o acesso de um
     // cliente é decisão tomada olhando o histórico de pagamento.

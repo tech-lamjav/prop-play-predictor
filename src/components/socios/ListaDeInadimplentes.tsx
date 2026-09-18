@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import type { Inadimplente } from './crm-assinatura';
 import { formatarDia } from './crm-lista';
-import { emReais, formatarMes } from './crm-receita';
+import { emReais, textoDosMesesEmAberto } from './crm-receita';
 import { ROTA_DO_CRM, ROTULO_DO_PLANO } from './crm-vocabulario';
 
 export type EstadoDosInadimplentes =
@@ -36,7 +36,7 @@ function Linha({ item }: { item: Inadimplente }) {
         {assinatura.valorMensal !== null ? ` · ${emReais(assinatura.valorMensal)} por mês` : ''}
       </p>
 
-      <p className="mt-1 text-[12px] text-ink-2">Em aberto: {meses.map(formatarMes).join(', ')}</p>
+      <p className="mt-1 text-[12px] text-ink-2">Em aberto: {textoDosMesesEmAberto(meses)}</p>
     </div>
   );
 }

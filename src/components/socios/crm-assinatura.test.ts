@@ -187,6 +187,22 @@ describe('inadimplentes', () => {
     expect(i.total).toBeCloseTo(119.7);
   });
 
+  it('quem deve dezoito meses não aparece devendo doze', () => {
+    // ⚠️ O defeito que esta mudança conserta, e aqui ele custa mais caro que
+    // na ficha: esta fila é ordenada PELO TOTAL, e o total decide se o sócio
+    // insiste ou encerra. Com a dívida truncada, quem devia mais podia
+    // aparecer abaixo de quem devia menos, e a fila mentia sobre a própria
+    // ordem — que é a única coisa que ela promete.
+    const [i] = inadimplentes(
+      assinaturas(linha({ criada_em: '2025-04-10T15:00:00Z' })),
+      new Map(),
+      HOJE_I,
+    );
+    expect(i.meses).toHaveLength(18);
+    expect(i.meses[0]).toBe('2025-04');
+    expect(i.total).toBeCloseTo(718.2);
+  });
+
   it('quem pagou todos os meses não entra', () => {
     const pagos = montarPagamentos([
       pagamento({ competencia: '2026-07-01' }),

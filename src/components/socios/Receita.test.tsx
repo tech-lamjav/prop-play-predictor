@@ -97,6 +97,26 @@ describe('o resumo', () => {
     montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9 } });
     expect(screen.getByText(/Em aberto: 07\/2026, 08\/2026, 09\/2026/)).toBeInTheDocument();
   });
+
+  it('lista longa é resumida, e a tela DIZ que resumiu', () => {
+    // ⚠️ Doze meses escritos por extenso embaixo de um selo dizendo "devendo
+    // 18 meses" faria os dois números da MESMA tela se desmentirem. Resumir a
+    // linha é legítimo, porque trinta e três meses escritos um a um não são
+    // cobrança, são ruído. Resumir calado é o defeito.
+    montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9 } });
+    expect(screen.getByText(/devendo 18 meses/)).toBeInTheDocument();
+    expect(screen.getByText(/e mais 6/)).toBeInTheDocument();
+  });
+
+  it('o resumo corta os meses recentes, e o "e mais" vem no fim por isso', () => {
+    // ⚠️ A ponta importa e quase passou batido. Cortando os ANTIGOS, a frase
+    // ficava "Em aberto: 10/2025, …, 09/2026, e mais 6" — e esse "e mais 6" no
+    // fim promete seis meses DEPOIS de setembro de 2026, quando os escondidos
+    // eram os seis anteriores a outubro de 2025. O aviso apontava para a ponta
+    // oposta à que tinha sido cortada.
+    montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9 } });
+    expect(screen.getByText(/Em aberto: 04\/2025/)).toBeInTheDocument();
+  });
 });
 
 describe('lançar um pagamento', () => {
@@ -109,6 +129,26 @@ describe('lançar um pagamento', () => {
     await userEvent.click(screen.getByRole('button', { name: /Registrar pagamento/ }));
     expect(aoLancar).toHaveBeenCalledWith({
       mes: '2026-07',
+      valor: 39.9,
+      origem: 'pix',
+      pagoEm: HOJE,
+    });
+  });
+
+  it('com dívida longa, sugere o mês mais antigo DE VERDADE', async () => {
+    // ⚠️ Efeito colateral bom de tirar o corte de dentro do cálculo, e que vale
+    // travar com teste porque ninguém pediu por ele.
+    //
+    // A sugestão de lançamento é o primeiro mês em aberto. Enquanto a lista
+    // vinha cortada nos doze mais recentes, quem devia dezoito meses não
+    // conseguia lançar os seis mais antigos por aqui: eles não estavam na
+    // lista, então o campo nunca os oferecia e a dívida mais velha ficava sem
+    // caminho de quitação na tela.
+    const { aoLancar } = montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9 } });
+    expect(screen.getByLabelText('Mês de competência do pagamento')).toHaveValue('2025-04');
+    await userEvent.click(screen.getByRole('button', { name: /Registrar pagamento/ }));
+    expect(aoLancar).toHaveBeenCalledWith({
+      mes: '2025-04',
       valor: 39.9,
       origem: 'pix',
       pagoEm: HOJE,

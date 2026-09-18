@@ -1,6 +1,6 @@
 import { brtDayOf } from '@/utils/futebol-datas';
 import type { Cadastro } from './crm-lista';
-import { mesesEmAberto, type Pagamento } from './crm-receita';
+import { mesesEmAberto, totalEmAberto, type Pagamento } from './crm-receita';
 import { PLANOS_A_VENDER, type PlanoAVender } from './crm-vocabulario';
 
 // ============================================================================
@@ -219,7 +219,7 @@ export function inadimplentes(
         hoje,
       );
       if (meses.length === 0) return [];
-      return [{ assinatura, meses, total: meses.length * assinatura.valorMensal }];
+      return [{ assinatura, meses, total: totalEmAberto(meses, assinatura.valorMensal) }];
     })
     .sort((a, b) => {
       if (b.total !== a.total) return b.total - a.total;

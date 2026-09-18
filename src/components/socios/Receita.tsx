@@ -7,6 +7,7 @@ import {
   receitaRecebida,
   rotuloDaOrigem,
   situacaoDaReceita,
+  textoDosMesesEmAberto,
   valorComoTexto,
   ORIGENS_PARA_LANCAR,
   ROTULO_DA_ORIGEM,
@@ -219,8 +220,8 @@ export function Receita({
 
       {abertos.length > 0 ? (
         <p className="text-[12px] text-ink-2">
-          Em aberto: {abertos.map(formatarMes).join(', ')}. A assinatura não encerra sozinha: se
-          for para cortar o acesso, encerre na assinatura acima.
+          Em aberto: {textoDosMesesEmAberto(abertos)}. A assinatura não encerra sozinha: se for
+          para cortar o acesso, encerre na assinatura acima.
         </p>
       ) : null}
 

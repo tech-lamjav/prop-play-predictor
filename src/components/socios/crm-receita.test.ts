@@ -6,8 +6,9 @@ import {
   mesesEmAberto,
   montarPagamentos,
   receitaRecebida,
+  resumirMeses,
   situacaoDaReceita,
-  TETO_DE_MESES_EM_ABERTO,
+  MESES_MOSTRADOS_NA_TELA,
   type PagamentoDoBanco,
 } from './crm-receita';
 
@@ -135,11 +136,18 @@ describe('mesesEmAberto', () => {
     expect(mesesEmAberto('2026-12-01', 39.9, [], HOJE)).toEqual([]);
   });
 
-  it('uma assinatura muito antiga não vira lista de dois anos', () => {
-    // Sem teto, a tela listaria vinte e tantos meses devidos, e uma lista assim
-    // não é cobrança, é ruído. O teto mantém os mais recentes.
+  it('uma assinatura muito antiga devolve TODOS os meses, sem cortar', () => {
+    // ⚠️ Este teste já afirmou o CONTRÁRIO, e era o defeito. A função cortava
+    // nos doze mais recentes, e quem multiplicava pelo tamanho da lista — a
+    // ficha e a fila de inadimplentes — calculava a dívida em cima do recorte.
+    // Quem devia dezoito meses aparecia devendo doze, em silêncio, e o sócio
+    // cobrava menos do que devia sem nunca saber.
+    //
+    // Resumir a lista continua valendo, mas é decisão de TELA e mora noutro
+    // lugar. A conta precisa da verdade.
     const abertos = mesesEmAberto('2023-01-01', 39.9, [], HOJE);
-    expect(abertos).toHaveLength(TETO_DE_MESES_EM_ABERTO);
+    expect(abertos).toHaveLength(45);
+    expect(abertos[0]).toBe('2023-01');
     expect(abertos[abertos.length - 1]).toBe('2026-09');
   });
 });
@@ -161,6 +169,74 @@ describe('situacaoDaReceita', () => {
     if (situacao.tipo === 'devendo') {
       expect(situacao.meses).toBe(3);
       expect(situacao.total).toBeCloseTo(119.7);
+    }
+  });
+
+  it('quem deve dezoito meses deve dezoito, e o total acompanha', () => {
+    // ⚠️ O defeito que esta mudança conserta. O corte de doze meses vivia
+    // dentro de `mesesEmAberto`, e esta função multiplica pelo TAMANHO da
+    // lista que recebe — então o corte não encolhia só a lista, encolhia o
+    // dinheiro. Quem devia 718,20 aparecia devendo 478,80, e a diferença
+    // sumia sem nenhum aviso na tela.
+    const situacao = situacaoDaReceita('2025-04-01', 39.9, [], HOJE);
+    expect(situacao.tipo).toBe('devendo');
+    if (situacao.tipo === 'devendo') {
+      expect(situacao.meses).toBe(18);
+      expect(situacao.total).toBeCloseTo(718.2);
+    }
+  });
+});
+
+describe('resumirMeses', () => {
+  // Rótulos sintéticos, e não meses: o que estes casos exercitam é a ordem e a
+  // contagem, e `m1..m18` deixa a ponta cortada óbvia na mensagem de falha.
+  // Chamar isto de `meses` prometia domínio e entregava etiqueta.
+  const rotulos = (n: number) => Array.from({ length: n }, (_, i) => `m${i + 1}`);
+
+  it('lista curta não é resumida, e nada fica oculto', () => {
+    expect(resumirMeses(['2026-07', '2026-08'])).toEqual({
+      mostrados: ['2026-07', '2026-08'],
+      ocultos: 0,
+    });
+  });
+
+  it('lista vazia não inventa resumo', () => {
+    expect(resumirMeses([])).toEqual({ mostrados: [], ocultos: 0 });
+  });
+
+  it('exatamente no teto ainda não resume', () => {
+    // A borda importa: resumir um item só trocaria um mês por "e mais 1", que
+    // ocupa o mesmo espaço e diz menos.
+    const { mostrados, ocultos } = resumirMeses(rotulos(MESES_MOSTRADOS_NA_TELA));
+    expect(mostrados).toHaveLength(MESES_MOSTRADOS_NA_TELA);
+    expect(ocultos).toBe(0);
+  });
+
+  it('acima do teto mostra os mais ANTIGOS e DIZ quantos ficaram', () => {
+    // ⚠️ `ocultos` é o que impede a tela de mentir. Sem ele a linha mostraria
+    // doze meses embaixo de um selo dizendo dezoito, e os dois números na
+    // mesma tela se desmentiriam.
+    //
+    // ⚠️ E guarda a PONTA. A primeira versão manteve os mais recentes, só
+    // porque era o que o código antigo fazia, e isso quebrava duas coisas: o
+    // "e mais 6" ficava no fim da frase prometendo meses POSTERIORES ao
+    // último mostrado, quando os escondidos eram os anteriores; e a ficha
+    // sugeria lançar o mês mais antigo, que a linha não listava.
+    //
+    // Numa fila que existe para decidir insistir ou encerrar, a idade da
+    // dívida é justamente o que não se corta.
+    const { mostrados, ocultos } = resumirMeses(rotulos(18));
+    expect(mostrados).toHaveLength(12);
+    expect(ocultos).toBe(6);
+    expect(mostrados[0]).toBe('m1');
+    expect(mostrados[mostrados.length - 1]).toBe('m12');
+  });
+
+  it('nenhum mês some da conta: mostrados mais ocultos é sempre o total', () => {
+    // A propriedade que garante que resumir nunca vira truncar.
+    for (const n of [0, 1, 11, 12, 13, 45]) {
+      const { mostrados, ocultos } = resumirMeses(rotulos(n));
+      expect(mostrados.length + ocultos, `com ${n} meses`).toBe(n);
     }
   });
 });
