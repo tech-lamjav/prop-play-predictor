@@ -26,6 +26,7 @@ import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { logMessageRun } from "../shared/runs.ts";
 import { getStreak, isStreakEnabled } from "../shared/streak.ts";
+import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 import { buildMessage, pickTier, type WeeklyCandidate } from "./tiers.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -37,26 +38,29 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-async function sendSummary(chatId: string, text: string, bankUrl: string): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      // opt-out visível na própria mensagem (regra: recorrente carrega a própria
-      // saída). Callback `mutew` no telegram-webhook grava weekly_summary_muted.
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "Ver minha banca", url: bankUrl }],
-          [{ text: "Silenciar resumo", callback_data: "mutew" }],
-        ],
-      },
-    }),
+async function sendSummary(
+  supabase: any,
+  userId: string,
+  chatId: string,
+  text: string,
+  bankUrl: string,
+): Promise<"enviada" | "bloqueada"> {
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    // opt-out visível na própria mensagem (regra: recorrente carrega a própria
+    // saída). Callback `mutew` no telegram-webhook grava weekly_summary_muted.
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "Ver minha banca", url: bankUrl }],
+        [{ text: "Silenciar resumo", callback_data: "mutew" }],
+      ],
+    },
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 serve(async (req) => {
@@ -105,13 +109,29 @@ serve(async (req) => {
       });
     }
 
+    // Quem bloqueou o bot: uma consulta por rodada, ANTES do laço. O resumo é
+    // semanal e recorrente — é justamente o tipo de mensagem que fica tentando
+    // para sempre e diluindo a taxa de clique de todo mundo (#466).
+    const bloqueadosSet = await carregarBloqueados(supabase);
+
     let sent = 0;
+    let bloqueados = 0;
     const errors: string[] = [];
     for (const { c, roi, tier, streakDays } of rows) {
+      if (bloqueadosSet.has(c.user_id)) {
+        bloqueados++;
+        continue;
+      }
       try {
         const text = buildMessage(c, tier, roi, streakDays);
         const bankUrl = await trackedUrl(c.user_id, "bank", CAMPAIGN);
-        await sendSummary(c.chat_id, text, bankUrl);
+        const desfecho = await sendSummary(supabase, c.user_id, c.chat_id, text, bankUrl);
+        // Bloqueou agora (o 403 chegou nesta tentativa) → pula sem marcar envio:
+        // gravar `weekly_summary_sent_at` contaria como entregue no funil.
+        if (desfecho === "bloqueada") {
+          bloqueados++;
+          continue;
+        }
 
         // marca envio só depois de mandar (run que falha tenta de novo na próxima)
         const { error: upErr } = await supabase
@@ -142,7 +162,7 @@ serve(async (req) => {
     // telemetria — só runs de envio (mode=report é ensaio, não operação)
     await logMessageRun(supabase, "notify-weekly-summary", { candidates: rows.length, sent, errors, ok: true });
 
-    return json({ ok: true, mode, candidates: rows.length, sent, errors });
+    return json({ ok: true, mode, candidates: rows.length, sent, bloqueados, errors });
   } catch (e) {
     console.error("notify-weekly-summary error:", e);
     if (mode === "send") {

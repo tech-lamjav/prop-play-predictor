@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { useFutebolFixturePremissas, useFutebolFixtureNumeros, useFutebolFixtureReasonContract, useVitrine } from '@/hooks/use-futebol-data';
 import type {
@@ -131,11 +130,13 @@ export function HeroLeitura({
       />
       <div className="relative">
         <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-white/50">Melhor leitura do jogo</div>
-        <div className={`font-semibold tracking-[-0.02em] mt-2 leading-[1.25] ${compacto ? 'text-[21px]' : 'text-[23px]'}`}>{pick}</div>
-        <div className="text-[12px] text-white/50 mt-1">{top.mercado.label}</div>
+        <div className={`font-semibold tracking-[-0.02em] mt-2 leading-[1.25] ${compacto ? 'text-[21px]' : 'text-[23px]'}`}>
+          {locked ? 'Leitura de assinante' : pick}
+        </div>
+        <div className="text-[12px] text-white/50 mt-1">{locked ? 'mercado de assinante' : top.mercado.label}</div>
 
         <div className="flex items-baseline gap-2 mt-4">
-          {top.value ? (
+          {top.value && !locked ? (
             <>
               <span className="tabular-nums font-bold leading-none text-[44px]" style={{ color: '#fbbf24' }}>
                 {top.value.score}
@@ -147,23 +148,25 @@ export function HeroLeitura({
               <span className="tabular-nums font-bold leading-none text-[44px]" style={{ color: '#fbbf24' }}>
                 {top.nValem}
               </span>
-              <span className="text-[12px] text-white/45">de {top.totalQueValem} premissas a favor · sem preço ainda</span>
+              <span className="text-[12px] text-white/45">
+                de {top.totalQueValem} premissas a favor · {locked ? 'preço e Score são de assinante' : 'sem preço ainda'}
+              </span>
             </>
           )}
         </div>
 
-        {top.value && (
+        {top.value && !locked && (
           <div className="grid grid-cols-2 gap-3.5 mt-4">
             <div>
               <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Chance</div>
               <div className="tabular-nums text-[18px] font-semibold mt-1">
-                <Blur active={locked}>{Math.round(top.value.prob_justa_fechamento * 100)}%</Blur>
+                {Math.round(top.value.prob_justa_fechamento * 100)}%
               </div>
             </div>
             <div>
               <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Odd</div>
               <div className="tabular-nums text-[18px] font-semibold mt-1">
-                <Blur active={locked}>{top.value.best_odd.toFixed(2)}</Blur>
+                {top.value.best_odd.toFixed(2)}
               </div>
             </div>
           </div>
@@ -413,7 +416,7 @@ export function JogoResumo({
                     className="tabular-nums text-[13px] font-semibold hidden md:block"
                     style={{ color: r.value.edge > 0 ? 'var(--forest)' : 'var(--ink-3)' }}
                   >
-                    <Blur active={locked}>{`${r.value.edge >= 0 ? '+' : '−'}${Math.abs(r.value.edge * 100).toFixed(1).replace('.', ',')}%`}</Blur>
+                    {`${r.value.edge >= 0 ? '+' : '−'}${Math.abs(r.value.edge * 100).toFixed(1).replace('.', ',')}%`}
                   </span>
                 ) : (
                   <span className="hidden md:block" />

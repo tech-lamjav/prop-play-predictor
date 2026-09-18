@@ -20,6 +20,7 @@ import {
   type MercadoOculto,
 } from "../shared/mercados-ocultos.ts";
 import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
+import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 import { planPublicationBatch, type PublicationBoardRow } from "./planner.ts";
 import {
   type PublishedMessageOpportunity,
@@ -132,33 +133,29 @@ function registerButtons(
 }
 
 async function sendTelegram(
+  supabase: any,
+  userId: string,
   chatId: string,
   text: string,
   cta: { label: string; url: string },
   registerRows: unknown[][],
-): Promise<void> {
-  const response = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-        reply_markup: {
-          inline_keyboard: [...registerRows, [{
-            text: cta.label,
-            url: cta.url,
-          }]],
-        },
-      }),
+): Promise<"enviada" | "bloqueada"> {
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [...registerRows, [{
+        text: cta.label,
+        url: cta.url,
+      }]],
     },
-  );
-  if (!response.ok) {
-    throw new Error(`telegram ${response.status}: ${await response.text()}`);
+  });
+  if (r.desfecho === "falhou") {
+    throw new Error(r.erro);
   }
+  return r.desfecho;
 }
 
 function payload(row: BoardRow & { key: string }) {
@@ -260,7 +257,10 @@ async function deliverPending(
   traceId: string,
   vitrine: readonly MercadoOculto[],
   agoraMs: number,
-): Promise<{ sent: number; errors: string[]; escondidas: number }> {
+  bloqueadosSet: ReadonlySet<string>,
+): Promise<
+  { sent: number; errors: string[]; escondidas: number; bloqueados: number }
+> {
   const { data, error } = await supabase.rpc(
     "claim_futebol_publication_alert_deliveries",
   );
@@ -268,9 +268,26 @@ async function deliverPending(
   const deliveries = (data ?? []) as Delivery[];
   let sent = 0;
   let escondidas = 0;
+  let bloqueados = 0;
   const errors: string[] = [];
 
   for (const delivery of deliveries) {
+    // Bloqueou o bot → a entrega morre aqui, e morre em `expired`, o mesmo
+    // estado da entrega que não deve mais sair. Deixar em `failed` a devolveria
+    // para a próxima reserva, e é exatamente esse reenvio eterno que a marca de
+    // bloqueio existe para cortar (#466). Não é erro: ninguém vai olhar.
+    if (bloqueadosSet.has(delivery.user_id)) {
+      bloqueados++;
+      await supabase
+        .from("futebol_publication_alert_deliveries")
+        .update({ status: "expired", attempt_id: null, claimed_at: null })
+        .eq("batch_id", delivery.batch_id)
+        .eq("user_id", delivery.user_id)
+        .eq("attempt_id", delivery.attempt_id)
+        .eq("status", "processing");
+      continue;
+    }
+
     // A MESMA regra do lote novo, na mesma função pura.
     const publicaveis = filtrarPelaVitrine(
       delivery.opportunities,
@@ -316,12 +333,27 @@ async function deliverPending(
           label: "Ver oportunidades no painel →",
           url: await trackedUrl(delivery.user_id, "board", CAMPAIGN),
         };
-      await sendTelegram(
+      const desfecho = await sendTelegram(
+        supabase,
+        delivery.user_id,
         delivery.chat_id,
         text,
         cta,
         registerButtons(publicaveis, pickByAlertId),
       );
+      // Bloqueou entre a reserva e o envio: mesmo destino do caso acima —
+      // `expired`, sem erro e sem devolver a entrega para a fila.
+      if (desfecho === "bloqueada") {
+        bloqueados++;
+        await supabase
+          .from("futebol_publication_alert_deliveries")
+          .update({ status: "expired", attempt_id: null, claimed_at: null })
+          .eq("batch_id", delivery.batch_id)
+          .eq("user_id", delivery.user_id)
+          .eq("attempt_id", delivery.attempt_id)
+          .eq("status", "processing");
+        continue;
+      }
       telegramAccepted = true;
 
       const { error: updateError } = await supabase
@@ -371,7 +403,7 @@ async function deliverPending(
         .eq("status", "processing");
     }
   }
-  return { sent, errors, escondidas };
+  return { sent, errors, escondidas, bloqueados };
 }
 
 serve(async (req) => {
@@ -480,16 +512,23 @@ serve(async (req) => {
       });
     }
 
+    // Uma consulta por rodada, usada nos DOIS pontos: na criação das entregas e
+    // no reenvio das reservadas. Vale nos dois porque entrega criada para quem
+    // bloqueou nunca sai e fica voltando `failed` na fila (#466).
+    const bloqueadosSet = await carregarBloqueados(supabase);
+
     if (claimed.length > 0) {
       await persistRegistrationPicks(supabase, claimed, byKey);
       const batchId = claimed[0].batch_id;
-      const deliveryRows = ((recipients ?? []) as Recipient[]).map((
-        recipient,
-      ) => ({
-        batch_id: batchId,
-        user_id: recipient.user_id,
-        chat_id: recipient.chat_id,
-      }));
+      const deliveryRows = ((recipients ?? []) as Recipient[])
+        .filter((recipient) => !bloqueadosSet.has(recipient.user_id))
+        .map((
+          recipient,
+        ) => ({
+          batch_id: batchId,
+          user_id: recipient.user_id,
+          chat_id: recipient.chat_id,
+        }));
       if (deliveryRows.length > 0) {
         const { error: deliveryError } = await supabase
           .from("futebol_publication_alert_deliveries")
@@ -506,6 +545,7 @@ serve(async (req) => {
       traceId,
       mercadosOcultos,
       now.getTime(),
+      bloqueadosSet,
     );
     await logMessageRun(supabase, "notify-published-opportunities", {
       candidates: claimed.length,
@@ -522,6 +562,8 @@ serve(async (req) => {
       // na data delas. Sem este número, o filtro do reenvio some sem deixar
       // rastro — e é ele que impede o lote de 16/09 de sair de novo.
       escondidas_pela_vitrine: result.escondidas,
+      // Quantas entregas foram encerradas porque a pessoa bloqueou o bot.
+      bloqueados: result.bloqueados,
       errors: result.errors,
     });
   } catch (cause) {

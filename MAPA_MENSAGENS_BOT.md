@@ -17,13 +17,13 @@ fraco = silêncio; usuário que ignora = para de receber.
 | 6 | **Aviso de kickoff do bolão** (só pro DONO do bolão) | Jogo da Copa começando | No minuto do kickoff (:00/:30) | 1 por jogo por bolão | opt-in explícito do dono |
 | 10 | **"📊 Seus últimos 7 dias"** (resumo semanal · item 04) | Cron semanal | **Segunda 9h30 BRT** (antes do daily das 10h — narrativa passado→futuro), 1x/semana — e SÓ pra quem teve **≥2 apostas liquidadas** nos últimos 7 dias (rolling). Sem apostas = sem mensagem. Faixa por resultado (positiva/neutra/negativa); lidera por resultado+ROI, SEM taxa de acerto | 1×/semana por usuário (idempotência `weekly_summary_sent_at`, gap ~6d) | Botão "Silenciar resumo" na própria DM · `/resumo` reativa |
 
-## One-shot (disparo manual, 1x por usuário PRA SEMPRE)
+## One-shot (1x por usuário PRA SEMPRE — a #7 e a #8 no braço, a #12 no cron)
 
 | # | Mensagem | Quando dispara | Quem controla |
 |---|---|---|---|
 | 7 | **"📋 Atualizamos seu histórico — seu ROI real"** (winback R1) | Uma única vez, após o backfill do histórico (3 curls do runbook) | Dev, manualmente |
 | 8 | **"🏆 A Copa acabou — e com ela o bolão!"** (handoff da final) | Dia 19/07, após a final encerrar (guarda técnica impede antes) | Dev, manualmente (2 curls) |
-| 12 | **"⚽ Seu teste do futebol terminou"** (oferta pós-teste) | 24h após o fim do teste, só entre 09h–23h BRT, e só para a coorte que começou o teste de 09/09/2026 em diante. Uma por pessoa, para sempre (`futebol_oferta_pos_teste_notifications`) | Dev: `mode=report` primeiro, `mode=send` depois. O cron está escrito e **comentado** na migration 150 — ligar é passo humano. Opt-out: `/ofertas`, **e o `/silenciar` geral também cala** |
+| 12 | **"⚽ Seu teste do futebol terminou"** (oferta pós-teste) | **No ar desde 17/09/2026**, cron diário `notify-futebol-oferta` (`0 14 * * *` = 11h BRT). Sai 24h após o fim do teste, só entre 09h–23h BRT, e só para quem começou o teste de 09/09/2026 em diante. Uma por pessoa, para sempre (`futebol_oferta_pos_teste_notifications`) | Opt-out: `/ofertas`, **e o `/silenciar` geral também cala**. Desligar o disparo: `select cron.unschedule('notify-futebol-oferta')`. ⚠️ O bloco do cron segue **comentado** na migration 150: ele foi rodado à mão em produção, de propósito, para o merge nunca ligar venda sozinho |
 
 ## Interno (não vai pra usuário)
 
@@ -63,6 +63,11 @@ normal: 0 a 2. O silêncio é parte do produto.
   Chave separada de propósito: `settlement_reminders_muted` é serviço, e usar a
   mesma faria quem recusa oferta perder o lembrete da própria aposta — troca que a
   pessoa nunca pediu. ⚠️ Ainda **não** aparece no `/mensagens`; entra junto do item 17.
+- `users.telegram_bloqueado_em` cala **tudo**, e não é escolha do produto: é o
+  Telegram respondendo 403 porque a pessoa bloqueou o bot. Escrita por quem toma o
+  403, some sozinha quando ela volta a falar com o bot. Existe porque sem ela o
+  produto seguia tentando para sempre — e cada tentativa contava como enviada no
+  funil de quem nunca receberia, diluindo a taxa de clique de todas as mensagens (#466).
 - **`/mensagens`** é o centro de controle: lista os recorrentes com estado e toggles
   (liquidação e resumo; o daily é automático — para sozinho sem clique). Embrião do
   item 17 (preferências). `/silenciar`, `/lembretes` e `/resumo` seguem como atalhos.

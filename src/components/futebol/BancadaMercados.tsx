@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Blur } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import {
   useVitrine,
@@ -409,7 +408,10 @@ export function BancadaMercados({
     return ladoB && nB > nA ? ladoB : ladoA;
   })();
   const principal = ladoSel === 'a' ? ladoA : ladoSel === 'b' ? ladoB : ladoPadrao;
-  const valPrincipal = principal === ladoB ? valB : valA;
+  // Anulado na origem quando não há acesso: cada número abaixo já tem o seu ramo
+  // de "sem leitura", e é ele que deve assumir. Gatear número por número é como
+  // um deles fica para trás.
+  const valPrincipal = locked ? null : (principal === ladoB ? valB : valA);
   const cortadaPrincipal = principal === ladoB ? cortadaB : cortadaA;
   const cotacaoPrincipal = principal
     ? leituraDaCotacao(mercado.slug, principal.outcome, principal.line_value, valueRows, oddsRows)
@@ -465,7 +467,7 @@ export function BancadaMercados({
   // O número grande, calculado UMA vez: ele é idêntico nos dois arranjos do
   // cabeçalho, e duplicá-lo é como os dois passaram a discordar antes.
   const numeroPrincipal = valPrincipal
-    ? <Blur active={locked}>{String(valPrincipal.score)}</Blur>
+    ? String(valPrincipal.score)
     : leituraPrincipal === 'premissas' ? nPrincipal : '—';
   const ate = numeros?.[0]?.ate ?? null;
 
@@ -756,6 +758,34 @@ export function BancadaMercados({
       ? settleFutebol(principal, placar.home, placar.away)
       : null;
 
+  // Sem acesso a bancada inteira não é montada.
+  //
+  // Aqui não dá para esconder campo por campo, e tentar foi o erro: cada rodada
+  // sobrava um. Nesta folha TUDO é leitura do modelo — a lista dos cinco
+  // mercados, o título da saída, o seletor de linha, chance, odd, valor, o
+  // Score, os motivos, as evidências e os gráficos. Esconder um por um deixa o
+  // próximo passar, e foi assim que a odd continuou visível depois de duas
+  // tentativas.
+  //
+  // O corte é depois dos hooks de propósito: React não aceita hook condicional,
+  // e sair antes deles quebraria a ordem entre renderizações.
+  if (locked) {
+    return (
+      <div
+        className="bg-white rounded-[24px] overflow-hidden p-6 sm:p-8 text-center"
+        style={{ border: '1px solid #ded2b6' }}
+        data-tour="fut-jogo-mapa"
+      >
+        <p className="text-[15px] font-semibold text-ink">A leitura deste jogo é de assinante</p>
+        <p className="text-[13px] text-ink-2 mt-1.5 max-w-[48ch] mx-auto leading-relaxed">
+          Os cinco mercados, a aposta, a odd, a chance, o valor, o Score e as premissas que
+          sustentam a leitura ficam disponíveis com a assinatura. A escalação e as estatísticas
+          do jogo continuam abertas nas abas ao lado.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className="grid xl:grid-cols-[300px_1fr] xl:grid-rows-[auto_1fr] bg-white rounded-[24px] overflow-hidden"
@@ -794,7 +824,10 @@ export function BancadaMercados({
         <div className="p-3.5 flex gap-1.5 overflow-x-auto no-scrollbar xl:flex-col xl:overflow-visible">
           {resumos.map((r) => {
             const on = r.mercado.slug === mercado.slug;
-            const temScore = r.value != null;
+            // Sem acesso a linha não TEM Score para esta tela: anular aqui faz
+            // o número, a barra, a régua e a cor caírem todos no ramo de
+            // premissas de uma vez. Gatear cada um deles é como um fica para trás.
+            const temScore = !locked && r.value != null;
             const leituraCotacao = leituraDaCotacao(
               r.mercado.slug,
               r.candidato.outcome,
@@ -841,18 +874,18 @@ export function BancadaMercados({
                       // e quebraria em silêncio na próxima mudança de número.
                       style={{ color: on ? '#fbbf24' : r.passa ? (temScore && s >= fronteirasDoScore(r.value!.score_versao).alta ? '#0a3d2e' : '#b8870f') : '#8d8672' }}
                     >
-                      <Blur active={locked && temScore}>{String(s)}</Blur>
+                      {String(s)}
                     </span>
                   )}
                 </div>
                 <div className="mt-1 text-[11.5px] truncate" style={{ color: on ? 'rgba(255,255,255,.6)' : '#8d8672' }}>
-                  {pick}
+                  {locked ? 'de assinante' : pick}
                   {temScore ? (
                     <>
                       {' · '}
-                      <Blur active={locked}>{`${Math.round(r.value!.prob_justa_fechamento * 100)}%`}</Blur>
+                      {`${Math.round(r.value!.prob_justa_fechamento * 100)}%`}
                       {' · '}
-                      <Blur active={locked}>{r.value!.best_odd.toFixed(2)}</Blur>
+                      {r.value!.best_odd.toFixed(2)}
                     </>
                   ) : (
                     leituraCotacao.estado === 'cotada'
@@ -1070,7 +1103,8 @@ export function BancadaMercados({
                   <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] h-3 leading-[12px]" style={{ color: 'rgba(255,255,255,.5)' }}>
                     {valPrincipal
                       ? rotuloDaFaixa(valPrincipal.faixa)
-                      : leituraPrincipal === 'premissas' ? 'a favor' : 'sem leitura'}
+                      : leituraPrincipal === 'premissas' ? 'a favor'
+                      : locked ? 'de assinante' : 'sem leitura'}
                   </div>
                 </div>
                 {/* Rótulo à esquerda, número à direita: as três linhas viram uma
@@ -1098,7 +1132,7 @@ export function BancadaMercados({
                     <div key={rotulo} className="flex items-baseline justify-between gap-2">
                       <span className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{rotulo}</span>
                       <span className="tabular-nums text-[17px] font-semibold leading-none" style={{ color: cor }}>
-                        <Blur active={locked}>{valor}</Blur>
+                        {valor}
                       </span>
                     </div>
                   ))}
@@ -1109,14 +1143,14 @@ export function BancadaMercados({
               <div className="min-w-[58px]">
                 <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
-                  {valPrincipal ? <Blur active={locked}>{`${Math.round(valPrincipal.prob_justa_fechamento * 100)}%`}</Blur> : '—'}
+                  {valPrincipal ? `${Math.round(valPrincipal.prob_justa_fechamento * 100)}%` : '—'}
                 </div>
               </div>
               <div className="min-w-[52px]">
                 <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
                   {cotacaoPrincipal.odd != null
-                    ? <Blur active={locked}>{cotacaoPrincipal.odd.toFixed(2)}</Blur>
+                    ? cotacaoPrincipal.odd.toFixed(2)
                     : '—'}
                 </div>
               </div>
@@ -1126,11 +1160,9 @@ export function BancadaMercados({
                   className="tabular-nums text-[22px] font-semibold leading-none mt-1"
                   style={{ color: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}
                 >
-                  {valPrincipal ? (
-                    <Blur active={locked}>{`${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`}</Blur>
-                  ) : (
-                    '—'
-                  )}
+                  {valPrincipal
+                    ? `${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`
+                    : '—'}
                 </div>
               </div>
               {/* A régua vertical só separa onde há duas colunas lado a lado. */}

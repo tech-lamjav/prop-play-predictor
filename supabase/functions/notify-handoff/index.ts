@@ -23,6 +23,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
+import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const BETINHO_URL = "https://www.smartbetting.app/betinho/bolao";
@@ -90,24 +91,21 @@ function buildMessage(t: UserTarget): string {
   ].join("\n");
 }
 
-async function sendHandoffDm(t: UserTarget): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: t.chat_id,
-      text: buildMessage(t),
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "Conhecer o Betinho — grátis", url: BETINHO_URL }],
-          [{ text: "Conhecer a análise de futebol", url: FUTEBOL_URL }],
-        ],
-      },
-    }),
+async function sendHandoffDm(supabase: any, t: UserTarget): Promise<"enviada" | "bloqueada"> {
+  const r = await enviarDm(supabase, t.user_id, {
+    chat_id: t.chat_id,
+    text: buildMessage(t),
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "Conhecer o Betinho — grátis", url: BETINHO_URL }],
+        [{ text: "Conhecer a análise de futebol", url: FUTEBOL_URL }],
+      ],
+    },
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 serve(async (req) => {
@@ -153,11 +151,26 @@ serve(async (req) => {
     }
 
     if (mode === "send") {
+      // Uma consulta por rodada, antes do laço: quem bloqueou o bot não recebe
+      // e não entra na conta de enviados (#466).
+      const bloqueadosSet = await carregarBloqueados(supabase);
+
       let sent = 0;
+      let bloqueados = 0;
       const errors: string[] = [];
       for (const t of targets) {
+        if (bloqueadosSet.has(t.user_id)) {
+          bloqueados++;
+          continue;
+        }
         try {
-          await sendHandoffDm(t);
+          const desfecho = await sendHandoffDm(supabase, t);
+          // Bloqueou agora → pula sem registrar em bolao_handoff_notifications:
+          // a linha ali significa "recebeu a despedida", e ela não recebeu.
+          if (desfecho === "bloqueada") {
+            bloqueados++;
+            continue;
+          }
           const { error: insErr } = await supabase
             .from("bolao_handoff_notifications")
             .insert({ user_id: t.user_id, boloes_count: t.boloes.length });
@@ -176,7 +189,7 @@ serve(async (req) => {
           errors.push(`${t.user_id}: ${(e as Error)?.message}`);
         }
       }
-      return json({ ok: true, mode, alvos: targets.length, sent, errors });
+      return json({ ok: true, mode, alvos: targets.length, sent, bloqueados, errors });
     }
 
     return json({ error: `mode inválido: ${mode} (use report|send)` }, 400);

@@ -129,15 +129,26 @@ describe('uma por pessoa, para sempre', () => {
     );
   });
 
-  it('devolver a vaga existe, e é passo manual', () => {
-    // A função de borda NÃO pode chamar: no timeout ninguém sabe se o Telegram
-    // entregou, e soltar a vaga ali transforma dúvida em segundo envio.
+  it('a vaga volta no 403, e só nele', () => {
+    // O que decide não é "deu erro", é o que o erro PROVA. 403 é o Telegram
+    // recusando: não entregou, e a oferta é uma por pessoa para sempre — manter
+    // a reserva queimaria a chance de quem desbloquear amanhã. Timeout não prova
+    // nada, e lá a reserva fica, porque dúvida virando segundo envio é o pior
+    // desfecho possível numa mensagem de venda.
     expect(sqlSemComentario).toContain(
       'create or replace function public.release_futebol_oferta_pos_teste(',
     );
-    // A prosa pode (e deve) citar a função para explicar por que ela existe; o
-    // que não pode é a borda CHAMAR.
-    expect(borda).not.toMatch(/rpc\(\s*"release_futebol_oferta_pos_teste"/);
+
+    // Espaço normalizado: a asserção fala de ORDEM, e não pode ser derrubada por
+    // uma quebra de linha diferente.
+    const fonte = borda.replace(/\s+/g, ' ');
+    const bloqueada = fonte.indexOf('if (r.desfecho === "bloqueada")');
+    const solta = fonte.indexOf('rpc( "release_futebol_oferta_pos_teste"');
+    const catchDoEnvio = fonte.indexOf('} catch (e) {');
+
+    expect(bloqueada, 'falta o ramo do bloqueado').toBeGreaterThan(-1);
+    expect(solta, 'a devolução tem de estar no ramo do 403').toBeGreaterThan(bloqueada);
+    expect(solta, 'e nunca no catch, que trata o timeout').toBeLessThan(catchDoEnvio);
   });
 });
 
