@@ -369,12 +369,19 @@ export function groupBoardByFixture(rows: FutebolValueBoardRow[]): BoardFixture[
     const arr = m.get(r.fixture_id);
     if (arr) arr.push(r); else m.set(r.fixture_id, [r]);
   }
+  // `score` nulo NAO e comparavel: `r.score > b.score` com null e sempre falso,
+  // entao o `best` virava a primeira linha do jogo, arbitraria, e a ordenacao
+  // devolvia NaN. Isso so nao aparecia porque a home filtra antes (comNumeros);
+  // a tela de Jogos nao filtra, e passava linha BLOQUEADA como "melhor leitura"
+  // para o painel. Sem nota, a linha perde para qualquer linha com nota, e
+  // empate entre nulas mantem a primeira.
+  const nota = (r: FutebolValueBoardRow) => (r.score == null ? -Infinity : r.score);
   const out: BoardFixture[] = [];
   for (const [fixtureId, all] of m) {
-    const best = all.reduce((b, r) => (r.score > b.score ? r : b), all[0]);
+    const best = all.reduce((b, r) => (nota(r) > nota(b) ? r : b), all[0]);
     out.push({ fixtureId, best, all });
   }
-  return out.sort((a, b) => b.best.score - a.best.score);
+  return out.sort((a, b) => nota(b.best) - nota(a.best));
 }
 
 

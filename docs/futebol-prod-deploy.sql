@@ -2003,6 +2003,13 @@ as $function$
     where fx.kickoff_utc >= ((p_from::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (((p_to + 1)::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (now() at time zone 'UTC')
+      -- APITO DADO NAO E JOGO ENCERRADO. Esta funcao fica aberta para quem nao
+      -- assina porque e a prova de metodo, e prova de metodo e sobre jogo
+      -- LIQUIDADO. So `kickoff < now()` deixava passar a partida EM ANDAMENTO
+      -- com aposta, odd, Score, faixa e evidencias -- valor apostavel ao vivo,
+      -- sem conta. E a janela padrao do front vai ate HOJE, entao nao era caso
+      -- de borda: era toda carga de pagina.
+      and fx.status_short in ('FT', 'AET', 'PEN')
       and h.dbt_valid_from <= fx.kickoff_utc
       and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to)
     order by h.opportunity_key, h.dbt_valid_from desc
@@ -2018,6 +2025,8 @@ as $function$
     where fx.kickoff_utc >= ((p_from::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (((p_to + 1)::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (now() at time zone 'UTC')
+      -- Mesma regra do CTE de cima: encerrado, nao apenas comecado.
+      and fx.status_short in ('FT', 'AET', 'PEN')
     order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
