@@ -1,4 +1,3 @@
-import { brtDayOf } from '@/utils/futebol-datas';
 import type { Cadastro } from './crm-lista';
 import { mesesEmAberto, totalEmAberto, type Pagamento } from './crm-receita';
 import { PLANOS_A_VENDER, type PlanoAVender } from './crm-vocabulario';
@@ -24,6 +23,14 @@ export interface AssinaturaDoBanco {
   /** `numeric` chega como texto no PostgREST. */
   valor_mensal: string | number | null;
   criada_em: string;
+  /**
+   * `YYYY-MM-DD`: quando o ACORDO começou, que pode ser antes de a linha nascer.
+   *
+   * Separado de `criada_em` de propósito. Aquele é auditoria — quando isto foi
+   * lançado no sistema — e nunca é falsificado; este é de onde saem os meses em
+   * aberto.
+   */
+  comecou_em: string;
   criada_por: string | null;
 }
 
@@ -51,6 +58,15 @@ export interface Assinatura {
    */
   valorMensal: number | null;
   criadaEm: string;
+  /**
+   * `YYYY-MM-DD` do começo do acordo. É daqui que saem os meses em aberto.
+   *
+   * ⚠️ Já foi derivado de `criadaEm` com conversão de fuso, em DOIS lugares —
+   * a ficha e a fila de inadimplentes —, e a mesma conta repetida em dois donos
+   * é como o defeito do corte de doze meses vazou. Agora o banco grava o dia
+   * certo e o navegador só lê.
+   */
+  comecouEm: string;
   criadaPor: string | null;
 }
 
@@ -103,6 +119,7 @@ export function montarAssinaturas(
           venceEm: linha.vence_em,
           valorMensal: linha.valor_mensal === null ? null : Number(linha.valor_mensal),
           criadaEm: linha.criada_em,
+          comecouEm: linha.comecou_em,
           criadaPor: linha.criada_por,
         },
       ];
@@ -209,11 +226,12 @@ export function inadimplentes(
   return assinaturas
     .flatMap((assinatura) => {
       if (assinatura.valorMensal === null) return [];
-      // O mês de começo é o de Brasília, pela mesma razão da receita na ficha:
-      // uma assinatura dada às 22h de 31 de agosto é de agosto para quem deu.
-      const comecouEm = brtDayOf(assinatura.criadaEm) ?? hoje;
+      // O começo vem do banco, já no dia certo. Antes era derivado aqui com
+      // conversão de fuso, e a ficha fazia a MESMA conta do lado dela — duas
+      // cópias da mesma derivação, que é como o defeito do corte de doze meses
+      // vazou. Agora a coluna responde, e o retroativo cabe sem exceção.
       const meses = mesesEmAberto(
-        comecouEm,
+        assinatura.comecouEm,
         assinatura.valorMensal,
         pagamentosPorAssinatura.get(assinatura.id) ?? [],
         hoje,

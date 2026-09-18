@@ -227,8 +227,8 @@ function FichaDoModal({ id }: { id: string }) {
                 : null
             }
             estado={concessao}
-            aoConceder={(plano, venceEm, valorMensal) =>
-              darAssinatura.mutate({ plano, venceEm, valorMensal })
+            aoConceder={(plano, venceEm, valorMensal, comecouEm) =>
+              darAssinatura.mutate({ plano, venceEm, valorMensal, comecouEm })
             }
             aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
           />
@@ -240,10 +240,10 @@ function FichaDoModal({ id }: { id: string }) {
           assinatura={
             assinaturaAberta
               ? {
-                  // O dia em BRT, e não o carimbo cru: uma assinatura criada às
-                  // 22h de 31 de agosto é de agosto para quem deu, e de setembro
-                  // para o UTC. O mês de competência sairia errado por uma hora.
-                  comecouEm: brtDayOf(assinaturaAberta.criadaEm) ?? hoje,
+                  // Vem do banco, já no dia certo, e pode ser retroativo. Antes
+                  // era derivado aqui com conversão de fuso, e a fila de
+                  // inadimplentes fazia a MESMA conta do lado dela.
+                  comecouEm: assinaturaAberta.comecouEm,
                   valorMensal: assinaturaAberta.valorMensal,
                 }
               : null

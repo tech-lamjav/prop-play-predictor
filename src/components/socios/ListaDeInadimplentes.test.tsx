@@ -7,16 +7,26 @@ import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 const HOJE = '2026-09-15';
 
-const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
-  id: 'a1',
-  user_id: 'u1',
-  plano: 'essencial',
-  vence_em: '2026-10-20',
-  valor_mensal: '39.90',
-  criada_em: '2026-07-10T15:00:00Z',
-  criada_por: null,
-  ...over,
-});
+const linha = ({
+  comecou_em,
+  ...over
+}: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => {
+  const criadaEm = over.criada_em ?? '2026-07-10T15:00:00Z';
+  return {
+    id: 'a1',
+    user_id: 'u1',
+    plano: 'essencial',
+    vence_em: '2026-10-20',
+    valor_mensal: '39.90',
+    criada_por: null,
+    ...over,
+    criada_em: criadaEm,
+    // O começo cai no dia do cadastro quando ninguém disser outra coisa, como
+    // no preenchimento da migration 153. Os testes daqui controlam a dívida
+    // passando `criada_em`, e derivar dele mantém o que eles já provavam.
+    comecou_em: comecou_em ?? criadaEm.slice(0, 10),
+  };
+};
 
 const pronto = (linhas: AssinaturaDoBanco[]): EstadoDosInadimplentes => ({
   tipo: 'pronto',

@@ -15,6 +15,9 @@ const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
   vence_em: '2026-09-20',
   valor_mensal: '39.90',
   criada_em: '2026-09-01T12:00:00Z',
+  // Esta tela não usa o começo para nada: ela ordena por vencimento. Fica o
+  // mesmo dia do cadastro, que é o caso normal.
+  comecou_em: '2026-09-01',
   criada_por: 's1',
   ...over,
 });
