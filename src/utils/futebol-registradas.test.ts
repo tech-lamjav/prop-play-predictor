@@ -383,4 +383,44 @@ describe('a lista do dia', () => {
     expect(lista).toHaveLength(1);
     expect(lista[0].n_casas).toBe(jogoDaNoite().n_casas);
   });
+
+  it('o board repetido também vira uma linha só', () => {
+    // A dedup das registradas não bastava: o board e o histórico entram na mesma
+    // lista, e a fusão pode trazer a mesma chave duas vezes. Uma chave repetida
+    // aqui é uma `key` repetida no React — ver o teste abaixo.
+    const lista = oportunidadesDoDia({
+      doBoard: [jogoDaNoite(), jogoDaNoite({ best_odd: 1.6 })],
+      registradas: [],
+      dia: HOJE,
+      fixturePorId: new Map(),
+    });
+
+    expect(lista).toHaveLength(1);
+    // Fica a primeira: quem chama já ordenou, e trocar a sobrevivente por acaso
+    // faria a odd da linha mudar sem que nada no dado tivesse mudado.
+    expect(lista[0].best_odd).toBe(jogoDaNoite().best_odd);
+  });
+
+  it('a lista NUNCA tem duas linhas com a mesma chave', () => {
+    // A invariante que o defeito de 18/09 quebrou, e por que ela importa:
+    //
+    // As telas usam `fixture-mercado-saída-linha` como `key` do React. Com a
+    // chave repetida, trocar de dia deixava uma linha do dia anterior PRESA no
+    // DOM — o "Menos de 3,5" do Torque aparecendo no dia 16, e mais uma cópia a
+    // cada ida e volta. O estado do React estava certo o tempo todo; quem
+    // mentia era a tela, e por isso procurar no dado não achava nada.
+    const lista = oportunidadesDoDia({
+      doBoard: [jogoDaNoite(), jogoDaNoite({ best_odd: 1.6 })],
+      registradas: [
+        envio('2026-09-12T07:40:00Z', 1.5),
+        envio('2026-09-17T13:00:00Z', 1.5),
+        envio('2026-09-17T13:00:00Z', 2.2, { line_value: 2.5 }),
+      ],
+      dia: HOJE,
+      fixturePorId: new Map(),
+    });
+
+    const chaves = lista.map((o) => oppKey(o.fixture_id, o.market, o.outcome, o.line_value));
+    expect(new Set(chaves).size).toBe(chaves.length);
+  });
 });

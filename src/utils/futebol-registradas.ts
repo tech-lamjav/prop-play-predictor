@@ -113,11 +113,29 @@ export function oportunidadesDoDia({
   // lista de cinco dias anteriores sem nada acusar. Filtrar de novo aqui é
   // barato e transforma a regra em invariante: o que sai desta função é do dia
   // pedido, ponto.
-  const doDia = doBoard.filter((r) => brtDayOf(r.kickoff_utc) === dia);
-
-  const jaNaLista = new Set(
-    doDia.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)),
-  );
+  // ⚠️ E A LISTA NÃO REPETE CHAVE. Nem entre board e registrada, nem dentro de
+  // cada um dos dois.
+  //
+  // Isto não é asseio: as duas telas usam a chave desta linha como `key` do
+  // React, e chave repetida na mesma lista quebra a reconciliação. Medido em
+  // 18/09 com Atlético Torque × Cienciano, cujo "Menos de 3,5" foi enviado duas
+  // vezes (12/09 e 17/09) e virava duas linhas idênticas no dia 17: ao trocar
+  // para o dia 16, o React não casava os filhos e DEIXAVA uma das linhas na
+  // tela — uma aposta do dia 17 aparecendo num dia em que ela não existe. E
+  // acumulava: cada ida e volta somava mais uma.
+  //
+  // O estado nunca conteve essa linha (conferido no navegador: a lista tinha 71
+  // itens e zero do Torque), só o DOM — por isso o defeito resistia a ser
+  // procurado no dado. A garantia mora aqui porque é aqui que a lista nasce.
+  const jaNaLista = new Set<string>();
+  const doDia: OppLike[] = [];
+  for (const r of doBoard) {
+    if (brtDayOf(r.kickoff_utc) !== dia) continue;
+    const chave = oppKey(r.fixture_id, r.market, r.outcome, r.line_value);
+    if (jaNaLista.has(chave)) continue;
+    jaNaLista.add(chave);
+    doDia.push(r);
+  }
 
   // Qual envio sobrevive é DECISÃO, não sorte da ordenação de quem consultou:
   // fica o MAIS ANTIGO, que é a foto de nascimento — a odd, o Score e a janela
