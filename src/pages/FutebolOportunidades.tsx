@@ -40,7 +40,9 @@ import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 import { useDiaNaUrl } from '@/hooks/use-dia-na-url';
 
-const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
+// "Acabou" mora em futebol-datas.ts (`isFinished`), e o Set local que vivia
+// aqui era a terceira cópia da mesma lista de status — logo acima do
+// comentário que comemora ter tirado daqui as cópias de aritmética de fuso.
 
 // O `kickoffMs`, o `brtDayStr` e o `TODAY_BRT` que moravam aqui eram cópia
 // literal do que `futebol-datas.ts` já exporta como `parseUtc`, `brtDayOf` e
@@ -392,7 +394,7 @@ export default function FutebolOportunidades() {
     const horizon = agora + 8 * 864e5; // ~8 dias à frente
     (fixtures ?? []).forEach((f) => {
       const t = parseUtc(f.kickoff_utc)?.getTime() ?? null;
-      if (t != null && t > agora && t < horizon && !FINISHED_STATUS.has(f.status_short ?? '')) {
+      if (t != null && t > agora && t < horizon && !isFinished(f.status_short)) {
         const d = brtDayOf(f.kickoff_utc);
         if (d) set.add(d);
       }
@@ -505,13 +507,13 @@ export default function FutebolOportunidades() {
     if (fresco) return { gh: fresco.goals_home, ga: fresco.goals_away, status: fresco.status_short };
     const fx = fixtureMap.get(o.fixture_id);
     const g = goalsMap.get(o.fixture_id);
-    const status = FINISHED_STATUS.has(fx?.status_short ?? '') ? fx?.status_short ?? null : o.status_short;
+    const status = isFinished(fx?.status_short) ? fx?.status_short ?? null : o.status_short;
     return { gh: g?.gh ?? null, ga: g?.ga ?? null, status };
   };
 
   const resultOf = (o: OppLike): BetResult | null => {
     const p = placarDe(o);
-    if (!FINISHED_STATUS.has(p.status ?? '')) return null;
+    if (!isFinished(p.status)) return null;
     return p.gh != null && p.ga != null ? settleFutebol(o, p.gh, p.ga) : null;
   };
 
@@ -533,7 +535,7 @@ export default function FutebolOportunidades() {
         soEmAberto &&
         (r.kickoff_utc == null ||
           hasKickoffPassed(r.kickoff_utc, new Date(agora)) ||
-          FINISHED_STATUS.has(r.status_short ?? ''))
+          isFinished(r.status_short))
       )
         return false;
       return true;

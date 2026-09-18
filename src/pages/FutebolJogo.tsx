@@ -257,11 +257,16 @@ export default function FutebolJogo() {
   // quem precisa de placar fresco é uma, e uma tela que resolvesse "na mão"
   // acabaria com uma regra diferente das outras — foi assim que a versão
   // anterior desta mesma consulta nasceu pedindo pela temporada inteira.
+  //
+  // A lista de UM é memoizada porque o hook promete devolver o mesmo array
+  // quando não há o que sobrepor — e um literal novo a cada render quebraria
+  // essa promessa do lado de fora, refazendo o memo de quem vem depois.
   const agora = useNow();
-  const [fixtureFresco] = useJogosComPlacarFresco(
-    isDemo || !fixtureDoEspelho ? [] : [fixtureDoEspelho],
-    agora,
+  const soEsteJogo = useMemo(
+    () => (isDemo || !fixtureDoEspelho ? [] : [fixtureDoEspelho]),
+    [isDemo, fixtureDoEspelho],
   );
+  const [fixtureFresco] = useJogosComPlacarFresco(soEsteJogo, agora);
   const fixture = fixtureFresco ?? fixtureDoEspelho;
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
   const { data: injuries } = useFutebolFixtureInjuries(fid);

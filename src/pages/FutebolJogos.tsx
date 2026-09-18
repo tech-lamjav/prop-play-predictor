@@ -114,8 +114,11 @@ export default function FutebolJogos() {
   // apitou, foto do apito para o que já passou. A mesma função, para as duas
   // telas contarem a mesma história do mesmo dia.
   const board = useMemo(
-    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], Date.now(), vitrine, limiares),
-    [boardCorrente, histRows, vitrine, limiares],
+    // O MESMO instante do resto da tela. Este `Date.now()` sobreviveu à chegada
+    // do `agora` e virava dois relógios no mesmo componente, que é como se erra
+    // a virada do dia (ver o cabeçalho de use-now.ts).
+    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], agora, vitrine, limiares),
+    [boardCorrente, histRows, agora, vitrine, limiares],
   );
 
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });

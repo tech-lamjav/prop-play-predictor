@@ -18,14 +18,28 @@ import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 
 
 /**
- * Quantos dias para trás vale perguntar.
+ * ⚠️ NÃO EXISTE JANELA DE DIAS AQUI, E ISSO É DECISÃO.
  *
- * O atraso do espelho é de HORAS. O que continua preso depois de uma semana não
- * é espelho atrasado: é jogo que o coletor não acompanha, porque a competição
- * está desligada no `leagues_config` (issue #478), e para esse não existe placar
- * fresco em lugar nenhum. Perguntar por ele só engorda o parâmetro para sempre.
+ * A primeira versão desta função tinha uma: sete dias para trás, com a
+ * justificativa de que "o atraso do espelho é de horas, e o que segue preso
+ * depois de uma semana é liga desligada no `leagues_config`". As duas metades
+ * estavam erradas.
+ *
+ * A premissa morreu no mesmo dia: a issue #478 ligou as oito competições que o
+ * painel publica, então jogo antigo preso em `2H` passou a ser exatamente o que
+ * o coletor SABE responder.
+ *
+ * E o preço caía na tela que já funcionava. A lista de Oportunidades navega 30
+ * dias para trás (`HISTORY_WINDOW_DAYS`); com a janela, o sócio que abrisse um
+ * dia de duas semanas atrás via a aposta sem resultado PARA SEMPRE, porque
+ * ninguém mais perguntava por aquele jogo.
+ *
+ * Quem limita o tamanho da pergunta é QUEM CHAMA, passando só o recorte que a
+ * tela mostra — o dia da agenda, o dia da lista, o jogo aberto. Era isso que a
+ * issue #479 pedia desde o começo, e a janela foi o atalho que tomou o lugar
+ * disso. Passar o calendário inteiro aqui é o defeito; cortar por data não é o
+ * conserto.
  */
-export const JANELA_DO_FRESCO_DIAS = 7;
 
 export type JogoComPlacar = {
   fixture_id: number;
@@ -38,34 +52,29 @@ export type JogoComPlacar = {
 /**
  * Este jogo precisa do placar do coletor?
  *
- * Sim quando o apito já passou, nenhum status diz que acabou, e o jogo é
- * recente. O relógio manda sobre o status porque o status atrasa — é a mesma
- * razão pela qual `hasKickoffPassed` existe.
+ * Sim quando o apito já passou e nenhum status diz que acabou. O relógio manda
+ * sobre o status porque o status atrasa — é a mesma razão pela qual
+ * `hasKickoffPassed` existe.
  */
 export function precisaDoFresco(
   status: string | null | undefined,
   kickoffUtc: string | null | undefined,
   agoraMs: number,
-  janelaDias = JANELA_DO_FRESCO_DIAS,
 ): boolean {
   // "Acabou" é o mesmo "acabou" do resto do módulo: adiado e cancelado também
   // são fim de linha, mas não têm placar, e a RPC só devolve FT, AET e PEN.
   if (isFinished(status)) return false;
-  if (!hasKickoffPassed(kickoffUtc, new Date(agoraMs))) return false;
-  const kickoff = parseUtc(kickoffUtc);
-  if (!kickoff) return false;
-  return agoraMs - kickoff.getTime() <= janelaDias * 864e5;
+  return hasKickoffPassed(kickoffUtc, new Date(agoraMs));
 }
 
 /** Os ids a perguntar, sem repetir e em ordem estável (a chave da consulta é a lista). */
 export function idsSemFecho(
   jogos: readonly JogoComPlacar[],
   agoraMs: number,
-  janelaDias = JANELA_DO_FRESCO_DIAS,
 ): number[] {
   const ids = new Set<number>();
   for (const j of jogos) {
-    if (!precisaDoFresco(j.status_short, j.kickoff_utc, agoraMs, janelaDias)) continue;
+    if (!precisaDoFresco(j.status_short, j.kickoff_utc, agoraMs)) continue;
     ids.add(j.fixture_id);
   }
   return [...ids].sort((a, b) => a - b);
@@ -92,7 +101,21 @@ export function comPlacarFresco<T extends JogoComPlacar>(
   let mudou = false;
   const saida = jogos.map((j) => {
     const p = porId.get(j.fixture_id);
-    if (!p || j.status_short === p.status_short) return j;
+    if (!p) return j;
+    // Compara os TRÊS campos, e não só o status.
+    //
+    // A primeira versão saía cedo quando os status batiam, e isso descartava
+    // placar bom: o espelho pode chegar em `FT` com os gols ainda nulos (ele
+    // carrega em duas etapas), e nesse instante os status são iguais e os
+    // números não. O resultado era jogo encerrado exibindo "—" na tela, que é
+    // o defeito que esta função existe para não deixar acontecer.
+    if (
+      j.status_short === p.status_short &&
+      j.goals_home === p.goals_home &&
+      j.goals_away === p.goals_away
+    ) {
+      return j;
+    }
     mudou = true;
     return { ...j, status_short: p.status_short, goals_home: p.goals_home, goals_away: p.goals_away };
   });

@@ -117,12 +117,14 @@ describe('quem precisa do placar fresco', () => {
     expect(precisaDoFresco('NS', null, AGORA)).toBe(false);
   });
 
-  it('e nem o que está preso há mais de uma semana', () => {
-    // O atraso do espelho é de horas. O que continua aberto depois de uma semana
-    // é competição que o coletor não acompanha (issue #478), e para essa não
-    // existe placar fresco em lugar nenhum — perguntar só engorda o parâmetro.
-    expect(precisaDoFresco('2H', '2026-09-10T00:30:00Z', AGORA)).toBe(false);
-    expect(precisaDoFresco('2H', '2026-09-12T00:30:00Z', AGORA)).toBe(true);
+  it('e o jogo antigo preso continua sendo perguntado', () => {
+    // Houve uma janela de sete dias aqui, e ela era um buraco: a lista de
+    // Oportunidades navega 30 dias para trás, então o sócio que abrisse um dia
+    // de duas semanas atrás via a aposta sem resultado PARA SEMPRE. A
+    // justificativa da janela ("preso há mais de uma semana é liga desligada")
+    // morreu no mesmo dia, quando a #478 ligou as oito competições. Quem limita
+    // o tamanho da pergunta é quem chama, passando o recorte que a tela mostra.
+    expect(precisaDoFresco('2H', '2026-08-20T00:30:00Z', AGORA)).toBe(true);
   });
 });
 
@@ -159,6 +161,18 @@ describe('a sobreposição', () => {
       { fixture_id: 1, status_short: 'FT', goals_home: 1, goals_away: 1 },
     ]);
     expect(saida[1].status_short).toBe('2H');
+  });
+
+  it('sobrepõe também quando o status bate e o placar não', () => {
+    // O espelho carrega em duas etapas: ele pode chegar em FT com os gols ainda
+    // nulos. A primeira versão saía cedo quando os status batiam, e nesse
+    // instante descartava o placar bom — jogo encerrado exibindo "—", que é o
+    // defeito que esta função existe para não deixar acontecer.
+    const [saida] = comPlacarFresco([jogo({ status_short: 'FT' })], [
+      { fixture_id: 1, status_short: 'FT', goals_home: 2, goals_away: 1 },
+    ]);
+    expect(saida.goals_home).toBe(2);
+    expect(saida.goals_away).toBe(1);
   });
 
   it('e devolve o MESMO array quando não há o que sobrepor', () => {
