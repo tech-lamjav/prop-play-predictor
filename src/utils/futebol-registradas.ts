@@ -119,8 +119,17 @@ export function oportunidadesDoDia({
     doDia.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)),
   );
 
+  // Qual envio sobrevive é DECISÃO, não sorte da ordenação de quem consultou:
+  // fica o MAIS ANTIGO, que é a foto de nascimento — a odd, o Score e a janela
+  // com que a oportunidade foi anunciada pela primeira vez. Hoje a RPC devolve
+  // por `created_at` e o resultado calhava de ser esse; depender disso é o
+  // acoplamento que quebra em silêncio no dia em que ela mudar de ordem.
+  const porEnvio = [...registradas].sort((a, b) =>
+    (a.sent_at ?? '').localeCompare(b.sent_at ?? ''),
+  );
+
   const soRegistradas: OppLike[] = [];
-  for (const a of registradas) {
+  for (const a of porEnvio) {
     if (a.game_day !== dia) continue;
     const chave = oppKey(a.fixture_id, a.market, a.outcome, a.line_value);
     // Dedup contra o board E contra as outras registradas. A segunda parte

@@ -275,9 +275,14 @@ describe('a lista do dia', () => {
       ...over,
     });
 
-  it('não deixa entrar linha de outro dia, nem quando o jogo está ao vivo', () => {
+  it('não deixa entrar linha de outro dia, mesmo com o kickoff virando em UTC', () => {
     // O caso real: quem olha 12/09 recebe a lista inteira do board, e a partida
-    // ao vivo de hoje não pode aparecer ali.
+    // das 21:30 de hoje não pode aparecer ali.
+    //
+    // ⚠️ O que este teste prova é o RECORTE POR DIA, e a armadilha do fuso: o
+    // kickoff em UTC cai em 18/09 e o jogo é da noite de 17 em Brasília. Ele NÃO
+    // prova nada sobre jogo ao vivo — a função não lê status, e o `2H` abaixo é
+    // só contexto do caso real.
     const lista = oportunidadesDoDia({
       doBoard: [jogoDaNoite(), doBoard({ fixture_id: 99, kickoff_utc: '2026-09-12T22:00:00Z' })],
       registradas: [],
@@ -302,29 +307,59 @@ describe('a lista do dia', () => {
     expect(lista[0].fixture_id).toBe(1631512);
   });
 
-  it('a mesma oportunidade registrada duas vezes vira UMA linha', () => {
+  const envio = (sent: string, odds: number, over: Partial<FutebolAlertedPick> = {}) =>
+    registrada({
+      game_day: HOJE,
+      fixture_id: 1631512,
+      market: 'goals_over_under',
+      outcome: 'Under',
+      line_value: 3.5,
+      sent_at: sent,
+      odds,
+      ...over,
+    });
+
+  it('a mesma oportunidade registrada três vezes vira UMA linha, a do primeiro envio', () => {
     // O pick do Torque foi enviado no Telegram em 12, 15 e 17 de setembro, para
     // o mesmo jogo. Cada envio é uma linha na origem, e a lista deduplicava
     // contra o board mas não contra si mesma: a oportunidade aparecia repetida,
     // uma vez por envio, sempre no topo por causa do Score.
-    const envio = (sent: string) =>
-      registrada({
-        game_day: HOJE,
-        fixture_id: 1631512,
-        market: 'goals_over_under',
-        outcome: 'Under',
-        line_value: 3.5,
-        sent_at: sent,
-      });
-
+    //
+    // Cada envio tem odd própria, e é por isso que o teste afirma QUAL sobrevive
+    // em vez de só contar: a primeira versão deste caso usava três envios
+    // idênticos e passaria com qualquer sobrevivente. A escolha é a foto de
+    // nascimento — o anúncio mais antigo —, e a lista chega fora de ordem de
+    // propósito, senão o teste passaria mesmo sem a ordenação.
     const lista = oportunidadesDoDia({
       doBoard: [],
-      registradas: [envio('2026-09-12T13:00:00Z'), envio('2026-09-15T13:00:00Z'), envio('2026-09-17T13:00:00Z')],
+      registradas: [
+        envio('2026-09-17T13:00:00Z', 1.7),
+        envio('2026-09-12T13:00:00Z', 1.5),
+        envio('2026-09-15T13:00:00Z', 1.6),
+      ],
       dia: HOJE,
       fixturePorId: new Map(),
     });
 
     expect(lista).toHaveLength(1);
+    expect(lista[0].best_odd).toBe(1.5);
+  });
+
+  it('mas duas linhas DIFERENTES do mesmo jogo continuam sendo duas', () => {
+    // A contraprova da dedup: a chave inclui mercado, saída e linha. Menos de
+    // 3,5 e menos de 2,5 são apostas distintas, e colapsá-las seria esconder uma
+    // oportunidade — defeito pior do que o que este PR conserta.
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [
+        envio('2026-09-17T13:00:00Z', 1.5),
+        envio('2026-09-17T13:00:00Z', 2.2, { line_value: 2.5 }),
+      ],
+      dia: HOJE,
+      fixturePorId: new Map(),
+    });
+
+    expect(lista).toHaveLength(2);
   });
 
   it('e o board continua ganhando da registrada, quando são a mesma', () => {

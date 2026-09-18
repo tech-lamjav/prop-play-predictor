@@ -510,7 +510,14 @@ export default function FutebolOportunidades() {
     byDay.forEach((rs, d) => { out[d] = rs.filter((o) => ehDestaque(o.faixa)).length; });
     // Registrada que o board não tem entra na conta, senão dia que só tem
     // registro apareceria zerado no seletor.
+    // Uma vez por oportunidade, e não por envio: o mesmo pick mandado no
+    // Telegram em três dias diferentes é UMA linha na lista, e o selo tem de
+    // contar igual — senão a lista mostra 1 e o chip do dia diz 3.
+    const jaContadas = new Set<string>();
     registradasAll.forEach((a) => {
+      const chave = `${a.game_day}|${oppKey(a.fixture_id, a.market, a.outcome, a.line_value)}`;
+      if (jaContadas.has(chave)) return;
+      jaContadas.add(chave);
       const naLista = (byDay.get(a.game_day) ?? []).some(
         (r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value) === oppKey(a.fixture_id, a.market, a.outcome, a.line_value)
       );
