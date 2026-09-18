@@ -758,6 +758,34 @@ export function BancadaMercados({
       ? settleFutebol(principal, placar.home, placar.away)
       : null;
 
+  // Sem acesso a bancada inteira não é montada.
+  //
+  // Aqui não dá para esconder campo por campo, e tentar foi o erro: cada rodada
+  // sobrava um. Nesta folha TUDO é leitura do modelo — a lista dos cinco
+  // mercados, o título da saída, o seletor de linha, chance, odd, valor, o
+  // Score, os motivos, as evidências e os gráficos. Esconder um por um deixa o
+  // próximo passar, e foi assim que a odd continuou visível depois de duas
+  // tentativas.
+  //
+  // O corte é depois dos hooks de propósito: React não aceita hook condicional,
+  // e sair antes deles quebraria a ordem entre renderizações.
+  if (locked) {
+    return (
+      <div
+        className="bg-white rounded-[24px] overflow-hidden p-6 sm:p-8 text-center"
+        style={{ border: '1px solid #ded2b6' }}
+        data-tour="fut-jogo-mapa"
+      >
+        <p className="text-[15px] font-semibold text-ink">A leitura deste jogo é de assinante</p>
+        <p className="text-[13px] text-ink-2 mt-1.5 max-w-[48ch] mx-auto leading-relaxed">
+          Os cinco mercados, a aposta, a odd, a chance, o valor, o Score e as premissas que
+          sustentam a leitura ficam disponíveis com a assinatura. A escalação e as estatísticas
+          do jogo continuam abertas nas abas ao lado.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className="grid xl:grid-cols-[300px_1fr] xl:grid-rows-[auto_1fr] bg-white rounded-[24px] overflow-hidden"

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Lock } from 'lucide-react';
 import { Crest } from '@/components/futebol/Crest';
 import { useVitrine } from '@/hooks/use-futebol-data';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -427,15 +427,21 @@ export function FaixaPartida({
 
           <div className="text-center shrink-0">
             <div className="tabular-nums font-bold leading-none tracking-[-0.04em] text-[44px]" style={{ color: '#fbbf24' }}>
-              {v ? String(v.score) : nValem}
+              {/* A contagem de premissas também é leitura do modelo: sem o Score
+                  ela vira o número que sobra na tela, e entrega quantos sinais
+                  acenderam neste jogo. Sem acesso, não sai nada. */}
+              {locked ? <Lock className="w-7 h-7 mx-auto text-white/40" /> : v ? String(v.score) : nValem}
             </div>
             <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] text-white/50">
-              {v ? `Score · ${rotuloDaFaixa(v.faixa)}` : 'premissas a favor'}
+              {locked ? 'de assinante' : v ? `Score · ${rotuloDaFaixa(v.faixa)}` : 'premissas a favor'}
             </div>
             {podeRegistrar && !empilhado && (
               <div className="mt-2.5 flex justify-center">{botaoRegistrar}</div>
             )}
-            {!v && top && nValem >= PORTA_PREMISSAS && !fim && (
+            {/* `!locked` aqui porque sem acesso o `v` é nulo POR BLOQUEIO, e não
+                por falta de preço: a frase afirmaria sobre o jogo algo que não é
+                verdade. Preço houve; o que não há é acesso. */}
+            {!locked && !v && top && nValem >= PORTA_PREMISSAS && !fim && (
               <div className="mt-2 text-[10px] text-white/45 max-w-[130px] mx-auto leading-snug">sem preço coletado</div>
             )}
           </div>
