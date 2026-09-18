@@ -65,7 +65,7 @@ describe('DarAssinatura', () => {
     await userEvent.type(screen.getByLabelText(ATE), '2026-12-31');
     await userEvent.type(screen.getByLabelText(VALOR), '39,90');
     await userEvent.click(screen.getByRole('button', { name: /Dar esta assinatura/ }));
-    expect(aoConceder).toHaveBeenCalledWith('completo', '2026-12-31', 39.9);
+    expect(aoConceder).toHaveBeenCalledWith('completo', '2026-12-31', 39.9, HOJE);
   });
 
   it('sem data, não dá para conceder', async () => {
@@ -84,7 +84,7 @@ describe('vitalícia', () => {
     const { aoConceder } = montar();
     await userEvent.click(screen.getByLabelText(VITALICIA));
     await userEvent.click(screen.getByRole('button', { name: /Dar esta assinatura/ }));
-    expect(aoConceder).toHaveBeenCalledWith('essencial', null, null);
+    expect(aoConceder).toHaveBeenCalledWith('essencial', null, null, HOJE);
   });
 
   it('marcada, o campo de data desliga', async () => {
@@ -103,7 +103,7 @@ describe('vitalícia', () => {
     await userEvent.click(screen.getByLabelText(VITALICIA));
     await userEvent.type(screen.getByLabelText(VALOR), '49,90');
     await userEvent.click(screen.getByRole('button', { name: /Dar esta assinatura/ }));
-    expect(aoConceder).toHaveBeenCalledWith('essencial', null, 49.9);
+    expect(aoConceder).toHaveBeenCalledWith('essencial', null, 49.9, HOJE);
   });
 
   it('desmarcar devolve a data que estava digitada', async () => {
@@ -131,19 +131,114 @@ describe('vitalícia', () => {
   });
 });
 
+describe('quando o acordo começou', () => {
+  const COMECO = 'Quando a assinatura começou';
+
+  it('o campo existe ao criar, e já vem com hoje', () => {
+    montar();
+    expect(screen.getByLabelText(COMECO)).toHaveValue(HOJE);
+  });
+
+  it('⚠️ o campo NÃO aparece ao trocar o plano', () => {
+    // O guarda mais caro deste ticket. O histórico de pagamento pendura na
+    // linha da assinatura e os meses em aberto contam a partir do começo:
+    // deixar editar o começo numa troca faria a dívida INTEIRA sumir quando o
+    // sócio só queria corrigir o valor. É o mesmo estrago que a 142 evitou ao
+    // parar de encerrar e recriar, chegando por outro caminho.
+    montar({ atual: { id: 'c1', plano: 'entrada', venceEm: '2026-10-31', valorMensal: 39.9 } });
+    expect(screen.queryByLabelText(COMECO)).not.toBeInTheDocument();
+  });
+
+  it('e uma troca manda HOJE como começo, nunca outra data', async () => {
+    // ⚠️ Este teste já foi sem dentes: ele só conferia que o botão dizia
+    // "Trocar o plano", sem clicar e sem olhar o argumento. Quem pegou foi a
+    // mutação, que sobreviveu porque não havia nada afirmando o que sai daqui.
+    //
+    // O banco ignora o começo numa troca, mas a tela não pode contar com isso:
+    // se um dia a função mudar, o parâmetro que sai daqui é o que vale.
+    const { aoConceder } = montar({
+      atual: { id: 'c1', plano: 'entrada', venceEm: '2026-10-31', valorMensal: 39.9 },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /Trocar o plano/ }));
+    expect(aoConceder).toHaveBeenCalledWith('entrada', '2026-10-31', 39.9, HOJE);
+  });
+
+  it('retroagir com cobrança AVISA quantos meses vão abrir, e quanto', async () => {
+    // ⚠️ O aviso central. Retroagir com valor combinado faz a pessoa aparecer
+    // devendo vários meses de uma vez, e esse número não pode aparecer pela
+    // primeira vez na fila de inadimplentes, depois de gravado.
+    montar();
+    await userEvent.type(screen.getByLabelText(VALOR), '39,90');
+    const comeco = screen.getByLabelText(COMECO);
+    await userEvent.clear(comeco);
+    await userEvent.type(comeco, '2026-06-01');
+    expect(screen.getByText(/Vai abrir 4 meses em aberto/)).toBeInTheDocument();
+    expect(screen.getByText(/159,60/)).toBeInTheDocument();
+  });
+
+  it('sem cobrança combinada não avisa nada, porque nada abre', async () => {
+    // Quem não combinou pagar não deve nada. Avisar aqui seria ruído, e ruído
+    // ensina a ignorar o aviso.
+    montar();
+    const comeco = screen.getByLabelText(COMECO);
+    await userEvent.clear(comeco);
+    await userEvent.type(comeco, '2026-06-01');
+    expect(screen.queryByText(/Vai abrir/)).not.toBeInTheDocument();
+  });
+
+  it('começar hoje não avisa: é o caso normal', async () => {
+    montar();
+    await userEvent.type(screen.getByLabelText(VALOR), '39,90');
+    expect(screen.queryByText(/Vai abrir/)).not.toBeInTheDocument();
+  });
+
+  it('data no futuro trava a gravação e diz por quê', async () => {
+    // Acordo que ainda não começou não tem mês em aberto, e a fila contaria
+    // meses negativos.
+    montar();
+    const comeco = screen.getByLabelText(COMECO);
+    await userEvent.clear(comeco);
+    await userEvent.type(comeco, '2026-12-01');
+    expect(screen.getByText(/Não dá para começar no futuro/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Dar esta assinatura/ })).toBeDisabled();
+  });
+
+  it('mais de um ano atrás trava, e o recado fala de ANO digitado errado', async () => {
+    // ⚠️ O limite não é da conta: desde a #451 ela soma a dívida inteira. É
+    // proteção contra alguém escrever 2019 em vez de 2026, e o recado precisa
+    // dizer isso — senão alguém "conserta" o limite achando que é o corte
+    // antigo voltando.
+    montar();
+    const comeco = screen.getByLabelText(COMECO);
+    await userEvent.clear(comeco);
+    await userEvent.type(comeco, '2019-06-01');
+    expect(screen.getByText(/Confira o ano antes de gravar/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Dar esta assinatura/ })).toBeDisabled();
+  });
+
+  it('conceder retroativo manda a data escolhida', async () => {
+    const { aoConceder } = montar();
+    const comeco = screen.getByLabelText(COMECO);
+    await userEvent.clear(comeco);
+    await userEvent.type(comeco, '2026-06-01');
+    await userEvent.click(screen.getByRole('button', { name: /Dar esta assinatura/ }));
+    expect(aoConceder).toHaveBeenCalledWith('essencial', '2026-10-12', null, '2026-06-01');
+  });
+});
+
 describe('a cobrança mensal', () => {
   it('em branco quer dizer sem cobrança, e a tela fala isso', async () => {
     const { aoConceder } = montar();
     expect(screen.getByText(/Em branco quer dizer sem cobrança/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Dar esta assinatura/ }));
-    expect(aoConceder).toHaveBeenCalledWith('essencial', '2026-10-12', null);
+    expect(aoConceder).toHaveBeenCalledWith('essencial', '2026-10-12', null, HOJE);
   });
 
   it('aceita ponto além de vírgula', async () => {
     const { aoConceder } = montar();
     await userEvent.type(screen.getByLabelText(VALOR), '39.90');
     await userEvent.click(screen.getByRole('button', { name: /Dar esta assinatura/ }));
-    expect(aoConceder).toHaveBeenCalledWith('essencial', '2026-10-12', 39.9);
+    expect(aoConceder).toHaveBeenCalledWith('essencial', '2026-10-12', 39.9, HOJE);
   });
 
   it('mostra o valor lido de volta, para não gravar outro número', async () => {

@@ -42,6 +42,7 @@ import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { logMessageRun } from "../shared/runs.ts";
 import { readWithRetry } from "../shared/retry.ts";
+import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 import {
   type Candidate,
   type FinishedMatch,
@@ -68,30 +69,33 @@ const QUIET_START = 9; // genéricas só entre 09:00–22:59 BRT
 const QUIET_END = 23;
 
 // ── Telegram ─────────────────────────────────────────────────
-async function sendReminder(chatId: string, text: string, betId: string): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "✅ Green", callback_data: `settle:${betId}:won` },
-            { text: "❌ Red", callback_data: `settle:${betId}:lost` },
-          ],
-          [
-            { text: "Outras opções ↗", url: BETS_URL },
-            { text: "🔕 Parar lembretes", callback_data: `mute:${betId}` },
-          ],
+async function sendReminder(
+  supabase: any,
+  userId: string,
+  chatId: string,
+  text: string,
+  betId: string,
+): Promise<"enviada" | "bloqueada"> {
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "✅ Green", callback_data: `settle:${betId}:won` },
+          { text: "❌ Red", callback_data: `settle:${betId}:lost` },
         ],
-      },
-    }),
+        [
+          { text: "Outras opções ↗", url: BETS_URL },
+          { text: "🔕 Parar lembretes", callback_data: `mute:${betId}` },
+        ],
+      ],
+    },
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 interface WcMatch {
@@ -152,7 +156,12 @@ function placarLine(m: FinishedMatch): string {
   return `🏁 ${esc(m.home_team)} <b>${m.score_home ?? "?"}×${m.score_away ?? "?"}</b> ${esc(m.away_team)} — encerrado${extra}`;
 }
 
-async function sendAutoSettleDm(bet: Candidate, m: FinishedMatch, verdict: SettleStatus): Promise<void> {
+async function sendAutoSettleDm(
+  supabase: any,
+  bet: Candidate,
+  m: FinishedMatch,
+  verdict: SettleStatus,
+): Promise<"enviada" | "bloqueada"> {
   const profit = bet.potential_return - bet.stake_amount;
   const COPY: Record<SettleStatus, { header: string; resultado: string }> = {
     won: {
@@ -188,23 +197,20 @@ async function sendAutoSettleDm(bet: Candidate, m: FinishedMatch, verdict: Settl
     `<i>Liquidei pelo placar dos 90 minutos. Errei? Toca em Corrigir.</i>`,
   ].join("\n");
 
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: bet.chat_id,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      reply_markup: {
-        inline_keyboard: [[
-          { text: "↩️ Corrigir", callback_data: `fix:${bet.bet_id}` },
-          { text: "Ver minha banca", url: BETS_URL },
-        ]],
-      },
-    }),
+  const r = await enviarDm(supabase, bet.user_id, {
+    chat_id: bet.chat_id,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [[
+        { text: "↩️ Corrigir", callback_data: `fix:${bet.bet_id}` },
+        { text: "Ver minha banca", url: BETS_URL },
+      ]],
+    },
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 // Liquida no BANCO com guarda otimista (status='pending'); false = não liquidou
@@ -231,28 +237,46 @@ async function settleBet(supabase: any, bet: Candidate, m: FinishedMatch, verdic
 // Caminho individual (<= 2 auto-liquidações no run): liquida + DM rica com
 // placar. Ordem deliberada: grava ANTES de avisar — o valor está na banca
 // certa; a DM falhar não desfaz a liquidação.
-async function autoSettle(supabase: any, bet: Candidate, m: FinishedMatch, verdict: SettleStatus): Promise<boolean> {
+//
+// Três desfechos porque o bloqueio separa liquidar de avisar: a aposta JÁ está
+// na banca certa quando o 403 chega, e desfazer a liquidação por causa do aviso
+// seria trocar o produto pela cortesia (#466).
+type AutoDesfecho = "nao-liquidou" | "avisado" | "bloqueado";
+
+async function autoSettle(
+  supabase: any,
+  bet: Candidate,
+  m: FinishedMatch,
+  verdict: SettleStatus,
+  bloqueado: boolean,
+): Promise<AutoDesfecho> {
   const ok = await settleBet(supabase, bet, m, verdict);
-  if (!ok) return false;
-  await sendAutoSettleDm(bet, m, verdict);
-  return true;
+  if (!ok) return "nao-liquidou";
+  // Liquida igual, e só não chama o Telegram: a pessoa já disse que não quer
+  // receber, e bater na porta fechada é a chamada que esta mudança existe para
+  // evitar. O histórico dela no site fica certo do mesmo jeito.
+  if (bloqueado) return "bloqueado";
+  const desfecho = await sendAutoSettleDm(supabase, bet, m, verdict);
+  return desfecho === "bloqueada" ? "bloqueado" : "avisado";
 }
 
 // Caminho digest (>= DIGEST_MIN no run): UMA DM com todas as liquidações e
 // [↩️ Corrigir] por aposta (revisão UX Onda 5 — rajada no apito era spam).
-async function sendDigestDm(chatId: string, items: DigestItem[]): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: buildDigestMessage(items),
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: digestButtonRows(items, BETS_URL) },
-    }),
+async function sendDigestDm(
+  supabase: any,
+  userId: string,
+  chatId: string,
+  items: DigestItem[],
+): Promise<"enviada" | "bloqueada"> {
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text: buildDigestMessage(items),
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: digestButtonRows(items, BETS_URL) },
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 // ── Utilidades de tempo ──────────────────────────────────────
@@ -289,8 +313,30 @@ serve(async (req) => {
       () => supabase.rpc("get_settlement_reminder_candidates"),
     );
     if (candErr) throw candErr;
-    const candidates: Candidate[] = candData ?? [];
-    if (candidates.length === 0) return json({ ok: true, candidates: 0, sent: 0 });
+    const todosCandidatos: Candidate[] = candData ?? [];
+
+    // 1b) Quem bloqueou o bot continua na lista, e isso é decisão (#466).
+    //
+    // A primeira versão tirava essas pessoas daqui, e o efeito era grave e
+    // silencioso: a aposta delas nunca liquidava, a banca e o ROI congelavam no
+    // site, e o mesmo candidato voltava a cada 15 minutos para sempre.
+    //
+    // LIQUIDAR e AVISAR são coisas separadas. Liquidar é o produto funcionando,
+    // e o histórico no site é de quem bloqueou também — ela corrige por lá, que
+    // é o mesmo caminho do [↩️ Corrigir] da DM. Avisar é o que ela recusou.
+    //
+    // Nos três caminhos daqui (auto, digest e lembrete) a liquidação acontece
+    // ANTES do envio, então basta decidir na hora de mandar. O lembrete puro não
+    // tem o que liquidar: ali o bloqueio pula tudo.
+    const bloqueadosSet = await carregarBloqueados(supabase);
+    const candidates: Candidate[] = todosCandidatos;
+    // PESSOAS, e nao mensagens: o lembrete puro reavalia a mesma aposta a cada
+    // 15 minutos, e contar por aposta somaria a mesma pessoa dezenas de vezes
+    // por dia — numero inflado numa mudanca que existe para limpar numero.
+    const bloqueadosVistos = new Set<string>();
+    if (candidates.length === 0) {
+      return json({ ok: true, candidates: 0, sent: 0, bloqueados: 0 });
+    }
 
     // 2) Jogos encerrados nas últimas 60h (janela do "acabou de acabar"),
     //    de DUAS fontes: wc_matches (Copa) e public.fixtures (coletor multi-liga).
@@ -449,8 +495,21 @@ serve(async (req) => {
         queue = list.filter((d) => !settledItems.some((s) => s.bet.bet_id === d.bet.bet_id));
         if (settledItems.length > 0) {
           try {
-            await sendDigestDm(settledItems[0].bet.chat_id, settledItems);
-            sent++;
+            // As apostas já estão liquidadas acima, todas. Se a pessoa bloqueou,
+            // só o resumo não sai — e nem tentamos, porque a marca já diz o que
+            // o Telegram responderia.
+            const desfecho = bloqueadosSet.has(settledItems[0].bet.user_id)
+              ? "bloqueada"
+              : await sendDigestDm(
+                supabase,
+                settledItems[0].bet.user_id,
+                settledItems[0].bet.chat_id,
+                settledItems,
+              );
+            // Bloqueou entre a lista e o envio: as apostas ficam liquidadas (já
+            // gravadas acima) e só o aviso não sai. Não é erro.
+            if (desfecho === "bloqueada") bloqueadosVistos.add(settledItems[0].bet.user_id);
+            else sent++;
           } catch (e) {
             // apostas JÁ liquidadas (grava antes de avisar) — só o aviso falhou
             errors.push(`digest ${settledItems[0].bet.user_id}: ${(e as Error)?.message}`);
@@ -464,9 +523,18 @@ serve(async (req) => {
           // Match perfeito (jogo casado + mercado direto) → liquida sozinho e
           // avisa com [↩️ Corrigir]. Qualquer outra situação → pergunta.
           if (d.kind === "game" && d.verdict) {
-            const settled = await autoSettle(supabase, d.bet, d.match!, d.verdict);
-            if (settled) {
-              sent++;
+            const resultado = await autoSettle(
+              supabase,
+              d.bet,
+              d.match!,
+              d.verdict,
+              bloqueadosSet.has(d.bet.user_id),
+            );
+            if (resultado !== "nao-liquidou") {
+              // Liquidou nos dois casos; o que muda é se o aviso chegou. O
+              // evento continua saindo porque ele mede a LIQUIDAÇÃO, não a DM.
+              if (resultado === "bloqueado") bloqueadosVistos.add(d.bet.user_id);
+              else sent++;
               await trackEvent(
                 "bet_auto_settled",
                 {
@@ -488,8 +556,22 @@ serve(async (req) => {
             // não liquidou (estado mudou no meio) → segue pro fluxo de pergunta
           }
 
+          // Aqui, ao contrário da liquidação, não há o que preservar: lembrete é
+          // só a pergunta "como foi?". Quem bloqueou pula inteiro, sem gastar
+          // chamada e sem mexer na cadência de reenvio.
+          if (bloqueadosSet.has(d.bet.user_id)) {
+            bloqueadosVistos.add(d.bet.user_id);
+            continue;
+          }
+
           const text = d.kind === "game" ? buildMatchMessage(d.bet, d.match!, d.verdict) : buildGenericMessage(d.bet);
-          await sendReminder(d.bet.chat_id, text, d.bet.bet_id);
+          const desfecho = await sendReminder(supabase, d.bet.user_id, d.bet.chat_id, text, d.bet.bet_id);
+          // Bloqueou agora → pula sem mexer na cadência: contar um lembrete que
+          // ninguém recebeu gastaria a régua de reenvio no vazio.
+          if (desfecho === "bloqueada") {
+            bloqueadosVistos.add(d.bet.user_id);
+            continue;
+          }
 
           // marca cadência só depois de enviar (run que falha tenta de novo)
           const { error: updErr } = await supabase
@@ -537,6 +619,7 @@ serve(async (req) => {
       fixtures_finished: fxFinished.length,
       due: due.length,
       sent,
+      bloqueados: bloqueadosVistos.size,
       generic_window_open: genericAllowed,
       errors,
     });

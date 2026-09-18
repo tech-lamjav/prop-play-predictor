@@ -189,7 +189,7 @@ export interface FutebolFixtureNumeros {
 }
 
 /**
- * O VALOR que uma premissa comparou, publicado pelo mart (RPC 155, issue #464).
+ * O VALOR que uma premissa comparou, publicado pelo mart (RPC 158, issue #464).
  *
  * Uma linha por saída × mercado × premissa × insumo. `premissa` e `insumo` vêm
  * sem tradução: o vocabulário é do dbt, e copiá-lo para cá criaria mais uma

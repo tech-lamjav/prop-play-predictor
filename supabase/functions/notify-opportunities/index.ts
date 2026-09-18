@@ -33,6 +33,7 @@ import { ehFaixaPublicavel } from "../shared/faixa.ts";
 import { carregarVitrine, filtrarPelaVitrine, ocultosAgora } from "../shared/mercados-ocultos.ts";
 import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
 import { logMessageRun } from "../shared/runs.ts";
+import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
@@ -181,19 +182,24 @@ function ctaSpec(picks: BoardRow[]): { label: string; dest: string } {
   return { label: "Ver o porquê de cada pick →", dest: "board" };
 }
 
-async function sendDaily(chatId: string, text: string, ctaUrl: string, ctaLabel: string, pickRows: any[]): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-      reply_markup: { inline_keyboard: [...pickRows, [{ text: ctaLabel, url: ctaUrl }]] },
-    }),
+async function sendDaily(
+  supabase: any,
+  userId: string,
+  chatId: string,
+  text: string,
+  ctaUrl: string,
+  ctaLabel: string,
+  pickRows: any[],
+): Promise<"enviada" | "bloqueada"> {
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: [...pickRows, [{ text: ctaLabel, url: ctaUrl }]] },
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 serve(async (req) => {
@@ -318,14 +324,33 @@ serve(async (req) => {
     const pickButtonRows = registerButtons(picks, pickIdByFixture);
 
     // 6) envio + estado de cadência
+    //
+    // Quem bloqueou o bot sai da lista ANTES do laço, com uma consulta só: este é
+    // o disparo mais largo do produto (centenas por dia) e era o que mais diluía
+    // a taxa de clique com gente que não podia receber (#466). Pular aqui também
+    // preserva o segmento B: sem isto, `sends_without_click` subiria a cada dia
+    // para quem nunca viu a mensagem, e a régua de reativação se apagaria sozinha
+    // com base num envio que não existiu.
+    const bloqueadosSet = await carregarBloqueados(supabase);
+
     let sent = 0;
+    let bloqueados = 0;
     const errors: string[] = [];
     for (const r of recipients) {
+      if (bloqueadosSet.has(r.user_id)) {
+        bloqueados++;
+        continue;
+      }
       try {
         const text = await buildMessage(picks, r.user_id);
         const cta = ctaSpec(picks);
         const ctaUrl = await trackedUrl(r.user_id, cta.dest);
-        await sendDaily(r.chat_id, text, ctaUrl, cta.label, pickButtonRows);
+        const desfecho = await sendDaily(supabase, r.user_id, r.chat_id, text, ctaUrl, cta.label, pickButtonRows);
+        // Bloqueou agora → pula sem tocar na cadência, pelo mesmo motivo.
+        if (desfecho === "bloqueada") {
+          bloqueados++;
+          continue;
+        }
 
         const { error: upErr } = await supabase.from("opportunity_dispatch_state").upsert({
           user_id: r.user_id,
@@ -349,7 +374,7 @@ serve(async (req) => {
     // telemetria — só runs de envio (report é ensaio)
     await logMessageRun(supabase, "notify-opportunities", { candidates: recipients.length, sent, errors, ok: true });
 
-    return json({ ok: true, mode, picks: picks.length, destinatarios: recipients.length, sent, errors });
+    return json({ ok: true, mode, picks: picks.length, destinatarios: recipients.length, sent, bloqueados, errors });
   } catch (e) {
     console.error("notify-opportunities error:", e);
     if (mode === "send") {

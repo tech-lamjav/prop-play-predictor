@@ -12,6 +12,7 @@
 // ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { enviarDm } from "../shared/telegram.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 
@@ -30,18 +31,25 @@ function esc(s: unknown): string {
   return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-async function sendTelegramMessage(chatId: string, text: string): Promise<void> {
-  const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-    }),
+// `userId` é sempre null aqui, e é de propósito: a RPC
+// `get_due_kickoff_notifications` devolve só o `owner_chat_id` do dono do bolão,
+// sem o id dele (migration 073). Sem id não dá para marcar quem bloqueou nem
+// para consultar a lista antes de mandar — o 403 vira pulo silencioso desta
+// rodada e nada mais. Quando a RPC passar a devolver o id do dono, é só ligar.
+async function sendTelegramMessage(
+  supabase: any,
+  userId: string | null,
+  chatId: string,
+  text: string,
+): Promise<"enviada" | "bloqueada"> {
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
   });
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return r.desfecho;
 }
 
 interface DueRow {
@@ -105,6 +113,7 @@ serve(async (req) => {
 
     const rows: DueRow[] = due ?? [];
     let sent = 0;
+    let bloqueados = 0;
     const errors: string[] = [];
 
     for (const row of rows) {
@@ -115,7 +124,26 @@ serve(async (req) => {
         });
         if (pErr) throw pErr;
 
-        await sendTelegramMessage(row.owner_chat_id, buildMessage(row, (picks ?? []) as PickRow[]));
+        const desfecho = await sendTelegramMessage(
+          supabase,
+          null,
+          row.owner_chat_id,
+          buildMessage(row, (picks ?? []) as PickRow[]),
+        );
+        // Bloqueou o bot → pula. Não conta como enviado e não marca como
+        // notificado: dizer "avisado" sobre quem não recebeu é a mentira que
+        // esta mudança existe para acabar (#466).
+        if (desfecho === "bloqueada") {
+          bloqueados++;
+          // Registrado porque aqui, e SÓ aqui, o 403 não deixa marca: a RPC
+          // desta função devolve o chat do dono sem id de usuário, então não há
+          // quem marcar. Sem esta linha o aviso seria retentado a cada rodada da
+          // janela, em silêncio — o buraco vira invisível em vez de conhecido.
+          console.warn(
+            `kickoff bloqueado (sem id de usuário para marcar): bolao ${row.bolao_id} chat ${row.owner_chat_id}`,
+          );
+          continue;
+        }
 
         // Marca como notificado só após enviar (evita reenvio em runs futuros).
         const { error: insErr } = await supabase
@@ -129,7 +157,7 @@ serve(async (req) => {
       }
     }
 
-    return json({ ok: true, due: rows.length, sent, errors });
+    return json({ ok: true, due: rows.length, sent, bloqueados, errors });
   } catch (e) {
     console.error("notify-kickoff error:", e);
     return json({ error: (e as Error)?.message ?? "Internal error" }, 500);

@@ -1,5 +1,5 @@
 -- ============================================================
--- 153_futebol_h2h_ancorado_no_apito — o confronto direto para de olhar o futuro
+-- 156_futebol_h2h_ancorado_no_apito — o confronto direto para de olhar o futuro
 -- ============================================================
 -- Contexto (#464): a evidência da premissa `h2h_favoravel` sai desta RPC, e a CTE
 -- de confronto direto juntava `futebol.fact_h2h` SEM NENHUM filtro de data. Num

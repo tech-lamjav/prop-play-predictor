@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { interceptarCliqueSimples } from '@/utils/navegacao-por-link';
 import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
-import { Blur } from '@/components/futebol/FutebolGate';
+import { ValorBloqueado } from '@/components/futebol/FutebolGate';
+import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type { FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
@@ -105,9 +106,15 @@ export function FixtureRow({
 
   const alto = ehFaixaAlta(best?.faixa);
   const chance = best ? chancePct(best.prob_justa_fechamento) : null;
-  // Jogo já encerrado não borra: o passado é registro do que foi publicado, não
+  // Jogo já encerrado fica aberto: o passado é registro do que foi publicado, não
   // pick para apostar. Mesma exceção da lista de Oportunidades.
   const borra = !!locked && !fim;
+  // Duas portas para o mesmo cadeado, e as duas precisam existir. `borra` é o
+  // que a TELA sabe (o acesso chegou pelo hook). `linhaBloqueada` é o que o
+  // BANCO já decidiu: desde a guarda de acesso, a linha do board chega com as
+  // colunas nulas, e sem este teste `best.best_odd.toFixed(2)` estoura antes de
+  // qualquer condição da tela rodar.
+  const bloqueado = borra || linhaBloqueada(best);
 
   // Jogo encerrado não precisa mais do Score, que é uma previsão: o que importa
   // ali é se a leitura bateu. O selo vira ✓ ou ✕ pelo placar.
@@ -170,18 +177,20 @@ export function FixtureRow({
         <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: '#8d8672' }}>
           {best ? marketShort(best.market) : apitou ? 'sem leitura' : 'sem leitura ainda'}
         </span>
-        {best ? (
+        {best && bloqueado ? (
+          // A linha existe e não é entregue. Dizer "sem leitura" aqui seria
+          // mentir sobre o dia: há leitura, ela é de assinante.
+          <span className="inline-flex items-center text-[11px]" style={{ color: '#8d8672' }}>
+            <ValorBloqueado rotulo="assinantes" />
+          </span>
+        ) : best ? (
           <>
             <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink truncate">
-              <Blur active={borra} strength={5}>
-                {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
-              </Blur>
+              {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
             </span>
             <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
-              <Blur active={borra} strength={5}>
-                odd {best.best_odd.toFixed(2)}
-                {chance != null ? <span className="hidden sm:inline">{` · ${chance}% chance`}</span> : null}
-              </Blur>
+              odd {best.best_odd.toFixed(2)}
+              {chance != null ? <span className="hidden sm:inline">{` · ${chance}% chance`}</span> : null}
             </span>
           </>
         ) : (

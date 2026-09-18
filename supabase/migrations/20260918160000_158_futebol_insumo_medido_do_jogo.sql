@@ -1,5 +1,5 @@
 -- ============================================================
--- 155_futebol_insumo_medido_do_jogo — o front passa a poder LER o valor medido
+-- 158_futebol_insumo_medido_do_jogo — o front passa a poder LER o valor medido
 -- ============================================================
 -- Contexto (#464, absorvendo a #406): o mart publica, por jogo e saída, o VALOR
 -- que cada premissa comparou — não só se ela acendeu. Isso vive em
@@ -34,7 +34,7 @@
 --
 -- Linha antiga não tem valor medido: o funil é append-only e a coluna nasceu
 -- agora. Quem chama tem de tratar ausência como normal, e não como erro — é por
--- isso que a rota ancorada da 153 e da 154 continua existindo atrás desta.
+-- isso que a rota ancorada da 156 e da 157 continua existindo atrás desta.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_insumos(p_fixture_id bigint)
@@ -50,7 +50,7 @@ AS $function$
 $function$;
 
 COMMENT ON FUNCTION public.get_futebol_fixture_insumos(bigint) IS
-  'O VALOR que cada premissa comparou num jogo, por saída e mercado, direto do mart (#464/#406). Uma linha por saída × mercado × premissa × insumo. Devolve `premissa` e `insumo` sem traduzir: o vocabulário é do dbt. Hoje só o 1X2 é populado, e linha gravada antes do deploy não tem valor — ausência é normal, e quem chama cai na rota ancorada da 153/154.';
+  'O VALOR que cada premissa comparou num jogo, por saída e mercado, direto do mart (#464/#406). Uma linha por saída × mercado × premissa × insumo. Devolve `premissa` e `insumo` sem traduzir: o vocabulário é do dbt. Hoje só o 1X2 é populado, e linha gravada antes do deploy não tem valor — ausência é normal, e quem chama cai na rota ancorada da 156/157.';
 
 -- Fechar ANTES de conceder, e no mesmo arquivo que cria: entre nascer aberta e
 -- ser fechada depois existe uma janela, e nas duas funções da #408 essa janela

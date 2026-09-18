@@ -1,5 +1,5 @@
 -- ============================================================
--- 154_futebol_classificacao_na_data_do_jogo — a tabela para de ser a de hoje
+-- 157_futebol_classificacao_na_data_do_jogo — a tabela para de ser a de hoje
 -- ============================================================
 -- Contexto (#464): a CTE `tabela` desta RPC chamava
 -- `public.get_futebol_standings_official`, que por dentro pega

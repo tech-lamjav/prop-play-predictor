@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
-import { Blur, FutebolAccessBanner } from '@/components/futebol/FutebolGate';
+import { FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import { type JogoInfo } from '@/components/futebol/jogo-info';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';

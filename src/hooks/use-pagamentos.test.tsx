@@ -79,12 +79,17 @@ beforeEach(() => {
 });
 
 describe('usePagamentos', () => {
-  it('pede só os pagamentos daquela assinatura', () => {
+  it('pede só os pagamentos daquela PESSOA', () => {
     // Sem o filtro, a tela somaria a receita da base inteira num cliente só. O
     // número apareceria enorme e ninguém desconfiaria na hora.
+    //
+    // ⚠️ Por pessoa, e não por assinatura. Mudou com a #457: o dinheiro do
+    // gateway não tem assinatura manual, e enquanto a consulta fosse por
+    // assinatura ele ficava gravado no banco e invisível na tela.
     const { wrapper } = ambiente();
-    renderHook(() => usePagamentos('a1'), { wrapper });
-    expect(resposta.filtros).toContainEqual({ metodo: 'eq', campo: 'assinatura_id', valor: 'a1' });
+    renderHook(() => usePagamentos('u1'), { wrapper });
+    expect(resposta.filtros).toContainEqual({ metodo: 'eq', campo: 'user_id', valor: 'u1' });
+    expect(resposta.filtros.some((f) => f.campo === 'assinatura_id')).toBe(false);
   });
 
   it('monta os pagamentos, com o valor virando número', async () => {
@@ -106,9 +111,9 @@ describe('usePagamentos', () => {
     await waitFor(() => expect(result.current.tipo).toBe('pronto'));
   });
 
-  it('sem assinatura, não consulta nada e já vem pronto', () => {
-    // Não há o que esperar: pagamento pendura em assinatura, e sem ela a
-    // resposta é vazia de verdade, não vazia por enquanto.
+  it('sem pessoa, não consulta nada e já vem pronto', () => {
+    // Não há o que esperar: sem pessoa a resposta é vazia de verdade, e não
+    // vazia por enquanto.
     const { wrapper } = ambiente();
     const { result } = renderHook(() => usePagamentos(undefined), { wrapper });
     expect(result.current.tipo).toBe('pronto');
@@ -162,7 +167,16 @@ describe('useRegistrarPagamento', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     const chaves = espiao.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
-    expect(chaves).toContain(JSON.stringify(['socios', 'pagamentos', 'a1']));
+    /*
+     * ⚠️ A chave da PESSOA, e este é o guarda mais importante deste arquivo.
+     *
+     * A condição da invalidação era `if (assinaturaId)`. Com a chave passando a
+     * ser por pessoa na #457, deixar assim faria lançar um Pix parar de
+     * atualizar a lista na frente do sócio: dado velho, sem erro nenhum. O
+     * Victor confirmou que hoje ela atualiza na hora, então quebrar isso seria
+     * regressão de comportamento que ele usa todo dia.
+     */
+    expect(chaves).toContain(JSON.stringify(['socios', 'pagamentos', 'u1']));
     expect(chaves).toContain(JSON.stringify(['socios', 'assinaturas-manuais']));
     expect(chaves).toContain(JSON.stringify(['socios', 'linha-do-tempo', 'u1']));
     // A fila de inadimplentes lê todos os pagamentos de uma vez. Sem invalidar
@@ -209,6 +223,27 @@ describe('usePagamentosDasAssinaturas', () => {
     if (result.current.tipo !== 'pronto') throw new Error('não ficou pronto');
     expect(result.current.porAssinatura.get('a1')).toHaveLength(2);
     expect(result.current.porAssinatura.get('a2')?.[0].valor).toBe(39.9);
+  });
+
+  it('⚠️ ignora pagamento SEM assinatura, em vez de agrupar sob chave indefinida', async () => {
+    // O dinheiro do gateway não tem assinatura manual desde a migration 151, e
+    // o tipo local dizia que tinha. Esta consulta alimenta só a fila de
+    // inadimplentes, que é derivada do NOSSO registro e vale apenas para a
+    // origem manual. Sem o filtro, o dinheiro do Stripe entraria na fila como
+    // se fosse acordo feito na mão.
+    resposta.linhas = {
+      data: [
+        { ...linhaDoBanco, id: 'p1', assinatura_id: 'a1' },
+        { ...linhaDoBanco, id: 'p2', assinatura_id: null, origem: 'stripe' },
+      ],
+      error: null,
+    };
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    await waitFor(() => expect(result.current.tipo).toBe('pronto'));
+    if (result.current.tipo !== 'pronto') throw new Error('não ficou pronto');
+    expect(result.current.porAssinatura.get('a1')).toHaveLength(1);
+    expect([...result.current.porAssinatura.keys()]).toEqual(['a1']);
   });
 
   it('lê a tabela inteira, sem filtrar por assinatura', async () => {

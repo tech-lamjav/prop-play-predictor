@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { mensagemDeCobranca, mensagemDeConversao, prazoDe, type Prazo } from './crm-cobranca';
+import {
+  mensagemDeCobranca,
+  mensagemDeConversao,
+  mensagemDeFechamento,
+  prazoDe,
+  type Prazo,
+} from './crm-cobranca';
 
 const HOJE = '2026-09-12';
 
@@ -119,7 +125,80 @@ describe('mensagemDeConversao', () => {
     const texto = mensagemDeConversao('Maria', -3);
     expect(texto).toMatch(/acabou/i);
     expect(texto).not.toMatch(/acaba amanhã|último dia/);
-    expect(texto).toMatch(/de volta|retomar/i);
+    // "devolv" entrou junto com a reescrita: o que este teste protege é a
+    // OFERTA de retomada existir, e não a palavra exata. Estreitar a copy para
+    // caber na expressão seria o teste mandando na mensagem.
+    expect(texto).toMatch(/de volta|devolv|retomar/i);
+  });
+
+  it('as três pedem a decisão ANTES de pedir opinião', () => {
+    // ⚠️ O defeito que a revisão de vendas pegou. As três abriam com "queria
+    // saber o que você achou", e no momento do fechamento isso convida uma
+    // resposta que não decide nada e dá saída social para adiar. Pior: sugere
+    // que nem quem escreveu tem certeza de que foi bom.
+    //
+    // A opinião continua valendo, e vale mais depois do sim. Este teste não
+    // proíbe perguntar: cobra a ORDEM.
+    for (const dias of [-3, 0, 1, 4]) {
+      const texto = mensagemDeConversao('Maria', dias);
+      const pedido = texto.search(/\bquer\b|quer seguir|quer continuar|quer que eu/i);
+      const opiniao = texto.search(/achou|ajudaram|o que você/i);
+      expect(pedido, `dias ${dias}: nenhuma pergunta de decisão`).toBeGreaterThanOrEqual(0);
+      if (opiniao >= 0) {
+        expect(opiniao, `dias ${dias}: opinião antes da decisão`).toBeGreaterThan(pedido);
+      }
+    }
+  });
+
+  it('todas oferecem um passo que o sócio completa', () => {
+    // Sem próximo passo, a mensagem termina numa pergunta e a conversa para.
+    // Era o caso da de "acaba amanhã", que era a mais fraca no momento mais
+    // forte: o acesso ainda está de pé e continuar não custa nada.
+    for (const dias of [-3, 0, 1, 4]) {
+      expect(mensagemDeConversao('Maria', dias), String(dias)).toMatch(
+        /me diz|me avisa|me manda|eu resolvo|eu libero|eu já deixo/i,
+      );
+    }
+  });
+});
+
+describe('mensagemDeFechamento', () => {
+  it('deixa valor e chave em branco, para o sócio preencher', () => {
+    // ⚠️ É a única mensagem com lacuna, e de propósito: quem sabe o preço
+    // combinado é o sócio. Inventar um número numa proposta é pior que não ter.
+    const texto = mensagemDeFechamento('Maria');
+    expect(texto).toContain('[valor]');
+    expect(texto).toContain('[sua chave]');
+  });
+
+  it('a lacuna usa colchete, e não chave', () => {
+    // Chave é o marcador de substituição automática deste código. Uma lacuna
+    // de chave passaria por template que não rodou, e alguém "consertaria".
+    expect(mensagemDeFechamento('Maria')).not.toMatch(/\{|\}/);
+  });
+
+  it('não vende de novo: nada de benefício nem de pergunta', () => {
+    // Responder um sim com mais argumento reabre uma decisão já tomada.
+    const texto = mensagemDeFechamento('Maria');
+    expect(texto).not.toMatch(/\?/);
+  });
+
+  it('diz o que acontece depois do pagamento', () => {
+    // O que tira o atrito não é o preço, é saber que o acesso vem na hora.
+    expect(mensagemDeFechamento('Maria')).toMatch(/libero na hora|na hora/i);
+  });
+
+  it('usa o primeiro nome, e sem nome não sobra vírgula', () => {
+    expect(mensagemDeFechamento('Maria Silva')).toContain('Maria');
+    const anonimo = mensagemDeFechamento(null);
+    expect(anonimo).not.toMatch(/,\s*[!?.]/);
+    expect(anonimo.trim()).toBe(anonimo);
+  });
+
+  it('não usa travessão', () => {
+    for (const nome of ['Maria', null]) {
+      expect(mensagemDeFechamento(nome)).not.toMatch(/[–—]/);
+    }
   });
 
   it('nunca promete preço nem link', () => {

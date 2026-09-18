@@ -816,6 +816,49 @@ CREATE OR REPLACE FUNCTION public.futebol_acesso_vigente(
  STABLE
 AS $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$
 
+-- ── Guarda de acesso das RPCs de valor ───────────────────────────
+-- As RPCs de valor nasceram abertas: definer, sem checar quem chama, com grant
+-- para anon. O borrao da tela era enfeite -- o dado chegava inteiro no navegador
+-- de quem nunca pagou, e bastava abrir a aba de rede.
+--
+-- Este e o portao unico. Existe em vez de repetir a regra em cada funcao porque
+-- a regra ja mudou uma vez (7 dias viraram 48 horas) e vai mudar de novo; vinte
+-- copias divergem, que foi como a copy das premissas divergiu na #272.
+--
+-- A chave de SERVICO passa direto. O bot do Telegram e os crons chamam o board
+-- e a vitrine com service_role, e nessa conexao nao existe usuario: sem esta
+-- porta, fechar as RPCs derrubaria todo alerta de publicacao em silencio.
+create or replace function public.futebol_acesso_do_chamador()
+returns boolean
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select case
+    when coalesce(
+           nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role',
+           ''
+         ) = 'service_role'
+      then true
+    when (select auth.uid()) is null
+      then false
+    else coalesce((
+      select public.futebol_acesso_vigente(
+               coalesce(u.futebol_subscription_status, 'free'),
+               u.futebol_trial_ends_at
+             )
+      from public.users u
+      where u.id = (select auth.uid())
+    ), false)
+  end;
+$function$;
+
+comment on function public.futebol_acesso_do_chamador() is
+  'O acesso ao valor do futebol esta de pe para quem chamou? Assinante ou teste correndo passam; deslogado e expirado nao. A chave de servico passa, senao o bot para.';
+
+grant execute on function public.futebol_acesso_do_chamador() to anon, authenticated, service_role;
+
 ;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_access()
@@ -1026,6 +1069,11 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_odds(p_fixture_id bigint)
  SET search_path TO ''
 AS $function$
 begin
+  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
+  if not public.futebol_acesso_do_chamador() then
+    return;
+  end if;
+
   return query
   with base as (
     select o.market_name, o.outcome_label, o.bookmaker_name, o.collection_window, o.odd_decimal, o.line_value
@@ -1095,6 +1143,11 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_prediction(p_fixture_id bi
  SET search_path TO ''
 AS $function$
 begin
+  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
+  if not public.futebol_acesso_do_chamador() then
+    return;
+  end if;
+
   return query
   select
     (p.advice is not null and p.advice <> 'No predictions available'
@@ -1326,6 +1379,11 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_value(p_fixture_id bigint)
  security definer
  set search_path to ''
 as $function$
+  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
+  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
+  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
+  select * from (
+
   -- migration 101: kickoff no futuro lê o board; kickoff já passado lê a FOTO DO
   -- APITO no snapshot. migration 105: os avisos leem as colunas pen_* do mart.
   with v_src as (
@@ -1394,7 +1452,9 @@ as $function$
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
   where v.fixture_id = p_fixture_id
-  order by (case v.market when 'match_winner' then 1 when 'goals_over_under' then 2 when 'asian_handicap' then 3 when 'btts' then 4 when 'double_chance' then 5 else 9 end), 3;
+  order by (case v.market when 'match_winner' then 1 when 'goals_over_under' then 2 when 'asian_handicap' then 3 when 'btts' then 4 when 'double_chance' then 5 else 9 end), 3
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixtures(p_competition text, p_season bigint, p_round text DEFAULT NULL::text)
@@ -1494,6 +1554,11 @@ CREATE OR REPLACE FUNCTION public.get_futebol_matchup_markets(p_home_id bigint, 
 AS $function$
 declare v jsonb;
 begin
+  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
+  if not public.futebol_acesso_do_chamador() then
+    return '{}'::jsonb;
+  end if;
+
   select jsonb_object_agg(g.who, jsonb_build_object(
            'games', g.games, 'avg_gf', round(g.avg_gf, 2), 'avg_ga', round(g.avg_ga, 2),
            'over25_pct', round(g.over25 * 100), 'btts_pct', round(g.btts * 100)
@@ -1530,6 +1595,11 @@ CREATE OR REPLACE FUNCTION public.get_futebol_odds_board()
  SET search_path TO ''
 AS $function$
 begin
+  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
+  if not public.futebol_acesso_do_chamador() then
+    return;
+  end if;
+
   return query
   with base as (
     select o.fixture_id, o.market_name, o.outcome_label, o.bookmaker_name, o.collection_window, o.odd_decimal, o.line_value
@@ -1790,6 +1860,44 @@ CREATE OR REPLACE FUNCTION public.get_futebol_value_board()
  security definer
  set search_path to ''
 as $function$
+  -- Sem acesso, a CONTAGEM sobrevive e o conteudo nao.
+  --
+  -- Devolver zero linha apagaria da home que existe produto ali dentro; devolver
+  -- a linha inteira e o vazamento que este trabalho fecha. Entao a linha vem, com
+  -- todas as colunas nulas: a tela sabe que hoje ha N oportunidades e mostra N
+  -- cadeados, sem dizer em qual jogo, em que mercado nem a que preco.
+  --
+  -- O apelido posicional (_b.c1..) existe porque a consulta de baixo tem colunas
+  -- sem nome (expressoes); nomear aqui e o que permite projetar uma a uma.
+  select
+    case when _g.tem then _b.c1 end,
+    case when _g.tem then _b.c2 end,
+    case when _g.tem then _b.c3 end,
+    case when _g.tem then _b.c4 end,
+    case when _g.tem then _b.c5 end,
+    case when _g.tem then _b.c6 end,
+    case when _g.tem then _b.c7 end,
+    case when _g.tem then _b.c8 end,
+    case when _g.tem then _b.c9 end,
+    case when _g.tem then _b.c10 end,
+    case when _g.tem then _b.c11 end,
+    case when _g.tem then _b.c12 end,
+    case when _g.tem then _b.c13 end,
+    case when _g.tem then _b.c14 end,
+    case when _g.tem then _b.c15 end,
+    case when _g.tem then _b.c16 end,
+    case when _g.tem then _b.c17 end,
+    case when _g.tem then _b.c18 end,
+    case when _g.tem then _b.c19 end,
+    case when _g.tem then _b.c20 end,
+    case when _g.tem then _b.c21 end,
+    case when _g.tem then _b.c22 end,
+    case when _g.tem then _b.c23 end,
+    case when _g.tem then _b.c24 end,
+    case when _g.tem then _b.c25 end,
+    case when _g.tem then _b.c26 end
+  from (
+
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
     v.market, v.outcome, v.line_value, v.edge, v.best_odd, v.best_book, v.avg_odd, v.n_casas::int, v.janela_usada, v.prob_justa_fechamento,
@@ -1805,7 +1913,9 @@ as $function$
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_btts bt on v.market='btts' and bt.fixture_id = v.fixture_id and bt.outcome = v.outcome
   left join futebol.int_futebol_premissas_dc dc on v.market='double_chance' and dc.fixture_id = v.fixture_id and dc.outcome = v.outcome
-  order by v.score desc, v.edge desc;
+  order by v.score desc, v.edge desc
+  ) _b(c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26)
+  cross join (select public.futebol_acesso_do_chamador() as tem) _g;
 $function$;
 
 -- ── 5b. Histórico point-in-time do board (ADR 0009, migrations 101 e 102) ────
@@ -1926,6 +2036,11 @@ CREATE OR REPLACE FUNCTION public.get_futebol_alerted_picks(p_day date DEFAULT N
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
+  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
+  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
+  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
+  select * from (
+
   select coalesce((p.match_date at time zone 'America/Sao_Paulo')::date, p.sent_date) as game_day,
          p.fixture_id, p.market, p.outcome, p.line_value,
          p.bet_description, p.betting_market, p.league, p.match_description, p.odds,
@@ -1936,7 +2051,12 @@ AS $function$
         >= (now() at time zone 'America/Sao_Paulo')::date - 90
     and (p_day is null
          or coalesce((p.match_date at time zone 'America/Sao_Paulo')::date, p.sent_date) = p_day)
-  order by game_day, p.created_at;
+  order by game_day, p.created_at
+  ) _acesso
+  -- O passado fica aberto (o pick ja liquidado e registro, nao aposta a fazer);
+  -- o pick de HOJE, que ainda da para seguir, e valor e depende de acesso.
+  where public.futebol_acesso_do_chamador()
+     or _acesso.game_day < (now() at time zone 'America/Sao_Paulo')::date;
 $function$
 
 ;
@@ -2008,6 +2128,11 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_premissas(p_fixture_id big
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
+  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
+  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
+  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
+  select * from (
+
   select 'match_winner'::text,
          p.outcome,
          null::double precision,
@@ -2161,7 +2286,9 @@ AS $function$
   from futebol.int_futebol_premissas_dc p
   where p.fixture_id = p_fixture_id
 
-  order by 1, 4 desc, 2, 3;
+  order by 1, 4 desc, 2, 3
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$
 
 ;
@@ -2493,6 +2620,11 @@ stable
 security definer
 set search_path to ''
 as $function$
+  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
+  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
+  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
+  select * from (
+
   with base as (
     select
       v.market, v.outcome, v.line_value, v.score,
@@ -2579,7 +2711,9 @@ as $function$
       from unnest(b.penalidades_ativas) slug
       where slug <> 'favorito_irregular'
     ), '[]'::jsonb)
-  from base b;
+  from base b
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$;
 
 -- ── 5e. Alertas de publicação no Telegram (migration 111) ───────────────────
@@ -2818,6 +2952,11 @@ STABLE
 SECURITY DEFINER
 SET search_path TO ''
 AS $function$
+  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
+  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
+  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
+  select * from (
+
   -- Ilhas e buracos sobre as versões do snapshot. Versões contíguas
   -- (dbt_valid_to de uma = dbt_valid_from da seguinte) são ATUALIZAÇÃO da mesma
   -- disponibilidade; um buraco entre elas é REATIVAÇÃO, e reinicia o relógio.
@@ -2880,7 +3019,9 @@ AS $function$
       else c.inicio_da_ilha
     end
   from por_chave c
-  order by c.market, c.outcome, c.line_value;
+  order by c.market, c.outcome, c.line_value
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.get_futebol_fixture_disponivel_desde(bigint) TO anon, authenticated, service_role;
@@ -3021,10 +3162,17 @@ returns table (market text, oculto_desde timestamptz, oculto_ate timestamptz)
  security definer
  set search_path to ''
 as $function$
+  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
+  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
+  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
+  select * from (
+
   select o.market, o.oculto_desde, o.oculto_ate
     from public.futebol_mercados_ocultos o
    where o.oculto or o.oculto_ate is not null
-   order by o.market;
+   order by o.market
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$;
 
 comment on function public.get_futebol_vitrine() is
@@ -3039,6 +3187,16 @@ grant execute on function public.get_futebol_vitrine() to anon, authenticated, s
 -- agendamento, que é decisão humana e mora comentado na própria migration.
 alter table public.users
   add column if not exists futebol_ofertas_muted boolean not null default false;
+
+-- Quem bloqueou o bot no Telegram (migration 151). Não é coluna de futebol, mas
+-- mora aqui porque as funções de futebol leem ela para pular quem não pode
+-- receber — e ambiente novo sem esta coluna faz o alerta de publicação quebrar.
+alter table public.users
+  add column if not exists telegram_bloqueado_em timestamptz;
+
+create index if not exists users_telegram_bloqueado_idx
+  on public.users (id)
+  where telegram_bloqueado_em is not null;
 
 create table if not exists public.futebol_oferta_pos_teste_notifications (
   user_id      uuid primary key references public.users(id) on delete cascade,
@@ -3104,8 +3262,10 @@ revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from publ
 revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from anon, authenticated;
 grant execute on function public.claim_futebol_oferta_pos_teste(uuid) to service_role;
 
--- Devolver a vaga é passo MANUAL: a função de borda não chama, para timeout não
--- virar segundo envio.
+-- A borda devolve a vaga NO 403, que prova que não entregou — a oferta é uma por
+-- pessoa para sempre, e manter a reserva queimaria a chance de quem desbloquear
+-- depois (migration 151). No timeout ela NÃO devolve, porque timeout não prova
+-- nada e dúvida viraria segundo envio; ali devolver é passo manual.
 create or replace function public.release_futebol_oferta_pos_teste(p_user_id uuid)
 returns void
 language sql
@@ -3167,9 +3327,16 @@ stable
 security definer
 set search_path to ''
 as $function$
+  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
+  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
+  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
+  select * from (
+
   select l.market, l.limiar, l.vigente_desde
     from public.futebol_limiar_valor l
-   order by l.market;
+   order by l.market
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$;
 
 comment on function public.get_futebol_limiar_valor() is

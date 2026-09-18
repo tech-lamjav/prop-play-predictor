@@ -10,7 +10,7 @@ import { evidenciaDoInsumoMedido, type InsumoMedido } from '@/utils/futebol-insu
 //
 //   1. a PRESTAÇÃO DE CONTAS — o insumo que o modelo comparou, medido na janela
 //      da premissa, contra o corte real. É a única que reproduz o veredito.
-//   2. o INSUMO MEDIDO (RPC 155, issue #464) — o mesmo número, publicado pelo
+//   2. o INSUMO MEDIDO (RPC 158, issue #464) — o mesmo número, publicado pelo
 //      MART em vez de recalculado por nós. Não traz o corte junto, e por isso
 //      fica atrás da prestação; mas não é reconstrução nenhuma, e por isso fica
 //      à frente das duas que recalculam. Hoje só o 1X2 publica.
