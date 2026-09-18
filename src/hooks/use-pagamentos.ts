@@ -20,21 +20,64 @@ export type EstadoDosPagamentos =
   { tipo: 'carregando' } | { tipo: 'erro' } | { tipo: 'pronto'; pagamentos: Pagamento[] };
 
 /**
- * Os pagamentos recebidos na mão de uma assinatura.
+ * Os pagamentos de uma PESSOA, das duas origens.
+ *
+ * ⚠️ Por pessoa, e não por assinatura. Era por assinatura, e mudou junto com a
+ * migration 151, que fez a pessoa virar o pai do pagamento: o dinheiro do
+ * gateway não tem assinatura manual e nunca vai ter, então a consulta antiga
+ * deixava ele gravado no banco e invisível na tela.
+ *
+ * O filtro continua existindo e continua importando pelo mesmo motivo de
+ * antes: sem ele, a ficha somaria a receita da base inteira num cliente só, e o
+ * número apareceria enorme sem ninguém desconfiar na hora.
  *
  * Inclui os ESTORNADOS, marcados. Some da soma, não da lista: um lançamento
  * errado que desaparece da tela é um lançamento que ninguém consegue auditar, e
  * quem estornou precisa ver que estornou.
  */
-export function usePagamentos(assinaturaId: string | undefined): EstadoDosPagamentos {
+export function usePagamentos(userId: string | undefined): EstadoDosPagamentos {
   const consulta = useQuery({
-    queryKey: CHAVES.pagamentos(assinaturaId ?? 'nenhuma'),
-    enabled: !!assinaturaId,
+    queryKey: CHAVES.pagamentos(userId ?? 'ninguem'),
+    enabled: !!userId,
     queryFn: async (): Promise<PagamentoDoBanco[]> => {
-      const { data, error } = await createClient()
+      /*
+       * ⚠️ O cliente entra sem tipo por causa de `user_id`.
+       *
+       * `src/integrations/supabase/types.ts` é GERADO a partir do banco, e o
+       * banco de onde ele foi gerado não tem essa coluna em `crm_pagamento`:
+       * ela nasce na migration 151, que sobe no deploy. Filtrar por um campo
+       * que o esquema declarado não conhece faz o tipo do cliente entrar em
+       * recursão — o erro vem como "type instantiation is excessively deep",
+       * que esconde a causa real.
+       *
+       * ⚠️ O cast é no CLIENTE, e não no resultado como nos outros hooks. Não é
+       * capricho: o erro nasce no `.eq`, antes de existir resultado para
+       * converter. A consulta de todas, logo abaixo, não precisa disso porque
+       * não filtra por coluna nenhuma.
+       *
+       * Regenerar o arquivo exigiria ler produção, o que não se faz daqui. O
+       * cast some sozinho quando alguém regenerar os tipos depois do deploy.
+       */
+      const cliente = createClient() as unknown as {
+        from: (tabela: string) => {
+          select: (colunas: string) => {
+            eq: (
+              campo: string,
+              valor: string,
+            ) => {
+              order: (
+                campo: string,
+                opcoes: { ascending: boolean },
+              ) => Promise<{ data: unknown; error: unknown }>;
+            };
+          };
+        };
+      };
+
+      const { data, error } = await cliente
         .from('crm_pagamento')
         .select('id, competencia, valor, origem, pago_em, estornado_em, motivo_do_estorno')
-        .eq('assinatura_id', assinaturaId!)
+        .eq('user_id', userId!)
         .order('competencia', { ascending: false });
       if (error) throw error;
       return (data ?? []) as PagamentoDoBanco[];
@@ -42,9 +85,9 @@ export function usePagamentos(assinaturaId: string | undefined): EstadoDosPagame
     staleTime: 60 * 1000,
   });
 
-  // Sem assinatura não há o que pagar, e a consulta nem sai. Lista vazia em vez
+  // Sem pessoa não há o que carregar, e a consulta nem sai. Lista vazia em vez
   // de "carregando": não há nada para esperar.
-  if (!assinaturaId) return { tipo: 'pronto', pagamentos: [] };
+  if (!userId) return { tipo: 'pronto', pagamentos: [] };
   if (consulta.isError) return { tipo: 'erro' };
   if (!consulta.data) return { tipo: 'carregando' };
   return { tipo: 'pronto', pagamentos: montarPagamentos(consulta.data) };
@@ -78,9 +121,22 @@ export function usePagamentosDasAssinaturas(): EstadoDosPagamentosPorAssinatura 
         .order('competencia', { ascending: false });
       if (error) throw error;
 
-      const linhas = (data ?? []) as unknown as (PagamentoDoBanco & { assinatura_id: string })[];
+      /*
+       * ⚠️ `assinatura_id` pode ser NULO desde a migration 151, e o tipo local
+       * dizia que não podia. Pagamento do gateway não tem assinatura manual.
+       *
+       * As linhas sem assinatura são IGNORADAS aqui de propósito: esta consulta
+       * alimenta só a fila de inadimplentes, que é derivada do nosso registro e
+       * vale apenas para a origem manual — está no glossário e tem teste. Sem o
+       * filtro, elas se agrupariam sob uma chave indefinida e a fila passaria a
+       * contar dinheiro do gateway como se fosse acordo feito na mão.
+       */
+      const linhas = (data ?? []) as unknown as (PagamentoDoBanco & {
+        assinatura_id: string | null;
+      })[];
       const brutas = new Map<string, PagamentoDoBanco[]>();
       for (const linha of linhas) {
+        if (linha.assinatura_id === null) continue;
         const daAssinatura = brutas.get(linha.assinatura_id) ?? [];
         daAssinatura.push(linha);
         brutas.set(linha.assinatura_id, daAssinatura);
@@ -159,7 +215,15 @@ function invalidar(
   assinaturaId: string | undefined,
   userId: string | undefined,
 ) {
-  if (assinaturaId) fila.invalidateQueries({ queryKey: CHAVES.pagamentos(assinaturaId) });
+  /*
+   * ⚠️ A chave de pagamentos é da PESSOA, e a condição é `userId`.
+   *
+   * Ela era `if (assinaturaId)`, e deixar assim depois de a chave virar por
+   * pessoa quebraria o que mais importa nesta tela: lançar um Pix pararia de
+   * atualizar a lista na frente do sócio. Dado velho, sem erro nenhum — que é
+   * exatamente o defeito que o arquivo de chaves existe para evitar.
+   */
+  if (userId) fila.invalidateQueries({ queryKey: CHAVES.pagamentos(userId) });
 
   // A fila de inadimplentes também: um pagamento tira a pessoa de lá, e o
   // estorno pode colocar de volta.

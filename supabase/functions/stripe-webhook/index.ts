@@ -2,6 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14.21.0";
 import { prefixosDoPlano, statusDoPlano } from "../shared/concessoes.ts";
+import {
+  acessoDaSituacao,
+  fimDoPeriodoDaFatura,
+  situacaoCrua,
+} from "../shared/situacao-do-stripe.ts";
+import { pagamentoDaFatura } from "../shared/pagamento-da-fatura.ts";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -274,15 +280,23 @@ serve(async (req) => {
         console.log(`Subscription ${event.type} - userId: ${userId}, status: ${subscription.status}, productType: ${productType}`);
 
         if (userId) {
-          // `trialing` também é acesso pago: é assinatura ativa em período de
-          // teste do Stripe. Tratar como 'free' bloquearia na hora quem acabou
-          // de assinar. Hoje o teste do futebol é do banco, não do Stripe, então
-          // isso não dispara — mas ligar `trial_period_days` no Stripe um dia
-          // não pode derrubar assinante.
-          const ativa = subscription.status === 'active' || subscription.status === 'trialing';
-          const status = ativa ? 'premium' : 'free';
+          // A regra de acesso saiu daqui para `shared/situacao-do-stripe.ts`,
+          // sem mudar: `active` e `trialing` liberam, o resto não, e situação
+          // desconhecida não libera. Lá ela tem teste; aqui era um ternário
+          // solto que ninguém exercitava.
+          const status = acessoDaSituacao(subscription.status);
           const updateData: Record<string, unknown> = {
             ...statusUpdate(productType, status),
+            /*
+             * ⚠️ A situação CRUA, ao lado do achatamento e nunca no lugar dele.
+             *
+             * As colunas por produto são PORTÃO e só entendem premium e free;
+             * gravar `past_due` nelas daria ou tiraria acesso de alguém. Mas
+             * gravar só o achatamento DESTRUÍA a informação: cartão recusado
+             * virava a mesma coisa que cancelado há um ano, e a tela não tinha
+             * como achar quem ainda dá para salvar com uma conversa.
+             */
+            stripe_subscription_status: situacaoCrua(subscription.status),
             stripe_subscription_id: subscription.id,
             subscription_product_type: productType || 'betinho',
             ...getProductMetadataUpdate(productType, subscription),
@@ -315,6 +329,10 @@ serve(async (req) => {
           // Essencial cancelado deixaria o Betinho ilimitado para trás.
           const updateData: Record<string, unknown> = {
             ...statusUpdate(productType, 'free'),
+            // A situação crua do evento, que aqui é o cancelamento. Guardar
+            // deixa a tela dizer "cancelada" em vez de só "sem acesso", que é
+            // o mesmo que ela diria de um cartão recusado.
+            stripe_subscription_status: situacaoCrua(subscription.status),
             ...getProductMetadataClear(productType),
           };
           const { data: userRow } = await supabase
@@ -425,9 +443,36 @@ serve(async (req) => {
           break;
         }
 
-        const updateData = statusUpdate(productType, 'premium');
+        const updateData: Record<string, unknown> = { ...statusUpdate(productType, 'premium') };
+
+        /*
+         * ⚠️ A data de renovação também anda aqui, e antes não andava.
+         *
+         * Só `customer.subscription.created/updated` chamava o montador de
+         * metadados, então a data de renovação envelhecia depois da PRIMEIRA
+         * cobrança — e é justamente a data que o sócio olha para decidir quando
+         * falar com a pessoa.
+         *
+         * Sai do período que a própria fatura DECLARA, e nunca de assumir que
+         * todo plano é mensal. O futebol fica de fora sozinho, porque
+         * `prefixosDoPlano` já o exclui: ele não tem colunas de prazo, e gravar
+         * um prefixo inexistente derruba o UPDATE inteiro e tira o acesso de
+         * quem pagou.
+         *
+         * NÃO grava a situação crua: a fatura não carrega o estado da
+         * assinatura, e escrever "ativa" aqui seria adivinhar. O Stripe manda
+         * `customer.subscription.updated` na renovação, e é lá que ela se
+         * mantém.
+         */
+        const fimDoPeriodo = fimDoPeriodoDaFatura(invoice);
+        if (fimDoPeriodo) {
+          for (const prefixo of prefixosDoPlano(productType)) {
+            updateData[`${prefixo}_period_end`] = fimDoPeriodo;
+          }
+        }
 
         console.log('[Webhook] Renovando acesso:', Object.keys(updateData).join(', '));
+        console.log('[Webhook] Fim do periodo declarado pela fatura:', fimDoPeriodo ?? 'ausente');
 
         const { data, error } = await supabase
           .from('users')
@@ -439,6 +484,50 @@ serve(async (req) => {
         } else {
           console.log('[Webhook] ✅ Acesso renovado via invoice.paid para user:', userId);
           console.log('[Webhook] Updated data:', JSON.stringify(data));
+
+          /*
+           * O dinheiro do gateway entra no NOSSO registro.
+           *
+           * ⚠️ DEPOIS de o acesso ser renovado com sucesso, e dentro deste
+           * ramo de propósito. A primeira versão gravava antes de checar o
+           * `error` do update: se a renovação do acesso falhasse, o dinheiro
+           * entrava no registro e o acesso não, e os dois logs saíam em linhas
+           * separadas sem ninguém ligar uma à outra. Registro de dinheiro que
+           * diz que está tudo certo enquanto a pessoa está sem o produto é o
+           * pior dos dois erros.
+           *
+           * ⚠️ `upsert` por `stripe_invoice_id`, pelo mesmo motivo que a compra
+           * de bolão acima usa upsert por sessão: o Stripe RETENTA eventos, e
+           * sem isso duas entregas da mesma fatura virariam dois pagamentos e o
+           * total da pessoa inflaria sozinho. O índice único que sustenta isso
+           * nasce na migration 151.
+           *
+           * Recusa e erro de gravação daqui não derrubam o evento: o acesso já
+           * está de pé, que é o que a pessoa pagou para ter. Deixar um problema
+           * de contabilidade virar problema de acesso trocaria um erro
+           * silencioso por um erro que o cliente sente.
+           *
+           * `criada_por` fica nulo: quem gravou foi o webhook, e não um sócio.
+           * Inventar um autor seria mentir na auditoria.
+           */
+          const leitura = pagamentoDaFatura(invoice, userId);
+          if (leitura.tipo === 'recusa') {
+            console.warn('[Webhook] Fatura nao virou pagamento:', leitura.motivo);
+          } else {
+            const { error: erroDoPagamento } = await supabase
+              .from('crm_pagamento')
+              .upsert(leitura.pagamento, { onConflict: 'stripe_invoice_id' });
+
+            if (erroDoPagamento) {
+              console.error('[Webhook] Error recording crm_pagamento:', erroDoPagamento);
+            } else {
+              console.log(
+                '[Webhook] 💰 Pagamento registrado:',
+                leitura.pagamento.stripe_invoice_id,
+                leitura.pagamento.competencia,
+              );
+            }
+          }
         }
         break;
       }

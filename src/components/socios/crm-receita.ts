@@ -100,14 +100,42 @@ export function montarPagamentos(linhas: PagamentoDoBanco[]): Pagamento[] {
     .sort((a, b) => (a.mes === b.mes ? a.id.localeCompare(b.id) : b.mes.localeCompare(a.mes)));
 }
 
+/** A origem que o gateway grava. Quem paga por lá não é cobrado por ninguém. */
+export const ORIGEM_DO_GATEWAY = 'stripe';
+
+function soma(pagamentos: Pagamento[]): number {
+  return pagamentos.filter((p) => !p.estornado).reduce((total, p) => total + p.valor, 0);
+}
+
 /**
- * Quanto essa pessoa já gerou, na mão.
+ * O que entrou FORA do gateway.
+ *
+ * ⚠️ Filtra a origem, e o filtro é o que impede este número de virar mentira.
+ * Até a #457 a ficha carregava só pagamento de assinatura manual, então somar
+ * tudo dava o mesmo resultado. Agora o dinheiro do Stripe chega na mesma lista,
+ * e sem o filtro o rótulo "recebido na mão" passaria a incluir o que ninguém
+ * recebeu na mão.
+ *
+ * É este o número que importa para a cobrança: é o dinheiro que depende de
+ * alguém ir atrás.
  *
  * Estornado não conta, e é o ponto de existir estorno: um lançamento errado
  * sai da soma sem sair da tabela.
  */
-export function receitaRecebida(pagamentos: Pagamento[]): number {
-  return pagamentos.filter((p) => !p.estornado).reduce((soma, p) => soma + p.valor, 0);
+export function recebidoNaMao(pagamentos: Pagamento[]): number {
+  return soma(pagamentos.filter((p) => p.origem !== ORIGEM_DO_GATEWAY));
+}
+
+/**
+ * Tudo que a pessoa já pagou, das duas origens.
+ *
+ * Responde outra pergunta que a de cima: quanto esta pessoa vale. Os dois ficam
+ * na tela porque o sócio usa um para decidir de quem cobrar e o outro para
+ * saber com quem está falando — e trocar um pelo outro tiraria dele um número
+ * que já usa.
+ */
+export function recebidoTotal(pagamentos: Pagamento[]): number {
+  return soma(pagamentos);
 }
 
 /** Soma um mês a `YYYY-MM`. */
@@ -126,13 +154,13 @@ function proximoMes(mes: string): string {
  * Assinatura sem valor mensal não tem mês em aberto: não há o que
  * cobrar de quem não combinou pagar nada.
  *
- * Um teto de doze meses existe para o caso de uma assinatura antiga sem nenhum
- * pagamento registrado: sem ele, a tela listaria dois anos de meses devidos, e
- * uma lista assim não é cobrança, é ruído. O primeiro mês da lista continua
- * sendo o mais antigo em aberto dentro da janela.
+ * ⚠️ Devolve TODOS os meses, nunca um recorte. Já cortou nos doze mais
+ * recentes, e o corte vazava para o dinheiro: quem chama multiplica pelo
+ * TAMANHO desta lista, então quem devia dezoito meses aparecia devendo doze, e
+ * a fila de inadimplentes — que ordena pelo total — mentia sobre a própria
+ * ordem, que é a única coisa que ela promete. Resumir a lista continua
+ * valendo, mas é decisão de tela e mora em `resumirMeses`.
  */
-export const TETO_DE_MESES_EM_ABERTO = 12;
-
 export function mesesEmAberto(
   comecouEm: string,
   valorMensal: number | null,
@@ -141,7 +169,23 @@ export function mesesEmAberto(
 ): string[] {
   if (!valorMensal) return [];
 
-  const pagos = new Set(pagamentos.filter((p) => !p.estornado).map((p) => p.mes));
+  /*
+   * ⚠️ Só o dinheiro da MÃO quita mês de assinatura manual.
+   *
+   * Desde que a ficha passou a carregar pagamento por pessoa, a lista que chega
+   * aqui tem as duas origens. Sem este filtro, uma fatura do cartão fechava um
+   * mês do acordo feito na mão: a pessoa aparecia "em dia" na ficha e "devendo"
+   * na fila de inadimplentes, que descarta as linhas sem assinatura de
+   * propósito. Duas telas, a mesma pessoa, respostas opostas.
+   *
+   * São dinheiros de acordos diferentes. Quem paga no cartão não está pagando a
+   * mensalidade que o sócio combinou por fora.
+   */
+  const pagos = new Set(
+    pagamentos
+      .filter((p) => !p.estornado && p.origem !== ORIGEM_DO_GATEWAY)
+      .map((p) => p.mes),
+  );
   const ate = hoje.slice(0, 7);
 
   const abertos: string[] = [];
@@ -153,7 +197,66 @@ export function mesesEmAberto(
     mes = proximoMes(mes);
   }
 
-  return abertos.slice(-TETO_DE_MESES_EM_ABERTO);
+  return abertos;
+}
+
+/**
+ * Quanto a pessoa deve: cada mês em aberto vale uma mensalidade.
+ *
+ * ⚠️ Mora num lugar só porque esta multiplicação em DOIS donos foi exatamente
+ * por onde o defeito vazou. A ficha e a fila calculavam o mesmo total cada uma
+ * por si; quando a lista de meses passou a vir cortada em doze, as duas
+ * erraram junto e em silêncio. Com um dono, consertar a conta conserta os dois
+ * lugares — e quebrar a conta quebra os dois testes.
+ */
+export function totalEmAberto(meses: string[], valorMensal: number): number {
+  return meses.length * valorMensal;
+}
+
+/**
+ * Quantos meses em aberto a tela escreve por extenso antes de resumir.
+ *
+ * É teto de ESPAÇO, e não de dívida. O nome antigo dizia "teto de meses em
+ * aberto", e um nome assim convida de volta exatamente o bug que existia: o
+ * número que a pessoa deve não passa por aqui.
+ */
+export const MESES_MOSTRADOS_NA_TELA = 12;
+
+/**
+ * A lista de meses como a tela escreve: os mais recentes por extenso, e quantos
+ * ficaram de fora.
+ *
+ * ⚠️ `ocultos` existe para a tela DIZER que resumiu. Resumir em silêncio é
+ * metade do defeito que separou esta função de `mesesEmAberto`: quem lê "Em
+ * aberto:" e conta doze meses precisa saber que há mais, senão a linha
+ * desmente o selo de "devendo 18 meses" que está logo acima dela.
+ *
+ * ⚠️ Mantém os mais ANTIGOS. A primeira versão mantinha os recentes, só porque
+ * era o que o código antigo fazia, e a revisão mostrou que isso quebrava duas
+ * coisas: o "e mais N" no fim da frase prometia meses posteriores ao último
+ * listado, quando os escondidos eram os anteriores; e a ficha sugeria lançar um
+ * mês que a própria linha não mostrava.
+ */
+export function resumirMeses(meses: string[]): { mostrados: string[]; ocultos: number } {
+  if (meses.length <= MESES_MOSTRADOS_NA_TELA) return { mostrados: meses, ocultos: 0 };
+  return {
+    mostrados: meses.slice(0, MESES_MOSTRADOS_NA_TELA),
+    ocultos: meses.length - MESES_MOSTRADOS_NA_TELA,
+  };
+}
+
+/**
+ * A linha "Em aberto:" como as duas telas escrevem — a da ficha e a da fila de
+ * inadimplentes.
+ *
+ * Mora aqui, e não em cada tela, porque a frase precisa ser a MESMA nas duas: o
+ * sócio compara os dois lugares, e duas redações do mesmo resumo fariam ele
+ * achar que são contas diferentes.
+ */
+export function textoDosMesesEmAberto(meses: string[]): string {
+  const { mostrados, ocultos } = resumirMeses(meses);
+  const lista = mostrados.map(formatarMes).join(', ');
+  return ocultos > 0 ? `${lista}, e mais ${ocultos}` : lista;
 }
 
 /**
@@ -177,7 +280,7 @@ export function situacaoDaReceita(
   const abertos = mesesEmAberto(comecouEm, valorMensal, pagamentos, hoje);
   if (abertos.length === 0) return { tipo: 'em_dia' };
 
-  return { tipo: 'devendo', meses: abertos.length, total: abertos.length * valorMensal };
+  return { tipo: 'devendo', meses: abertos.length, total: totalEmAberto(abertos, valorMensal) };
 }
 
 /**

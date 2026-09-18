@@ -11,16 +11,32 @@ import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 const HOJE = '2026-09-12';
 
-const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
-  id: 'a1',
-  user_id: 'u1',
-  plano: 'essencial',
-  vence_em: '2026-09-20',
-  valor_mensal: '39.90',
-  criada_em: '2026-09-01T12:00:00Z',
-  criada_por: 's1',
-  ...over,
-});
+const linha = ({
+  comecou_em,
+  ...over
+}: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => {
+  const criadaEm = over.criada_em ?? '2026-09-01T12:00:00Z';
+  return {
+    id: 'a1',
+    user_id: 'u1',
+    plano: 'essencial',
+    vence_em: '2026-09-20',
+    valor_mensal: '39.90',
+    criada_por: 's1',
+    ...over,
+    criada_em: criadaEm,
+    /*
+     * O começo cai no dia em que a linha nasceu, quando ninguém disser outra
+     * coisa — a mesma regra do preenchimento da migration 153.
+     *
+     * ⚠️ Derivado do `criada_em` JÁ SOBRESCRITO, e não de um padrão fixo.
+     * Vários testes controlam quando a dívida começa passando `criada_em`, e um
+     * padrão fixo faria todos eles medirem outra coisa em silêncio. Quem testa
+     * começo retroativo passa `comecou_em` explicitamente.
+     */
+    comecou_em: comecou_em ?? criadaEm.slice(0, 10),
+  };
+};
 
 const base = [cadastro({ id: 'u1', name: 'Maria Silva', whatsapp_number: '5511998877665' })];
 
@@ -187,6 +203,22 @@ describe('inadimplentes', () => {
     expect(i.total).toBeCloseTo(119.7);
   });
 
+  it('quem deve dezoito meses não aparece devendo doze', () => {
+    // ⚠️ O defeito que esta mudança conserta, e aqui ele custa mais caro que
+    // na ficha: esta fila é ordenada PELO TOTAL, e o total decide se o sócio
+    // insiste ou encerra. Com a dívida truncada, quem devia mais podia
+    // aparecer abaixo de quem devia menos, e a fila mentia sobre a própria
+    // ordem — que é a única coisa que ela promete.
+    const [i] = inadimplentes(
+      assinaturas(linha({ criada_em: '2025-04-10T15:00:00Z' })),
+      new Map(),
+      HOJE_I,
+    );
+    expect(i.meses).toHaveLength(18);
+    expect(i.meses[0]).toBe('2025-04');
+    expect(i.total).toBeCloseTo(718.2);
+  });
+
   it('quem pagou todos os meses não entra', () => {
     const pagos = montarPagamentos([
       pagamento({ competencia: '2026-07-01' }),
@@ -223,10 +255,31 @@ describe('inadimplentes', () => {
     ]);
   });
 
-  it('o mês de começo é o de Brasília', () => {
-    // 01:00Z do dia 1º de agosto ainda é 31 de julho aqui.
-    const lista = assinaturas(linha({ criada_em: '2026-08-01T01:00:00Z' }));
+  it('o começo vem da coluna, e a fila não converte fuso nenhum', () => {
+    // ⚠️ Este teste já afirmou o contrário, e a mudança é de lugar, não de
+    // regra. A fila derivava o começo do carimbo de criação convertendo para
+    // Brasília aqui, e a ficha fazia a MESMA conta do lado dela — duas cópias
+    // da mesma derivação, que é como o defeito do corte de doze meses vazou.
+    //
+    // Agora o banco grava o dia certo em `comecou_em`, e o navegador só lê. A
+    // conversão de fuso continua guardada por teste, mas no da migration 153,
+    // que cobra o `at time zone 'America/Sao_Paulo'` no preenchimento.
+    //
+    // O ganho concreto: o começo passou a poder ser RETROATIVO, e uma derivação
+    // do carimbo de criação nunca conseguiria expressar isso.
+    const lista = assinaturas(linha({ comecou_em: '2026-07-31' }));
     expect(inadimplentes(lista, new Map(), HOJE_I)[0].meses[0]).toBe('2026-07');
+  });
+
+  it('retroagir o começo abre os meses anteriores', () => {
+    // O que o campo novo entrega, visto de onde ele importa: a fila.
+    const lista = assinaturas(linha({ comecou_em: '2026-06-01' }));
+    expect(inadimplentes(lista, new Map(), HOJE_I)[0].meses).toEqual([
+      '2026-06',
+      '2026-07',
+      '2026-08',
+      '2026-09',
+    ]);
   });
 
   it('um pagamento estornado volta a contar como devido', () => {
