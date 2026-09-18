@@ -100,14 +100,42 @@ export function montarPagamentos(linhas: PagamentoDoBanco[]): Pagamento[] {
     .sort((a, b) => (a.mes === b.mes ? a.id.localeCompare(b.id) : b.mes.localeCompare(a.mes)));
 }
 
+/** A origem que o gateway grava. Quem paga por lá não é cobrado por ninguém. */
+export const ORIGEM_DO_GATEWAY = 'stripe';
+
+function soma(pagamentos: Pagamento[]): number {
+  return pagamentos.filter((p) => !p.estornado).reduce((total, p) => total + p.valor, 0);
+}
+
 /**
- * Quanto essa pessoa já gerou, na mão.
+ * O que entrou FORA do gateway.
+ *
+ * ⚠️ Filtra a origem, e o filtro é o que impede este número de virar mentira.
+ * Até a #457 a ficha carregava só pagamento de assinatura manual, então somar
+ * tudo dava o mesmo resultado. Agora o dinheiro do Stripe chega na mesma lista,
+ * e sem o filtro o rótulo "recebido na mão" passaria a incluir o que ninguém
+ * recebeu na mão.
+ *
+ * É este o número que importa para a cobrança: é o dinheiro que depende de
+ * alguém ir atrás.
  *
  * Estornado não conta, e é o ponto de existir estorno: um lançamento errado
  * sai da soma sem sair da tabela.
  */
-export function receitaRecebida(pagamentos: Pagamento[]): number {
-  return pagamentos.filter((p) => !p.estornado).reduce((soma, p) => soma + p.valor, 0);
+export function recebidoNaMao(pagamentos: Pagamento[]): number {
+  return soma(pagamentos.filter((p) => p.origem !== ORIGEM_DO_GATEWAY));
+}
+
+/**
+ * Tudo que a pessoa já pagou, das duas origens.
+ *
+ * Responde outra pergunta que a de cima: quanto esta pessoa vale. Os dois ficam
+ * na tela porque o sócio usa um para decidir de quem cobrar e o outro para
+ * saber com quem está falando — e trocar um pelo outro tiraria dele um número
+ * que já usa.
+ */
+export function recebidoTotal(pagamentos: Pagamento[]): number {
+  return soma(pagamentos);
 }
 
 /** Soma um mês a `YYYY-MM`. */

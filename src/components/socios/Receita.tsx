@@ -4,7 +4,8 @@ import {
   formatarMes,
   lerValorDigitado,
   mesesEmAberto,
-  receitaRecebida,
+  recebidoNaMao,
+  recebidoTotal,
   rotuloDaOrigem,
   situacaoDaReceita,
   textoDosMesesEmAberto,
@@ -186,7 +187,12 @@ export function Receita({
   }
 
   const { pagamentos } = estado;
-  const recebido = receitaRecebida(pagamentos);
+  const naMao = recebidoNaMao(pagamentos);
+  const total = recebidoTotal(pagamentos);
+  // Só mostra o total quando ele DIFERE do de cá: para quem nunca pagou pelo
+  // gateway os dois números são iguais, e repetir o mesmo valor duas vezes com
+  // nomes diferentes faria o sócio procurar uma diferença que não existe.
+  const temDinheiroDoGateway = total !== naMao;
   const abertos = mesesEmAberto(assinatura.comecouEm, assinatura.valorMensal, pagamentos, hoje);
   const situacao = situacaoDaReceita(assinatura.comecouEm, assinatura.valorMensal, pagamentos, hoje);
 
@@ -199,7 +205,10 @@ export function Receita({
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-[13px] text-ink">
-          Recebido na mão: <span className="font-bold">{emReais(recebido)}</span>
+          Recebido na mão: <span className="font-bold">{emReais(naMao)}</span>
+          {temDinheiroDoGateway ? (
+            <span className="text-ink-2"> · total {emReais(total)}</span>
+          ) : null}
         </p>
 
         {situacao.tipo === 'devendo' ? (

@@ -157,7 +157,9 @@ function FichaDoModal({ id }: { id: string }) {
       ? (assinaturas.assinaturas.find((a) => a.userId === id) ?? null)
       : null;
 
-  const pagamentos = usePagamentos(assinaturaAberta?.id);
+  // Por PESSOA, e não pela assinatura aberta: a ficha responde "quanto esta
+  // pessoa já pagou", e o dinheiro do gateway não pendura em assinatura manual.
+  const pagamentos = usePagamentos(id);
   const registrarPagamento = useRegistrarPagamento(assinaturaAberta?.id, id);
   const estornarPagamento = useEstornarPagamento(assinaturaAberta?.id, id);
 

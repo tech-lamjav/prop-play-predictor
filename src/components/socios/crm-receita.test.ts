@@ -5,7 +5,8 @@ import {
   lerValorDigitado,
   mesesEmAberto,
   montarPagamentos,
-  receitaRecebida,
+  recebidoNaMao,
+  recebidoTotal,
   resumirMeses,
   situacaoDaReceita,
   MESES_MOSTRADOS_NA_TELA,
@@ -60,16 +61,38 @@ describe('montarPagamentos', () => {
   });
 });
 
-describe('receitaRecebida', () => {
+describe('recebidoNaMao e recebidoTotal', () => {
   it('soma o que entrou', () => {
     const pagos = montarPagamentos([
       linha({ id: 'a', competencia: '2026-08-01', valor: '39.90' }),
       linha({ id: 'b', competencia: '2026-09-01', valor: '39.90' }),
     ]);
-    expect(receitaRecebida(pagos)).toBeCloseTo(79.8);
+    expect(recebidoNaMao(pagos)).toBeCloseTo(79.8);
+    expect(recebidoTotal(pagos)).toBeCloseTo(79.8);
   });
 
-  it('estornado não conta', () => {
+  it('⚠️ dinheiro do gateway NÃO entra no recebido na mão', () => {
+    // O defeito que este filtro impede, e ele nasceu com a #457: a ficha
+    // passou a carregar pagamento por PESSOA, e o dinheiro do Stripe chega na
+    // mesma lista. Sem o filtro, o rótulo "recebido na mão" passaria a incluir
+    // o que ninguém recebeu na mão — e é esse número que decide de quem cobrar.
+    const pagos = montarPagamentos([
+      linha({ id: 'a', competencia: '2026-08-01', valor: '39.90', origem: 'pix' }),
+      linha({ id: 'b', competencia: '2026-09-01', valor: '100.00', origem: 'stripe' }),
+    ]);
+    expect(recebidoNaMao(pagos)).toBeCloseTo(39.9);
+    expect(recebidoTotal(pagos)).toBeCloseTo(139.9);
+  });
+
+  it('quem só pagou pelo gateway tem zero na mão, e não zero no total', () => {
+    const pagos = montarPagamentos([
+      linha({ id: 'a', competencia: '2026-09-01', valor: '100.00', origem: 'stripe' }),
+    ]);
+    expect(recebidoNaMao(pagos)).toBe(0);
+    expect(recebidoTotal(pagos)).toBeCloseTo(100);
+  });
+
+  it('estornado não conta, nas duas somas', () => {
     // É o ponto de existir estorno: um lançamento errado sai da soma sem sair
     // da tabela. Se contasse, a receita mentiria e ninguém teria como corrigir.
     const pagos = montarPagamentos([
@@ -80,12 +103,21 @@ describe('receitaRecebida', () => {
         valor: '39.90',
         estornado_em: '2026-09-10T12:00:00Z',
       }),
+      linha({
+        id: 'c',
+        competencia: '2026-09-01',
+        valor: '100.00',
+        origem: 'stripe',
+        estornado_em: '2026-09-11T12:00:00Z',
+      }),
     ]);
-    expect(receitaRecebida(pagos)).toBeCloseTo(39.9);
+    expect(recebidoNaMao(pagos)).toBeCloseTo(39.9);
+    expect(recebidoTotal(pagos)).toBeCloseTo(39.9);
   });
 
   it('sem pagamento, zero e não NaN', () => {
-    expect(receitaRecebida([])).toBe(0);
+    expect(recebidoNaMao([])).toBe(0);
+    expect(recebidoTotal([])).toBe(0);
   });
 });
 
