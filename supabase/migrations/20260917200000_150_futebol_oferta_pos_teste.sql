@@ -137,8 +137,16 @@ revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from publ
 revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from anon, authenticated;
 grant execute on function public.claim_futebol_oferta_pos_teste(uuid) to service_role;
 
--- ── Desfazer a reserva, à mão ───────────────────────────────────────────────
--- NÃO é chamada pela função de borda, e isso é decisão, não esquecimento.
+-- ── Desfazer a reserva ──────────────────────────────────────────────────────
+-- ⚠️ MUDOU NA 151: a função de borda passou a chamar esta função no 403, e só
+-- nele. O 403 é a única falha que PROVA que não entregou — o Telegram recusou —
+-- e, como a oferta é uma por pessoa para sempre, manter a reserva queimaria a
+-- chance de quem desbloquear amanhã. Não há risco de repetição, porque a marca
+-- de bloqueado (151) passa a pular essa pessoa nas rodadas seguintes.
+--
+-- O parágrafo abaixo continua valendo para TODO O RESTO, que é o que importa:
+--
+-- NÃO é chamada pela função de borda no timeout, e isso é decisão, não esquecimento.
 -- Quando o envio falha por timeout, ninguém sabe se o Telegram entregou —
 -- soltar a vaga ali transforma dúvida em segundo envio, que é o pior desfecho
 -- possível de uma mensagem de venda. O erro fica gravado na linha, e devolver a

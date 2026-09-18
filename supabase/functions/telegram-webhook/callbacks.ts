@@ -4,6 +4,7 @@
 // Extraído de index.ts na Onda 6b da revisão (split mecânico, move-only).
 import { BETS_DASHBOARD_URL } from "./config.ts";
 import { temAcessoAoFutebol } from "../shared/acesso-ao-futebol.ts";
+import { limparBloqueio } from "../shared/telegram.ts";
 import type { TelegramCallbackQuery } from "./types.ts";
 import {
   answerCallbackQuery,
@@ -58,6 +59,16 @@ async function handleCallbackQuery(
     );
     return ok("callback user not found");
   }
+
+  // A porta de volta mais usada de quem tinha bloqueado o bot (#466). Neste bot
+  // quase toda interação é BOTÃO — Green, Red, Corrigir, Silenciar, registrar —
+  // e o Telegram não entrega callback de um chat bloqueado: se este toque
+  // chegou, a pessoa desbloqueou.
+  //
+  // Sem esta linha, a marca virava sentença para quem volta clicando em vez de
+  // digitar, que é a maioria: ela ficava fora de todas as mensagens para sempre,
+  // tendo feito tudo certo.
+  await limparBloqueio(supabase, user.id).catch(() => {});
 
   // 🔕 mute:<bet_id> — para os lembretes; mantém os botões de liquidar desta aposta
   if (data.startsWith("mute:")) {

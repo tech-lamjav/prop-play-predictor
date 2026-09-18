@@ -23,6 +23,15 @@ import { describe, expect, it } from 'vitest';
 const RAIZ = resolve(__dirname, '../..');
 const ler = (p: string) => readFileSync(resolve(RAIZ, p), 'utf8');
 
+/**
+ * Espaço normalizado, como faz a guarda da vigência do limiar.
+ *
+ * Sem isto, a asserção vira refém de formatação: uma quebra de linha diferente
+ * derruba um teste que deveria falar sobre ORDEM, e o time aprende a consertar
+ * teste em vez de ler o que ele diz.
+ */
+const norm = (s: string) => s.replace(/\s+/g, ' ');
+
 const MIGRATION = ler('supabase/migrations/20260918100000_151_telegram_bloqueado.sql');
 const REMETENTE = ler('supabase/functions/shared/telegram.ts');
 const WEBHOOK = ler('supabase/functions/telegram-webhook/index.ts');
@@ -60,10 +69,11 @@ describe('o remetente compartilhado', () => {
     // Por posição, e não por vizinhança: a primeira versão deste teste olhava
     // 400 caracteres depois do `if`, e uma implementação que marcasse ANTES da
     // checagem — ou seja, em todo erro — passava verde do mesmo jeito.
-    const sucesso = REMETENTE.indexOf('if (res.ok) return { desfecho: "enviada" }');
-    const checa403 = REMETENTE.indexOf('if (res.status === 403)');
-    const marca = REMETENTE.indexOf('marcarBloqueado(supabase, userId)');
-    const falhou = REMETENTE.indexOf('desfecho: "falhou"');
+    const fonte = norm(REMETENTE);
+    const sucesso = fonte.indexOf('if (res.ok) return { desfecho: "enviada" }');
+    const checa403 = fonte.indexOf('if (res.status === 403)');
+    const marca = fonte.indexOf('marcarBloqueado(supabase, userId)');
+    const falhou = fonte.indexOf('desfecho: "falhou"');
 
     expect(sucesso, 'o caminho feliz sai primeiro').toBeGreaterThan(-1);
     expect(checa403, 'falta a checagem do 403').toBeGreaterThan(sucesso);
@@ -71,7 +81,7 @@ describe('o remetente compartilhado', () => {
     expect(falhou, 'o "falhou" é a saída de baixo').toBeGreaterThan(marca);
 
     // E uma vez só: duas chamadas significariam uma fora do ramo do 403.
-    expect(REMETENTE.split('marcarBloqueado(supabase, userId)').length - 1).toBe(1);
+    expect(fonte.split('marcarBloqueado(supabase, userId)').length - 1).toBe(1);
   });
 
   it('deixa medição: o bloqueio vira evento', () => {
@@ -86,7 +96,9 @@ describe('o remetente compartilhado', () => {
     // incompleta e as pessoas do fim voltariam a ser tentadas, sem erro nenhum.
     // E erro engolido faz "ninguém está marcado" e "não consegui perguntar"
     // virarem a mesma linha de log.
-    expect(REMETENTE).toContain('.range(de, de + PAGINA - 1)');
+    // E ORDENADA: paginar sem ORDER BY é pior que não paginar, porque o Postgres
+    // não promete a mesma ordem entre páginas e linhas somem sem erro nenhum.
+    expect(norm(REMETENTE)).toContain('.order("id") .range(de, de + PAGINA - 1)');
     expect(REMETENTE).toContain('console.error("carregarBloqueados falhou');
   });
 
@@ -136,18 +148,22 @@ describe('as oito funções que falam com usuário', () => {
 describe('liquidar e avisar são coisas separadas', () => {
   const SETTLEMENT = ler('supabase/functions/notify-settlement/index.ts');
 
-  it('a aposta de quem bloqueou continua sendo liquidada', () => {
-    // A primeira versão tirava essas pessoas da lista de candidatos. O efeito
-    // era grave e calado: a aposta nunca liquidava, a banca e o ROI congelavam
-    // no site, e o mesmo candidato voltava a cada 15 minutos para sempre.
-    expect(SETTLEMENT).toContain('const candidates: Candidate[] = todosCandidatos;');
+  it('a lista de candidatos não é filtrada pelos bloqueados', () => {
+    // A primeira versão filtrava aqui, e o efeito era grave e calado: a aposta
+    // nunca liquidava, a banca e o ROI congelavam no site, e o mesmo candidato
+    // voltava a cada 15 minutos para sempre. Afirmado pela AUSÊNCIA do filtro,
+    // e não pela presença de um apelido de variável, que é detalhe de escrita.
+    expect(norm(SETTLEMENT)).not.toContain(
+      'todosCandidatos.filter( (bet) => !bloqueadosSet.has(bet.user_id) )',
+    );
   });
 
   it('e a decisão de não mandar vem DEPOIS de liquidar', () => {
     // A ordem é a regra inteira: liquidar é o produto funcionando, e o histórico
     // no site é de quem bloqueou também. Avisar é o que ela recusou.
-    const liquida = SETTLEMENT.indexOf('const ok = await settleBet(supabase, bet, m, verdict);');
-    const pula = SETTLEMENT.indexOf('if (bloqueado) return "bloqueado";');
+    const fonte = norm(SETTLEMENT);
+    const liquida = fonte.indexOf('const ok = await settleBet(supabase, bet, m, verdict);');
+    const pula = fonte.indexOf('if (bloqueado) return "bloqueado";');
     expect(liquida, 'o settleBet sumiu do autoSettle').toBeGreaterThan(-1);
     expect(pula, 'o pulo tem de vir depois da liquidação').toBeGreaterThan(liquida);
   });
@@ -162,9 +178,11 @@ describe('o buraco conhecido do aviso de kickoff', () => {
   // Quando alguém acrescentar o id do dono na consulta, este teste vai falhar,
   // e é para falhar mesmo: é o lembrete de apagar esta exceção.
   it('ainda manda sem id de usuário, então não pula nem marca', () => {
-    const fonte = ler('supabase/functions/notify-kickoff/index.ts');
+    // Afirmado pelo que o código FAZ — passar nulo no lugar do id — e não pela
+    // presença da palavra "null" no arquivo, que não prova nada.
+    const fonte = norm(ler('supabase/functions/notify-kickoff/index.ts'));
     expect(fonte).not.toContain('carregarBloqueados(');
-    expect(fonte).toContain('null');
+    expect(fonte).toContain('sendTelegramMessage( supabase, null, row.owner_chat_id,');
   });
 });
 
@@ -185,6 +203,18 @@ describe('o caminho de volta', () => {
     // O Telegram não entrega nada de um chat bloqueado: se a mensagem chegou,
     // ela desbloqueou. Sem isto, a marca vira sentença.
     expect(WEBHOOK).toContain('limparBloqueio(supabase, user.id)');
+  });
+
+  it('tocar num botão também tira — que é como a maioria volta', () => {
+    // Neste bot quase toda interação é botão, e o ramo de callback responde e sai
+    // antes do caminho comum. Sem limpeza própria, a marca virava sentença para
+    // quem volta clicando em vez de digitar.
+    const callbacks = ler('supabase/functions/telegram-webhook/callbacks.ts');
+    expect(callbacks).toContain('limparBloqueio(supabase, user.id)');
+  });
+
+  it('compartilhar o contato de novo também tira', () => {
+    expect(WEBHOOK).toContain('limparBloqueio(supabase, userMatch.id)');
   });
 
   it('reconectar pelo site também tira', () => {

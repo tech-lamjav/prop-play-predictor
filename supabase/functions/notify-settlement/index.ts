@@ -330,9 +330,12 @@ serve(async (req) => {
     // tem o que liquidar: ali o bloqueio pula tudo.
     const bloqueadosSet = await carregarBloqueados(supabase);
     const candidates: Candidate[] = todosCandidatos;
-    let bloqueados = 0;
+    // PESSOAS, e nao mensagens: o lembrete puro reavalia a mesma aposta a cada
+    // 15 minutos, e contar por aposta somaria a mesma pessoa dezenas de vezes
+    // por dia — numero inflado numa mudanca que existe para limpar numero.
+    const bloqueadosVistos = new Set<string>();
     if (candidates.length === 0) {
-      return json({ ok: true, candidates: 0, sent: 0, bloqueados });
+      return json({ ok: true, candidates: 0, sent: 0, bloqueados: 0 });
     }
 
     // 2) Jogos encerrados nas últimas 60h (janela do "acabou de acabar"),
@@ -505,7 +508,7 @@ serve(async (req) => {
               );
             // Bloqueou entre a lista e o envio: as apostas ficam liquidadas (já
             // gravadas acima) e só o aviso não sai. Não é erro.
-            if (desfecho === "bloqueada") bloqueados++;
+            if (desfecho === "bloqueada") bloqueadosVistos.add(settledItems[0].bet.user_id);
             else sent++;
           } catch (e) {
             // apostas JÁ liquidadas (grava antes de avisar) — só o aviso falhou
@@ -530,7 +533,7 @@ serve(async (req) => {
             if (resultado !== "nao-liquidou") {
               // Liquidou nos dois casos; o que muda é se o aviso chegou. O
               // evento continua saindo porque ele mede a LIQUIDAÇÃO, não a DM.
-              if (resultado === "bloqueado") bloqueados++;
+              if (resultado === "bloqueado") bloqueadosVistos.add(d.bet.user_id);
               else sent++;
               await trackEvent(
                 "bet_auto_settled",
@@ -557,7 +560,7 @@ serve(async (req) => {
           // só a pergunta "como foi?". Quem bloqueou pula inteiro, sem gastar
           // chamada e sem mexer na cadência de reenvio.
           if (bloqueadosSet.has(d.bet.user_id)) {
-            bloqueados++;
+            bloqueadosVistos.add(d.bet.user_id);
             continue;
           }
 
@@ -566,7 +569,7 @@ serve(async (req) => {
           // Bloqueou agora → pula sem mexer na cadência: contar um lembrete que
           // ninguém recebeu gastaria a régua de reenvio no vazio.
           if (desfecho === "bloqueada") {
-            bloqueados++;
+            bloqueadosVistos.add(d.bet.user_id);
             continue;
           }
 
@@ -616,7 +619,7 @@ serve(async (req) => {
       fixtures_finished: fxFinished.length,
       due: due.length,
       sent,
-      bloqueados,
+      bloqueados: bloqueadosVistos.size,
       generic_window_open: genericAllowed,
       errors,
     });

@@ -324,6 +324,11 @@ serve(async (req) => {
           .eq("id", userMatch.id);
 
         if (!updateError) {
+          // Terceira porta de volta de quem tinha bloqueado (#466): refazer o
+          // vínculo pelo contato. Como o deep link, este ramo responde e sai
+          // antes do caminho comum, então precisa limpar por conta própria.
+          await limparBloqueio(supabase, userMatch.id).catch(() => {});
+
           await identifyUser(userMatch.id, {
             name: fromUser?.first_name || userMatch.name || undefined,
             phone: contactPhone,

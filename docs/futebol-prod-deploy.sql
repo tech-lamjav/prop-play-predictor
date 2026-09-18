@@ -3079,8 +3079,10 @@ revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from publ
 revoke execute on function public.claim_futebol_oferta_pos_teste(uuid) from anon, authenticated;
 grant execute on function public.claim_futebol_oferta_pos_teste(uuid) to service_role;
 
--- Devolver a vaga é passo MANUAL: a função de borda não chama, para timeout não
--- virar segundo envio.
+-- A borda devolve a vaga NO 403, que prova que não entregou — a oferta é uma por
+-- pessoa para sempre, e manter a reserva queimaria a chance de quem desbloquear
+-- depois (migration 151). No timeout ela NÃO devolve, porque timeout não prova
+-- nada e dúvida viraria segundo envio; ali devolver é passo manual.
 create or replace function public.release_futebol_oferta_pos_teste(p_user_id uuid)
 returns void
 language sql

@@ -208,17 +208,20 @@ serve(async (req) => {
   // desbloquear amanhã. Foi neste envio que o problema apareceu (#466).
   const bloqueadosSet = await carregarBloqueados(supabase);
 
+  // O corte vem DEPOIS de tirar os bloqueados, e não antes. Pulando dentro do
+  // laço, quem bloqueou consumia vaga do teto da rodada e ainda inflava
+  // `elegiveis` e `ficaram_para_a_proxima` — número sujo numa mudança que existe
+  // para limpar número.
+  const alcancaveis = alvos.filter((a) => !bloqueadosSet.has(a.user_id));
+  const bloqueados = alvos.length - alcancaveis.length;
+
   let enviados = 0;
   let pulados = 0;
   let falhas = 0;
-  let bloqueados = 0;
+  /** Quem bloqueou ENTRE a lista e o envio: só descobre no 403. */
+  let bloqueadosNoEnvio = 0;
 
-  for (const alvo of alvos.slice(0, MAX_POR_RODADA)) {
-    if (bloqueadosSet.has(alvo.user_id)) {
-      bloqueados++;
-      continue;
-    }
-
+  for (const alvo of alcancaveis.slice(0, MAX_POR_RODADA)) {
     const { data: reservou, error: erroReserva } = await supabase.rpc(
       "claim_futebol_oferta_pos_teste",
       { p_user_id: alvo.user_id },
@@ -248,10 +251,26 @@ serve(async (req) => {
       // O timeout do `catch` abaixo é o oposto: ele não prova nada, então lá a
       // reserva fica.
       if (r.desfecho === "bloqueada") {
-        bloqueados++;
-        await supabase.rpc("release_futebol_oferta_pos_teste", {
-          p_user_id: alvo.user_id,
-        });
+        bloqueadosNoEnvio++;
+        const { error: erroSolta } = await supabase.rpc(
+          "release_futebol_oferta_pos_teste",
+          { p_user_id: alvo.user_id },
+        );
+        // A linha é APAGADA pela devolução, então o motivo não fica gravado em
+        // lugar nenhum da tabela: ele só sobrevive aqui e no evento que o
+        // remetente dispara. Registrar é o que impede este caso de virar um
+        // sumiço sem explicação.
+        //
+        // E se a devolução falhar, a pessoa fica reservada sem nunca ter
+        // recebido — perde a única oferta dela, em silêncio. Por isso o erro é
+        // olhado, e não engolido.
+        if (erroSolta) {
+          console.error(`não devolvi a vaga de ${alvo.user_id}:`, erroSolta);
+        } else {
+          console.log(
+            `vaga devolvida, bloqueado: ${alvo.user_id} — ${r.erro ?? "telegram 403"}`,
+          );
+        }
         continue;
       }
       await supabase.from(TABELA).update({ enviada_em: new Date().toISOString() })
@@ -277,11 +296,13 @@ serve(async (req) => {
   return json({
     mode,
     elegiveis: alvos.length,
+    alcancaveis: alcancaveis.length,
     enviados,
     pulados,
     falhas,
     bloqueados,
-    ficaram_para_a_proxima: Math.max(0, alvos.length - MAX_POR_RODADA),
+    bloqueados_no_envio: bloqueadosNoEnvio,
+    ficaram_para_a_proxima: Math.max(0, alcancaveis.length - MAX_POR_RODADA),
     hora_brt: hora,
   });
 });

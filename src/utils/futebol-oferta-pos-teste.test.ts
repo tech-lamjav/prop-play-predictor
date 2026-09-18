@@ -139,9 +139,12 @@ describe('uma por pessoa, para sempre', () => {
       'create or replace function public.release_futebol_oferta_pos_teste(',
     );
 
-    const bloqueada = borda.indexOf('if (r.desfecho === "bloqueada")');
-    const solta = borda.indexOf('rpc("release_futebol_oferta_pos_teste"');
-    const catchDoEnvio = borda.indexOf('} catch (e) {');
+    // Espaço normalizado: a asserção fala de ORDEM, e não pode ser derrubada por
+    // uma quebra de linha diferente.
+    const fonte = borda.replace(/\s+/g, ' ');
+    const bloqueada = fonte.indexOf('if (r.desfecho === "bloqueada")');
+    const solta = fonte.indexOf('rpc( "release_futebol_oferta_pos_teste"');
+    const catchDoEnvio = fonte.indexOf('} catch (e) {');
 
     expect(bloqueada, 'falta o ramo do bloqueado').toBeGreaterThan(-1);
     expect(solta, 'a devolução tem de estar no ramo do 403').toBeGreaterThan(bloqueada);

@@ -42,10 +42,12 @@ type Banco = {
     };
     select: (colunas: string) => {
       not: (coluna: string, op: string, valor: null) => {
-        range: (
-          de: number,
-          ate: number,
-        ) => PromiseLike<{ data: { id: string }[] | null; error: Erro }>;
+        order: (coluna: string) => {
+          range: (
+            de: number,
+            ate: number,
+          ) => PromiseLike<{ data: { id: string }[] | null; error: Erro }>;
+        };
       };
     };
   };
@@ -65,9 +67,12 @@ const PAGINA = 1000;
  * perguntar ao banco a cada envio seria trocar um problema de métrica por um de
  * latência. Os marcados são minoria e cabem num `Set`.
  *
- * ⚠️ PAGINADO de propósito. Sem `range`, o PostgREST devolve as primeiras mil
- * linhas e não diz que cortou — a lista viria incompleta e as pessoas do fim do
- * alfabeto voltariam a ser tentadas, sem erro nenhum aparecer.
+ * ⚠️ PAGINADO E ORDENADO, e as duas coisas juntas. Sem `range`, o PostgREST
+ * devolve as primeiras mil linhas e não diz que cortou. E paginar sem `order` é
+ * pior do que não paginar: sem ORDER BY o Postgres não promete a mesma ordem
+ * entre duas consultas, então linhas podem aparecer duas vezes numa página e
+ * sumir de outra — a lista sairia incompleta do mesmo jeito, agora com a
+ * aparência de estar certa.
  *
  * ⚠️ FALHA ABERTA, e gritando. Se o banco não responder, a lista sai vazia e a
  * rodada tenta todo mundo — que é o comportamento anterior a esta mudança, ou
@@ -84,6 +89,7 @@ export async function carregarBloqueados(supabase: Banco): Promise<Set<string>> 
       .from("users")
       .select("id")
       .not("telegram_bloqueado_em", "is", null)
+      .order("id")
       .range(de, de + PAGINA - 1);
 
     if (error) {

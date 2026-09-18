@@ -135,6 +135,13 @@ serve(async (req) => {
         // esta mudança existe para acabar (#466).
         if (desfecho === "bloqueada") {
           bloqueados++;
+          // Registrado porque aqui, e SÓ aqui, o 403 não deixa marca: a RPC
+          // desta função devolve o chat do dono sem id de usuário, então não há
+          // quem marcar. Sem esta linha o aviso seria retentado a cada rodada da
+          // janela, em silêncio — o buraco vira invisível em vez de conhecido.
+          console.warn(
+            `kickoff bloqueado (sem id de usuário para marcar): bolao ${row.bolao_id} chat ${row.owner_chat_id}`,
+          );
           continue;
         }
 
