@@ -37,6 +37,7 @@ import {
   type FutebolFixtureValueRow,
   type FutebolFixtureValueComCortadas,
   type FutebolAlertedPick,
+  type FutebolPlacarFresco,
 } from '@/services/futebol-data.service';
 
 /**
@@ -369,6 +370,36 @@ export function useFutebolAlertedPicks() {
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * O placar dos jogos que o coletor já fechou e o espelho ainda não.
+ *
+ * Existe porque o painel lê o espelho, que recarrega no ritmo do pipeline: jogo
+ * que acaba de madrugada amanhece sem resultado na tela, e o sócio via "10 de 19
+ * sem resultado" no dia anterior. Só é chamada quando sobra jogo sem placar no
+ * dia mostrado — dia inteiro fechado não gasta consulta.
+ *
+ * O `refetchInterval` é o que faz o resultado APARECER com a tela aberta. Sem
+ * ele o `staleTime` curto não busca nada sozinho (ver o cabeçalho de
+ * `use-now.ts`: o tique move o relógio, não os dados), e o jogo que acabou às
+ * 23h só ganharia placar no F5. Dois minutos é o passo do coletor.
+ *
+ * O `placeholderData` segura o que já veio enquanto a lista de ids muda: a
+ * chave muda junto, e sem isso a linha pisca de volta para "sem resultado".
+ */
+export function useFutebolPlacarFresco(fixtureIds: number[]) {
+  const ids = [...fixtureIds].sort((a, b) => a - b);
+  return useQuery<FutebolPlacarFresco[]>({
+    queryKey: ['futebol', 'placar-fresco', ids],
+    queryFn: () => futebolDataService.getPlacarFresco(ids),
+    enabled: ids.length > 0,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    placeholderData: (anterior) => anterior,
   });
 }
 

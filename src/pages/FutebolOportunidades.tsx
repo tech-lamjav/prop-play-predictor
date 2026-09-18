@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine, useFutebolPlacarFresco } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
@@ -31,7 +31,7 @@ import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-regist
 import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
 import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
-import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture, FutebolPlacarFresco } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
@@ -343,12 +343,6 @@ export default function FutebolOportunidades() {
     return m;
   }, [fixtures]);
 
-  const resultOf = (o: OppLike): BetResult | null => {
-    if (!FINISHED_STATUS.has(o.status_short ?? '')) return null;
-    const g = goalsMap.get(o.fixture_id);
-    return g ? settleFutebol(o, g.gh, g.ga) : null;
-  };
-
   // ── Oportunidades REGISTRADAS ─────────────────────────────────────────────
   // O mart é full-refresh e escolhe UMA janela de odds por jogo (t24h de manhã →
   // t15m no fechamento), então uma oportunidade que existiu durante o dia pode
@@ -445,6 +439,71 @@ export default function FutebolOportunidades() {
     [allRows, selectedDay, registradasAll, fixtureMap],
   );
 
+  // ── O placar fresco ───────────────────────────────────────────────────────
+  // As linhas DESTE dia cujo apito já passou e que nenhum espelho fechou.
+  //
+  // O painel lê o espelho, que recarrega no ritmo do pipeline de analytics; o
+  // coletor, que pergunta o placar de 2 em 2 minutos, grava em outra tabela.
+  // Entre o jogo acabar de madrugada e o espelho recarregar, a oportunidade
+  // amanhecia sem resultado — em 17/09 foram 19 linhas assim, de dois jogos.
+  //
+  // ⚠️ SAI DE `dayRows`, e não de `fixtures`. O calendário traz a TEMPORADA
+  // inteira de cada liga: perguntar por ele arrastaria todo jogo adiado,
+  // cancelado ou preso em status antigo desde o começo do ano — ids que crescem
+  // para sempre e que não estão nesta tela. O dia mostrado é o recorte certo.
+  //
+  // Quem responde "acabou?" são as DUAS linhas do espelho (a do calendário e a
+  // do board), porque elas podem discordar: basta uma dizer encerrado para não
+  // haver o que perguntar.
+  const idsSemFecho = useMemo(() => {
+    const ids: number[] = [];
+    const vistos = new Set<number>();
+    for (const r of dayRows) {
+      if (vistos.has(r.fixture_id)) continue;
+      const fx = fixtureMap.get(r.fixture_id);
+      if (FINISHED_STATUS.has(fx?.status_short ?? '') || FINISHED_STATUS.has(r.status_short ?? '')) continue;
+      // O relógio manda, como no filtro "só em aberto" logo acima: o status
+      // atrasa, o horário não. Kickoff nulo não entra — não há o que afirmar.
+      if (!hasKickoffPassed(fx?.kickoff_utc ?? r.kickoff_utc, new Date(agora))) continue;
+      vistos.add(r.fixture_id);
+      ids.push(r.fixture_id);
+    }
+    return ids;
+  }, [dayRows, fixtureMap, agora]);
+  const { data: placarFresco } = useFutebolPlacarFresco(idsSemFecho);
+  const frescoMap = useMemo(() => {
+    const m = new Map<number, FutebolPlacarFresco>();
+    (placarFresco ?? []).forEach((p) => m.set(p.fixture_id, p));
+    return m;
+  }, [placarFresco]);
+
+  /**
+   * O placar que vale para esta linha, e de onde ele veio.
+   *
+   * O fresco ganha quando existe, e ele só existe para jogo encerrado com
+   * placar. O resto continua vindo do espelho: nota, faixa e vantagem são
+   * leitura point-in-time, e disso o coletor não sabe nada.
+   *
+   * ⚠️ O status do espelho é lido das duas linhas. O board e o calendário são
+   * marts diferentes e podem discordar; quando uma delas já diz encerrado, o
+   * jogo acabou. Ler só a do board era o que deixava um jogo com placar na mão
+   * sem liquidar, porque a linha do board ainda dizia "2H".
+   */
+  const placarDe = (o: OppLike) => {
+    const fresco = frescoMap.get(o.fixture_id);
+    if (fresco) return { gh: fresco.goals_home, ga: fresco.goals_away, status: fresco.status_short };
+    const fx = fixtureMap.get(o.fixture_id);
+    const g = goalsMap.get(o.fixture_id);
+    const status = FINISHED_STATUS.has(fx?.status_short ?? '') ? fx?.status_short ?? null : o.status_short;
+    return { gh: g?.gh ?? null, ga: g?.ga ?? null, status };
+  };
+
+  const resultOf = (o: OppLike): BetResult | null => {
+    const p = placarDe(o);
+    if (!FINISHED_STATUS.has(p.status ?? '')) return null;
+    return p.gh != null && p.ga != null ? settleFutebol(o, p.gh, p.ga) : null;
+  };
+
   // A demonstração herda a escala do produto (#333). A janela passada aqui é a
   // MESMA que a tela exibe: herdar de outra faz o tour anunciar uma régua e a
   // legenda ao lado dele anunciar outra, que é o defeito inteiro de volta.
@@ -538,8 +597,10 @@ export default function FutebolOportunidades() {
         resultado: resultOf(o),
       })))
       : null),
+    // `resultOf` lê os três mapas, e o eslint está desligado aqui: quem esquecer
+    // um deles faz a manchete do dia congelar no que o espelho dizia antes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isPastDay, comValor, goalsMap, fixtureMap],
+    [isPastDay, comValor, goalsMap, fixtureMap, frescoMap],
   );
 
   // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
@@ -729,7 +790,7 @@ export default function FutebolOportunidades() {
               </div>
               {comValor.map((o) => {
                 const res = resultOf(o);
-                const g = goalsMap.get(o.fixture_id);
+                const g = placarDe(o);
                 return (
                   <div key={key(o)}>
                     <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
@@ -747,7 +808,7 @@ export default function FutebolOportunidades() {
             <div className="md:hidden flex flex-col gap-2.5">
               {comValor.map((o) => {
                 const res = resultOf(o);
-                const g = goalsMap.get(o.fixture_id);
+                const g = placarDe(o);
                 return (
                   <OppMobileCard
                     key={key(o)}
