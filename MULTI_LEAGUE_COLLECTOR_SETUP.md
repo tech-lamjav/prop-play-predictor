@@ -35,8 +35,13 @@ Fora de janela de jogo: **zero** invocação — o gate é SQL no próprio cron.
 ## Ligar/desligar ligas (dado, não deploy)
 
 ```sql
-update leagues_config set enabled = true where league_id = 39; -- Premier volta 15/08
+update leagues_config set enabled = true where league_id = 39 and season = 2026;
 ```
+⚠️ **Com `season`, sempre.** A chave da tabela é `(league_id, season)`: sem o
+segundo filtro você liga a liga em toda temporada que existir ali, inclusive a
+que ninguém decidiu ligar. Foi por isso que a migration 160 — que habilitou as
+oito competições que o painel publica — fixa a temporada e grita se não achar
+nenhuma linha.
 ⚠️ Ao habilitar liga no meio do dia, rode 1 curl de `?mode=calendar` na sequência —
 os jogos dela só entrariam sozinhos no calendário das 04h, e sem fixtures no banco
 o gate do live não abre pra ela.

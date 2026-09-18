@@ -1,5 +1,5 @@
 -- ============================================================================
--- 159 — as competições que o painel publica entram no coletor
+-- 160 — as competições que o painel publica entram no coletor
 -- ============================================================================
 -- Issue #478. Registra no repositório uma decisão que já foi aplicada à mão em
 -- PRODUÇÃO em 18/09/2026: ali estas oito linhas já estão `true`, e esta
@@ -12,6 +12,13 @@
 -- "volta 16/09". O comentário acima delas dizia: "as demais viram true na data
 -- de retorno". As datas passaram e ninguém voltou. Não era trade-off de custo;
 -- era um passo de implantação que ficou pela metade.
+--
+-- ⚠️ UMA DELAS TINHA CONDIÇÃO, E NÃO DATA. A Copa Sul-Americana (11) veio com
+-- "volta 15/07 → habilitar quando odds cobrirem". A condição foi verificada
+-- antes de ligar, e não presumida: o painel publica oportunidade dela há
+-- semanas, com odd e Score — em 17/09 o Atlético Torque × Cienciano saiu no
+-- daily com sete saídas, e a Atlético-MG × Santos, do dia 16, com cinco. As
+-- odds cobrem.
 --
 -- E o painel PUBLICA oportunidade destas competições: elas aparecem na lista,
 -- vão para o Telegram e entram no Placar da Metodologia. O coletor é que não as
@@ -54,16 +61,35 @@
 --     timeout_milliseconds := 120000);
 -- ============================================================================
 
-update public.leagues_config
-   set enabled = true
- where season = 2026
-   and league_id in (
-     2,    -- UEFA Champions League
-     39,   -- Premier League (ENG)
-     140,  -- La Liga (ESP)
-     11,   -- Copa Sul-Americana
-     135,  -- Serie A (ITA)
-     78,   -- Bundesliga (ALE)
-     61,   -- Ligue 1 (FRA)
-     94    -- Primeira Liga (POR)
-   );
+-- ⚠️ E ELA GRITA SE NÃO ACHAR NINGUÉM. O `season = 2026` vem do seed; num
+-- ambiente que já tenha virado a temporada, o `where` não casa com nada e a
+-- migration passaria VERDE sem ligar liga nenhuma — o mesmo silêncio que deixou
+-- estas oito desligadas por um mês. Zero linha é erro, e o deploy para.
+do $$
+declare
+  ligadas integer;
+begin
+  update public.leagues_config
+     set enabled = true
+   where season = 2026
+     and league_id in (
+       2,    -- UEFA Champions League
+       39,   -- Premier League (ENG)
+       140,  -- La Liga (ESP)
+       11,   -- Copa Sul-Americana
+       135,  -- Serie A (ITA)
+       78,   -- Bundesliga (ALE)
+       61,   -- Ligue 1 (FRA)
+       94    -- Primeira Liga (POR)
+     );
+
+  get diagnostics ligadas = row_count;
+
+  if ligadas = 0 then
+    raise exception
+      'leagues_config: nenhuma das oito ligas existe na temporada 2026. A temporada virou? Confira `select league_id, season, enabled from public.leagues_config order by season desc` e refaça esta migration com a temporada certa.';
+  end if;
+
+  raise notice 'leagues_config: % linha(s) habilitada(s) na temporada 2026.', ligadas;
+end
+$$;
