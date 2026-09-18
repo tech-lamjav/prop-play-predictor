@@ -432,7 +432,10 @@ export default function FutebolHoje() {
 
   const dayRows = useMemo<OppLike[]>(
     () => oportunidadesDoDia({
-      doBoard: valueRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay),
+      // A lista inteira: quem recorta por dia é `oportunidadesDoDia`. Recortar
+      // aqui também deixaria a mesma regra viva em dois lugares — que é o que
+      // esta mudança existe para acabar.
+      doBoard: valueRows,
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId,

@@ -653,6 +653,19 @@ export interface FutebolAlertedPick {
 }
 
 /**
+ * O placar de um jogo que o COLETOR já fechou (migration 152).
+ *
+ * Só status terminal com placar. É fato, e não leitura point-in-time: nota,
+ * faixa e vantagem continuam vindo do espelho, que é a foto do apito.
+ */
+export interface FutebolPlacarFresco {
+  fixture_id: number;
+  status_short: string;
+  goals_home: number;
+  goals_away: number;
+}
+
+/**
  * O que o detalhe do jogo recebe: as linhas de valor, e as saídas que o corte de
  * valor removeu (#432).
  *
@@ -1197,6 +1210,26 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolAlertedPick[];
+    });
+  },
+
+  /**
+   * O placar dos jogos que o coletor já fechou.
+   *
+   * Chamada com os ids que a tela já tem na mão: é uma leitura pequena e
+   * pontual, para o painel não esperar o espelho recarregar para dizer se a
+   * oportunidade foi green ou red (migration 152). O parâmetro é um array num
+   * POST de RPC, e não filtro de PostgREST: não passa por URL nem cai no corte
+   * padrão de mil linhas.
+   */
+  async getPlacarFresco(fixtureIds: number[]): Promise<FutebolPlacarFresco[]> {
+    if (fixtureIds.length === 0) return [];
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_placar_fresco', {
+        p_fixture_ids: fixtureIds,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolPlacarFresco[];
     });
   },
 
