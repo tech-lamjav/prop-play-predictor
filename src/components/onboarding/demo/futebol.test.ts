@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  demoBoardNoDia,
   demoFutebolBoard,
   demoFixtureValueRows,
+  makeDemoAgenda,
 } from './futebol';
 import { faixaTone } from '@/utils/futebol-score';
+import { brtDayOf } from '@/utils/futebol-datas';
 
 // ============================================================================
 // A demonstração ensina a metodologia vigente (issue #308, spec #301)
@@ -19,6 +22,29 @@ describe('dados de demonstração do futebol', () => {
     // legenda não têm o que ensinar.
     const faixas = new Set(demoFutebolBoard('contexto_v1').map((l) => faixaTone(l.faixa)));
     expect([...faixas].sort()).toEqual(['alta', 'baixa', 'media']);
+  });
+
+  // A demonstração roda em cima da tela de verdade, com a régua de datas dela
+  // ao lado. Cartão em 10/08/2025 embaixo de uma régua marcando hoje ensina, na
+  // primeira leitura que a pessoa faz do produto, que a tela não sabe que dia é.
+  it('o board de exemplo cai no dia que a tela está mostrando', () => {
+    const dia = '2026-09-18';
+    for (const linha of demoBoardNoDia(demoFutebolBoard('contexto_v1'), dia)) {
+      expect(brtDayOf(linha.kickoff_utc), `${linha.home_team_name} × ${linha.away_team_name}`).toBe(dia);
+    }
+  });
+
+  // Board e agenda são a MESMA foto vista de dois lugares: o trilho de jogos
+  // pendura a etiqueta de faixa pelo `fixture_id`, e um jogo que caísse em
+  // outro dia deixaria a etiqueta órfã.
+  it('board e agenda de exemplo caem no mesmo dia', () => {
+    const dia = '2026-09-18';
+    const agenda = new Map(makeDemoAgenda(dia).map((f) => [f.fixture_id, f]));
+    for (const linha of demoBoardNoDia(demoFutebolBoard('contexto_v1'), dia)) {
+      const jogo = agenda.get(linha.fixture_id);
+      if (!jogo) continue; // o board tem uma linha a mais, de propósito (nota 35)
+      expect(jogo.kickoff_utc).toBe(linha.kickoff_utc);
+    }
   });
 
   it('nenhuma linha de exemplo carrega componente de preço no Score', () => {

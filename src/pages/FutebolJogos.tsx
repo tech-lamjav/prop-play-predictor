@@ -147,7 +147,10 @@ export default function FutebolJogos() {
   // A demonstração herda a escala do produto (#333). Aqui a janela É o board:
   // a agenda não recorta por dia o que já veio do dia, e é dele que a leitura
   // de cada confronto sai.
-  const demoBoard = useDemoFutebolBoard(board);
+  // O dia é o mesmo que a agenda de exemplo já usa (`makeDemoAgenda(dia)`):
+  // board e agenda precisam cair no mesmo dia, senão a etiqueta de faixa do
+  // trilho não casa com o jogo ao lado dela.
+  const demoBoard = useDemoFutebolBoard(board, dia);
 
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -41,6 +41,16 @@ import { useDemoFixtureValueRows } from '@/components/onboarding/demo/use-demo-f
  * cima: empilhada, a folha do mercado é mais alta que a tela.
  */
 const BANCADA_MQ = '(min-width: 1280px)';
+/**
+ * O celular, para efeito de "onde a análise cai na tela".
+ *
+ * É o mesmo corte do `md` do Tailwind, que é onde a página deixa de empilhar:
+ * daí para cima a bancada já entra no primeiro quadro e não há nada para
+ * rolar. O número aparece aqui e não inline porque um corte de layout escrito
+ * à mão dentro de um efeito é o tipo de coisa que sai de sincronia com o CSS
+ * sem ninguém notar.
+ */
+const CELULAR_MQ = '(max-width: 767px)';
 
 function useBancadaLadoALado(): boolean {
   const [lado, setLado] = useState<boolean>(() =>
@@ -359,6 +369,37 @@ export default function FutebolJogo() {
   const bancadaLadoALado = useBancadaLadoALado();
   // Abre já no mercado do card clicado; sem link, no de gols, como sempre foi.
   const [mercadoAtivo, setMercadoAtivo] = useState(() => preferida?.market ?? 'goals_over_under');
+  /**
+   * Quem chega por um card de oportunidade cai NA análise, não no topo.
+   *
+   * O link já trazia a saída clicada e a bancada já abria no mercado certo —
+   * só que no celular isso acontecia a uma tela e meia de rolagem abaixo da
+   * dobra, então o trabalho estava feito e ninguém via. O assinante lia o
+   * cabeçalho do jogo e voltava.
+   *
+   * Três condições, e todas importam:
+   *  - `preferida`: só rola quem PEDIU uma saída. Entrar pela agenda ou pelo
+   *    link direto do jogo é chegar para ver o jogo, e mover a tela debaixo
+   *    de quem não pediu é o defeito que esta rolagem imita.
+   *  - o celular: no desktop a bancada já está no primeiro quadro.
+   *  - dado na mão: rolar com a bancada ainda vazia mira numa altura que o
+   *    conteúdo vai empurrar, e a tela para no lugar errado.
+   *
+   * `jaRolou` porque isto é uma CHEGADA, não um comportamento: trocar de aba
+   * ou de mercado refaz o efeito, e repetir a rolagem prenderia a tela.
+   */
+  const analiseRef = useRef<HTMLDivElement | null>(null);
+  const jaRolou = useRef(false);
+  useEffect(() => {
+    if (jaRolou.current || !preferida) return;
+    if (isLoading || valorCarregando) return;
+    const alvo = analiseRef.current;
+    if (!alvo) return;
+    if (!window.matchMedia(CELULAR_MQ).matches) return;
+    jaRolou.current = true;
+    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    alvo.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'start' });
+  }, [preferida, isLoading, valorCarregando]);
   const jogoInfo: JogoInfo | null = fixture
     ? {
         fixtureId: fid!,
@@ -577,7 +618,7 @@ export default function FutebolJogo() {
 
                 O antigo "Resumo" virou a própria faixa da partida mais a coluna de
                 mercados, então deixou de ser uma aba. */}
-            <div className="mt-5 flex items-center justify-between gap-4 flex-wrap">
+            <div ref={analiseRef} className="mt-5 scroll-mt-20 flex items-center justify-between gap-4 flex-wrap">
               {/* Rola na horizontal no celular, como toda fileira desta casa
                   (a régua de datas da agenda, a coluna de mercados da bancada, a
                   régua de rodadas). Com duas abas cabia num aparelho de 360px;
