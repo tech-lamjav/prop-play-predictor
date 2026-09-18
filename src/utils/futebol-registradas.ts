@@ -4,6 +4,7 @@ import type {
   FutebolValueBoardRow,
 } from '@/services/futebol-data.service';
 import { opportunityKey } from '@/utils/futebol-history';
+import { brtDayOf } from '@/utils/futebol-datas';
 
 /**
  * A lista de oportunidades de um dia, como as telas a montam.
@@ -104,12 +105,32 @@ export function oportunidadesDoDia({
   dia: string;
   fixturePorId: Map<number, FutebolFixture>;
 }): OppLike[] {
+  // ⚠️ O DIA É DECIDIDO AQUI, e não por quem chama.
+  //
+  // Antes esta função confiava que o board já vinha recortado, e a página fazia
+  // esse recorte por fora. Duas metades da mesma regra, em arquivos diferentes,
+  // e nenhum teste sobre o todo — foi assim que uma partida ao vivo apareceu na
+  // lista de cinco dias anteriores sem nada acusar. Filtrar de novo aqui é
+  // barato e transforma a regra em invariante: o que sai desta função é do dia
+  // pedido, ponto.
+  const doDia = doBoard.filter((r) => brtDayOf(r.kickoff_utc) === dia);
+
   const jaNaLista = new Set(
-    doBoard.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)),
+    doDia.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)),
   );
-  const soRegistradas = registradas
-    .filter((a) => a.game_day === dia)
-    .filter((a) => !jaNaLista.has(oppKey(a.fixture_id, a.market, a.outcome, a.line_value)))
-    .map((a) => oppFromAlerted(a, fixturePorId.get(a.fixture_id)));
-  return [...doBoard, ...soRegistradas];
+
+  const soRegistradas: OppLike[] = [];
+  for (const a of registradas) {
+    if (a.game_day !== dia) continue;
+    const chave = oppKey(a.fixture_id, a.market, a.outcome, a.line_value);
+    // Dedup contra o board E contra as outras registradas. A segunda parte
+    // faltava: o mesmo pick enviado em dias diferentes vira uma linha por envio
+    // na origem, e a lista mostrava a oportunidade repetida — sempre no topo,
+    // porque o Score é o mesmo em todas as cópias.
+    if (jaNaLista.has(chave)) continue;
+    jaNaLista.add(chave);
+    soRegistradas.push(oppFromAlerted(a, fixturePorId.get(a.fixture_id)));
+  }
+
+  return [...doDia, ...soRegistradas];
 }

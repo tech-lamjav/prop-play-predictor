@@ -432,8 +432,12 @@ export default function FutebolOportunidades() {
   // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde
   // veio o número, não de natureza.
   const dayRows = useMemo<OppLike[]>(
+    // A lista inteira vai, e quem recorta por dia é `oportunidadesDoDia`. A
+    // página recortava aqui também, e ter a mesma regra em dois lugares foi o
+    // que deixou uma partida ao vivo aparecer em cinco dias anteriores sem
+    // nenhum teste acusar: cada metade parecia certa lida sozinha.
     () => oportunidadesDoDia({
-      doBoard: allRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay),
+      doBoard: allRows,
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId: fixtureMap,

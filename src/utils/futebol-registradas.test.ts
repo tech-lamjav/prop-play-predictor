@@ -241,3 +241,111 @@ describe('oportunidade registrada em liga fora da lista fixa', () => {
     expect(fixtureDoStrasbourg.goals_home).toBe(2); // o placar EXISTIA no banco
   });
 });
+
+// ============================================================================
+// A lista do dia só tem linhas DAQUELE dia
+// ============================================================================
+// Em 17/09/2026 o painel mostrava "Menos de 3,5 gols · Atletico Torque ×
+// Cienciano" — jogo das 21:30 daquela noite — na lista de 12, 13, 14, 15 e 16
+// de setembro. Duas cópias, sempre no topo, porque o Score era 100.
+//
+// A investigação levou uma hora e queimou quatro hipóteses porque NINGUÉM era
+// dono desta regra: o recorte por dia estava repartido entre o filtro do board
+// na página, o filtro das registradas aqui, e a fusão com o histórico em outro
+// arquivo. Três lugares, nenhum teste, e cada suspeita exigia ler um trecho
+// diferente para ser descartada.
+//
+// Agora o dia é decidido AQUI, num lugar só, e estes testes são a guarda.
+// ============================================================================
+
+describe('a lista do dia', () => {
+  const HOJE = '2026-09-17';
+
+  /** O jogo das 21:30 de 17/09: kickoff em UTC cai no dia seguinte. */
+  const jogoDaNoite = (over: Partial<OppLike> = {}): OppLike =>
+    doBoard({
+      fixture_id: 1631512,
+      home_team_name: 'Atletico Torque',
+      away_team_name: 'Cienciano',
+      kickoff_utc: '2026-09-18T00:30:00',
+      status_short: '2H',
+      market: 'goals_over_under',
+      outcome: 'Under',
+      line_value: 3.5,
+      ...over,
+    });
+
+  it('não deixa entrar linha de outro dia, nem quando o jogo está ao vivo', () => {
+    // O caso real: quem olha 12/09 recebe a lista inteira do board, e a partida
+    // ao vivo de hoje não pode aparecer ali.
+    const lista = oportunidadesDoDia({
+      doBoard: [jogoDaNoite(), doBoard({ fixture_id: 99, kickoff_utc: '2026-09-12T22:00:00Z' })],
+      registradas: [],
+      dia: '2026-09-12',
+      fixturePorId: new Map(),
+    });
+
+    expect(lista).toHaveLength(1);
+    expect(lista[0].fixture_id).toBe(99);
+  });
+
+  it('e no dia do jogo ela entra', () => {
+    // A contraprova: sem ela, o teste acima passaria com uma lista sempre vazia.
+    const lista = oportunidadesDoDia({
+      doBoard: [jogoDaNoite()],
+      registradas: [],
+      dia: HOJE,
+      fixturePorId: new Map(),
+    });
+
+    expect(lista).toHaveLength(1);
+    expect(lista[0].fixture_id).toBe(1631512);
+  });
+
+  it('a mesma oportunidade registrada duas vezes vira UMA linha', () => {
+    // O pick do Torque foi enviado no Telegram em 12, 15 e 17 de setembro, para
+    // o mesmo jogo. Cada envio é uma linha na origem, e a lista deduplicava
+    // contra o board mas não contra si mesma: a oportunidade aparecia repetida,
+    // uma vez por envio, sempre no topo por causa do Score.
+    const envio = (sent: string) =>
+      registrada({
+        game_day: HOJE,
+        fixture_id: 1631512,
+        market: 'goals_over_under',
+        outcome: 'Under',
+        line_value: 3.5,
+        sent_at: sent,
+      });
+
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [envio('2026-09-12T13:00:00Z'), envio('2026-09-15T13:00:00Z'), envio('2026-09-17T13:00:00Z')],
+      dia: HOJE,
+      fixturePorId: new Map(),
+    });
+
+    expect(lista).toHaveLength(1);
+  });
+
+  it('e o board continua ganhando da registrada, quando são a mesma', () => {
+    // Regra que já existia e não pode se perder no conserto: a linha do board
+    // tem número vivo; a registrada é o retrato do envio.
+    const lista = oportunidadesDoDia({
+      doBoard: [jogoDaNoite()],
+      registradas: [
+        registrada({
+          game_day: HOJE,
+          fixture_id: 1631512,
+          market: 'goals_over_under',
+          outcome: 'Under',
+          line_value: 3.5,
+        }),
+      ],
+      dia: HOJE,
+      fixturePorId: new Map(),
+    });
+
+    expect(lista).toHaveLength(1);
+    expect(lista[0].n_casas).toBe(jogoDaNoite().n_casas);
+  });
+});
