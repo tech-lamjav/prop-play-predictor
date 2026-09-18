@@ -3244,6 +3244,37 @@ revoke execute on function public.release_futebol_oferta_pos_teste(uuid) from pu
 revoke execute on function public.release_futebol_oferta_pos_teste(uuid) from anon, authenticated;
 grant execute on function public.release_futebol_oferta_pos_teste(uuid) to service_role;
 
+-- ── O placar fresco (migration 152) ─────────────────────────────────────────
+-- Duas fontes para o mesmo fato: `public.fixtures` é do coletor, que pergunta de
+-- 2 em 2 minutos enquanto o jogo rola; `futebol.fact_fixtures` é o espelho, que
+-- recarrega no ritmo do pipeline. O painel lê o espelho, então jogo que acaba de
+-- madrugada amanhece sem resultado na tela. Esta função entrega só o FATO —
+-- placar final de jogo encerrado — e deixa nota, faixa e vantagem virem do
+-- espelho, que segue sendo a foto do apito.
+create or replace function public.get_futebol_placar_fresco(p_fixture_ids bigint[])
+returns table(
+  fixture_id   bigint,
+  status_short text,
+  goals_home   integer,
+  goals_away   integer
+)
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select f.fixture_id, f.status_short, f.goals_home, f.goals_away
+    from public.fixtures f
+   where f.fixture_id = any(p_fixture_ids)
+     and f.status_short in ('FT', 'AET', 'PEN')
+     and f.goals_home is not null
+     and f.goals_away is not null;
+$function$;
+
+revoke execute on function public.get_futebol_placar_fresco(bigint[]) from public;
+revoke execute on function public.get_futebol_placar_fresco(bigint[]) from anon, authenticated;
+grant execute on function public.get_futebol_placar_fresco(bigint[]) to anon, authenticated, service_role;
+
 -- O handicap VOLTOU à vitrine em 15/09/2026 às 17h BRT: fica escondido para
 -- linha detectada antes disso e aparece de lá em diante. A linha continua aqui,
 -- com o período FECHADO, porque é ela que segura o passado — sem ela, um

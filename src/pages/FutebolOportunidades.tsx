@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine, useFutebolPlacarFresco } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
@@ -31,7 +31,7 @@ import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-regist
 import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
 import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
-import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture, FutebolPlacarFresco } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
@@ -343,10 +343,50 @@ export default function FutebolOportunidades() {
     return m;
   }, [fixtures]);
 
-  const resultOf = (o: OppLike): BetResult | null => {
-    if (!FINISHED_STATUS.has(o.status_short ?? '')) return null;
+  // Os jogos do dia cujo apito já passou e que o espelho ainda não fechou.
+  //
+  // O painel lê o espelho, que recarrega no ritmo do pipeline de analytics; o
+  // coletor, que pergunta o placar de 2 em 2 minutos, grava em outra tabela.
+  // Entre o jogo acabar de madrugada e o espelho recarregar, a oportunidade
+  // amanhecia sem resultado — em 17/09 foram 19 linhas assim, de dois jogos.
+  //
+  // A lista sai vazia quando o dia inteiro já fechou, e aí a consulta nem sai.
+  const idsSemFecho = useMemo(
+    () =>
+      (fixtures ?? [])
+        .filter(
+          (f) =>
+            !FINISHED_STATUS.has(f.status_short ?? '') &&
+            (parseUtc(f.kickoff_utc)?.getTime() ?? Infinity) < agora,
+        )
+        .map((f) => f.fixture_id),
+    [fixtures, agora],
+  );
+  const { data: placarFresco } = useFutebolPlacarFresco(idsSemFecho);
+  const frescoMap = useMemo(() => {
+    const m = new Map<number, FutebolPlacarFresco>();
+    (placarFresco ?? []).forEach((p) => m.set(p.fixture_id, p));
+    return m;
+  }, [placarFresco]);
+
+  /**
+   * O placar que vale para esta linha, e de onde ele veio.
+   *
+   * O fresco ganha quando existe, e ele só existe para jogo encerrado com
+   * placar. O resto continua vindo do espelho: nota, faixa e vantagem são
+   * leitura point-in-time, e disso o coletor não sabe nada.
+   */
+  const placarDe = (o: OppLike) => {
+    const fresco = frescoMap.get(o.fixture_id);
+    if (fresco) return { gh: fresco.goals_home, ga: fresco.goals_away, status: fresco.status_short };
     const g = goalsMap.get(o.fixture_id);
-    return g ? settleFutebol(o, g.gh, g.ga) : null;
+    return { gh: g?.gh ?? null, ga: g?.ga ?? null, status: o.status_short };
+  };
+
+  const resultOf = (o: OppLike): BetResult | null => {
+    const p = placarDe(o);
+    if (!FINISHED_STATUS.has(p.status ?? '')) return null;
+    return p.gh != null && p.ga != null ? settleFutebol(o, p.gh, p.ga) : null;
   };
 
   // ── Oportunidades REGISTRADAS ─────────────────────────────────────────────
@@ -718,7 +758,7 @@ export default function FutebolOportunidades() {
               </div>
               {comValor.map((o) => {
                 const res = resultOf(o);
-                const g = goalsMap.get(o.fixture_id);
+                const g = placarDe(o);
                 return (
                   <div key={key(o)}>
                     <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
@@ -736,7 +776,7 @@ export default function FutebolOportunidades() {
             <div className="md:hidden flex flex-col gap-2.5">
               {comValor.map((o) => {
                 const res = resultOf(o);
-                const g = goalsMap.get(o.fixture_id);
+                const g = placarDe(o);
                 return (
                   <OppMobileCard
                     key={key(o)}

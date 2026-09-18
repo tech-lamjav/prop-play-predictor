@@ -613,6 +613,19 @@ export interface FutebolValueBoardRow {
 // Fonte separada do board de propósito: o mart é full-refresh e re-escolhe a
 // janela de odds, então o pick que saiu às 10h pode não estar mais lá à noite.
 // Isto é o registro do que a pessoa recebeu, não do que fechou.
+/**
+ * O placar de um jogo que o COLETOR já fechou (migration 152).
+ *
+ * Só status terminal com placar. É fato, e não leitura point-in-time: nota,
+ * faixa e vantagem continuam vindo do espelho, que é a foto do apito.
+ */
+export interface FutebolPlacarFresco {
+  fixture_id: number;
+  status_short: string;
+  goals_home: number;
+  goals_away: number;
+}
+
 export interface FutebolAlertedPick {
   game_day: string;           // YYYY-MM-DD (dia do jogo, BRT)
   fixture_id: number;
@@ -1162,6 +1175,24 @@ export const futebolDataService = {
    * montar o seletor de dias (o mart não guarda dia antigo). São poucas linhas.
    * Ver migration 091.
    */
+  /**
+   * O placar dos jogos que o coletor já fechou.
+   *
+   * Chamada com os ids que a tela já tem na mão: é uma leitura pequena e
+   * pontual, para o painel não esperar o espelho recarregar para dizer se a
+   * oportunidade foi green ou red (migration 152).
+   */
+  async getPlacarFresco(fixtureIds: number[]): Promise<FutebolPlacarFresco[]> {
+    if (fixtureIds.length === 0) return [];
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_placar_fresco', {
+        p_fixture_ids: fixtureIds,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolPlacarFresco[];
+    });
+  },
+
   async getAlertedPicks(day?: string): Promise<FutebolAlertedPick[]> {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_alerted_picks', {

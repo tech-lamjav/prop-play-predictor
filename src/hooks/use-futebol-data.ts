@@ -37,6 +37,7 @@ import {
   type FutebolFixtureValueRow,
   type FutebolFixtureValueComCortadas,
   type FutebolAlertedPick,
+  type FutebolPlacarFresco,
 } from '@/services/futebol-data.service';
 
 /**
@@ -362,6 +363,29 @@ export function useFutebolValueHistory() {
  * picks por dia). Buscado de uma vez porque o seletor de dias precisa saber
  * quais dias tiveram alerta, inclusive os que o mart já não guarda. Ver 091.
  */
+/**
+ * O placar dos jogos que o coletor já fechou e o espelho ainda não.
+ *
+ * Existe porque o painel lê o espelho, que recarrega no ritmo do pipeline: jogo
+ * que acaba de madrugada amanhece sem resultado na tela, e o sócio via "10 de 19
+ * sem resultado" no dia anterior. Só é chamada quando sobra jogo sem placar —
+ * dia inteiro fechado não gasta consulta.
+ *
+ * `staleTime` curto de propósito: é justamente o dado que muda enquanto a
+ * pessoa está com a tela aberta.
+ */
+export function useFutebolPlacarFresco(fixtureIds: number[]) {
+  const ids = [...fixtureIds].sort((a, b) => a - b);
+  return useQuery<FutebolPlacarFresco[]>({
+    queryKey: ['futebol', 'placar-fresco', ids],
+    queryFn: () => futebolDataService.getPlacarFresco(ids),
+    enabled: ids.length > 0,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useFutebolAlertedPicks() {
   return useQuery<FutebolAlertedPick[]>({
     queryKey: ['futebol', 'alerted-picks'],
